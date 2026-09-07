@@ -389,7 +389,8 @@
         "after": "after: {stepTitle}",
         "readiness": "when {measure} reaches {threshold} (now {value})",
         "count": "when {n} {thing} exist (now {have})",
-        "baseline": "the baseline defines this policy two ways"
+        "baseline": "the baseline defines this policy two ways",
+        "exclusionsGroup": "until you choose the exclusions group"
       },
       "gapSuffix": {
         "admin-session": "sessions expire {current}, the baseline wants {wanted}",

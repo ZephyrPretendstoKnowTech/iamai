@@ -203,14 +203,15 @@ export function stateForStatus(status: StepStatus): Partial<StepState> {
 /**
  * Which condition a set of blockers names. A baseline that defines the policy
  * two ways is its own answer: no prerequisite in the tenant can clear it. A
- * question nobody has answered is a decision, not work — today that is the
- * device plan, the one blocker that is purely an unanswered question. Anything
+ * question nobody has answered is a decision, not work — a Setup question, a
+ * `decision` blocker (the step where the operator answers it), or the device
+ * plan, which names its own step and so has to be recognised by label. Anything
  * else is work waiting to be done.
  */
 export function conditionFor(blockers: Blocker[]): Condition {
   if (blockers.some((b) => b.label === 'baseline-conflict')) return 'baseline-conflict'
   if (blockers.length === 0) return 'healthy'
-  if (blockers.every((b) => b.kind === 'setup' || b.label === 'device-decision')) return 'needs-decision'
+  if (blockers.every((b) => b.kind === 'setup' || b.kind === 'decision' || b.label === 'device-decision')) return 'needs-decision'
   return 'blocked'
 }
 

@@ -30,6 +30,17 @@ export function statusOf(step: Step): StatusView {
     case 'ready':
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':
+      // Two states project to `blocked`, and they are not the same thing to act
+      // on (roadmap/lifecycle.ts projectStatus). Blocked is work or a number
+      // somewhere else in the plan: there is nothing for the operator to do on
+      // this row today. Needs decision is the opposite — the step is waiting on
+      // *them*, and the answer is on this row.
+      //
+      // Collapsing them read "Blocked · until you choose the exclusions group",
+      // which tells an operator the one row they can clear right now is one they
+      // cannot. Foundation B has carried the condition all along and Foundation D
+      // renders it beside the word; this is the word saying the same thing.
+      if (step.state.condition === 'needs-decision') return { word: 'Needs decision', tone: 'wait' }
       // Blocked-by-prerequisite is a waiting state, not a fault (prompt 50 item 5):
       // --wait. --stop is reserved for Skipped and a step that would strand the operator.
       return { word: 'Blocked', tone: step.operatorSafe === false ? 'stop' : 'wait' }

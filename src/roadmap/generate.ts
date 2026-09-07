@@ -186,7 +186,7 @@ import { stepChecks } from '../validation/checkFixes.ts'
 import { buildContext, breakGlassReport, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
 import { STEP_EXTRAS } from './stepDefaults.ts'
-import { exclusionsGroupChoice } from '../mapping/safetyChoice.ts'
+import { awaitsOperator, exclusionsGroupChoice } from '../mapping/safetyChoice.ts'
 import type { DirectoryEvidence } from '../mapping/safetyChoice.ts'
 import { conditionFor, initialState, projectStatus, raiseCondition, setState, stateFields } from './lifecycle.ts'
 import type { StepState } from './lifecycle.ts'
@@ -986,6 +986,26 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       setState(geStep, { satisfied: true, inPlace: true })
       geStep.deliveredBy = [recognisedGroupId]
     }
+  }
+  // The step that *holds* the decision says it is waiting on one (Foundation C,
+  // mapping/safetyChoice.ts `awaitsOperator`).
+  //
+  // Every step that waits on this group already read Blocked. The step where the
+  // question is actually answered read Healthy · Ready, with "Make the object
+  // this step names." as its next action and "The policy exists in {tenant} in
+  // report-only" as its Done-when — a step that deploys no policy, telling an
+  // operator to build a second exclusions group while two of the tenant's own
+  // qualify and IAMAI is waiting on which. There is no `satisfied` guard needed
+  // above it: a choice that resolved is not one anybody is waiting on, and
+  // `awaitsOperator` says so.
+  //
+  // The condition comes from Foundation B's own `conditionFor`, so the state,
+  // the word (In place · Ready · Needs decision · Blocked), the next milestone
+  // and the Step Contract's action and Done-when are all one reading. Nothing
+  // here writes a status.
+  if (geStep && awaitsOperator(exclusions)) {
+    geStep.blockers = [...geStep.blockers, { kind: 'decision', label: 'exclusions-decision', binding: BLOCKED_REASON.exclusionsGroup }]
+    setState(geStep, { condition: conditionFor(geStep.blockers) })
   }
   const bgReport = validationReports.find((r) => r.subject === 'breakGlass')
   const bgStep = steps.find((s) => s.id === bgStepId)

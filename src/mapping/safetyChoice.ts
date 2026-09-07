@@ -185,6 +185,29 @@ export function resolveSafetyChoice(input: SafetyChoiceInput): SafetyChoice {
   return { ...base, ...nobody, status, recommended: status === 'recommended' ? input.candidates[0] : null }
 }
 
+/**
+ * Whether what this choice is waiting on is the operator's own answer, rather
+ * than work or a reading that failed. Derived from the statuses above and
+ * nothing else, so the engine does not have to re-decide what they mean:
+ *
+ *  * nobody has chosen, and IAMAI either has candidates to put forward
+ *    (`recommended`, `ambiguous`) or cannot tell what the tenant has
+ *    (`undetermined`) — the missing thing is a person's answer;
+ *  * `none-found` is not one. Complete evidence, nothing qualifies: the next
+ *    thing is to make the object, and that is work;
+ *  * `unverified` is not one either. The operator answered and a request
+ *    failed; nobody is asked to choose again because a scan could not read the
+ *    object once, and it becomes usable again by itself;
+ *  * `invalidated` is. The operator answered and Graph proved the object gone,
+ *    and only they may say what takes its place — a detection may not, which is
+ *    the whole point of this module.
+ */
+export function awaitsOperator(choice: SafetyChoice): boolean {
+  if (!choice.unresolved) return false
+  if (choice.storedId === null) return choice.status !== 'none-found'
+  return choice.status === 'invalidated'
+}
+
 // ---- What a scan read of the directory ----
 
 /** One directory object as this scan read it, reduced to what a choice needs. */
