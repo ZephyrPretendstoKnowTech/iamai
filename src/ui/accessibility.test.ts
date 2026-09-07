@@ -45,13 +45,33 @@ function uiFiles(): string[] {
 
 /**
  * Every JSX opening tag in a source file, as its name and its attribute text.
- * Crude on purpose: it reads `<Name ... >` with nesting on the attributes' side
- * only, which is all these assertions need.
+ *
+ * It walks the attributes rather than matching them, because a handler nests
+ * braces as deep as it likes and a depth-limited pattern does not fail on the
+ * tag it cannot read — it drops it. The Plan row, whose keydown handler is
+ * three braces deep, was invisible to every assertion below until this counted
+ * properly (task 017).
  */
 function tagsOf(src: string): { name: string; attrs: string }[] {
   const out: { name: string; attrs: string }[] = []
-  for (const m of src.matchAll(/<([A-Za-z][A-Za-z0-9.]*)((?:[^<>{}]|\{[^{}]*\}|\{[^{}]*\{[^{}]*\}[^{}]*\})*?)\/?>/g)) {
-    out.push({ name: m[1], attrs: m[2] })
+  for (const m of src.matchAll(/<([A-Za-z][A-Za-z0-9.]*)/g)) {
+    const from = (m.index ?? 0) + m[0].length
+    let depth = 0
+    let quote = ''
+    let i = from
+    for (; i < src.length; i++) {
+      const c = src[i]
+      if (quote) {
+        if (c === quote) quote = ''
+        continue
+      }
+      if (c === '"' || c === "'" || c === '`') quote = c
+      else if (c === '{') depth++
+      else if (c === '}') depth--
+      else if (c === '>' && depth === 0) break
+      else if (c === '<' && depth === 0) break
+    }
+    if (src[i] === '>') out.push({ name: m[1], attrs: src.slice(from, i).replace(/\/$/, '') })
   }
   return out
 }
@@ -72,6 +92,123 @@ function rule(sheet: string, selector: string): string | null {
     if (sels.includes(selector)) found.push(m[2])
   }
   return found.length > 0 ? found.join('\n') : null
+}
+
+/**
+ * The stylesheet's rules in source order — one entry per selector in a list,
+ * with its declarations and the at-rule it sits under.
+ *
+ * `rule()` above answers "does the sheet say this anywhere", which is the wrong
+ * question for a focus indicator: the sheet said it, and a later, more specific
+ * `all: unset` took it away again. What follows is enough of a cascade to ask
+ * what a control's focus indicator actually is once the whole sheet has been
+ * read (task 017).
+ */
+type CssRule = { sel: string; decls: Record<string, string>; media: string; order: number }
+
+function parseRules(sheet: string): CssRule[] {
+  const src = sheet.replace(/\/\*[\s\S]*?\*\//g, '')
+  const out: CssRule[] = []
+  const at: string[] = []
+  let buf = ''
+  let i = 0
+  while (i < src.length) {
+    const ch = src[i]
+    if (ch === '{') {
+      const prelude = buf.trim()
+      buf = ''
+      if (prelude.startsWith('@')) {
+        at.push(prelude)
+        i++
+        continue
+      }
+      let depth = 1
+      let j = i + 1
+      for (; j < src.length && depth > 0; j++) {
+        if (src[j] === '{') depth++
+        else if (src[j] === '}') depth--
+      }
+      const decls: Record<string, string> = {}
+      for (const d of src.slice(i + 1, j - 1).split(';')) {
+        const colon = d.indexOf(':')
+        if (colon < 0) continue
+        decls[d.slice(0, colon).trim().toLowerCase()] = d.slice(colon + 1).trim()
+      }
+      for (const sel of prelude.split(',')) out.push({ sel: sel.trim().replace(/\s+/g, ' '), decls, media: at.join(' '), order: out.length })
+      i = j
+      continue
+    }
+    if (ch === '}') {
+      at.pop()
+      buf = ''
+      i++
+      continue
+    }
+    buf += ch
+    i++
+  }
+  return out
+}
+
+/** One compound of a selector: `th`, `.th-sort`, `.tab[aria-selected='true']`. */
+type Compound = { tag: string; classes: string[]; attrs: string[]; pseudo: string[] }
+
+function compound(part: string): Compound | null {
+  const c: Compound = { tag: '', classes: [], attrs: [], pseudo: [] }
+  for (const m of part.matchAll(/\[[^\]]*\]|::?[a-z-]+(?:\([^)]*\))?|\.[A-Za-z0-9_-]+|\*|[A-Za-z][A-Za-z0-9-]*/g)) {
+    const t = m[0]
+    if (t.startsWith('[')) c.attrs.push(t)
+    else if (t.startsWith('::')) return null
+    else if (t.startsWith(':')) c.pseudo.push(t)
+    else if (t.startsWith('.')) c.classes.push(t)
+    else if (t !== '*') c.tag = t
+  }
+  return c
+}
+
+/**
+ * A probe is a focused control written as a plain descendant selector — `th
+ * .th-sort` is "a .th-sort inside a th, with focus and nothing else". A rule
+ * applies to it when every compound the rule names is one the probe has, and
+ * the only state it asks for is the focus the probe is in.
+ */
+function applies(sel: string, probe: Compound[]): boolean {
+  if (/[+~]/.test(sel)) return false
+  const parts = sel.replace(/\s*>\s*/g, ' ').split(' ').filter(Boolean).map(compound)
+  if (parts.some((p) => p === null)) return false
+  const cs = parts as Compound[]
+  const describes = (r: Compound, p: Compound, self: boolean): boolean =>
+    (!r.tag || r.tag === p.tag) &&
+    r.classes.every((x) => p.classes.includes(x)) &&
+    r.attrs.every((x) => p.attrs.includes(x)) &&
+    r.pseudo.every((x) => self && (x === ':focus-visible' || x === ':focus'))
+  if (!describes(cs[cs.length - 1], probe[probe.length - 1], true)) return false
+  let k = probe.length - 2
+  for (let n = cs.length - 2; n >= 0; n--) {
+    while (k >= 0 && !describes(cs[n], probe[k], false)) k--
+    if (k < 0) return false
+    k--
+  }
+  return true
+}
+
+/** What the sheet leaves a focused control's `outline` or `box-shadow` set to. */
+function effective(rules: CssRule[], probeSel: string, forced: boolean, prop: 'outline' | 'box-shadow'): string {
+  const probe = probeSel.split(' ').map(compound) as Compound[]
+  let best: { b: number; c: number; order: number; value: string } | null = null
+  for (const r of rules) {
+    // The ordinary theme is the sheet outside every at-rule; the forced-colours
+    // pass is that sheet with its one media block laid over the top.
+    if (r.media && !(forced && /forced-colors: active/.test(r.media))) continue
+    if (!applies(r.sel, probe)) continue
+    const value = r.decls[prop] ?? r.decls.all
+    if (value === undefined) continue
+    const cs = r.sel.replace(/\s*>\s*/g, ' ').split(' ').filter(Boolean).map(compound) as Compound[]
+    const b = cs.reduce((n, c) => n + c.classes.length + c.attrs.length + c.pseudo.length, 0)
+    const c = cs.reduce((n, x) => n + (x.tag ? 1 : 0), 0)
+    if (!best || b > best.b || (b === best.b && (c > best.c || (c === best.c && r.order > best.order)))) best = { b, c, order: r.order, value }
+  }
+  return best?.value ?? ''
 }
 
 /** One `<div>` element of a source file, from its opening tag to its close. */
@@ -181,6 +318,25 @@ test('focus is visible, and survives a mode that does not paint box-shadows', ()
   }
 })
 
+test('no reset later in the sheet erases the focus indicator it left behind', () => {
+  // The ring is declared once, near the top. Every `all: unset` control reset
+  // below it is later and at least as specific, so each one is a chance to lose
+  // the ring in the ordinary theme and the outline in a forced-colours one.
+  // Every such reset is probed, so a reset added tomorrow cannot erase either
+  // one quietly — the question here is what the whole sheet leaves, not whether
+  // some block in it says the right thing.
+  const rules = parseRules(css)
+  const probes = new Set(['button', 'a', 'input', '.btn', '.group-count'])
+  for (const r of rules) if (r.decls.all === 'unset') probes.add(r.sel)
+  assert.ok([...probes].some((p) => p.includes('th-sort')), 'the sortable column header is among the probed resets')
+  assert.ok([...probes].some((p) => p.includes('infotip-btn')), 'the info tip trigger is among the probed resets')
+  assert.ok([...probes].some((p) => p.includes('tab')), 'a tab is among the probed resets')
+  for (const p of probes) {
+    assert.equal(effective(rules, p, false, 'box-shadow'), 'var(--focus-ring)', `${p}: the sheet leaves it with no focus ring`)
+    assert.match(effective(rules, p, true, 'outline'), /\bsolid\b/, `${p}: the sheet leaves it with no focus outline in a forced-colours mode`)
+  }
+})
+
 test('the tab strip scrolls sideways without clipping the ring on its end tabs', () => {
   const strip = rule(css, '.tabs') ?? ''
   assert.match(strip, /overflow-x:\s*auto/)
@@ -190,6 +346,16 @@ test('the tab strip scrolls sideways without clipping the ring on its end tabs',
 test('closing the readiness guidance puts focus back on the control that opened it', () => {
   assert.match(readiness, /trigger\.current = e\.currentTarget/)
   assert.match(readiness, /trigger\.current\?\.focus\(\)/)
+})
+
+test('closing Plan settings puts focus back on the link that opened it', () => {
+  // Close is inside the panel, and closing unmounts the panel: without this the
+  // focused button leaves the document and focus falls to the body, which on a
+  // long plan is the top of the page (task 017).
+  const plan = read('src/ui/surfaces/Plan.tsx')
+  assert.match(plan, /const settingsLink = useRef<HTMLAnchorElement>\(null\)/)
+  assert.match(plan, /<a ref=\{settingsLink\} href="#\/plan" aria-expanded=\{showSettings\}/)
+  assert.match(plan, /onClose=\{\(\) => \{ setShowSettings\(false\); settingsLink\.current\?\.focus\(\) \}\}/)
 })
 
 // -------------------------------------------------------- D. programmatic state
@@ -251,13 +417,45 @@ test('every expanded/collapsed state sits on a control a keyboard reaches, and n
       if (!/\baria-expanded=/.test(t.attrs)) continue
       const native = ['button', 'a', 'summary'].includes(t.name)
       const component = t.name[0] === t.name[0].toUpperCase()
-      if (!native && !component && !/role="combobox"/.test(t.attrs)) offenders.push(`${f}: <${t.name}>`)
+      const operable = /\btabIndex=/.test(t.attrs) && /\bonKeyDown=/.test(t.attrs)
+      // An element that says it is a button has to behave like one. A table row
+      // carries its expanded state as a row, which is the one shape that leaves
+      // the table a table.
+      const declared = /role="button"/.test(t.attrs) || t.name === 'tr' ? operable : /role="combobox"/.test(t.attrs)
+      if (!native && !component && !declared) offenders.push(`${f}: <${t.name}>`)
     }
   }
   assert.deepEqual(offenders, [], 'aria-expanded on something that is not a control')
   assert.match(readiness, /aria-controls=\{GUIDE_PANEL_ID\}/)
   assert.match(read('src/ui/surfaces/Plan.tsx'), /aria-expanded=\{showSettings\} aria-controls=\{PLAN_SETTINGS_ID\}/)
   assert.match(read('src/ui/surfaces/Connect.tsx'), /aria-expanded=\{open\} aria-controls=\{BASELINE_CHOICES_ID\}/)
+})
+
+test('the one Plan row says it is a control and whether the step under it is open', () => {
+  // Every ordinary Plan row and every Cleanup row is this one element, so what
+  // it does or does not say it is, it says about the whole Plan. It was a
+  // focusable div: reachable, operable, and announced as a line of text that
+  // promised nothing (task 017).
+  const src = read('src/ui/surfaces/StepSections.tsx')
+  const from = src.indexOf('export function PlanRow(')
+  assert.ok(from >= 0, 'StepSections still draws the one Plan row')
+  const row = src.slice(from, src.indexOf('\n}\n', from))
+  const div = tagsOf(row).find((t) => /className="plan-row"/.test(t.attrs))
+  assert.ok(div, 'the row is one element')
+  assert.equal(div.name, 'div')
+  assert.match(div.attrs, /role="button"/, 'the row does not say it is a control')
+  assert.match(div.attrs, /aria-expanded=\{open\}/, 'the row does not say whether the step under it is open')
+  // The role is only true because the keyboard behaviour under it is unchanged.
+  assert.match(div.attrs, /tabIndex=\{0\}/)
+  assert.match(div.attrs, /onClick=\{onToggle\}/)
+  assert.match(div.attrs, /e\.key === 'Enter' \|\| e\.key === ' '/)
+  assert.match(div.attrs, /e\.preventDefault\(\)/)
+  // Every Step Contract fact the row carried is still on it, in order.
+  const spans = [...row.matchAll(/className="(?:plan-row-main|step-title|who|plan-row-reason)"/g)]
+  assert.equal(spans.length, 4, 'the row lost or gained a column')
+  assert.match(row, /className=\{`when\$\{whenReason \? ' when-reason' : ''\}`\}/)
+  assert.match(row, /<Status tone=\{tone\}>\{word\}<\/Status>/)
+  assert.match(row, /<span className="next-mark" aria-label=\{nextLabel\}>/)
 })
 
 test('an info tip opens on a tap as well as a hover, and its text is announced', () => {
@@ -273,14 +471,18 @@ test("an action's failure is text where the action was, and is announced", () =>
   // One live region per action, never per status line: a failure is the one
   // result the pressed control does not itself show.
   const sites = [
-    ['src/ui/surfaces/Connect.tsx', 5],
+    // Six: the signed-out sign-in failure under the primary button, the two
+    // signed-in tiles, the scan's own failure line, and the two baseline lines.
+    ['src/ui/surfaces/Connect.tsx', 6],
     ['src/ui/surfaces/MfaReadiness.tsx', 1],
     ['src/ui/shell/AppShell.tsx', 1],
     ['src/ui/scan/ScanProgress.tsx', 1],
   ] as const
   for (const [f, n] of sites) {
     const src = read(f)
-    const errors = [...src.matchAll(/\{[^\n]*\berror[^\n]*&& <(?:p|span) className="quiet[^"]*"([^>]*)>/g)]
+    // `actionError` as well as `error`: reading only the lower-case word is how
+    // the signed-out sign-in failure was counted as absent (task 017).
+    const errors = [...src.matchAll(/\{[^\n]*[eE]rror[^\n]*&& <(?:p|span) className="quiet[^"]*"([^>]*)>/g)]
     assert.equal(errors.length, n, `${f}: ${errors.length} rendered action errors`)
     for (const m of errors) assert.match(m[1], /role="status"/, `${f}: an action error that is drawn but never announced`)
   }

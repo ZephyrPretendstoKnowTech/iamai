@@ -2,7 +2,7 @@
 // exists: two header lines, the phases as rows, the footer. Clicking a row opens
 // the step under it. Nothing sits above the plan but its two header lines; every
 // decision the plan needs is made in the step that needs it (§5, §6.4).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
@@ -63,6 +63,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const onScan = (returnTo: string): void => void runScan(returnTo)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
+  // Close removes the panel, and with it the button that had focus. The link
+  // that opened it is where focus belongs afterwards (task 017).
+  const settingsLink = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
     const onHash = () => setOpen(stepFromPlanHash(window.location.hash))
     window.addEventListener('hashchange', onHash)
@@ -177,11 +180,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
           the panel it controls, or a screen reader hears a navigation that goes
           nowhere (task 017). */}
       <p className="line no-print">
-        <a href="#/plan" aria-expanded={showSettings} aria-controls={PLAN_SETTINGS_ID} onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
+        <a ref={settingsLink} href="#/plan" aria-expanded={showSettings} aria-controls={PLAN_SETTINGS_ID} onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
           {PP.settingsLink}
         </a>
       </p>
-      {showSettings && <Settings data={data} onClose={() => setShowSettings(false)} />}
+      {showSettings && <Settings data={data} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
       {waveRows.map((w, wi) => {
         return (

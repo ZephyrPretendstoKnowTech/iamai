@@ -38,9 +38,15 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
   open: boolean
   onToggle: () => void
 }) {
+  // A row is a disclosure: it opens the step under it and closes it again. It
+  // says both — that it is a control, and whether the step it controls is open
+  // — or a screen reader meets a focusable line of text that promises nothing
+  // (task 017). The keyboard behaviour it already had is what the role claims.
   return (
     <div
       className="plan-row"
+      role="button"
+      aria-expanded={open}
       tabIndex={0}
       onClick={onToggle}
       onKeyDown={(e) => {
