@@ -17,14 +17,14 @@ import { exitDemoUrl, isDemo } from '../demoMode.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { lowerFirst } from '../../copy/statements.ts'
-import { Button, LinkButton } from '../components/index.ts'
+import { Button } from '../components/index.ts'
 import { RingMark } from '../components/Ring.tsx'
 import { forgetTenant, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, laneOf } from '../scan/ScanProgress.tsx'
 import { elapsedLabel } from '../format.ts'
-import { PLAN_HREF, READINESS_HREF, STEP_LINK, resolveHash } from './routes.ts'
+import { PLAN_HREF, READINESS_HREF, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
@@ -51,25 +51,6 @@ export function useHashRoute(): Route {
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
   return route
-}
-
-/** Deep link to a Roadmap step: #/roadmap/step/<id> (prompt 14 §8). */
-export function stepHref(stepId: string): string {
-  return `#/roadmap/step/${stepId}`
-}
-
-export function useHashStepId(): string | null {
-  const read = (): string | null => {
-    const m = STEP_LINK.exec(window.location.hash.replace(/^#\//, ''))
-    return m ? decodeURIComponent(m[1]) : null
-  }
-  const [id, setId] = useState<string | null>(read)
-  useEffect(() => {
-    const onChange = () => setId(read())
-    window.addEventListener('hashchange', onChange)
-    return () => window.removeEventListener('hashchange', onChange)
-  }, [])
-  return id
 }
 
 function systemTheme(): string {
@@ -309,50 +290,5 @@ export function Footer() {
         ))}
       </span>
     </footer>
-  )
-}
-
-// Step-page framing for the pages that wait for prompts 48 and 49: what the
-// step does, what it needs, and the next step. New surfaces do not use it.
-export function StepFrame({
-  title,
-  does,
-  needs,
-  next,
-  nextLabel,
-  children,
-}: {
-  title: string
-  does: string
-  needs?: { met: boolean; text: string; href?: string }[]
-  next?: string
-  nextLabel?: string
-  children: ReactNode
-}) {
-  return (
-    <section>
-      <h2>{title}</h2>
-      <p className="step-does">{does}</p>
-      {needs && needs.length > 0 && (
-        <p className="step-needs">
-          {SHELL.needs}{' '}
-          {needs.map((n, i) => (
-            <span key={i} className={n.met ? '' : 'unmet'}>
-              {i > 0 && ' · '}
-              {n.met ? '✓ ' : ''}
-              {n.href && !n.met ? <a href={n.href}>{n.text}</a> : n.text}
-            </span>
-          ))}
-        </p>
-      )}
-      {children}
-      {next && (
-        <p className="step-next">
-          <span className="no-print">
-            <LinkButton href={`#/${next}`}>{fillText(SHELL.next, { label: nextLabel ?? next })}</LinkButton>
-          </span>
-        </p>
-      )}
-    </section>
   )
 }

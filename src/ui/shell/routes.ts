@@ -44,8 +44,6 @@ export const REDIRECT: Record<string, Route> = {
   recovery: 'plan',
 }
 
-const DEV = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true
-
 export const VALID = new Set<string>([
   'connect',
   'plan',
