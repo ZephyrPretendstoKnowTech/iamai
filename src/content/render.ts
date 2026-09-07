@@ -10,6 +10,8 @@ import { content } from './content.ts'
 
 const C = content as unknown as Record<string, any>
 const S = C.shared
+/** The MFA method guidance's own shared lines (task 014), for the review page's section. */
+const MG = { target: PASSKEY_TARGET, prereq: TENANT_PREREQUISITE, pointer: GUIDE_POINTER, userInstruction: USER_INSTRUCTION }
 /** The section headings, from the one place they are written (pages.app.plan.stepContract.headings). */
 const HEAD = C.pages.app.plan.stepContract.headings as Record<string, string>
 
@@ -21,6 +23,9 @@ const HEAD = C.pages.app.plan.stepContract.headings as Record<string, string>
 // stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
 import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
 import { COMPAT_SHOW_KEYS, SHOW_KEYS } from '../derive/mfaReadiness.ts'
+// The MFA method guidance, resolved (shared references expanded) exactly as the
+// product resolves it, so the review page shows the words the panel shows.
+import { METHOD_GUIDES, PASSKEY_TARGET, GUIDE_POINTER, TENANT_PREREQUISITE, USER_INSTRUCTION } from './methodGuides.ts'
 import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
 import { SUBJECT_PLAIN } from '../copy/validation.ts'
 
@@ -79,6 +84,7 @@ export function fillText(text: unknown, ex: Ex, depth = 0): string {
     policyIfWrong: S.policyIfWrong, changeIfWrong: S.changeIfWrong, enforceIfWrong: S.enforceIfWrong, datesNew: S.datesNew, datesChange: S.datesChange, datesDeploy: S.datesDeploy, datesObserve: S.datesObserve, datesReview: S.datesReview,
     portalOpen: S.portalOpen, existingCoverage: S.existingCoverage ?? '', syncRoleNote: S.syncRoleNote ?? '', strengthName: (ex && ex.strengthName) ?? '',
     certificatePrompt: S.certificatePrompt ?? '',
+    registerPasskeyLine: sharedRefText('registerPasskeyLine'), methodGuidePointer: sharedRefText('methodGuidePointer'),
   }
   const subList = (_m: string, key: string): string => {
     const items = (ex as Record<string, unknown>)[key]
@@ -110,7 +116,20 @@ export const PICKER_FALLBACK_KEYS = ['emergencyCandidates', 'emergencyAccounts',
 /** The picker sources that choose one thing (a group, a location): radio, never checkbox. */
 export const SINGLE_CHOICE_SOURCES = ['groups', 'countryLocations', 'strengths']
 
-const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt'])
+const SHARED_REF_KEYS = new Set(['portalRoot', 'reportOnlyLine', 'exclusionsLine', 'signature', 'policyIfWrong', 'changeIfWrong', 'enforceIfWrong', 'datesNew', 'datesChange', 'datesDeploy', 'datesObserve', 'datesReview', 'portalOpen', 'existingCoverage', 'syncRoleNote', 'strengthName', 'certificatePrompt', 'registerPasskeyLine', 'methodGuidePointer'])
+
+/**
+ * The string behind a shared reference. Most are a key of `shared`; the two the
+ * MFA method guidance owns live inside `shared.methodGuides`, which is the one
+ * place that guidance is written (task 014). Read here so `fillText`, `fill`
+ * and `missingVars` resolve a reference the same way and no line can be filled
+ * with a value the hole gate never saw.
+ */
+function sharedRefText(key: string): unknown {
+  if (key === 'registerPasskeyLine') return (S.methodGuides as Record<string, unknown> | undefined)?.userInstruction
+  if (key === 'methodGuidePointer') return (S.methodGuides as Record<string, unknown> | undefined)?.pointer
+  return (S as Record<string, unknown>)[key]
+}
 
 /**
  * The variables a content line names that `ex` does not fill (walk-51 item 2). A
@@ -126,7 +145,7 @@ export function missingVars(text: unknown, ex: Ex): string[] {
       // A shared reference ({datesNew}, {policyIfWrong}…) expands to a shared
       // string with variables of its own; a hole in that string is a hole in
       // this line (the walk found "Announce · Report-only from · Enforce").
-      const shared = (S as Record<string, unknown>)[key]
+      const shared = sharedRefText(key)
       if (typeof shared === 'string' && key !== 'signature' && key !== 'strengthName') out.push(...missingVars(shared, ex))
       continue
     }
@@ -248,6 +267,11 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     syncRoleNote: S.syncRoleNote ?? '',
     // The certificate-prompt note, said once for the plan and referenced by the steps whose policy carries a device condition (step-audit item 26).
     certificatePrompt: S.certificatePrompt ?? '',
+    // The two lines the MFA method guidance owns (task 014): the campaign
+    // email's one end-user sentence and the Plan's pointer to MFA Readiness.
+    // Written once in shared.methodGuides and referenced, never re-typed.
+    registerPasskeyLine: sharedRefText('registerPasskeyLine'),
+    methodGuidePointer: sharedRefText('methodGuidePointer'),
   }
   const defaults: Record<string, any> = {
     announce: 'Tue Sep 1',
@@ -770,6 +794,28 @@ export function renderPages(): string {
       btn(td.export) +
       `<p><a>${esc(td.inventory)}</a></p>` +
       `<div class="tip">${esc(td.tip)}<span class="q">?</span></div>`,
+  )
+  // The remediation guidance (task 014), which is one source and not four: the
+  // panel a row's Next step opens, the text the help desk copies out of it, and
+  // the campaign step's pointer are all these lines. Drawn here so the words are
+  // reviewed where every other sentence is.
+  const rem = td.remediation
+  sec(
+    'MFA Readiness — the person panel and the method guides',
+    p(fill(rem.heading, { name: 'Shallan Davar' }), {}) +
+      p(MG.target, {}) +
+      p(MG.prereq, {}) +
+      h('Choosing') +
+      ul([rem.choose, rem.other], {}) +
+      `<p class="sub">${[rem.copy, rem.copied, rem.close, rem.learn].map(esc).join(' · ')}</p>` +
+      METHOD_GUIDES.map(
+        (g) =>
+          `<h4>${esc(g.title)}${g.reachesTarget ? '' : ` <span class="sub">(short of the passkey target)</span>`}</h4>` +
+          ol(g.lines, {}) +
+          `<p class="sub"><a href="${esc(g.learn.url)}">${esc(g.learn.url)}</a></p>`,
+      ).join('') +
+      h('Where the Plan points instead') +
+      ul([MG.pointer, MG.userInstruction], {}),
   )
   const exP = P.export
   // Export groups its artifacts by the job each one does (task 013), so the

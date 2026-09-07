@@ -144,10 +144,12 @@ test('the readiness cell says the group, the badge keeps the rung, and the next 
       assert.equal(readinessWord(r), W.notAPerson)
     }
   }
-  // Task 014 owns the setup guidance: the next state is text, and the page
-  // offers no link to a workflow that does not exist yet.
+  // Task 014 added the remediation behind the state, and it added no prose: the
+  // guidance and its Microsoft links are content/methodGuides.ts over
+  // shared.methodGuides, never literals in the component.
   const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.doesNotMatch(src, /Set up a passkey|aka\.ms|learn\.microsoft\.com/, 'no dead remediation link before task 014')
+  assert.doesNotMatch(src, /aka\.ms|learn\.microsoft\.com/, 'no setup instruction or Microsoft link is hand-written on the surface')
+  assert.match(src, /from '\.\.\/\.\.\/content\/methodGuides\.ts'/, 'the panel reads the one guidance source')
 })
 
 // ---- D. admins ----------------------------------------------------------------

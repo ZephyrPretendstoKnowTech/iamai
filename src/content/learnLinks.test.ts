@@ -6,17 +6,21 @@
 // moved, a 429 from a shared runner address or a Learn outage would redden a
 // check that is supposed to mean "IAMAI has a defect". So it runs only under
 // EXTERNAL_HEALTH=1, which .github/workflows/external-health.yml sets, and skips
-// (visibly, never silently) everywhere else. The two tests below it are pure
-// content checks and always run: a step that carries no Learn link at all is
-// IAMAI's own defect and stays in the core suite.
+// (visibly, never silently) everywhere else. The tests below it are pure
+// content checks and always run: a step or a method guide that carries no Learn
+// link at all is IAMAI's own defect and stays in the core suite.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { content } from './content.ts'
+import { METHOD_GUIDES } from './methodGuides.ts'
 import { probe } from '../testing/transient.ts'
 
 const urls = new Set<string>()
 for (const s of content.steps) if (s.learn?.url) urls.add(s.learn.url)
 for (const c of Object.values(content.cleanup)) if (c.learn?.url) urls.add(c.learn.url)
+// The MFA method guides (task 014) end on the same contract: one official
+// Microsoft page each, probed by the same external-health run.
+for (const g of METHOD_GUIDES) urls.add(g.learn.url)
 
 test('every Learn link answers 2xx (external health; skipped unless EXTERNAL_HEALTH=1)', async (t) => {
   if (process.env.EXTERNAL_HEALTH !== '1') {
@@ -44,6 +48,12 @@ test('every Learn link answers 2xx (external health; skipped unless EXTERNAL_HEA
 test('every step and every Cleanup row has a Learn link', () => {
   const missing = [...content.steps.filter((s) => !s.learn?.url).map((s) => s.id), ...Object.entries(content.cleanup).filter(([, c]) => !c.learn?.url).map(([k]) => `cleanup.${k}`)]
   assert.deepEqual(missing, [])
+})
+
+test('every method guide ends on an official Microsoft page (task 014)', () => {
+  assert.ok(METHOD_GUIDES.length > 0, 'the content file carries the method guides')
+  const bad = METHOD_GUIDES.filter((g) => !/^https:\/\/(learn|support)\.microsoft\.com\//.test(g.learn.url)).map((g) => `${g.id} → ${g.learn.url}`)
+  assert.deepEqual(bad, [], 'a method guide points somewhere other than Microsoft Learn or Microsoft Support')
 })
 
 test('no step carries a CIS value on its Learn link (step-audit.md C1: frameworks are not a chip)', () => {

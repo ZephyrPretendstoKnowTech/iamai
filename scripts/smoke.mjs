@@ -344,6 +344,55 @@ try {
   check('MFA Readiness: the Admin marker stands off the name, small and quiet', await evaluate(`(() => { const c = document.querySelector('main.page td .chip:not(.status)'); if (!c) return false; const cs = getComputedStyle(c); return parseFloat(cs.marginLeft) >= 6 && cs.fontSize === '13px' })()`))
   check('MFA Readiness: the table has no inner scroll', (await evaluate(`getComputedStyle(document.querySelector('main.page .datatable-wrap')).maxHeight`)) === 'none')
   check('MFA Readiness: the header row is a hairline, not a band', await evaluate(`(() => { const cs = getComputedStyle(document.querySelector('main.page table.datatable th')); return cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.position === 'static' && cs.textTransform === 'none' })()`))
+  // The remediation panel (task 014): closed until a person's Next step is
+  // pressed, then one panel for that person. What it offers follows their
+  // evidence — a registered passkey nobody has used yet gets the proof guide and
+  // no invitation to register a second one.
+  check('MFA Readiness: no guidance panel until a person is chosen', (await evaluate(`document.querySelectorAll('main.page .guide-panel').length`)) === 0)
+  // The panel's text as one line, flattened here rather than in the page: a
+  // regex inside an evaluated template literal loses its escapes.
+  const flat = (x) => String(x ?? '').split(/\s+/).join(' ')
+  const nextText = `[...document.querySelectorAll('main.page table.datatable tbody tr td:last-child button')].map((b) => b.textContent.trim())`
+  const nextLabels = await evaluate(nextText)
+  const pressNext = async (word) => {
+    await evaluate(`(() => { const b = [...document.querySelectorAll('main.page table.datatable tbody tr td:last-child button')].find((x) => x.textContent.indexOf(${JSON.stringify(word)}) === 0); if (b) { b.scrollIntoView({ block: 'center' }); b.click() } })()`)
+    await sleep(300)
+    return flat(await evaluate(`(() => { const p = document.querySelector('main.page .guide-panel'); return p ? p.innerText : '' })()`))
+  }
+  const panel = await pressNext('Register a passkey')
+  check(
+    "MFA Readiness: a person's Next step opens one remediation panel for them",
+    nextLabels.length > 0 && /Next step for \S/.test(panel) && (await evaluate(`document.querySelectorAll('main.page .guide-panel').length`)) === 1,
+    panel.slice(0, 90),
+  )
+  check(
+    'MFA Readiness: the panel states the target and keeps the methods short of it apart',
+    /passkey or security key the person has signed in with/.test(panel) && /Choose the method that fits their device/.test(panel) && /Useful, and short of the passkey target/.test(panel),
+    panel.slice(0, 160),
+  )
+  // A method chosen: its steps, its Microsoft page, and the help-desk copy.
+  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .guide-panel button')].find((x) => /Hardware security key/.test(x.textContent)); if (b) b.click() })()`)
+  await sleep(250)
+  const guide = flat(await evaluate(`(() => { const g = document.querySelector('main.page .guide-panel .guide'); return g ? g.innerText : '' })()`))
+  check(
+    'MFA Readiness: the chosen guide shows its steps, its Microsoft page and the help-desk copy',
+    /Add sign-in method/.test(guide) && /Scan again/.test(guide) && /Microsoft's steps →/.test(guide) && /Copy for the help desk/.test(guide),
+    guide.slice(0, 160),
+  )
+  check('MFA Readiness: no raw identifier or vendor in the end-user guidance', !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(guide) && !/yubi|feitian/i.test(guide))
+  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .guide-panel button')].find((x) => x.textContent.trim() === 'Close'); if (b) b.click() })()`)
+  await sleep(250)
+  check('MFA Readiness: Close puts the panel away', (await evaluate(`document.querySelectorAll('main.page .guide-panel').length`)) === 0)
+  // Needs proof is not needs setup: the panel opens straight onto using what is
+  // already registered, and offers no method to register instead.
+  const proofPanel = nextLabels.some((l) => l.indexOf('Sign in once with it') === 0) ? await pressNext('Sign in once with it') : ''
+  check(
+    'MFA Readiness: a registered method nobody has used opens the proof guide, not a registration choice',
+    proofPanel === '' || (/Prove the method they already hold/.test(proofPanel) && !/Choose the method that fits their device/.test(proofPanel) && /sign-in that names it/.test(proofPanel)),
+    proofPanel.slice(0, 160) || 'no needs-proof person in the mock tenant',
+  )
+  await go('readiness')
+  await sleep(400)
   // Inventory and Licensing reachable
   await go('inventory')
   check('Inventory: policies table renders', await waitFor(`document.querySelectorAll('table tbody tr').length >= 3`))
