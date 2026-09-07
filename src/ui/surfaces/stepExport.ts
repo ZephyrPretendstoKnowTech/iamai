@@ -18,7 +18,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
 import { stepContract } from './stepContract.ts'
-import { createsNewPolicy, updatesExistingPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
+import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
@@ -84,12 +84,21 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
   const line = typeof cs.ifWrong === 'string' ? cs.ifWrong : null
   if (line === '{changeIfWrong}' && createsNewPolicy(step)) return '{policyIfWrong}'
   // And the same rule the other way. A step whose content was written for a
-  // policy IAMAI creates is submitting an update once that policy exists — the
-  // enforcement of the one it created last week — and "or delete it" is the undo
-  // of a create. It would remove a deployed policy in answer to a change that
-  // only turned it on, which is both destructive and not the inverse of what was
-  // submitted. The way back from an enforcement is report-only.
-  if (line === '{policyIfWrong}' && updatesExistingPolicy(step)) return '{enforceIfWrong}'
+  // policy IAMAI creates is submitting an update once that policy exists, and
+  // "or delete it" is the undo of a create. It would remove a deployed policy in
+  // answer to a change that never made one, which is both destructive and not
+  // the inverse of what was submitted.
+  //
+  // What replaces it is decided by the patch, never by update mode alone. The
+  // one update whose inverse is report-only is the state-only enforcement: it
+  // turned the policy on and touched nothing else, so switching it back off puts
+  // the tenant exactly where it was. Every other update changed a setting —
+  // including a correction to a policy the tenant already enforces — and the way
+  // back from those is to restore the settings the step shows above the line.
+  // Report-only would be the wrong instruction twice over there: it weakens a
+  // live control the change never turned on, and it leaves the changed setting
+  // in place.
+  if (line === '{policyIfWrong}' && updatesExistingPolicy(step)) return enforcesByStateOnly(step) ? '{enforceIfWrong}' : '{changeIfWrong}'
   return line
 }
 

@@ -5,7 +5,7 @@
 // writes for the plan file and the exports. Pure.
 import type { Step } from '../../roadmap/types.ts'
 import { stepById } from '../../content/content.ts'
-import { implementationOffered, operationsOf } from '../../roadmap/operations.ts'
+import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../../roadmap/operations.ts'
 
 /**
  * Whether the step has something to hand over: Foundation A's one implementation
@@ -96,15 +96,35 @@ export function createsNewPolicy(step: Step): boolean {
  * policy the tenant already has.
  *
  * The step that matters is the one whose content was written for a policy IAMAI
- * creates and whose operation, by the time the tenant is in front of it, is the
- * update that enforces the policy IAMAI created last week. Its rollback line
- * still offered "or delete it", which is the undo of a create and never of an
- * update: nothing here made the policy, so nothing here may be undone by
- * removing it (stepExport.ts ifWrongLineFor).
+ * creates and whose operation, by the time the tenant is in front of it, is an
+ * update of the policy IAMAI created last week. Its rollback line still offered
+ * "or delete it", which is the undo of a create and never of an update: nothing
+ * here made the policy, so nothing here may be undone by removing it
+ * (stepExport.ts ifWrongLineFor).
  *
  * False where the step submits a create, and false where it submits nothing.
  */
 export function updatesExistingPolicy(step: Step): boolean {
   const ops = operationsOf(step)
   return ops.length > 0 && ops.every((o) => o.mode === 'update')
+}
+
+/**
+ * The narrower fact `updatesExistingPolicy` does not carry: every operation the
+ * step runs is the state-only enforcement — `state: 'enabled'` and no other
+ * field — so the only thing the step changed about the tenant's policy is that
+ * it is now on.
+ *
+ * Update mode alone never told the rollback apart. An ordinary settings
+ * correction to a policy the tenant already enforces is an update too, and it is
+ * *not* undone by report-only: that would switch off a live control the change
+ * never switched on, and leave the setting it did change in place. Only this
+ * shape has report-only for an inverse (stepExport.ts ifWrongLineFor).
+ *
+ * False where any operation is a create, and false where the step submits
+ * nothing.
+ */
+export function enforcesByStateOnly(step: Step): boolean {
+  const ops = operationsOf(step)
+  return ops.length > 0 && ops.every(submitsEnforcementOnly)
 }

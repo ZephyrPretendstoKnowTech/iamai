@@ -1038,6 +1038,36 @@ export function enforcesOnRun(op: PolicyOperation): boolean {
   return effectOf(after).any
 }
 
+/**
+ * True when the patch this operation submits is the one that turns the policy
+ * on: `state: 'enabled'` on a policy the tenant already has.
+ *
+ * The distinction from `enforcesOnRun` is the whole point of having both, and
+ * the two answer different questions. `enforcesOnRun` is about the policy the
+ * operation *leaves behind* — a correction to a live policy binds the moment it
+ * lands, whatever field it touches, so it enforces on run and submits no state
+ * at all. This one is about the *transition the patch itself asks for*, and only
+ * the body decides. A step reads the first to know how carefully to hand a
+ * change over, and the second to know what the change was.
+ */
+export function submitsEnforcement(op: PolicyOperation): boolean {
+  return op.mode === 'update' && String((op.body as { state?: unknown }).state ?? '') === 'enabled'
+}
+
+/**
+ * The narrower fact: the operation submits the enforcement and nothing else —
+ * `state: 'enabled'` is the only field in the body, so every other setting on
+ * the tenant's policy survives it untouched.
+ *
+ * This is the one update whose inverse is report-only and nothing more. An
+ * update carrying any other field changed a setting, and putting *that* back
+ * means restoring the setting, not switching off a policy the change never
+ * switched on (ui/surfaces/stepExport.ts ifWrongLineFor).
+ */
+export function submitsEnforcementOnly(op: PolicyOperation): boolean {
+  return submitsEnforcement(op) && Object.keys(op.body).every((k) => k === 'state' || isAnnotation(k))
+}
+
 /** What any of this applies to: a step that describes a policy. */
 type PolicyStep = Pick<Step, 'goalId' | 'action'> & Partial<Pick<Step, 'kind' | 'status' | 'state'>>
 
