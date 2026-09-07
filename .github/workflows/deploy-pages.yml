@@ -1,13 +1,16 @@
 # Publishes the site to GitHub Pages from a clean checkout (prompt 35 §1).
 #
 #   getiamai.com/           the home page (hand-written, home/)
-#   getiamai.com/rollout/   the planner (the Vite bundle)
+#   getiamai.com/planner/   the planner (the Vite bundle)
 #   getiamai.com/next/      the preview: the night-1 branch's home and planner
-#                           (getiamai.com/next/rollout/), prompt 53 Unit 0b
+#                           (getiamai.com/next/planner/), prompt 53 Unit 0b
 #
-# One repository, one workflow, one domain. TOOL_PATH names the folder and is
-# the single constant: vite.config.ts derives its base and outDir from it, and
-# scripts/assemble-site.mjs reads the same value when it lays out dist/.
+# One repository, one workflow, one domain. scripts/toolPath.ts names the
+# folder and is the single constant: vite.config.ts derives its base and outDir
+# from it, and scripts/assemble-site.mjs reads the same value when it lays out
+# dist/. This workflow sets no folder name of its own — a deployment variable
+# that has to be remembered publishes the wrong path when it is forgotten. The
+# preview passes TOOL_PATH_PREFIX, which is a prefix and not a second name.
 # Routing is hash-based and the baseline index fetches by absolute URL, so
 # nothing else changes with the path.
 #
@@ -145,8 +148,6 @@ jobs:
       - id: site
         run: npm run build:site
         working-directory: main
-        env:
-          TOOL_PATH: ${{ vars.TOOL_PATH || 'rollout' }}
       # The root as a main-only build would publish it: every file's hash, taken
       # before the preview is added and compared after.
       - name: Fingerprint the main build
@@ -165,13 +166,13 @@ jobs:
         if: steps.night.outputs.exists == 'true'
         working-directory: next
       # The preview's planner lives at /next/<tool>/ and its home page at /next/,
-      # so the same TOOL_PATH constant carries the prefix: the bundle's base and
-      # the home page's links both come out under /next/.
+      # so the same tool name carries a prefix: the bundle's base and the home
+      # page's links both come out under /next/.
       - run: npm run build:site
         if: steps.night.outputs.exists == 'true'
         working-directory: next
         env:
-          TOOL_PATH: next/${{ vars.TOOL_PATH || 'rollout' }}
+          TOOL_PATH_PREFIX: next/
       - name: Lay the preview beside the root
         if: steps.night.outputs.exists == 'true'
         run: |

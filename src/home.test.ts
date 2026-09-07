@@ -20,6 +20,7 @@ import { content, pages } from './content/content.ts'
 import { LAYOUT, LIGHT, TYPE } from './ui/tokens.ts'
 import { RETIRED_OPENER, assembleHome, renderHomeHtml, renderHomeTheme, toolCard, toolsGrid, versionedName } from '../scripts/build-home.ts'
 import type { HomeTool } from '../scripts/build-home.ts'
+import { TOOL_PATH } from '../scripts/toolPath.ts'
 
 const home = 'home'
 const lf = (s: string): string => s.replace(/\r\n/g, '\n')
@@ -95,11 +96,13 @@ test("the theme control is the app's: its key, its labels, text without a button
 })
 
 test('the tool path is never hard-coded outside the build constant', () => {
-  // The one place "rollout" may appear is vite.config.ts and the assemble
-  // script, as the default for TOOL_PATH.
+  // scripts/toolPath.ts is the only place the folder is named; the home page
+  // and its sheets carry the {{TOOL_PATH}} placeholder instead. The retired
+  // /rollout/ path is named here so it cannot come back by hand.
   for (const file of ['index.html', 'home.css', 'theme.css']) {
     const text = readFileSync(join(home, file), 'utf8')
-    assert.doesNotMatch(text, /\/rollout\b/, `${file} spells out the tool path instead of using the placeholder`)
+    assert.doesNotMatch(text, new RegExp(`/${TOOL_PATH}\b`), `${file} spells out the tool path instead of using the placeholder`)
+    assert.doesNotMatch(text, /\/rollout\b/, `${file} still points at the retired /rollout/ path`)
   }
 })
 
@@ -273,7 +276,7 @@ test('the sections come in order: the hero, Tools, How these work, About', () =>
 // The site's stylesheets are cached for hours where its HTML is not, so a deploy
 // that changed both once rendered the new structure with the old sheet, unstyled.
 test('the built page links each stylesheet by its content hash, so a changed sheet is a new URL', () => {
-  const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, 'rollout')
+  const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, TOOL_PATH)
   const page = built['index.html']
   const names = Object.keys(built).filter((n) => n !== 'index.html')
   assert.equal(names.length, 2)
@@ -288,7 +291,7 @@ test('the built page links each stylesheet by its content hash, so a changed she
   assert.notEqual(versionedName('home.css', css), versionedName('home.css', `${css}\n.card { padding: 0; }\n`), 'a changed sheet is a new name')
   // The template keeps the plain names: the version is the build's, not the source's.
   assert.match(html, /<link rel="stylesheet" href="\/home\.css" \/>/)
-  assert.throws(() => assembleHome(html, { 'other.css': '' }, 'rollout'), /does not link/)
+  assert.throws(() => assembleHome(html, { 'other.css': '' }, TOOL_PATH), /does not link/)
 })
 
 // The built page in a browser, with its stylesheet: the computed styles of the
@@ -312,7 +315,7 @@ type CdpReply = { id?: number; result?: { result?: { value?: unknown }; exceptio
 
 test('the built page, with its stylesheet, renders the tokens: the primary button, the card, the pill, the two-column How', async () => {
   assert.ok(CHROME, 'no Chrome binary found; set CHROME=/path/to/chrome')
-  const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, 'rollout')
+  const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, TOOL_PATH)
   const server = createServer((req, res) => {
     const name = (req.url ?? '/').slice(1).split('?')[0] || 'index.html'
     const body = built[name]

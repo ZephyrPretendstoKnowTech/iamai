@@ -7,6 +7,7 @@ import react from '@vitejs/plugin-react'
 import { planner } from './src/content/content.ts'
 import { buildHome } from './scripts/build-home.ts'
 import { demoFacts } from './src/ui/demoFacts.ts'
+import { TOOL_PATH } from './scripts/toolPath.ts'
 
 // Dev-only: lets the spike harness save raw result JSON to docs/spikes/raw/.
 // This middleware exists only in the local dev server; the shipped app is a
@@ -103,11 +104,9 @@ const BUILD_COMMIT = commitSha()
 // diff on every rebuild.
 const BUILD_DATE = new Date().toISOString().slice(0, 10)
 
-// Where this tool lives under the domain (prompt 35 §1). getiamai.com/ is the
-// home page for IAMAI as a whole; the planner sits in a folder beside any
-// future tool. One constant: if the tool is ever renamed, this changes and
-// nothing else does. scripts/assemble-site.mjs reads the same value.
-export const TOOL_PATH = process.env.TOOL_PATH ?? 'rollout'
+// Where this tool lives under the domain: scripts/toolPath.ts names it once
+// (TOOL_PATH), and every build — this one and scripts/assemble-site.mjs —
+// reads it from there.
 
 export default defineConfig({
   define: {
