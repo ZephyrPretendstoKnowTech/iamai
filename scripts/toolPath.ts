@@ -10,6 +10,7 @@
 // one publishes the wrong path when it forgets.
 export const TOOL_NAME = 'planner'
 
-// The /next/ preview publishes the same tool one level down (getiamai.com/next/
-// planner/). A prefix is all that differs, so the name is still written once.
-export const TOOL_PATH = (process.env.TOOL_PATH_PREFIX ?? '') + TOOL_NAME
+// The published path. There is no preview prefix any more: the retired /next/
+// preview left with task 016, so the only path the site publishes is this one
+// and the only source it publishes from is `main`.
+export const TOOL_PATH = TOOL_NAME

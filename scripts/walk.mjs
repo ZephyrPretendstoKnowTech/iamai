@@ -646,11 +646,15 @@ async function walkFixture(fx) {
         }
         // One heading above the tiles, in both states.
         const h1 = await evaluate(`((document.querySelector('main.page h1') || {}).textContent || '').trim()`)
-        if (h1 !== 'Plan the journey to your Conditional Access baseline.') add('P0', `${label}: the heading reads "${h1}"; Plan the journey to your Conditional Access baseline.`)
-        if (!/IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
+        if (h1 !== 'Strengthen identity security without guessing what will break.') add('P0', `${label}: the heading reads "${h1}"; Strengthen identity security without guessing what will break.`)
+        if (!/IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
         if (/Connect a tenant/.test(text)) add('P0', `${label}: "Connect a tenant" still renders`)
-        // The ladder's five tiles are links to MFA Readiness filtered (docs/design/mockups/connect-v2.html), not actions.
-        const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk):not(.rung-tile)')].map((a) => (a.textContent || '').trim())`)
+        // Task 016: the outcome first. Conditional Access is introduced at the
+        // baseline stage, where the term has something to attach to.
+        const lede = await evaluate(`((document.querySelector('main.page p.lede') || {}).textContent || '').trim()`)
+        if (/Conditional Access/.test(`${h1} ${lede}`)) add('P0', `${label}: the heading or its line names Conditional Access before the baseline stage gives the term context`)
+        // Every action is a button in one of three weights; nothing on Connect is a bare link.
+        const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk)')].map((a) => (a.textContent || '').trim())`)
         if (bare.length > 0) add('P0', `${label}: bare link(s) on Connect: ${bare.join(' | ')}; every action is a button in one of three weights`)
         if (/Security Reader|Reports Reader|Directory Readers/.test(text)) add('P0', `${label}: a role other than Global Reader is named on screen`)
         if (/Everything the scan found is inside the plan/.test(text)) add('P0', `${label}: the "everything the scan found" line still renders`)
@@ -824,9 +828,10 @@ async function walkFixture(fx) {
           }
           for (const re of [/^Scan again$/, /^Scan tenant$/, /^Stop$/, /^Sign in with another account$/, /\bReads\b/, /IAMAI limitations/, /not read$/]) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 carries the Scan tile's ${re}`)
           if (wantPlan === 'ready') {
-            // The state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html):
-            // "ready · N steps, N done · from the scan <age>"; under it the ladder's header and five tiles, each
-            // linking to MFA Readiness filtered to its rung; no facts row, no drop line.
+            // The state carries the step counts once the plan has computed:
+            // "ready · N steps, N done · from the scan <age>"; under it one line of what
+            // was built and one way on. No facts row, no drop line, and no readiness
+            // ladder — MFA Readiness comes after the plan, not in front of it (task 016).
             const counted = await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan /.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
             if (!counted) add('P0', `${label}: the Plan tile never counted its steps in its state line`)
             const state = await evaluate(`((document.querySelectorAll('main.page section.step-tile')[3] || {}).querySelector('h2 .state') || {}).textContent || ''`)
@@ -834,28 +839,22 @@ async function walkFixture(fx) {
             if (!sm) add('P0', `${label}: the Plan tile's state reads "${state}"; ready · N steps, N done · from the scan <age>`)
             else if (Number(sm[2]) > Number(sm[1])) add('P0', `${label}: more done than steps: "${state}"`)
             if ((await evaluate(`document.querySelectorAll('main.page section.step-tile .facts').length`)) > 0) add('P0', `${label}: the Plan tile still renders a facts row`)
+            if ((await evaluate(`document.querySelectorAll('main.page section.step-tile .rung-tiles, main.page section.step-tile .rung-tile').length`)) > 0) {
+              add('P0', `${label}: the readiness ladder is back on the Plan tile; MFA Readiness comes after the plan`)
+            }
             if (/\d+ → \d+|\d+ → [A-Z][a-z]{2} \d+/.test(t4.text)) add('P0', `${label}: the Plan tile carries a drop line or a window: "${t4.text.slice(0, 80)}"`)
-            const tiles = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .rung-tiles .rung-tile')].map((t) => ({ label: ((t.querySelector('.rung-title') || {}).textContent || '').trim(), n: Number(((t.querySelector('.rung-n') || {}).textContent || '').trim()), href: t.getAttribute('href') || '' }))`)
-            if (tiles.length !== 5) add('P0', `${label}: the Plan tile's ladder has ${tiles.length} tiles; five`)
-            else {
-              if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
-              const active = Number((t4.text.match(/of (\d+) active (?:person|people)/i) || [])[1])
-              if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
-              for (const [k, t] of tiles.entries()) if (!new RegExp(`#/readiness/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; MFA Readiness filtered to its rung`)
-              if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and MFA Readiness filtered to that rung shows ${ladderCounts[t.label]}`)
-              // One denominator (E4): the Plan header's counts, read now rather than
-              // from the Plan route's capture (the walk's own clicks there mark a
-              // Cleanup row done, so an earlier capture is stale by design).
-              if (planHeaderCounts) {
-                await evaluate(`location.hash = '#/plan'`)
-                const onPlan = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 15000)
-                const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page p.line') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
-                const hm = headerNow.match(/(\d+) steps · (\d+) (?:in place|done)/)
-                if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
-                else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} done; the Plan header ${hm[1]} · ${hm[2]}`)
-                await evaluate(`location.hash = '#/connect'`)
-                await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
-              }
+            // One denominator (E4): the Plan header's counts, read now rather than
+            // from the Plan route's capture (the walk's own clicks there mark a
+            // Cleanup row done, so an earlier capture is stale by design).
+            if (planHeaderCounts) {
+              await evaluate(`location.hash = '#/plan'`)
+              const onPlan = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 15000)
+              const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page p.line') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
+              const hm = headerNow.match(/(\d+) steps · (\d+) (?:in place|done)/)
+              if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
+              else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} done; the Plan header ${hm[1]} · ${hm[2]}`)
+              await evaluate(`location.hash = '#/connect'`)
+              await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
             }
             expectBtn(t4, /^Open the plan →$/, 'primary', 'the Plan tile')
             if (t4.buttons.length !== 1) add('P0', `${label}: the ready Plan tile has ${t4.buttons.length} buttons; Open the plan alone`)
@@ -885,6 +884,21 @@ async function walkFixture(fx) {
           }
         }
         if (/\bscanned\b/i.test(text)) add('P0', `${label}: Connect says "scanned"; the scan's age is the Scan tile's state line`)
+        // The progression (task 016): tenant → baseline → scan → Plan, with one
+        // stage current and the finished ones settled behind it. The marker on
+        // the current stage is a word, so the state is never colour alone.
+        const progression = tiles.map((t) => (/\bcurrent\b/.test(t.cls) ? 'current' : /\bsettled\b/.test(t.cls) ? 'settled' : 'ahead'))
+        const currents = progression.filter((x) => x === 'current').length
+        if (currents > 1) add('P0', `${label}: ${currents} stages are current; one at a time (${progression.join(' · ')})`)
+        const firstCurrent = progression.indexOf('current')
+        if (firstCurrent !== -1 && progression.lastIndexOf('settled') > firstCurrent) add('P0', `${label}: a settled stage sits after the current one: ${progression.join(' · ')}`)
+        if (firstCurrent !== -1) {
+          const marker = await evaluate(`[...document.querySelectorAll('main.page section.step-tile.current .next')].map((e) => (e.textContent || '').trim())`)
+          if (marker.length !== 1 || !marker[0]) add('P0', `${label}: the current stage carries no word marking it; the state must not be colour alone`)
+        }
+        // MFA Readiness comes after the plan: Connect never routes to it.
+        const toReadiness = await evaluate(`[...document.querySelectorAll('main.page a[href*="#/readiness"]')].map((a) => (a.textContent || '').trim())`)
+        if (toReadiness.length > 0) add('P0', `${label}: Connect links to MFA Readiness (${toReadiness.join(', ')}); the destination after a scan is the Plan`)
         writeFileSync(join(wdir, 'connect-tiles.json'), JSON.stringify(tiles, null, 2))
         if (want === 'gaps') {
           // The last good plan is kept after a scan with gaps (a navigation, so last).
@@ -897,13 +911,14 @@ async function walkFixture(fx) {
       const tips = await evaluate(`document.querySelectorAll('main.page .page-tip').length`)
       if ((route === 'readiness' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
       if (route === 'plan' && tips !== 0) add('P0', `${label}: the Plan still renders a page tip`)
-      // The MFA readiness ladder left the Plan (task 011): a tenant-wide diagnostic
-      // on a page whose job is the rollout. Today draws it and Connect's Plan tile
-      // draws it; nothing stands between the Plan's header line and the board, and
+      // The MFA readiness ladder left the Plan (task 011) and Connect (task 016):
+      // a tenant-wide diagnostic on the page whose job is the rollout, and a
+      // diagnostic standing in front of the destination. MFA Readiness owns the
+      // rungs; nothing stands between the Plan's header line and the board, and
       // the old readiness strip and the two note lines stay gone.
       if (route === 'plan') {
         const ladders = await evaluate(`document.querySelectorAll('main.page .rung-tiles').length`)
-        if (ladders > 0) add('P0', `${label}: the MFA readiness ladder renders on the Plan; the five tiles are Connect's`)
+        if (ladders > 0) add('P0', `${label}: the MFA readiness ladder renders on the Plan; the rungs are MFA Readiness's`)
         if ((await evaluate(`document.querySelectorAll('main.page .readiness, main.page .readiness-people').length`)) > 0) add('P0', `${label}: the old readiness strip still renders`)
         if (/Clear the date|Starting locks the dates/.test(text)) add('P0', `${label}: a note under the start date still renders`)
       }
@@ -1485,15 +1500,16 @@ function scanPlanFile() {
   return { present: true, steps: steps.length, savedAt: redact(plan.createdAt ?? '') }
 }
 
-// ---- the home page (docs/design/home-mockup.html) ----
+// ---- the home page (the owner-approved Home v2 direction, task 016) ----
 //
 // getiamai.com's front page, generated from pages.home by scripts/build-home.ts
 // and assembled over the bundle by scripts/assemble-site.mjs, walked from the
-// static server like the bundle: the hero (the headline and the site line), the
-// Tools grid with the one card and every part the mockup gives it, How these
-// work as two small cards, About with its three buttons, the app's footer, the
-// header's text theme control in both themes, every string a content string,
-// and nothing of the retired opener.
+// static server like the bundle: the hero (the outcome, the site line, the only
+// two actions and the note), the five sections in order, the beats, the
+// examples, the trust claims, About with its three buttons, the app's footer,
+// the header's text theme control in both themes, every string a content
+// string, nothing of the retired opener, and none of the retired tool-card
+// composition.
 const HOME = pages.home
 const HOME_SHELL = pages.app.shell
 const HOME_FOOTER = pages.footer.links
@@ -1520,76 +1536,81 @@ async function walkHome(url) {
   const pageText = await evaluate(`document.body.innerText.replace(/\\s+/g, ' ')`)
   for (const s of RETIRED_OPENER) if (pageText.includes(s)) add('P0', `${label}: the retired opener still renders: "${s.slice(0, 60)}"`)
   if (/Built for/.test(pageText)) add('P0', `${label}: a Built for block renders; the site line carries the audience`)
-  // The hero: the headline and the site line.
-  const hero = await evaluate(`(() => { const h = document.querySelector('main.page .hero'); return h ? { h1: ((h.querySelector('h1') || {}).textContent || '').trim(), line: ((h.querySelector('p.site-line') || {}).textContent || '').replace(/\\s+/g, ' ').trim() } : null })()`)
+  // The retired composition: the tool card, its Preview pill and the Tools grid
+  // left with the v2 direction and may not come back.
+  const retired = await evaluate(`[...document.querySelectorAll('main.page .card, main.page .pill, main.page .grid, main.page .tool-name, main.page details')].length`)
+  if (retired > 0) add('P0', `${label}: ${retired} element(s) of the retired tool-card composition (a card, a pill, a grid or a collapsible) render on the home page`)
+  // The hero: the outcome, the site line, the only two actions on the page, the note.
+  const hero = await evaluate(`(() => { const h = document.querySelector('main.page .hero'); if (!h) return null; const w = ${WEIGHT}; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { h1: tx(h.querySelector('h1')), line: tx(h.querySelector('p.site-line')), note: tx(h.querySelector('p.note')), buttons: [...h.querySelectorAll('.actions a.btn')].map((b) => ({ t: tx(b), w: w(b), href: b.getAttribute('href') })) } })()`)
   if (!hero) add('P0', `${label}: no hero`)
   else {
     if (hero.h1 !== HOME.h1) add('P0', `${label}: the headline reads "${hero.h1}"; ${HOME.h1}`)
     if (hero.line !== HOME.siteLine) add('P0', `${label}: the site line reads "${hero.line}"; ${HOME.siteLine}`)
+    if (hero.note !== HOME.heroNote) add('P0', `${label}: the hero note reads "${hero.note}"; ${HOME.heroNote}`)
+    // The outcome comes first: the hero never names Conditional Access.
+    const heroWords = `${hero.h1} ${hero.line} ${hero.note}`
+    if (/Conditional Access/.test(heroWords)) add('P0', `${label}: the hero names Conditional Access before the baseline gives the term any context`)
+    const wantHero = [
+      { t: HOME.open, w: 'primary', href: `/${TOOL_PATH}/#/connect` },
+      { t: HOME.demo, w: 'secondary', href: `/${TOOL_PATH}/?demo=1#/plan` },
+    ]
+    if (JSON.stringify(hero.buttons) !== JSON.stringify(wantHero)) add('P0', `${label}: the hero's actions are ${hero.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantHero.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)
   }
-  // The section labels, in order.
-  const sections = await evaluate(`[...document.querySelectorAll('main.page h2.section')].map((h) => (h.textContent || '').trim())`)
-  const wantSections = [HOME.toolsLabel, HOME.howLabel, HOME.aboutLabel]
-  if (sections.join(' · ') !== wantSections.join(' · ')) add('P0', `${label}: the sections read ${sections.join(' · ')}; ${wantSections.join(' · ')}`)
-  // The Tools grid: one card per tool (one column with one tool, two from the
-  // second), the card being the name and its pill, the tag line, Reads /
-  // Compares / Writes, What it catches closed, Open (primary), Try it with
-  // sample data (secondary), and the meta line with its read-the-code link.
-  const grid = await evaluate(`(() => { const g = document.querySelector('main.page .grid.tools'); if (!g) return null; const w = ${WEIGHT}; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { two: g.classList.contains('two'), cards: [...g.querySelectorAll('section.card.tool')].map((c) => ({ name: tx((c.querySelector('h3.tool-name') || {}).firstChild), pill: tx(c.querySelector('h3 .pill')), tag: tx(c.querySelector('p.tag')), beats: [...c.querySelectorAll('ul.beats li')].map((l) => ({ verb: tx(l.querySelector('b')), text: tx(l).slice(tx(l.querySelector('b')).length).trim() })), details: (() => { const d = c.querySelector('details.catches'); return d ? { open: d.open, summary: tx(d.querySelector('summary')), items: [...d.querySelectorAll('ul.catch li')].map(tx), shown: [...d.querySelectorAll('ul.catch li')].some((l) => l.checkVisibility()) } : null })(), buttons: [...c.querySelectorAll('.actions a.btn')].map((b) => ({ t: tx(b), w: w(b), href: b.getAttribute('href') })), meta: (() => { const m = c.querySelector('p.meta'); return m ? { text: tx(m), link: m.querySelector('a') ? { t: tx(m.querySelector('a')), href: m.querySelector('a').getAttribute('href') } : null } : null })() })) } })()`)
-  if (!grid) add('P0', `${label}: no Tools grid`)
+  // One pair of ways in, in the hero: no section repeats the call to action.
+  const intoTool = await evaluate(`[...document.querySelectorAll('main.page a[href^="/${TOOL_PATH}/"]')].map((a) => ({ t: (a.textContent || '').trim(), inHero: !!a.closest('.hero') }))`)
+  if (intoTool.length !== 2 || intoTool.some((a) => !a.inHero)) add('P0', `${label}: ${intoTool.length} link(s) into the planner, ${intoTool.filter((a) => !a.inHero).length} outside the hero; two, both in the hero`)
+  // The five sections, in order, each a heading and its body.
+  const bands = await evaluate(`[...document.querySelectorAll('main.page section.band')].map((s) => ({ id: s.getAttribute('aria-labelledby'), title: ((s.querySelector('h2') || {}).textContent || '').trim(), text: (s.innerText || '').replace(/\\s+/g, ' ').trim() }))`)
+  const wantBands = [
+    ['work-heading', HOME.workLabel],
+    ['baseline-heading', HOME.baselineLabel],
+    ['catches-heading', HOME.catchesLabel],
+    ['trust-heading', HOME.trustLabel],
+    ['about-heading', HOME.aboutLabel],
+  ]
+  if (bands.length !== wantBands.length || bands.some((b, i) => b.id !== wantBands[i][0] || b.title !== wantBands[i][1])) {
+    add('P0', `${label}: the sections read ${bands.map((b) => b.title).join(' · ')}; ${wantBands.map((b) => b[1]).join(' · ')}`)
+  }
+  // What it does: Reads / Compares / Plans, from pages.home.work.
+  const beats = await evaluate(`[...document.querySelectorAll('main.page .beats li')].map((l) => ({ verb: ((l.querySelector('b') || {}).textContent || '').trim(), text: (l.textContent || '').replace(/\\s+/g, ' ').trim() }))`)
+  const wantBeats = HOME.work.map((b) => `${b.verb} ${b.text}`)
+  if (beats.map((b) => b.text).join('|') !== wantBeats.join('|')) add('P0', `${label}: the beats read ${beats.map((b) => b.verb).join(' / ') || 'nothing'}; ${HOME.work.map((b) => b.verb).join(' / ')}, from pages.home.work`)
+  // The baseline: what the term means, whose the default is, and its aim — with
+  // no claim that Microsoft endorses or certifies any of it.
+  const baseline = bands.find((b) => b.id === 'baseline-heading')
+  if (!baseline) add('P0', `${label}: no baseline section`)
   else {
-    if (grid.cards.length < 1) add('P0', `${label}: the Tools grid has no card`)
-    if (grid.two !== grid.cards.length > 1) add('P0', `${label}: the Tools grid is ${grid.two ? 'two columns' : 'one column'} with ${grid.cards.length} tool(s); one column with one tool, two from the second`)
-    const pl = HOME.planner
-    const card = grid.cards[0]
-    if (card) {
-      if (card.name !== pl.name) add('P0', `${label}: the card is named "${card.name}"; ${pl.name}`)
-      if (card.pill !== pl.label) add('P0', `${label}: the card's pill reads "${card.pill}"; ${pl.label}`)
-      if (card.tag !== pl.descriptor) add('P0', `${label}: the card's tag line reads "${card.tag}"; ${pl.descriptor}`)
-      const wantBeats = pl.beats.map((b) => `${b.verb} ${b.text}`)
-      const gotBeats = card.beats.map((b) => `${b.verb} ${b.text}`)
-      if (gotBeats.join('|') !== wantBeats.join('|')) add('P0', `${label}: the card's beats read ${gotBeats.map((b) => b.split(' ')[0]).join(' / ') || 'nothing'}; Reads / Compares / Writes, from pages.home.planner.beats`)
-      if (!card.details) add('P0', `${label}: the card has no What it catches collapsible`)
-      else {
-        if (card.details.summary !== pl.catchesLabel) add('P0', `${label}: the collapsible is labelled "${card.details.summary}"; ${pl.catchesLabel}`)
-        if (card.details.open || card.details.shown) add('P0', `${label}: What it catches is open on arrival; closed until opened`)
-        if (card.details.items.join('|') !== pl.catches.join('|')) add('P0', `${label}: What it catches lists ${card.details.items.length} item(s) that differ from pages.home.planner.catches`)
-        await clickText('details.catches summary', /./, 'main.page')
-        await sleep(200)
-        const shown = await evaluate(`[...document.querySelectorAll('main.page details.catches ul.catch li')].every((l) => l.checkVisibility())`)
-        if (!shown) add('P0', `${label}: What it catches does not open on its summary`)
-        await shot(join(wdir, 'home-catches.png'))
-        await clickText('details.catches summary', /./, 'main.page')
-      }
-      const wantButtons = [{ t: pl.open, w: 'primary', href: `/${TOOL_PATH}/#/connect` }, { t: pl.demo, w: 'secondary', href: `/${TOOL_PATH}/?demo=1#/plan` }]
-      if (JSON.stringify(card.buttons) !== JSON.stringify(wantButtons)) add('P0', `${label}: the card's buttons are ${card.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantButtons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)
-      const wantMeta = `${pl.meta.baseline} · ${pl.meta.role} · ${pl.meta.code}`
-      if (!card.meta) add('P0', `${label}: the card has no meta line`)
-      else {
-        if (card.meta.text !== wantMeta) add('P0', `${label}: the meta line reads "${card.meta.text}"; ${wantMeta}`)
-        if (!card.meta.link || card.meta.link.t !== pl.meta.code || card.meta.link.href !== pl.meta.href) add('P0', `${label}: the meta line's read-the-code link is missing or points elsewhere`)
-      }
-    }
+    for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) if (!baseline.text.includes(fact)) add('P0', `${label}: the baseline section does not name ${fact}`)
+    if (!/^A baseline is /.test(HOME.baseline)) add('P0', `${label}: the baseline section does not explain what a baseline is before using the term`)
+    if (/Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie/i.test(baseline.text)) add('P0', `${label}: the baseline section claims a Microsoft endorsement: "${baseline.text.slice(0, 100)}"`)
   }
-  // How these work: two small cards, the second linking to the source.
-  const how = await evaluate(`[...document.querySelectorAll('main.page .grid[aria-labelledby="how-heading"] section.card.small')].map((c) => ({ title: ((c.querySelector('h3') || {}).textContent || '').trim(), body: ((c.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), link: c.querySelector('a.lnk') ? { t: (c.querySelector('a.lnk').textContent || '').trim(), href: c.querySelector('a.lnk').getAttribute('href') } : null, two: !!c.closest('.grid.two') }))`)
-  if (how.length !== HOME.how.length || how.length !== 2) add('P0', `${label}: How these work renders ${how.length} card(s); two`)
-  HOME.how.forEach((c, i) => {
-    const got = how[i]
-    if (!got) return
-    if (got.title !== c.title) add('P0', `${label}: How card ${i + 1} is titled "${got.title}"; ${c.title}`)
-    if (!got.body.startsWith(c.body)) add('P0', `${label}: How card ${i + 1} reads "${got.body.slice(0, 60)}"; ${c.body.slice(0, 60)}`)
-    if (c.link && (!got.link || got.link.t !== c.link || got.link.href !== c.href)) add('P0', `${label}: How card ${i + 1} lacks its source link`)
-    if (!got.two) add('P0', `${label}: How card ${i + 1} is not in the two-column grid`)
-  })
+  // What it catches: a short plain list.
+  const catches = await evaluate(`[...document.querySelectorAll('main.page ul.catch li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
+  if (catches.join('|') !== HOME.catches.join('|')) add('P0', `${label}: the examples list ${catches.length} item(s) that differ from pages.home.catches`)
+  if (catches.length > 6) add('P0', `${label}: ${catches.length} examples; a few, not a wall`)
+  // Trust: read-only, browser-local, public source — each specific enough to check.
+  const trust = await evaluate(`(() => { const dl = document.querySelector('main.page dl.trust'); if (!dl) return null; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { rows: [...dl.querySelectorAll('dt')].map((dt, i) => ({ title: tx(dt), body: tx(dl.querySelectorAll('dd')[i]) })), links: [...dl.querySelectorAll('a')].map((a) => a.getAttribute('href')) } })()`)
+  if (!trust) add('P0', `${label}: no trust section`)
+  else {
+    if (trust.rows.length !== HOME.trust.length) add('P0', `${label}: the trust section has ${trust.rows.length} claims; ${HOME.trust.length}`)
+    const said = trust.rows.map((r) => `${r.title} ${r.body}`).join(' ')
+    if (!/create, change or delete|read-only/i.test(said)) add('P0', `${label}: the trust section does not say IAMAI is read-only in terms anyone can check`)
+    if (!/browser/.test(said)) add('P0', `${label}: the trust section does not say the tenant's data stays in the browser`)
+    if (!trust.links.some((h) => /github\.com/.test(h || ''))) add('P0', `${label}: the trust section does not link the public source`)
+    if (/privacy first|secure by design|your data is safe/i.test(said)) add('P0', `${label}: the trust section trades a specific claim for a slogan: "${said.slice(0, 80)}"`)
+    if (/Cloudflare/.test(said)) add('P0', `${label}: the hosting sentence is How's, said once, not repeated here`)
+  }
   // About: the paragraph and its three buttons, secondary then tertiary.
-  const about = await evaluate(`(() => { const s = document.querySelector('main.page section.card.about'); if (!s) return null; const w = ${WEIGHT}; return { body: ((s.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), buttons: [...s.querySelectorAll('.actions a.btn')].map((b) => ({ t: (b.textContent || '').trim(), w: w(b), href: b.getAttribute('href') })) } })()`)
-  if (!about) add('P0', `${label}: no About card`)
+  const about = await evaluate(`(() => { const s = document.querySelector('main.page section.band[aria-labelledby="about-heading"]'); if (!s) return null; const w = ${WEIGHT}; return { body: ((s.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), buttons: [...s.querySelectorAll('.actions a.btn')].map((b) => ({ t: (b.textContent || '').trim(), w: w(b), href: b.getAttribute('href') })) } })()`)
+  if (!about) add('P0', `${label}: no About section`)
   else {
     if (about.body !== HOME.about) add('P0', `${label}: About reads "${about.body.slice(0, 60)}"; pages.home.about`)
     const wantAbout = HOME.aboutLinks.map((l, i) => ({ t: l.text, w: i === 0 ? 'secondary' : 'tertiary', href: l.href }))
     if (about.buttons.length !== 3 || JSON.stringify(about.buttons) !== JSON.stringify(wantAbout)) add('P0', `${label}: About's buttons are ${about.buttons.map((b) => `${b.t} (${b.w})`).join(', ') || 'missing'}; ${wantAbout.map((b) => `${b.t} (${b.w})`).join(', ')}`)
   }
+  // Nothing is collected: the dropped opt-in has no endpoint behind it.
+  const fields = await evaluate(`document.querySelectorAll('form, input, textarea, select').length`)
+  if (fields > 0) add('P0', `${label}: ${fields} form control(s) on a page that collects nothing`)
   // The footer is the app's: pages.footer's links, joined with a bar.
   const footer = await evaluate(`(() => { const f = document.querySelector('footer.app'); return f ? { text: (f.innerText || '').replace(/\\s+/g, ' ').trim(), links: [...f.querySelectorAll('a')].map((a) => ({ text: (a.textContent || '').trim(), href: a.getAttribute('href') })) } : null })()`)
   if (!footer) add('P0', `${label}: no footer`)
@@ -1603,7 +1624,7 @@ async function walkHome(url) {
   const faces = await evaluate(`[...document.querySelectorAll('header.app .right button')].map((b) => { const cs = getComputedStyle(b); return { t: (b.textContent || '').trim(), border: cs.borderTopWidth, bg: cs.backgroundColor, pad: cs.paddingLeft } })`)
   if (!faces.some((f) => f.t === HOME_SHELL.darkTheme || f.t === HOME_SHELL.lightTheme)) add('P0', `${label}: no theme control in the header with the app's labels`)
   for (const f of faces) if (f.border !== '0px' || !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(f.bg) || f.pad !== '0px') add('P0', `${label}: the header's ${f.t} control has a button face (border ${f.border}, background ${f.bg}, padding ${f.pad}); text`)
-  const paint = () => evaluate(`(() => { const c = document.querySelector('main.page section.card.tool'); const b = document.querySelector('main.page a.btn-primary'); return { theme: document.documentElement.getAttribute('data-theme'), label: (document.getElementById('theme') || {}).textContent, page: getComputedStyle(document.body).backgroundColor, card: c ? getComputedStyle(c).backgroundColor : null, primary: b ? getComputedStyle(b).backgroundColor : null } })()`)
+  const paint = () => evaluate(`(() => { const s = document.querySelector('main.page section.band'); const b = document.querySelector('main.page a.btn-primary'); return { theme: document.documentElement.getAttribute('data-theme'), label: (document.getElementById('theme') || {}).textContent, page: getComputedStyle(document.body).backgroundColor, rule: s ? getComputedStyle(s).borderTopColor : null, primary: b ? getComputedStyle(b).backgroundColor : null } })()`)
   const before = await paint()
   await evaluate(`document.getElementById('theme').click()`)
   await sleep(200)
@@ -1613,8 +1634,7 @@ async function walkHome(url) {
   await sleep(200)
   const back = await paint()
   if (!after.theme || after.theme === before.theme) add('P0', `${label}: the theme control does not switch the theme (data-theme ${before.theme} → ${after.theme})`)
-  if (before.page === after.page || before.card === after.card) add('P0', `${label}: the page and the card do not repaint between light and dark (page ${before.page} → ${after.page}, card ${before.card} → ${after.card})`)
-  if (/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(String(after.card)) || /^rgba\(0, 0, 0, 0\)$|^transparent$/.test(String(before.card))) add('P0', `${label}: the card has no raised background in one theme`)
+  if (before.page === after.page || before.rule === after.rule) add('P0', `${label}: the page and the section rule do not repaint between light and dark (page ${before.page} → ${after.page}, rule ${before.rule} → ${after.rule})`)
   if (!after.primary || after.primary === 'rgba(0, 0, 0, 0)') add('P0', `${label}: the primary button has no fill`)
   if (before.label === after.label || after.label !== (after.theme === 'dark' ? HOME_SHELL.lightTheme : HOME_SHELL.darkTheme)) add('P0', `${label}: the theme control's label reads "${after.label}" in the ${after.theme} theme`)
   if (back.theme === after.theme) add('P0', `${label}: the theme control does not switch back`)
@@ -1624,7 +1644,7 @@ async function walkHome(url) {
   const strays = shown.filter((s) => !allowed.has(s))
   if (strays.length > 0) add('P0', `${label}: string(s) on the page that are not in content.json: ${strays.map((s) => `"${s.slice(0, 40)}"`).join(', ')}`)
   for (const s of homeLeaves(HOME)) if (!shown.includes(s) && s !== HOME.metaTitle && s !== HOME.metaDescription) add('P0', `${label}: pages.home string not on the page: "${s.slice(0, 60)}"`)
-  return [{ width: 1280, route: '', words: text.split(/\s+/).filter(Boolean).length, rows: grid ? grid.cards.length : 0 }]
+  return [{ width: 1280, route: '', words: text.split(/\s+/).filter(Boolean).length, rows: bands.length }]
 }
 let homeSummary = null
 

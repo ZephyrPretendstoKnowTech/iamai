@@ -33,9 +33,14 @@ const onlyItsOwn = (kind: string, t: SignInTile): void => {
   for (const s of tileStrings(t)) assert.ok(!/Security Reader|Reports Reader/.test(s), `"${s}" names a role other than Global Reader`)
 }
 
-test('the heading above the tiles is the same in both states, and Connect a tenant is gone', () => {
-  assert.equal(W.h1, 'Plan the journey to your Conditional Access baseline.')
-  assert.equal(W.intro, 'IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.')
+// Task 016: the heading leads with the security outcome. Conditional Access is
+// an implementation the operator meets at the baseline stage, once there is
+// something for the term to attach to — not the first word on the page.
+test('the heading leads with the outcome, and names Conditional Access only once the baseline gives it context', () => {
+  assert.equal(W.h1, 'Strengthen identity security without guessing what will break.')
+  assert.equal(W.intro, 'IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.')
+  assert.ok(!/Conditional Access/.test(W.h1 + W.intro), 'the first two lines explain the outcome, not the mechanism')
+  assert.ok(W.baseline.what.includes('Conditional Access'), 'the baseline stage is where the term is introduced')
   assert.ok(!JSON.stringify(W).includes('Connect a tenant'))
   assert.ok(!JSON.stringify(W).includes('What happens next'), 'tile 3 is Scan')
 })

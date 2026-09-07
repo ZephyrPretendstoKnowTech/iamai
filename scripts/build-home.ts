@@ -1,19 +1,23 @@
 // Writes home/theme.css and home/index.html from the tool's own sources
-// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; docs/design/home-mockup.html).
-// The home page wears the same palette, type scale and fonts as the planner
-// (theme.css from the tokens), and every sentence it shows is a string in
-// docs/design/content.json (pages.home; the footer is the app's, pages.footer;
-// the theme control's labels are the app's, pages.app.shell), generated here so
-// the home page and the app cannot drift. home.test.ts fails while either
-// generated file and its source disagree, the way tokens.test.ts guards tokens.css.
+// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; the owner-approved Home v2
+// direction, task 016). The home page wears the same palette, type scale and
+// fonts as the planner (theme.css from the tokens), and every sentence it shows
+// is a string in docs/design/content.json (pages.home; the footer is the app's,
+// pages.footer; the theme control's labels are the app's, pages.app.shell),
+// generated here so the home page and the app cannot drift. home.test.ts fails
+// while either generated file and its source disagree, the way tokens.test.ts
+// guards tokens.css.
 //
-// The page: the hero (the headline and the site line), the Tools grid (one card
-// per tool, one column with one tool and two from the second), How these work
-// as two small cards, About with its three buttons, and the app's footer.
+// The page is six sections in one column, separated by rules rather than by
+// boxes: the hero (the outcome, what IAMAI does about it, the two ways in), What
+// it does (Reads / Compares / Plans), the standard it plans towards, what it
+// catches before a change goes live, what it does with your tenant, and About.
+// The one pair of actions is in the hero; no section repeats them, and the tool
+// card, its Preview pill and the Tools grid left with the v2 direction.
 //
 // The fonts and the planner hrefs are referenced through the {{TOOL_PATH}}
 // placeholder that scripts/assemble-site.mjs substitutes, so the path lives in
-// one place (/rollout/… on the published site).
+// one place (/planner/… on the published site).
 import { createHash } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -41,27 +45,29 @@ export const RETIRED_OPENER = [
   'See it with sample data',
 ]
 
-export type HomeTool = {
-  name: string
-  descriptor: string
-  label: string
-  beats: { verb: string; text: string }[]
-  catchesLabel: string
-  catches: string[]
-  open: string
-  demo: string
-  meta: { baseline: string; role: string; code: string; href: string }
-}
+/** One beat of what IAMAI does: the verb, then the rest of the sentence. */
+export type HomeBeat = { verb: string; text: string }
+/** One trust claim: what it is called, what it actually means, and where to check. */
+export type HomeTrust = { title: string; body: string; link?: string; href?: string }
 type HomeContent = {
   metaTitle: string
   metaDescription: string
   brand: string
   h1: string
   siteLine: string
-  toolsLabel: string
-  planner: HomeTool
-  howLabel: string
-  how: { title: string; body: string; link?: string; href?: string }[]
+  open: string
+  demo: string
+  heroNote: string
+  workLabel: string
+  work: HomeBeat[]
+  baselineLabel: string
+  baseline: string
+  baselineGoal: string
+  baselineNote: string
+  catchesLabel: string
+  catches: string[]
+  trustLabel: string
+  trust: HomeTrust[]
   aboutLabel: string
   about: string
   aboutLinks: { text: string; href: string }[]
@@ -78,46 +84,45 @@ function button(text: string, href: string, weight: 'primary' | 'secondary' | 't
 }
 
 /**
- * The one tool card (docs/design/home-mockup.html): the name with its status
- * pill, the tag line, Reads / Compares / Writes, the What it catches
- * collapsible, Open (primary) and Try it with sample data (secondary), and the
- * meta line: baseline · role needed · read the code.
+ * One section of the page: a heading and its body, separated from the one above
+ * it by a rule. Six of these and the hero are the whole page — the v2 direction
+ * puts the hierarchy in the type and the spacing, not in a wall of boxes.
  */
-export function toolCard(tool: HomeTool, hrefs: { open: string; demo: string }): string {
-  const beats = tool.beats.map((b) => `<li><b>${esc(b.verb)}</b> ${esc(b.text)}</li>`).join('\n            ')
-  const catches = tool.catches.map((c) => `<li>${esc(c)}</li>`).join('\n              ')
-  return `<section class="card tool">
-          <h3 class="tool-name">${esc(tool.name)} <span class="pill">${esc(tool.label)}</span></h3>
-          <p class="tag">${esc(tool.descriptor)}</p>
-          <ul class="beats">
-            ${beats}
-          </ul>
-          <details class="catches">
-            <summary>${esc(tool.catchesLabel)}</summary>
-            <ul class="catch">
-              ${catches}
-            </ul>
-          </details>
-          <p class="actions">
-            ${button(tool.open, hrefs.open, 'primary')}
-            ${button(tool.demo, hrefs.demo, 'secondary')}
-          </p>
-          <p class="meta"><span>${esc(tool.meta.baseline)}</span> · <span>${esc(tool.meta.role)}</span> · <a href="${tool.meta.href}">${esc(tool.meta.code)}</a></p>
-        </section>`
+function section(id: string, title: string, body: string): string {
+  return `<section class="band" aria-labelledby="${id}-heading">
+        <h2 id="${id}-heading">${esc(title)}</h2>
+        ${body}
+      </section>`
 }
 
-/** The Tools grid: one column with one tool, two columns from the second tool on. */
-export function toolsGrid(cards: string[]): string {
-  return `<div class="grid tools${cards.length > 1 ? ' two' : ''}" aria-labelledby="tools-heading">
-        ${cards.join('\n        ')}
-      </div>`
+/** Reads / Compares / Plans: the verb in the page's weight, the rest after it. */
+export function beatList(beats: HomeBeat[]): string {
+  return `<ul class="beats">
+          ${beats.map((b) => `<li><b>${esc(b.verb)}</b> ${esc(b.text)}</li>`).join('\n          ')}
+        </ul>`
 }
 
-/** A small card: a title and a paragraph (How these work), or a paragraph and its buttons (About). */
-function smallCard(title: string | null, body: string, cls = ''): string {
-  return `<section class="card small${cls ? ' ' + cls : ''}">
-          ${title === null ? '' : `<h3>${esc(title)}</h3>\n          `}${body}
-        </section>`
+/** What IAMAI catches before a change goes live: a plain list, no cards. */
+export function catchList(items: string[]): string {
+  return `<ul class="catch">
+          ${items.map((c) => `<li>${esc(c)}</li>`).join('\n          ')}
+        </ul>`
+}
+
+/**
+ * What IAMAI does with the tenant: each claim named, then said in terms someone
+ * can check. Specific architecture, not reassurance — a definition list, so the
+ * claim and its evidence stay attached.
+ */
+export function trustList(items: HomeTrust[]): string {
+  return `<dl class="trust">
+          ${items
+            .map(
+              (t) =>
+                `<dt>${esc(t.title)}</dt>\n          <dd>${esc(t.body)}${t.link && t.href ? ` <a class="lnk" href="${t.href}">${esc(t.link)}</a>` : ''}</dd>`,
+            )
+            .join('\n          ')}
+        </dl>`
 }
 
 export function renderHomeTheme(): string {
@@ -130,9 +135,7 @@ export function renderHomeHtml(): string {
   const h = pages.home as unknown as HomeContent
   const shell = pages.app.shell as { lightTheme: string; darkTheme: string; themeTooltip: string }
   const footer = pages.footer as { links: Link[] }
-  const howCards = h.how.map((c) => smallCard(c.title, `<p>${esc(c.body)}${c.link && c.href ? ` <a class="lnk" href="${c.href}">${esc(c.link)}</a>` : ''}</p>`)).join('\n        ')
-  const aboutButtons = h.aboutLinks.map((l, i) => button(l.text, l.href, i === 0 ? 'secondary' : 'tertiary')).join('\n            ')
-  const about = smallCard(null, `<p>${esc(h.about)}</p>\n          <p class="actions">\n            ${aboutButtons}\n          </p>`, 'about')
+  const aboutButtons = h.aboutLinks.map((l, i) => button(l.text, l.href, i === 0 ? 'secondary' : 'tertiary')).join('\n          ')
   // The footer is the app's (AppShell's Footer, pages.footer): the same four links, joined the same way; the home link and the mail link open in place.
   const footerLinks = footer.links
     .map((l, i) => `${i > 0 ? ' | ' : ''}<a href="${l.href}"${/^https:\/\/getiamai\.com\/?$/.test(l.href) || l.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(l.text)}</a>`)
@@ -178,21 +181,27 @@ export function renderHomeHtml(): string {
     </header>
 
     <main class="page">
+      <!-- The outcome, what IAMAI does about it, and the two ways in. The only
+           actions on the page: no section below repeats them. -->
       <div class="hero">
         <h1>${esc(h.h1)}</h1>
         <p class="site-line">${esc(h.siteLine)}</p>
+        <p class="actions">
+          ${button(h.open, PLANNER_HREF, 'primary')}
+          ${button(h.demo, DEMO_HREF, 'secondary')}
+        </p>
+        <p class="note">${esc(h.heroNote)}</p>
       </div>
 
-      <h2 class="section" id="tools-heading">${esc(h.toolsLabel)}</h2>
-      ${toolsGrid([toolCard(h.planner, { open: PLANNER_HREF, demo: DEMO_HREF })])}
+      ${section('work', h.workLabel, beatList(h.work))}
 
-      <h2 class="section" id="how-heading">${esc(h.howLabel)}</h2>
-      <div class="grid two" aria-labelledby="how-heading">
-        ${howCards}
-      </div>
+      ${section('baseline', h.baselineLabel, `<p>${esc(h.baseline)}</p>\n        <p>${esc(h.baselineGoal)}</p>\n        <p class="note">${esc(h.baselineNote)}</p>`)}
 
-      <h2 class="section" id="about-heading">${esc(h.aboutLabel)}</h2>
-      ${about}
+      ${section('catches', h.catchesLabel, catchList(h.catches))}
+
+      ${section('trust', h.trustLabel, trustList(h.trust))}
+
+      ${section('about', h.aboutLabel, `<p>${esc(h.about)}</p>\n        <p class="actions">\n          ${aboutButtons}\n        </p>`)}
     </main>
 
     <footer class="app">

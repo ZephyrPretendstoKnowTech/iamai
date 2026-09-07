@@ -3,13 +3,13 @@
 // nothing else stands between the header line and the rollout board.
 //
 // The MFA readiness ladder was a tenant-wide diagnostic on a page whose job is
-// the rollout; it answered a question no step on the Plan asks. It is gone from
-// the Plan and unchanged where it belongs — Connect's Plan tile, whose five rung
-// tiles link to MFA Readiness filtered to a rung (task 012). MFA Readiness draws
-// no ladder of its own: it counts the three groupings over the same rungs.
+// the rollout; it answered a question no step on the Plan asks. Task 011 took it
+// off the Plan and task 016 took it off Connect, where it stood in front of the
+// destination. MFA Readiness owns the rungs and draws no ladder of its own: it
+// counts the three groupings over the same rungs, and a rung is a person's badge.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { RUNGS, ladder } from '../../derive/ladder.ts'
 import { factsOf } from '../../derive/facts.ts'
@@ -43,18 +43,20 @@ test('the strip, the lists and the two note lines are gone from the Plan, with t
   assert.ok((pages.ladder as { header: string }).header === 'MFA Readiness')
 })
 
-// Task 011: the Plan is the rollout board and nothing above it. The tiles are a
-// tenant-wide diagnostic, not a step's next action, and a concise policy-specific
-// MFA consequence still reaches the step that it changes the action on.
-test('the Plan draws no MFA readiness ladder, and the surfaces that own it still do', () => {
-  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.doesNotMatch(plan, /LadderTiles|rung-tile|LadderHead/, 'the Plan renders no readiness tiles')
-  assert.doesNotMatch(plan, /derive\/ladder\.ts/, 'the Plan reads no ladder')
-  // Not deleted: Connect's Plan tile still draws them, and they link to the
-  // surface that owns the person-level evidence.
-  const tiles = readFileSync('src/ui/surfaces/LadderTiles.tsx', 'utf8')
-  assert.match(tiles, /export function LadderTiles/, 'the tiles component is still here for the surface that owns it')
-  assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /<LadderTiles counts=/, "Connect's Plan tile still shows the readiness numbers")
+// Task 011 took the five tiles off the Plan; task 016 took them off Connect. A
+// tenant-wide readiness diagnostic is not the rollout board's job and it is not
+// the setup progression's either: Connect ends at the Plan, and MFA Readiness
+// comes after it. The rungs themselves are untouched — MFA Readiness owns them.
+test('no rollout surface draws the MFA readiness ladder; MFA Readiness owns the rungs', () => {
+  for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/Connect.tsx']) {
+    const src = readFileSync(file, 'utf8')
+    assert.doesNotMatch(src, /LadderTiles|rung-tile|LadderHead/, `${file} renders no readiness tiles`)
+    assert.doesNotMatch(src, /derive\/ladder\.ts/, `${file} reads no ladder`)
+  }
+  // The component the two surfaces shared is gone, and so are its rules: a dead
+  // component is a second place for the rungs to come back from.
+  assert.equal(existsSync('src/ui/surfaces/LadderTiles.tsx'), false, 'the tiles component was deleted with its last caller')
+  assert.doesNotMatch(readFileSync('src/ui/app.css', 'utf8'), /\.rung-tiles|\.rung-tile\b/, 'the tiles left their rules behind')
   // MFA Readiness draws no ladder either (task 012): three counts over the same
   // rungs, and the rung itself as the badge in a person's row.
   const readiness = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')

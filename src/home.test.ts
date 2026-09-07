@@ -1,12 +1,16 @@
-// The home page (prompt 35 §1, §2; prompt 52 Part 1; docs/design/home-mockup.html).
+// The home page (prompt 35 §1, §2; prompt 52 Part 1; the owner-approved Home v2
+// direction, task 016).
 //
 // The page is generated from docs/design/content.json (pages.home) by
 // scripts/build-home.ts, the way the theme file is generated from the tokens.
 // These lock the committed files to their generators — so the words the owner
 // reviews in content.json and the words the home page shows cannot drift — and
 // hold the structural invariants the page keeps whatever the copy says: the
-// hero, the one tool card and its parts, the two How cards, About's three
-// buttons, the app's footer, the app's button weights, light and dark.
+// hero with the outcome and the only two actions, the five sections after it,
+// About's three buttons, the app's footer, the app's button weights, light and
+// dark. The assertions are about shape and about the facts that have to be true
+// (read-only, browser-local, public source, the baseline's author), never about
+// a particular sentence: the copy is the owner's to change.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -18,8 +22,8 @@ import { setTimeout as sleep } from 'node:timers/promises'
 
 import { content, pages } from './content/content.ts'
 import { LAYOUT, LIGHT, TYPE } from './ui/tokens.ts'
-import { RETIRED_OPENER, assembleHome, renderHomeHtml, renderHomeTheme, toolCard, toolsGrid, versionedName } from '../scripts/build-home.ts'
-import type { HomeTool } from '../scripts/build-home.ts'
+import { RETIRED_OPENER, assembleHome, beatList, catchList, renderHomeHtml, renderHomeTheme, trustList, versionedName } from '../scripts/build-home.ts'
+import type { HomeBeat, HomeTrust } from '../scripts/build-home.ts'
 import { TOOL_PATH } from '../scripts/toolPath.ts'
 
 const home = 'home'
@@ -29,8 +33,9 @@ const css = lf(readFileSync(join(home, 'home.css'), 'utf8'))
 const theme = lf(readFileSync(join(home, 'theme.css'), 'utf8'))
 const appCss = lf(readFileSync('src/ui/app.css', 'utf8'))
 const H = pages.home as Record<string, unknown>
-const PLANNER = H.planner as HomeTool
-const HOW = H.how as { title: string; body: string; link?: string; href?: string }[]
+const WORK = H.work as HomeBeat[]
+const CATCHES = H.catches as string[]
+const TRUST = H.trust as HomeTrust[]
 const ABOUT_LINKS = H.aboutLinks as { text: string; href: string }[]
 const FOOTER = (pages.footer as { links: { text: string; href: string }[] }).links
 const SHELL = pages.app.shell as { lightTheme: string; darkTheme: string; themeTooltip: string }
@@ -106,81 +111,125 @@ test('the tool path is never hard-coded outside the build constant', () => {
   }
 })
 
-// The hero: the existing headline and the new site line, and nothing of the
-// opener the mockup retired, on the page or in the content.
-test('the hero is the headline and the site line; the retired opener is gone', () => {
+// The hero: the outcome, the line under it, the two ways in, and one note. The
+// opener the mockup retired stays gone, on the page and in the content.
+test('the hero leads with the outcome and carries the only two actions; the retired opener is gone', () => {
   const hero = segment(html, 'div', 'hero')
   assert.ok(hero.includes(`<h1>${esc(H.h1 as string)}</h1>`), 'the headline is content.h1')
   assert.ok(hero.includes(`<p class="site-line">${esc(H.siteLine as string)}</p>`), 'the site line is content.siteLine')
+  assert.ok(hero.includes(`<p class="note">${esc(H.heroNote as string)}</p>`), 'the note is content.heroNote')
+  const buttons = [...hero.matchAll(/<a class="btn btn-(\w+)" href="([^"]+)">([^<]+)<\/a>/g)].map((m) => ({ weight: m[1], href: m[2], text: unesc(m[3]) }))
+  assert.deepEqual(buttons, [
+    { weight: 'primary', href: '/{{TOOL_PATH}}/#/connect', text: H.open as string },
+    { weight: 'secondary', href: '/{{TOOL_PATH}}/?demo=1#/plan', text: H.demo as string },
+  ])
+  // One pair of actions on the whole page: the v2 direction does not repeat a
+  // call to action after every section.
+  assert.equal((html.match(/href="\/\{\{TOOL_PATH\}\}\//g) ?? []).length, 2, 'the two ways in are in the hero and nowhere else')
   assert.ok(RETIRED_OPENER.length >= 5, 'the retired opener is listed')
   for (const s of RETIRED_OPENER) {
     assert.ok(!html.includes(s) && !html.includes(esc(s)), `the retired opener remains on the page: "${s}"`)
     assert.ok(!JSON.stringify(H).includes(s), `the retired opener remains in pages.home: "${s}"`)
   }
   for (const key of ['intro', 'footer', 'footerLinks']) assert.ok(!(key in H), `pages.home.${key} was retired`)
-  for (const key of ['body', 'builtFor', 'builtForLabel']) assert.ok(!(key in (PLANNER as unknown as Record<string, unknown>)), `pages.home.planner.${key} was retired`)
 })
 
-// The tool card (docs/design/home-mockup.html): the name with its status pill,
-// the tag line, Reads / Compares / Writes, the What it catches collapsible,
-// Open (primary), Try it with sample data (secondary), and the meta line.
-test("the tool card's parts, in the mockup's order, from content", () => {
-  const card = segment(html, 'section', 'card tool')
-  const parts = [
-    `<h3 class="tool-name">${esc(PLANNER.name)} <span class="pill">${esc(PLANNER.label)}</span></h3>`,
-    `<p class="tag">${esc(PLANNER.descriptor)}</p>`,
-    '<ul class="beats">',
-    ...PLANNER.beats.map((b) => `<li><b>${esc(b.verb)}</b> ${esc(b.text)}</li>`),
-    '<details class="catches">',
-    `<summary>${esc(PLANNER.catchesLabel)}</summary>`,
-    ...PLANNER.catches.map((c) => `<li>${esc(c)}</li>`),
-    '<p class="actions">',
-    `<a class="btn btn-primary" href="/{{TOOL_PATH}}/#/connect">${esc(PLANNER.open)}</a>`,
-    `<a class="btn btn-secondary" href="/{{TOOL_PATH}}/?demo=1#/plan">${esc(PLANNER.demo)}</a>`,
-    `<p class="meta"><span>${esc(PLANNER.meta.baseline)}</span> · <span>${esc(PLANNER.meta.role)}</span> · <a href="${REPO}">${esc(PLANNER.meta.code)}</a></p>`,
-  ]
-  let at = -1
-  for (const part of parts) {
-    const i = card.indexOf(part)
-    assert.ok(i > at, `the card carries, in order: ${part}`)
-    at = i
+// Task 016: the outcome comes before the mechanism. A visitor reads what IAMAI
+// is for before it names Conditional Access, and the headline is not a process.
+test('the first screen is the security outcome, not the mechanism', () => {
+  const body = html.slice(html.indexOf('<body>'))
+  const first = body.slice(body.indexOf('<div class="hero">'), body.indexOf('<section class="band"'))
+  assert.doesNotMatch(first, /Conditional Access/, 'the hero explains the outcome; the term comes later, with context')
+  assert.match(body, /Conditional Access/, 'and the page does eventually say what it plans')
+  assert.ok(body.indexOf('Conditional Access') > body.indexOf(esc(H.siteLine as string)), 'the term comes after the outcome')
+  // No AI-first or generic-SaaS language, and nothing describing the product as magic.
+  assert.doesNotMatch(html, /\bAI-powered\b|\bpowered by AI\b|\bmagic(al)?\b|\bseamless\b|\bworld-class\b|\bgame.chang/i, html.match(/\bAI-powered\b|\bmagic\b|\bseamless\b/i)?.[0] ?? '')
+})
+
+// The obsolete composition: the tool card, its Preview pill and the Tools grid
+// left with the approved v2 direction and may not come back by hand.
+test('the old tool-card composition is gone: no card wall, no pill, no Tools grid', () => {
+  for (const gone of ['class="card', 'class="pill"', 'class="grid', 'tool-name', 'tools-heading', 'how-heading']) {
+    assert.ok(!html.includes(gone), `the retired home composition is back: ${gone}`)
+    assert.ok(!css.includes(gone.replace('class="', '.').replace(/"$/, '')), `home.css still styles the retired ${gone}`)
   }
+  assert.ok(!('planner' in H) && !('toolsLabel' in H) && !('howLabel' in H) && !('how' in H), 'the tool-card content keys were retired')
+  assert.ok(!JSON.stringify(H).includes('Preview'), 'the Preview pill and its word are gone')
+  // Nothing on the page is a raised box: the sections are separated by a rule.
+  assert.match(css, /\.band \{\s*border-top: 1px solid var\(--rule\);/, 'a section is a hairline, not a card')
+  assert.doesNotMatch(css, /background: var\(--bg-raised\)/, 'no raised panel remains in the home stylesheet')
+})
+
+// Five sections after the hero, in order, each a heading and its body.
+test('the page is the hero and five sections, in order, from content', () => {
+  const bands = [...html.matchAll(/<section class="band" aria-labelledby="([a-z]+)-heading">\s*<h2 id="\1-heading">([^<]+)<\/h2>/g)].map((m) => ({ id: m[1], title: unesc(m[2]) }))
+  assert.deepEqual(bands, [
+    { id: 'work', title: H.workLabel as string },
+    { id: 'baseline', title: H.baselineLabel as string },
+    { id: 'catches', title: H.catchesLabel as string },
+    { id: 'trust', title: H.trustLabel as string },
+    { id: 'about', title: H.aboutLabel as string },
+  ])
+  // A heading for every section and no orphan heading: h1, then five h2, nothing deeper.
+  assert.equal((html.match(/<h1>/g) ?? []).length, 1)
+  assert.equal((html.match(/<h2 /g) ?? []).length, 5)
+  assert.equal((html.match(/<h3/g) ?? []).length, 0, 'the page has no third heading level to skip to')
+})
+
+// What it does: the visitor should be able to say what IAMAI reads, what the
+// comparison is against, and that the output is an ordered plan.
+test('What it does is the three beats, and the last one is the plan', () => {
+  const band = segment(html, 'section', 'band')
+  assert.ok(band.includes(beatList(WORK)), 'the section renders through beatList')
+  assert.equal(WORK.length, 3)
   assert.deepEqual(
-    PLANNER.beats.map((b) => b.verb),
-    ['Reads', 'Compares', 'Writes'],
+    WORK.map((b) => b.verb),
+    ['Reads', 'Compares', 'Plans'],
+    'the loop is read, compare, plan; Writes retired with the v2 direction',
   )
-  assert.equal(PLANNER.catches.length, 5)
-  assert.doesNotMatch(card, /<details[^>]*\sopen/, 'What it catches is closed until opened')
-  assert.equal((card.match(/class="btn /g) ?? []).length, 2, 'two buttons on the card')
-  assert.doesNotMatch(card, /Built for/, 'the card has no Built for block; the site line carries the audience')
+  assert.match(WORK[0].text, /policies|people|sign-in/, 'the first beat says what it reads')
+  assert.match(WORK[2].text, /step|plan/i, 'the last beat says the output is an ordered plan')
 })
 
-test('the card is one component, and the grid is one column with one tool, two from the second', () => {
-  const card = segment(html, 'section', 'card tool')
-  assert.equal(card, toolCard(PLANNER, { open: '/{{TOOL_PATH}}/#/connect', demo: '/{{TOOL_PATH}}/?demo=1#/plan' }), 'the page renders the card through toolCard')
-  assert.match(html, /<div class="grid tools" aria-labelledby="tools-heading">/, 'one tool: one column')
-  assert.match(toolsGrid([card]), /^<div class="grid tools" /)
-  assert.match(toolsGrid([card, card]), /^<div class="grid tools two" /)
-  assert.equal((html.match(/<section class="card tool">/g) ?? []).length, 1, 'one tool today')
-  assert.match(css, /\.grid\.two \{\s*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/, 'the two-column grid rule')
+// The baseline, for a visitor who has never met the term: what it is, whose it
+// is, why the source is credible, and what it aims at. No Microsoft endorsement.
+test('the baseline section explains the term and attributes it without claiming an endorsement', () => {
+  const said = [H.baseline, H.baselineGoal, H.baselineNote].join(' ') as string
+  assert.match(H.baseline as string, /^A baseline is /, 'the term is explained before it is used')
+  for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) assert.ok(said.includes(fact), `the section names ${fact}`)
+  assert.ok(html.includes(esc(said.split(' ')[0])), 'the section is on the page')
+  assert.doesNotMatch(said, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft|partnership/i, said)
 })
 
-test('How these work is two small cards from content', () => {
-  const grid = html.match(/<div class="grid two" aria-labelledby="how-heading">[\s\S]*?<\/div>\n/)
-  assert.ok(grid, 'the How grid')
-  const cards = grid[0].match(/<section class="card small">[\s\S]*?<\/section>/g) ?? []
-  assert.equal(cards.length, 2)
-  assert.equal(HOW.length, 2)
-  HOW.forEach((c, i) => {
-    assert.ok(cards[i].includes(`<h3>${esc(c.title)}</h3>`), `How card ${i + 1} title`)
-    assert.ok(cards[i].includes(esc(c.body)), `How card ${i + 1} body`)
-    if (c.link) assert.ok(cards[i].includes(`<a class="lnk" href="${c.href}">${esc(c.link)}</a>`), `How card ${i + 1} link`)
-  })
-  assert.equal(HOW[1].href, REPO, 'the source card links to the repository')
+// A small set of real examples, and no more. Each is something the product can
+// actually find in a tenant before a change goes live.
+test('the examples are a short plain list, not a feature grid', () => {
+  assert.ok(html.includes(catchList(CATCHES)), 'the section renders through catchList')
+  assert.ok(CATCHES.length >= 3 && CATCHES.length <= 6, `${CATCHES.length} examples; a few, not a wall`)
+  assert.equal((html.match(/<ul class="catch">/g) ?? []).length, 1)
 })
 
-test("About is the paragraph and three buttons: secondary, tertiary, tertiary", () => {
-  const about = segment(html, 'section', 'card small about')
+// Trust is specific and checkable: read-only, the tenant's data stays in the
+// browser, the source is public. Vague reassurance is not enough.
+test('the trust section names read-only, browser-local handling and the public source', () => {
+  assert.ok(html.includes(trustList(TRUST)), 'the section renders through trustList')
+  const said = TRUST.map((t) => `${t.title} ${t.body}`).join(' ')
+  assert.match(said, /no permission that can create, change or delete|read-only/i, 'read-only, in terms of the permission set')
+  assert.match(said, /browser/, 'where the tenant data is')
+  assert.match(said, /no IAMAI server|no server/i, 'and where it is not')
+  assert.ok(
+    TRUST.some((t) => t.href === REPO),
+    'the source claim links to the repository',
+  )
+  // Not the vague version: a promise with nothing to inspect behind it.
+  assert.doesNotMatch(said, /privacy first|secure by design|your data is safe|bank.grade|military.grade/i, said)
+  // How's Cloudflare sentence is said once, on How; the home page makes its own
+  // shorter claim rather than repeating it.
+  assert.doesNotMatch(html, /Cloudflare/, 'the hosting sentence lives on How, not here')
+})
+
+test('About is the paragraph and three buttons: secondary, tertiary, tertiary', () => {
+  const about = html.slice(html.indexOf('<section class="band" aria-labelledby="about-heading">'))
   assert.ok(about.includes(`<p>${esc(H.about as string)}</p>`), 'About is content.about')
   const buttons = [...about.matchAll(/<a class="btn btn-(\w+)" href="([^"]+)">([^<]+)<\/a>/g)].map((m) => ({ weight: m[1], href: m[2], text: unesc(m[3]) }))
   assert.deepEqual(
@@ -190,6 +239,15 @@ test("About is the paragraph and three buttons: secondary, tertiary, tertiary", 
   assert.equal(buttons.length, 3)
   assert.match(buttons[0].href, /linkedin\.com/)
   assert.match(buttons[2].href, /^mailto:/)
+  // Provenance, not marketing: no invented scale, customers or credentials.
+  assert.doesNotMatch(H.about as string, /\b\d+[,\d]*\+? (customers|tenants|users|companies|organisations|organizations)\b|trusted by|award.winning|certified/i, H.about as string)
+})
+
+// The dropped opt-in: there is no endpoint or workflow behind an email
+// subscription, so the page must not ask for one.
+test('the page collects nothing: no form, no field, no mailing-list opt-in', () => {
+  for (const tag of ['<form', '<input', '<textarea', '<select']) assert.ok(!html.includes(tag), `the home page carries a ${tag} control`)
+  assert.doesNotMatch(html, /subscribe|mailing list|newsletter|keep me posted|notify me/i, 'an opt-in with nothing behind it')
 })
 
 test("the footer is the app's: pages.footer's links, joined the way AppShell joins them", () => {
@@ -215,7 +273,7 @@ test('every string on the page is a content string', () => {
 
 // Built for and What it catches live on the home page and nowhere in the app.
 test('Built for and What it catches are the home page\'s, not the app\'s', () => {
-  assert.equal(PLANNER.catchesLabel, 'What it catches')
+  assert.match(H.catchesLabel as string, /^What it catches/, 'the examples are the home page\'s section')
   const rest = JSON.parse(JSON.stringify(content)) as { pages: Record<string, unknown> }
   delete rest.pages.home
   for (const phrase of ['Built for', 'What it catches']) {
@@ -260,15 +318,15 @@ test('the home page loads nothing from anywhere else', () => {
   assert.doesNotMatch(css, /@import/i, 'no imported stylesheet')
 })
 
-test('the sections come in order: the hero, Tools, How these work, About', () => {
-  const order = [H.h1 as string, `>${H.toolsLabel}<`, `>${H.howLabel}<`, `>${H.aboutLabel}<`]
+test('the sections come in order: the hero, then the five bands', () => {
+  const order = [H.h1, H.workLabel, H.baselineLabel, H.catchesLabel, H.trustLabel, H.aboutLabel] as string[]
   let at = -1
   for (const s of order) {
-    const i = html.indexOf(s)
+    const i = html.indexOf(esc(s))
     assert.ok(i > at, `${s} comes in order`)
     at = i
   }
-  assert.ok(!readdirSync(home).includes('tools.json'), 'the tool list is pages.home, not a second file')
+  assert.ok(!readdirSync(home).includes('tools.json'), 'the page words are pages.home, not a second file')
 })
 
 // The built page (scripts/assemble-site.mjs writes what assembleHome returns):
@@ -295,8 +353,8 @@ test('the built page links each stylesheet by its content hash, so a changed she
 })
 
 // The built page in a browser, with its stylesheet: the computed styles of the
-// primary button, the card and the pill are the tokens (docs/design/home-mockup.html),
-// How these work is two columns, and a button is a button, not an underlined link.
+// primary button and the section rule are the tokens, the sections are separated
+// by a hairline rather than boxed, and a button is a button, not an underlined link.
 const CHROME = [
   process.env.CHROME,
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -310,10 +368,10 @@ const CHROME = [
 /** A token's colour the way getComputedStyle spells it. */
 const rgb = (hex: string): string => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
 type Computed = Record<string, string> | null
-type Rendered = { sheets: string[]; primary: Computed; secondary: Computed; tertiary: Computed; card: Computed; pill: Computed; how: Computed; beat: Computed }
+type Rendered = { sheets: string[]; primary: Computed; secondary: Computed; tertiary: Computed; band: Computed; bandHeading: Computed; boxes: number; beat: Computed }
 type CdpReply = { id?: number; result?: { result?: { value?: unknown }; exceptionDetails?: { text?: string } } }
 
-test('the built page, with its stylesheet, renders the tokens: the primary button, the card, the pill, the two-column How', async () => {
+test('the built page, with its stylesheet, renders the tokens: the primary button, the section rule, no boxes', async () => {
   assert.ok(CHROME, 'no Chrome binary found; set CHROME=/path/to/chrome')
   const built = assembleHome(html, { 'theme.css': theme, 'home.css': css }, TOOL_PATH)
   const server = createServer((req, res) => {
@@ -378,13 +436,13 @@ test('the built page, with its stylesheet, renders the tokens: the primary butto
       const cs = (sel, props) => { const e = document.querySelector(sel); if (!e) return null; const s = getComputedStyle(e); return Object.fromEntries(props.map((p) => [p, s[p]])) }
       return {
         sheets: [...document.styleSheets].map((s) => s.href.replace(/^.*\\//, '')),
-        primary: cs('.card.tool .btn-primary', ['backgroundColor', 'color', 'borderTopColor', 'borderTopLeftRadius', 'height', 'fontWeight', 'textDecorationLine']),
-        secondary: cs('.card.tool .btn-secondary', ['backgroundColor', 'color', 'borderTopColor', 'textDecorationLine']),
-        tertiary: cs('.card.about .btn-tertiary', ['backgroundColor', 'color', 'borderTopColor', 'textDecorationLine']),
-        card: cs('.card.tool', ['backgroundColor', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'borderTopLeftRadius']),
-        pill: cs('.card.tool .pill', ['color', 'backgroundColor', 'textTransform', 'fontSize', 'fontWeight', 'borderTopLeftRadius']),
-        how: cs('.grid.two', ['display', 'gridTemplateColumns']),
-        beat: cs('.card.tool .beats b', ['display', 'width']),
+        primary: cs('.hero .btn-primary', ['backgroundColor', 'color', 'borderTopColor', 'borderTopLeftRadius', 'height', 'fontWeight', 'textDecorationLine']),
+        secondary: cs('.hero .btn-secondary', ['backgroundColor', 'color', 'borderTopColor', 'textDecorationLine']),
+        tertiary: cs('.band .btn-tertiary', ['backgroundColor', 'color', 'borderTopColor', 'textDecorationLine']),
+        band: cs('.band', ['backgroundColor', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'borderTopLeftRadius']),
+        bandHeading: cs('.band h2', ['textTransform', 'fontSize', 'fontWeight', 'color']),
+        boxes: [...document.querySelectorAll('main.page *')].filter((e) => { const s = getComputedStyle(e); return s.borderBottomWidth !== '0px' && s.borderLeftWidth !== '0px' && s.borderRightWidth !== '0px' }).length,
+        beat: cs('.band .beats b', ['display', 'width']),
       }
     })()`)) as Rendered
     assert.deepEqual(r.sheets, Object.keys(built).filter((n) => n !== 'index.html'), 'the page holds the versioned sheets')
@@ -399,10 +457,11 @@ test('the built page, with its stylesheet, renders the tokens: the primary butto
     })
     assert.deepEqual(r.secondary, { backgroundColor: 'rgba(0, 0, 0, 0)', color: rgb(LIGHT.accent), borderTopColor: rgb(LIGHT.accent), textDecorationLine: 'none' })
     assert.deepEqual(r.tertiary, { backgroundColor: rgb(LIGHT.bgInset), color: rgb(LIGHT.ink2), borderTopColor: rgb(LIGHT.ruleStrong), textDecorationLine: 'none' })
-    assert.deepEqual(r.card, { backgroundColor: rgb(LIGHT.bgRaised), borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: rgb(LIGHT.rule), borderTopLeftRadius: `${LAYOUT.radiusPx}px` })
-    assert.deepEqual(r.pill, { color: rgb(LIGHT.accent), backgroundColor: rgb(LIGHT.accentTint), textTransform: 'uppercase', fontSize: `${TYPE['t-1']}px`, fontWeight: '500', borderTopLeftRadius: `${LAYOUT.radiusPx}px` })
-    assert.equal(r.how?.display, 'grid')
-    assert.equal(r.how?.gridTemplateColumns.split(' ').length, 2, `How these work is two columns at 1280 (${r.how?.gridTemplateColumns})`)
+    // A section is a rule and nothing else: no fill, no radius, no box.
+    assert.deepEqual(r.band, { backgroundColor: 'rgba(0, 0, 0, 0)', borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: rgb(LIGHT.rule), borderTopLeftRadius: '0px' })
+    assert.deepEqual(r.bandHeading, { textTransform: 'uppercase', fontSize: `${TYPE['t-2']}px`, fontWeight: '500', color: rgb(LIGHT.ink3) })
+    // The buttons are the only boxed things on the page: no card wall came back.
+    assert.equal(r.boxes, 5, `${r.boxes} boxed elements in the page body; only the five buttons carry a border, and nothing else is a panel`)
     assert.deepEqual(r.beat, { display: 'inline-block', width: '76px' })
   } finally {
     ws?.close()

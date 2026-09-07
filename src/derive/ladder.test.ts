@@ -112,7 +112,7 @@ test("the campaign step's groups and the admin steps' lockout counts read the la
   // The 90% gate stays in the engine (roadmap/constants.ts) and renders on none of the three surfaces.
   const words = JSON.stringify({ ladder: pages.ladder, today: pages.readiness, connect: (pages.connect as { plan: unknown }).plan })
   assert.ok(!/90 ?%/.test(words), 'no 90% on the three surfaces\' words')
-  for (const file of ['src/ui/surfaces/MfaReadiness.tsx', 'src/ui/surfaces/LadderTiles.tsx', 'src/ui/surfaces/Connect.tsx']) assert.ok(!/READINESS_THRESHOLD|90/.test(readFileSync(file, 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')), `${file} renders no gate`)
+  for (const file of ['src/ui/surfaces/MfaReadiness.tsx', 'src/ui/surfaces/Connect.tsx']) assert.ok(!/READINESS_THRESHOLD|90/.test(readFileSync(file, 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')), `${file} renders no gate`)
 })
 
 // The campaign's rung 2 is the one group a policy can empty: with Require MFA

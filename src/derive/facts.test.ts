@@ -37,7 +37,7 @@ test("every surface's facts are identical on both fixtures: Today, the ladder, t
 })
 
 test('no surface computes a count: the three surfaces, the print, the sample facts and the campaign lists read derive/facts.ts', () => {
-  const surfaces = ['src/ui/surfaces/MfaReadiness.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/Connect.tsx', 'src/ui/surfaces/LadderTiles.tsx', 'src/ui/surfaces/PrintPlan.tsx', 'src/ui/surfaces/Export.tsx', 'src/ui/demoFacts.ts']
+  const surfaces = ['src/ui/surfaces/MfaReadiness.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/Connect.tsx', 'src/ui/surfaces/PrintPlan.tsx', 'src/ui/surfaces/Export.tsx', 'src/ui/demoFacts.ts']
   for (const file of surfaces) {
     const src = readFileSync(file, 'utf8')
     assert.ok(/derive\/facts\.ts/.test(src) || file.endsWith('LadderTiles.tsx') || file.endsWith('Today.tsx'), `${file} reads derive/facts.ts`)

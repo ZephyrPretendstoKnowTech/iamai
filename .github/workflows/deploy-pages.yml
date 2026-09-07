@@ -1,28 +1,25 @@
 # Publishes the site to GitHub Pages from a clean checkout (prompt 35 §1).
 #
-#   getiamai.com/           the home page (hand-written, home/)
+#   getiamai.com/           the home page (generated, home/)
 #   getiamai.com/planner/   the planner (the Vite bundle)
-#   getiamai.com/next/      the preview: the night-1 branch's home and planner
-#                           (getiamai.com/next/planner/), prompt 53 Unit 0b
 #
-# One repository, one workflow, one domain. scripts/toolPath.ts names the
-# folder and is the single constant: vite.config.ts derives its base and outDir
-# from it, and scripts/assemble-site.mjs reads the same value when it lays out
-# dist/. This workflow sets no folder name of its own — a deployment variable
-# that has to be remembered publishes the wrong path when it is forgotten. The
-# preview passes TOOL_PATH_PREFIX, which is a prefix and not a second name.
+# One repository, one workflow, one domain, one source: `main`. scripts/toolPath.ts
+# names the folder and is the single constant: vite.config.ts derives its base and
+# outDir from it, and scripts/assemble-site.mjs reads the same value when it lays
+# out dist/. This workflow sets no folder name of its own — a deployment variable
+# that has to be remembered publishes the wrong path when it is forgotten.
 # Routing is hash-based and the baseline index fetches by absolute URL, so
 # nothing else changes with the path.
 #
-# The artifact is always main at the root, and night-1 under /next/ when that
-# branch exists — whichever branch was pushed. A step proves the root is
-# byte-identical to a main-only build before the preview is laid beside it, so a
-# night-1 push can never change the live site.
+# There is no preview path and no second branch: the retired night-1 preview
+# (/next/) was removed with task 016, so nothing but reviewed `main` can reach
+# the live site. Production is gated walk → build → deploy: build needs walk, and
+# deploy needs build, so a P0 in the walk stops the publication.
 name: deploy-pages
 
 on:
   push:
-    branches: [main, night-1]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -38,7 +35,7 @@ permissions:
 # GitHub requires it and where superseding costs nothing but a stale publish.
 
 jobs:
-  # The walk (scripts/walk.mjs) on the pushed branch: every surface of the demo
+  # The walk (scripts/walk.mjs) on the pushed commit: every surface of the demo
   # and the mock fixtures in headless Chrome, against the surface contracts and
   # the invariants. It exits 1 on a P0, so a P0 stops the build and the deploy.
   # Sessions never run it; this job is where it runs. The report and the
@@ -113,18 +110,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
-          path: main
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: main/package-lock.json
-      # What is actually being published, which is not always what was pushed:
-      # the root is always main, whichever branch triggered the run. Printing
-      # both is the difference between "my push deployed" and "my push ran the
-      # walk and main deployed".
+      # What is actually being published. The artifact is built from `main` and
+      # from nothing else, so on a push to main this is the commit the walk just
+      # judged; printing it is the difference between "my push deployed" and
+      # "my push ran and main deployed".
       - name: Commit being published
-        working-directory: main
         run: |
           {
             echo "publishing main : $(git rev-parse HEAD)  ($(git log -1 --pretty=%s))"
@@ -138,52 +132,13 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - run: npm ci
-        working-directory: main
       # Deterministic only: EXTERNAL_HEALTH is unset, so the Learn-link probe
       # skips itself here. A Microsoft Learn outage used to be able to fail this
       # step and block the deploy of a site that was perfectly good.
       - id: test
         run: npm test
-        working-directory: main
       - id: site
         run: npm run build:site
-        working-directory: main
-      # The root as a main-only build would publish it: every file's hash, taken
-      # before the preview is added and compared after.
-      - name: Fingerprint the main build
-        run: cd main/dist && find . -type f -not -path './next/*' | sort | xargs sha256sum > "$RUNNER_TEMP/main-build.sha256"
-      - name: Is there a night-1 branch?
-        id: night
-        working-directory: main
-        run: |
-          if git ls-remote --exit-code --heads origin night-1 > /dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@v4
-        if: steps.night.outputs.exists == 'true'
-        with:
-          ref: night-1
-          path: next
-      - run: npm ci
-        if: steps.night.outputs.exists == 'true'
-        working-directory: next
-      # The preview's planner lives at /next/<tool>/ and its home page at /next/,
-      # so the same tool name carries a prefix: the bundle's base and the home
-      # page's links both come out under /next/.
-      - run: npm run build:site
-        if: steps.night.outputs.exists == 'true'
-        working-directory: next
-        env:
-          TOOL_PATH_PREFIX: next/
-      - name: Lay the preview beside the root
-        if: steps.night.outputs.exists == 'true'
-        run: |
-          mkdir -p main/dist/next
-          cp -R next/dist/next/. main/dist/next/
-          for f in next/dist/*; do
-            case "$(basename "$f")" in next|CNAME) ;; *) cp -R "$f" main/dist/next/ ;; esac
-          done
-      - id: identical
-        name: The root is byte-identical to the main-only build
-        run: cd main/dist && find . -type f -not -path './next/*' | sort | xargs sha256sum | diff - "$RUNNER_TEMP/main-build.sha256"
       # Which deterministic assertion failed, named rather than inferred from the
       # log. A failure with none of these named is the job falling over before it
       # asserted anything, which is a different thing and says so.
@@ -192,7 +147,6 @@ jobs:
         env:
           TEST_OUTCOME: ${{ steps.test.outcome }}
           SITE_OUTCOME: ${{ steps.site.outcome }}
-          IDENTICAL_OUTCOME: ${{ steps.identical.outcome }}
         run: |
           named=0
           {
@@ -200,12 +154,11 @@ jobs:
             echo ""
             if [ "$TEST_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — npm test"; fi
             if [ "$SITE_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — npm run build:site"; fi
-            if [ "$IDENTICAL_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — the root is not byte-identical to a main-only build"; fi
             if [ "$named" = "0" ]; then echo "BUILD_RESULT: no named assertion failed; the job fell over before it asserted anything"; fi
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: main/dist
+          path: dist
   deploy:
     needs: build
     runs-on: ubuntu-latest

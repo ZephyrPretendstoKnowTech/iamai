@@ -1,7 +1,14 @@
 // How IAMAI works (prompt 49 Part 3, target-state §7): Permissions, What IAMAI
-// reads, Every check, Baseline packages, Limits. The tables are generated from
-// the same registries the code runs from, so the page cannot drift from the
-// product. No page action buttons (the contract allows none here).
+// reads, Every check, Baseline packages, Where it runs, Credits, Limits. The
+// tables are generated from the same registries the code runs from, so the page
+// cannot drift from the product. No page action buttons (the contract allows
+// none here).
+//
+// This is the technical trust surface: the permission set, every endpoint, every
+// check, where the public site is served from and where the tenant's data is
+// not, and whose work the baseline is. The permissions and reads stay generated
+// from GRAPH_SCOPES and COLLECTOR_REGISTRY — there is no second, hand-written
+// list of what IAMAI can see.
 import { COLLECTOR_REGISTRY } from '../../graph/collect/registry.ts'
 import type { CollectorSpec } from '../../graph/collect/registry.ts'
 import { REGISTRY, ruleText, citationFor } from '../../validation/rules.ts'
@@ -19,6 +26,9 @@ import type { ChipStatus } from '../components/index.ts'
 
 const C = app.how
 const SHELL = app.shell
+
+/** Jon Hope's CA Policy Analyzer: a separate project, credited by its canonical repository. */
+export const CA_POLICY_ANALYZER = 'https://github.com/Jhope188/ca-policy-analyzer'
 
 /**
  * The commit and day this bundle was built (prompt 40 §24), under Limits: a
@@ -106,6 +116,25 @@ export function How() {
         <li>{PACKAGE.way3Title}</li>
       </ol>
       <pre className="mono">{PACKAGE.way2Commands.join('\n')}</pre>
+
+      {/* Where the public site runs, and where the tenant's data does not (task 016).
+          Said once, here: the home page makes its own short read-only / browser /
+          public-source claim and does not repeat this sentence. */}
+      <h2>{C.hosting}</h2>
+      <p className="reason">{C.hostingBody}</p>
+
+      {/* Other people's work, named. The default baseline is Jon Hope's, and
+          CA Policy Analyzer is a separate project of his; neither is an
+          endorsement of IAMAI, and the note under them says so. */}
+      <h2>{C.credits}</h2>
+      <p className="reason">{C.creditBaseline}</p>
+      <p className="reason">
+        <a href={CA_POLICY_ANALYZER} target="_blank" rel="noopener noreferrer">
+          {C.creditAnalyzer}
+        </a>{' '}
+        — {C.creditAnalyzerNote}
+      </p>
+      <p className="reason">{C.creditsNote}</p>
 
       <h2>{C.limits}</h2>
       <ul className="sections">
