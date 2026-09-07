@@ -27,9 +27,12 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
+# Only the publication is superseded by a newer push. The walk is this
+# repository's authoritative validation of an exact commit, so it never carries a
+# cancelling concurrency group: a cancelled walk reads as a red commit that was
+# never actually judged, and the overnight runner cannot tell that apart from a
+# real P0. The `pages` group therefore sits on the deploy job alone, where
+# GitHub requires it and where superseding costs nothing but a stale publish.
 
 jobs:
   # The walk (scripts/walk.mjs) on the pushed branch: every surface of the demo
@@ -60,6 +63,37 @@ jobs:
       - run: npm run walk
         env:
           CHROME: /usr/bin/google-chrome
+      # What failed, in one screen. A walk P0 is a deterministic assertion about a
+      # fact on screen, and both a human opening this run and the overnight
+      # runner reading the log need to see it without downloading the artifact.
+      # Anything that is not a P0 list is a job that fell over before the walk
+      # could judge anything, and this says that instead of guessing.
+      - name: What failed
+        if: failure()
+        run: |
+          sha="$(git rev-parse --short=7 HEAD)"
+          findings="walk/$sha/findings.json"
+          {
+            echo "### deploy-pages — what failed"
+            echo ""
+            if [ -f "$findings" ]; then
+              echo "WALK_RESULT: P0 assertions on $sha"
+              echo ""
+              echo '```'
+              node -e '
+                const f = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+                const p0 = (f.findings && f.findings.P0) || []
+                console.log(`walk ${f.sha}: ${p0.length} P0, ${((f.findings||{}).P1||[]).length} P1`)
+                for (const line of p0) console.log(`P0: ${line}`)
+                if (!p0.length) console.log("no P0 recorded; the walk job failed before or after its findings")
+              ' "$findings"
+              echo '```'
+            else
+              echo "WALK_RESULT: the walk produced no findings file for $sha"
+              echo ""
+              echo "The job failed before the walk could judge the surfaces (browser startup, install, or the runner itself)."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       # This run's report beside its captures (walk/<sha>/); the committed reports stay out.
       - if: always()
         run: cp "docs/reports/walk-$(git rev-parse --short=7 HEAD).md" walk/ 2>/dev/null || true
@@ -105,9 +139,11 @@ jobs:
       # Deterministic only: EXTERNAL_HEALTH is unset, so the Learn-link probe
       # skips itself here. A Microsoft Learn outage used to be able to fail this
       # step and block the deploy of a site that was perfectly good.
-      - run: npm test
+      - id: test
+        run: npm test
         working-directory: main
-      - run: npm run build:site
+      - id: site
+        run: npm run build:site
         working-directory: main
         env:
           TOOL_PATH: ${{ vars.TOOL_PATH || 'rollout' }}
@@ -144,14 +180,39 @@ jobs:
           for f in next/dist/*; do
             case "$(basename "$f")" in next|CNAME) ;; *) cp -R "$f" main/dist/next/ ;; esac
           done
-      - name: The root is byte-identical to the main-only build
+      - id: identical
+        name: The root is byte-identical to the main-only build
         run: cd main/dist && find . -type f -not -path './next/*' | sort | xargs sha256sum | diff - "$RUNNER_TEMP/main-build.sha256"
+      # Which deterministic assertion failed, named rather than inferred from the
+      # log. A failure with none of these named is the job falling over before it
+      # asserted anything, which is a different thing and says so.
+      - name: What failed
+        if: failure()
+        env:
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+          SITE_OUTCOME: ${{ steps.site.outcome }}
+          IDENTICAL_OUTCOME: ${{ steps.identical.outcome }}
+        run: |
+          named=0
+          {
+            echo "### deploy-pages — what failed"
+            echo ""
+            if [ "$TEST_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — npm test"; fi
+            if [ "$SITE_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — npm run build:site"; fi
+            if [ "$IDENTICAL_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — the root is not byte-identical to a main-only build"; fi
+            if [ "$named" = "0" ]; then echo "BUILD_RESULT: no named assertion failed; the job fell over before it asserted anything"; fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: main/dist
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    # The one place a newer push may take over: an older publication in flight is
+    # cancelled here, after its commit has already been walked and built.
+    concurrency:
+      group: pages
+      cancel-in-progress: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

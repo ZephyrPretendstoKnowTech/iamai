@@ -69,6 +69,30 @@ Allowed verdicts: `PASS`, `PASS_WITH_NOTES`, `CORRECTION_REQUIRED`, `BLOCKED`.
 `PASS_WITH_NOTES` is success; notes go to backlog.
 A reviewer may request a small set of exact additional repo-relative paths once. It must not request an unbounded repository crawl unless the task itself is a cross-cutting audit.
 
+## Execution shape
+
+This applies to every remaining task without changing any task contract. The task contract says what to build; this says how a session spends its time.
+
+### Claude implementation session
+
+Start from the current task contract, the files it names, the relevant diff and history, and the established upstream authority. Do not open with a repository-wide audit. Open a file because this task's outcome depends on it.
+
+Reuse the existing authority for a fact rather than adding a second one. Foundations and prior implementation may be changed when correctness genuinely requires it; record that judgment in the handoff.
+
+Run focused tests while editing. Run the broad required validation once, near completion. Then commit, push, hand off, exit. Do not poll GitHub Actions: the runner owns exact-SHA verification.
+
+### Claude correction session
+
+A correction is not a fresh audit of the task. Begin from the exact reviewer finding, its evidence, the reviewed diff, and the minimum set of files that finding touches.
+
+Do not reopen an accepted finding without concrete regression evidence, and do not widen a correction into unrelated improvement. Assert the specific regression first, fix it, then run the broad required validation once near completion.
+
+### Reviewer session
+
+Review the current REVIEW.md criteria, the current diff, the handoff, the exact-SHA validation evidence, and the bounded context supplied. Completed upstream behaviour is established: treat it as sound unless the current evidence shows a regression. Do not hunt for unrelated historical defects or optional refactors.
+
+After a correction, verify the actionable finding and the regression risk immediately around it rather than restarting a full architecture audit. The three-call ceiling is one primary review plus at most two recovery calls on the same review, never independent re-reviews.
+
 ## Correction policy
 
 BLOCKER or MAJOR requires correction. FUNCTIONAL is corrected when bounded and valuable. CLEANUP is recorded and does not block.
