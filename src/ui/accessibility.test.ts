@@ -337,6 +337,22 @@ test('no reset later in the sheet erases the focus indicator it left behind', ()
   }
 })
 
+test('the home sheet leaves its own controls a focus indicator in a forced-colours mode', () => {
+  // Home is a separate page with its own stylesheet, and it suppresses the
+  // native outline the same way the app does. The app's fallback is in
+  // src/ui/app.css, which this page never loads, so without one of its own the
+  // CTA, the demo link, the theme control and the source links have no visible
+  // focus at all in a forced-colours mode (task 017 correction).
+  const forced = homeCss.match(/@media \(forced-colors: active\)\s*\{[\s\S]*?\n\}/)
+  assert.ok(forced, 'home.css carries a forced-colours focus fallback')
+  assert.match(forced[0], /:focus-visible[\s\S]*outline:\s*2px solid/)
+  const rules = parseRules(homeCss)
+  for (const p of ['a', '.lnk', '.btn', '.btn-primary', '.btn-secondary', '.btn-tertiary', 'header.app .right .text-control']) {
+    assert.equal(effective(rules, p, false, 'box-shadow'), 'var(--focus-ring)', `${p}: the home sheet leaves it with no focus ring`)
+    assert.match(effective(rules, p, true, 'outline'), /\bsolid\b/, `${p}: the home sheet leaves it with no focus outline in a forced-colours mode`)
+  }
+})
+
 test('the tab strip scrolls sideways without clipping the ring on its end tabs', () => {
   const strip = rule(css, '.tabs') ?? ''
   assert.match(strip, /overflow-x:\s*auto/)

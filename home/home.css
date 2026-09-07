@@ -64,6 +64,15 @@ a {
   outline: none;
   box-shadow: var(--focus-ring);
 }
+/* A forced-colours mode paints no box-shadow, so the ring above is the whole
+   focus indicator gone. This page never loads the app's stylesheet, so it
+   carries the same outline fallback itself. */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid;
+    outline-offset: 1px;
+  }
+}
 
 /* The header the planner uses: wordmark left, the theme control right. */
 header.app {
