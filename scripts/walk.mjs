@@ -24,7 +24,7 @@ import { extname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
-import { pages, steps as contentSteps, stepById } from '../src/content/content.ts'
+import { app, pages, steps as contentSteps, stepById } from '../src/content/content.ts'
 import { fillText } from '../src/content/render.ts'
 import * as readinessModel from '../src/derive/mfaReadiness.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
@@ -35,6 +35,12 @@ import { RETIRED_OPENER } from './build-home.ts'
 // RUNGS): a person's badge on MFA Readiness and Connect's Plan tile read them.
 // Read through the namespace so a build without the model still walks.
 const RUNG_TITLES = (readinessModel.COMPAT_SHOW_KEYS ?? []).filter((k) => k.startsWith('rung-')).map((k) => pages.ladder.rungs[`r${k.slice(5)}`].title)
+
+// The three header tabs, in order, read from the words the shell renders
+// (app.shell.tabs; ui/shell/AppShell.tsx). Read rather than repeated, so the
+// walk cannot hold a name the header has stopped using — MFA Readiness
+// replaced Today in task 012.
+const HEADER_TABS = [app.shell.tabs.readiness, app.shell.tabs.plan, app.shell.tabs.export].join(' · ')
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -567,7 +573,10 @@ async function walkFixture(fx) {
         const GROUP_TITLES = ['Passkey-ready', 'Needs proof', 'Needs a passkey']
         if (groups.length !== 3 || groups.some((g, k) => g.title !== GROUP_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(groups.map((g) => g.title))}; ${JSON.stringify(GROUP_TITLES)}`)
         else {
-          const summary = text.match(/(\d+) of (\d+) active (?:person|people) have proven/)
+          // The verb follows the count: content/render.ts pluralise() writes
+          // "1 … has proven" for a count of one and "2 … have proven" above it,
+          // so the sentence is read in either tense rather than one of them.
+          const summary = text.match(/(\d+) of (\d+) active (?:person|people) (?:have|has) proven/)
           // A tenant with nobody active says so instead, and has no numbers to state.
           if (!summary && !/No active people to count/.test(text)) add('P0', `${label}: the readiness summary line is missing`)
           else if (!summary) void 0
@@ -662,7 +671,7 @@ async function walkFixture(fx) {
         if (await evaluate(`document.querySelector('header.app .tenant') !== null`)) add('P0', `${label}: the header still shows the tenant tab`)
         if (!signedOut) {
           const tabs = await evaluate(`[...document.querySelectorAll('header.app nav a')].map((a) => (a.textContent || '').trim())`)
-          if (tabs.join(' · ') !== 'Today · Plan · Export') add('P0', `${label}: the header tabs read ${tabs.join(' · ')}; Today · Plan · Export`)
+          if (tabs.join(' · ') !== HEADER_TABS) add('P0', `${label}: the header tabs read ${tabs.join(' · ')}; ${HEADER_TABS}`)
         }
         const CONSENT = /The first sign-in in a tenant needs an account that can grant consent \(a Global Administrator, once\); every sign-in after that can be Global Reader\./
         const READER = /Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can\. It writes nothing\./
