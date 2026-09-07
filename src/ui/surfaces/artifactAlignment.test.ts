@@ -33,26 +33,46 @@ import { readinessTable } from './inventoryTables.ts'
 import { redactIdentifiers } from '../../redact.ts'
 import { readFileSync } from 'node:fs'
 
-type Case = { name: string; run: FixtureRun; ctx: (s: Step) => StepVarContext; view: (s: Step) => ReturnType<typeof stepExportView>; snapshot: FixtureRun['input']['snapshot'] }
+type Case = { name: string; run: FixtureRun; ctx: (s: Step) => StepVarContext; view: (s: Step) => ReturnType<typeof stepExportView>; prompt: (s: Step) => string; entry: (s: Step) => string | undefined; snapshot: FixtureRun['input']['snapshot'] }
+
+/** One answer per step, computed once. The readings are pure, and a sweep that
+ *  recomputes them per assertion builds the same calendar once per step: on the
+ *  full fixture matrix that is quadratic, and it is what took `npm test` past
+ *  the runner's memory. */
+function once<T>(of: (s: Step) => T): (s: Step) => T {
+  const kept = new Map<Step, T>()
+  return (s) => {
+    if (!kept.has(s)) kept.set(s, of(s))
+    return kept.get(s)!
+  }
+}
 
 function load(name: string): Case {
   const f = fixture(name as never)
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
-  const ctx = (s: Step): StepVarContext =>
-    ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
-  return { name, run, ctx, view: (s) => stepExportView(s, ctx(s)), snapshot: f.snapshot }
+  const ctx = once((s: Step): StepVarContext =>
+    ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext)
+  const view = once((s: Step) => stepExportView(s, ctx(s)))
+  let entries: Map<string, string> | null = null
+  const entry = (s: Step): string | undefined => {
+    if (entries === null) {
+      const parts = buildIcs(run.steps, 'Tenant', run.input.planId, view).split('BEGIN:VEVENT')
+      entries = new Map()
+      // The same reading the sweep always made — the event whose UID ends in this
+      // step — made once for the whole calendar instead of once per step.
+      for (const s2 of run.steps) {
+        const part = parts.find((x) => x.includes(`-${s2.id}@iamai`))
+        if (part !== undefined) entries.set(s2.id, part)
+      }
+    }
+    return entries.get(s.id)
+  }
+  return { name, run, ctx, view, prompt: once((s: Step) => stepContext(s, view)), entry, snapshot: f.snapshot }
 }
 
 /** Every fixture the repo ships, each loaded once: the whole state matrix, not a chosen example. */
 const CASES: Case[] = allFixtures().map((f) => load(f.name))
-
-/** The step a case's calendar entry belongs to, or undefined where the step is in no entry. */
-function icsEntry(c: Case, step: Step): string | undefined {
-  return buildIcs(c.run.steps, 'Tenant', c.run.input.planId, c.view)
-    .split('BEGIN:VEVENT')
-    .find((x) => x.includes(`-${step.id}@iamai`))
-}
 
 // ---- A. the export view is the contract, field for field ----
 
@@ -98,10 +118,10 @@ test('013.A: an unknown reach is never written down as a number', () => {
 test('013.A: the calendar entry and the prompt block are the same run of lines', () => {
   for (const c of CASES) {
     for (const s of c.run.steps) {
-      const entry = icsEntry(c, s)
+      const entry = c.entry(s)
       if (entry === undefined) continue
       const v = c.view(s)
-      const prompt = stepContext(s, c.view)
+      const prompt = c.prompt(s)
       for (const line of stepArtifactLines(v)) {
         // The calendar folds and escapes; the prompt does not. Compare on the
         // first clause, which survives both.
@@ -135,9 +155,9 @@ test('013.B: where the Plan offers no implementation, no artifact carries one', 
       // Nothing that implies a rollout: no dates line, no rollback, no event.
       assert.equal(v.dates, null, `${where}: a Dates line`)
       assert.equal(v.ifWrong, null, `${where}: a rollback for work nobody can do`)
-      assert.equal(icsEntry(c, s), undefined, `${where}: a calendar entry`)
+      assert.equal(c.entry(s), undefined, `${where}: a calendar entry`)
       // And the prose artifacts carry the resolution, not the instructions.
-      const said = [v.whatToDo.join('\n'), stepContext(s, c.view)]
+      const said = [v.whatToDo.join('\n'), c.prompt(s)]
       for (const text of said) {
         assert.equal(/"conditions"|includeUsers|grantControls/.test(text), false, `${where}: a policy body reached a prose artifact`)
         assert.equal(/Conditional Access → Policies/.test(text), false, `${where}: a portal instruction reached a prose artifact`)
@@ -163,7 +183,7 @@ test('013.B: a step whose answer the operator still owes carries the question, n
       // policy the plan cannot write at all, which outranks it — the artifact
       // leads with the same sentence the Plan does, and the prompt carries it.
       assert.equal(v.whatToDo[0], k.whatToDo.text, `${c.name}/${s.id}: the artifact leads with something the screen does not`)
-      assert.ok(stepContext(s, c.view).includes(k.whatToDo.text), `${c.name}/${s.id}: the prompt pack drops the action`)
+      assert.ok(c.prompt(s).includes(k.whatToDo.text), `${c.name}/${s.id}: the prompt pack drops the action`)
       // A question waiting on a person is never an instruction to go and build.
       assert.equal(implementationOffered(s), false, `${c.name}/${s.id}: an unanswered question offers an implementation`)
     }
@@ -216,7 +236,7 @@ test('013.C: a goal already delivered proposes nothing to submit, and says which
       if (!s.state.inPlace) continue
       seen.push(`${c.name}/${s.id}`)
       assert.deepEqual(stepOperations(s), [], `${c.name}/${s.id}: a preserved goal offers an operation`)
-      assert.equal(icsEntry(c, s), undefined, `${c.name}/${s.id}: a preserved goal is booked into the calendar`)
+      assert.equal(c.entry(s), undefined, `${c.name}/${s.id}: a preserved goal is booked into the calendar`)
     }
   }
   assert.ok(seen.length > 0, 'no fixture has a goal already in place')
@@ -241,7 +261,7 @@ test('013.D: a projected enforcement is never stated as one the policy has earne
       // one: a policy in report-only whose enforcement its window has not earned
       // is offered no channel either, and its review is a real day in a real
       // calendar (roadmap/operations.ts `policyHold`).
-      if ((s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) !== null) assert.equal(icsEntry(c, s), undefined, `${c.name}/${s.id}: held work gained a calendar entry`)
+      if ((s.kind === 'create' || s.kind === 'adjust') && unavailableReason(s) !== null) assert.equal(c.entry(s), undefined, `${c.name}/${s.id}: held work gained a calendar entry`)
     }
   }
 })
@@ -251,8 +271,8 @@ test('013.D: the Plan, the calendar and the prompt answer "when" with the same l
     for (const s of c.run.steps) {
       const v = c.view(s)
       if (v.dates === null) continue
-      const entry = icsEntry(c, s)
-      const prompt = stepContext(s, c.view)
+      const entry = c.entry(s)
+      const prompt = c.prompt(s)
       assert.ok(prompt.includes(v.dates), `${c.name}/${s.id}: the prompt pack dates the step its own way`)
       if (entry === undefined) continue
       // The calendar folds long lines, so the entry is checked on the first clause.
@@ -267,7 +287,7 @@ test('013.D: the Plan, the calendar and the prompt answer "when" with the same l
 test('013.E: the step block a prompt is grounded in says each fact once', () => {
   for (const c of CASES) {
     for (const s of c.run.steps) {
-      const lines = stepContext(s, c.view).split('\n').filter((x) => x.trim().length > 0)
+      const lines = c.prompt(s).split('\n').filter((x) => x.trim().length > 0)
       assert.equal(new Set(lines).size, lines.length, `${c.name}/${s.id}: a line is stated twice`)
       // No passed check, and no invented finish: every line came from the view.
       const v = c.view(s)
