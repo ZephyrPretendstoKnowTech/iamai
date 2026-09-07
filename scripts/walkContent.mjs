@@ -33,8 +33,10 @@ const textAt = (obj, path) => strings(get(obj, path)).map(([, s]) => s).join('\n
 const test = (re, text) => (re instanceof RegExp ? re.test(text) : text.includes(re))
 
 // One entry per audit item. `path` is a key inside the step (dotted); the check
-// reads every string under it. `must` is the acceptance; `mustNot` the wording
-// it replaced, so the entry fails on the content before the fix.
+// reads every string under it. An entry that names neither a step nor a cleanup
+// row reads `path` from the content root instead, for words that belong to no
+// single step. `must` is the acceptance; `mustNot` the wording it replaced, so
+// the entry fails on the content before the fix.
 export const ACCEPTANCE = [
   // C2: the Learn links that answered 404 or opened the wrong page. The audit's
   // guest URL (policy-old-require-mfa-b2b) answers 404 itself; the B2B MFA
@@ -113,7 +115,12 @@ export const ACCEPTANCE = [
   // spared, and the announcement is gone with the implementation.
   { item: '16', step: 'admin-portals-protected', path: 'who.evidence', must: 'signed in to Azure since {from}: {list:azureNonAdmins}', mustNot: 'they are blocked from {enforce}' },
   { item: '16', step: 'admin-portals-protected', path: 'who.lead', must: 'targets every account in the directory and excludes no administrator', mustNot: 'admins in {adminsGroup}' },
-  { item: '16', step: 'admin-portals-protected', path: 'baselineConflict', must: 'Nothing is wrong in your tenant' },
+  // The conflict's explanation belongs to the reviewed source policy and not to
+  // a goal (roadmap/baselineConflict.ts), so it is authored once under
+  // shared.engine.baselineConflict and reaches whichever step the active map
+  // hands that source. Which step reads it is the unit tests' acceptance
+  // (roadmap/adminPortalConflict.test.ts, roadmap/baselineConflictPlan.test.ts).
+  { item: '16', path: 'shared.engine.baselineConflict.adminPortalNonAdminScope', must: 'Nothing is wrong in your tenant' },
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Windows Cloud Login, My Staff' },
   { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'over a screen-share, if your VPN exit is in the trusted network, or when they are next in', mustNot: 'while they are on the VPN' },
   { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'New starters register in the office, or with you over a screen-share.' },
@@ -266,15 +273,15 @@ export function contentFindings(content, pinned = null, contracts = null) {
 
   // The per-item acceptance table.
   for (const a of ACCEPTANCE) {
-    const subject = a.step ? stepById[a.step] : cleanup[a.cleanup]
-    const label = a.step ? a.step : `cleanup.${a.cleanup}`
+    const subject = a.step ? stepById[a.step] : a.cleanup ? cleanup[a.cleanup] : content
+    const label = a.step ? `${a.step} ` : a.cleanup ? `cleanup.${a.cleanup} ` : ''
     if (!subject) {
-      add('P0', `content ${label}: missing (${a.item})`)
+      add('P0', `content ${label.trim()}: missing (${a.item})`)
       continue
     }
     const text = textAt(subject, a.path)
-    if (a.must !== undefined && !test(a.must, text)) add('P0', `content ${label} ${a.path}: does not say ${String(a.must).slice(0, 80)} (${a.item})`)
-    if (a.mustNot !== undefined && test(a.mustNot, text)) add('P0', `content ${label} ${a.path}: still says ${String(a.mustNot).slice(0, 80)} (${a.item})`)
+    if (a.must !== undefined && !test(a.must, text)) add('P0', `content ${label}${a.path}: does not say ${String(a.must).slice(0, 80)} (${a.item})`)
+    if (a.mustNot !== undefined && test(a.mustNot, text)) add('P0', `content ${label}${a.path}: still says ${String(a.mustNot).slice(0, 80)} (${a.item})`)
   }
   return out
 }
