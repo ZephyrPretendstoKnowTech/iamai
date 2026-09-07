@@ -1,5 +1,5 @@
-// A policy already in report-only says when it may be enforced, from two gates,
-// whichever first (tracking.ts): the time gate (in report-only since the scan
+// A policy already in report-only says when it may be enforced, from two gates
+// and both of them (tracking.ts): the time gate (in report-only since the scan
 // first saw it, plus the observation window) and the evidence gate (the records
 // since then show zero failures and every active person in scope). The row's
 // date column, the step's Done-when and the status word read one derivation;
@@ -25,8 +25,35 @@ import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from '../../roadmap/observation.ts'
+import { activePeopleIds } from '../../derive/population.ts'
+import { notPeopleIds } from '../../derive/sets.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
 
 const DAY = 86_400_000
+
+/** The tenant's own directory facts, as a scan reads them (tracking.ts TrackingEvidence). */
+const scopeOf = (f: Fixture): Parameters<typeof applyProgress>[7] => ({
+  groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
+  activePeople: activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping)),
+})
+
+/**
+ * Microsoft's records of one policy over a window it served clean: a report-only
+ * success for every active person, so the evidence gate's "everybody in scope
+ * seen" half closes whoever the policy reaches, and its failure count is a zero
+ * records prove. Readiness needs both gates, so a case about a served window
+ * hands the engine the records that window is read with.
+ */
+function cleanRecords(f: Fixture, policyId: string): unknown {
+  const people = activePeopleIds(f.snapshot, f.snapshot.asOf, notPeopleIds(f.mapping))
+  return {
+    policyId,
+    displayName: '',
+    counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 },
+    affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [...people], enforcedFailure: [], enforcedSuccess: [] },
+    firstReportOnlyAt: null,
+  }
+}
 const ADMINS = stepIdForGoal('admins-phishing-resistant')
 const TOKEN = stepIdForGoal('token-protection')
 const TRANSFER = stepIdForGoal('block-auth-transfer')
@@ -93,7 +120,7 @@ test('week two: the report-only policy with clean, complete records is ready now
   assert.ok(untracked.some((l) => l.startsWith('Time: ')) && untracked.some((l) => l.endsWith(`today 0 failing or interrupted, ${seen}`)), untracked.join('\n'))
 })
 
-test('rescan: a policy past its date reads Ready to enforce, and a Foundation-A blocker still offers it no date', () => {
+test('rescan: a policy whose window closed on clean records reads Ready to enforce, and a Foundation-A blocker still offers it no date', () => {
   const f = fixture('demo')
   const run = runFixture(f)
   const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
@@ -103,20 +130,49 @@ test('rescan: a policy past its date reads Ready to enforce, and a Foundation-A 
   // The record names the policy it watched, which is what lets the ten days it
   // counted belong to the policy deployed now (observation.ts artifactIdOf).
   const watched = { [ADMINS]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } }
-  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched)
+  // And the records that window is read with. Ten days is not evidence about
+  // anybody: the stage needs the window *and* the records, so a case that means
+  // the policy to be ready supplies both (tracking.ts `gates`).
+  const snapshot = { ...f.snapshot, evidencePolicyResults: [cleanRecords(f, String(row!.id))] as typeof f.snapshot.evidencePolicyResults }
+  applyProgress(run.steps, snapshot, run.coverage, f.planId, undefined, null, watched, scopeOf(f))
   const step = run.steps.find((s) => s.id === ADMINS)!
-  assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record\'s observation wins over this scan')
+  assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record own observation wins over this scan')
   assert.equal(step.status, 'ready-to-enforce')
-  assert.equal(readyWhen(step)?.kind, 'since')
+  assert.ok(Date.parse(step.tracking!.readyOn!) <= Date.parse(step.tracking!.noticedAt!), 'the window closed')
+  assert.equal(step.tracking?.readyNow, true, 'and the records cleared it')
+  assert.equal(readyWhen(step)?.kind, 'now')
   assert.equal(statusOf(step).word, 'Ready to enforce')
-  assert.equal(step.history.at(-1)?.note, `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
+  assert.equal(step.history.at(-1)?.note, `ready now: 0 failures in ${step.tracking!.daysInReportOnly} days`)
   // The demo's admins policy is the Ready-but-withheld case: Foundation B has
   // carried the lifecycle, and Foundation A will not hand the enforcement over
-  // while the way back in is unverified. So the row offers no date at all —
+  // while the way back in is unverified. So the row offers no date at all --
   // a Ready lifecycle never manufactures one on its own (task 007).
   assert.equal(unavailableReason(step), 'escape-hatch-unverified')
   assert.equal(implementationOffered(step), false)
   assert.equal(rowWhen(step), '')
+  assert.equal(step.events?.enforce.at ?? null, null)
+})
+
+test('rescan: the same ten days with no records read is not ready, and the row says what it is held for', () => {
+  // The same policy and the same ten days, with nothing read about how it
+  // behaved over them. A calendar is not evidence about anybody: the window has
+  // closed and the evidence gate has not, so the step is still being watched and
+  // the column says what it is waiting for instead of offering the change.
+  const f = fixture('demo')
+  const run = runFixture(f)
+  const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
+  const first = runFixture(f).steps.find((s) => s.id === ADMINS)!
+  const rows = (f.snapshot.config.caPolicies?.rows ?? []) as { id?: string }[]
+  const row = rows.find((p) => p.id === first.tracking?.policyId)
+  const watched = { [ADMINS]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf(row?.id), state: 'report-only' as const, semantics: semanticsOf(row as Record<string, unknown>), fields: semanticFieldsOf(row as Record<string, unknown>), firstSeenAt: seenAt, since: 'first-scan' as const, lastSeenAt: seenAt, evidenceAt: null } }, unattributed: null } }
+  applyProgress(run.steps, f.snapshot, run.coverage, f.planId, undefined, null, watched, scopeOf(f))
+  const step = run.steps.find((s) => s.id === ADMINS)!
+  assert.equal(step.tracking?.failures, null, 'no records read is not a clean window')
+  assert.equal(step.tracking?.readyNow, false)
+  assert.equal(step.status, 'in-report-only')
+  assert.equal(statusOf(step).word, 'Report-only')
+  assert.equal(readyWhen(step)?.kind, 'since', 'the window closed and the records did not')
+  assert.equal(rowWhen(step), 'held until the records clear')
   assert.equal(step.events?.enforce.at ?? null, null)
 })
 

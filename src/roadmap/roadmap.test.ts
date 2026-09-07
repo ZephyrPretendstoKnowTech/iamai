@@ -232,8 +232,34 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   // names the object it watched; one that does not cannot carry the window
   // (observation.ts artifactIdOf), which is asserted below.
   const watched = { [step.id]: { members: { [SOLE_MEMBER]: { artifact: artifactIdOf('created-1'), state: 'report-only' as const, semantics: semanticsOf(rowsOf(snap2)[0]), fields: semanticFieldsOf(rowsOf(snap2)[0]), firstSeenAt: '2026-08-18T00:00:00Z', since: 'first-scan' as const, lastSeenAt: '2026-08-18T00:00:00Z', evidenceAt: null } }, unattributed: null } }
-  applyProgress(steps, snap2, input.coverage, PLAN, undefined, null, watched)
+  // Eight days is not a verdict on anybody. The stage needs the evidence gate
+  // too, so the scan is handed the tenant's active people and this policy's own
+  // records over that window: everybody in scope seen, nothing failing
+  // (roadmap/tracking.ts `gates`).
+  const everyone = snap2.users.map((u) => u.id)
+  const clean = {
+    ...snap2,
+    evidencePolicyResults: [
+      {
+        policyId: 'created-1',
+        displayName: 'Created',
+        counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: everyone.length, enforcedFailure: 0, enforcedSuccess: 0 },
+        affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: everyone, enforcedFailure: [], enforcedSuccess: [] },
+        firstReportOnlyAt: null,
+      },
+    ],
+  } as unknown as TenantSnapshot
+  applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
   assert.equal(step.status, 'ready-to-enforce')
+
+  // The same eight days with no records read is not the same answer: the window
+  // has closed and nothing says how the policy behaved over it, so the step is
+  // still being watched.
+  const blind = generateRoadmap(input).steps
+  const blindStep = stepFor(blind, 'mfa-all-users')
+  applyProgress(blind, snap2, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
+  assert.equal(blindStep.tracking?.failures, null, 'no records read is not a clean window')
+  assert.equal(blindStep.status, 'in-report-only', 'a served window is not evidence about anybody')
 
   // The same eight days in a record that never named a policy: it loads, and it
   // decides nothing, because nothing in it says which object was watched.
@@ -243,20 +269,20 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   assert.equal(legacyStep.state.observation?.continuity, 'unknown')
   assert.equal(legacyStep.status, 'in-report-only', 'an unproven window advances nothing')
 
-  const rows = rowsOf(snap2)
+  const rows = rowsOf(clean)
   rows[0] = { ...rows[0], state: 'enabled' }
   // The policy is on, but this coverage still says the goal is missing. A step
   // is done if and only if its goal's verdict is inPlace (target-state §8.2,
   // prompt 46 item 9), so the policy's own state cannot finish it on its own:
   // that is exactly how the Plan came to count 11 in place against Findings' 6.
-  applyProgress(steps, snap2, input.coverage, PLAN)
+  applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
   assert.equal(step.status, 'ready-to-enforce', 'an enabled policy does not make a step done while coverage disagrees')
   // On a real re-scan coverage is recomputed and agrees; then, and only then, the step is done.
   const agreeing = {
     ...input.coverage,
     results: input.coverage.results.map((r) => (r.goal.id === 'mfa-all-users' ? { ...r, status: 'enforced' as const, verdict: 'inPlace' as const } : r)),
   }
-  applyProgress(steps, snap2, agreeing, PLAN)
+  applyProgress(steps, clean, agreeing, PLAN, undefined, null, watched, { activePeople: everyone })
   assert.equal(step.status, 'done')
   assert.equal(step.history.length, 3)
 })

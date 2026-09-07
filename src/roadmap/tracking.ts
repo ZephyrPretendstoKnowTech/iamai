@@ -1,7 +1,8 @@
 // Execution tracking (roadmap-v2.md §5): what actually happened, from
 // evidence. Policies match a step by plan tag first, then by intent
 // fingerprint; dates come from the policy; a report-only policy's readiness
-// to enforce from two gates over the sign-in records; regressions reopen done
+// to enforce from both of its gates — the window the plan asked for *and* the
+// sign-in records over it, never one of them; regressions reopen done
 // steps with a dated note. The user is never asked whether a step is done, or
 // to mark anything ready. Pure.
 //
@@ -284,25 +285,66 @@ function reportOnlySince(change: ObservationChange): { at: string; source: NonNu
  * (it may not be this policy, and on a step whose objects are missing there is no
  * operation at all), and the goal's population describes no policy whatsoever.
  *
- * Null — not empty — where the policy's scope cannot be settled: a group nothing
- * says who is in, a clause IAMAI could not read. Nothing falls back.
+ * Never empty where the answer is not empty, and never a fallback. There are
+ * three answers, and the difference between the last two is what decides whether
+ * the evidence gate has a coverage question to ask at all:
+ *
+ *   * `people` — the active accounts this policy reaches, settled;
+ *   * `uncountable` — the policy's scope names kinds of external user
+ *     (`otherExternalUser` and its siblings), which is a class rather than a set.
+ *     Everything else about the scope read cleanly; what is missing is a census
+ *     this directory cannot take of anybody, on this scan or any later one;
+ *   * `unknown` — something that says who this policy reaches was not read: a
+ *     group nothing says who is in, a clause IAMAI could not parse, or no list
+ *     of active people at all. A later scan can settle it.
+ *
+ * The two used to be one null. They are not the same fact and they must not open
+ * the same door: an unread group is a gap in this scan, and a gap in a scan is
+ * never a pass.
  */
-function trackedScope(policy: PolicyRow, snapshot: TenantSnapshot, ctx: TrackingEvidence, active: ReadonlySet<string> | null): string[] | null {
-  if (active === null) return null
+type TrackedScope = { kind: 'people'; ids: string[] } | { kind: 'uncountable' } | { kind: 'unknown' }
+
+function trackedScope(policy: PolicyRow, snapshot: TenantSnapshot, ctx: TrackingEvidence, active: ReadonlySet<string> | null): TrackedScope {
+  if (active === null) return { kind: 'unknown' }
   const effect = effectOf(policy as Record<string, unknown>)
-  const named = scopeCohort([effect], snapshot.users.map((u) => u.id), snapshot, { groupMembers: ctx.groupMembers })
-  return named === null ? null : named.filter((id) => active.has(id))
+  const everyone = snapshot.users.map((u) => u.id)
+  const cohort = (e: typeof effect): string[] | null => scopeCohort([e], everyone, snapshot, { groupMembers: ctx.groupMembers })
+  const named = cohort(effect)
+  if (named !== null) return { kind: 'people', ids: named.filter((id) => active.has(id)) }
+  // No list. Which of the two reasons it is, asked of the policy itself: take the
+  // guest clauses out and see whether what remains resolves. If it does, the
+  // external class was the only thing standing between this scan and a count; if
+  // it does not, something readable is still missing and the answer stays unknown.
+  if (effect.scope.guests.include === null && effect.scope.guests.exclude === null) return { kind: 'unknown' }
+  const bounded = cohort({ ...effect, scope: { ...effect.scope, guests: { include: null, exclude: null } } })
+  return bounded === null ? { kind: 'unknown' } : { kind: 'uncountable' }
 }
 
 type Gates = Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'>
 
 /**
  * The records' verdict on one member's policy, and the two gates on one in
- * report-only (constants.ts OBSERVATION_DAYS): the time gate, ready on `since`
- * plus the step's observation window; the evidence gate, ready now when the
- * records since `since` show zero failures and every active person the *policy*
- * reaches at least once. Whichever comes first. `since` is null for a policy not
- * in report-only.
+ * report-only (constants.ts OBSERVATION_DAYS): the time gate, closed on `since`
+ * plus the step's observation window; the evidence gate, closed when the records
+ * since `since` show zero failures and every active person the *policy* reaches
+ * at least once. `since` is null for a policy not in report-only.
+ *
+ * **Both**, and `readyNow` is that conjunction. The gates used to be alternatives
+ * — "whichever comes first" — and each of them alone says something the other
+ * has to supply:
+ *
+ *   * the time gate is a calendar fact. A week passing is not evidence about
+ *     anybody, so on its own it made a policy with twelve failing sign-ins, or
+ *     with no records read at all, Ready to enforce — and Foundation A then
+ *     handed over the update that enforces it the moment it lands. That is
+ *     unknown, and failure, converted into readiness by nothing but time.
+ *   * the evidence gate is a reading of a window the plan has not finished
+ *     watching. Clean records on day two are clean records for two days; the
+ *     observation window is the plan's own statement of how long a tenant has to
+ *     be watched before that reading means anything.
+ *
+ * So neither opens this on its own, and unknown never opens the evidence half:
+ * no records read is `failures === null`, which is not zero (see below).
  *
  * Everything it reads is about the one deployed object it was handed: another
  * member's records are another policy's records, and never reach this.
@@ -317,9 +359,14 @@ function gates(
   activeSet: ReadonlySet<string> | null,
 ): Gates {
   const covered = snapshot.sources.signInEvidence?.coveredWindow ?? null
-  const active = trackedScope(policy, snapshot, ctx, activeSet)
+  const scope = trackedScope(policy, snapshot, ctx, activeSet)
+  const active = scope.kind === 'people' ? scope.ids : null
   const daysInReportOnly = since ? daysBetween(since, snapshot.asOf) : 0
   const readyOn = since ? new Date(Date.parse(since) + observationDaysFor(step) * DAY).toISOString() : null
+  // The time gate, as a verdict rather than a date: the step's own observation
+  // window has been served by this policy. Half of `readyNow`, and never the
+  // whole of it.
+  const windowClosed = readyOn !== null && Date.parse(readyOn) <= Date.parse(snapshot.asOf)
   // No result for this policy at all: nothing was read about it, so there is no
   // failure count. A zero here is the shape of an empty set, not a clean window,
   // and every line under it reads "0 failing or interrupted" exactly as it reads
@@ -343,10 +390,34 @@ function gates(
   return {
     daysInReportOnly,
     readyOn,
-    // A scope nobody established is not an empty scope: with no in-scope list the
-    // "everybody seen" half of the gate would be vacuously true, so the evidence
-    // gate cannot open at all and the time gate is the only way through.
-    readyNow: active !== null && seenInScope !== null && since !== null && signIns > 0 && failures === 0 && seenInScope === active.length,
+    // Both gates on this member's own policy.
+    //
+    // Records of *this* policy over its own window, and none of them failing, is
+    // asked of every policy and is never inferred: `signIns > 0` because an empty
+    // set is not a clean window, and `failures === 0` because unknown (`null`) is
+    // not zero. On top of that, every active person the policy reaches seen at
+    // least once — a question that needs a scope which is a list, and so is asked
+    // of the three answers `trackedScope` gives in the three ways they deserve:
+    //
+    //   * `people`: all of them, seen. The ordinary case, and the strict one;
+    //   * `uncountable`: there is no census to take of an external class, on this
+    //     scan or any later one, so the gate asks what can be asked and asks it
+    //     harder — enough records to judge on (MIN_SIGNINS_TO_JUDGE), none of
+    //     them failing. Refusing the stage outright instead would not make one
+    //     tenant safer: the pinned guests pair would never become enforceable
+    //     through IAMAI at all, and the operator would turn it on in the portal
+    //     with none of this evidence in front of them. The row still reports no
+    //     count, because there is none to report;
+    //   * `unknown`: nothing passes. Something a later scan can read is missing,
+    //     and a gap in a scan is not a pass.
+    //
+    // What none of the three does is let time stand in for evidence.
+    readyNow:
+      windowClosed &&
+      since !== null &&
+      signIns > 0 &&
+      failures === 0 &&
+      (scope.kind === 'people' ? seenInScope === scope.ids.length : scope.kind === 'uncountable' && signIns >= MIN_SIGNINS_TO_JUDGE),
     seenInScope,
     activeInScope: active?.length ?? null,
     signIns,
@@ -477,9 +548,10 @@ function aggregateTracking(members: MemberTracking[], observed: ObservedState[],
   const lowest = observed.reduce((a, b) => (stageRank(b) < stageRank(a) ? b : a), 'enforced' as ObservedState)
   const state = members[observed.findIndex((s) => s === lowest)]?.state ?? 'absent'
   // Every member's own ready date, and the pair is not ready until the last of
-  // them is. A member that met its evidence gate is ready at this scan, so that
-  // is the date it contributes.
-  const readyDates = watched.map((m) => (m.readyNow && m.readyOn && Date.parse(m.readyOn) > Date.parse(snapshot.asOf) ? snapshot.asOf : m.readyOn))
+  // them is. No member is ready before its own window closes any more (`gates`),
+  // so `readyOn` is always the earliest day that member could be ready and there
+  // is nothing to pull forward.
+  const readyDates = watched.map((m) => m.readyOn)
   const readyOn = deployed && watched.length > 0 && !readyDates.some((d) => d === null) ? latest(readyDates) : null
   const reportOnlyAt = deployed && watched.length > 0 ? latest(watched.map((m) => m.reportOnlyAt)) : null
   const source = watched.find((m) => m.reportOnlyAt === reportOnlyAt)?.reportOnlyAtSource ?? null
@@ -609,7 +681,6 @@ export function trackExecution(
       // records look; what may still open a gate is Microsoft's own evidence
       // about the object deployed *now* (observation.ts historyReset, admit).
       const usable = !(historyReset(change) && change.latest.evidenceAt === null)
-      const timeGate = memberGates.readyOn !== null && Date.parse(memberGates.readyOn) <= Date.parse(snapshot.asOf)
       // And a member whose policy no longer means what the plan asked for is
       // ready on nothing, however clean its window and its records look: what
       // was watched is not what would be enforced, and only a person can say
@@ -643,7 +714,11 @@ export function trackExecution(
       const asked = m.op ? intentOf(m.op.body) : null
       const deployedFields = semanticFieldsOf(policyRow as Record<string, unknown> | null)
       const asPlanned = asked !== null && Object.entries(asked.controls).every(([dimension, value]) => deployedFields[dimension] === value)
-      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && (memberGates.readyNow || timeGate)
+      // `memberGates.readyNow` is both gates already (`gates`), so this line adds
+      // the reasons that have nothing to do with the window or the records and
+      // takes nothing away from them: there is one place where a member becomes
+      // ready, and it needs every gate.
+      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && memberGates.readyNow
       memberTracking.push({
         key: m.key,
         sourceName: m.sourceName,
@@ -761,13 +836,13 @@ export function trackExecution(
     if ((lifecycle === 'report-only' || lifecycle === 'ready-to-enforce') && tracking.reportOnlyAt) {
       advance(step, { lifecycle: 'report-only' }, `${fillText(TRACK.reportOnlyFound, { date: absoluteDate(tracking.reportOnlyAt) })}; ${tracking.note}`, now)
       // Ready to enforce only when every required member is: each one enforced
-      // already, or through its own gate on its own records. One member's clean
-      // window has never been another's, and the note names whichever gate the
-      // last of them came through.
+      // already, or through *both* of its own gates on its own window and its
+      // own records. One member's clean window has never been another's, and the
+      // note is the evidence that earned it — there is no other way in, so there
+      // is no other note.
       if (lifecycle === 'ready-to-enforce') {
         const ready = readyWhen(step)
         if (ready?.kind === 'now') advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readyNow, { n: ready.days }), now)
-        else if (ready) advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readySince, { date: absoluteDate(ready.date) }), now)
       }
       continue
     }

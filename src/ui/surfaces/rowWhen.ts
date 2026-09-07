@@ -15,7 +15,7 @@ import { awaitingDeployment } from '../../roadmap/forecast.ts'
 import { heldByReadiness } from '../../derive/finish.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 
-const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; readySince: string; heldForReview: string }
+const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; heldForEvidence: string; heldForReview: string }
 
 export function rowWhen(step: Step, waveStart: string | null = null): string {
   // A done step's row shows no date word: blank, never "now".
@@ -38,7 +38,15 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // happens to it now, and the evidence that earned it goes on the reason line
   // below (`rowReason`). "Ready to enforce · ready since Aug 29" said the state
   // twice and the date of the change not at all.
-  if (ready && step.status !== 'ready-to-enforce') return ready.kind === 'now' ? PLAN.readyNow : fillText(ready.kind === 'since' ? PLAN.readySince : PLAN.readyOn, { date: absoluteDate(ready.date) })
+  // A window that has closed on records that have not cleared it is not a date:
+  // there is no day on which the records complete themselves, so the column says
+  // what the step is waiting for and `rowReason` below carries the numbers. It
+  // used to read "ready since Aug 29" — the one sentence that told an operator a
+  // policy with unread or failing records was theirs to turn on.
+  if (ready && step.status !== 'ready-to-enforce') {
+    if (ready.kind === 'now') return PLAN.readyNow
+    return ready.kind === 'since' ? PLAN.heldForEvidence : fillText(PLAN.readyOn, { date: absoluteDate(ready.date) })
+  }
   if (step.kind === 'prerequisite' || step.kind === 'check') return PLAN.now
   // A policy the plan cannot write yet has no date of its own, takes none from
   // the wave it sits in, and is not happening "now": its row says why it waits
@@ -65,7 +73,7 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
  * and a step held for review says it is held.
  */
 export function rowWhenWraps(step: Step): boolean {
-  return heldByReadiness(step) || heldForReview(step)
+  return heldByReadiness(step) || heldForReview(step) || (step.status !== 'ready-to-enforce' && readyWhen(step)?.kind === 'since')
 }
 
 /**
@@ -88,6 +96,13 @@ export function rowReason(step: Step): string | null {
     const ready = readyWhen(step)
     return ready ? readyBasis(ready) : null
   }
+  // And the same numbers under a policy whose window has closed on records that
+  // have not: the column says it is held for them, and this says what they show
+  // — how many failed, how many of the people in scope the records have seen. It
+  // is the fact that decides whether the operator waits another day or goes and
+  // looks at somebody's sign-ins.
+  const ready = readyWhen(step)
+  if (ready?.kind === 'since') return readyBasis(ready)
   if (step.status === 'blocked' && step.blockedReason && !heldByReadiness(step)) return step.blockedReason
   return null
 }

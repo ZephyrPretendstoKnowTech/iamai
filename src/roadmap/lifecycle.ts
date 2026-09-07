@@ -271,8 +271,16 @@ export function nextMilestone(step: Step): Milestone {
   if (s.lifecycle === 'report-only') {
     // A policy this scan found rewritten is being watched from here, and the
     // milestone says so rather than naming a window it has not served.
-    const at = step.tracking?.readyOn ?? null
-    const label = s.observation && historyReset(s.observation) ? s.observation.note : at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(at) }) : MILESTONE.observe
+    const readyOn = step.tracking?.readyOn ?? null
+    // A window that has already closed is not a day anything is waiting for: the
+    // step is in report-only *after* its review day because the records have not
+    // cleared it (derive/readyWhen.ts, kind `since`), and "Leave it in
+    // report-only until Aug 29" on Sep 5 is a milestone in the past. What it is
+    // waiting for is the records, and no date says when they complete.
+    const closed = readyOn !== null && step.tracking?.noticedAt != null && Date.parse(readyOn) <= Date.parse(step.tracking.noticedAt)
+    const at = closed ? null : readyOn
+    const label =
+      s.observation && historyReset(s.observation) ? s.observation.note : closed ? MILESTONE.observeRecords : at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(at) }) : MILESTONE.observe
     return { kind: 'observe', label, at, gatedBy: null }
   }
   if (s.condition === 'needs-decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }

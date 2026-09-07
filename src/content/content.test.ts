@@ -74,6 +74,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.datesReview',
   // The row's date column for that same step, for the same reason.
   '.pages.plan.heldForReview',
+  // And the same column for a policy whose observation window closed on records
+  // that have not cleared it (rowWhen.ts, derive/readyWhen.ts kind `since`):
+  // also a reading of a scan, which the review page does not have.
+  '.pages.plan.heldForEvidence',
   '.pages.home.metaTitle',
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.export.unredactedWarning',

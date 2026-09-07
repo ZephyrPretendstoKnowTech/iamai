@@ -60,7 +60,11 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // nothing to do until then. Its day is the day IAMAI saw the change
     // (Foundation B, roadmap/lifecycle.ts heldForReview).
     const held = heldForReview(s) ? (s.state.observation?.latest.firstSeenAt ?? null) : null
-    const start = planned === null ? null : held ? held : deploying ? (s.reportOnlyAt ?? null) : reviewing ? reviewing.date : planned
+    // A review whose day has already passed is due now, not on the day it was
+    // due: the window closed and the records did not clear it, so the entry goes
+    // on the scan rather than into last week (derive/readyWhen.ts, kind `since`).
+    const review = reviewing === null ? null : reviewing.kind === 'since' ? (s.tracking?.noticedAt ?? reviewing.date) : reviewing.date
+    const start = planned === null ? null : held ? held : deploying ? (s.reportOnlyAt ?? null) : review ? review : planned
     const single = deploying || reviewing !== null || held !== null
     const end = start === null ? null : single ? start : (s.rings.at(-1)?.plannedEnd ?? start)
     if (!start || !end) continue
