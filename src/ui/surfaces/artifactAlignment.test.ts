@@ -14,7 +14,7 @@
 // sentence lives.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
+import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -30,6 +30,8 @@ import { powershellFor } from './stepPowerShell.ts'
 import { finalTargets, unavailableReason } from '../../roadmap/operations.ts'
 import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
+import { scheduledIds, undatedRows } from './planRows.ts'
+import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
 import { readFileSync } from 'node:fs'
 
@@ -397,4 +399,102 @@ test('013.G: the bundle carries the screen’s reading of a step and none of the
     for (const key of ['rings', 'events', 'plainTitle', 'forManager']) assert.equal(key in row, false, `the bundle carries the engine's ${key}`)
     for (const key of ['stage', 'condition', 'next', 'who', 'fix', 'doneWhen', 'implementation']) assert.ok(key in row, `the bundle drops the contract's ${key}`)
   }
+})
+
+// ---- H. the printed plan is the Plan ----
+//
+// The document a person takes to a meeting is the same plan the screen shows. It
+// printed the dated work only — it walked `schedule.waves` — and the group the
+// Plan draws after the phases fell out of it: the undated rows, which are
+// exactly the steps whose implementation is withheld because something has to be
+// cleared first. A PDF that says nine things remain and explains none of them is
+// not the plan. Both surfaces read one rule now (planRows.ts), and these tests
+// hold that rule rather than the markup: what a step prints is ContentStep's,
+// and ContentStep is the screen's own body.
+
+/** Where the plan puts each step, from the one positional rule both surfaces read. */
+function placed(run: FixtureRun): { printed: Set<string>; held: Step[] } {
+  const held = undatedRows(run.steps, run.schedule.waves)
+  return { printed: new Set([...scheduledIds(run.schedule.waves), ...held.map((s) => s.id)]), held }
+}
+
+test('013.H: the printed plan carries every step the Plan draws, the undated held rows included', () => {
+  const reasons = new Set<string>()
+  let heldSeen = 0
+  for (const c of CASES) {
+    const { printed, held } = placed(c.run)
+    // Nothing the Plan would draw as a row is missing from the document.
+    for (const s of c.run.steps) {
+      if (!inWave(s) || s.status === 'done') continue
+      assert.ok(printed.has(s.id), `${c.name}: ${s.id} renders on the Plan and is in no printed section`)
+    }
+    // And nothing prints twice: the groups are disjoint from the dated waves.
+    const dated = scheduledIds(c.run.schedule.waves)
+    for (const s of held) assert.equal(dated.has(s.id), false, `${c.name}: ${s.id} is dated and in the undated group`)
+    heldSeen += held.length
+    for (const s of held) {
+      const view = c.view(s)
+      const contract = stepContract(s, c.ctx(s))
+      // Every held step still carries its one next action.
+      assert.ok(view.whatToDo.length > 0 && view.whatToDo.every((l) => l.trim().length > 0), `${c.name}: ${s.id} prints no action`)
+      const reason = unavailableReason(s)
+      if (reason === null) continue
+      reasons.add(reason)
+      // Why it is held is on the page: a blocker to clear, or the reason line
+      // where the answer is not the operator's to go and do (a baseline that
+      // contradicts itself waits for a reviewed baseline).
+      const because = contract.implementation.offered ? null : contract.implementation.because
+      assert.ok(contract.fix.length > 0 || (because !== null && because.length > 0), `${c.name}: ${s.id} prints neither a blocker nor a reason`)
+      // And the withheld work stays withheld: no implementation, no rollout
+      // dates, no announcement, no way back for a change nobody can make.
+      assert.equal(contract.implementation.offered, false, `${c.name}: ${s.id} is held and offers an implementation`)
+      assert.equal(implementationOffered(s), false, `${c.name}: ${s.id} is held and has operations to run`)
+      assert.equal(jsonOffered(s), false, `${c.name}: ${s.id} is held and offers JSON`)
+      assert.equal(view.dates, null, `${c.name}: ${s.id} is held and prints rollout dates`)
+      assert.equal(view.ifWrong, null, `${c.name}: ${s.id} is held and prints a way back`)
+      assert.equal(c.entry(s), undefined, `${c.name}: ${s.id} is held and has a calendar entry`)
+    }
+  }
+  assert.ok(heldSeen > 0, 'no fixture holds a step: this test proves nothing')
+  // The three the document most needs to explain are all in the sweep.
+  for (const reason of ['missing-object', 'baseline-conflict', 'escape-hatch-unverified']) {
+    assert.ok(reasons.has(reason), `no fixture prints a held step for ${reason}`)
+  }
+})
+
+test('013.H: an unanswered decision leaves the work it holds in the printed plan, with what clears it', () => {
+  // The one decision a fixture can be stripped of (mapping/safetyChoice.ts): with
+  // it unanswered, the exclusions group cannot be settled and the policies that
+  // name it lose their dates. The step that asks the question keeps its date, and
+  // the work waiting on it prints in the undated group.
+  const f = noExclusionsAnswer(fixture('small'))
+  const run = runFixture(f)
+  const nameOf = (id: string): string => run.input.names?.label(id) ?? id
+  const ctx = (s: Step): StepVarContext =>
+    ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
+  const { printed, held } = placed(run)
+  assert.ok(held.length > 0, 'an unanswered exclusions decision dates every policy')
+  const asking = run.steps.find((s) => stepContract(s, ctx(s)).fix.some((x) => x.key.startsWith('decision:')))
+  assert.ok(asking, 'no step carries the unanswered decision')
+  assert.ok(printed.has(asking!.id), 'the step that asks the question is not in the document')
+  for (const s of held) {
+    const contract = stepContract(s, ctx(s))
+    assert.ok(contract.whatToDo.text.trim().length > 0, `${s.id} prints no action`)
+    assert.equal(contract.implementation.offered, false, `${s.id} is held and offers an implementation`)
+    const because = contract.implementation.offered ? null : contract.implementation.because
+    assert.ok(contract.fix.length > 0 || (because !== null && because.length > 0), `${s.id} prints neither a blocker nor a reason`)
+  }
+})
+
+test('013.H: the document reads the Plan’s row rule and writes none of its own', () => {
+  const src = readFileSync(new URL('./PrintPlan.tsx', import.meta.url), 'utf8')
+  assert.match(src, /import \{ undatedRows \} from '\.\/planRows\.ts'/, 'the print derives its own group')
+  assert.match(src, /undatedRows\(steps, schedule\.waves\)/, 'the print does not read the undated group')
+  // Both printed step sections use the screen's own step body, which is what
+  // withholds the implementation, the dates, the announcement and the rollback.
+  assert.equal(src.match(/<ContentStep step=\{s\}/g)?.length, 2, 'a printed step section builds a body of its own')
+  // And the Plan reads the same rule, so neither surface can decide alone which
+  // steps a plan has.
+  const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
+  assert.match(plan, /undatedRows\(c\.steps, c\.schedule\.waves\)/, 'the Plan no longer reads the undated group')
 })

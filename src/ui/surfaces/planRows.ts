@@ -7,6 +7,9 @@
 // the waves do not carry renders in the undated group whatever changed since the
 // schedule was built.
 //
+// The screen and the printed document read this one rule, so a plan taken to PDF
+// carries the same work the Plan shows — the held rows included (task 013).
+//
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
 import { inWave } from '../../derive/phases.ts'

@@ -974,6 +974,10 @@
           "dates": "Dates",
           "steps": "Steps"
         },
+        "held": {
+          "heading": "Waiting on something else",
+          "lead": "These steps have no date yet. Each one below says what is holding it and what clears it. Until it is cleared there is nothing to submit, so no policy, no rollout dates, no announcement and no way back are given for it."
+        },
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",
         "observationText": "Every new policy collects report-only evidence at the same time."
