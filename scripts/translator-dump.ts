@@ -117,7 +117,7 @@ export function buildTranslatorOutput(): Record<string, { steps: string[] }> {
     const lines = stepPortalLines(asStep, {
       nameOf: (id: string) => dir.label(id),
       strengthNameFor: (id: string) => authorStrengthNames.get(id.toLowerCase()) ?? null,
-      policyName: typeof example.policyName === 'string' ? example.policyName : step.title,
+      policyName: typeof example.policyName === 'string' ? example.policyName : (step.title ?? step.id),
       strengthName: typeof example.strengthName === 'string' ? example.strengthName : null,
     })
     if (lines && lines.length > 0) out[step.id] = { steps: lines }

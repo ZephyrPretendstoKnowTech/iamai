@@ -4,12 +4,18 @@
 // is dropped (walk-51 item 2). The live controls (E3): Done records the row's
 // date in the plan's checkpoints; the not-assessed row takes a per-policy
 // "does not apply" note with its reason, stored in the plan file.
+//
+// It draws its sections with the step components and the one heading source
+// (task 011), so a Cleanup row reads as the same kind of thing as a step rather
+// than as a page that happens to sit under the same board.
 import { useState } from 'react'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { app } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { Button, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
+import { DoneWhen, StepSection } from './StepSections.tsx'
+import { HEAD } from './stepHeadings.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 import type { NotAssessedNotes } from './cleanupExport.ts'
 
@@ -50,17 +56,23 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
       <p className="line">
         <span className="step-title">{entry.title}</span> <Status tone={status.tone}>{status.word}</Status>
       </p>
-      <h3>Why</h3>
-      <p>
-        {fillText(entry.why, ex)}{' '}
-        {entry.learn?.url && (
-          <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
-            Learn →
-          </a>
-        )}
-      </p>
-      <h3>What to do</h3>
-      <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
+      {/* The same sections, in the same order, under the same headings as a step
+          (StepSections.tsx, stepHeadings.ts). A Cleanup row is not a policy and
+          has no lifecycle to be at, so it activates fewer of them; it does not
+          get its own layout for the ones it does. */}
+      <StepSection heading={HEAD.why}>
+        <p>
+          {fillText(entry.why, ex)}{' '}
+          {entry.learn?.url && (
+            <a href={entry.learn.url} target="_blank" rel="noopener noreferrer">
+              Learn →
+            </a>
+          )}
+        </p>
+      </StepSection>
+      <StepSection heading={HEAD.whatToDo}>
+        <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
+      </StepSection>
       {onNote && policies.length > 0 && (
         <div className="decision">
           <div className="dlabel">{A.notAssessedLabel}</div>
@@ -73,12 +85,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           ))}
         </div>
       )}
-      {doneWhen.length > 0 && (
-        <>
-          <h3>Done when</h3>
-          <ul className="sections">{doneWhen.map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ul>
-        </>
-      )}
+      <DoneWhen heading={HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
       {onDone && (
         <div className="decision">
           <div className="dlabel">{A.cleanupDoneOn}</div>

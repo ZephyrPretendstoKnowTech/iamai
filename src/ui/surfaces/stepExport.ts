@@ -10,7 +10,7 @@
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { ExportStep, Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { fillText, listCountVars, whole } from '../../content/render.ts'
 import { stepVars } from './stepVars.ts'
@@ -118,12 +118,13 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
 export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   if (!cs) {
-    // No content entry (the free-tier ladder): the screen renders no body for
-    // it, so the export carries its title and nothing of the engine's prose.
-    return { title: step.plainTitle || step.title, why: '', whatToDo: [], doneWhen: [], ifWrong: null, dates: null }
+    // No content entry at all. Every step the plan draws has one now (task 011),
+    // so this is a step nothing has words for: the export carries its title and
+    // none of the engine's prose, exactly as the screen does.
+    return { title: contentTitle(step), why: step.why, whatToDo: [], doneWhen: [], ifWrong: null, dates: null }
   }
   const ex = stepVars(step, ctx)
-  const names = portalNamesFor(ctx, ex, String(cs.title))
+  const names = portalNamesFor(ctx, ex, contentTitle(step))
   const portal = cs.kind === 'policy' ? stepPortalLines(step, names) : null
   // The screen's rule, in the export: where no implementation is offered the
   // export carries the explanation, never the instructions
@@ -210,8 +211,8 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // unchanged.
   const doneWhen = contract && own.length > 0 ? contract.doneWhen : own
   return {
-    title: String(cs.title),
-    why: fillText(cs.why, ex),
+    title: contentTitle(step),
+    why: typeof cs.why === 'string' ? fillText(cs.why, ex) : step.why,
     whatToDo: lines,
     doneWhen,
     ifWrong: reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) ? fillText(ifWrongLineFor(step, cs), ex) : null,
@@ -328,7 +329,7 @@ export function managerText(cs: Record<string, unknown>, ex: Record<string, unkn
  */
 export function stepLines(step: Step, ctx: StepVarContext): string[] {
   const cs = contentStepFor(step) as Record<string, any> | undefined
-  if (!cs) return [step.plainTitle || step.title]
+  if (!cs) return [contentTitle(step)]
   const ex = stepVars(step, ctx) as Record<string, unknown>
   const out: string[] = []
   const add = (line: unknown, vals: Record<string, unknown> = ex): void => {

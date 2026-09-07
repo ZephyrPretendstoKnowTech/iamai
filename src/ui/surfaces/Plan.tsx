@@ -19,11 +19,10 @@ import { inWave, waveLabels } from '../../derive/phases.ts'
 import { undatedRows } from './planRows.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
-import { facts, stepFacts } from '../../derive/facts.ts'
+import { stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip } from '../components/index.ts'
-import { LadderTiles } from './LadderTiles.tsx'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
@@ -61,9 +60,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const onScan = (returnTo: string): void => void runScan(returnTo)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
-  // The tenant's facts (derive/facts.ts), the same numbers Today and Connect show, once the mapping has loaded.
-  const snapshot = scan?.snapshot ?? null
-  const counts = useMemo(() => (snapshot && data.mapping ? facts(snapshot, data.mapping) : null), [snapshot, data.mapping])
   useEffect(() => {
     const onHash = () => setOpen(stepFromPlanHash(window.location.hash))
     window.addEventListener('hashchange', onHash)
@@ -148,9 +144,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
         {line1}
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </p>
-      {/* The MFA readiness ladder (docs/design/mockups/plan-top-v2.html): the header and
-          five tiles under the steps line, each linking to Today filtered to its rung. */}
-      {counts && <LadderTiles counts={counts} />}
+      {/* Nothing sits between the header line and the board. The MFA readiness
+          ladder was a tenant-wide diagnostic on a page whose job is the rollout,
+          and it answered a question no step on this page asks; it stays on Today,
+          where the person-level evidence it summarises lives (task 011). A step
+          whose own action turns on someone's registered methods says so itself. */}
       {/* The start (§5), in this order: the Start date field (default: today in the
           display zone, proposed again on every visit; the same control as Plan
           settings' inputs), Start the plan under it, which locks the date shown,

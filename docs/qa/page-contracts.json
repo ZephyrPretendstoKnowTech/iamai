@@ -631,15 +631,12 @@
       "allow": {
         "headings": [
           "Why",
+          "What IAMAI found",
           "Who this touches",
           "What to do",
+          "Fix before continuing",
           "Dates",
-          "Done when",
-          "If it goes wrong",
-          "If a change locks you out",
-          "Tell your people",
-          "What IAMAI found",
-          "Fix before continuing"
+          "Done when"
         ],
         "tabs": [
           "Portal steps",
@@ -750,10 +747,14 @@
       },
       "allow": {
         "headings": [
+          "Named, for the record",
           "What could go wrong",
           "Also possible",
           "Prerequisites",
           "What waits on this",
+          "If it goes wrong",
+          "If a change locks you out",
+          "Tell your people",
           "For the help desk",
           "For your manager",
           "What IAMAI can't see"
@@ -778,8 +779,8 @@
         ]
       },
       "budget": {
-        "sentences": 50,
-        "words": 800
+        "sentences": 120,
+        "words": 2000
       },
       "forbid": [
         "Exit criteria",

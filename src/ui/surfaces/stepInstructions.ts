@@ -74,6 +74,22 @@ export function stepInstructions(step: Step, cs: ContentStepLike, ex: Record<str
   const lines = cs?.kind === 'policy' ? stepPortalLines(step, names) : null
   const portal = lines && lines.length > 0 ? lines : null
   const before = held ? [] : (Array.isArray(w.before) ? (w.before as unknown[]) : []).filter((l): l is string => typeof l === 'string' && whole(l, ex)).map((l) => fillText(l, ex))
-  const steps = held || portal !== null ? [] : (Array.isArray(w.steps) ? (w.steps as unknown[]) : [])
+  const own = Array.isArray(w.steps) ? (w.steps as unknown[]) : []
+  const steps = held || portal !== null ? [] : own.length > 0 ? own : engineSteps(step, cs)
   return { portal, before, steps, held }
+}
+
+/**
+ * A step whose instructions the engine composed rather than the content file: a
+ * validation blocker, whose actions are one per failing check and so cannot be
+ * written down in advance (roadmap/blockerSteps.ts). They are the step's own
+ * `action.portalSteps`, which until now nothing rendered.
+ *
+ * Never a policy step. There the portal lines are the translator's, and a policy
+ * step's `action.portalSteps` is whatever the last generation left on it, which
+ * is exactly the second source of instructions this module exists to prevent.
+ */
+function engineSteps(step: Step, cs: ContentStepLike): unknown[] {
+  if (cs?.kind === 'policy') return []
+  return step.action.portalSteps ?? []
 }

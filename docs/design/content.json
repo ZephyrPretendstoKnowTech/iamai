@@ -828,7 +828,23 @@
           "fixStep": "Finish {step} first.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
-          "doneSetAside": "Nothing is expected of this step while it is set aside."
+          "doneSetAside": "Nothing is expected of this step while it is set aside.",
+          "headings": {
+            "$comment": "The section titles the Plan draws a step with, in the order the contract states them. One source: the opened step, the Cleanup rows and the review page all read these, so a heading cannot say one thing on one surface and another somewhere else.",
+            "why": "Why",
+            "who": "Who this touches",
+            "whatToDo": "What to do",
+            "dates": "Dates",
+            "doneWhen": "Done when",
+            "ifWrong": "If it goes wrong",
+            "comms": "Tell your people",
+            "helpDesk": "For the help desk",
+            "manager": "For your manager",
+            "risks": "What could go wrong",
+            "alsoPossible": "Also possible",
+            "more": "More",
+            "namesHeld": "Named, for the record"
+          }
         }
       },
       "today": {
@@ -4522,6 +4538,282 @@
           "{reportOnlyLine}"
         ]
       }
+    },
+    {
+      "id": "s-ladder-security-defaults",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
+      },
+      "whatToDo": {
+        "lead": "Security defaults are the whole control surface on this licence. Turn them on.",
+        "steps": [
+          "Entra admin center → Entra ID → Overview → Properties → Manage security defaults.",
+          "Enabled → Save.",
+          "Tell everyone they will be asked to register Microsoft Authenticator at their next sign-in, and give anyone who cannot a way to reach the help desk."
+        ]
+      },
+      "doneWhen": [
+        "Security defaults report Enabled, and everyone who holds a role has registered a method."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-break-glass-accounts",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
+      },
+      "whatToDo": {
+        "lead": "Create two emergency accounts and prove they work, before anything else on this list can lock somebody out.",
+        "steps": [
+          "Entra admin center → Identity → Users → New user, twice, on the tenant’s onmicrosoft.com domain and with no licence.",
+          "Give each one Global Administrator, and a long random password stored where two people can reach it without signing in to this tenant.",
+          "Sign in with each account once, and write down the date."
+        ]
+      },
+      "doneWhen": [
+        "Two emergency accounts exist, each has signed in at least once, and their passwords are reachable without a working sign-in to this tenant."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-legacy-auth-inventory",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy"
+      },
+      "whatToDo": {
+        "lead": "Find what still authenticates the old way, so blocking it later breaks nothing you did not expect.",
+        "steps": [
+          "Entra admin center → Identity → Monitoring & health → Sign-in logs, and add the Client app column.",
+          "Filter the last 30 days to the legacy clients: Exchange ActiveSync, IMAP, POP, SMTP, Other clients.",
+          "For every account that appears, find the application behind it and move it to modern authentication, or retire it."
+        ]
+      },
+      "doneWhen": [
+        "Thirty days of sign-in logs show no successful legacy-client sign-in, or every one left has a named owner and a date it moves."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-app-passwords",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
+      },
+      "whatToDo": {
+        "lead": "An app password is a credential that skips MFA. Retire what needs one, then stop new ones being made.",
+        "steps": [
+          "Entra admin center → Entra ID → Authentication methods → Policies, and find the accounts that still hold app passwords.",
+          "Move each application behind them to modern authentication.",
+          "Turn app passwords off once nothing depends on them."
+        ]
+      },
+      "doneWhen": [
+        "No account holds an app password, and the tenant no longer allows a new one to be created."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-per-user-mfa-cleanup",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
+      },
+      "whatToDo": {
+        "lead": "Per-user MFA prompts on its own terms and overrides whatever else decides. Move it to the methods policy.",
+        "steps": [
+          "Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration in progress.",
+          "Under Policies, enable every method people actually use, so nobody loses the one they have.",
+          "Entra admin center → Entra ID → Users → Per-user MFA, and set every account to Disabled.",
+          "Manage migration → Migration complete."
+        ]
+      },
+      "doneWhen": [
+        "The tenant reports Migration complete, and no account is left Enabled or Enforced for per-user MFA."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-admin-accounts-separate",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
+      },
+      "whatToDo": {
+        "lead": "Give each admin a second account that holds the role and nothing else, so a phishing email opens a mailbox and not the tenant.",
+        "steps": [
+          "Entra admin center → Identity → Users → New user, one per person who holds a directory role, with no mailbox licence.",
+          "Assign the role to the new account and remove it from the daily-driver account.",
+          "Register a method on each new account, and confirm the person can sign in with it before the old assignment goes."
+        ]
+      },
+      "doneWhen": [
+        "Every directory role is held by an account with no mailbox, and no daily-driver account holds one."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-global-admin-count",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/best-practices"
+      },
+      "whatToDo": {
+        "lead": "Global Administrator can undo anything, including the controls on this list. Bring the count down to what the work needs.",
+        "steps": [
+          "Entra admin center → Identity → Roles & admins → Global Administrator, and list who holds it and why.",
+          "For each holder who does not need the whole tenant, assign the least role that does their job instead.",
+          "Leave the emergency accounts alone; they are counted here, and they are the way back in."
+        ]
+      },
+      "doneWhen": [
+        "Between two and four accounts hold Global Administrator, the emergency accounts among them, and everyone else holds a narrower role."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-guest-review",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa"
+      },
+      "whatToDo": {
+        "lead": "Remove the guests nobody sponsors, so what is left is what any later guest control has to protect.",
+        "steps": [
+          "Entra admin center → Identity → Users, filter User type to Guest, and add the Creation time and Last sign-in columns.",
+          "For each guest, find who invited them and whether the work is still running; delete the ones nobody owns.",
+          "Delete the invitations that were never accepted."
+        ]
+      },
+      "doneWhen": [
+        "Every remaining guest has a sponsor and a reason to be there, and no invitation is left pending."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-stale-accounts",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
+      },
+      "whatToDo": {
+        "lead": "An account nobody uses is an account nobody notices being used. Disable the silent ones.",
+        "steps": [
+          "Entra admin center → Identity → Users, add the Last sign-in column, and sort by it.",
+          "For each account silent for 90 days, confirm with its manager that it is not a shared or seasonal login.",
+          "Set Block sign-in on the ones nobody claims, and delete them after 30 days if nothing surfaces."
+        ]
+      },
+      "doneWhen": [
+        "No enabled account has been silent for 90 days, or each one that has is recorded as deliberate."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-authenticator-over-sms",
+      "kind": "ladder",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods"
+      },
+      "whatToDo": {
+        "lead": "Text and call codes are the tier an attacker can intercept without touching the phone. Move people off them before turning them off.",
+        "steps": [
+          "Entra admin center → Entra ID → Authentication methods → Policies, and enable Microsoft Authenticator and passkeys for everyone.",
+          "Ask the people still on text message or voice call to register Authenticator, and give them a date.",
+          "Set Text message and Voice call to disabled once nobody is relying on them."
+        ]
+      },
+      "doneWhen": [
+        "Text message and voice call are off in the authentication methods policy, and everyone who used them has registered Authenticator or a passkey."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-blocker-trusted-location",
+      "kind": "blocker",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
+      },
+      "whatToDo": {
+        "lead": "Put the trusted location right: its addresses decide who is never challenged, so every policy that names it inherits whatever is wrong with it."
+      },
+      "doneWhen": [
+        "Every must-fix check on the trusted location passes on the next scan."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-blocker-allowed-countries",
+      "kind": "blocker",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
+      },
+      "whatToDo": {
+        "lead": "Put the allowed-countries list right: a country missing from it is a person refused at the door, and one wrongly in it is a door left open."
+      },
+      "doneWhen": [
+        "Every must-fix check on the allowed-countries list passes on the next scan."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-blocker-pilot-group",
+      "kind": "blocker",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
+      },
+      "whatToDo": {
+        "lead": "Put the pilot group right: it decides who meets a new control first, so who is in it is who absorbs the mistake."
+      },
+      "doneWhen": [
+        "Every must-fix check on the pilot group passes on the next scan."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-blocker-service-account",
+      "kind": "blocker",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
+      },
+      "whatToDo": {
+        "lead": "Settle the service accounts: an account with no person behind it cannot answer a prompt, so a policy that reaches one stops a job rather than an attacker."
+      },
+      "doneWhen": [
+        "Every must-fix check on the service accounts passes on the next scan."
+      ],
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-blocker-auth-strength",
+      "kind": "blocker",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
+      },
+      "whatToDo": {
+        "lead": "Put the authentication strength right: it is the exact list of methods a policy will accept, so anything wrong in it is either a method nobody has or one nobody should be allowed."
+      },
+      "doneWhen": [
+        "Every must-fix check on the authentication strength passes on the next scan."
+      ],
+      "skip": false,
+      "scanControl": true
     }
   ]
 }

@@ -10,6 +10,8 @@ import { content } from './content.ts'
 
 const C = content as unknown as Record<string, any>
 const S = C.shared
+/** The section headings, from the one place they are written (pages.app.plan.stepContract.headings). */
+const HEAD = C.pages.app.plan.stepContract.headings as Record<string, string>
 
 // The translator dump (docs/design/translator-output.json, prompt 52 Part 2): a
 // policy step's What-to-do in the review render comes from it — the product's
@@ -19,6 +21,19 @@ const S = C.shared
 // stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
 import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
 import { SHOW_KEYS } from '../derive/today.ts'
+import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
+import { SUBJECT_PLAIN } from '../copy/validation.ts'
+
+/**
+ * The title of a step whose name the engine owns: the free-tier ladder rungs
+ * (data/free-tier-ladder.json) and the validation blockers (copy/validation.ts).
+ * Their content entries carry What to do and Done when and nothing else, so the
+ * name is read from where it is written rather than copied here.
+ */
+const ENGINE_TITLE: Record<string, string> = {
+  ...Object.fromEntries((ladderData.items as { id: string; name: string }[]).map((i) => [`s-ladder-${i.id}`, i.name])),
+  ...Object.fromEntries(Object.entries(SUBJECT_PLAIN).map(([k, v]) => [`s-blocker-${k.replace(/[A-Z]/g, (ch) => `-${ch.toLowerCase()}`)}`, v as string])),
+}
 const TRANSLATED = translatorOutput as unknown as Record<string, { steps: string[] }>
 
 export function esc(s: unknown): string {
@@ -287,28 +302,38 @@ function doneWhen(items: string[], ex: Ex): string {
 const findKeys = (line: string): string[] => [...line.matchAll(/\{(?:list:)?([a-zA-Z0-9_]+)\}/g)].map((m) => m[1])
 const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([a-zA-Z0-9_]+)\}/g)].map((m) => m[1])
 
-export function renderStep(st: Record<string, any>): string {
+/**
+ * One step as the review page draws it. `title` is the engine's own, for the two
+ * families whose name is not in content.json: a free-tier ladder rung is named by
+ * data/free-tier-ladder.json and a validation blocker by src/copy/validation.ts,
+ * and their entries here carry only the words the engine has none of. Both also
+ * compose their own Why, so the Why block is drawn only where the entry has one.
+ */
+export function renderStep(st: Record<string, any>, title?: string): string {
   const ex: Record<string, any> = { ...(st.example || {}) }
   const kind = st.kind
+  const name = title ?? st.title
   const parts: string[] = []
-  const status = ['blocker', 'object', 'check', 'campaign'].includes(kind) ? 'Ready' : 'Blocked'
+  const status = ['blocker', 'object', 'check', 'campaign', 'ladder'].includes(kind) ? 'Ready' : 'Blocked'
   const lic = st.licence
   parts.push(
-    `<div class="steprow"><span class="chip status">${esc(status)}</span><span class="title">${esc(st.title)}</span>` +
+    `<div class="steprow"><span class="chip status">${esc(status)}</span><span class="title">${esc(name)}</span>` +
       (lic ? `<span class="lic">needs a licence this tenant does not hold: ${esc(lic)}</span>` : '') +
       '</div>',
   )
   parts.push('<div class="stepbody">')
-  parts.push(`<div class="stephead"><span class="title2">${esc(st.title)}</span> <span class="chip status">${esc(status)}</span></div>`)
+  parts.push(`<div class="stephead"><span class="title2">${esc(name)}</span> <span class="chip status">${esc(status)}</span></div>`)
   if (st.changeLine) parts.push(p(st.changeLine, ex, 'change'))
   if (st.partner) parts.push(p(st.partner, ex, 'partner'))
   // Why
-  parts.push(h('Why'))
   const learn = st.learn || {}
-  parts.push(`<p>${fill(st.why, ex)} <a class="learn" href="${esc(learn.url || '')}">Learn →</a></p>`)
+  if (st.why) {
+    parts.push(h(HEAD.why))
+    parts.push(`<p>${fill(st.why, ex)} <a class="learn" href="${esc(learn.url || '')}">Learn →</a></p>`)
+  }
   // Who
   const who = st.who || {}
-  parts.push(h('Who this touches'))
+  parts.push(h(HEAD.who))
   if (who.lead) parts.push(p(who.lead, ex))
   if (who.timeline) parts.push(p(who.timeline, ex, 'evidence'))
   // The none branch stands in when no evidence line renders (the existing-coverage line does not count), as the product renders it.
@@ -436,7 +461,7 @@ export function renderStep(st: Record<string, any>): string {
       parts.push("<p class=\"annot\">Note: reviewer's rendering; the product generates this section from the baseline policy. Run npm run translator-dump to show the product's version here.</p>")
     }
   }
-  parts.push(h('What to do'))
+  parts.push(h(HEAD.whatToDo))
   if (w.lead) parts.push(p(w.lead, ex))
   if (w.steps) parts.push(ol(w.steps, ex))
   if (w.generic) parts.push('<p class="sub">For everyone else:</p>' + ol(w.generic, ex))
@@ -466,15 +491,15 @@ export function renderStep(st: Record<string, any>): string {
   }
   // Dates
   if (st.dates) {
-    parts.push(h('Dates'))
+    parts.push(h(HEAD.dates))
     parts.push(p(st.dates, ex))
   }
   // Done when
-  parts.push(h('Done when'))
+  parts.push(h(HEAD.doneWhen))
   parts.push(doneWhen(st.doneWhen || [], ex))
   // If it goes wrong
   if (st.ifWrong) {
-    parts.push(h('If it goes wrong'))
+    parts.push(h(HEAD.ifWrong))
     parts.push(p(st.ifWrong, ex))
   }
   if (st.lockedOut) {
@@ -485,7 +510,7 @@ export function renderStep(st: Record<string, any>): string {
   // Comms
   const cm = st.comms
   if (cm) {
-    parts.push(h('Tell your people'))
+    parts.push(h(HEAD.comms))
     const extras = (e: unknown): string => (Array.isArray(e) ? e : e === undefined || e === null ? [] : [e]).map((l) => `<p>${fill(l, ex)}</p>`).join('')
     const body = `<p>${esc(cm.salutation)}</p><p>${fill(cm.body, ex)}</p>${extras(cm.extra)}<p>${fill(cm.signature, ex)}</p>`
     parts.push(`<div class="copybox"><span class="copy">Copy</span>${body}</div>`)
@@ -506,25 +531,25 @@ export function renderStep(st: Record<string, any>): string {
   if (ctrls.length) parts.push('<div class="controls">' + ctrls.join(' ') + '</div>')
   // More
   const m = st.more || {}
-  parts.push('<details class="more" open><summary>More</summary>')
+  parts.push(`<details class="more" open><summary>${esc(HEAD.more)}</summary>`)
   const risks = m.risks || []
   if (risks.length) {
-    parts.push(h('What could go wrong'))
+    parts.push(h(HEAD.risks))
     const ap = risks.filter((r: Record<string, any>) => r.applies === 'always' || truthy(ex[r.applies]))
     const rest = risks.filter((r: Record<string, any>) => !ap.includes(r))
     if (ap.length) parts.push('<ul>' + ap.map((r: Record<string, any>) => `<li>${fill(r.text, ex)} <span class="chip applies">applies here</span></li>`).join('') + '</ul>')
-    if (rest.length) parts.push('<p class="sub">Also possible</p><ul>' + rest.map((r: Record<string, any>) => `<li>${fill(r.text, ex)}</li>`).join('') + '</ul>')
+    if (rest.length) parts.push(`<p class="sub">${esc(HEAD.alsoPossible)}</p><ul>` + rest.map((r: Record<string, any>) => `<li>${fill(r.text, ex)}</li>`).join('') + '</ul>')
   }
   if (m.waits) {
     parts.push(h('What waits on this'))
     parts.push(p(m.waits, ex))
   }
   if (m.helpDesk) {
-    parts.push(h('For the help desk'))
+    parts.push(h(HEAD.helpDesk))
     parts.push(ul(m.helpDesk, ex))
   }
   if (m.manager) {
-    parts.push(h('For your manager'))
+    parts.push(h(HEAD.manager))
     // The clause the records earn (managerNone under its applies, E9): the review shows it when the example applies it.
     const none = m.managerNone
     const clause = none && typeof none.text === 'string' && (typeof none.applies !== 'string' || truthy(ex[none.applies])) ? ` ${none.text}` : ''
@@ -758,17 +783,22 @@ export function reviewBody(): string {
   const prep = stepsAll.filter((x) => ['blocker', 'object', 'check', 'campaign'].includes(x.kind))
   const pol = stepsAll.filter((x) => x.kind === 'policy' && x.id !== 's-shared-devices')
   const sharedDev = stepsAll.filter((x) => x.id === 's-shared-devices')
+  // The free-tier ladder: the whole plan for a tenant that cannot hold a
+  // Conditional Access policy, so its rungs are steps and belong on this page.
+  const rungs = stepsAll.filter((x) => x.kind === 'ladder')
   const body: string[] = []
   body.push('<h1>IAMAI Planner — every sentence, for review</h1><p class="lede">One box per step in the order the plan shows them, then every non-step string. Nothing here works; only the words and their format are real. GetIAMAI names where GetIAMAI has the case, demo names where it does not.</p>')
   body.push('<div class="legend"><var class="v">Underlined green</var> is filled by the engine from the tenant; everything else is fixed text from the content file. Chips, buttons and pickers are drawn as they would appear. <var class="v miss">{orange}</var> marks a variable the example did not fill.</div>')
   body.push(
     '<h3>Titles</h3><ol class="index">' +
-      [...prep, ...sharedDev, ...pol].map((x) => `<li>${esc(x.title)}` + (x.licence ? ` <span class="sub">— ${esc(x.licence)}</span>` : '') + '</li>').join('') +
+      [...prep, ...sharedDev, ...rungs, ...pol].map((x) => `<li>${esc(x.title ?? ENGINE_TITLE[x.id] ?? x.id)}` + (x.licence ? ` <span class="sub">— ${esc(x.licence)}</span>` : '') + '</li>').join('') +
       Object.values(C.cleanup).map((c: any) => `<li>${esc(c.title)} <span class="sub">— Cleanup</span></li>`).join('') +
       '</ol>',
   )
   body.push('<div class="phase"><h3>Preparation · Sep 1 → Sep 7</h3></div>')
-  for (const x of [...prep, ...sharedDev]) body.push(renderStep(x))
+  for (const x of [...prep, ...sharedDev]) body.push(renderStep(x, ENGINE_TITLE[x.id]))
+  body.push('<div class="phase"><h3>The free-tier ladder</h3><p class="sub">The plan for a tenant with no Entra ID P1: no policy can exist, so these are the steps instead. Their titles and Why come from the engine.</p></div>')
+  for (const x of rungs) body.push(renderStep(x, ENGINE_TITLE[x.id]))
   body.push('<div class="phase"><h3>Phase 1 · Sep 8 → Sep 13 &nbsp;/&nbsp; Phase 2 · Sep 15 → Sep 20 &nbsp;/&nbsp; Phase 3 · Sep 22 → Sep 27</h3><p class="sub">Policy steps, one box each; which phase a step lands in is the engine&#8217;s call.</p></div>')
   for (const x of pol) body.push(renderStep(x))
   body.push('<div class="phase"><h3>Cleanup · after the last enforcement</h3></div>')
@@ -780,9 +810,9 @@ export function reviewBody(): string {
 
 export function renderCleanup(c: Record<string, any>): string {
   const parts = [`<div class="steprow"><span class="chip status">Ready</span><span class="title">${esc(c.title)}</span></div><div class="stepbody">`]
-  parts.push(h('Why') + `<p>${fill(c.why, {})} <a class="learn" href="${esc(c.learn?.url || '')}">Learn →</a></p>`)
+  parts.push(h(HEAD.why) + `<p>${fill(c.why, {})} <a class="learn" href="${esc(c.learn?.url || '')}">Learn →</a></p>`)
   parts.push(
-    h('What to do') +
+    h(HEAD.whatToDo) +
       ol(c.whatToDo, {
         emergencyAccountUpns: ['breakglass@getiamai.onmicrosoft.com', 'emergency2@getiamai.onmicrosoft.com'],
         renames: ['ACME - APP - BLOCK - Copilot → Core - Block - Copilot'],
@@ -791,7 +821,7 @@ export function renderCleanup(c: Record<string, any>): string {
         policies: ['IAC - AGENT - BLOCK - HighRiskAgent', 'IAC - AGENT - BLOCK - NonTrustedAgents'],
       }),
   )
-  parts.push(h('Done when') + ul(c.doneWhen, { convention: 'Core - Verb - Subject' }))
+  parts.push(h(HEAD.doneWhen) + ul(c.doneWhen, { convention: 'Core - Verb - Subject' }))
   parts.push('<div class="controls">' + btn(S.scanControl, true) + '</div></div>')
   return '<section class="step">' + parts.join('') + '</section>'
 }
