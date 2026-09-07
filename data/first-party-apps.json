@@ -35,6 +35,9 @@
     { "appId": "9cdead84-a844-4324-93f2-b2e6bb768d07", "displayName": "Azure Virtual Desktop", "category": "platform", "inOffice365Bundle": false },
     { "appId": "0af06dc6-e4b5-4f28-818e-e78e62d137a5", "displayName": "Windows 365", "category": "platform", "inOffice365Bundle": false },
     { "appId": "708861da-226e-4d65-a57a-24128df64524", "displayName": "Windows Cloud Login", "category": "platform", "inOffice365Bundle": false },
-    { "appId": "00000002-0000-0000-c000-000000000000", "displayName": "Windows Azure Active Directory", "category": "platform", "inOffice365Bundle": false }
+    { "appId": "00000002-0000-0000-c000-000000000000", "displayName": "Windows Azure Active Directory", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "0000000c-0000-0000-c000-000000000000", "displayName": "Microsoft App Access Panel", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7", "displayName": "AADReporting", "category": "platform", "inOffice365Bundle": false },
+    { "appId": "8c59ead7-d703-4a27-9e55-c96a0054c8d2", "displayName": "My Profile", "category": "platform", "inOffice365Bundle": false }
   ]
 }
