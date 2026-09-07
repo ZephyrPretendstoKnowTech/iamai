@@ -89,14 +89,41 @@ function withMatchingTenantPolicy(): Fixture {
   return f
 }
 
+/** A role that is not Global Administrator: sparing one role is not sparing the administrators. */
+const PRIVILEGED_AUTH_ROLE = '7be44c8a-adaf-4e2a-84d6-ab2649e08a13'
+/** A group and an account a revising author might name. Neither says anything about admin roles. */
+const NON_ADMIN_GROUP = '5f2f5b6f-0000-4000-8000-00000000beef'
+const SOME_ACCOUNT = '1a1a1a1a-0000-4000-8000-00000000000a'
+
 /** The Global Administrator role template id: stable everywhere, so a baseline can name it. */
 const GLOBAL_ADMIN_ROLE = '62e90394-69f5-4237-9190-012177145e10'
 
+/** What a settled README says: the export's own meaning, stated as the meaning. */
+const SETTLED_INTENT = 'Blocks the Microsoft admin portals for every account in the tenant, administrators included.'
+
+/** The same package with the pinned source's user conditions edited in place. */
+function withSourceUsers(pkg: BaselinePackage, edit: (users: Record<string, unknown>) => void): BaselinePackage {
+  const policies = pkg.policies.map((p) => {
+    if (String(p.id ?? '').toLowerCase() !== SOURCE) return p
+    const users = { ...(p.conditions.users ?? {}) } as Record<string, unknown>
+    edit(users)
+    return { ...p, conditions: { ...p.conditions, users } } as typeof p
+  })
+  return { ...pkg, policies }
+}
+
 /**
- * The same package with the reviewed source policy revised the way a reviewed
- * baseline version settles it: the block now spares the administrators the
- * documentation always said it spared. Same id, same name, same map — the one
- * thing that changed is what the policy says about itself.
+ * The same package with the reviewed source settled the only way a reader with
+ * no tenant in front of them can settle it: the documentation the package ships
+ * now states the meaning the export really has. Same id, same name, same map,
+ * same policy — the one thing that changed is what the baseline says it means.
+ *
+ * No edit to the policy's own exclusions could stand in for this. Sparing one
+ * role, one group or one named account still leaves the holders of every other
+ * admin role blocked, which is a second reading of "non-admin users" and not the
+ * end of the first (baselineConflict.ts `blocksEveryoneInTheDirectory`, and
+ * section 1c). What does end the exported reading is a policy that stops
+ * claiming the whole directory, which section 1b follows too.
  *
  * It also drops the pinned policy's service-provider guest carve-out, which is
  * not part of the contradiction: it is a field this build has no submittable
@@ -105,13 +132,13 @@ const GLOBAL_ADMIN_ROLE = '62e90394-69f5-4237-9190-012177145e10'
  * the implementation it earns.
  */
 function withRevisedSource(pkg: BaselinePackage): BaselinePackage {
-  const policies = pkg.policies.map((p) => {
-    if (String(p.id ?? '').toLowerCase() !== SOURCE) return p
-    const users = { ...(p.conditions.users ?? {}), excludeRoles: [GLOBAL_ADMIN_ROLE] }
+  const dropped = withSourceUsers(pkg, (users) => {
     delete users.excludeGuestsOrExternalUsers
-    return { ...p, conditions: { ...p.conditions, users } }
   })
-  return { ...pkg, policies }
+  const source = dropped.policies.find((x) => String(x.id ?? '').toLowerCase() === SOURCE)
+  assert.ok(source, 'the package carries the reviewed source policy to document')
+  const doc = { policyName: source.displayName, intent: SETTLED_INTENT, sourcePath: 'Policies/Admin Portal/README.md' }
+  return { ...dropped, docs: [...(dropped.docs ?? []), doc] }
 }
 
 /** The demo tenant planning against that reviewed version. */
@@ -174,24 +201,87 @@ test('the same map over a package that settles the contradiction conflicts nothi
   // report: there is no source there to define the goal twice.
   assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, { policies: [] }).keys()], [], 'an empty package inherited a conflict from the map')
 
-  // A reviewed version that keeps the id and settles the export — the block now
-  // spares the administrators it always claimed to spare — says one thing, and
-  // IAMAI has no finding about it.
-  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, withRevisedSource(pinned)).keys()], [], 'a revised source policy still inherits the conflict from its id')
+  // A reviewed version that keeps the id and settles the export — the policy is
+  // aimed at a named cohort now, not at the whole directory — says one thing,
+  // and IAMAI has no finding about it.
+  const narrowed = withSourceUsers(pinned, (u) => {
+    u.includeUsers = []
+    u.includeGroups = [NON_ADMIN_GROUP]
+  })
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, narrowed).keys()], [], 'a source policy aimed at a named cohort still inherits the conflict from its id')
+
+  // As does one that no longer blocks anybody.
+  const granting = { ...pinned, policies: pinned.policies.map((p) => (String(p.id ?? '').toLowerCase() === SOURCE ? { ...p, grantControls: { ...p.grantControls, builtInControls: ['mfa'] } } : p)) }
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, granting).keys()], [], 'a source policy that no longer blocks still inherits the conflict')
 
   // And a version that settles it the other way — the documentation now states
   // the meaning the export really has — likewise.
-  assert.deepEqual(
-    [...baselineConflicts(PINNED_GOAL_MAP, { policies: pinned.policies, docs: [{ policyName: REVIEWED_SOURCES[0].reviewedName, intent: 'Blocks the Microsoft admin portals for every account in the tenant, administrators included.', sourcePath: 'Policies/Admin Portal/README.md' }] }).keys()],
-    [],
-    'documentation that settles the contradiction still leaves the goal blocked',
-  )
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, withRevisedSource(pinned)).keys()], [], 'documentation that settles the contradiction still leaves the goal blocked')
+
   // Documentation that still claims the narrower scope does not settle it.
   assert.deepEqual(
     [...baselineConflicts(PINNED_GOAL_MAP, { policies: pinned.policies, docs: [{ policyName: REVIEWED_SOURCES[0].reviewedName, intent: 'Blocks access to the Microsoft admin portals for non-admin users.', sourcePath: 'Policies/Admin Portal/README.md' }] }).keys()],
     [GOAL],
     'the documented reading the review read was withdrawn by a README that repeats it',
   )
+  // Nor does documentation that declines to say who the block is for. Silence
+  // withdraws nothing: IAMAI will not write a deny-everyone policy because a
+  // README stopped mentioning the scope.
+  assert.deepEqual(
+    [...baselineConflicts(PINNED_GOAL_MAP, { policies: pinned.policies, docs: [{ policyName: REVIEWED_SOURCES[0].reviewedName, intent: 'Blocks access to the Microsoft admin portals.', sourcePath: 'Policies/Admin Portal/README.md' }] }).keys()],
+    [GOAL],
+    'a README that says nothing about scope settled the contradiction',
+  )
+  // Nor one that says both things itself.
+  assert.deepEqual(
+    [...baselineConflicts(PINNED_GOAL_MAP, { policies: pinned.policies, docs: [{ policyName: REVIEWED_SOURCES[0].reviewedName, intent: 'Blocks the Microsoft admin portals for all users, excluding administrators.', sourcePath: 'Policies/Admin Portal/README.md' }] }).keys()],
+    [GOAL],
+    'a README that carves the administrators back out settled the contradiction',
+  )
+})
+
+// ---- 1c: a partial answer to "who is spared?" is not the end of the question ----
+
+test('a revision that spares some administrators and blocks the rest stays conflicted', () => {
+  const pinned = fixture('demo-week2').baseline
+  // Each of these is an edit a reviewing author might plausibly make, and not one
+  // of them makes the policy the documented "non-admin users":
+  //
+  //  - sparing Global Administrator still locks the Helpdesk, Security and
+  //    Authentication administrators out of the portals they administer, and
+  //    there is no closed set of admin roles a longer list could complete;
+  //  - includeRoles and includeGroups are additive beside `All`, so they add
+  //    nobody and narrow nothing;
+  //  - a named excluded account carries no proof from the source that it holds an
+  //    admin role, and one account is not every account that holds one.
+  //
+  // Each leaves the export saying "every account in the directory" and the
+  // documentation saying "non-admin users", which is where this started. A plan
+  // that read any of them as settled would be IAMAI choosing the side the author
+  // never chose and then handing over a deny policy to submit.
+  const partial: [string, (users: Record<string, unknown>) => void][] = [
+    ['one excluded role', (u) => { u.excludeRoles = [GLOBAL_ADMIN_ROLE] }],
+    ['two excluded roles', (u) => { u.excludeRoles = [GLOBAL_ADMIN_ROLE, PRIVILEGED_AUTH_ROLE] }],
+    ['an included role', (u) => { u.includeRoles = [GLOBAL_ADMIN_ROLE] }],
+    ['an included group', (u) => { u.includeGroups = [NON_ADMIN_GROUP] }],
+    ['a named excluded account', (u) => { u.excludeUsers = [SOME_ACCOUNT] }],
+  ]
+  for (const [what, edit] of partial) {
+    const pkg = withSourceUsers(pinned, edit)
+    assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, pkg).keys()], [GOAL], `${what}: a partial exclusion was read as settling the contradiction`)
+
+    // And the whole of the plan agrees: still blocked, still no implementation.
+    const { step, ctx, contract } = run({ ...fixture('demo-week2'), baseline: pkg })
+    assert.equal(inBaselineConflict(step), true, `${what}: the step lost the conflict`)
+    assert.equal(step.state.conflictSource, SOURCE, `${what}: the step stopped naming the source`)
+    assert.equal(step.action.json, null, `${what}: a policy body was written from a still-contradicted source`)
+    assert.equal(jsonOffered(step), false, `${what}: the JSON, PowerShell and Download tabs were offered`)
+    assert.equal(contract.implementation.offered, false, `${what}: an implementation was offered`)
+    const cs = contentStepFor(step) as Record<string, unknown>
+    assert.equal(stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, String(cs.title))), null, `${what}: portal steps were written`)
+    assert.deepEqual(step.action.portalSteps, [], `${what}: portal steps were written`)
+    assert.equal(unavailableReason(step), 'baseline-conflict', `${what}: the step gave another reason for having no implementation`)
+  }
 })
 
 // ---- 2: a tenant policy matching one side does not settle the source ----
@@ -571,8 +661,8 @@ test('a revised source keeping the same id is implemented like any other policy'
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
 
-  // The map is the pin's and the id is the pin's: the only thing that changed is
-  // what the policy says about itself.
+  // The map is the pin's, the id is the pin's and so is the policy: the only
+  // thing that changed is what the baseline documents the policy to mean.
   assert.deepEqual(PINNED_GOAL_MAP[GOAL], [SOURCE])
   assert.ok(
     f.baseline.policies.some((p) => String((p as { id?: unknown }).id ?? '').toLowerCase() === SOURCE),
