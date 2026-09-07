@@ -47,7 +47,11 @@
       "Time: in report-only since {reportOnly}, {timeGate}.",
       "Evidence: zero failures and every active person in scope seen in the sign-in records since {reportOnly}; today {evidenceGate}."
     ],
+    "policyDoneWhenEnforced": [
+      "A later scan finds the policy enabled: until one does it is ready to enforce, not enforced."
+    ],
     "policyIfWrong": "Set the policy back to report-only, or delete it; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
+    "enforceIfWrong": "Set the policy back to report-only; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "changeIfWrong": "Put the settings back to what they were (shown above); nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "datesNew": "Announce {announce} · Report-only from {reportOnly} · Enforce {enforce}",
     "datesChange": "Announce {announce} · Change {enforce}",

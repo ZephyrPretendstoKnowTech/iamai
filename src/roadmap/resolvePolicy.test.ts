@@ -321,14 +321,21 @@ test('portal, JSON, PowerShell and download carry the one resolved body, with th
   for (const { step, portal } of rows) {
     if (!jsonOffered(step)) continue
     const body = policyJson(step) as Record<string, unknown>
+    // A bounded patch is not a whole policy. The update that enforces a policy
+    // already deployed in report-only submits the one field it controls and
+    // nothing else — that is Foundation A's patch semantics and the reason the
+    // tenant's own settings survive it — so it carries no user scope to check.
+    // Where a body does scope users, the exclusions group is in it exactly once;
+    // where it does not, no channel may name a group the body never mentions.
+    const scoped = ((body.conditions ?? {}) as Record<string, unknown>).users !== undefined
     const groups = excludeGroupsOf(body)
-    assert.equal(groups.filter((g) => g === exclusionsGroupId).length, 1, `${step.id}: excludeGroups names the exclusions group once`)
+    assert.equal(groups.filter((g) => g === exclusionsGroupId).length, scoped ? 1 : 0, `${step.id}: excludeGroups names the exclusions group once, and only where the body scopes users`)
     assert.equal(new Set(groups).size, groups.length, `${step.id}: no duplicate group id`)
-    if (portal) assert.equal(portal.join('\n').split(groupName).length - 1, 1, `${step.id}: the portal lines name ${groupName} once`)
+    if (portal) assert.equal(portal.join('\n').split(groupName).length - 1, scoped ? 1 : 0, `${step.id}: the portal lines name ${groupName} once, and only where the body scopes users`)
     const ps = powershellFor(stepOperations(step))
     const heredoc = ps.slice(ps.indexOf("@'\n") + 3, ps.indexOf("\n'@"))
     assert.deepEqual(JSON.parse(heredoc), body, `${step.id}: the PowerShell body is the JSON body`)
-    assert.equal(ps.split(exclusionsGroupId).length - 1, 1, `${step.id}: the PowerShell names the exclusions group once`)
+    assert.equal(ps.split(exclusionsGroupId).length - 1, scoped ? 1 : 0, `${step.id}: the PowerShell names the exclusions group once, and only where the body scopes users`)
     assert.equal(policyJsonText(step), JSON.stringify(body, null, 2), `${step.id}: the download is the JSON tab's body`)
     checked += 1
   }

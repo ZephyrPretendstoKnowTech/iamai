@@ -15,8 +15,9 @@ import { applyProgress } from '../../roadmap/progress.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { SOLE_MEMBER, observationsOf } from '../../roadmap/tracking.ts'
 import { observationsFrom } from '../../roadmap/observation.ts'
-import { readyWhen } from '../../derive/readyWhen.ts'
-import { rowWhen } from './rowWhen.ts'
+import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
+import { rowReason, rowWhen } from './rowWhen.ts'
+import { implementationOffered, unavailableReason } from '../../roadmap/operations.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -59,8 +60,14 @@ test('week two: the report-only policy with clean, complete records is ready now
   assert.equal(token.tracking?.seenInScope, token.tracking?.activeInScope, 'every active person in scope seen at least once')
   assert.equal(token.tracking?.daysInReportOnly, 7)
   assert.equal(readyWhen(token)?.kind, 'now')
-  assert.equal(statusOf(token).word, 'Report-only')
-  assert.equal(rowWhen(token), 'ready now')
+  // The gates have closed, so the row says the state that is now true and the
+  // date of the change it has earned; the evidence that earned it is the reason
+  // line beneath (task 007). It is not Enforced: the policy is still in
+  // report-only in the tenant.
+  assert.equal(statusOf(token).word, 'Ready to enforce')
+  assert.equal(token.tracking?.state, 'enabledForReportingButNotEnforced')
+  assert.equal(rowWhen(token), absoluteDate(token.events!.enforce.at!))
+  assert.equal(rowReason(token), readyBasis(readyWhen(token)!))
 
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(transfer.status, 'in-report-only')
@@ -86,7 +93,7 @@ test('week two: the report-only policy with clean, complete records is ready now
   assert.ok(untracked.some((l) => l.startsWith('Time: ')) && untracked.some((l) => l.endsWith(`today 0 failing or interrupted, ${seen}`)), untracked.join('\n'))
 })
 
-test('rescan: a policy still in report-only past its date stays Report-only and reads ready since <date>', () => {
+test('rescan: a policy past its date reads Ready to enforce, and a Foundation-A blocker still offers it no date', () => {
   const f = fixture('demo')
   const run = runFixture(f)
   const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
@@ -101,9 +108,16 @@ test('rescan: a policy still in report-only past its date stays Report-only and 
   assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record\'s observation wins over this scan')
   assert.equal(step.status, 'ready-to-enforce')
   assert.equal(readyWhen(step)?.kind, 'since')
-  assert.equal(statusOf(step).word, 'Report-only')
-  assert.equal(rowWhen(step), `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
+  assert.equal(statusOf(step).word, 'Ready to enforce')
   assert.equal(step.history.at(-1)?.note, `ready since ${absoluteDate(step.tracking!.readyOn!)}`)
+  // The demo's admins policy is the Ready-but-withheld case: Foundation B has
+  // carried the lifecycle, and Foundation A will not hand the enforcement over
+  // while the way back in is unverified. So the row offers no date at all —
+  // a Ready lifecycle never manufactures one on its own (task 007).
+  assert.equal(unavailableReason(step), 'escape-hatch-unverified')
+  assert.equal(implementationOffered(step), false)
+  assert.equal(rowWhen(step), '')
+  assert.equal(step.events?.enforce.at ?? null, null)
 })
 
 test('rescan: the same ten days in a record that never named a policy carries nothing', () => {
@@ -123,15 +137,24 @@ test('rescan: the same ten days in a record that never named a policy carries no
   assert.equal(statusOf(step).word, 'Report-only')
 })
 
-test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (ready now / ready <date>) and the admins policy reads Enforced', () => {
+test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (Ready to enforce / ready <date>) and the admins policy reads Enforced', () => {
   const f = fixture('demo-week2')
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
   assert.ok(findTaggedPolicy(d.snapshot, planId, TOKEN), 'the token protection policy carries the app\'s plan tag')
   const run = runFixture({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId })
   const token = run.steps.find((s) => s.id === TOKEN)!
-  assert.equal(statusOf(token).word, 'Report-only')
-  assert.equal(rowWhen(token), 'ready now')
+  assert.equal(statusOf(token).word, 'Ready to enforce')
+  // The app's own demo has not confirmed its exclusions group, so this is the
+  // Ready-but-withheld case again on the tenant a visitor actually sees:
+  // Foundation B has carried the lifecycle and Foundation A hands nothing over,
+  // so the row carries the evidence and no date, and the step is in no wave
+  // (task 007). Nothing invents an enforcement day from a Ready word.
+  assert.equal(unavailableReason(token), 'escape-hatch-unverified')
+  assert.equal(implementationOffered(token), false)
+  assert.equal(token.events, null)
+  assert.equal(rowWhen(token), '')
+  assert.equal(rowReason(token), readyBasis(readyWhen(token)!))
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word, 'Report-only')
   assert.match(rowWhen(transfer), /^ready \S.*\d{4}$/)

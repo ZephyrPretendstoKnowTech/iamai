@@ -21,11 +21,21 @@ export function statusOf(step: Step): StatusView {
       // --wait. --stop is reserved for Skipped and a step that would strand the operator.
       return { word: 'Blocked', tone: step.operatorSafe === false ? 'stop' : 'wait' }
     case 'in-report-only':
-    case 'ready-to-enforce':
-      // Both read Report-only: the policy is still in report-only either way.
-      // Whether it is ready to enforce, and when, is the row's date column
-      // (rowWhen.ts), from the tracking's two gates.
       return { word: 'Report-only', tone: 'wait' }
+    case 'ready-to-enforce':
+      // The two used to read Report-only alike, on the ground that the policy is
+      // still in report-only either way and the date column said which. They are
+      // not the same state to act on: one is a policy to leave alone and watch,
+      // the other is a policy whose gates have closed and whose next change is
+      // the enforcement itself. Collapsing them put the one row where an
+      // operator has something to do behind the word for the row where they do
+      // not, and left "Ready to enforce" — Foundation B's own stage, and the
+      // word the opened step already used — reachable only by opening it.
+      //
+      // It is not Enforced, and nothing here says it is: what has been earned is
+      // the right to make the change, and only a later scan that finds the policy
+      // on turns this into Enforced (roadmap/tracking.ts).
+      return { word: 'Ready to enforce', tone: 'ok' }
     case 'skipped':
       return { word: 'Skipped', tone: 'stop' }
   }

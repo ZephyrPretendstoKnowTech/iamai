@@ -17,7 +17,15 @@ import { createsNewPolicy } from './stepJson.ts'
 
 export function doneWhenTemplates(step: Step, doneWhen: unknown[]): unknown[] {
   const shared = content.shared as Record<string, string[]>
-  const policy = readyWhen(step) ? [...shared.policyDoneWhenTracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)] : shared.policyDoneWhen
+  // A policy whose gates have closed is ready to enforce and not enforced, and
+  // its completion says so: the two gates with today's numbers are what it has
+  // earned, and what finishes it is a later scan finding the policy on. Without
+  // that line the step's Done-when read as gates already met and a stability
+  // window after a change nothing yet required — a completion an operator could
+  // believe was reached by planning the enforcement rather than by making it
+  // (roadmap/lifecycle.ts: only tracking's own next reading writes `enforced`).
+  const tracked = step.state.lifecycle === 'ready-to-enforce' ? [...shared.policyDoneWhenTracked, ...shared.policyDoneWhenEnforced] : shared.policyDoneWhenTracked
+  const policy = readyWhen(step) ? [...tracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)] : shared.policyDoneWhen
   // A create has no changed settings to match and no week after the change: its
   // completion is the report-only observation the plan is about to start.
   const change = createsNewPolicy(step) ? policy : shared.changeDoneWhen
