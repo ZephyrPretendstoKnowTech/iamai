@@ -962,16 +962,25 @@ async function walkFixture(fx) {
           /in place already: nothing to create/.test(bodyText) ||
           /the way back in to .+ is not verified yet/.test(bodyText)
         if (cannotWriteYet) escapeHeld.add(title)
-        // A policy in report-only says when it may be enforced, on the row and in
-        // the step: the date column reads ready <date> · ready now · ready since
-        // <date>, and Done when carries both gates with today's numbers.
+        // A policy in report-only says where it stands against its two gates, on
+        // the row and in the step: the date column reads ready <date> · ready now
+        // · held until the records clear, and Done when carries both gates with
+        // today's numbers. Readiness is both gates together (derive/readyWhen.ts),
+        // so the time line speaks about the window — closing on a date, or closed
+        // already — and never about readiness on its own.
         // A policy the plan cannot write yet has nothing to enforce, so it carries
         // no completion gates; what it must carry is what it waits on.
         if (rowStatuses[i] === 'Report-only' && !cannotWriteYet) {
-          if (!/^ready (now|since .+|\S.*\d{4})$/.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say when it may be enforced (ready <date> · ready now · ready since <date>)`)
-          if (!/Time: in report-only since .+, ready (on|since) /.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
-          if (!/Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days)\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
+          if (!/^(ready now|held until the records clear|ready \S.*\d{4})$/.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say where it stands against its gates (ready <date> · ready now · held until the records clear)`)
+          if (!/Time: in report-only since .+, the window clos(es|ed) \S.*\d{4}\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
+          // The evidence half reads records: with none read for this policy it says
+          // so and still counts the people it has seen, rather than printing the zero
+          // an empty set adds up to (roadmap/tracking.ts, readyWhen.ts readyBasis).
+          if (!/Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days)\./.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
           if (rowWhens[i] === 'ready now' && !/ready now: 0 failures in \d+ days/.test(bodyText)) add('P0', `${slabel}: the row reads ready now but the step's Done when does not say so`)
+          // A row held for the records is a window that has closed on them, and the
+          // step says the same thing on its time line.
+          if (rowWhens[i] === 'held until the records clear' && !/the window closed \S.*\d{4}\./.test(bodyText)) add('P0', `${slabel}: the row is held until the records clear and the step's Done when does not say the window has closed`)
         }
         // One population per step: the row's who-line count is the lead's count.
         const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
