@@ -10,7 +10,7 @@ import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { operatorUserId } from './operator.ts'
 import { activeUsers, notActiveUsers, personAccounts } from './sets.ts'
-import { todayView } from './today.ts'
+import { readinessView } from './mfaReadiness.ts'
 import { facts } from './facts.ts'
 import { contentLists } from './contentLists.ts'
 import { operatorIdOf as reportOperatorIdOf } from '../validation/report.ts'
@@ -42,7 +42,7 @@ test('a second signed-in account produces identical facts: Today, the ladder and
     const runs = [f.operatorId, ids[ids.length - 1], null].map((id) => signedInAs(f.snapshot, id))
     const [first, ...rest] = runs.map((s) => facts(s, f.mapping))
     for (const other of rest) assert.deepEqual(other, first, `${name}: the facts change with the signed-in account`)
-    const rows = runs.map((s) => todayView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r.kind, r.active, r.rung, r.evidence.kind]))
+    const rows = runs.map((s) => readinessView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r.kind, r.active, r.rung, r.evidence.kind]))
     for (const other of rows.slice(1)) assert.deepEqual(other, rows[0], `${name}: Today's rows change with the signed-in account`)
     const care = runs.map((s) => contentLists({ snapshot: s, mapping: f.mapping, nameOf: (id) => id, now: s.asOf }).specialCareIds)
     for (const other of care.slice(1)) assert.deepEqual(other, care[0], `${name}: the special-care default changes with the signed-in account`)
@@ -58,7 +58,7 @@ test('the operator is a person like any other: a stale directory sign-in reads N
   delete s.signInEvidence['u-1']
   assert.ok(!activeUsers(s, s.asOf).some((u) => u.id === 'u-1'), 'not active by the directory')
   assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'))
-  const row = todayView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
+  const row = readinessView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
   assert.equal(row.active, false)
   assert.equal(row.evidence.kind, 'inactive')
   assert.ok(row.rung !== null && row.rung >= 2, 'the passkey and the app set up: the badge stays')

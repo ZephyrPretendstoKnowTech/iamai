@@ -1,8 +1,9 @@
 # CLAUDE.md
 
 IAMAI: a browser-only, read-only Microsoft Entra Conditional Access rollout planner. Three
-surfaces (Today, Plan, Export) plus Connect, How, Inventory. Words come from
-`docs/design/content.json`; the plan comes from the tenant snapshot + `MappingState`.
+surfaces (Plan, MFA Readiness, Export) plus Connect, How, Inventory. Plan is the hero; MFA
+Readiness is the person-level diagnostic that replaced Today (task 012, `#/readiness`). Words
+come from `docs/design/content.json`; the plan comes from the tenant snapshot + `MappingState`.
 
 ## Rules that cannot move
 - Read-only: no Graph write scope, no call that mutates a tenant. No server, no telemetry, no CDN.

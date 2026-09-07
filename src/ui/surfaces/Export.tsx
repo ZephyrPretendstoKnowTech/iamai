@@ -12,7 +12,7 @@ import { BANDS } from '../../roadmap/constants.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
-import { inventoryTables, todayTable } from './inventoryTables.ts'
+import { inventoryTables, readinessTable } from './inventoryTables.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
@@ -182,7 +182,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     window.location.hash = '#/plan'
   }
 
-  const csvTables = [todayTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups)]
+  const csvTables = [readinessTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups)]
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
   const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot)
@@ -233,7 +233,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           <p className="actions">
             {csvTables.map((t) => (
               <Button key={t.id} variant="tertiary" onClick={() => exportDownload(t.csvName, toCsv(t.header, t.rows), 'text/csv', REDACTED)}>
-                {t.id === 'today' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
+                {t.id === 'readiness' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
               </Button>
             ))}
           </p>

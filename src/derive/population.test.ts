@@ -6,7 +6,7 @@ import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { activePeopleIds, campaignIdsFor, reached, stepPopulation } from './population.ts'
 import { whoLine, populationLine, affectedIds } from './whoLine.ts'
-import { todayView } from './today.ts'
+import { readinessView } from './mfaReadiness.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { fillText } from '../content/render.ts'
@@ -65,7 +65,7 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       assert.equal(ex.guests, view.guests, `${name} ${s.id}: the lead's {guests}`)
     }
     const svc = new Set(f.mapping.serviceAccountUserIds)
-    assert.equal(todayView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: Today's active people are the campaign's population`)
+    assert.equal(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts.active, campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: Today's active people are the campaign's population`)
     assert.ok(activePeopleIds(f.snapshot, f.snapshot.asOf, svc).length >= campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).length, `${name}: the plan's active people include the campaign's`)
     const campaign = r.steps.find((s) => s.kind === 'verify')
     if (campaign) assert.deepEqual([...affectedIds(campaign.population)].sort(), campaignIdsFor(f.snapshot, f.snapshot.asOf, f.mapping).sort(), `${name}: the campaign's population`)

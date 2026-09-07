@@ -1533,9 +1533,12 @@ footer.app a {
   margin-top: 12px;
 }
 
-/* ================= the MFA readiness ladder (docs/design/mockups/today-v2.html, plan-top-v2.html, connect-v2.html) ================= */
+/* ================= the MFA readiness ladder (docs/design/mockups/plan-top-v2.html, connect-v2.html) =================
+   The five rung tiles, on Connect's Plan tile: each links to MFA Readiness
+   filtered to its rung. MFA Readiness itself counts the three groupings
+   (see below); the rung stays the badge in a row. */
 
-/* A boxed row or tile in the content flow: the ladder's rows and the rung tiles. */
+/* A boxed tile or count in the content flow. */
 .card {
   background: var(--bg-raised);
   border: 1px solid var(--rule);
@@ -1559,58 +1562,6 @@ footer.app a {
   margin-left: 8px;
   color: var(--ink-3);
   font-size: var(--t-2);
-}
-/* Today widens its page for the table (WIDE_ROUTES); the ladder keeps its
-   original, intrinsic width and sits centered above the wider table. */
-.ladder-wrap {
-  max-width: var(--page);
-  margin: 0 auto;
-}
-.ladder {
-  margin: 6px 0 4px;
-  padding: 0;
-  list-style: none;
-}
-/* .surface ul's prose cap and list indent (below) would otherwise leave the
-   rows narrower than .ladder-wrap and flush left inside it, out of line with
-   the head above; .ladder-wrap .ladder outranks that generic rule so the
-   rows span the same width the head does. */
-.ladder-wrap .ladder {
-  max-width: none;
-  padding-left: 0;
-}
-.ladder .ladder-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 56px 220px;
-  gap: 14px;
-  align-items: center;
-  padding: 12px 14px;
-  margin: 8px 0;
-  cursor: pointer;
-}
-.ladder .ladder-row:hover,
-.ladder .ladder-row:focus-visible,
-.ladder .ladder-row.on {
-  border-color: var(--accent);
-  outline: none;
-}
-/* The rule before the three to prioritise: the word above a 2px line, between rungs 4 and 3. */
-.ladder .ladder-divider {
-  padding: 6px 0 0;
-  margin: 14px 0 0;
-  font-size: var(--t-1);
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-.ladder .ladder-divider::after {
-  content: '';
-  display: block;
-  height: 2px;
-  background: var(--rule-strong);
-  margin-top: 4px;
 }
 .rung-badge {
   display: inline-block;
@@ -1644,48 +1595,6 @@ footer.app a {
   background: var(--bg-inset);
   color: var(--ink-3);
 }
-.ladder .rung-title {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--t-4);
-  font-weight: 500;
-  color: var(--ink);
-}
-.ladder .rung-n {
-  font-family: var(--font-serif);
-  font-size: var(--t-5);
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ink);
-  text-align: right;
-}
-.ladder .rung-bar {
-  height: 6px;
-  background: var(--bg-inset);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.ladder .rung-bar i {
-  display: block;
-  height: 100%;
-  background: var(--rung-0);
-}
-.rung-bar i.rung-5 {
-  background: var(--rung-5);
-}
-.rung-bar i.rung-4 {
-  background: var(--rung-4);
-}
-.rung-bar i.rung-3 {
-  background: var(--rung-3);
-}
-.rung-bar i.rung-2 {
-  background: var(--rung-2);
-}
-.rung-bar i.rung-1 {
-  background: var(--rung-1);
-}
 td .rung-badge {
   width: 20px;
   height: 20px;
@@ -1699,6 +1608,86 @@ td .not-person {
 .surface .toolbar .btn[aria-pressed='true'] {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* ================= MFA Readiness (task 012) ================= */
+
+/* The page widens for the table (WIDE_ROUTES); the summary and the three counts
+   keep the page column above it, so the diagnostic reads at a measure. */
+.surface.readiness .line.summary {
+  font-size: var(--t-4);
+  max-width: var(--page);
+}
+.group-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 10px 0 16px;
+  max-width: var(--page);
+}
+/* One count: the group's title, then its number. A filter, so the tile's face is
+   a button; the tip sits beside it, outside the control. Pressed is the accent
+   border and aria-pressed, never colour alone. */
+.group-tile {
+  position: relative;
+}
+.group-tile:hover,
+.group-tile:focus-within,
+.group-tile.on {
+  border-color: var(--accent);
+}
+.group-tile .infotip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.group-count {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  padding-right: 32px;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.group-count:focus-visible {
+  outline: none;
+}
+.group-count .group-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--t-2);
+  font-weight: 500;
+  color: var(--ink);
+}
+.group-count .group-n {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--t-6);
+  font-weight: 500;
+  line-height: 1.1;
+  margin-top: 8px;
+  color: var(--ink);
+}
+.group-count .group-n.group-ready {
+  color: var(--rung-5);
+}
+/* The group's word beside the rung badge in a row. */
+td .group-word {
+  margin-left: 6px;
+}
+/* The Plan step's line to MFA Readiness: a sentence and a link, nothing boxed. */
+.surface .mfa-handoff {
+  margin: 12px 0;
+}
+@media (max-width: 640px) {
+  .group-counts {
+    grid-template-columns: 1fr;
+  }
 }
 /* The five tiles on the Plan and on Connect's Plan tile: the title on top, the count large in the rung's colour. */
 .rung-tiles {
@@ -1761,12 +1750,6 @@ td .not-person {
   padding: 10px 12px;
 }
 @media (max-width: 700px) {
-  .ladder .ladder-row {
-    grid-template-columns: 28px minmax(0, 1fr) 48px;
-  }
-  .ladder .rung-bar {
-    display: none;
-  }
   .rung-tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

@@ -13,7 +13,7 @@ import { groundingBundle, promptPack, promptPackMarkdown } from './roadmap/promp
 import { buildPlanFile, fileStep } from './roadmap/plan.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
 import type { StepVarContext } from './ui/surfaces/stepVars.ts'
-import { todayView } from './derive/today.ts'
+import { readinessView } from './derive/mfaReadiness.ts'
 
 const contracts = JSON.parse(readFileSync('docs/qa/page-contracts.json', 'utf8')) as { forbidEverywhere: string[]; surfaces: { id: string; forbid?: string[] }[] }
 const STEP_FORBID = contracts.surfaces.find((s) => s.id === 'plan.step')?.forbid ?? []

@@ -16,7 +16,13 @@ test('the in-step scan ends at the step: the demo advances to week two and the c
   assert.equal(resolveHash(returnTo).route, 'plan')
   assert.equal(afterScanHref(returnTo), returnTo, 'the scan lands on the step that asked for it')
   assert.equal(afterScanHref(null), PLAN_HREF, 'a scan with nowhere to return lands on the Plan')
-  assert.equal(afterScanHref('#/today/rung-3'), '#/today/rung-3', "Today's Scan again returns to Today, its filter kept")
+  assert.equal(afterScanHref('#/readiness/needsProof'), '#/readiness/needsProof', "MFA Readiness's Scan again returns to it, its filter kept")
+  assert.equal(afterScanHref('#/readiness/step/s-goal-mfa-all-users'), '#/readiness/step/s-goal-mfa-all-users', 'a step-scoped view returns to itself')
+  // The old name still resolves, and it resolves to the one surface; the scan
+  // lands on the Plan rather than on a hash the app is about to rewrite.
+  assert.equal(resolveHash('#/today/rung-3').route, 'readiness')
+  assert.equal(resolveHash('#/today/rung-3').redirect, '#/readiness/rung-3')
+  assert.equal(resolveHash('#/today').route, 'readiness')
   assert.equal(afterScanHref('#/nowhere'), PLAN_HREF, 'a hash that is no page lands on the Plan')
   assert.equal(afterScanHref('#/roadmap/step/x'), PLAN_HREF, 'an old link lands on the Plan')
   assert.equal(afterScanHref(returnToStep('cleanup-drill')), '#/plan/cleanup-drill', 'a Cleanup row returns to itself')

@@ -1,7 +1,7 @@
 // The shell (prompt 47 Part 3, target-state §2): one 48px header with a
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
-// signed in it adds the Today, Plan and Export tabs (enabled once a scan
+// signed in it adds the MFA Readiness, Plan and Export tabs (enabled once a scan
 // exists) and the Account menu. No scan control and no scan age in the header:
 // the scan runs from any page's own button (ui/actions.ts), Connect's tile 3
 // shows its progress, and every other page shows one line under the header
@@ -23,14 +23,14 @@ import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, laneOf } from '../scan/ScanProgress.tsx'
 import { elapsedLabel } from '../format.ts'
-import { PLAN_HREF, STEP_LINK, resolveHash } from './routes.ts'
+import { PLAN_HREF, READINESS_HREF, STEP_LINK, resolveHash } from './routes.ts'
 import type { Route } from './routes.ts'
 
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
 export type { Route } from './routes.ts'
 
 // Pages whose main content is a table read better with the wider cap.
-const WIDE_ROUTES = new Set<Route>(['today', 'inventory', 'how'])
+const WIDE_ROUTES = new Set<Route>(['readiness', 'inventory', 'how'])
 
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 
@@ -217,7 +217,7 @@ export function AppShell({
   const [theme, toggleTheme] = useTheme()
   const signedIn = account !== null && state !== 'signedOut'
   const tabsOn = state === 'scanned'
-  const todayActive = route === 'today' || route === 'inventory'
+  const readinessActive = route === 'readiness' || route === 'inventory'
   const exportActive = route === 'export'
   const planActive = route === 'plan'
   return (
@@ -229,8 +229,8 @@ export function AppShell({
         </a>
         {signedIn && (
           <nav aria-label={SHELL.navLabel}>
-            <Tab href="#/today" active={todayActive} enabled={tabsOn}>
-              {SHELL.tabs.today}
+            <Tab href={READINESS_HREF} active={readinessActive} enabled={tabsOn}>
+              {SHELL.tabs.readiness}
             </Tab>
             <Tab href={PLAN_HREF} active={planActive} enabled={tabsOn}>
               {SHELL.tabs.plan}
@@ -267,7 +267,7 @@ export function AppShell({
   )
 }
 
-/** The four links, separated by |, on every page (docs/design/mockups/today-v2.html): the home page, the author, the source, the feedback address. A web link opens in a new tab; the mail link opens the mail client. */
+/** The four links, separated by |, on every page: the home page, the author, the source, the feedback address. A web link opens in a new tab; the mail link opens the mail client. */
 export function Footer() {
   const footer = pages.footer as { links: { text: string; href: string }[] }
   return (

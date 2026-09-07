@@ -18,15 +18,15 @@ test('a collapsed tip survives a reload, and the ? reopens it', () => {
   setTipCollapsed('plan', true, store)
   // A reload: a fresh read against the same browser store.
   assert.equal(tipCollapsed('plan', store), true, 'still collapsed after a reload')
-  assert.equal(tipCollapsed('today', store), false, 'remembered per page')
+  assert.equal(tipCollapsed('readiness', store), false, 'remembered per page')
   setTipCollapsed('plan', false, store)
   assert.equal(tipCollapsed('plan', store), false, 'reopened')
   assert.equal(tipCollapsed('plan', null), false, 'no store: open')
 })
 
-test('Today and Export render their tip once, from their own content key; the Plan and the step render none', () => {
+test('MFA Readiness and Export render their tip once, from their own content key; the Plan and the step render none', () => {
   const surfaces: [string, string, string][] = [
-    ['src/ui/surfaces/Today.tsx', 'today', String((pages.today as Record<string, unknown>).tip)],
+    ['src/ui/surfaces/MfaReadiness.tsx', 'readiness', String((pages.readiness as Record<string, unknown>).tip)],
     ['src/ui/surfaces/Export.tsx', 'export', String((pages.export as Record<string, unknown>).tip)],
   ]
   for (const [file, page, tip] of surfaces) {

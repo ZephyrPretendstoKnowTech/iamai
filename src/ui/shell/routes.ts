@@ -14,18 +14,25 @@ export type Route =
   | 'plan'
   | 'export'
   | 'how'
-  | 'today'
+  | 'readiness'
   | 'inventory'
 
 
 export const PLAN_ROUTE: Route = 'plan'
 export const PLAN_HREF = `#/${PLAN_ROUTE}`
 
+/** MFA Readiness (task 012): the person-level surface that replaced Today. */
+export const READINESS_ROUTE: Route = 'readiness'
+export const READINESS_HREF = `#/${READINESS_ROUTE}`
+
 export const REDIRECT: Record<string, Route> = {
   start: 'connect',
   baseline: 'connect',
-  scan: 'today',
-  readiness: 'today',
+  scan: 'readiness',
+  // Today is what this surface was called before it became MFA Readiness (task
+  // 012). The old hash still resolves, and it resolves to the one surface: a
+  // bookmark or a link in somebody's runbook lands on the page that replaced it.
+  today: 'readiness',
   mapping: 'plan',
   coverage: 'plan',
   roadmap: 'plan',
@@ -44,13 +51,17 @@ export const VALID = new Set<string>([
   'plan',
   'export',
   'how',
-  'today',
+  'readiness',
   'inventory',
 ])
 
 export const STEP_LINK = /^roadmap\/step\/(.+)$/
 const PLAN_STEP = /^plan\/(.+)$/
-/** Today filtered: #/today/rung-3, #/today/notActive (derive/today.ts SHOW_KEYS); the Plan strip's and Connect's tiles link here. */
+/** MFA Readiness filtered: #/readiness/needsPasskey, #/readiness/rung-3 (derive/mfaReadiness.ts SHOW_KEYS); Connect's rung tiles link here. */
+const READINESS_SHOW = /^readiness\/([A-Za-z0-9-]+)$/
+/** MFA Readiness scoped to one Plan step: #/readiness/step/<stepId>. The hash carries the step's identity and nothing else; who it reaches is resolved from the same facts the Plan reads. */
+const READINESS_STEP = /^readiness\/step\/(.+)$/
+/** The old name for the same surface: #/today, #/today/rung-3. */
 const TODAY_SHOW = /^today\/([A-Za-z0-9-]+)$/
 
 /**
@@ -72,7 +83,10 @@ export function resolveHash(hash: string): { route: Route; redirect: string | nu
   const step = STEP_LINK.exec(h)
   if (step) return { route: 'plan', redirect: `#/plan/${step[1]}` }
   if (PLAN_STEP.test(h)) return { route: 'plan', redirect: null }
-  if (TODAY_SHOW.test(h)) return { route: 'today', redirect: null }
+  if (READINESS_STEP.test(h) || READINESS_SHOW.test(h)) return { route: 'readiness', redirect: null }
+  // The old filtered Today hash keeps its filter and lands on MFA Readiness.
+  const oldShow = TODAY_SHOW.exec(h)
+  if (oldShow) return { route: 'readiness', redirect: `#/readiness/${oldShow[1]}` }
   // The baseline-package how-to is an anchor on How (prompt 49 item 11).
   if (h === 'package' || h === 'baseline/package') return { route: 'how', redirect: '#/how#package' }
   const to = REDIRECT[h]
@@ -92,18 +106,35 @@ export function stepFromPlanHash(hash: string): string | null {
   return m ? decodeURIComponent(m[1]) : null
 }
 
-/** The Show key a Today hash carries (#/today/rung-3), or null for the whole table. */
-export function showFromTodayHash(hash: string): string | null {
-  const m = TODAY_SHOW.exec(hash.replace(/^#\/?/, ''))
+/** The Show key an MFA Readiness hash carries (#/readiness/rung-3, and the old #/today/rung-3), or null for the whole table. */
+export function showFromReadinessHash(hash: string): string | null {
+  const h = hash.replace(/^#\/?/, '')
+  if (READINESS_STEP.test(h)) return null
+  const m = READINESS_SHOW.exec(h) ?? TODAY_SHOW.exec(h)
   return m ? m[1] : null
 }
 
-/** The Today hash for a Show key; the whole table for `all`. */
-export function todayHref(show: string): string {
-  return show === 'all' ? '#/today' : `#/today/${show}`
+/** The MFA Readiness hash for a Show key; the whole table for `all`. */
+export function readinessHref(show: string): string {
+  return show === 'all' ? READINESS_HREF : `${READINESS_HREF}/${show}`
 }
 
-/** Where a finished scan lands: the page that asked for it (a step's hash opens the step, Today keeps its filter), otherwise the Plan. */
+/**
+ * The MFA Readiness hash scoped to one Plan step: the step's own id, so the
+ * page can resolve who it reaches from the plan it already computes. Nothing
+ * about the people travels in the URL.
+ */
+export function readinessStepHref(stepId: string): string {
+  return `${READINESS_HREF}/step/${encodeURIComponent(stepId)}`
+}
+
+/** The Plan step an MFA Readiness hash is scoped to (#/readiness/step/<stepId>), or null. */
+export function stepFromReadinessHash(hash: string): string | null {
+  const m = READINESS_STEP.exec(hash.replace(/^#\/?/, ''))
+  return m ? decodeURIComponent(m[1]) : null
+}
+
+/** Where a finished scan lands: the page that asked for it (a step's hash opens the step, MFA Readiness keeps its filter), otherwise the Plan. */
 export function afterScanHref(returnTo: string | null | undefined): string {
   if (!returnTo) return PLAN_HREF
   const { route, redirect } = resolveHash(returnTo)

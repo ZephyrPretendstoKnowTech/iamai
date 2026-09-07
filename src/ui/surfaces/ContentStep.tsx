@@ -54,6 +54,7 @@ import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
 import { stepContract } from './stepContract.ts'
 import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepSection, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
+import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
@@ -291,6 +292,11 @@ export function ContentStep({
       )}
 
       <FixBeforeContinuing fix={contract.fix} />
+
+      {/* Where this step's own enforcement waits on the people it reaches being
+          able to sign in the way it asks, who those people are is MFA
+          Readiness's answer, not the Plan's (derive/stepMfaReadiness.ts). */}
+      <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
 
       {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>

@@ -49,7 +49,7 @@ export const PRIORITISE_FROM: Rung = 3
 export type Kind = 'emergency' | 'service' | 'shared' | 'disabled'
 export const KINDS: readonly Kind[] = ['emergency', 'service', 'shared', 'disabled']
 
-/** The words the method column uses; keys into pages.today.methods. */
+/** The words the method column uses; keys into pages.readiness.methods. */
 export type MethodWord = 'passkey' | 'passwordless' | 'push' | 'otp' | 'smsVoice' | 'windowsHello' | 'certificate' | 'none'
 
 /** Methods bound to one PC: they pass MFA there and nowhere else. */

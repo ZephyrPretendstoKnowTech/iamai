@@ -16,12 +16,12 @@ import { aggregate } from '../graph/collect/laneBCore.ts'
 import type { StoredSignIn, TenantSnapshot } from '../graph/collect/types.ts'
 import { ladder, methodsOf, methodWordOf, rungOf } from './ladder.ts'
 import type { Rung } from './ladder.ts'
-import { todayView } from './today.ts'
+import { readinessView } from './mfaReadiness.ts'
 import { contentLists } from './contentLists.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability } from '../scoring/mfaViability.ts'
 import { readinessFor } from '../roadmap/readiness.ts'
-import { readinessWord, todayEvidenceText } from '../ui/surfaces/todayCells.ts'
+import { readinessWord, rowEvidenceText } from '../ui/surfaces/readinessCells.ts'
 import { adminUserIds } from '../roles.ts'
 
 const AT = '2026-08-27T09:00:00.000Z'
@@ -162,7 +162,7 @@ const EXPECTED: Record<keyof ReturnType<typeof tenant>['ids'], Rung> = {
 test('every rung, from the snapshot to the ladder, Today and the campaign, reads the one rung authority', () => {
   const { f, s, ids } = tenant()
   const l = ladder(s, f.mapping, s.asOf)
-  const view = todayView(s, s.asOf, f.mapping)
+  const view = readinessView(s, s.asOf, f.mapping)
   const rowById = new Map(view.rows.map((r) => [r.user.id, r]))
   const cl = contentLists({ snapshot: s, mapping: f.mapping, nameOf: (id) => id, now: s.asOf })
 
@@ -196,13 +196,13 @@ test('every rung, from the snapshot to the ladder, Today and the campaign, reads
 
 test('the rung-2 account with a generic record says MFA happened and that no method is proven', () => {
   const { f, s, ids } = tenant()
-  const view = todayView(s, s.asOf, f.mapping)
+  const view = readinessView(s, s.asOf, f.mapping)
   const row = view.rows.find((r) => r.user.id === ids.rung2Generic)
   assert.ok(row)
   assert.equal(row.rung, 2)
   assert.equal(row.method, 'passkey', 'the registered method is still named')
   assert.deepEqual(row.evidence, { kind: 'mfa', method: 'MFA', at: AT }, 'the MFA occurrence is kept')
-  const evidence = todayEvidenceText(row)
+  const evidence = rowEvidenceText(row)
   const readiness = readinessWord(row)
   assert.match(evidence, /MFA completed/, 'the screen says MFA happened')
   assert.match(evidence, /names no method/, 'and that the record names no method')
@@ -215,22 +215,30 @@ test('the rung-2 account with a generic record says MFA happened and that no met
   assert.ok(silent)
   assert.equal(silent.rung, 2)
   assert.equal(silent.evidence.kind, 'reasons', 'no record, so the row gives the reasons instead')
-  assert.equal(readinessWord(silent), readiness, 'both stand on the same rung, under the same words')
+  // Both stand on rung 2, and MFA Readiness groups them apart, because what
+  // separates them is what the method inventory holds and not what any record
+  // says: one has a passkey registered and nothing proving it works, the other
+  // has no passkey at all. Neither generic record is allowed to suggest one.
+  assert.equal(row.group, 'needsProof', 'a registered passkey with no proof needs proof')
+  assert.equal(silent.group, 'needsPasskey', 'no passkey registered: a generic MFA record never suggests one')
+  assert.equal(readinessWord(silent), 'Needs a passkey')
+  assert.equal(readiness, 'Needs proof')
 })
 
 test('a generic record never invents a registered method: no method set up is rung 1', () => {
   const { f, s, ids } = tenant()
-  const view = todayView(s, s.asOf, f.mapping)
+  const view = readinessView(s, s.asOf, f.mapping)
   const row = view.rows.find((r) => r.user.id === ids.rung1)
   assert.ok(row)
   assert.equal(row.rung, 1, 'MFA happened and nothing usable is registered: the rung is 1')
   assert.equal(row.method, 'none')
-  assert.match(todayEvidenceText(row), /MFA completed/, 'the record is still shown')
+  assert.match(rowEvidenceText(row), /MFA completed/, 'the record is still shown')
+  assert.equal(row.group, 'needsPasskey', 'a generic MFA record never puts an account in Needs proof: no passkey was ever observed')
 })
 
 test('Windows Hello proven on one PC is rung 3, never portable readiness', () => {
   const { f, s, ids } = tenant()
-  const view = todayView(s, s.asOf, f.mapping)
+  const view = readinessView(s, s.asOf, f.mapping)
   const row = view.rows.find((r) => r.user.id === ids.rung3)
   assert.ok(row)
   assert.equal(row.rung, 3)
@@ -241,7 +249,7 @@ test('Windows Hello proven on one PC is rung 3, never portable readiness', () =>
 test('evidence the scan could not read is not proof: no rung advances on it', () => {
   const { f, s, ids } = tenant({ evidenceStatus: 'insufficient' })
   const l = ladder(s, f.mapping, s.asOf)
-  const view = todayView(s, s.asOf, f.mapping)
+  const view = readinessView(s, s.asOf, f.mapping)
   const rowById = new Map(view.rows.map((r) => [r.user.id, r]))
   for (const key of ['rung5', 'rung4', 'emergency'] as const) {
     const id = ids[key]
@@ -271,7 +279,7 @@ test('a confirmed emergency account keeps its methods and its records outside th
   const m = methodsOf(s, id)
   assert.deepEqual(m.evidence, { at: AT, method: 'FIDO2 security key' }, 'the emergency account keeps its evidence')
   assert.equal(rungOf(m), 5, 'and the one rung authority answers for it')
-  const row = todayView(s, s.asOf, f.mapping).rows.find((r) => r.user.id === id)
+  const row = readinessView(s, s.asOf, f.mapping).rows.find((r) => r.user.id === id)
   assert.equal(row?.rung, 5, 'Today shows the same rung beside it')
 })
 

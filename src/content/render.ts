@@ -20,7 +20,7 @@ const HEAD = C.pages.app.plan.stepContract.headings as Record<string, string>
 // calls renderStep (ContentStep renders a policy step from the baseline via
 // stepPortal.ts), so tree-shaking keeps this out of the browser bundle.
 import translatorOutput from '../../docs/design/translator-output.json' with { type: 'json' }
-import { SHOW_KEYS } from '../derive/today.ts'
+import { COMPAT_SHOW_KEYS, SHOW_KEYS } from '../derive/mfaReadiness.ts'
 import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
 import { SUBJECT_PLAIN } from '../copy/validation.ts'
 
@@ -726,7 +726,7 @@ export function renderPages(): string {
       h('Footer groups') +
       ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT),
   )
-  const td = P.today
+  const td = P.readiness
   // The ladder (pages.ladder): the header, the five rungs with their tooltips and descriptions, the rule before the three to prioritise.
   const rungRows = ['r5', 'r4', 'r3', 'r2', 'r1']
     .map((k, i) => {
@@ -734,17 +734,31 @@ export function renderPages(): string {
       return (i === 2 ? `<li class="sub">${esc(ld.prioritise)}</li>` : '') + `<li><b>${esc(r.title)}</b> — ${esc(r.desc)} <span class="sub">(ⓘ ${esc(r.tip)})</span></li>`
     })
     .join('')
-  // A Show option is a rung's title or one of the content's words (derive/today.ts SHOW_KEYS).
-  const showWords = SHOW_KEYS.map((k) => (k.startsWith('rung-') ? ld.rungs[`r${k.slice(5)}`].title : td.show[k]))
+  // A Show option is one of the content's words; a rung's title where a link arrived filtered to one (derive/mfaReadiness.ts SHOW_KEYS).
+  const showWords = [...SHOW_KEYS, ...COMPAT_SHOW_KEYS].map((k) => (k.startsWith('rung-') ? ld.rungs[`r${k.slice(5)}`].title : td.show[k]))
   const ledgerParts = ['active', 'notActive', 'emergency', 'service', 'shared', 'disabled'].map((k) => fill(td.ledger[k], { n: 3 })).join(' · ')
+  // The three groupings the page counts (derive/mfaReadiness.ts): a view over the rungs above, never a second reading of them.
+  const groupRows = ['ready', 'needsProof', 'needsPasskey', 'unknown']
+    .map((k) => `<li><b>${esc(td.groups[k].title)}</b> — ${esc(td.groups[k].tip)}${td.groups[k].next ? ` <span class="sub">Next: ${esc(td.groups[k].next)}</span>` : ''}</li>`)
+    .join('')
   sec(
-    'Today',
+    'MFA Readiness',
     `<h2 class="h1">${esc(td.h1)}</h2>` +
-      p(`${fill(td.ledger.lead, { accounts: 18 })} ${ledgerParts}`, {}) +
+      p(td.lead, {}) +
+      p(fill(td.summary, { ready: 4, active: 12 }), {}) +
+      p(td.summaryNone, {}) +
+      h('The three groupings') +
+      `<ul>${groupRows}</ul>` +
+      p(fill(td.unknownMethods, { n: 3 }), {}) +
+      h('Opened from a Plan step') +
+      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back], {}) +
+      h('The ladder behind the groupings') +
       `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })}</p>` +
       `<ul>${rungRows}</ul>` +
       `<p class="sub">Show: ${showWords.join(' · ')} · ${esc(td.adminsOnly)}</p>` +
       `<p class="sub">Columns: ${(td.columns as string[]).join(' · ')}</p>` +
+      h('Under the table') +
+      p(`${fill(td.ledger.lead, { accounts: 18 })} ${ledgerParts} · ${td.separate}`, {}) +
       h('Kinds (an account that is not a person)') +
       '<ul>' +
       Object.values(td.kinds as Record<string, string>).map((v) => `<li>${esc(v)} — ${esc(td.notAPerson)}</li>`).join('') +

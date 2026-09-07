@@ -159,18 +159,22 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
   return out
 }
 
-// Today, as CSV (the same four columns the Today table shows).
-import { todayView } from '../../derive/today.ts'
+// MFA Readiness, as CSV: the same columns the page's table shows, whole (the
+// page's own Export CSV writes what is on screen, which is the filtered set).
+import { readinessView } from '../../derive/mfaReadiness.ts'
 import { pages } from '../../content/content.ts'
-import { methodWord, readinessWord, todayEvidenceText } from './todayCells.ts'
-export function todayTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
-  // The same cells the Today table renders (todayCells.ts): a row's CSV equals its screen.
-  const view = todayView(snapshot, snapshot.asOf, mapping)
+import { methodWord, nextStateWord, readinessWord, rowEvidenceText } from './readinessCells.ts'
+export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
+  // The same cells the MFA Readiness table renders (readinessCells.ts): a row's CSV equals its screen.
+  const view = readinessView(snapshot, snapshot.asOf, mapping)
   return {
-    id: 'today',
-    label: 'Today',
-    csvName: 'iamai-today.csv',
-    header: [...(pages.today as { columns: string[] }).columns],
-    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, readinessWord(r), methodWord(r.method), todayEvidenceText(r)]),
+    id: 'readiness',
+    label: 'MFA Readiness',
+    csvName: READINESS_CSV,
+    header: [...(pages.readiness as { columns: string[] }).columns],
+    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, readinessWord(r), methodWord(r.method), rowEvidenceText(r), nextStateWord(r)]),
   }
 }
+
+/** The file name both this table and the page's own Export CSV write. */
+export const READINESS_CSV = 'iamai-mfa-readiness.csv'

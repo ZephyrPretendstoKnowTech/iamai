@@ -18,11 +18,11 @@ import type { ScanRecord } from './scan/scanRecord.ts'
 import { loadPinnedBaseline, restoreBaseline } from './baseline.ts'
 import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
-import { Today } from './surfaces/Today.tsx'
+import { MfaReadiness } from './surfaces/MfaReadiness.tsx'
 import { IDLE_SCAN, setScan, setSession, useSession } from './session.ts'
 // The surfaces a first visit does not open arrive on demand (prompt 53 queue
 // item 8): Export carries the print and every exporter, Inventory its tables,
-// How its endpoint tables. Plan, Today and Connect stay in the first chunk.
+// How its endpoint tables. Plan, MFA Readiness and Connect stay in the first chunk.
 const Export = lazy(() => import('./surfaces/Export.tsx').then((m) => ({ default: m.Export })))
 const How = lazy(() => import('./surfaces/How.tsx').then((m) => ({ default: m.How })))
 const Inventory = lazy(() => import('./surfaces/Inventory.tsx').then((m) => ({ default: m.Inventory })))
@@ -185,7 +185,7 @@ export function App() {
         await saveMappingState({ ...answered, records: { ...answered.records, [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(answered.records[EXCLUSIONS_RECORD_KEY], xg.id) } })
         // ?operatorDormant=1: the signed-in account's directory sign-in is stale
         // and it has no sign-in records of its own: a person like any other
-        // (derive/operator.ts is display only), so Today reads it not active.
+        // (derive/operator.ts is display only), so MFA Readiness reads it not active.
         if (params.get('operatorDormant') === '1') {
           const me = snapshot.users.find((u) => u.id === 'u-1')
           if (me) me.lastSuccessfulSignIn = new Date(Date.parse(snapshot.asOf) - 200 * 86_400_000).toISOString()
@@ -317,7 +317,7 @@ export function App() {
     }
     // Signed out, Connect is the page (target-state §2, prompt 48.1 item 17): a
     // gated route never renders its "connect first" placeholder.
-    if (shellState === 'signedOut' && (route === 'plan' || route === 'today' || route === 'inventory')) {
+    if (shellState === 'signedOut' && (route === 'plan' || route === 'readiness' || route === 'inventory')) {
       window.location.replace('#/connect')
     }
   }, [ready, route, shellState])
@@ -353,10 +353,10 @@ export function App() {
               authorUpdate={mockAuthorUpdate}
             />
           )}
-          {(route === 'today' || route === 'inventory') &&
+          {(route === 'readiness' || route === 'inventory') &&
             (account && lastScan ? (
-              route === 'today' ? (
-                <Today snapshot={lastScan.snapshot} />
+              route === 'readiness' ? (
+                <MfaReadiness scan={lastScan} baseline={baseline} />
               ) : (
                 <Suspense fallback={<section className="surface"><p className="reason">{app.shell.loading}</p></section>}>
                   <Inventory snapshot={lastScan.snapshot} />
@@ -364,9 +364,9 @@ export function App() {
               )
             ) : (
               <section className="surface">
-                <h1>{route === 'inventory' ? INVENTORY.heading : (pages.today as { h1: string }).h1}</h1>
+                <h1>{route === 'inventory' ? INVENTORY.heading : (pages.readiness as { h1: string }).h1}</h1>
                 <p>
-                  {account ? app.today.needsScan : app.shell.scanNeedsConnect} <a href="#/connect">{account ? app.today.scanLink : app.shell.connectLink}</a>
+                  {account ? app.readiness.needsScan : app.shell.scanNeedsConnect} <a href="#/connect">{account ? app.readiness.scanLink : app.shell.connectLink}</a>
                 </p>
               </section>
             ))}

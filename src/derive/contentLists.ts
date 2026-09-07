@@ -27,10 +27,10 @@ export type ListContext = {
   mfaInPlace?: boolean
 }
 
-// The readiness word for the special-care picker: the rung's title (pages.ladder), or Not active (pages.today.show).
+// The readiness word for the special-care picker: the rung's title (pages.ladder), or Not active (pages.readiness.show).
 type LadderWords = { rungs: Record<`r${Rung}`, { title: string }> }
 const rungTitle = (rung: Rung): string => (pages.ladder as unknown as LadderWords).rungs[`r${rung}`].title
-const stateWord = (v: MfaViability): string => (v.activity === 'active' ? rungTitle(rungOf(v)) : (pages.today as { show: { notActive: string } }).show.notActive)
+const stateWord = (v: MfaViability): string => (v.activity === 'active' ? rungTitle(rungOf(v)) : (pages.readiness as { show: { notActive: string } }).show.notActive)
 
 const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
 const people = (ev: { people: string[] } | undefined | null): string[] => ev?.people ?? []

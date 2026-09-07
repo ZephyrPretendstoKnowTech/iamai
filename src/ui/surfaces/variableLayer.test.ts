@@ -17,7 +17,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { strengthForGoal, strengthNameOf } from './stepPortal.ts'
 import { analysisUnknown, effectsOf } from '../../roadmap/strand.ts'
 import { contentLists } from '../../derive/contentLists.ts'
-import { todayView } from '../../derive/today.ts'
+import { readinessView } from '../../derive/mfaReadiness.ts'
 import { content } from '../../content/content.ts'
 
 test('a count of one singularises the noun that follows it', () => {
@@ -62,7 +62,7 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
   // Today's ladder over the same people: the campaign's groups are its rungs (derive/ladder.ts).
-  const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+  const tv = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   assert.equal(cl.noMethod.length, tv.ladder.rungs[1].length, 'Nothing set up matches Today')
   assert.equal(cl.unproven.length, tv.ladder.rungs[2].length, 'Set up, not proven matches Today')
   assert.ok(cl.noMethod.length > 0 && cl.unproven.length > 0, 'the demo has people in these buckets')
@@ -170,7 +170,7 @@ test('the guests step names the strength its own policy requires, or says nothin
 test('one readiness per family and one active-people count, on the demo and GetIAMAI', () => {
   for (const f of allFixtures().filter((x) => x.name === 'demo' || x.name === 'getiamai')) {
     const run = runFixture(f)
-    const tv = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const tv = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const byFamily: Record<string, Set<number>> = {}
     for (const s of run.steps) {
       const r = s.readiness

@@ -16,7 +16,7 @@ import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './co
 import type { PlanTile, ScanTile } from './connectView.ts'
 import { RUNGS, ladder } from '../../derive/ladder.ts'
 import { factsOf } from '../../derive/facts.ts'
-import { todayView } from '../../derive/today.ts'
+import { readinessView } from '../../derive/mfaReadiness.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 
 const upn = 'alex@example.com'
@@ -236,7 +236,7 @@ test("Connect's tile shows the numbers Today and the Plan show, on the demo and 
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
     const connect = factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
-    const today = todayView(f.snapshot, f.snapshot.asOf, f.mapping).facts
+    const today = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts
     assert.deepEqual(connect, today, `${name}: Connect and Today`)
     assert.equal(RUNGS.reduce((n, r) => n + connect.rungs[r], 0), connect.active, `${name}: the five tiles sum to the active people`)
     const t = planTile({ kind: 'ready', at: f.snapshot.asOf, counts: { steps: 30, done: 5 }, ladder: connect })

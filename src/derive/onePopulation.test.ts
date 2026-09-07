@@ -10,21 +10,21 @@ import { contentStepFor } from '../content/stepTitle.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds, peopleCounts } from './sets.ts'
-import { todayView } from './today.ts'
+import { readinessView } from './mfaReadiness.ts'
 import { RUNGS, ladder } from './ladder.ts'
 import { affectedIds } from './whoLine.ts'
 import { contentLists } from './contentLists.ts'
 import { planDates, stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
-import { ledgerText } from '../ui/surfaces/todayCells.ts'
+import { ledgerText } from '../ui/surfaces/readinessCells.ts'
 import { inventoryTables } from '../ui/surfaces/inventoryTables.ts'
 
 const f = fixture('getiamai')
 const r = runFixture(f)
 const nameOf = (id: string): string => r.input.names!.label(id)
 const notPeople = notPeopleIds(f.mapping)
-const today = todayView(f.snapshot, f.snapshot.asOf, f.mapping)
+const today = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
 const campaign = r.steps.find((s) => (contentStepFor(s) as { kind?: string } | undefined)?.kind === 'campaign')!
 const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
 

@@ -56,7 +56,7 @@ import {
   SEVERITY_STRENGTH_OR_DEVICE,
 } from './constants.ts'
 import { evidenceFor } from './evidence.ts'
-import { goalFamily, readinessFor } from './readiness.ts'
+import { goalFamily, mfaReady, readinessFor } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
 import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
@@ -1442,7 +1442,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         whoKey,
         popIds.filter((id) => {
           const v = viabilityById.get(id)
-          return v !== undefined && v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
+          // The family's own reading of ready (roadmap/readiness.ts mfaReady), not a second one here.
+          return v !== undefined && mfaReady(v)
         }).length,
       )
     const notReadyActive = pop.active - (readyActiveCache.get(whoKey) ?? 0)

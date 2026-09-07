@@ -33,7 +33,7 @@ test('"people" on Today, the Plan and Connect; "user" only for an Entra user obj
   const connect = pages.connect as { signIn: { consent: unknown } } & Record<string, unknown>
   const { consent, ...signInRest } = connect.signIn as Record<string, unknown> & { consent: unknown }
   void consent
-  const words = JSON.stringify({ today: pages.today, ladder: pages.ladder, plan: pages.plan, connect: { ...connect, signIn: signInRest }, appToday: app.today, appPlan: app.plan, appConnect: app.connect })
+  const words = JSON.stringify({ today: pages.readiness, ladder: pages.ladder, plan: pages.plan, connect: { ...connect, signIn: signInRest }, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })
   assert.ok(!/\busers?\b/i.test(words), `no "user" outside Microsoft's scope names: ${(words.match(/[^"]{0,40}\busers?\b[^"]{0,40}/i) ?? [''])[0]}`)
   // Microsoft's consent rows name the user object, as Microsoft does.
   assert.ok(JSON.stringify(consent).includes("Read all users' basic profiles"))

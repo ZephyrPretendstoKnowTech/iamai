@@ -7,7 +7,7 @@ import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { notActiveUsers, peopleCounts } from './sets.ts'
-import { todayView } from './today.ts'
+import { readinessView } from './mfaReadiness.ts'
 import { inventoryTables } from '../ui/surfaces/inventoryTables.ts'
 import { INVENTORY } from '../copy/inventory.ts'
 
@@ -15,13 +15,13 @@ test('a sign-in-disabled account is not counted, not in Today, never dormant, an
   const s = fixtureSnapshot()
   const before = peopleCounts(s, s.asOf)
   const mailbox = s.users.find((u) => u.id === 'u-5')!
-  assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-5') || todayView(s, s.asOf).rows.some((r) => r.user.id === 'u-5'), 'u-5 is a person while enabled')
+  assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-5') || readinessView(s, s.asOf).rows.some((r) => r.user.id === 'u-5'), 'u-5 is a person while enabled')
   mailbox.accountEnabled = false
   const after = peopleCounts(s, s.asOf)
   assert.equal(after.directory, before.directory - 1, 'not counted in the directory')
   assert.equal(after.enabled, before.enabled - 1, 'not counted as enabled')
   assert.ok(after.active <= before.active && after.notActive <= before.notActive)
-  const todayRow = todayView(s, s.asOf).rows.find((r) => r.user.id === 'u-5')!
+  const todayRow = readinessView(s, s.asOf).rows.find((r) => r.user.id === 'u-5')!
   assert.ok(todayRow && todayRow.kind === 'disabled' && !todayRow.active, 'listed on Today as sign-in disabled, never counted')
   assert.ok(!notActiveUsers(s, s.asOf).some((u) => u.id === 'u-5'), 'never on the dormant step (its source)')
   const people = inventoryTables(s).find((t) => t.id === 'people')!

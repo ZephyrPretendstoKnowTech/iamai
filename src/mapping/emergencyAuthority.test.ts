@@ -20,7 +20,7 @@ import { blockerStepId } from '../roadmap/blockerSteps.ts'
 import { isOpenPolicy } from '../roadmap/operations.ts'
 import { implementationOffered } from '../ui/surfaces/stepJson.ts'
 import { facts } from '../derive/facts.ts'
-import { todayView } from '../derive/today.ts'
+import { readinessView } from '../derive/mfaReadiness.ts'
 import { ladder } from '../derive/ladder.ts'
 import { factsOf } from '../derive/facts.ts'
 import { notPeopleIds } from '../derive/sets.ts'
@@ -127,7 +127,7 @@ test('10. one population: Today, the Plan strip and the campaign lists read the 
   const cases: [string, Fixture][] = [['demo', fixture('demo')], ['small unconfirmed', unconfirmed(fixture('small'))]]
   for (const [name, f] of cases) {
     const F = facts(f.snapshot, f.mapping)
-    assert.deepEqual(todayView(f.snapshot, f.snapshot.asOf, f.mapping).facts, F, `${name}: Today reads the facts`)
+    assert.deepEqual(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts, F, `${name}: Today reads the facts`)
     assert.deepEqual(factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf)), F, `${name}: the Plan strip and Connect's tile read the same ones`)
     assert.equal(F.kinds.emergency, f.mapping.breakGlassUserIds.length, `${name}: the emergency kind is the confirmed set and nothing else`)
     assert.equal(F.accounts, f.snapshot.users.length, `${name}: every account is counted once`)
