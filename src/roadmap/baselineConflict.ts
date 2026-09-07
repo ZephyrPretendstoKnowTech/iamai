@@ -5,25 +5,26 @@
 // Portal` (fafaa50c-0b61-4ac6-a589-f9a1120b2f9e), the policy the pinned map
 // hands the admin-portals-protected goal. Its README documents "blocks access to
 // Microsoft admin portals for non-admin users"; the policy it exports is
-// `includeUsers: ["All"]` → Block with `includeRoles`, `excludeRoles`,
-// `includeGroups` and `excludeUsers` all empty, so nothing in it preserves an
-// administrator. The two cannot both be true, and IAMAI has no way to tell which
+// `includeUsers: ["All"]` → Block: every account in the directory, administrators
+// among them. The two cannot both be true, and IAMAI has no way to tell which
 // the author meant.
 //
 // So the step reports the conflict and offers no implementation: no portal
 // lines, no JSON, no PowerShell, no download, no announcement. IAMAI does not
 // resolve the conflict on the author's behalf — the pinned policy is untouched,
 // no role exclusion or admins group is invented, and neither side of the
-// contradiction is quietly preferred.
+// contradiction is quietly preferred. Nor does it accept a *partial* answer as
+// the whole one: a revision that spares some administrators and blocks the rest
+// is still two claims, and it stays here until one of them ends.
 //
 // ## What the conflict is a property of
 //
 // The *source policy the run's own baseline actually carries*, read as the
 // review read it — never the goal id, and never the policy id alone. A stable
 // id is a name for a thing that can be revised: a baseline that keeps the id and
-// settles the contradiction (scoping the policy so an administrator is
-// preserved, or documenting the meaning its export really has) is not the
-// package the review found fault with, and a package that does not carry the
+// settles the contradiction (scoping the policy at a named cohort rather than
+// the whole directory, or documenting the meaning its export really has) is not
+// the package the review found fault with, and a package that does not carry the
 // policy at all carries no contradiction to report. Either would have been
 // blocked forever by an id-keyed rule, which is the one way this design could
 // deny a reviewed baseline the implementation it earned.
@@ -71,26 +72,53 @@ export type ReviewedSource = {
 }
 
 /**
- * The exported reading: a Block over every account in the directory with nothing
- * in it preserving an administrator.
+ * The exported reading: a Block over every account in the directory.
  *
- * What counts as preserving one is what a reader can judge without a tenant — a
- * role scope on either side, a named account spared, or an included group
- * narrowing the target away from everyone. An excluded *group* is not one of
- * them: whether some group holds the administrators is a fact about a tenant,
- * and IAMAI never assumes it does. (The pinned policy excludes three groups and
- * is still this shape.)
+ * `includeUsers: ["All"]` is the whole of the target — every account in the
+ * tenant, administrators among them. Nothing else in a policy's user conditions
+ * takes that reading away, and IAMAI does not let anything pretend to:
+ *
+ * - `includeRoles` and `includeGroups` are *additive*. Beside `All` they add
+ *   nobody and narrow nothing, so a policy carrying them still blocks everyone.
+ * - `excludeUsers` names accounts. Whether a named account holds an admin role
+ *   is a fact about a tenant, and the ones the block must spare are whichever
+ *   accounts hold one — a list of ids proves nothing about that from the source.
+ * - `excludeRoles` names roles, and a policy that spares one of them still
+ *   blocks the holders of every other. Sparing Global Administrator leaves the
+ *   Helpdesk, Security and Authentication administrators locked out of the
+ *   portals they administer, which is not "the people who hold no admin role".
+ *   There is no closed set of admin roles IAMAI could check the list against,
+ *   so no exclusion list settles this from the source alone.
+ * - `excludeGroups` likewise: whether a group holds the administrators is a
+ *   fact about a tenant. (The pinned policy excludes three groups.)
+ *
+ * A partial answer to "who is spared?" is the ambiguity, not the end of it. So
+ * this asks only what the export unambiguously says, and the ways out of it are
+ * unambiguous too: a policy that is not a Block, or one whose target is a named
+ * cohort rather than the whole directory, is not making this claim any more.
  */
-function blocksEveryoneSparingNoAdministrator(policy: CaPolicy): boolean {
+function blocksEveryoneInTheDirectory(policy: CaPolicy): boolean {
   const users = policy.conditions?.users ?? {}
   const blocks = (policy.grantControls?.builtInControls ?? []).some((c) => c.toLowerCase() === 'block')
   const everyone = (users.includeUsers ?? []).some((u) => u.toLowerCase() === 'all')
-  const spared = (['includeRoles', 'excludeRoles', 'excludeUsers', 'includeGroups'] as const).some((field) => (users[field] ?? []).length > 0)
-  return blocks && everyone && !spared
+  return blocks && everyone
 }
 
 /** The documented reading: the policy is for the people who do not hold an admin role. */
 const DOCUMENTS_NON_ADMIN_SCOPE = /non[-\s]?admin|without an admin|standard users|except .{0,24}admin|exclud\w* .{0,24}admin/i
+
+/**
+ * Documentation that expressly adopts the meaning the export really has: this
+ * block is for everyone in the tenant.
+ *
+ * Withdrawing the documented reading takes a document that states the other one,
+ * not one that merely stops repeating it. A README that says nothing about scope
+ * leaves a reader with the export's claim and the review's finding both standing,
+ * and IAMAI will not write a deny-everyone policy on the strength of prose that
+ * declines to say who it denies. A document that says "all users" while still
+ * carving the administrators out says both things itself, and settles nothing.
+ */
+const ADOPTS_EVERYONE_SCOPE = /\b(all users|all accounts|every account|every user|everyone)\b/i
 
 /**
  * The source policies a review found self-contradictory, by the stable key the
@@ -103,15 +131,17 @@ export const REVIEWED_SOURCES: readonly ReviewedSource[] = [
     reviewedName: 'IAC - ZTCA - GLOBAL – BLOCK – Admin Portal',
     words: 'adminPortalNonAdminScope',
     unresolved: (policy, doc) => {
-      // Side one, in the package as it stands. A version that scopes the policy
-      // so an administrator survives it says only one thing now, and IAMAI has
-      // no finding about it: it is planned like any other baseline policy.
-      if (!blocksEveryoneSparingNoAdministrator(policy)) return false
+      // Side one, in the package as it stands. A version whose export no longer
+      // claims the whole directory says only one thing now, and IAMAI has no
+      // finding about it: it is planned like any other baseline policy.
+      if (!blocksEveryoneInTheDirectory(policy)) return false
       // Side two. The pinned package carries policies and no READMEs, so the
       // documentation the review read stands unless the package ships its own
-      // that no longer claims the narrower scope. Silence never withdraws it —
-      // only a document that says something else does.
-      return doc?.intent === undefined ? true : DOCUMENTS_NON_ADMIN_SCOPE.test(doc.intent)
+      // that expressly adopts the exported meaning instead. Silence never
+      // withdraws it — only a document that says the other thing does.
+      const intent = doc?.intent
+      if (intent === undefined) return true
+      return !(ADOPTS_EVERYONE_SCOPE.test(intent) && !DOCUMENTS_NON_ADMIN_SCOPE.test(intent))
     },
   },
 ]
