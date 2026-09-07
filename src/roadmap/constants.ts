@@ -42,9 +42,10 @@ export const REGISTRATION_MAX_WORKING_DAYS = 20
  * close in one click, rather than waited out. See UNKNOWNS in copy/timing.ts.
  *
  * The same window is the time gate on a policy already in report-only
- * (tracking.ts): ready on the day it has been in report-only this long, or
- * sooner when the records since that day show zero failures and every active
- * person in scope seen.
+ * (tracking.ts): the window closes on the day it has been in report-only this
+ * long. It is one of two gates and never enforcement on its own — the records
+ * since that day must also show zero failures and every active person in scope
+ * seen, and neither gate is sooner than the other.
  */
 export const OBSERVATION_DAYS = 7
 

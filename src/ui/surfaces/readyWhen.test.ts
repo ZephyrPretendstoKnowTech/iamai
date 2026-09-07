@@ -31,6 +31,23 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 
 const DAY = 86_400_000
 
+// What the walk reads on every report-only row of the app's demo (scripts/walk.mjs):
+// the row's date column, and the two gate lines of the step's Done-when. The
+// regexes are the walk's own, so the wording of a gate cannot move on one surface
+// without failing here first. The time line speaks about the observation window —
+// closing on a date, or closed already — because readiness is both gates together
+// and no single line may claim it (derive/readyWhen.ts).
+const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
+const WALK_TIME = /Time: in report-only since .+, the window clos(es|ed) \S.*\d{4}\./
+const WALK_EVIDENCE = /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days)\./
+
+/** A step's Done-when, filled, exactly as the opened step prints it. */
+function doneWhenOf(step: Parameters<typeof stepVars>[0], f: Pick<Fixture, 'snapshot' | 'mapping' | 'operatorId'>, reportOnlyAt: string | null = null): string {
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, firstEnforce: null, reportOnlyAt }
+  const v = stepVars(step, ctx)
+  return doneWhenTemplates(step, ['{policyDoneWhen}']).filter((x) => whole(x, v)).map((x) => fillText(x as string, v)).join('\n')
+}
+
 /** The tenant's own directory facts, as a scan reads them (tracking.ts TrackingEvidence). */
 const scopeOf = (f: Fixture): Parameters<typeof applyProgress>[7] => ({
   groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
@@ -173,6 +190,14 @@ test('rescan: the same ten days with no records read is not ready, and the row s
   assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(readyWhen(step)?.kind, 'since', 'the window closed and the records did not')
   assert.equal(rowWhen(step), 'held until the records clear')
+  assert.match(rowWhen(step), WALK_ROW)
+  // And the Done-when says which gate closed and which did not: the window has a
+  // past date, the records have no count of failures to show at all.
+  const held = doneWhenOf(step, f)
+  assert.match(held, WALK_TIME)
+  assert.match(held, /the window closed \S.*\d{4}\./)
+  assert.match(held, WALK_EVIDENCE)
+  assert.match(held, /no sign-in records read for this policy/)
   assert.equal(step.events?.enforce.at ?? null, null)
 })
 
@@ -215,4 +240,22 @@ test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'
   assert.equal(statusOf(transfer).word, 'Report-only')
   assert.match(rowWhen(transfer), /^ready \S.*\d{4}$/)
   assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'Enforced')
+})
+
+test("the walk's reading: every report-only step of the app's demo says where it stands on its row, and carries both gates in its Done-when", () => {
+  // The surfaces the walk asserts on demo-week2, asserted here on the same tenant
+  // the walk loads. A gate word renamed on one surface and not the other is a P0
+  // in CI; this is that P0 as a unit test, one scan earlier.
+  const f = fixture('demo-week2')
+  const d = demoTenant(true)
+  const demo = { ...f, snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+  const run = runFixture(demo)
+  const rows = run.steps.filter((s) => statusOf(s).word === 'Report-only' && readyWhen(s) !== null)
+  assert.ok(rows.length > 0, 'the app\'s demo week two has a policy in report-only')
+  for (const step of rows) {
+    assert.match(rowWhen(step), WALK_ROW, step.id)
+    const lines = doneWhenOf(step, demo, run.schedule.reportOnlyAt[step.id] ?? null)
+    assert.match(lines, WALK_TIME, step.id)
+    assert.match(lines, WALK_EVIDENCE, step.id)
+  }
 })
