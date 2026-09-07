@@ -62,6 +62,22 @@ export type TrackingEvidence = {
 
 const MIN_SIGNINS_TO_JUDGE = 20
 const DAY = 86_400_000
+/**
+ * The outcome classes the evidence gate on a policy *in report-only* may count.
+ *
+ * A report-only record exists only while the policy is reporting, and that is
+ * the whole of what the gate asks about: has this policy, while it was only
+ * watching, produced records for everybody it reaches, none of them failing. An
+ * enforced record was produced by a different state of the same object, outside
+ * the window `since` opens, and it answers no part of that question. Counting
+ * them let a policy an operator turned on and then moved back to report-only
+ * inherit its own history: last month's enforced successes completed this
+ * month's coverage, and the step offered the enforcement again over a window
+ * nobody had watched.
+ */
+const REPORT_ONLY_RESULTS = ['reportOnlyFailure', 'reportOnlyInterrupted', 'reportOnlySuccess'] as const
+/** Every class, for a policy that is not in report-only: the post-enforcement watch reads its enforced records. */
+const ALL_RESULTS = [...REPORT_ONLY_RESULTS, 'enforcedFailure', 'enforcedSuccess'] as const
 const REPORT_ONLY = 'enabledForReportingButNotEnforced'
 
 /**
@@ -293,7 +309,9 @@ function reportOnlySince(change: ObservationChange): { at: string; source: NonNu
  *   * `uncountable` — the policy's scope names kinds of external user
  *     (`otherExternalUser` and its siblings), which is a class rather than a set.
  *     Everything else about the scope read cleanly; what is missing is a census
- *     this directory cannot take of anybody, on this scan or any later one;
+ *     this directory cannot take of anybody, on this scan or any later one. The
+ *     evidence gate has no coverage question it can ask, so it cannot close, and
+ *     the step stays in report-only however long the window runs (`gates`);
  *   * `unknown` — something that says who this policy reaches was not read: a
  *     group nothing says who is in, a clause IAMAI could not parse, or no list
  *     of active people at all. A later scan can settle it.
@@ -373,9 +391,17 @@ function gates(
   // a zero twenty-four records prove (types.ts StepTracking.failures).
   if (!pr) return { daysInReportOnly, readyOn, readyNow: false, seenInScope: active === null ? null : 0, activeInScope: active?.length ?? null, signIns: 0, failures: null, failuresByUser: [], evidenceQuality: covered ? 'thin' : 'none' }
   const c = pr.counts
-  const signIns = c.reportOnlyFailure + c.reportOnlyInterrupted + c.reportOnlySuccess + c.enforcedFailure + c.enforcedSuccess
+  // Which of this policy's records answer the question being asked of it. In
+  // report-only, only the records it made in report-only do (REPORT_ONLY_RESULTS);
+  // the enforced ones are the same object in the state this gate exists to earn,
+  // and they may not pay for it.
+  const judged = since === null ? ALL_RESULTS : REPORT_ONLY_RESULTS
+  const signIns = judged.reduce((n, k) => n + c[k], 0)
   // Failing or interrupted records since `since`: by day where the snapshot
   // carries days; the window's totals where it does not (or there is no since).
+  // Failure is never discounted the way credit is — an enforced failure this
+  // snapshot cannot date could have happened inside the window, so it counts
+  // against the gate on either path. Nothing here can turn a failure into a pass.
   const sinceDay = since ? since.slice(0, 10) : null
   const failures =
     pr.byDay && sinceDay
@@ -383,9 +409,9 @@ function gates(
       : c.reportOnlyFailure + c.reportOnlyInterrupted + c.enforcedFailure
   const byUser = new Map<string, number>()
   for (const id of [...pr.affectedUserIds.reportOnlyFailure, ...pr.affectedUserIds.reportOnlyInterrupted, ...pr.affectedUserIds.enforcedFailure]) byUser.set(id, (byUser.get(id) ?? 0) + 1)
-  // A record of this policy for a person is that person seen; a report-only
-  // record exists only while the policy is in report-only.
-  const seen = new Set(Object.values(pr.affectedUserIds).flat())
+  // A record of this policy for a person is that person seen — a record of the
+  // state the gate is judging, and no other.
+  const seen = new Set(judged.flatMap((k) => pr.affectedUserIds[k] ?? []))
   const seenInScope = active === null ? null : active.filter((id) => seen.has(id)).length
   return {
     daysInReportOnly,
@@ -399,25 +425,22 @@ function gates(
     // least once — a question that needs a scope which is a list, and so is asked
     // of the three answers `trackedScope` gives in the three ways they deserve:
     //
-    //   * `people`: all of them, seen. The ordinary case, and the strict one;
-    //   * `uncountable`: there is no census to take of an external class, on this
-    //     scan or any later one, so the gate asks what can be asked and asks it
-    //     harder — enough records to judge on (MIN_SIGNINS_TO_JUDGE), none of
-    //     them failing. Refusing the stage outright instead would not make one
-    //     tenant safer: the pinned guests pair would never become enforceable
-    //     through IAMAI at all, and the operator would turn it on in the portal
-    //     with none of this evidence in front of them. The row still reports no
-    //     count, because there is none to report;
+    //   * `people`: all of them, seen. The ordinary case, and the only one that
+    //     can answer the question the gate asks;
+    //   * `uncountable`: there is no census to take of an external class, so
+    //     there is no such thing as everybody having been seen, and no number of
+    //     records is that proof. A count of records was tried here in place of
+    //     it, and a count of records is a different fact: twenty clean sign-ins
+    //     by the same three guests say nothing about the fourth, and the stage
+    //     they bought handed over the update that enforces the policy. So it does
+    //     not pass — the step stays in report-only, IAMAI offers no enforcement,
+    //     and an operator who decides to turn the policy on does it in the portal
+    //     as their own decision rather than on evidence IAMAI does not have;
     //   * `unknown`: nothing passes. Something a later scan can read is missing,
     //     and a gap in a scan is not a pass.
     //
-    // What none of the three does is let time stand in for evidence.
-    readyNow:
-      windowClosed &&
-      since !== null &&
-      signIns > 0 &&
-      failures === 0 &&
-      (scope.kind === 'people' ? seenInScope === scope.ids.length : scope.kind === 'uncountable' && signIns >= MIN_SIGNINS_TO_JUDGE),
+    // What none of the three does is let time, or a tally, stand in for evidence.
+    readyNow: windowClosed && since !== null && signIns > 0 && failures === 0 && scope.kind === 'people' && seenInScope === scope.ids.length,
     seenInScope,
     activeInScope: active?.length ?? null,
     signIns,

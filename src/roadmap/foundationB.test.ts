@@ -1102,9 +1102,32 @@ const pairScope = (): Parameters<typeof applyProgress>[7] => ({
 
 const at = (daysAgo: number): string => new Date(Date.parse(W2.snapshot.asOf) - daysAgo * 86_400_000).toISOString()
 
+/**
+ * The pinned pair, addressed to people a scan can count.
+ *
+ * Both of the baseline's guests policies are addressed to *kinds of external
+ * user*, and no directory holds a list of those. The evidence gate's coverage
+ * question — every active person this policy reaches, seen at least once — then
+ * has no denominator, so it never closes and such a policy is never ready to
+ * enforce however long it is watched (roadmap/tracking.ts `trackedScope`, and
+ * ui/surfaces/readyToEnforce.test.ts, which is where that gate is asserted).
+ *
+ * The contract here is the other one — one step is not one policy — and every
+ * case below needs members that *can* be ready in order to say anything about
+ * how the pair aggregates them. So the pair is deployed over a scope this tenant
+ * can settle, and the plan's own operation is addressed the same way: a member
+ * deployed as planned is one whose object holds what its operation asks for.
+ */
+function countableScope(body: PairRow): PairRow {
+  const out = structuredClone(body)
+  const conditions = out.conditions as PairRow
+  conditions.users = { ...(conditions.users as PairRow), includeGuestsOrExternalUsers: null, includeUsers: [...pairPeople()] }
+  return out
+}
+
 /** One member's policy as the tenant would hold it: the body the plan submits, deployed. */
 const deployed = (op: PolicyOperation, id: string, state: string, over: PairRow = {}): PairRow => ({
-  ...(structuredClone(op.body) as PairRow),
+  ...countableScope(op.body as PairRow),
   id,
   state,
   createdDateTime: at(30),
@@ -1153,6 +1176,10 @@ function pairScan(
 ): Step {
   const { bare, run } = pairPlan()
   const ops = (run.steps.find((s) => s.id === GUESTS) as Step).action.resolution!.policies
+  // The plan asks for what `deployed` plants: the same rewrite, on this run's own
+  // operations, so a case about members is not also a case about a member that
+  // holds something its operation did not ask for.
+  for (const op of ops) op.body = countableScope(op.body as PairRow) as typeof op.body
   const snapshot = structuredClone(bare)
   snapshot.config.caPolicies = { status: 'ok', reason: null, rows: rowsFor(ops[0], ops[1]) } as typeof snapshot.config.caPolicies
   if (opts.evidence) snapshot.evidencePolicyResults = opts.evidence as typeof snapshot.evidencePolicyResults

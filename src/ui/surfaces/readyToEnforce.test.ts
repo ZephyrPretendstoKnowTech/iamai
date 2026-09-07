@@ -277,6 +277,77 @@ test('007.11c: clean, complete records before the window closes are not ready ei
 })
 
 
+// ---- control A3: evidence that is not about this window, and a scope with no census ----
+
+test('007.11d: a scope with no census is not closed by a tally of records, however many and however clean', () => {
+  // The tenant pointed this policy at a kind of external user as well as at its
+  // own people. Which accounts that is, this scan and every later one cannot
+  // say: a directory row says Member or Guest, the clause names one of the three
+  // kinds a guest could be, and no row says which tenant anybody came from. So
+  // the policy reaches a class rather than a set, there is no list of the people
+  // it reaches, and "every active person in scope seen" has no denominator.
+  //
+  // Everything else is the canonical ready case: the window has closed, the
+  // records are the fixture's own, all of them clean, and there are far more
+  // than a tally would ask for. A count of records was once accepted here in
+  // place of the coverage nobody can establish, and a count of records is a
+  // different fact — thirty-four clean sign-ins by the people the directory does
+  // list say nothing about the guests it does not. The stage that bought handed
+  // over the update that enforces the policy the moment it lands, so the substitute
+  // is refused: the step stays in report-only and IAMAI offers nothing.
+  const c = freshScan({
+    edit: (row) => {
+      const users = (row.conditions as Row).users as Row
+      users.includeGuestsOrExternalUsers = { guestOrExternalUserTypes: 'b2bCollaborationGuest', externalTenants: { membershipKind: 'all' } }
+    },
+  })
+  const t = c.step.tracking!
+  assert.equal(t.activeInScope, null, 'no count of who this policy reaches')
+  assert.equal(t.seenInScope, null, 'and none of who has been seen')
+  assert.ok(Date.parse(t.readyOn!) <= Date.parse(c.snapshot.asOf), 'the window has closed')
+  assert.equal(t.failures, 0, 'the records are clean')
+  assert.ok(t.signIns >= 20, `and there are ${t.signIns} of them, past any threshold a tally could set`)
+  assert.equal(t.evidenceQuality, 'enough', 'which is worth saying about the records themselves')
+  assert.equal(t.readyNow, false, 'and is still not readiness: a tally is not everybody seen')
+  assert.equal(readyWhen(c.step)?.kind, 'since', 'the time gate is the only one that closed')
+  assert.equal(readyBasis(readyWhen(c.step)!), null, 'and the row claims no numbers nobody counted')
+  nothingIsOffered(c)
+})
+
+test('007.11e: records this policy made while it was enforced do not close its report-only gate', () => {
+  // The tenant turned this policy on once and moved it back to report-only. The
+  // enforced sign-ins from that time cover everybody it reaches; what it has
+  // recorded since it went back to reporting covers two people. The gate asks
+  // what this policy has shown while it was only watching — the window it is
+  // being watched over now — so the history pays for none of it, and the step
+  // that would otherwise be handed its enforcement again keeps waiting.
+  const c = freshScan({
+    records: (r) => {
+      const counts = r.counts as Record<string, number>
+      const ids = r.affectedUserIds as Record<string, string[]>
+      const since = ids.reportOnlySuccess.slice(0, 2)
+      const before = ids.reportOnlySuccess.slice(2)
+      ids.reportOnlySuccess = since
+      counts.reportOnlySuccess = since.length
+      ids.enforcedSuccess = before
+      counts.enforcedSuccess = before.length
+      r.byDay = null
+    },
+  })
+  const t = c.step.tracking!
+  assert.ok(Date.parse(t.readyOn!) <= Date.parse(c.snapshot.asOf), 'the window has closed')
+  assert.equal(t.failures, 0, 'and nothing has failed under it')
+  assert.equal(t.signIns, 2, 'the records that count are the two it has made in report-only')
+  assert.ok((t.seenInScope ?? 0) > 0, 'which is a zero records prove, not an empty set')
+  assert.ok((t.seenInScope ?? 0) < (t.activeInScope ?? 0), 'and most of the people it reaches have not been seen under it')
+  assert.equal(t.readyNow, false)
+  assert.equal(readyWhen(c.step)?.kind, 'since')
+  nothingIsOffered(c)
+  // What is being refused is the composition, not the records: the same sign-ins,
+  // all of them made in report-only, are the canonical ready case.
+  assert.equal(canonical().step.tracking?.readyNow, true)
+})
+
 /** The step's portal lines, as the screen and the exports both render them. */
 function portalOf(step: Step, ctx: StepVarContext): string[] | null {
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
