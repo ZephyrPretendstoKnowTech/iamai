@@ -213,6 +213,28 @@ export function conditionFor(blockers: Blocker[]): Condition {
 /** Precedence when two passes each have something to say: the most binding wins. */
 const CONDITION_RANK: Record<Condition, number> = { healthy: 0, 'review-required': 1, 'needs-decision': 2, blocked: 3, 'baseline-conflict': 4 }
 
+/**
+ * True when a person has to look at this step's deployed policy before it can
+ * move: the `review-required` condition Foundation B raises when what a policy
+ * *means* is no longer what the plan asked for (observation.ts `reviewRequired`).
+ *
+ * It is a condition and never a stage — the policy stays exactly where it is —
+ * and this is the one reading every consumer makes of it: the next milestone
+ * below, the row's date column and its reason, the Step Contract's action, fix
+ * and completion, the exported Dates line and the calendar entry. None of them
+ * decides it; they all read it here.
+ *
+ * A step with nothing deployed is not held. Its condition may well be
+ * `review-required` — a done step whose policy was deleted or turned off reopens
+ * in exactly that state (tracking.ts `reopen`) — but nothing is being watched
+ * there and its next move is still to deploy the policy, not to examine one.
+ */
+export function heldForReview(step: Pick<Step, 'state'>): boolean {
+  const s = step.state
+  if (s.condition !== 'review-required' || s.setAside || s.satisfied) return false
+  return s.lifecycle === 'report-only' || s.lifecycle === 'ready-to-enforce'
+}
+
 /** Raise the condition to `next` if it binds harder than the one the step already carries. */
 export function raiseCondition(step: Step, next: Condition): Step {
   if (CONDITION_RANK[next] <= CONDITION_RANK[step.state.condition]) return step
@@ -239,6 +261,12 @@ export function nextMilestone(step: Step): Milestone {
   if (s.satisfied) {
     return s.inPlace ? { kind: 'preserve', label: MILESTONE.preserve, at: null, gatedBy: null } : { kind: 'none', label: MILESTONE.none, at: null, gatedBy: null }
   }
+  // A deployed policy that is no longer what the plan asked for is held until
+  // somebody has looked at it, and that comes before the stage's own next move:
+  // a window closing does not settle a change nobody has explained, and there is
+  // no date on which a person looks, so it carries none. What has to clear first
+  // is the observation itself, in Foundation B's own words.
+  if (heldForReview(step)) return { kind: 'resolve', label: MILESTONE.review, at: null, gatedBy: s.observation?.note ?? null }
   if (s.lifecycle === 'ready-to-enforce') return { kind: 'enforce', label: MILESTONE.enforce, at: step.events?.enforce.at ?? null, gatedBy: null }
   if (s.lifecycle === 'report-only') {
     // A policy this scan found rewritten is being watched from here, and the

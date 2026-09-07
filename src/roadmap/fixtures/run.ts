@@ -26,6 +26,7 @@ import { cleanupRecord } from '../cleanupDone.ts'
 import type { Fixture } from './index.ts'
 import type { RoadmapInput } from '../generate.ts'
 import type { MfaViability } from '../../scoring/mfaViability.ts'
+import type { StepObservationRecord } from '../observation.ts'
 
 export type FixtureRun = ReturnType<typeof generateRoadmap> & {
   input: RoadmapInput
@@ -44,19 +45,26 @@ function keyOf(f: Fixture): string {
   return [f.planId, f.planCreatedAt, f.operatorId, JSON.stringify(f.mapping), JSON.stringify([...f.groups]), JSON.stringify(f.baseline), JSON.stringify(f.snapshot), JSON.stringify(f.checkpoints ?? [])].join('\u0000')
 }
 
-export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}): FixtureRun {
-  if (Object.keys(over).length > 0) return derive(f, over)
+/**
+ * The fixture's plan run. `observations` is what a *previous* scan of this same
+ * tenant recorded (roadmap/observation.ts), exactly as the plan record carries
+ * it: passing it makes this call the second scan of a sequence rather than a
+ * first sighting, and it runs through the one `applyProgress` the app runs. A
+ * run given one is never memoised — the record is part of what it derives from.
+ */
+export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}, observations: Record<string, StepObservationRecord> | null = null): FixtureRun {
+  if (Object.keys(over).length > 0 || observations !== null) return derive(f, over, observations)
   const key = keyOf(f)
   let hit = memo.get(f.name)
   if (!hit || hit.key !== key) {
-    hit = { key, run: derive(f, over) }
+    hit = { key, run: derive(f, over, null) }
     memo.set(f.name, hit)
   }
   const { steps, schedule, housekeeping } = structuredClone({ steps: hit.run.steps, schedule: hit.run.schedule, housekeeping: hit.run.housekeeping })
   return { ...hit.run, steps, schedule, housekeeping }
 }
 
-function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
+function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<string, StepObservationRecord> | null): FixtureRun {
   const t0 = performance.now()
   const { snapshot } = f
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
@@ -106,7 +114,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>): FixtureRun {
   }
   const t1 = performance.now()
   const result = generateRoadmap(input)
-  applyProgress(result.steps, snapshot, coverage, f.planId, undefined, f.planCreatedAt, null, {
+  applyProgress(result.steps, snapshot, coverage, f.planId, undefined, f.planCreatedAt, observations, {
     groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
     activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(f.mapping)),
   })

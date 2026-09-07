@@ -61,6 +61,13 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // datesLineFor, over roadmap/forecast.ts): the same reason again — the review
   // page has no scan, so no example step is in report-only.
   '.shared.datesObserve',
+  // And the Dates line of a policy the scan found materially changed to
+  // something the plan did not ask for, held until somebody has looked at it
+  // (roadmap/lifecycle.ts heldForReview): a scan-to-scan condition, and the
+  // review page compares no two scans.
+  '.shared.datesReview',
+  // The row's date column for that same step, for the same reason.
+  '.pages.plan.heldForReview',
   '.pages.home.metaTitle',
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.export.unredactedWarning',

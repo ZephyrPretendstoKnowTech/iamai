@@ -53,6 +53,7 @@
     "datesChange": "Announce {announce} · Change {enforce}",
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
     "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes",
+    "datesReview": "Report-only since {reportOnly} · Held until the change somebody made to the policy has been looked at · No enforcement date while it is held",
     "commsForecastDate": "{date} at the earliest",
     "commsForecastNote": "That date is our target, not a commitment: we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
@@ -150,6 +151,7 @@
         "resolve": "Clear what this step is waiting on.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
+        "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
         "observe": "Leave it in report-only and watch it.",
         "observeUntil": "Leave it in report-only until {date}.",
         "enforce": "Turn the policy on.",
@@ -362,6 +364,7 @@
       "readyOn": "ready {date}",
       "readyNow": "ready now",
       "readySince": "ready since {date}",
+      "heldForReview": "held until reviewed",
       "settingsLink": "Plan settings",
       "settings": {
         "h3": "Plan settings",
@@ -808,6 +811,8 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
+          "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
+          "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
           "doneSetAside": "Nothing is expected of this step while it is set aside."
         }
       },

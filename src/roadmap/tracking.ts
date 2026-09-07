@@ -610,7 +610,15 @@ export function trackExecution(
       // about the object deployed *now* (observation.ts historyReset, admit).
       const usable = !(historyReset(change) && change.latest.evidenceAt === null)
       const timeGate = memberGates.readyOn !== null && Date.parse(memberGates.readyOn) <= Date.parse(snapshot.asOf)
-      const ready = observedState === 'report-only' && !m.ambiguous && usable && (memberGates.readyNow || timeGate)
+      // And a member whose policy no longer means what the plan asked for is
+      // ready on nothing, however clean its window and its records look: what
+      // was watched is not what would be enforced, and only a person can say
+      // whether the change is safe (observation.ts `reviewRequired`). Kept apart
+      // from `usable` on purpose — that asks whether the *history* carries, and
+      // a policy can keep an admissible window (Microsoft's own evidence about
+      // the object deployed now) while still holding a change nobody has
+      // explained. This is that member's own observation and never another's.
+      const ready = observedState === 'report-only' && !m.ambiguous && usable && !change.reviewRequired && (memberGates.readyNow || timeGate)
       memberTracking.push({
         key: m.key,
         sourceName: m.sourceName,

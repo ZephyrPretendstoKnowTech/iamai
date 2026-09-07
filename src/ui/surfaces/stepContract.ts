@@ -23,7 +23,7 @@
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
-import { nextMilestone } from '../../roadmap/lifecycle.ts'
+import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
@@ -72,6 +72,8 @@ type ContractWords = {
   doneSetAside: string
   setAsideAction: string
   fixStep: string
+  fixReview: string
+  doneReview: string
 }
 
 export const CONTRACT = (app.plan as unknown as { stepContract: ContractWords }).stepContract
@@ -312,6 +314,18 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // that would make the policy writable, and none of it would.
   if (step.state.condition === 'baseline-conflict') return []
   const out: ContractFix[] = []
+  // The one thing holding a deployed policy that is no longer what the plan
+  // asked for (Foundation B, lifecycle.ts `heldForReview`). It is named by the
+  // member it belongs to and never by the step as a whole, so on a pair the
+  // operator reads which policy moved; what moved is the observation, and that
+  // is reported under What IAMAI found rather than said twice here.
+  if (heldForReview(step)) {
+    for (const m of step.state.members) {
+      if (!m.change.reviewRequired) continue
+      const name = step.tracking?.members?.find((t) => t.key === m.key)?.policyName || m.sourceName
+      out.push({ key: `review:${m.key}`, text: fillText(CONTRACT.fixReview, { name }) })
+    }
+  }
   const what = (cs?.whatToDo ?? null) as Record<string, unknown> | null
   const templates = (what?.checkFixes ?? null) as Record<string, string> | null
   // The validation authority's failing checks, in the shape the step's variables
@@ -373,6 +387,13 @@ function actionOf(step: Step, reason: UnavailableReason | null, milestone: Contr
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
+  // A deployed policy held for review overrules the step's own words for its
+  // work, which describe the rollout it is no longer simply having: "Leave it in
+  // report-only until Sep 3" is true of the window and silent about the change
+  // nobody has explained, and the window is not what clears this. It sits below
+  // an unavailable reason so that confirmed-unsafe stays the answer where both
+  // apply — a review never softens it (Foundation A, `reasonLine`).
+  if (heldForReview(step)) return { kind: milestone.kind, text: milestone.label }
   // Nothing overrules the lifecycle here, so the step's own words for its work
   // are the action where it has them — "Fix each failing check. 3 of 34 fail
   // today." says more than "Make the object this step names.", and saying both
@@ -404,10 +425,15 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   if (reason !== null) return [doneForReason(step, reason, tenant)]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
+  // A step held for review finishes on its own gates *and* on the change being
+  // accounted for; the review comes first because until it clears, the gates
+  // below are being counted on a policy nobody has vouched for.
+  const review = heldForReview(step) ? [CONTRACT.doneReview] : []
   const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
-  if (own.length > 0) return own
+  if (own.length > 0) return [...review, ...own]
+  if (review.length > 0) return review
   if (step.state.condition === 'needs-decision') return [CONTRACT.doneDecision]
   if (fix.length > 0) return [CONTRACT.doneBlocked]
   if (step.kind === 'verify' || step.kind === 'check') return [CONTRACT.doneVerify]
