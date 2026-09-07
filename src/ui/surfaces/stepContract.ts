@@ -26,7 +26,7 @@ import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
-import { requiredMembers } from '../../roadmap/tracking.ts'
+import { requiredMembers, trackedPolicyNames } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
 import { app, engine, stepById } from '../../content/content.ts'
@@ -57,6 +57,7 @@ type ContractWords = {
   whoUnknown: string
   foundReadiness: string
   foundInPlace: string
+  foundInPlaceNamed: string
   doneSatisfied: string
   doneBlocked: string
   doneConflict: string
@@ -245,7 +246,19 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   const out: ContractFound[] = []
   const gate = step.action.readinessGate
   if (gate && step.status !== 'done' && step.status !== 'skipped') out.push({ key: 'readiness', text: fillText(CONTRACT.foundReadiness, { ...gate }) })
-  if (isPreserved(step)) out.push({ key: 'in-place', text: fillText(CONTRACT.foundInPlace, { tenant }) })
+  // A goal the tenant already delivers, and *which* policy delivers it. The
+  // line used to say only that the tenant "already has a policy doing this",
+  // which is the one fact an operator cannot act on: to check that IAMAI
+  // accepted the right control — and to know which policy the plan is asking
+  // them to leave alone — they need its name. Foundation B matched it, so the
+  // name is read from the tracking (roadmap/tracking.ts `trackedPolicyNames`)
+  // and never guessed from the baseline: a tenant policy under a custom name
+  // satisfies the goal under that name. Where this scan has no name for it the
+  // unnamed line stands rather than an invented one.
+  if (isPreserved(step)) {
+    const names = trackedPolicyNames(step)
+    out.push({ key: 'in-place', text: names.length > 0 ? fillText(CONTRACT.foundInPlaceNamed, { policies: list(names) }) : fillText(CONTRACT.foundInPlace, { tenant }) })
+  }
   // The step's one observation is Foundation B's own aggregate over its members
   // (lifecycle.ts aggregateObservation); this reports it and never re-derives it.
   // A policy watched from this scan makes that observation its own next

@@ -78,6 +78,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // that have not cleared it (rowWhen.ts, derive/readyWhen.ts kind `since`):
   // also a reading of a scan, which the review page does not have.
   '.pages.plan.heldForEvidence',
+  // And the same row's reason line for a goal the tenant already delivers:
+  // which of its own policies satisfies the baseline (rowWhen.ts rowReason,
+  // over roadmap/tracking.ts trackedPolicyNames). It is a reading of a scan's
+  // matched policy, and the review page's example steps are matched to nothing.
+  '.pages.plan.satisfiedBy',
   '.pages.home.metaTitle',
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.export.unredactedWarning',
