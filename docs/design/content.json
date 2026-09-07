@@ -75,6 +75,96 @@
       "Microsoft Authenticator for iOS": "90a3ccdf-635c-4729-a248-9b709135078f"
     },
     "licenceRule": "Where a control needs a licence {tenant} does not hold, the step uses the nearest control it does hold and says so; the licensed version is listed under Not licensed.",
+    "methodGuides": {
+      "$comment": "The one source of MFA remediation guidance (task 014). MFA Readiness's person panel, its copy-for-the-help-desk box, the campaign step's pointer and the campaign email all read from here; nothing writes a second version. A guide's steps may name a shared line as \"@key\" into `common`, so a sentence two platforms share is written once (src/content/methodGuides.ts resolves them). Which guide applies to a person is decided by the evidence, not here.",
+      "target": "The target is a passkey or security key the person has signed in with; IAMAI reads that from the sign-in records.",
+      "prereq": "Passkey (FIDO2) has to be on in the tenant first; Set Up Passkeys to Match the Baseline turns it on.",
+      "pointer": "Person-by-person setup steps are on MFA Readiness; work its Needs a passkey and Needs proof lists there.",
+      "userInstruction": "Install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone.",
+      "common": {
+        "addPasskey": "On https://aka.ms/mfasetup choose Add sign-in method → Passkey, then Microsoft Authenticator.",
+        "useIt": "Have them sign out and sign in once with it.",
+        "scanAgain": "Scan again: the sign-in record has to name the method before IAMAI reads it as proven."
+      },
+      "guides": [
+        {
+          "id": "authenticator-iphone",
+          "title": "Passkey in Microsoft Authenticator — iPhone",
+          "steps": [
+            "Install Microsoft Authenticator from the App Store and sign in to the work account.",
+            "@addPasskey",
+            "iOS asks where to keep the passkey: pick Authenticator, then confirm with Face ID, Touch ID or the passcode."
+          ],
+          "learn": {
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator"
+          }
+        },
+        {
+          "id": "authenticator-android",
+          "title": "Passkey in Microsoft Authenticator — Android",
+          "steps": [
+            "Install Microsoft Authenticator from Google Play and sign in to the work account.",
+            "@addPasskey",
+            "Android asks which app keeps the passkey: pick Authenticator, then confirm with the screen lock.",
+            "If Authenticator is not offered, turn it on under Android Settings → Passwords and accounts → Passkeys."
+          ],
+          "learn": {
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-register-passkey-authenticator"
+          }
+        },
+        {
+          "id": "security-key",
+          "title": "Hardware security key",
+          "steps": [
+            "On https://aka.ms/mfasetup choose Add sign-in method → Passkey, then Security key.",
+            "The person inserts or taps the key when the browser asks for it.",
+            "They set the key's PIN if it has none, then touch the key to finish."
+          ],
+          "learn": {
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-authentication-passwordless-security-key"
+          }
+        },
+        {
+          "id": "windows-hello",
+          "title": "Windows Hello for Business",
+          "steps": [
+            "On a joined Windows PC: Settings → Accounts → Sign-in options, then set up a PIN, fingerprint or face.",
+            "It signs that person in on that PC and nowhere else, so it does not reach the passkey target.",
+            "Use it where a step asks for a strong sign-in on a managed PC; the passkey or key is still the target."
+          ],
+          "learn": {
+            "url": "https://learn.microsoft.com/windows/security/identity-protection/hello-for-business/"
+          }
+        },
+        {
+          "id": "temporary-access-pass",
+          "title": "Temporary Access Pass, to get them started",
+          "steps": [
+            "Administrator: in the Entra admin centre, Users → the person → Authentication methods → Add → Temporary Access Pass.",
+            "It needs the Authentication Administrator role and the method enabled in policy; IAMAI issues nothing itself.",
+            "Read the pass to the person by phone; it is one-time and short-lived.",
+            "The person signs in with the pass and registers the passkey or security key straight away. The pass is the way in, never where they stay."
+          ],
+          "learn": {
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-authentication-temporary-access-pass"
+          }
+        },
+        {
+          "id": "prove",
+          "title": "Prove the method they already hold",
+          "steps": [
+            "A passkey or security key is registered; what is missing is a sign-in that names it.",
+            "A record that only says MFA happened names no method, so it proves nothing about this one."
+          ],
+          "then": [
+            "If the sign-in is refused, Passkey (FIDO2) may not be on yet; Set Up Passkeys to Match the Baseline turns it on."
+          ],
+          "learn": {
+            "url": "https://learn.microsoft.com/entra/identity/authentication/howto-authentication-methods-activity"
+          }
+        }
+      ]
+    },
     "sharedDeviceSignals": {
       "licence": "Teams Rooms or shared-device licence",
       "deviceOnly": "signs in only from a Teams device"
@@ -545,6 +635,16 @@
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step"
+      },
+      "remediation": {
+        "$comment": "The panel a row's Next step opens (task 014). It holds no guidance of its own: every instruction comes from shared.methodGuides, which the help-desk copy and the campaign step read too. Closed until the operator opens it, so the page stays diagnostic.",
+        "heading": "Next step for {name}",
+        "choose": "Choose the method that fits their device:",
+        "other": "Useful, and short of the passkey target:",
+        "copy": "Copy for the help desk",
+        "copied": "Copied",
+        "close": "Close",
+        "learn": "Microsoft's steps →"
       }
     },
     "export": {
@@ -2280,11 +2380,11 @@
       "whatToDo": {
         "lead": "For the people chosen above (in person):",
         "steps": [
-          "Book ten minutes. Open https://aka.ms/mfasetup with them signed in.",
-          "No method: issue a Temporary Access Pass (Users → the person → Authentication methods → Add → Temporary Access Pass), read it to them by phone, then Add sign-in method → Passkey → in Microsoft Authenticator. Admins: a passkey or a hardware security key; either is phishing-resistant.",
-          "Text or call only: Add sign-in method → Passkey → in Microsoft Authenticator, then remove the phone number as a sign-in method.",
-          "Authenticator approval only: Add sign-in method → Passkey → in Microsoft Authenticator; keep the approval as a fallback.",
-          "Never seen or possibly broken: have them sign out and sign in once with the passkey; if it is refused, register it again.",
+          "Book ten minutes with each. Open https://aka.ms/mfasetup with them signed in.",
+          "{methodGuidePointer}",
+          "No method: issue a Temporary Access Pass first, so they have a way in to register with.",
+          "Text or call only: register the passkey, then remove the phone number as a sign-in method.",
+          "Admins: a passkey or a hardware security key; either is phishing-resistant.",
           "Have each sign in once more; the record shows it on the next scan."
         ],
         "generic": [
@@ -2302,11 +2402,11 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes: install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone. If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes. {registerPasskeyLine} If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "signature": "{signature}",
         "extra": "{deviceSentence}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together.",
-        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app so admin work and risky sign-ins keep working. It takes a few minutes: open https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone; then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app so admin work and risky sign-ins keep working. It takes a few minutes. {registerPasskeyLine} Then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "extraMfaInPlace": [
           "From {passkeyEnforceLong}, {passkeyPolicy} requires a passkey.",
           "{deviceSentence}"

@@ -285,7 +285,14 @@
       },
       "allow": {
         "headings": [
-          "MFA Readiness"
+          "MFA Readiness",
+          "re:^Next step for .+$",
+          "Passkey in Microsoft Authenticator — iPhone",
+          "Passkey in Microsoft Authenticator — Android",
+          "Hardware security key",
+          "Windows Hello for Business",
+          "Temporary Access Pass, to get them started",
+          "Prove the method they already hold"
         ],
         "tabs": [],
         "tiles": [
@@ -316,11 +323,21 @@
           "Next",
           "Passkey-ready",
           "Needs proof",
-          "Needs a passkey"
+          "Needs a passkey",
+          "Copy for the help desk",
+          "Copied",
+          "Close",
+          "Passkey in Microsoft Authenticator — iPhone",
+          "Passkey in Microsoft Authenticator — Android",
+          "Hardware security key",
+          "Windows Hello for Business",
+          "Temporary Access Pass, to get them started",
+          "Prove the method they already hold"
         ],
         "summaries": [],
         "links": [
           "Every account and policy the scan read →",
+          "Microsoft's steps →",
           "re:^\\d+ not active$",
           "re:^\\d+ emergency access$",
           "re:^\\d+ service accounts?$",

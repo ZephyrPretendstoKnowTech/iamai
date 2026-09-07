@@ -17,6 +17,14 @@
 // population's mapping (planData.ts useAppliedMapping), the same facts the Plan
 // and Connect read, so the three surfaces cannot disagree.
 //
+// Remediation (task 014) is the operational half, and it stays behind a click:
+// a person's Next step is a button, and the guidance for the method they need
+// opens in one panel under the table. The guidance itself is
+// content/methodGuides.ts over shared.methodGuides — the same lines the help
+// desk copies and the campaign step's email points at — and which guide a
+// person is offered follows their group, which is task 002's evidence and not a
+// second reading of it. Nothing here proves a method or moves a rung.
+//
 // The Plan handoff: #/readiness/step/<id> filters to the people one step is
 // waiting on. The hash carries the step's id and nothing else; who it reaches is
 // resolved here from the plan this page computes, over the same rows the table
@@ -31,6 +39,8 @@ import { READINESS_GROUPS, SHOW_KEYS, showKeyOf, shows, readinessView } from '..
 import type { ReadinessGroup, ReadinessRow, ShowKey } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { app, pages } from '../../content/content.ts'
+import { PASSKEY_TARGET, TENANT_PREREQUISITE, guideText, methodGuide, remediationFor } from '../../content/methodGuides.ts'
+import type { MethodGuideId, Remediation } from '../../content/methodGuides.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
@@ -40,6 +50,7 @@ import { useAppliedMapping, usePlanData } from './planData.ts'
 import { readinessHref, showFromReadinessHash, stepFromReadinessHash } from '../shell/routes.ts'
 import { Button, Callout, DataTable, InfoTip, PageTip } from '../components/index.ts'
 import type { Column } from '../components/index.ts'
+import { REDACTED, exportClipboard } from '../exportGuard.ts'
 import { scan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { W as CONNECT_WORDS } from '../scan/connectView.ts'
@@ -57,6 +68,7 @@ type ReadinessCopy = {
   inventory: string
   tip: string
   planContext: { filtered: string; unknown: string; back: string }
+  remediation: { heading: string; choose: string; other: string; copy: string; copied: string; close: string; learn: string }
 }
 const T = pages.readiness as unknown as ReadinessCopy
 const C = app.readiness
@@ -118,6 +130,97 @@ function ReadinessForStep({ scan: lastScan, baseline, stepId }: {
   return <ReadinessPage snapshot={snapshot} context={context} />
 }
 
+/**
+ * Who the panel is open for and which guide is showing. The person is held by
+ * the account id the row already carries — the display name is shown and never
+ * relied on, so a rename or two people with the same name cannot move guidance
+ * onto the wrong account.
+ */
+type OpenGuide = { userId: string; guideId: MethodGuideId | null }
+
+/** The guide's title as a choice: pressed shows it, pressed again puts it away. */
+function GuideChoice({ id, on, onPick }: { id: MethodGuideId; on: boolean; onPick: (id: MethodGuideId | null) => void }) {
+  return (
+    <Button variant="tertiary" aria-pressed={on} onClick={() => onPick(on ? null : id)}>
+      {methodGuide(id).title}
+    </Button>
+  )
+}
+
+/**
+ * The remediation panel: one person, the action their evidence earns, and the
+ * guidance for it.
+ *
+ * It reads `row.group` and asks content/methodGuides.ts what that group is
+ * offered. It never looks at the methods, the records or the rung itself, so it
+ * cannot come to a different answer from the table above it: somebody the page
+ * calls "Needs proof" is asked to use what they already hold, never to register
+ * a second passkey.
+ *
+ * The two guides that do not reach the page's target stand under their own line
+ * (a Temporary Access Pass is a way in; Windows Hello for Business works on one
+ * PC). They are offered, and they are not offered as finishing the job.
+ */
+function RemediationPanel({ row, guideId, onPick, onClose }: {
+  row: ReadinessRow
+  guideId: MethodGuideId | null
+  onPick: (id: MethodGuideId | null) => void
+  onClose: () => void
+}) {
+  const [copied, setCopied] = useState(false)
+  const R = T.remediation
+  const r: Remediation = remediationFor(row.group)
+  if (r.kind === 'none' || r.kind === 'unknown') return null
+  const guide = guideId === null ? null : methodGuide(guideId)
+  const name = row.user.displayName ?? row.user.userPrincipalName ?? ''
+  const copy = (): void => {
+    if (!guide) return
+    void exportClipboard(guideText(guide.id), REDACTED).then((ok) => {
+      if (!ok) return
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+  return (
+    <section className="guide-panel card">
+      <h3>{fillText(R.heading, { name })}</h3>
+      <p className="reason">{PASSKEY_TARGET}</p>
+      {r.kind === 'setUp' && (
+        <>
+          <p className="reason">{TENANT_PREREQUISITE}</p>
+          <p className="line">{R.choose}</p>
+          <p className="actions">{r.guides.map((id) => <GuideChoice key={id} id={id} on={id === guideId} onPick={onPick} />)}</p>
+          <p className="line">{R.other}</p>
+          <p className="actions">{r.other.map((id) => <GuideChoice key={id} id={id} on={id === guideId} onPick={onPick} />)}</p>
+        </>
+      )}
+      {guide && (
+        <div className="guide">
+          <h4>{guide.title}</h4>
+          <ol className="sections">{guide.lines.map((l, i) => <li key={i}>{l}</li>)}</ol>
+          <p className="line">
+            <a href={guide.learn.url} target="_blank" rel="noopener noreferrer">
+              {R.learn}
+            </a>
+          </p>
+          {/* The help desk gets the words on screen, not a second version of
+              them: the copied text is this guide, and it carries no name. */}
+          <p className="actions">
+            <Button variant="secondary" onClick={copy}>
+              {copied ? R.copied : R.copy}
+            </Button>
+          </p>
+        </div>
+      )}
+      <p className="actions">
+        <Button variant="tertiary" onClick={onClose}>
+          {R.close}
+        </Button>
+      </p>
+    </section>
+  )
+}
+
 function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null; context: PlanContext | null }) {
   // The population's mapping (the detected emergency and service accounts, and every saved decision): the Plan's and Connect's.
   const mapping = useAppliedMapping(snapshot)
@@ -127,6 +230,9 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
   const [query, setQuery] = useState('')
   const [show, setShow] = useState<ShowKey>(() => showKeyOf(showFromReadinessHash(window.location.hash)) ?? 'all')
   const [adminsOnly, setAdminsOnly] = useState(false)
+  // The remediation panel: closed until a person's Next step is pressed, so the
+  // page's first screen stays the diagnostic it was built as.
+  const [open, setOpen] = useState<OpenGuide | null>(null)
   useEffect(() => {
     const onHash = () => setShow(showKeyOf(showFromReadinessHash(window.location.hash)) ?? 'all')
     window.addEventListener('hashchange', onHash)
@@ -193,8 +299,35 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
     },
     { key: 'method', header: T.columns[2], sortValue: (r) => methodWord(r.method), csv: (r) => methodWord(r.method), render: (r) => methodWord(r.method) },
     { key: 'proof', header: T.columns[3], csv: (r) => rowEvidenceText(r), render: (r) => rowEvidenceText(r) },
-    { key: 'next', header: T.columns[4], csv: (r) => nextStateWord(r), render: (r) => nextStateWord(r) },
+    {
+      key: 'next',
+      header: T.columns[4],
+      csv: (r) => nextStateWord(r),
+      // The state stays the words it always was; where there is remediation to
+      // open, it is also the control that opens it. A person already
+      // passkey-ready is asked for nothing, and an account whose methods this
+      // scan could not read gets no setup path invented for it — the page's own
+      // "scan again" is the action there.
+      render: (r) => {
+        const kind = remediationFor(r.group).kind
+        if (kind === 'none' || kind === 'unknown') return nextStateWord(r)
+        const on = open?.userId === r.user.id
+        return (
+          <Button
+            variant="tertiary"
+            aria-expanded={on}
+            onClick={() => setOpen(on ? null : { userId: r.user.id, guideId: kind === 'prove' ? 'prove' : null })}
+          >
+            {nextStateWord(r)} →
+          </Button>
+        )
+      },
+    },
   ]
+  // The person the panel is open for, found again among the rows on screen: a
+  // scan that changes who is listed closes it rather than leaving guidance
+  // standing over an account that is no longer there.
+  const openRow = open === null ? null : (view?.rows.find((r) => r.user.id === open.userId) ?? null)
 
   const heading = (
     <div className="page-head">
@@ -269,6 +402,14 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
         </Button>
       </div>
       <DataTable rows={rows} columns={columns} rowKey={(r) => r.user.id} csvName={READINESS_CSV} empty={C.noMatch} />
+      {openRow && open && (
+        <RemediationPanel
+          row={openRow}
+          guideId={open.guideId}
+          onPick={(guideId) => setOpen({ userId: open.userId, guideId })}
+          onClose={() => setOpen(null)}
+        />
+      )}
       {/* Quiet, under the table: every account once, then the populations the
           campaign does not count, each a link to itself. They stay reachable for
           context and never appear as a failed employee passkey adoption. */}

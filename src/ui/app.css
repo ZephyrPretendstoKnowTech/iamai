@@ -1680,6 +1680,22 @@ td .not-person {
 td .group-word {
   margin-left: 6px;
 }
+/* The remediation panel (task 014): one person, under the table, and only after
+   their Next step is pressed. It is a card in the page column so it reads as one
+   thing and never as a rail beside the diagnostic. */
+.guide-panel {
+  max-width: var(--page);
+  margin: 16px 0 0;
+  padding: 14px 16px 4px;
+}
+.guide-panel h3 {
+  margin-top: 0;
+}
+.guide-panel .guide {
+  border-top: 1px solid var(--rule);
+  margin-top: 12px;
+  padding-top: 4px;
+}
 /* The Plan step's line to MFA Readiness: a sentence and a link, nothing boxed. */
 .surface .mfa-handoff {
   margin: 12px 0;
