@@ -21,10 +21,20 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
+import { undatedRows } from './planRows.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
 // the print stylesheet hides the controls and tabs. Cleanup prints its rows too.
+//
+// Which steps print is the Plan's own rule and not a second one (planRows.ts).
+// The waves date most of them; the undated group the screen draws after the
+// phases prints too, because a step whose implementation is withheld until
+// something is cleared is exactly the one an operator needs the document to
+// explain. It prints the body the screen opens, so what is holding it, what
+// clears it and its one next action are all there, and the implementation, the
+// rollout dates, the announcement and the rollback stay withheld because
+// ContentStep withholds them (task 013 correction).
 const noop = (): void => undefined
 const C = app.print
 
@@ -66,6 +76,8 @@ export function PrintPlan({
   const done = steps.filter((s) => s.status === 'done')
   const byId = new Map(steps.map((s) => [s.id, s]))
   const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
+  // The undated group, read from the Plan's rule and not recomputed here.
+  const held = undatedRows(steps, schedule.waves)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
   const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''
@@ -134,6 +146,7 @@ export function PrintPlan({
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
+          {held.length > 0 && <li>{C.held.heading}</li>}
           {schedule.cleanup && <li>{phases.last}</li>}
         </ol>
       </section>
@@ -192,6 +205,21 @@ export function PrintPlan({
           })}
         </section>
       ))}
+      {/* The undated group: a step no wave carries because something has to be
+          cleared before its policy can be written. It prints in full — the same
+          body, with the blocker, the one action and the completion — and it
+          prints no date, because it has none. */}
+      {held.length > 0 && (
+        <section className="print-page">
+          <h2>{C.held.heading}</h2>
+          <p className="muted">{C.held.lead}</p>
+          {held.map((s) => (
+            <article key={s.id} className="print-step">
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+            </article>
+          ))}
+        </section>
+      )}
       {schedule.cleanup && (
         <section className="print-page">
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
