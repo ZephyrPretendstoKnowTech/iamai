@@ -6,7 +6,6 @@
 // blocked step with no date of its own reads its wave's start, so a row reads
 // Blocked · <date>, Report-only · ready <date> or Ready · now, never Blocked · now.
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
-import { trackedPolicyNames } from '../../roadmap/tracking.ts'
 import { list } from '../../copy/statements.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -17,7 +16,7 @@ import { awaitingDeployment } from '../../roadmap/forecast.ts'
 import { heldByReadiness } from '../../derive/finish.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 
-const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; heldForEvidence: string; heldForReview: string; satisfiedBy: string }
+const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; heldForEvidence: string; heldForReview: string; satisfiedBy: string; satisfiedTogether: string }
 
 export function rowWhen(step: Step, waveStart: string | null = null): string {
   // A done step's row shows no date word: blank, never "now".
@@ -94,11 +93,17 @@ export function rowReason(step: Step): string | null {
   // every one of them to find out which policy they were being asked to keep.
   // The date column is deliberately blank on a done step (`rowWhen` above:
   // preserved work earns no rollout date), so this is the row's only chance to
-  // say it. Null where this scan has no name for the policy: nothing here
-  // invents one.
+  // say it.
+  //
+  // The singular sentence is for a policy the classifier proved covers the
+  // whole goal by itself; where the coverage is a union it names the set and
+  // says so, because "Satisfied by A" over a goal A only half covers reads as
+  // though B were spare. Null where this scan classified no satisfying policy:
+  // nothing here invents one.
   if (isPreserved(step)) {
-    const names = trackedPolicyNames(step)
-    return names.length > 0 ? fillText(PLAN.satisfiedBy, { policies: list(names) }) : null
+    const by = step.satisfiedBy
+    if (!by || by.policies.length === 0) return null
+    return by.sufficient !== null ? fillText(PLAN.satisfiedBy, { policies: by.sufficient }) : fillText(PLAN.satisfiedTogether, { policies: list(by.policies) })
   }
   if (heldForReview(step)) return step.state.observation?.note ?? null
   // What earned the enforcement, beside the word that offers it: the two gates'

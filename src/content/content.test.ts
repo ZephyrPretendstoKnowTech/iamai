@@ -80,9 +80,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.heldForEvidence',
   // And the same row's reason line for a goal the tenant already delivers:
   // which of its own policies satisfies the baseline (rowWhen.ts rowReason,
-  // over roadmap/tracking.ts trackedPolicyNames). It is a reading of a scan's
-  // matched policy, and the review page's example steps are matched to nothing.
+  // over the classifier's own `Step.satisfiedBy`). It is a reading of a scan's
+  // classified coverage, and the review page's example steps are classified
+  // against nothing. The second is its plural: the goal no one policy covers
+  // alone.
   '.pages.plan.satisfiedBy',
+  '.pages.plan.satisfiedTogether',
   '.pages.home.metaTitle',
   '.pages.plan.gapSuffix.guests-mfa',
   '.pages.export.unredactedWarning',

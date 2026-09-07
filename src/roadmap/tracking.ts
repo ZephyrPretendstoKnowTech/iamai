@@ -266,31 +266,6 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
 }
 
 /**
- * The tenant policies this scan matched to the step, by name, in member order
- * and without repeats. The one place a surface asks which policy a step is
- * about.
- *
- * It matters most on a goal the tenant already delivers. That step submits
- * nothing, so it has no operation to name its target and no proposed name of
- * its own, and every surface that wanted to say *which* policy satisfies the
- * baseline had nothing to read: the step could only say a policy existed. An
- * operator who cannot see which one cannot check that IAMAI accepted the right
- * one, and cannot tell which policy the plan is asking them to leave alone.
- *
- * The names are the tenant's own, whatever they are called: a policy matched by
- * shape rather than by name satisfies the baseline under a custom name exactly
- * as it would under the baseline's (roadmap/tracking.ts `matchMembers`), and
- * this reports the name the tenant gave it. Empty when this scan matched no
- * policy, or matched one whose name it does not have — an unknown is not filled
- * in with the baseline's name.
- */
-export function trackedPolicyNames(step: Pick<Step, 'tracking'>): string[] {
-  const members = step.tracking?.members ?? []
-  const names = members.map((m) => m.policyName).filter((n): n is string => typeof n === 'string' && n.length > 0)
-  return [...new Set(names)]
-}
-
-/**
  * The policy delivering a step, where one policy delivers it: the sole required
  * member's artifact. Null on a step the baseline implements with two policies —
  * no single object is that step, and returning Policy A would say it was.

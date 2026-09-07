@@ -247,6 +247,7 @@ function evaluateGoal(
     expectedCount: 0,
     reasons: [],
     candidates: [],
+    satisfaction: null,
     floorRaised: null,
     // Set from the final status in computeCoverage; never read before then.
     verdict: 'unknown',
@@ -302,6 +303,13 @@ function evaluateGoal(
   const weak = new Set<string>()
   const reportOnly = new Set<string>()
   const contributions: CandidateContribution[] = []
+  /**
+   * Which of the goal's expected people each strong candidate covers at the
+   * floor, kept per policy rather than only unioned into `enforced`. The union
+   * decides the status; this decides *whose* coverage earned it, and without it
+   * a goal two narrower policies satisfy together cannot say so.
+   */
+  const coveredBy = new Map<string, Set<string>>()
   const reasons: Reason[] = []
   let anyEstimated = false
   let anyUnresolved = false
@@ -348,6 +356,7 @@ function evaluateGoal(
       for (const id of strongPop) reportOnly.add(id)
     } else if (meetsFloor) {
       contribution = 'strong'
+      coveredBy.set(c.id, strongPop)
       for (const id of strongPop) enforced.add(id)
       if (caveats.includes('apps-narrower')) {
         reasons.push({
@@ -481,6 +490,26 @@ function evaluateGoal(
   else if (enforced.size > 0 || reportOnly.size > 0 || weak.size > 0) status = 'partial'
   else status = 'absent'
 
+  // Who satisfied it, from the classifier that decided it was satisfied. Every
+  // strong candidate that covers somebody the goal still expects is in the set:
+  // coverage is a union, so a goal can be delivered by two policies neither of
+  // which is broad enough alone, and a downstream surface naming the first of
+  // them would call a narrower policy the one that delivers the goal. `sole` is
+  // the proof a singular sentence needs — one policy covering every expected
+  // person by itself — and nothing but this decides it.
+  if (status === 'enforced') {
+    const strongContribs = contributions.filter((c) => c.contribution === 'strong')
+    const contributors = effectiveExpected.size === 0 ? strongContribs : strongContribs.filter((c) => [...(coveredBy.get(c.policyId) ?? [])].some((id) => effectiveExpected.has(id)))
+    const covers = (c: CandidateContribution): boolean => [...effectiveExpected].every((id) => coveredBy.get(c.policyId)?.has(id))
+    const sufficient = contributors.find(covers) ?? null
+    base.satisfaction = {
+      policyIds: contributors.map((c) => c.policyId),
+      policyNames: contributors.map((c) => c.policyName),
+      sufficientId: sufficient?.policyId ?? null,
+      sufficientName: sufficient?.policyName ?? null,
+    }
+  }
+
   const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users)
   return { ...base, status, statement }
 }
@@ -514,8 +543,14 @@ function evaluateStructural(
     : contributions.some((c) => c.contribution === 'weak' || c.contribution === 'reportOnly')
       ? 'partial'
       : 'absent'
-  const strong = contributions.filter((c) => c.contribution === 'strong').map((c) => c.policyName)
+  const strongCandidates = contributions.filter((c) => c.contribution === 'strong')
+  const strong = strongCandidates.map((c) => c.policyName)
   const partialBy = contributions.filter((c) => c.contribution === 'weak' || c.contribution === 'reportOnly')
+  // A workload-identity goal has no population to divide, so a single strong
+  // candidate is the whole of the coverage and any one of several is not.
+  if (status === 'enforced') {
+    base.satisfaction = { policyIds: strongCandidates.map((c) => c.policyId), policyNames: strong, sufficientId: strongCandidates[0]?.policyId ?? null, sufficientName: strongCandidates[0]?.policyName ?? null }
+  }
   return {
     ...base,
     status,
