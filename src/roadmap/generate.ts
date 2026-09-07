@@ -1145,8 +1145,27 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // whether a policy exists: the verdict is decided once, in coverage.
     if (result.verdict === 'inPlace') {
       kind = 'create'
-      // Delivered by something the tenant already has: preserve it.
-      state = { ...state, satisfied: true, inPlace: true }
+      // Delivered — and by whom decides which of the two done outcomes this is.
+      //
+      // `inPlace` is Foundation B's word for a goal delivered by a control the
+      // tenant already had: a preservation result, not a stage of a rollout, and
+      // the reason its step reads "In place" rather than "Enforced" and its next
+      // milestone is to keep the policy rather than nothing at all
+      // (roadmap/lifecycle.ts). It was set for every satisfied goal, so a policy
+      // IAMAI created and drove to enforcement came back on the next scan
+      // reading as something the tenant always had, and the two outcomes an
+      // operator most needs to tell apart — the work is done, and there was no
+      // work — were one word.
+      //
+      // The provenance is the plan's own tag on the tenant object (`tagFor` in
+      // buildCreateAction, read back by `findTaggedPolicies`): it is written
+      // into the policy IAMAI creates, it survives every later scan, and a
+      // policy the tenant wrote never carries it. The tag has to be on a policy
+      // the classifier actually counted towards the satisfaction — a tagged
+      // policy sitting disabled beside a tenant policy that delivers the goal
+      // earned nothing.
+      const planDeployed = (result.satisfaction?.policyIds ?? []).some((id) => matchedPolicyIds.includes(id))
+      state = { ...state, satisfied: true, inPlace: !planDeployed }
       action = {
         kind: 'create',
         summary: [],
@@ -1585,6 +1604,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         const own = strong.filter((c) => c.ownScope)
         return (own.length > 0 ? own : strong).map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`)
       })(),
+      // The classifier's own answer to "which policy satisfies this goal",
+      // carried so a surface never has to work it out again from a match that
+      // was made for another purpose (types.ts `satisfiedBy`).
+      ...(state.satisfied && result.satisfaction
+        ? { satisfiedBy: { policies: result.satisfaction.policyNames, sufficient: result.satisfaction.sufficientName } }
+        : {}),
       plainTitle: stepTitle(goal.name),
       forManager,
       // The lockout count is the people this policy would stop rather than

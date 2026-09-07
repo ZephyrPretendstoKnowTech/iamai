@@ -89,7 +89,7 @@ test('week one: a policy the scan first sees in report-only is ready on the scan
   assert.equal(kept.since, 'first-scan', 'the first time IAMAI looked, not a transition it watched')
 })
 
-test('week two: the report-only policy with clean, complete records is ready now; the one seen for 24 people waits for its window; the one the tenant turned on is Enforced', () => {
+test('week two: the report-only policy with clean, complete records is ready now; the one seen for 24 people waits for its window; the one the tenant turned on is In place', () => {
   const f = fixture('demo-week2')
   const run = runFixture(f)
   const token = run.steps.find((s) => s.id === TOKEN)!
@@ -116,7 +116,11 @@ test('week two: the report-only policy with clean, complete records is ready now
 
   const admins = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(admins.status, 'done')
-  assert.equal(statusOf(admins).word, 'Enforced')
+  // The tenant's own policy, which the tenant switched on: the plan deployed
+  // nothing for this goal, so the word is the preservation result and not the
+  // rollout one. Enforced would say IAMAI drove a change it never made.
+  assert.equal(admins.state.inPlace, true)
+  assert.equal(statusOf(admins).word, 'In place')
   assert.equal(readyWhen(admins), null)
 
   // The step's Done-when: both gates with today's numbers replace the generic lines.
@@ -213,7 +217,7 @@ test('rescan: the same ten days in a record that never named a policy carries no
   assert.equal(statusOf(step).word, 'Report-only')
 })
 
-test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (Ready to enforce / ready <date>) and the admins policy reads Enforced', () => {
+test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (Ready to enforce / ready <date>) and the admins policy reads In place', () => {
   const f = fixture('demo-week2')
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
@@ -234,7 +238,9 @@ test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word, 'Report-only')
   assert.match(rowWhen(transfer), /^ready \S.*\d{4}$/)
-  assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'Enforced')
+  // And the tenant's own admins policy, which no tag of this plan's touches,
+  // reads as what it is: a control already in place, not one the plan enforced.
+  assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')
 })
 
 test("the walk's reading: every report-only step of the app's demo says where it stands on its row, and carries both gates in its Done-when", () => {

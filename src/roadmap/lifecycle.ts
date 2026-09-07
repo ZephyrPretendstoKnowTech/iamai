@@ -183,7 +183,11 @@ export function advanceState(step: Step, patch: Partial<StepState>): boolean {
  * cannot re-derive, and it is stored as itself.
  *
  * It remains as a word-to-state mapper for tests that build a step in a given
- * state, and for reading a file written before that was true.
+ * state, and for reading a file written before that was true. A stored "done"
+ * comes back as the preservation result, because a word does not say whether
+ * the plan deployed the policy that earned it and In place claims the less of
+ * the two: that the tenant already had the control, not that IAMAI rolled one
+ * out. Only a scan decides that (roadmap/generate.ts).
  */
 export function stateForStatus(status: StepStatus): Partial<StepState> {
   if (status === 'skipped') return { setAside: true }

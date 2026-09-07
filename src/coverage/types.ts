@@ -183,6 +183,34 @@ export type CandidateContribution = {
   ownScope: boolean
 }
 
+/**
+ * Which tenant policies satisfy this goal, decided by the classifier that
+ * decided the goal was satisfied, and carried downstream so no surface has to
+ * work it out again.
+ *
+ * `policyIds`/`policyNames` are every strong candidate that covers somebody the
+ * goal still expects — the whole contributing set, because coverage is a union:
+ * two policies each narrower than the goal can satisfy it together.
+ *
+ * `sufficientId`/`sufficientName` name the one policy that covers the whole
+ * expected population *by itself*, where one does, and are null where the
+ * coverage is only a union. That is the proof a singular sentence needs: a
+ * surface may say "Satisfied by X" only of a sufficient policy, and where there
+ * is none it has to name the set and say they do it together. Without this a
+ * goal two half-scoped policies satisfy between them would name the first of
+ * them alone — presenting a policy that is not broad enough as the one that
+ * delivers the goal, and the other as unnecessary.
+ *
+ * Null on every goal the classifier did not find satisfied. Never a guess: the
+ * ids are the candidates the classifier counted, not a name match.
+ */
+export type Satisfaction = {
+  policyIds: string[]
+  policyNames: string[]
+  sufficientId: string | null
+  sufficientName: string | null
+}
+
 export type GoalStatus =
   /** The goal is met at the catalogue floor; only the baseline's raised floor is missed (ux-review-05 §10). */
   | 'below-baseline'
@@ -225,6 +253,8 @@ export type GoalResult = {
   expectedCount: number
   reasons: Reason[]
   candidates: CandidateContribution[]
+  /** Which policies satisfy the goal, and whether one of them does it alone. Null unless the classifier found it satisfied. */
+  satisfaction: Satisfaction | null
   floorRaised: { from: string; to: string; by: string } | null
   /** For a not-applicable goal: the applicability facet that switched it off, and why (a licence, or no sign-in activity). */
   applicability?: { facet: string; reason: string }

@@ -276,6 +276,19 @@ export type Step = {
   gapShort: string | null
   /** Policies that already deliver the goal (name and state), the evidence a Done step cites (ux-review-04 §5). */
   deliveredBy: string[]
+  /**
+   * Which tenant policies satisfy this step's goal, copied verbatim from the
+   * classifier that decided it was satisfied (coverage/types.ts `Satisfaction`).
+   * Absent on a step whose goal the classifier did not find satisfied.
+   *
+   * It is here because a surface has the step and not the coverage report, and
+   * because the question "which policy delivers this goal" has exactly one
+   * right answer and it is the classifier's. The scan's own member match
+   * answers a different question — which deployed object this step's history is
+   * about — and on a goal two policies satisfy together it resolves to one of
+   * them, so nothing may read it as the satisfaction identity.
+   */
+  satisfiedBy?: { policies: string[]; sufficient: string | null }
   /** A strength policy's lockout count (roadmap/lockout.ts): the people in scope with no phishing-resistant method today; the row shows it when it is not zero. */
   lockout?: number
   /**

@@ -11,9 +11,15 @@ export function statusOf(step: Step): StatusView {
     case 'done':
       // A goal the plan drove to enforcement reads Enforced; one delivered by
       // something the tenant already had reads In place, which is a
-      // preservation result and not a stage of the lifecycle. The step's own
-      // lifecycle answers (roadmap/lifecycle.ts), never a date on the tracking.
-      return step.state.lifecycle === 'enforced' ? { word: 'Enforced', tone: 'ok' } : { word: 'In place', tone: 'ok' }
+      // preservation result and not a stage of the lifecycle.
+      //
+      // Foundation B's `inPlace` is that distinction and the only thing that
+      // answers it (roadmap/lifecycle.ts). The lifecycle cannot: a pre-existing
+      // policy the tenant has switched on is `enforced` too, so reading the
+      // stage made every goal the tenant already delivered say Enforced —
+      // "IAMAI rolled this out" over a control it never touched, and no row
+      // anywhere said In place.
+      return step.state.inPlace ? { word: 'In place', tone: 'ok' } : { word: 'Enforced', tone: 'ok' }
     case 'ready':
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':

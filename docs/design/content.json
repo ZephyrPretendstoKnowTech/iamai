@@ -372,6 +372,7 @@
       "heldForEvidence": "held until the records clear",
       "heldForReview": "held until reviewed",
       "satisfiedBy": "Satisfied by {policies} — no change needed",
+      "satisfiedTogether": "Satisfied by {policies} together — no change needed",
       "settingsLink": "Plan settings",
       "settings": {
         "h3": "Plan settings",
@@ -805,6 +806,7 @@
           "foundReadiness": "{measure} is {value} today; enforcement waits for {threshold}.",
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
+          "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
           "doneSatisfied": "Already satisfied: {tenant} has this, and the step is to keep it that way.",
           "doneBlocked": "Everything under Fix before continuing is cleared.",
           "doneConflict": "A reviewed baseline version settles which of its two definitions of this policy is meant.",

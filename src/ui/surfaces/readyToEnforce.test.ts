@@ -38,6 +38,7 @@ import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { scannedAt, seenOn } from '../../roadmap/fixtures/records.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
+import { findTaggedPolicies } from '../../roadmap/generate.ts'
 import type { StepObservationRecord } from '../../roadmap/observation.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import { enforcesOnRun, finalTargets, implementationOffered, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
@@ -991,15 +992,22 @@ test('007.14: the canonical policy, once a later scan finds it enabled, is Enfor
 
 test('007.14b: the fixtures’ own enforced policies are delivered, and carry no operation at all', () => {
   // The demo tenant's five week-one policies, which this scan finds enabled:
-  // real whole-fixture steps that have finished, not a variant. A policy the
-  // plan drove all the way is done and has nothing left to submit.
+  // real whole-fixture steps that have finished, not a variant. A goal a policy
+  // already delivers is done and has nothing left to submit.
+  //
+  // They are the tenant's own — none of them carries this plan's tag — so the
+  // word is In place, the preservation result, and not Enforced: nothing here
+  // was rolled out by the plan, and saying Enforced over a control IAMAI never
+  // touched claims work it did not do.
   const run = runFixture(fixture(FIXTURE))
   const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
   assert.ok(enforced.length > 0, 'the fixture has policies the tenant already enforces')
   for (const step of enforced) {
     assert.equal(step.state.satisfied, true, `${step.id}: enforced and not delivered`)
     assert.equal(step.status, 'done', step.id)
-    assert.equal(statusOf(step).word, 'Enforced', step.id)
+    assert.deepEqual(findTaggedPolicies(run.input.snapshot, run.input.planId, step.id), [], `${step.id}: this plan deployed a policy for it after all`)
+    assert.equal(step.state.inPlace, true, `${step.id}: the tenant's own policy read as the plan's`)
+    assert.equal(statusOf(step).word, 'In place', step.id)
     assert.ok(step.tracking?.enforcedAt, `${step.id}: Enforced with no instant from the tenant`)
     assert.deepEqual(operationsOf(step), [], `${step.id}: nothing left to submit`)
     assert.equal(implementationOffered(step), false, step.id)

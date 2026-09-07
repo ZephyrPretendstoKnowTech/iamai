@@ -26,7 +26,7 @@ import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
 import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
-import { requiredMembers, trackedPolicyNames } from '../../roadmap/tracking.ts'
+import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
 import { app, engine, stepById } from '../../content/content.ts'
@@ -58,6 +58,7 @@ type ContractWords = {
   foundReadiness: string
   foundInPlace: string
   foundInPlaceNamed: string
+  foundInPlaceTogether: string
   doneSatisfied: string
   doneBlocked: string
   doneConflict: string
@@ -185,7 +186,10 @@ const MEMBER_LABELS = 'ABCDEFGH'
 function stageOf(step: Step): string {
   const s = step.state
   if (s.setAside) return CONTRACT.lifecycle['set-aside']
-  if (s.satisfied) return s.lifecycle === 'enforced' ? CONTRACT.lifecycle.enforced : CONTRACT.lifecycle['in-place']
+  // Which of the two done outcomes this is, on Foundation B's own fact and not
+  // on the stage: a policy the tenant already had is `enforced` in the tenant
+  // too, so the stage cannot tell a rollout from a preservation.
+  if (s.satisfied) return s.inPlace ? CONTRACT.lifecycle['in-place'] : CONTRACT.lifecycle.enforced
   return s.lifecycle ? CONTRACT.lifecycle[s.lifecycle] : ''
 }
 
@@ -250,14 +254,26 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // line used to say only that the tenant "already has a policy doing this",
   // which is the one fact an operator cannot act on: to check that IAMAI
   // accepted the right control — and to know which policy the plan is asking
-  // them to leave alone — they need its name. Foundation B matched it, so the
-  // name is read from the tracking (roadmap/tracking.ts `trackedPolicyNames`)
-  // and never guessed from the baseline: a tenant policy under a custom name
-  // satisfies the goal under that name. Where this scan has no name for it the
-  // unnamed line stands rather than an invented one.
+  // them to leave alone — they need its name.
+  //
+  // The identity is the classifier's own (`Step.satisfiedBy`, from the coverage
+  // result that decided the goal was satisfied), never guessed from the
+  // baseline: a tenant policy under a custom name satisfies the goal under that
+  // name. It names one policy only where the classifier proved that one covers
+  // the whole goal; where two policies satisfy it between them both are named
+  // and the line says they do it together, because naming the first would
+  // present a policy that does not cover the goal as the one that delivers it.
+  // Where this scan classified no satisfying policy the unnamed line stands
+  // rather than an invented one.
   if (isPreserved(step)) {
-    const names = trackedPolicyNames(step)
-    out.push({ key: 'in-place', text: names.length > 0 ? fillText(CONTRACT.foundInPlaceNamed, { policies: list(names) }) : fillText(CONTRACT.foundInPlace, { tenant }) })
+    const by = step.satisfiedBy
+    const text =
+      !by || by.policies.length === 0
+        ? fillText(CONTRACT.foundInPlace, { tenant })
+        : by.sufficient !== null
+          ? fillText(CONTRACT.foundInPlaceNamed, { policies: by.sufficient })
+          : fillText(CONTRACT.foundInPlaceTogether, { policies: list(by.policies) })
+    out.push({ key: 'in-place', text })
   }
   // The step's one observation is Foundation B's own aggregate over its members
   // (lifecycle.ts aggregateObservation); this reports it and never re-derives it.
