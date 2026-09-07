@@ -12,7 +12,7 @@
 //   D  admins come from directory roles
 //   E  a filter narrows the rows and moves no number
 //   F  a step's handoff is that step's own requirement, never the page's target
-//   G  one surface, and the old route reaches it
+//   G  one surface, and the old route reaches it, and the checks read its words
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -30,6 +30,7 @@ import { affectedIds } from './whoLine.ts'
 import { groupWords, nextStateWord, readinessWord } from '../ui/surfaces/readinessCells.ts'
 import { readinessHref, readinessStepHref, resolveHash, showFromReadinessHash, stepFromReadinessHash } from '../ui/shell/routes.ts'
 import { pages } from '../content/content.ts'
+import { fillText } from '../content/render.ts'
 
 const TENANTS: FixtureName[] = ['demo', 'getiamai', 'mid', 'messy', 'hostile']
 
@@ -317,4 +318,31 @@ test('there is one MFA Readiness surface, and the old Today route reaches it', (
   const appShell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
   assert.match(appShell, /\{SHELL\.tabs\.readiness\}/)
   assert.doesNotMatch(appShell, /tabs\.today/)
+})
+
+// The checks CI runs must read the words the page ships, not a copy of them.
+// Two of them held a copy: the header tabs as a literal (still "Today" after
+// task 012 renamed it) and the summary in one tense, which a tenant with a
+// single passkey-ready person fails — content/render.ts pluralise() writes
+// "1 ... has proven" for a count of one. Both are read from the shipped words
+// here, so a rename or a count of one cannot part the check from the page.
+test('the walk and the smoke read the shipped words: the tabs from the content, the summary in either tense', () => {
+  const walk = readFileSync('scripts/walk.mjs', 'utf8')
+  const smoke = readFileSync('scripts/smoke.mjs', 'utf8')
+  // The tabs: one authority (app.shell.tabs), never a second list inside the check.
+  assert.match(walk, /const HEADER_TABS = \[app\.shell\.tabs\.readiness, app\.shell\.tabs\.plan, app\.shell\.tabs\.export\]/, 'the walk builds its expectation from the words the header renders')
+  assert.doesNotMatch(walk, /Today . Plan . Export/, 'and holds no retired tab name')
+  // The summary: the sentence the page renders, at a count of one and above it.
+  const T = pages.readiness as unknown as { summary: string }
+  const one = fillText(T.summary, { ready: 1, active: 30 })
+  const many = fillText(T.summary, { ready: 4, active: 30 })
+  assert.match(one, /1 of 30 active people has proven/, 'the count governs the verb')
+  assert.match(many, /4 of 30 active people have proven/)
+  for (const [name, src] of [['the walk', walk], ['the smoke', smoke]] as const) {
+    const lit = (src.match(/\/\(\\d\+\) of [^\n]*? proven\//) ?? [])[0]
+    assert.ok(lit, `${name} still checks the summary sentence`)
+    const re = new RegExp(lit.slice(1, -1))
+    assert.match(one, re, `${name} reads the summary at a count of one`)
+    assert.match(many, re, `${name} reads it above one`)
+  }
 })

@@ -37,6 +37,11 @@ const STEP_FORBID = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step')
 const MORE_HEADINGS = (CONTRACTS.surfaces ?? []).find((c) => c.id === 'plan.step.more')?.allow?.headings ?? []
 const PRINT_FORBID = [...FORBID_EVERYWHERE, ...STEP_FORBID.filter((f) => !MORE_HEADINGS.includes(f))]
 
+// MFA Readiness's summary sentence (pages.readiness.summary). The verb it ends
+// on is governed by the count (content/render.ts pluralise writes "1 ... has
+// proven"), so the line is matched in either tense rather than one of them.
+const SUMMARY_LINE = /(\d+) of (\d+) active (?:person|people) (?:have|has) proven/
+
 const PORT = Number(process.env.SMOKE_PORT ?? 5199)
 const CDP_PORT = Number(process.env.SMOKE_CDP_PORT ?? 9444)
 const BASE = `http://localhost:${PORT}/?dev=1&mock=1`
@@ -303,9 +308,9 @@ try {
   t = await text()
   check('MFA Readiness: the heading and its one opening sentence', /MFA Readiness/.test(t) && /Who can already sign in with a passkey/.test(t))
   // The summary over the active people, then the three counts under it; the three sum to the active people the summary names.
-  const summaryLine = t.match(/(\d+) of (\d+) active (?:person|people) have proven/)
+  const summaryLine = t.match(SUMMARY_LINE)
   const groupCounts = await evaluate(`[...document.querySelectorAll('main.page .group-count')].map((b) => ({ title: ((b.querySelector('.group-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.group-n') || {}).textContent || '').trim()) }))`)
-  check('MFA Readiness: the summary counts the active people who have proven a passkey', !!summaryLine, (t.match(/[^\n]*have proven[^\n]*/) ?? [''])[0])
+  check('MFA Readiness: the summary counts the active people who have proven a passkey', !!summaryLine, (t.match(/[^\n]*(?:have|has) proven[^\n]*/) ?? [''])[0])
   check(
     'MFA Readiness: three counts — passkey-ready, needs proof, needs a passkey — summing to the active people',
     groupCounts.map((g) => g.title).join(' | ') === 'Passkey-ready | Needs proof | Needs a passkey' &&
@@ -427,7 +432,7 @@ try {
     check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ people/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
     check('MFA Readiness: and offers the way back to that step', /← Back to the step/.test(t2))
     // The counts above the table stay the whole tenant, not the filtered set.
-    const scopedSummary = t2.match(/(\d+) of (\d+) active (?:person|people) have proven/)
+    const scopedSummary = t2.match(SUMMARY_LINE)
     check('MFA Readiness: a Plan filter does not change the tenant-wide counts', !!scopedSummary && !!summaryLine && scopedSummary[2] === summaryLine[2], `${scopedSummary && scopedSummary[2]} vs ${summaryLine && summaryLine[2]}`)
     await go('plan')
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
