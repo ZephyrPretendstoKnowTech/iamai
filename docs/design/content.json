@@ -142,8 +142,9 @@
           "title": "Temporary Access Pass, to get them started",
           "steps": [
             "Administrator: in the Entra admin centre, Users → the person → Authentication methods → Add → Temporary Access Pass.",
-            "It needs the Authentication Administrator role and the method enabled in policy; IAMAI issues nothing itself.",
-            "Read the pass to the person by phone; it is one-time and short-lived.",
+            "Set it to one-time use and the shortest lifetime that gets them through registration; left at a reusable setting it keeps working until it expires.",
+            "An ordinary user needs the Authentication Administrator role; an administrator needs Privileged Authentication Administrator. The method has to be on in policy, and IAMAI issues nothing itself.",
+            "Read the pass to the person by phone; a one-time pass stops working once they have signed in with it.",
             "The person signs in with the pass and registers the passkey or security key straight away. The pass is the way in, never where they stay."
           ],
           "learn": {

@@ -222,6 +222,23 @@ test('a Temporary Access Pass bootstraps and never becomes passkey-ready', () =>
   // The admin half describes the Microsoft action, and says IAMAI does none of it.
   assert.ok(tap.lines.some((l) => /Authentication Administrator role/.test(l)), 'the permission the operator needs')
   assert.ok(tap.lines.some((l) => /IAMAI issues nothing itself/.test(l)), 'and that IAMAI issues nothing')
+})
+
+test('the pass guide tells the operator to make it one-time, and names the role an administrator needs', () => {
+  // A pass is only one-time and short-lived because the operator chose those
+  // settings. The guide asks for them; it does not assert them as given.
+  const tap = methodGuide('temporary-access-pass')
+  const oneTime = tap.lines.filter((l) => /one-time/i.test(l))
+  assert.ok(oneTime.some((l) => /Set it to one-time use/.test(l)), `an instruction to select one-time use (${oneTime.join(' | ')})`)
+  assert.ok(oneTime.some((l) => /lifetime|expir/i.test(l)), 'and to keep the lifetime short')
+  assert.ok(!tap.lines.some((l) => /it is one-time and short-lived/i.test(l)), 'never stated as a property the pass simply has')
+  // The role split: an administrator's methods need the privileged role, so a
+  // guide that named only the ordinary role would fail on the people who most
+  // need remediating.
+  const roles = tap.lines.filter((l) => /Authentication Administrator/.test(l))
+  assert.ok(roles.some((l) => /Privileged Authentication Administrator/.test(l)), 'the privileged role is named')
+  assert.ok(roles.some((l) => /administrator needs Privileged/.test(l)), 'and it is the one an administrator needs')
+  assert.ok(roles.some((l) => /ordinary user needs the Authentication Administrator/.test(l)), 'the ordinary role is scoped to ordinary users')
   // A pass changes no rung: the ladder reads registered methods and records, and
   // a pass is neither.
   const f = fixture('demo')
