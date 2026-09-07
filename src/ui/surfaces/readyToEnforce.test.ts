@@ -24,8 +24,9 @@
 //     enforcement date and no calendar entry.
 //   * a gate that goes incomplete, or evidence a person has to look at, takes
 //     the enforcement away again.
-//   * the rollback is the inverse of what was submitted: report-only, never
-//     deleting a policy this step did not create.
+//   * the rollback is the inverse of what was submitted, decided by the patch:
+//     report-only for the state-only enforcement, restoring the settings for any
+//     other update, and never deleting a policy this step did not create.
 //
 // Everything here runs the whole engine over a real fixture and then asserts
 // what a person would see: the frozen Step Contract, the row, the four
@@ -47,8 +48,8 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { stepContract } from './stepContract.ts'
-import { stepExportView, stepLines } from './stepExport.ts'
-import { jsonOffered, policyJsonText, stepOperations } from './stepJson.ts'
+import { ifWrongLineFor, stepExportView, stepLines } from './stepExport.ts'
+import { enforcesByStateOnly, jsonOffered, policyJsonText, stepOperations, updatesExistingPolicy } from './stepJson.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
@@ -371,6 +372,50 @@ test('007.7: the way back from an enforcement is report-only, and never deleting
   assert.ok(ifWrong, 'a step that hands over a change has a rollback')
   assert.match(ifWrong!, /back to report-only/i)
   assert.doesNotMatch(ifWrong!, /delete/i, 'an update is not undone by deleting the tenant’s policy')
+})
+
+test('007.7b: report-only is the rollback of the state-only enforcement and of nothing else, in every plan', () => {
+  for (const f of allFixtures()) {
+    for (const step of runFixture(f).steps) {
+      const where = `${f.name}/${step.id}`
+      const cs = contentStepFor(step) as Record<string, unknown> | undefined
+      if (!cs) continue
+      const line = ifWrongLineFor(step, cs)
+      if (line === '{enforceIfWrong}') {
+        // "Set the policy back to report-only" is only the inverse of a change
+        // that turned the policy on and touched nothing else. Anywhere else it
+        // switches off a control this step never switched on.
+        assert.equal(enforcesByStateOnly(step), true, `${where}: the enforcement rollback over a change that is not the enforcement`)
+        for (const op of operationsOf(step)) assert.deepEqual(Object.keys(op.body), ['state'], `${where}: the enforcement rollback over a body that changes settings`)
+      }
+      // The other side of the same rule: a step that only ever changes policies
+      // the tenant already has is never told to delete one, and a semantic
+      // correction is told to put the settings back.
+      if (!updatesExistingPolicy(step)) continue
+      assert.notEqual(line, '{policyIfWrong}', `${where}: "or delete it" over a policy this step did not create`)
+      if (!enforcesByStateOnly(step)) assert.notEqual(line, '{enforceIfWrong}', `${where}: report-only offered as the way back from a settings change`)
+    }
+  }
+})
+
+test('007.7c: a correction to a policy the tenant already enforces is put back by restoring the settings, never by report-only', () => {
+  // The canonical policy after a later scan finds it on (control D below): a
+  // live, denying policy whose remaining operation is an ordinary settings
+  // correction submitting no state at all. Telling the operator to put the whole
+  // policy into report-only would weaken an active control in answer to a change
+  // that never turned it on, and would leave the corrected setting in place.
+  const c = laterScan({ edit: (row) => { row.state = 'enabled' } })
+  assert.equal(c.step.state.lifecycle, 'enforced')
+  const ops = operationsOf(c.step)
+  assert.ok(ops.length > 0, 'the correction is still handed over')
+  assert.equal(updatesExistingPolicy(c.step), true, 'and it is an update, not a create')
+  assert.equal(enforcesByStateOnly(c.step), false, 'it changes settings and submits no state')
+  assert.equal(ifWrongLineFor(c.step, contentStepFor(c.step) as Record<string, unknown>), '{changeIfWrong}')
+  const ifWrong = c.view(c.step).ifWrong
+  assert.ok(ifWrong, 'a step that hands over a change has a rollback')
+  assert.match(ifWrong!, /put the settings back/i)
+  assert.doesNotMatch(ifWrong!, /report-only/i, 'a live control is not switched off to undo a settings change')
+  assert.doesNotMatch(ifWrong!, /delete/i, 'and nothing deletes a policy this step did not create')
 })
 
 // ---- 8. the row, and the enforcement it has earned ----

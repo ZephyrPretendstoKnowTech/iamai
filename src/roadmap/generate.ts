@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
-import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, unavailableReason } from './operations.ts'
+import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -1340,8 +1340,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // cannot see how to correct.
       if (deniesAccess && gate !== null) {
         blockByStep(gate.stepId, gate.label)
-        const turnsOn = (step: Step): boolean => operationsOf(step).some((o) => o.mode === 'update' && String((o.body as { state?: unknown }).state ?? '') === 'enabled')
-        if (turnsOn(denyStep)) action = { ...action, escapeHatch: { stepId: gate.stepId } }
+        if (operationsOf(denyStep).some(submitsEnforcement)) action = { ...action, escapeHatch: { stepId: gate.stepId } }
       }
       if (blockedBy.length > 0) state = { ...state, condition: conditionFor(blockers) }
     }
