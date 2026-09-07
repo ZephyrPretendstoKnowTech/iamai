@@ -15,6 +15,14 @@
 # (/next/) was removed with task 016, so nothing but reviewed `main` can reach
 # the live site. Production is gated walk → build → deploy: build needs walk, and
 # deploy needs build, so a P0 in the walk stops the publication.
+#
+# The gate is only worth as much as the commit it judges. Every job checks out
+# `${{ github.sha }}` — the run's own immutable commit — and never the movable
+# `main` ref, so the artifact that is published is built from the exact commit
+# the walk passed. Checking out `main` in the build let a later push overtake an
+# older run and be published on the strength of an earlier commit's walk.
+# Publication is additionally fenced to `main` itself, so a workflow_dispatch on
+# any other ref walks that ref and stops there.
 name: deploy-pages
 
 on:
@@ -45,6 +53,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -105,25 +115,36 @@ jobs:
           if-no-files-found: ignore
   build:
     needs: walk
+    # Only `main` publishes. The walk runs on whatever ref dispatched it; a
+    # dispatch from anywhere else stops at the walk rather than laying its
+    # bundle over the live site.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      # The run's own commit, not the branch tip as it stands now. `main` moves
+      # while a run is in flight; this SHA is the one the walk judged.
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      # What is actually being published. The artifact is built from `main` and
-      # from nothing else, so on a push to main this is the commit the walk just
-      # judged; printing it is the difference between "my push deployed" and
-      # "my push ran and main deployed".
+      # What is actually being published, and the proof that it is what was
+      # walked. Both jobs check out ${{ github.sha }}, so this is the same commit
+      # the walk judged; the guard fails the build rather than publishing a
+      # bundle whose provenance cannot be stated.
       - name: Commit being published
         run: |
+          head="$(git rev-parse HEAD)"
+          if [ "$head" != "${{ github.sha }}" ]; then
+            echo "BUILD_RESULT: checked out $head, but this run walked ${{ github.sha }}"
+            exit 1
+          fi
           {
-            echo "publishing main : $(git rev-parse HEAD)  ($(git log -1 --pretty=%s))"
+            echo "publishing      : $head  ($(git log -1 --pretty=%s))"
+            echo "walked SHA      : ${{ github.sha }}"
             echo "pushed ref      : ${{ github.ref }}"
-            echo "pushed SHA      : ${{ github.sha }}"
           } | tee "$RUNNER_TEMP/published.txt"
           {
             echo "### deploy-pages — what is being published"
@@ -161,6 +182,7 @@ jobs:
           path: dist
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # The one place a newer push may take over: an older publication in flight is
     # cancelled here, after its commit has already been walked and built.

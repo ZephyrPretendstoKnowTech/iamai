@@ -206,7 +206,9 @@ test('How credits CA Policy Analyzer and the baseline without claiming an endors
 
 // Production publishes reviewed `main`, gated walk → build → deploy. The retired
 // night-1 preview is gone, and no branch or path can reach the live site around
-// the walk.
+// the walk. The gate holds only if the commit the build publishes is the commit
+// the walk judged, so every job pins the run's own SHA rather than the movable
+// `main` ref, and nothing but `main` gets past the walk.
 test('the deploy workflow gates production on the walk and publishes main alone', () => {
   const wf = read('.github/workflows/deploy-pages.yml')
   // The header comment records that the preview was retired; the configuration
@@ -220,7 +222,19 @@ test('the deploy workflow gates production on the walk and publishes main alone'
   assert.match(wf, /^  deploy:\n    needs: build$/m, 'deploy needs build')
   assert.match(wf, /branches: \[main\]/, 'only main triggers a publication')
   assert.match(wf, /npm run walk/, 'the walk runs')
-  assert.match(wf, /ref: main/, 'and the artifact is built from main')
+  // One immutable commit for the whole run. A checkout of `main` would let a
+  // push that lands during an older run's walk be built and published on that
+  // older walk's verdict, so no job may name a movable ref.
+  assert.doesNotMatch(config, /ref: +main\s*$/m, 'no job checks out the movable main ref')
+  const checkouts = config.match(/uses: actions\/checkout@/g) ?? []
+  const pinned = config.match(/ref: \$\{\{ github\.sha \}\}/g) ?? []
+  assert.ok(checkouts.length >= 2, 'the walk and the build each check the source out')
+  assert.equal(pinned.length, checkouts.length, 'every checkout is pinned to the SHA of this run')
+  // And the build proves it before it publishes anything.
+  assert.match(config, /git rev-parse HEAD[^]*?!= "\$\{\{ github\.sha \}\}"[^]*?exit 1/, 'the build refuses a checkout that is not the walked commit')
+  // A workflow_dispatch from another ref may walk that ref; it may not publish.
+  const mainOnly = /^ {2}(?:build|deploy):\n(?: {4}\S[^]*?)?^ {4}if: github\.ref == 'refs\/heads\/main'$/gm
+  assert.equal((config.match(mainOnly) ?? []).length, 2, 'build and deploy run for main alone')
   // The tool path has no environment override any longer, so no deployment
   // variable can publish the bundle somewhere else.
   assert.doesNotMatch(read('scripts/toolPath.ts'), /process\.env/, 'the published path is a constant')
