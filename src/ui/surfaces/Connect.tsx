@@ -1,19 +1,28 @@
-// Connect (docs/design/connect-mockup.html): one heading above four numbered
-// tiles in both states, drawn from connectView.ts. Signed out: Sign in (with
-// the consent rows and, after a sign-in that did not succeed, one of three
-// error states from the MSAL error code), Baseline, Scan (what it reads,
-// compares and writes; after sign-in) and Plan with what the sample tenant
+// Connect answers one question: where am I in setup, and what do I do next?
+//
+// One heading above four numbered stages, in both states, drawn from
+// connectView.ts. Signed out: Sign in (with the consent rows and, after a
+// sign-in that did not succeed, one of three error states from the MSAL error
+// code), Baseline, Scan (after sign-in) and Plan with what the sample tenant
 // produced. Signed in: Signed in, Baseline, Scan (the limitations, then the scan
 // in exactly one of its states: complete, finished with gaps, not started for
-// want of a role, scanning, or ready for the first scan) and Plan (ready with
-// the facts, the last full plan after a scan with gaps, or waiting for the
-// scan). The tenant's name and the scan's age render here and nowhere else,
-// from the one stored scan timestamp. Every action is a button in one of three
-// weights, and every one calls ui/actions.ts: the scan's state is the
-// session's (ui/session.ts), so a scan started anywhere shows here as tile 3's
-// progress; an action that fails renders its error in the tile that pressed
-// it. Global Reader is the only role IAMAI names.
-import { useEffect, useMemo, useRef, useState } from 'react'
+// want of a role, scanning, or ready for the first scan) and Plan (ready, the
+// last full plan after a scan with gaps, or waiting for the scan).
+//
+// The progression is Microsoft tenant → Baseline → Tenant scan → Plan, and the
+// four stages are not four equally loud tiles (task 016): stages() reads which
+// of them are finished, the finished ones step back, and the one with the next
+// action is drawn forward and marked with a word. Plan is the destination — one
+// way on and no readiness diagnostic in front of it, because MFA Readiness comes
+// after the plan.
+//
+// The tenant's name and the scan's age render here and nowhere else, from the
+// one stored scan timestamp. Every action is a button in one of three weights,
+// and every one calls ui/actions.ts: the scan's state is the session's
+// (ui/session.ts), so a scan started anywhere shows here as stage 3's progress;
+// an action that fails renders its error in the stage that pressed it. Global
+// Reader is the only role IAMAI names.
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { authReady, getGraphToken } from '../../graph/auth.ts'
@@ -42,11 +51,10 @@ import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { W, accountTile, baselineTile, planTile, scanTile, signInTile } from '../scan/connectView.ts'
-import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Tone } from '../scan/connectView.ts'
-import { facts, stepFacts } from '../../derive/facts.ts'
+import { W, accountTile, baselineTile, planTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
+import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
+import { stepFacts } from '../../derive/facts.ts'
 import { usePlanData } from './planData.ts'
-import { LadderTiles } from './LadderTiles.tsx'
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -77,11 +85,18 @@ export function Connect(
   )
 }
 
-/** One numbered tile; the badge carries the state colour (accent done, amber gaps or approval, red no role or a personal account). */
-function Tile({ n, title, state, tone, stateTone, children }: { n: number; title: string; state?: string; tone: Tone; stateTone?: 'ok' | 'wait' | 'stop'; children: ReactNode }) {
+/**
+ * One numbered stage; the badge carries the state colour (accent done, amber
+ * gaps or approval, red no role or a personal account), and the stage carries
+ * its place in the progression (task 016): the stage with the next action is
+ * marked Next and drawn forward, the ones behind it step back. The marker is a
+ * word, not a colour, so the progression reads without seeing the accent.
+ */
+function Tile({ n, title, state, tone, stateTone, stage, children }: { n: number; title: string; state?: string; tone: Tone; stateTone?: 'ok' | 'wait' | 'stop'; stage?: Stage; children: ReactNode }) {
   return (
-    <section className={`step-tile${tone ? ` ${tone}` : ''}`}>
+    <section className={`step-tile${tone ? ` ${tone}` : ''}${stage ? ` ${stage}` : ''}`}>
       <span className="n">{n}</span>
+      {stage === 'current' && <span className="next">{W.next}</span>}
       <h2>
         {title}
         {state && (
@@ -153,9 +168,9 @@ function accountRole(roleIds: string[] | null): string | null {
  * the account and the unread rows, the one ask for Global Reader) and its
  * buttons.
  */
-function ScanTileView({ tile, upn, bar, actions }: { tile: ScanTile; upn: string | null; bar?: ReactNode; actions: ReactNode }) {
+function ScanTileView({ tile, upn, bar, actions, stage }: { tile: ScanTile; upn: string | null; bar?: ReactNode; actions: ReactNode; stage: Stage }) {
   return (
-    <Tile n={3} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)}>
+    <Tile n={3} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)} stage={stage}>
       <details>
         <summary>{tile.limits.summary}</summary>
         <ul className="beats">
@@ -197,12 +212,16 @@ function ScanTileView({ tile, upn, bar, actions }: { tile: ScanTile; upn: string
   )
 }
 
-/** Tile 4, Plan: the state in the heading, the MFA readiness ladder's header and five tiles when the plan is ready (the sample's facts before sign-in), and the plan's button. */
-function PlanTileView({ tile, actions }: { tile: PlanTile; actions: ReactNode }) {
+/**
+ * Tile 4, Plan: the destination. The state in the heading, one line saying what
+ * the scan produced (the sample tenant's four facts before sign-in), and one
+ * button into the plan. No readiness diagnostic: MFA Readiness comes after the
+ * plan, and Connect never routes to it first (task 016).
+ */
+function PlanTileView({ tile, actions, stage }: { tile: PlanTile; actions: ReactNode; stage: Stage }) {
   return (
-    <Tile n={4} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)}>
+    <Tile n={4} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)} stage={stage}>
       {tile.lead && <p className="quiet">{tile.lead}</p>}
-      {tile.ladder && <LadderTiles counts={tile.ladder} />}
       {tile.facts && (
         <ul className="facts">
           {tile.facts.map((f) => (
@@ -259,9 +278,13 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
   const t1 = signInTile({ error })
   const t3 = scanTile({ kind: 'sample' })
   const t4 = planTile({ kind: 'sample', facts: SAMPLE_FACTS })
+  // Nothing is connected yet, so the first stage is the one to act on and the
+  // three after it are ahead. The baseline loads itself, and is still not a
+  // stage anyone has finished until a tenant is behind it.
+  const [s1, s2, s3, s4] = stages([false, false, false, false])
   return (
     <>
-      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone={stateToneOf(t1.tone)}>
+      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone={stateToneOf(t1.tone)} stage={s1}>
         {t1.lead && <p>{lead(error?.kind === 'personal' ? (error.account ?? null) : null, t1.lead)}</p>}
         {t1.note && <p className="quiet">{t1.note}</p>}
         <div className="actions">
@@ -282,10 +305,11 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
           <p className="quiet">{t1.permissions.removal}</p>
         </details>
       </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} />
-      <ScanTileView tile={t3} upn={null} actions={null} />
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} />
+      <ScanTileView tile={t3} upn={null} actions={null} stage={s3} />
       <PlanTileView
         tile={t4}
+        stage={s4}
         actions={
           <div className="actions">
             <Act action={t4.actions[0]} href={demoUrl()} />
@@ -356,17 +380,17 @@ function SignedIn({
   const planScan = scanInput.kind === 'complete' ? lastScan : null
   const plan = usePlanData(planScan, baseline, true)
   const computed = plan.computed
-  // The tenant's facts (derive/facts.ts): the same numbers as Today's and the Plan's, from the one stored scan, once the mapping has loaded.
-  const planSnapshot = planScan?.snapshot ?? null
-  const planMapping = plan.mapping
-  const ladderNumbers = useMemo(() => (planSnapshot && planMapping ? facts(planSnapshot, planMapping) : null), [planSnapshot, planMapping])
   const planInput: PlanInput =
-    scanInput.kind === 'complete' && lastScan && ladderNumbers
-      ? { kind: 'ready', at: lastScan.at, ladder: ladderNumbers, counts: computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null) : null }
+    scanInput.kind === 'complete' && lastScan
+      ? { kind: 'ready', at: lastScan.at, counts: computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null) : null }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }
   const t4 = planTile(planInput)
+  // The progression, from the tiles themselves: a tenant is connected, a
+  // baseline is loaded, the scan is complete, and the plan is ready. The first
+  // one that is not finished is the one with the next action.
+  const [s1, s2, s3, s4] = stages([true, baseline !== null, scanInput.kind === 'complete', planInput.kind === 'ready'])
   const scanActions = (): ReactNode => {
     switch (t3.kind) {
       case 'complete':
@@ -388,7 +412,7 @@ function SignedIn({
   }
   return (
     <>
-      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone="ok">
+      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone="ok" stage={s1}>
         <p>{lead(upn, t1.line)}</p>
         <p className="quiet">{t1.note}</p>
         <div className="actions">
@@ -397,10 +421,11 @@ function SignedIn({
         </div>
         {tile1.error && <p className="quiet">{tile1.error}</p>}
       </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} />
+      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} />
       <ScanTileView
         tile={t3}
         upn={upn}
+        stage={s3}
         bar={t3.kind === 'scanning' ? <ScanBar scan={runner} /> : null}
         actions={
           <>
@@ -410,7 +435,7 @@ function SignedIn({
           </>
         }
       />
-      <PlanTileView tile={t4} actions={t4.actions.length > 0 ? <div className="actions">{t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)}</div> : null} />
+      <PlanTileView tile={t4} stage={s4} actions={t4.actions.length > 0 ? <div className="actions">{t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)}</div> : null} />
       <ScanDevTools tenantId={account.tenantId} scan={runner} snapshot={lastScan?.snapshot ?? null} />
     </>
   )
@@ -454,7 +479,7 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
 // records a pick (ui/actions.ts). Reading it there and not here is what lets
 // Sign out and Forget this tenant take an unfinished read with them: a package
 // that arrives after either action is applied to nothing and stored nowhere.
-function BaselineTile({ baseline, restoreError, locked, authorUpdate }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null }) {
+function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: { baseline: BaselineResult | null; restoreError: string | null; locked: boolean; authorUpdate?: BaselineUpdate | null; stage: Stage }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -506,7 +531,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate }: { baseli
   const stepsFor = (file: string): string[] => stepsChangedBy(file, policies, goalMap)
   const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, loading: busy, update, labelFor, stepsFor })
   return (
-    <Tile n={2} title={t2.title} state={t2.state} tone={t2.tone}>
+    <Tile n={2} title={t2.title} state={t2.state} tone={t2.tone} stage={stage}>
       {t2.paragraphs.map((text) => (
         <p key={text}>{text}</p>
       ))}

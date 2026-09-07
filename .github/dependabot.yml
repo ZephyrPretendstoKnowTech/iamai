@@ -1,0 +1,11 @@
+# Dependency updates for the one npm project at the repository root, weekly.
+#
+# Bounded on purpose: this repository has no server, no container and no
+# published package, so the only supply chain it has is the build's npm tree.
+# A weekly pull request against the root manifest is the whole contract.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly

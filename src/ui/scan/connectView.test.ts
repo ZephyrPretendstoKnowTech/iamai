@@ -49,14 +49,23 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
   noOtherRole(tileStrings(t))
 })
 
-test('tile 2, Baseline: name · count as the state, the approved sentences in two paragraphs, the author-update rows, Change baseline (secondary)', () => {
+// Task 016: someone new to identity work should be able to read this stage and
+// know what a baseline is, whose it is, why the source is credible, and what it
+// aims at — without Microsoft being made to endorse any of it.
+test('tile 2, Baseline: name · count as the state, what a baseline is, whose it is and its aim, the author-update rows, Change baseline (secondary)', () => {
   const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, labelFor, stepsFor })
   assert.equal(t.n, 2)
   assert.equal(t.title, 'Baseline')
   assert.equal(t.state, 'Jon Hope — Defense in Depth · 46 policies')
-  assert.equal(t.paragraphs.length, 2)
-  assert.match(t.paragraphs[0], /^A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess\.Tech\. IAMAI pins a reviewed version and tells you when he updates it\.$/)
+  assert.equal(t.paragraphs.length, 3)
+  const said = t.paragraphs.join(' ')
+  assert.match(t.paragraphs[0], /^A baseline is the identity-security standard IAMAI plans your tenant towards/, 'the term is explained before it is used')
+  for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP', 'ConditionalAccess.Tech']) assert.ok(said.includes(fact), `the baseline stage names ${fact}`)
   assert.match(t.paragraphs[1], /^Its aim is layered protection for a small organisation: /)
+  assert.match(t.paragraphs[2], /^IAMAI pins a reviewed version of it/)
+  // An MVP is a person's credential. Nothing here may read as Microsoft
+  // endorsing, certifying, approving or supporting IAMAI or this baseline.
+  assert.doesNotMatch(said, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft/i, said)
   assert.equal(t.update, null)
   assert.deepEqual(t.actions, [{ label: 'Change baseline', weight: 'secondary' }])
   const u = baselineTile({
@@ -216,31 +225,45 @@ const planOnlyItsOwn = (t: PlanTile): void => {
 const NO_MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
 const L = factsOf(ladder(full, NO_MAPPING, full.asOf))
 
-test('tile 4, Plan, ready (docs/design/mockups/connect-v2.html): "ready · N steps, N done · from the scan N ago", the ladder\'s five numbers, Open the plan (primary) alone, the accent badge; no facts row, no drop line', () => {
-  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, ladder: L, now: twoMinutesLater })
+test('tile 4, Plan, ready: "ready · N steps, N done · from the scan N ago", one line of what was built, Open the plan (primary) alone, the accent badge; no facts row, no drop line', () => {
+  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, now: twoMinutesLater })
   assert.equal(t.state, 'ready · 33 steps, 8 done · from the scan 2 minutes ago')
   assert.equal(t.tone, 'done')
-  assert.deepEqual(t.ladder, L, 'the five numbers are the ladder\'s')
+  assert.equal(t.lead, 'Built from this scan: every step in order, who it touches, and when to make it.')
   assert.equal(t.facts, undefined, 'the facts row left the tile')
   assert.deepEqual(t.actions, [{ label: 'Open the plan →', weight: 'primary' }])
   // Until the plan has computed, the state carries the age alone: never a placeholder count.
-  const counting = planTile({ kind: 'ready', at: full.asOf, counts: null, ladder: L, now: twoMinutesLater })
+  const counting = planTile({ kind: 'ready', at: full.asOf, counts: null, now: twoMinutesLater })
   assert.equal(counting.state, 'ready · from the scan 2 minutes ago')
-  assert.deepEqual(counting.ladder, L)
   const page = tileStrings(t).join('\n')
   assert.ok(!/→ \d|\d →|licence|sign-in records|policies/.test(page), `no drop line, no window, no facts: ${page}`)
   planOnlyItsOwn(t)
 })
 
-test("Connect's tile shows the numbers Today and the Plan show, on the demo and GetIAMAI", () => {
+// Task 016: Plan is the destination after the first successful scan, so the
+// Plan stage carries one way on and no person-level readiness diagnostic. The
+// rung counts belong to MFA Readiness, which comes after the plan, not before.
+test('the Plan stage routes to the plan and to nothing before it', () => {
+  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 } })
+  assert.deepEqual(
+    t.actions.map((a) => a.label),
+    ['Open the plan →'],
+    'one way on, and it is the plan',
+  )
+  assert.ok(!('ladder' in t), 'no readiness ladder on the Plan stage')
+  const words = JSON.stringify(pages.connect)
+  for (const rung of RUNGS) assert.ok(!words.includes(`rung-${rung}`), 'Connect names no readiness rung')
+  assert.ok(!words.includes('MFA Readiness'), 'Connect does not send the operator to MFA Readiness before the plan')
+  // The counts the ladder drew are the same fact, on the surface that owns it.
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
-    const connect = factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
-    const today = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts
-    assert.deepEqual(connect, today, `${name}: Connect and Today`)
-    assert.equal(RUNGS.reduce((n, r) => n + connect.rungs[r], 0), connect.active, `${name}: the five tiles sum to the active people`)
-    const t = planTile({ kind: 'ready', at: f.snapshot.asOf, counts: { steps: 30, done: 5 }, ladder: connect })
-    assert.deepEqual(t.ladder, connect)
+    const counted = factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
+    assert.deepEqual(counted, readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts, `${name}: MFA Readiness still counts them`)
+    assert.equal(
+      RUNGS.reduce((n, r) => n + counted.rungs[r], 0),
+      counted.active,
+      `${name}: the rungs sum to the active people`,
+    )
   }
 })
 
@@ -265,7 +288,7 @@ test('tile 4 after a scan with gaps: last full plan · date and Open the last fu
 test("the page renders the scan's age from the one stored timestamp: Scan says complete · N ago, Plan says from the scan N ago with the same words, and no words say scanned", () => {
   const now = Date.parse(full.asOf) + 57 * 60_000
   const scan = scanTile({ kind: 'complete', at: full.asOf, now })
-  const plan = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, ladder: L, now })
+  const plan = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, now })
   assert.equal(scan.state, 'complete · 57 minutes ago')
   assert.equal(plan.state, 'ready · 33 steps, 8 done · from the scan 57 minutes ago')
   const age = scan.state.replace('complete · ', '')

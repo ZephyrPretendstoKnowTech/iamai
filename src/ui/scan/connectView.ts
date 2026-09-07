@@ -1,30 +1,35 @@
-// Connect's four tiles (docs/design/connect-mockup.html) as strings and button
-// weights, in both states: signed out (the sign-in tile with its consent rows
-// and its three error states) and signed in (the account); the baseline in
-// both; the Scan tile (Reads / Compares / Writes, the read-only line, the
+// Connect's four stages as strings and button weights, in both states: signed
+// out (the sign-in tile with its consent rows and its three error states) and
+// signed in (the account); the baseline in both; the Scan tile (the
 // limitations, then the scan in exactly one of its states) and the Plan tile
-// (ready with the facts, the last full plan after a scan with gaps, waiting
-// for the scan, or the sample tenant's facts before sign-in). Pure, so each
-// tile and each state renders in a test; Connect.tsx draws from it. The scan's
-// age is one stored timestamp (lastScan.at) through one formatter, so the Scan
-// and Plan tiles never disagree. Global Reader is the only role IAMAI names.
+// (ready, the last full plan after a scan with gaps, waiting for the scan, or
+// the sample tenant's facts before sign-in).
+//
+// The progression is Microsoft tenant → Baseline → Tenant scan → Plan, and Plan
+// is the destination (task 016): the Plan tile carries one Open the plan and no
+// readiness diagnostic, because MFA Readiness comes after the plan, not before
+// it. stages() says which stage the operator is on, so the finished ones can
+// step back without the page keeping a state of its own.
+//
+// Pure, so each tile and each state renders in a test; Connect.tsx draws from
+// it. The scan's age is one stored timestamp (lastScan.at) through one
+// formatter, so the Scan and Plan tiles never disagree. Global Reader is the
+// only role IAMAI names, and the consent rows are generated from GRAPH_SCOPES.
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate, monthDay, relative } from '../../copy/dates.ts'
 import { list, lowerFirst } from '../../copy/statements.ts'
 import { READ_EVERYTHING_ROLE } from '../../graph/collect/roles.ts'
+import { consentRows } from '../../copy/permissions.ts'
 import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import type { DemoFacts } from '../demoFacts.ts'
-import type { Facts } from '../../derive/facts.ts'
-
-/** The ladder's numbers on the Plan tile: the active people and the five rungs (derive/facts.ts). */
-export type LadderCounts = Pick<Facts, 'active' | 'rungs'>
 
 type Words = {
   h1: string
   intro: string
+  next: string
   signIn: {
     title: string
     state: string
@@ -33,7 +38,6 @@ type Words = {
     workAccount: string
     permissionsSummary: string
     consentLead: string
-    consent: { scope: string; name: string; reads: string }[]
     removal: string
     errors: {
       consent: { state: string; lead: string; thisTenant: string }
@@ -43,7 +47,7 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string }
-  baseline: { title: string; state: string; loading: string; none: string; what: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
+  baseline: { title: string; state: string; loading: string; none: string; what: string; pinned: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
     limitsSummary: string
@@ -59,7 +63,7 @@ type Words = {
   }
   plan: {
     title: string
-    ready: { state: string; stateCounted: string; open: string }
+    ready: { state: string; stateCounted: string; lead: string; open: string }
     last: { state: string; open: string }
     waiting: { state: string }
     sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksValue: string; weeksOne: string; open: string }
@@ -68,6 +72,21 @@ type Words = {
 export const W = pages.connect as unknown as Words
 const SECTIONS = app.scan.sections
 export const HOW_HREF = '#/how'
+
+/**
+ * Where a stage sits in the progression (task 016): 'settled' is behind the
+ * operator and steps back, 'current' is the one with the next action, and
+ * 'ahead' has not been reached. Connect derives it from the tiles themselves —
+ * the first tile that is not done is the current one — so the page has no
+ * second state machine of its own.
+ */
+export type Stage = 'settled' | 'current' | 'ahead'
+
+/** The stage of each of the four tiles, in order, from whether each is done. */
+export function stages(done: readonly boolean[]): Stage[] {
+  const current = done.indexOf(false)
+  return done.map((_, i) => (current === -1 ? 'settled' : i < current ? 'settled' : i === current ? 'current' : 'ahead'))
+}
 
 export type Weight = 'primary' | 'secondary' | 'tertiary'
 export type Action = { label: string; weight: Weight }
@@ -94,7 +113,10 @@ export function signInTile({ error }: { error: SignInError | null }): SignInTile
   const S = W.signIn
   const signIn: Action = { label: S.signIn, weight: 'primary' }
   const demo: Action = { label: S.demo, weight: 'secondary' }
-  const base = { n: 1 as const, title: S.title, permissions: { summary: S.permissionsSummary, lead: fillText(S.consentLead, { n: S.consent.length }), rows: S.consent, removal: S.removal } }
+  // The rows are generated from GRAPH_SCOPES crossed with SCOPE_COPY (src/copy/permissions.ts):
+  // the disclosure and the consent screen cannot say different things.
+  const rows = consentRows()
+  const base = { n: 1 as const, title: S.title, permissions: { summary: S.permissionsSummary, lead: fillText(S.consentLead, { n: rows.length }), rows, removal: S.removal } }
   if (!error) return { ...base, state: S.state, tone: null, lead: null, note: W.account.note, actions: [signIn, demo] }
   switch (error.kind) {
     case 'consent':
@@ -159,7 +181,7 @@ export function baselineTile({
     title: B.title,
     state,
     tone: name ? 'done' : null,
-    paragraphs: [B.what, B.goal],
+    paragraphs: [B.what, B.goal, B.pinned],
     update: update && rows.length > 0 ? { summary: fillText(B.updated, { date: absoluteDate(update.date), n: rows.length }), rows } : null,
     actions: [{ label: B.change, weight: 'secondary' }],
   }
@@ -241,8 +263,8 @@ export function scanTile(input: ScanInput): ScanTile {
 
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
-  /** A complete scan (docs/design/mockups/connect-v2.html): the state with the step counts once the plan has computed, the MFA readiness ladder's five numbers (derive/facts.ts, the same as Today's and the Plan's), and Open the plan. */
-  | { kind: 'ready'; at: string; counts: { steps: number; done: number } | null; ladder: LadderCounts; now?: number }
+  /** A complete scan: the state with the step counts once the plan has computed, one line saying what was built, and Open the plan. The readiness ladder is MFA Readiness's, not Connect's (task 016). */
+  | { kind: 'ready'; at: string; counts: { steps: number; done: number } | null; now?: number }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
@@ -258,8 +280,6 @@ export type PlanTile = {
   lead?: string
   /** The sample tenant's four facts, before sign-in. */
   facts?: { value: string; label: string }[]
-  /** The MFA readiness ladder's five numbers, on the ready tile. */
-  ladder?: LadderCounts
   actions: Action[]
 }
 
@@ -276,7 +296,7 @@ export function planTile(input: PlanInput): PlanTile {
         // The step counts arrive once the plan has computed; until then the state carries the scan's age alone, never a placeholder.
         state: input.counts ? fillText(R.stateCounted, { steps: input.counts.steps, done: input.counts.done, age }) : fillText(R.state, { age }),
         tone: 'done',
-        ladder: input.ladder,
+        lead: R.lead,
         actions: [{ label: R.open, weight: 'primary' }],
       }
     }

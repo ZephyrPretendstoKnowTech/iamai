@@ -83,7 +83,7 @@
       },
       "allow": {
         "headings": [
-          "Plan the journey to your Conditional Access baseline.",
+          "Strengthen identity security without guessing what will break.",
           "re:^Sign in .+$",
           "re:^Baseline .+$",
           "re:^Scan after sign-in · .+$",
@@ -187,7 +187,7 @@
       },
       "allow": {
         "headings": [
-          "Plan the journey to your Conditional Access baseline.",
+          "Strengthen identity security without guessing what will break.",
           "re:^Signed in .+$",
           "re:^Baseline .+$",
           "re:^Scan (complete · .+|finished with gaps · no plan built|not started( · this account can't read the tenant)?|.+ · \\d+(m \\d+)?s)$",
@@ -219,8 +219,7 @@
         ],
         "links": [
           "How IAMAI works →",
-          "Microsoft: Global Reader",
-          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, not proven|Nothing set up)\\s*\\d+$"
+          "Microsoft: Global Reader"
         ]
       },
       "budget": {
@@ -888,7 +887,9 @@
           "What IAMAI reads",
           "Every check",
           "Baseline packages",
-          "Limits"
+          "Limits",
+          "Where it runs",
+          "Credits"
         ],
         "tabs": [],
         "tiles": [],
@@ -916,8 +917,8 @@
         ]
       },
       "budget": {
-        "sentences": 26,
-        "words": 420
+        "sentences": 36,
+        "words": 560
       },
       "forbid": [
         "The same checks again",

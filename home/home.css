@@ -1,8 +1,10 @@
-/* The home page on the planner's tokens (prompt 47.1 Part 3; docs/design/home-mockup.html).
-   Every value is a variable from home/theme.css, which scripts/build-home.ts writes from
-   src/ui/tokens.ts; the design lint reads this file. One 760px column: the hero, the Tools
-   grid of cards (one column with one tool, two from the second), How these work as two
-   small cards, About, and the app's footer. The header's text control, the three button
+/* The home page on the planner's tokens (prompt 47.1 Part 3; the owner-approved Home v2
+   direction, task 016). Every value is a variable from home/theme.css, which
+   scripts/build-home.ts writes from src/ui/tokens.ts; the design lint reads this file.
+   One column: the hero with the only pair of actions, then five sections separated by a
+   rule — what it does, the standard it plans towards, what it catches, what it does with
+   your tenant, About — and the app's footer. No cards, no grid of tiles, no pill: the
+   hierarchy is type, space and a hairline. The header's text control, the three button
    weights and the footer are the app's rules (src/ui/app.css) on the same tokens;
    home.test.ts holds them equal. */
 
@@ -119,134 +121,107 @@ main.page {
   overflow-wrap: anywhere;
 }
 
-/* The hero: the headline and the site line. */
+/* The hero: the outcome, the line under it, the two ways in, and the one note. */
+.hero {
+  padding: 8px 0 32px;
+}
 .hero h1 {
   font-size: var(--t-6);
-  margin: 8px 0 8px;
+  margin: 0 0 12px;
+  max-width: var(--measure);
 }
 .hero .site-line {
-  color: var(--ink-2);
-  margin: 0 0 22px;
-}
-
-/* A section label between the hero and each grid. */
-h2.section {
   font-size: var(--t-4);
   color: var(--ink-2);
-  margin: 28px 0 10px;
+  margin: 0 0 24px;
 }
-
-/* The grids: one column, two from the second tool on (and always for How these work). */
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+.hero .actions {
+  margin: 0 0 14px;
 }
-.grid.two {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-
-/* The card: one raised box per tool, per How, and for About. */
-.card {
-  background: var(--bg-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 18px 20px;
-  min-width: 0;
-}
-.card h3 {
-  font-size: var(--t-5);
-  font-weight: 500;
-  line-height: 1.2;
+.hero .note {
+  font-size: var(--t-2);
+  color: var(--ink-3);
   margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
 }
-.card.small h3 {
-  font-size: var(--t-4);
+
+/* A section: a hairline above it, its heading, then its body. Six of these are
+   the page; nothing here is a box. */
+.band {
+  border-top: 1px solid var(--rule);
+  padding: 26px 0;
 }
-.card p {
-  color: var(--ink-2);
-  margin: 6px 0 0;
-  max-width: none;
-}
-.card.small p {
-  margin-top: 4px;
-}
-/* The status pill beside the name. */
-.pill {
+.band h2 {
   font-family: var(--font-sans);
-  font-size: var(--t-1);
+  font-size: var(--t-2);
   font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-tint);
-  border-radius: var(--radius);
-  padding: 4px 8px;
+  color: var(--ink-3);
+  margin: 0 0 14px;
 }
-.card .tag {
+.band p {
   color: var(--ink-2);
-  margin: 2px 0 10px;
+  margin: 0 0 10px;
 }
-/* Reads / Compares / Writes. */
-.card .beats {
-  margin: 10px 0 0;
+.band p.note {
+  font-size: var(--t-2);
+  color: var(--ink-3);
+}
+
+/* Reads / Compares / Plans: the verb in the ink, the rest beside it. */
+.beats {
+  margin: 0;
   padding: 0;
   list-style: none;
-  max-width: none;
+  max-width: var(--measure);
 }
-.card .beats li {
+.beats li {
   margin: 0;
-  padding: 3px 0;
+  padding: 6px 0;
   color: var(--ink-2);
 }
-.card .beats b {
+.beats b {
   color: var(--ink);
   font-weight: 500;
   display: inline-block;
   width: 76px;
 }
-/* What it catches: closed until opened. */
-.card details.catches {
-  margin-top: 10px;
-}
-.card details.catches summary {
-  cursor: pointer;
-  color: var(--accent);
-  font-size: var(--t-2);
-  list-style: none;
-}
-.card details.catches summary::-webkit-details-marker {
-  display: none;
-}
-.card .catch {
-  margin: 8px 0 0;
+
+/* What it catches: a plain list, the examples doing the work. */
+.catch {
+  margin: 0;
   padding-left: 18px;
   color: var(--ink-2);
-  max-width: none;
+  max-width: var(--measure);
 }
-.card .catch li {
+.catch li {
   margin: 0;
-  padding: 2px 0;
+  padding: 3px 0;
 }
-.card .actions {
-  margin: 14px 0 0;
+
+/* What it does with your tenant: the claim, then what it means. */
+.trust {
+  margin: 0;
+  max-width: var(--measure);
+}
+.trust dt {
+  color: var(--ink);
+  font-weight: 500;
+  margin: 0 0 2px;
+}
+.trust dd {
+  color: var(--ink-2);
+  margin: 0 0 14px;
+}
+.trust dd:last-child {
+  margin-bottom: 0;
+}
+.actions {
+  margin: 16px 0 0;
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-}
-.card .meta {
-  margin-top: 12px;
-  font-size: var(--t-1);
-  color: var(--ink-3);
-}
-.card .meta a {
-  color: var(--ink-3);
 }
 .lnk {
   color: var(--accent);
@@ -329,8 +304,8 @@ footer.app a {
     gap: 8px 16px;
     padding: 8px var(--pad);
   }
-  .grid.two {
-    grid-template-columns: minmax(0, 1fr);
+  .hero h1 {
+    font-size: var(--t-5);
   }
 }
 @media (prefers-reduced-motion: reduce) {

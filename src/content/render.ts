@@ -28,6 +28,11 @@ import { COMPAT_SHOW_KEYS, SHOW_KEYS } from '../derive/mfaReadiness.ts'
 import { METHOD_GUIDES, PASSKEY_TARGET, GUIDE_POINTER, TENANT_PREREQUISITE, USER_INSTRUCTION } from './methodGuides.ts'
 import ladderData from '../../data/free-tier-ladder.json' with { type: 'json' }
 import { SUBJECT_PLAIN } from '../copy/validation.ts'
+// The consent rows Connect shows, generated from GRAPH_SCOPES and SCOPE_COPY: the
+// review page reads the permission authority rather than a copy of it.
+import { consentRows } from '../copy/permissions.ts'
+
+const CONSENT = consentRows()
 
 /**
  * The title of a step whose name the engine owns: the free-tier ladder rungs
@@ -597,29 +602,32 @@ const kv = (label: string, val: any, ex: Ex = {}): string => `<div class="kv"><d
 export function renderPages(): string {
   const P = C.pages
   const out: string[] = []
-  const exT: Record<string, any> = { tenant: 'GetIAMAI', upn: 'Lachlan@getiamai.com', baselineName: 'Jon Hope — Defense in Depth', policyCount: 46, people: 12, policies: 10, from: 'Aug 1', to: 'Aug 31', emergencyAccounts: ['Breakglass'], signals: 'name, Global Administrator, excluded from 9 policies', exclusionsGroup: 'Breakglass Exclusion', n: 9, total: 10, countries: 'the United States', trustedLocations: [], serviceAccounts: [], sharedDevices: [], timezone: 'America/Denver', lane: 'Reading sign-in records', done: 3, steps: 31, inPlace: 7, finish: 'Sun Sep 27', weeks: '4 weeks', age: '17h ago', active: 4, enabled: 12, admins: 3, pct: '50%', date: 'Sep 1, 2026', blocker: 'Create or Correct Emergency Access Accounts', constraint: 'two changes prompt the same people, so Require a Fresh Sign-in for Intune Enrollment cannot enforce in the same window as Block Unsupported Device Platforms', stepTitle: 'Define the Trusted Network', reason: 'fully remote, no office network', licence: 'Microsoft Entra ID P2', policy: 'Monitor Kaladin using Forms', verdict: 'fine to keep', proposed: 'Core - Block - Copilot', current: 'weekly', wanted: '4 hours', name: 'Phase 1', start: 'Sep 8', end: 'Sep 13', measure: 'MFA readiness', threshold: '90%', value: '50%', thing: 'emergency access accounts', have: 1 }
+  const exT: Record<string, any> = { tenant: 'GetIAMAI', upn: 'admin@contoso.com', baselineName: 'Jon Hope — Defense in Depth', policyCount: 46, people: 12, policies: 10, from: 'Aug 1', to: 'Aug 31', emergencyAccounts: ['Breakglass'], signals: 'name, Global Administrator, excluded from 9 policies', exclusionsGroup: 'Breakglass Exclusion', n: 9, total: 10, countries: 'the United States', trustedLocations: [], serviceAccounts: [], sharedDevices: [], timezone: 'America/Denver', lane: 'Reading sign-in records', done: 3, steps: 31, inPlace: 7, finish: 'Sun Sep 27', weeks: '4 weeks', age: '17h ago', active: 4, enabled: 12, admins: 3, pct: '50%', date: 'Sep 1, 2026', blocker: 'Create or Correct Emergency Access Accounts', constraint: 'two changes prompt the same people, so Require a Fresh Sign-in for Intune Enrollment cannot enforce in the same window as Block Unsupported Device Platforms', stepTitle: 'Define the Trusted Network', reason: 'fully remote, no office network', licence: 'Microsoft Entra ID P2', policy: 'Monitor Kaladin using Forms', verdict: 'fine to keep', proposed: 'Core - Block - Copilot', current: 'weekly', wanted: '4 hours', name: 'Phase 1', start: 'Sep 8', end: 'Sep 13', measure: 'MFA readiness', threshold: '90%', value: '50%', thing: 'emergency access accounts', have: 1 }
   const sec = (title: string, body: string): void => {
     out.push(`<section class="page"><h3>${esc(title)}</h3>${body}</section>`)
   }
   const H = P.home
   if (H) {
-    const hpl = H.planner
+    // The public page (task 016): the hero with the outcome and the two ways in,
+    // then five sections — what it does, the standard it plans towards, what it
+    // catches, what it does with your tenant, About.
     out.push(
       '<section class="page"><h3>Home page — getiamai.com</h3>' +
         `<h2 class="h1">${esc(H.h1)}</h2>` +
         p(H.siteLine, {}) +
-        h(H.toolsLabel) +
-        // The tool card (docs/design/home-mockup.html): name and pill, tag line, the beats, the catches collapsible, the two actions, the meta line.
-        `<div class="card"><b>${esc(hpl.name)}</b> <span class="chip">${esc(hpl.label)}</span><p class="sub">${esc(hpl.descriptor)}</p>` +
-        ul((hpl.beats as { verb: string; text: string }[]).map((b) => `${b.verb} ${b.text}`), {}) +
-        h(hpl.catchesLabel) +
-        ul(hpl.catches, {}) +
-        btn(hpl.open, true) +
-        btn(hpl.demo) +
-        `<p class="sub">${esc(hpl.meta.baseline)} · ${esc(hpl.meta.role)} · <a>${esc(hpl.meta.code)}</a></p>` +
-        '</div>' +
-        h(H.howLabel) +
-        (H.how as { title: string; body: string; link?: string }[]).map((c) => `<div class="card"><b>${esc(c.title)}</b>${p(c.body, {})}${c.link ? `<p><a>${esc(c.link)}</a></p>` : ''}</div>`).join('') +
+        btn(H.open, true) +
+        btn(H.demo) +
+        p(H.heroNote, {}, 'sub') +
+        h(H.workLabel) +
+        ul((H.work as { verb: string; text: string }[]).map((b) => `${b.verb} ${b.text}`), {}) +
+        h(H.baselineLabel) +
+        p(H.baseline, {}) +
+        p(H.baselineGoal, {}) +
+        p(H.baselineNote, {}, 'sub') +
+        h(H.catchesLabel) +
+        ul(H.catches, {}) +
+        h(H.trustLabel) +
+        (H.trust as { title: string; body: string; link?: string }[]).map((c) => `<p><b>${esc(c.title)}</b> ${esc(c.body)}${c.link ? ` <a>${esc(c.link)}</a>` : ''}</p>`).join('') +
         h(H.aboutLabel) +
         p(H.about, {}) +
         '<p>' +
@@ -630,7 +638,7 @@ export function renderPages(): string {
     )
   }
   const cx = P.connect
-  const tileHtml = (n: number, title: string, state: string, body: string): string => `<section class="step-tile"><span class="n">${n}</span><h2>${esc(title)} <span class="state">${esc(state)}</span></h2>${body}</section>`
+  const tileHtml = (n: number, title: string, state: string, body: string): string => `<section class="step-tile"><span class="n">${n}</span><h2>${esc(title)} <span class="state">${esc(state)}</span> <span class="chip">${esc(cx.next)}</span></h2>${body}</section>`
   const acts = (...labels: string[]): string => `<p class="actions">${labels.map((l) => btn(l)).join(' ')}</p>`
   const li = (...html: string[]): string => `<ul>${html.map((h) => `<li>${h}</li>`).join('')}</ul>`
   const sub = (...html: string[]): string => `<p class="sub">${html.join(' ')}</p>`
@@ -645,6 +653,7 @@ export function renderPages(): string {
         fill(cx.baseline.state, exT),
         p(cx.baseline.what, {}) +
           p(cx.baseline.goal, {}) +
+          p(cx.baseline.pinned, {}) +
           `<details open><summary>${fill(cx.baseline.updated, { date: 'Sep 3, 2026', n: 3 })}</summary>` +
           li(
             `${esc(cx.baseline.diff.added)} · IAC - INTUNE - GRANT - Device Registration · ${fill(cx.baseline.diffStep, { step: 'Require MFA to Register a Device' })}`,
@@ -686,8 +695,8 @@ export function renderPages(): string {
         cx.plan.title,
         fill(cx.plan.ready.stateCounted, { steps: 32, done: 9, age: '1 hour ago' }),
         // Until the plan has computed, the state carries the age alone; then the MFA readiness ladder's header and five tiles (pages.ladder, drawn in full under Today), then Open the plan.
-        sub(`Before the plan computes: ${fill(cx.plan.ready.state, { age: '1 hour ago' })}`) +
-          sub(esc(P.ladder.header), '·', fill(P.ladder.of, { n: 33 }), '—', ['r5', 'r4', 'r3', 'r2', 'r1'].map((k) => esc(P.ladder.rungs[k].title)).join(' · ')) +
+        p(cx.plan.ready.lead, {}) +
+          sub(`Before the plan computes: ${fill(cx.plan.ready.state, { age: '1 hour ago' })}`) +
           acts(cx.plan.ready.open),
       ) +
       tileHtml(4, cx.plan.title, fill(cx.plan.last.state, { date: 'Sep 2' }), acts(fill(cx.plan.last.open, { date: 'Sep 2' }))) +
@@ -705,8 +714,11 @@ export function renderPages(): string {
         p(cx.account.note, {}, 'sub') +
           acts(si.signIn, si.demo) +
           `<details open><summary>${esc(si.permissionsSummary)}</summary>` +
-          p(si.consentLead, { n: si.consent.length }, 'sub') +
-          li(...si.consent.map((r: { scope: string; name: string; reads: string }) => `${esc(r.name)} · ${esc(r.reads)} <span class="sub">(${esc(r.scope)})</span>`)) +
+          // The consent rows are generated from GRAPH_SCOPES crossed with SCOPE_COPY
+          // (src/copy/permissions.ts), not written down in the content: the review reads
+          // the same rows the page shows.
+          p(si.consentLead, { n: CONSENT.length }, 'sub') +
+          li(...CONSENT.map((r) => `${esc(r.name)} · ${esc(r.reads)} <span class="sub">(${esc(r.scope)})</span>`)) +
           p(si.removal, {}, 'sub') +
           '</details>',
       ) +

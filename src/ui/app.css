@@ -1406,6 +1406,33 @@ footer.app a {
 .step-tile h2 .state.wait {
   color: var(--wait);
 }
+/* The progression (task 016): the stage with the next action is the loud one,
+   the stages behind it step back, and the ones ahead sit between the two. The
+   marker beside the heading is the word Next, so the current stage reads
+   without the accent. */
+.step-tile.current {
+  border-color: var(--accent);
+}
+.step-tile.settled {
+  background: var(--bg);
+}
+.step-tile.settled h2 {
+  color: var(--ink-2);
+}
+.step-tile .next {
+  position: absolute;
+  left: 14px;
+  top: 44px;
+  font-size: var(--t-1);
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: var(--radius);
+  padding: 0 5px;
+}
 .step-tile p {
   margin: 6px 0 0;
   color: var(--ink-2);
@@ -1543,16 +1570,6 @@ footer.app a {
   background: var(--bg-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius);
-}
-.strip-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin: 16px 0 0;
-  font-size: var(--t-1);
-  color: var(--ink-3);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 .surface .ledger {
   margin: 6px 0 0;
@@ -1703,70 +1720,5 @@ td .group-word {
 @media (max-width: 640px) {
   .group-counts {
     grid-template-columns: 1fr;
-  }
-}
-/* The five tiles on the Plan and on Connect's Plan tile: the title on top, the count large in the rung's colour. */
-.rung-tiles {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  margin: 6px 0 16px;
-}
-.rung-tile {
-  display: block;
-  padding: 12px 14px;
-  text-decoration: none;
-  color: inherit;
-}
-.rung-tile:hover,
-.rung-tile:focus-visible {
-  border-color: var(--accent);
-  outline: none;
-}
-.rung-tile.pri {
-  border-left: 3px solid var(--rule-strong);
-}
-.rung-tile .rung-title {
-  display: block;
-  font-size: var(--t-2);
-  font-weight: 500;
-  line-height: 1.3;
-  color: var(--ink);
-  min-height: 34px;
-}
-.rung-tile .rung-n {
-  display: block;
-  font-family: var(--font-serif);
-  font-size: var(--t-6);
-  font-weight: 500;
-  line-height: 1.1;
-  margin-top: 8px;
-}
-.rung-tile .rung-n.rung-5 {
-  color: var(--rung-5);
-}
-.rung-tile .rung-n.rung-4 {
-  color: var(--rung-4);
-}
-.rung-tile .rung-n.rung-3 {
-  color: var(--rung-3);
-}
-.rung-tile .rung-n.rung-2 {
-  color: var(--rung-2);
-}
-.rung-tile .rung-n.rung-1 {
-  color: var(--rung-1);
-}
-.step-tile .rung-tiles {
-  gap: 10px;
-  margin: 6px 0 14px;
-}
-.step-tile .rung-tile {
-  background: var(--bg-inset);
-  padding: 10px 12px;
-}
-@media (max-width: 700px) {
-  .rung-tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

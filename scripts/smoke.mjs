@@ -259,7 +259,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (signed out): the heading, the sign-in tile with the consent sentence, Sign in with Microsoft and Try it with sample data', /Plan the journey to your Conditional Access baseline/.test(t) && /Sign in\s+no tenant connected/.test(t) && /every sign-in after that can be Global Reader/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
+  check('Connect (signed out): the heading, the sign-in tile with the consent sentence, Sign in with Microsoft and Try it with sample data', /Strengthen identity security without guessing what will break/.test(t) && /Sign in\s+no tenant connected/.test(t) && /every sign-in after that can be Global Reader/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
 
   // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -294,8 +294,30 @@ try {
   // Connect as four tiles (docs/design/connect-mockup.html).
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
-  // Tile 4 (docs/design/mockups/connect-v2.html): the MFA Readiness header, the five rungs by title, Open the plan; no facts row.
-  check('Connect (scanned): the ladder and Open the plan', /MFA Readiness/i.test(t) && /of \d+ active (person|people)/i.test(t) && /Passkey or security key, proven/.test(t) && /Nothing set up/.test(t) && /Open the plan →/.test(t) && (await evaluate(`document.querySelectorAll('main.page section.step-tile .facts').length`)) === 0 && (await evaluate(`document.querySelectorAll('main.page section.step-tile .rung-tile').length`)) === 5, (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0])
+  // Tile 4 (task 016): the Plan is the destination — the counted state, one line of what was built, and one way on. No facts row, no readiness ladder, and nothing on the page routing to MFA Readiness ahead of the plan. The tile's own text, since the header tab is named MFA Readiness.
+  const planReady = await waitFor(`/Plan\\s+ready/.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
+  const planTileText = await evaluate(`(((document.querySelectorAll('main.page section.step-tile')[3] || {}).innerText) || '').replace(/\\s+/g, ' ')`)
+  check(
+    'Connect (scanned): the Plan stage is the destination, one way on, no readiness diagnostic in front of it',
+    planReady &&
+      /Open the plan →/.test(planTileText) &&
+      /Built from this scan/.test(planTileText) &&
+      !/MFA Readiness/i.test(planTileText) &&
+      (await evaluate(`document.querySelectorAll('main.page section.step-tile .facts, main.page section.step-tile .rung-tile').length`)) === 0 &&
+      (await evaluate(`document.querySelectorAll('main.page section.step-tile a[href*="#/readiness"]').length`)) === 0,
+    planTileText.slice(0, 140),
+  )
+  // The progression: at most one stage current, the ones before it settled, and
+  // the current one marked with a word rather than a colour alone.
+  const stageClasses = await evaluate(`[...document.querySelectorAll('main.page section.step-tile')].map((s) => (/\\bcurrent\\b/.test(s.className) ? 'current' : /\\bsettled\\b/.test(s.className) ? 'settled' : 'ahead'))`)
+  check(
+    'Connect (scanned): the finished stages settle, at most one is current, and a current one carries the Next marker',
+    stageClasses.filter((x) => x === 'current').length <= 1 &&
+      stageClasses.filter((x) => x === 'settled').length >= 1 &&
+      stageClasses.lastIndexOf('settled') < (stageClasses.indexOf('current') === -1 ? Infinity : stageClasses.indexOf('current')) &&
+      (await evaluate(`[...document.querySelectorAll('main.page section.step-tile.current')].every((s) => ((s.querySelector('.next') || {}).textContent || '').trim().length > 0)`)),
+    stageClasses.join(' · '),
+  )
   // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
   check(
     "Connect (scanned): the scan's age once as Scan complete · N ago, Plan ready · from the scan with the same age, and no scanned line",
@@ -332,13 +354,13 @@ try {
   check('MFA Readiness: no legend, no banner, no rollout tiles, no filter chips', !/Legend/.test(t) && !/To set up before enforcement/.test(t) && !/Sign-in records: complete/.test(t) && (await evaluate(`document.querySelectorAll('.filter-bar, .legend-card, .tiles').length`)) === 0)
   check('MFA Readiness: one Show dropdown, a search box and Admins only', (await evaluate(`document.querySelectorAll('main.page select').length`)) === 1 && (await evaluate(`!!document.querySelector('main.page input[type=search]')`)) && /Admins only/.test(t))
   check('MFA Readiness: the link to every account and policy the scan read', /Every account and policy the scan read →/.test(t))
-  // Connect's rung tiles still land here filtered, and the filter narrows the table.
+  // A rung hash still lands here filtered, and the filter narrows the table.
   const allRows = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
   await go('readiness/rung-5')
   await sleep(500)
   const rung5Rows = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
   const rung5Show = await evaluate(`(document.querySelector('main.page select') || {}).value`)
-  check('MFA Readiness: a rung link from Connect still filters the table, and the control says so', rung5Show === 'rung-5' && rung5Rows < allRows, `${rung5Show}: ${rung5Rows} of ${allRows}`)
+  check('MFA Readiness: a rung hash still filters the table, and the control says so', rung5Show === 'rung-5' && rung5Rows < allRows, `${rung5Show}: ${rung5Rows} of ${allRows}`)
   // The old name still reaches the one surface, and the app rewrites the hash.
   await go('today')
   check('The old Today hash reaches MFA Readiness', await waitFor(`location.hash === '#/readiness'`))

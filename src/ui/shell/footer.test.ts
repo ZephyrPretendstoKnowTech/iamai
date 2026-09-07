@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { app, pages } from '../../content/content.ts'
 import { renderHomeHtml } from '../../../scripts/build-home.ts'
+import { consentRows } from '../../copy/permissions.ts'
 
 const FOOTER = (pages.footer as { links: { text: string; href: string }[] }).links
 
@@ -30,11 +31,11 @@ test('the footer has four links: IAMAI Home (a link), LinkedIn, GitHub, feedback
 })
 
 test('"people" on Today, the Plan and Connect; "user" only for an Entra user object', () => {
-  const connect = pages.connect as { signIn: { consent: unknown } } & Record<string, unknown>
-  const { consent, ...signInRest } = connect.signIn as Record<string, unknown> & { consent: unknown }
-  void consent
-  const words = JSON.stringify({ today: pages.readiness, ladder: pages.ladder, plan: pages.plan, connect: { ...connect, signIn: signInRest }, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })
+  // The consent rows are Microsoft's own wording and live with the permission
+  // authority (src/copy/permissions.ts), not in the page's words (task 016), so
+  // the page's words carry no "user" at all.
+  const words = JSON.stringify({ today: pages.readiness, ladder: pages.ladder, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })
   assert.ok(!/\busers?\b/i.test(words), `no "user" outside Microsoft's scope names: ${(words.match(/[^"]{0,40}\busers?\b[^"]{0,40}/i) ?? [''])[0]}`)
   // Microsoft's consent rows name the user object, as Microsoft does.
-  assert.ok(JSON.stringify(consent).includes("Read all users' basic profiles"))
+  assert.ok(JSON.stringify(consentRows()).includes("Read all users' basic profiles"))
 })

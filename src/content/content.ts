@@ -63,8 +63,12 @@ export const stepById: Record<string, ContentStep> = Object.fromEntries(steps.ma
 export const cleanup = content.cleanup
 export const phases = content.phases
 export const pages = content.pages
-/** The product's name and descriptor (pages.home.planner): the wordmark and the page title. */
-export const planner = (content.pages.home as { planner: { name: string; descriptor: string } }).planner
+/**
+ * The product's name and descriptor: the app's wordmark and its page title. They
+ * live with the app's own words (pages.app.shell.product) rather than on the home
+ * page, which since task 016 introduces IAMAI by what it does, not by a tool card.
+ */
+export const planner = (content.pages.app.shell as { product: { name: string; descriptor: string } }).product
 
 /** The words the app chrome and the surfaces show (pages.app): the header, the scan progress, the print cover, the export alerts. */
 export type AppWords = {

@@ -294,8 +294,8 @@
   },
   "pages": {
     "connect": {
-      "h1": "Plan the journey to your Conditional Access baseline.",
-      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a published Conditional Access baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.",
+      "h1": "Strengthen identity security without guessing what will break.",
+      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.",
       "signIn": {
         "title": "Sign in",
         "state": "no tenant connected",
@@ -304,38 +304,6 @@
         "workAccount": "Sign in with a work or school account",
         "permissionsSummary": "What IAMAI asks for, and how to remove it",
         "consentLead": "Microsoft's consent screen will list these {n}, in this order:",
-        "consent": [
-          {
-            "scope": "Directory.Read.All",
-            "name": "Read all users' basic profiles / Read directory data",
-            "reads": "People, groups, devices, licences, the tenant's name"
-          },
-          {
-            "scope": "Policy.Read.All",
-            "name": "Read your organization's policies",
-            "reads": "Conditional Access policies, named locations, strengths, cross-tenant settings"
-          },
-          {
-            "scope": "AuditLog.Read.All",
-            "name": "Read audit log data",
-            "reads": "Sign-in records for the last 30 days"
-          },
-          {
-            "scope": "RoleManagement.Read.Directory",
-            "name": "Read role management data for your company's directory",
-            "reads": "Who holds which role, and which through PIM"
-          },
-          {
-            "scope": "UserAuthenticationMethod.Read.All",
-            "name": "Read all users' authentication methods",
-            "reads": "Which kinds of sign-in method each account has, never the values"
-          },
-          {
-            "scope": "Reports.Read.All",
-            "name": "Read all usage reports",
-            "reads": "App sign-in counts, and when each application identity last signed in"
-          }
-        ],
         "removal": "Remove it any time: Entra admin center → Enterprise applications → IAMAI Planner → Delete. Nothing it read leaves this browser unless you export it.",
         "errors": {
           "consent": {
@@ -369,7 +337,7 @@
         "state": "{baselineName} · {policyCount} policies",
         "loading": "loading {source}…",
         "none": "none loaded",
-        "what": "A published set of Conditional Access policies, built and maintained by Jon Hope, Microsoft MVP, at ConditionalAccess.Tech. IAMAI pins a reviewed version and tells you when he updates it.",
+        "what": "A baseline is the identity-security standard IAMAI plans your tenant towards: a published set of Conditional Access policies to measure it against. The default is Defense in Depth, built and maintained by Jon Hope, a Microsoft MVP, at ConditionalAccess.Tech.",
         "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
         "updated": "Updated by its author on {date} · {n} policies changed · review",
         "diff": {
@@ -380,7 +348,8 @@
         "diffStep": "changes {step}",
         "diffNoStep": "no step changes",
         "change": "Change baseline",
-        "howToMakeOne": "How to make one →"
+        "howToMakeOne": "How to make one →",
+        "pinned": "IAMAI pins a reviewed version of it and tells you when he updates it."
       },
       "scan": {
         "title": "Scan",
@@ -431,10 +400,11 @@
       "plan": {
         "title": "Plan",
         "ready": {
-          "$comment": "docs/design/mockups/connect-v2.html: the state carries the step counts once the plan has computed; under it the MFA Readiness header and five tiles (pages.ladder), then Open the plan.",
+          "$comment": "Task 016: the state carries the step counts once the plan has computed, one line of what was built, then Open the plan. Plan is the destination after the first scan; no readiness diagnostic sits in front of it.",
           "state": "ready · from the scan {age}",
           "stateCounted": "ready · {steps} steps, {done} done · from the scan {age}",
-          "open": "Open the plan →"
+          "open": "Open the plan →",
+          "lead": "Built from this scan: every step in order, who it touches, and when to make it."
         },
         "last": {
           "state": "last full plan · {date}",
@@ -453,7 +423,8 @@
           "weeksOne": "{n} week",
           "open": "Open the sample plan"
         }
-      }
+      },
+      "next": "Next"
     },
     "plan": {
       "h1": "Plan",
@@ -740,49 +711,47 @@
       "metaTitle": "IAMAI: tools for Microsoft Entra identity work",
       "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
       "brand": "IAMAI",
-      "h1": "Know what a change will do before you make it.",
-      "siteLine": "Tools for the person doing Microsoft Entra security on their own: read the tenant, see what a change touches, plan it so nobody is locked out. Read-only, in your browser, source public.",
-      "toolsLabel": "Tools",
-      "planner": {
-        "name": "IAMAI Planner",
-        "descriptor": "Conditional Access rollout planner",
-        "label": "Preview",
-        "beats": [
-          {
-            "verb": "Reads",
-            "text": "a tenant's policies, people, sign-in records and licences."
-          },
-          {
-            "verb": "Compares",
-            "text": "what each baseline policy is for with what the tenant already has."
-          },
-          {
-            "verb": "Writes",
-            "text": "a dated plan for the difference: report-only before enforced, who each change touches, what would break, and the emails to send."
-          }
-        ],
-        "catchesLabel": "What it catches",
-        "catches": [
-          "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
-          "An emergency access account inside the policy it exists to survive.",
-          "A country rule that blocks the person who wrote it.",
-          "A service account that a legacy-authentication block stops at 2 a.m.",
-          "A meeting-room device that a session rule signs out every hour."
-        ],
-        "open": "Open the planner",
-        "demo": "Try it with sample data",
-        "meta": {
-          "baseline": "Ships with Jon Hope's Defense in Depth baseline",
-          "role": "needs Global Reader",
-          "code": "read the code",
-          "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
+      "h1": "Strengthen your Microsoft identity security.",
+      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. The plan is ordered so nobody is locked out on the way.",
+      "open": "Open IAMAI",
+      "demo": "Try it with sample data",
+      "heroNote": "Read-only. The first connection needs an administrator to grant consent once; after that, Global Reader is enough.",
+      "workLabel": "What it does",
+      "work": [
+        {
+          "verb": "Reads",
+          "text": "a tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records."
+        },
+        {
+          "verb": "Compares",
+          "text": "what each baseline policy is for with what the tenant already has, so a control you built yourself counts as done."
+        },
+        {
+          "verb": "Plans",
+          "text": "the difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send."
         }
-      },
-      "howLabel": "How these work",
-      "how": [
+      ],
+      "baselineLabel": "The standard it plans towards",
+      "baseline": "A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies. The default is Defense in Depth, built by Jon Hope, a Microsoft MVP.",
+      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+      "baselineNote": "IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.",
+      "catchesLabel": "What it catches before a change goes live",
+      "catches": [
+        "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
+        "An emergency access account inside the policy it exists to survive.",
+        "A country rule that blocks the person who wrote it.",
+        "A service account that a legacy-authentication block stops at 2 a.m.",
+        "A meeting-room device that a session rule signs out every hour."
+      ],
+      "trustLabel": "What it does with your tenant",
+      "trust": [
         {
           "title": "Read-only",
-          "body": "No tool here holds a permission that can create, change or delete anything. Nothing it reads leaves your browser unless you export it yourself."
+          "body": "IAMAI holds no permission that can create, change or delete anything in your tenant. It lists every permission it asks for, and what each is spent on, before you sign in."
+        },
+        {
+          "title": "Nothing leaves the browser",
+          "body": "The scan reads Microsoft Graph from this browser and keeps the result here. There is no IAMAI server, no analytics and no upload; an export is a file you save yourself."
         },
         {
           "title": "Source is public",
@@ -852,7 +821,11 @@
         "loading": "Loading…",
         "storageBlocked": "Saved data is not available yet",
         "scanNeedsConnect": "The scan reads the tenant into a local record. Connect a tenant first.",
-        "connectLink": "Connect a tenant"
+        "connectLink": "Connect a tenant",
+        "product": {
+          "name": "IAMAI Planner",
+          "descriptor": "Conditional Access rollout planner"
+        }
       },
       "error": {
         "title": "This page hit an error",
@@ -1113,7 +1086,14 @@
           "gate": "When it can fail",
           "why": "Why"
         },
-        "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not."
+        "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not.",
+        "hosting": "Where it runs",
+        "hostingBody": "getiamai.com is a static site: files on GitHub Pages, served through Cloudflare. Your tenant's data is not part of that. The scan calls Microsoft Graph from this browser and the snapshot stays here, so nothing Cloudflare or GitHub serves has ever held it. The source is public and inspectable on GitHub.",
+        "credits": "Credits",
+        "creditBaseline": "The default baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech. IAMAI pins a reviewed version of it and reads it unchanged.",
+        "creditAnalyzer": "CA Policy Analyzer by Jon Hope",
+        "creditAnalyzerNote": "A separate open-source project by the same author, credited here alongside the baseline. IAMAI is a different tool and is not affiliated with it.",
+        "creditsNote": "Microsoft MVP is an award for community contribution. It is not a Microsoft certification of this baseline, and Microsoft does not endorse or support IAMAI."
       },
       "inventory": {
         "caps": {
