@@ -44,6 +44,7 @@ type MethodGuideContent = {
   prereq: string
   pointer: string
   userInstruction: string
+  guest: string
   common: Record<string, string>
   guides: GuideEntry[]
 }
@@ -58,6 +59,8 @@ export const TENANT_PREREQUISITE = M.prereq
 export const GUIDE_POINTER = M.pointer
 /** The one end-user sentence the campaign email carries ({passkeySetupShort}). */
 export const USER_INSTRUCTION = M.userInstruction
+/** Why a guest is offered no Temporary Access Pass, and what they do instead; the campaign's risk line is the same sentence ({guestNoTap}). */
+export const GUEST_NOTE = M.guest
 
 /**
  * The guides that end by using the method and scanning again — the two shared
@@ -127,14 +130,26 @@ export function methodGuide(id: MethodGuideId): MethodGuide {
 export type Remediation =
   | { kind: 'none' }
   | { kind: 'prove'; guides: MethodGuideId[] }
-  | { kind: 'setUp'; guides: MethodGuideId[]; other: MethodGuideId[] }
+  | { kind: 'setUp'; guides: MethodGuideId[]; other: MethodGuideId[]; note?: string }
   | { kind: 'unknown' }
 
-export function remediationFor(group: ReadinessGroup | null): Remediation {
+/**
+ * The half of the person a guide can be unavailable to. It is the row's own
+ * `guest` (derive/mfaReadiness.ts reads `userType`), passed in rather than
+ * re-derived, so the panel and the table cannot disagree about who a guest is.
+ */
+export type RemediationSubject = { guest: boolean }
+
+export function remediationFor(group: ReadinessGroup | null, subject: RemediationSubject): Remediation {
   if (group === null || group === 'ready') return { kind: 'none' }
   if (group === 'needsProof') return { kind: 'prove', guides: ['prove'] }
   if (group === 'unknown') return { kind: 'unknown' }
-  return { kind: 'setUp', guides: ['authenticator-iphone', 'authenticator-android', 'security-key'], other: ['temporary-access-pass', 'windows-hello'] }
+  // A guest's authentication methods belong to their home tenant: this tenant
+  // cannot issue them a Temporary Access Pass, so the guide is not offered and
+  // the sentence the campaign already carries says what happens instead. The
+  // target methods stay, because a guest registers them at home.
+  const other: MethodGuideId[] = subject.guest ? ['windows-hello'] : ['temporary-access-pass', 'windows-hello']
+  return { kind: 'setUp', guides: ['authenticator-iphone', 'authenticator-android', 'security-key'], other, note: subject.guest ? GUEST_NOTE : undefined }
 }
 
 /** Every guide a remediation offers, in the order the panel lists them; empty where it offers none. */
