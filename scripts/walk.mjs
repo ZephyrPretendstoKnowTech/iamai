@@ -424,8 +424,10 @@ async function walkFixture(fx) {
   let exclusionBody = null
   let sawExistingCoverage = false
   let planHeaderCounts = null
-  let stripCounts = null
-  // Today's five rung counts by title, for the Plan strip and Connect's tiles to agree with.
+  // The campaign step's own rung counts, read where the decision is made, for the
+  // ladder to agree with once both have been walked.
+  let campaignRungs = null
+  // Today's five rung counts by title, for Connect's tiles and the campaign step to agree with.
   let ladderCounts = null
   for (const width of WIDTHS) {
     await setWidth(width)
@@ -814,7 +816,6 @@ async function walkFixture(fx) {
               if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
               for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
               if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
-              if (stripCounts) for (const t of tiles) if (stripCounts[t.label] !== undefined && stripCounts[t.label] !== t.n) add('P0', `${label}: Connect's "${t.label}" reads ${t.n} and the Plan's ${stripCounts[t.label]}`)
               // One denominator (E4): the Plan header's counts, read now rather than
               // from the Plan route's capture (the walk's own clicks there mark a
               // Cleanup row done, so an earlier capture is stale by design).
@@ -869,22 +870,13 @@ async function walkFixture(fx) {
       const tips = await evaluate(`document.querySelectorAll('main.page .page-tip').length`)
       if ((route === 'today' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
       if (route === 'plan' && tips !== 0) add('P0', `${label}: the Plan still renders a page tip`)
-      // The MFA readiness ladder on the Plan (docs/design/mockups/plan-top-v2.html):
-      // under the steps line, the header and five tiles by title, each linking to
-      // Today filtered to its rung, the numbers Today's; no expanding lists, no
-      // "Clear the date" or "Starting locks" line. The counts are kept for the
-      // campaign step to agree with.
+      // The MFA readiness ladder left the Plan (task 011): a tenant-wide diagnostic
+      // on a page whose job is the rollout. Today draws it and Connect's Plan tile
+      // draws it; nothing stands between the Plan's header line and the board, and
+      // the old readiness strip and the two note lines stay gone.
       if (route === 'plan') {
-        const tiles = await evaluate(`[...document.querySelectorAll('main.page .rung-tiles .rung-tile')].map((t) => ({ label: ((t.querySelector('.rung-title') || {}).textContent || '').trim(), n: Number(((t.querySelector('.rung-n') || {}).textContent || '').trim()), href: t.getAttribute('href') || '' }))`)
-        if (tiles.length !== 5) add('P0', `${label}: the Plan's ladder has ${tiles.length} tiles; five`)
-        else {
-          if (tiles.some((t, k) => t.label !== RUNG_TITLES[k])) add('P0', `${label}: the tiles read ${JSON.stringify(tiles.map((t) => t.label))}; pages.ladder gives ${JSON.stringify(RUNG_TITLES)}`)
-          stripCounts = Object.fromEntries(tiles.map((t) => [t.label, t.n]))
-          if (ladderCounts) for (const t of tiles) if (ladderCounts[t.label] !== undefined && ladderCounts[t.label] !== t.n) add('P0', `${label}: the Plan's "${t.label}" reads ${t.n} and Today's ${ladderCounts[t.label]}`)
-          const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1])
-          if (tiles.reduce((a, t) => a + t.n, 0) !== active) add('P0', `${label}: the tiles sum to ${tiles.reduce((a, t) => a + t.n, 0)} and the header says of ${active} active people`)
-          for (const [k, t] of tiles.entries()) if (!new RegExp(`#/today/rung-${5 - k}$`).test(t.href)) add('P0', `${label}: "${t.label}" links to "${t.href}"; Today filtered to its rung`)
-        }
+        const ladders = await evaluate(`document.querySelectorAll('main.page .rung-tiles').length`)
+        if (ladders > 0) add('P0', `${label}: the MFA readiness ladder renders on the Plan; it is Today's`)
         if ((await evaluate(`document.querySelectorAll('main.page .readiness, main.page .readiness-people').length`)) > 0) add('P0', `${label}: the old readiness strip still renders`)
         if (/Clear the date|Starting locks the dates/.test(text)) add('P0', `${label}: a note under the start date still renders`)
       }
@@ -1001,17 +993,17 @@ async function walkFixture(fx) {
         checkText(`${slabel} (email)`, emailText, { emails: true })
         // No step tip on an opened step.
         if ((await evaluate(`document.querySelectorAll('main.page .step-body .page-tip').length`)) !== 0) add('P0', `${slabel}: the step still renders a tip`)
-        // The ladder's numbers are the campaign step's for the same rung.
-        if (stripCounts) {
+        // The campaign step's rung counts, kept for the ladder to agree with. The
+        // ladder is Today's (task 011) and the routes are walked in the fixture's
+        // own order, so the two are compared once the fixture is walked.
+        if (/MFA Registration Campaign/.test(title)) {
           const group = (re) => { const m = bodyText.match(re); return m ? Number(m[1]) : null }
-          if (/MFA Registration Campaign/.test(title)) {
-            const noMethod = group(/^(\d+) (?:people|person) at Nothing set up;/m) ?? 0
-            const unproven = group(/^(\d+) (?:people|person) at Set up, not proven;/m) ?? 0
-            if (noMethod !== stripCounts['Nothing set up']) add('P0', `${slabel}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${stripCounts['Nothing set up']}`)
+          campaignRungs = {
+            label: slabel,
+            noMethod: group(/^(\d+) (?:people|person) at Nothing set up;/m) ?? 0,
+            unproven: group(/^(\d+) (?:people|person) at Set up, not proven;/m) ?? 0,
             // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the ladder keeps the records' fact.
-            const mfaInPlace = /You already confirm sign-ins to/.test(bodyText)
-            if (mfaInPlace && unproven !== 0) add('P0', `${slabel}: the campaign lists ${unproven} at Set up, not proven although Require MFA for Everyone is in place`)
-            if (!mfaInPlace && unproven !== stripCounts['Set up, not proven']) add('P0', `${slabel}: the campaign lists ${unproven} at Set up, not proven and the ladder counts ${stripCounts['Set up, not proven']}`)
+            mfaInPlace: /You already confirm sign-ins to/.test(bodyText),
           }
         }
         // A count of one reads as one, noun and verb: never "1 people", never "1 person hold".
@@ -1306,6 +1298,14 @@ async function walkFixture(fx) {
         }
       }
     }
+  }
+  // The ladder's numbers are the campaign step's for the same rung, wherever each
+  // is drawn: the campaign is a Plan step and the ladder is Today's.
+  if (campaignRungs && ladderCounts) {
+    const { label, noMethod, unproven, mfaInPlace } = campaignRungs
+    if (noMethod !== ladderCounts['Nothing set up']) add('P0', `${label}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${ladderCounts['Nothing set up']}`)
+    if (mfaInPlace && unproven !== 0) add('P0', `${label}: the campaign lists ${unproven} at Set up, not proven although Require MFA for Everyone is in place`)
+    if (!mfaInPlace && unproven !== ladderCounts['Set up, not proven']) add('P0', `${label}: the campaign lists ${unproven} at Set up, not proven and the ladder counts ${ladderCounts['Set up, not proven']}`)
   }
   for (const t of rowTitles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name}: plan row "${t}" is a goal the baseline does not hold`)
   // The exclusions-group step is on every plan (In place in the footer, or Ready in
