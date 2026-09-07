@@ -407,22 +407,39 @@ export function buildFixture(spec: Spec): Fixture {
   // policies now sitting in report-only with sign-in evidence, and one enforced.
   const week2Results: PolicyAppliedResult[] = []
   if (spec.week2) {
-    const body = { conditions: { users: { includeUsers: ['All'], excludeGroups: [carveOut] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }
     // Two gates on a report-only policy (tracking.ts): token protection, created
     // the day after week one's scan and evaluated for every person with no
     // failures, is ready now on the evidence; auth transfer, created two days
     // ago and seen for 24 people so far, waits for its observation window.
     //
-    // Auth transfer carries the policy the plan actually deploys for its goal,
-    // under the name the plan proposes, because that is what a policy IAMAI
-    // created last week is. A deployed policy that means something else is a
-    // goal nothing covers, and its step is a correction case whatever the tag
-    // says: the plan reads it as report-only and offers to create a second
-    // policy beside it. With the goal covered, the only thing left to submit is
-    // the enforcement the observation window has not earned, which is the
-    // canonical Report-only / Observe case.
+    // Both carry the policy the plan actually deploys for their goal, under the
+    // name the plan proposes, because that is what a policy IAMAI created last
+    // week is. With the goal covered, the only thing left to submit is the
+    // enforcement — held while the window is open, which is the canonical
+    // Report-only / Observe case (auth transfer), and offered as an update of
+    // that same policy once the records close the gate, which is the canonical
+    // Ready-to-enforce case (token protection).
+    const tokenProtection = {
+      conditions: {
+        applications: {
+          excludeApplications: [],
+          // The pinned baseline's Windows token-protection app set.
+          includeApplications: ['00000002-0000-0ff1-ce00-000000000000', '00000003-0000-0ff1-ce00-000000000000', '0af06dc6-e4b5-4f28-818e-e78e62d137a5', '9cdead84-a844-4324-93f2-b2e6bb768d07', 'cc15fd57-2c6c-4117-a88c-83b1d56b4bbe'],
+          includeAuthenticationContextClassReferences: [],
+          includeUserActions: [],
+        },
+        clientAppTypes: ['mobileAppsAndDesktopClients'],
+        devices: { deviceFilter: { mode: 'exclude', rule: 'device.systemLabels -contains "CloudPC" -and device.trustType -eq "AzureAD"' } },
+        platforms: { excludePlatforms: [], includePlatforms: ['windows'] },
+        servicePrincipalRiskLevels: [],
+        signInRiskLevels: [],
+        userRiskLevels: [],
+        users: { excludeGroups: [carveOut], excludeRoles: [], excludeUsers: [], includeGroups: [], includeRoles: [], includeUsers: ['All'] },
+      },
+      sessionControls: { secureSignInSession: { isEnabled: true } },
+    }
     const advanced: { goalId: string; name: string; state: string; cls: PolicyResultClass; days: number; seenIds: string[]; body: Record<string, unknown> }[] = [
-      { goalId: 'token-protection', name: 'Core - Require - token-protection', state: 'enabledForReportingButNotEnforced', cls: 'reportOnlySuccess', days: 7, seenIds: ids, body },
+      { goalId: 'token-protection', name: 'Core - Session - Token protection', state: 'enabledForReportingButNotEnforced', cls: 'reportOnlySuccess', days: 7, seenIds: ids, body: tokenProtection },
       {
         goalId: 'block-auth-transfer',
         name: 'Core - Block - Authentication transfer',

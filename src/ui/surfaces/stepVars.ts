@@ -28,7 +28,7 @@ import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
 import { initialDomain } from '../../validation/rules.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
-import { readyWhen } from '../../derive/readyWhen.ts'
+import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { engine, shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
@@ -190,14 +190,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // that instead of printing the zero an empty set adds up to
     // (roadmap/tracking.ts). The people-seen half is a true count either way —
     // nobody was seen — and stays.
-    v.evidenceGate =
-      ready.kind === 'now'
-        ? fillText(TRACK.readyNow, { n: ready.days })
-        : ready.seen === null || ready.people === null
-          ? undefined
-          : ready.failures === null
-            ? fillText(TRACK.evidenceTodayUnread, { seen: ready.seen, people: ready.people, n: ready.days })
-            : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
+    v.evidenceGate = readyBasis(ready) ?? undefined
   }
 
   // A campaign has no enforcement date of its own; its enrol-by is the plan's

@@ -13,7 +13,7 @@ import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { awaitingDeployment } from '../../roadmap/forecast.ts'
 import { heldByReadiness } from '../../derive/finish.ts'
-import { readyWhen } from '../../derive/readyWhen.ts'
+import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 
 const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; readySince: string; heldForReview: string }
 
@@ -31,7 +31,14 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // and still read, under Done when; this column is what happens next.
   if (heldForReview(step)) return PLAN.heldForReview
   const ready = readyWhen(step)
-  if (ready) return ready.kind === 'now' ? PLAN.readyNow : fillText(ready.kind === 'since' ? PLAN.readySince : PLAN.readyOn, { date: absoluteDate(ready.date) })
+  // A policy still being watched reads the day its window closes: that is the
+  // next thing that happens to it. One whose gates have closed is not waiting on
+  // that day any more — Foundation B has moved it to `ready-to-enforce` — so the
+  // column reads the enforcement it has earned, which is the next thing that
+  // happens to it now, and the evidence that earned it goes on the reason line
+  // below (`rowReason`). "Ready to enforce · ready since Aug 29" said the state
+  // twice and the date of the change not at all.
+  if (ready && step.status !== 'ready-to-enforce') return ready.kind === 'now' ? PLAN.readyNow : fillText(ready.kind === 'since' ? PLAN.readySince : PLAN.readyOn, { date: absoluteDate(ready.date) })
   if (step.kind === 'prerequisite' || step.kind === 'check') return PLAN.now
   // A policy the plan cannot write yet has no date of its own, takes none from
   // the wave it sits in, and is not happening "now": its row says why it waits
@@ -71,6 +78,16 @@ export function rowWhenWraps(step: Step): boolean {
  */
 export function rowReason(step: Step): string | null {
   if (heldForReview(step)) return step.state.observation?.note ?? null
+  // What earned the enforcement, beside the word that offers it: the two gates'
+  // own numbers, in the one reading the step's Done-when also uses
+  // (derive/readyWhen.ts readyBasis). Without it the row says a change is due
+  // and nothing about the evidence behind it, which is the fact that decides
+  // whether the operator makes the change today. Null where the counts were
+  // never established — an unknown is not written down as a zero.
+  if (step.status === 'ready-to-enforce') {
+    const ready = readyWhen(step)
+    return ready ? readyBasis(ready) : null
+  }
   if (step.status === 'blocked' && step.blockedReason && !heldByReadiness(step)) return step.blockedReason
   return null
 }

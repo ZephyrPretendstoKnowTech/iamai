@@ -56,6 +56,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // scan found in report-only (doneWhen.ts); the review's example steps are all new.
   '.shared.policyDoneWhenTracked[0]',
   '.shared.policyDoneWhenTracked[1]',
+  // The same reason once more, one stage further on: the completion of a policy
+  // whose gates have closed, and the way back from an enforcement that only
+  // turned an existing policy on. Both need a scan that found the policy in
+  // report-only and ready (doneWhen.ts, stepExport.ts ifWrongLineFor).
+  '.shared.policyDoneWhenEnforced[0]',
+  '.shared.enforceIfWrong',
   // The Dates line of a policy already in report-only with nothing left to
   // submit but the enforcement its window has not earned (stepExport.ts
   // datesLineFor, over roadmap/forecast.ts): the same reason again — the review

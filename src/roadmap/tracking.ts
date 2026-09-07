@@ -618,7 +618,32 @@ export function trackExecution(
       // a policy can keep an admissible window (Microsoft's own evidence about
       // the object deployed now) while still holding a change nobody has
       // explained. This is that member's own observation and never another's.
-      const ready = observedState === 'report-only' && !m.ambiguous && usable && !change.reviewRequired && (memberGates.readyNow || timeGate)
+      // And "ready to enforce" is a claim about the object in front of it: that
+      // the only thing left to do to *this* policy is turn it on. So the object
+      // being watched has to be the one the plan asked for — every dimension
+      // the member's own operation submits already holding the value that
+      // operation sets it to (observation.ts `intentOf`, the same comparison a
+      // later scan makes when the policy moves).
+      //
+      // An update that only enables the policy submits no dimension at all and
+      // passes: Foundation A built the patch as the difference, so a patch that
+      // changes nothing but the state says everything else is already right.
+      // Two shapes fail, and both used to reach the stage on the window alone:
+      //
+      //   * a correction is still owed. The patch carries dimensions the policy
+      //     does not hold yet, so what the window watched is not what would be
+      //     enforced, and the next submission is the correction, not the switch.
+      //   * the tagged object means something else. The goal is not covered by
+      //     it, what the plan offers is a second policy beside it, and there is
+      //     nothing here to turn on — the step would read "Ready to enforce"
+      //     over instructions to create.
+      //
+      // A member with no operation of its own is covered by the same reading:
+      // nothing is being submitted, so nothing is waiting to be.
+      const asked = m.op ? intentOf(m.op.body) : null
+      const deployedFields = semanticFieldsOf(policyRow as Record<string, unknown> | null)
+      const asPlanned = asked !== null && Object.entries(asked.controls).every(([dimension, value]) => deployedFields[dimension] === value)
+      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && (memberGates.readyNow || timeGate)
       memberTracking.push({
         key: m.key,
         sourceName: m.sourceName,

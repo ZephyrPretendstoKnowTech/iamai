@@ -18,7 +18,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
 import { stepContract } from './stepContract.ts'
-import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
+import { createsNewPolicy, updatesExistingPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
@@ -82,7 +82,15 @@ export function datesLineFor(step: Step, cs: Record<string, unknown>): string | 
  */
 export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string | null {
   const line = typeof cs.ifWrong === 'string' ? cs.ifWrong : null
-  return line === '{changeIfWrong}' && createsNewPolicy(step) ? '{policyIfWrong}' : line
+  if (line === '{changeIfWrong}' && createsNewPolicy(step)) return '{policyIfWrong}'
+  // And the same rule the other way. A step whose content was written for a
+  // policy IAMAI creates is submitting an update once that policy exists — the
+  // enforcement of the one it created last week — and "or delete it" is the undo
+  // of a create. It would remove a deployed policy in answer to a change that
+  // only turned it on, which is both destructive and not the inverse of what was
+  // submitted. The way back from an enforcement is report-only.
+  if (line === '{policyIfWrong}' && updatesExistingPolicy(step)) return '{enforceIfWrong}'
+  return line
 }
 
 /** The step as the screen says it, for an export. */

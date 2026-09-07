@@ -90,3 +90,21 @@ export function createsNewPolicy(step: Step): boolean {
   const ops = operationsOf(step)
   return ops.length > 0 && ops.every((o) => o.mode === 'create')
 }
+
+/**
+ * The mirror of `createsNewPolicy`: every operation the step runs changes a
+ * policy the tenant already has.
+ *
+ * The step that matters is the one whose content was written for a policy IAMAI
+ * creates and whose operation, by the time the tenant is in front of it, is the
+ * update that enforces the policy IAMAI created last week. Its rollback line
+ * still offered "or delete it", which is the undo of a create and never of an
+ * update: nothing here made the policy, so nothing here may be undone by
+ * removing it (stepExport.ts ifWrongLineFor).
+ *
+ * False where the step submits a create, and false where it submits nothing.
+ */
+export function updatesExistingPolicy(step: Step): boolean {
+  const ops = operationsOf(step)
+  return ops.length > 0 && ops.every((o) => o.mode === 'update')
+}
