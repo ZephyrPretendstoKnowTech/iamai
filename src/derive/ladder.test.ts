@@ -114,3 +114,40 @@ test("the campaign step's groups and the admin steps' lockout counts read the la
   assert.ok(!/90 ?%/.test(words), 'no 90% on the three surfaces\' words')
   for (const file of ['src/ui/surfaces/Today.tsx', 'src/ui/surfaces/LadderTiles.tsx', 'src/ui/surfaces/Connect.tsx']) assert.ok(!/READINESS_THRESHOLD|90/.test(readFileSync(file, 'utf8').replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '')), `${file} renders no gate`)
 })
+
+// The campaign's rung 2 is the one group a policy can empty: with Require MFA
+// for Everyone in place every sign-in completes MFA, so nobody is asked for one
+// MFA sign-in, while the ladder goes on stating what the records hold. Two
+// surfaces then disagree on purpose, and the thing that reconciles them is the
+// row the Plan draws for that policy — not the campaign's email, which said the
+// same thing until task 011 moved it into More, and which a tenant whose
+// template is not whole never carries at all.
+test('Require MFA for Everyone in place empties the campaign\'s rung 2 and nothing else; the Plan\'s row for that policy is where its word is read', async () => {
+  const { contentLists } = await import('./contentLists.ts')
+  const { runFixture } = await import('../roadmap/fixtures/run.ts')
+  const { statusOf } = await import('../ui/surfaces/statusWord.ts')
+  const { planDates } = await import('../ui/surfaces/stepVars.ts')
+  const { readFileSync } = await import('node:fs')
+  for (const [name, inPlace] of [['demo', true], ['getiamai', false]] as const) {
+    const f = fixture(name)
+    const r = runFixture(f)
+    const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
+    const mfa = r.steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')!
+    const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+    assert.equal(dates.mfaInPlace, inPlace, `${name}: Require MFA for Everyone is ${inPlace ? '' : 'not '}in place`)
+    // The word on the row says exactly that: a done step reads In place or
+    // Enforced (statusWord.ts) and no other status reads either.
+    assert.equal(['In place', 'Enforced'].includes(statusOf(mfa).word), inPlace, `${name}: the row reads "${statusOf(mfa).word}"`)
+    const under = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf, mfaInPlace: dates.mfaInPlace })
+    assert.ok(l.rungs[2].length > 0, `${name}: the records hold somebody at Set up, not proven`)
+    assert.deepEqual(under.unproven, inPlace ? [] : l.rungs[2].map((p) => p.id).sort(), `${name}: rung 2 under the policy`)
+    // Only that group: the other three are the ladder's rungs either way.
+    assert.deepEqual(under.noMethod.sort(), l.rungs[1].map((p) => p.id).sort(), `${name}: Nothing set up is rung 1 under the policy too`)
+    assert.deepEqual(under.rung3.sort(), l.rungs[3].map((p) => p.id).sort(), `${name}: Windows Hello only is rung 3 under the policy too`)
+    assert.deepEqual(under.rung4.sort(), l.rungs[4].map((p) => p.id).sort(), `${name}: Authenticator app, proven is rung 4 under the policy too`)
+  }
+  // The walk compares the campaign's groups with Today's ladder, so it reads the
+  // policy's word from the row the Plan draws and not from the email.
+  const walkLine = (readFileSync('scripts/walk.mjs', 'utf8').match(/^\s*mfaInPlace: .*$/m) ?? [''])[0]
+  assert.match(walkLine, /In place\|Enforced/, `the walk reads the row's word, and reads "${walkLine.trim()}"`)
+})

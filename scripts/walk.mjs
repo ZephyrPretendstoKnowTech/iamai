@@ -998,12 +998,18 @@ async function walkFixture(fx) {
         // own order, so the two are compared once the fixture is walked.
         if (/MFA Registration Campaign/.test(title)) {
           const group = (re) => { const m = bodyText.match(re); return m ? Number(m[1]) : null }
+          // With Require MFA for Everyone in place the campaign asks nobody for
+          // one MFA sign-in — every sign-in completes MFA under the policy — while
+          // the ladder keeps the records' fact (derive/contentLists.ts). Whether
+          // that policy is in place is read from the row the Plan draws for it:
+          // the campaign's email said so too, but it moved into More with the
+          // names (task 011) and a tenant whose email is not whole carries none.
+          const mfaWord = await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ((x.querySelector('.step-title') || {}).textContent || '').trim() === 'Require MFA for Everyone'); return r ? ((r.querySelector('.status') || {}).textContent || '').trim() : '' })()`)
           campaignRungs = {
             label: slabel,
             noMethod: group(/^(\d+) (?:people|person) at Nothing set up;/m) ?? 0,
             unproven: group(/^(\d+) (?:people|person) at Set up, not proven;/m) ?? 0,
-            // With Require MFA for Everyone in place (the passkey email), the campaign asks nobody for one MFA sign-in while the ladder keeps the records' fact.
-            mfaInPlace: /You already confirm sign-ins to/.test(bodyText),
+            mfaInPlace: /^(In place|Enforced)$/.test(mfaWord),
           }
         }
         // A count of one reads as one, noun and verb: never "1 people", never "1 person hold".
