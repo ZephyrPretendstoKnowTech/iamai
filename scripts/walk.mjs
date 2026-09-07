@@ -1319,16 +1319,30 @@ async function walkFixture(fx) {
     }
   }
   if (fx.week2 && exclusionBody !== null && /No exclusions group recognised|New group/.test(exclusionBody)) add('P0', `${fx.name}: the exclusions-group step still offers to create the group in week two, although the re-scan recognised it`)
-  // A policy in report-only (Report-only in the status column) says when it may
-  // be enforced in the date column, from two gates. The demo's week one has one
-  // such row, dated from the observation window; week two reads ready now for the
-  // policy whose records are clean and complete, and Enforced for the one the
-  // tenant turned on. Nothing asks the person to mark anything.
+  // A policy still being watched (Report-only in the status column) says in the
+  // date column the day it may be enforced, from two gates. The demo's week one
+  // has one such row, dated from the observation window. Week two reads three
+  // states: the policy two days in keeps its ready <date>; the one whose gates
+  // have both closed reads Ready to enforce, and is no longer waiting on a day,
+  // so its date column reads the day the enforcement lands and the evidence that
+  // earned it goes on the reason line under the row (ui/surfaces/rowWhen.ts);
+  // the one the tenant turned on reads Enforced. Nothing asks the person to mark
+  // anything.
   if (fx.name.startsWith('demo')) {
     const reportOnly = rowStatuses.map((s, i) => (s === 'Report-only' ? rowWhens[i] : null)).filter((w) => w !== null)
     if (reportOnly.length === 0) add('P0', `${fx.name}: no plan row reads Report-only; the demo has a policy in report-only`)
     if (!fx.week2 && !reportOnly.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
-    if (fx.week2 && !reportOnly.includes('ready now')) add('P0', `${fx.name}: no Report-only row reads ready now in week two (the token protection policy's records are clean and complete)`)
+    if (fx.week2) {
+      // The reason lines are read once, with every decision still open, so they
+      // are taken by title rather than by index (the rows move under a decision).
+      const reasonByTitle = Object.fromEntries(rowTitlesOpen.map((t, k) => [t, rowReasonsOpen[k] ?? '']))
+      const ready = rowStatuses.map((s, i) => (s === 'Ready to enforce' ? i : -1)).filter((i) => i >= 0)
+      if (ready.length === 0) add('P0', `${fx.name}: no plan row reads Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
+      for (const i of ready) {
+        if (!/^\S.*\d{4}$/.test(rowWhens[i] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" reads "${rowWhens[i]}" in its date column; it must read the day the enforcement lands`)
+        if (!/ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" carries no evidence on its reason line; the row says a change is due and nothing about what earned it`)
+      }
+    }
     if (fx.week2 && !rowStatuses.includes('Enforced')) add('P0', `${fx.name}: no row reads Enforced in week two (the tenant turned the admins policy on)`)
   }
   // The device decision (E2): a Preparation row on the demo (phones and unjoined
