@@ -696,7 +696,7 @@ export function renderPages(): string {
       btn(s.close) +
       '</div>' +
       h('Blocked reasons (one per row)') +
-      ul([pl.blocked.after, pl.blocked.readiness, pl.blocked.count, pl.blocked.baseline], exT) +
+      ul([pl.blocked.after, pl.blocked.readiness, pl.blocked.count, pl.blocked.baseline, pl.blocked.exclusionsGroup], exT) +
       h('Gap suffix on a partly-in-place row') +
       ul([pl.gapSuffix['admin-session']], exT) +
       h('Footer groups') +

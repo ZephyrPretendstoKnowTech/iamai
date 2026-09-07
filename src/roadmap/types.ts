@@ -202,6 +202,18 @@ export type Blocker =
   | { kind: 'setup'; questionNumber: number; label: string; binding?: string }
   | { kind: 'readiness'; label: string; binding?: string }
   | { kind: 'evidence'; label: string; binding?: string }
+  /**
+   * A question for the operator, on the step where they answer it: the step is
+   * not waiting on work, on a number, or on another step, it is waiting on a
+   * person to choose (roadmap/lifecycle.ts `conditionFor` → `needs-decision`).
+   *
+   * Before this kind existed the only cause a step could name was work, so the
+   * step that *holds* a safety-sensitive decision — the exclusions group nobody
+   * has chosen (mapping/safetyChoice.ts) — read Healthy · Ready and was told to
+   * "Make the object this step names", which is an instruction to create a
+   * second group while two of the tenant's own already qualify.
+   */
+  | { kind: 'decision'; label: string; binding?: string }
 
 export type StepHistoryEntry ={ at: string; from: StepStatus; to: StepStatus; note: string | null }
 
