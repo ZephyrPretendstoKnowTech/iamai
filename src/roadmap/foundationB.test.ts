@@ -357,9 +357,48 @@ function demoObservation(over: Partial<StepObservation> = {}): Record<string, St
 /** The one member of a single-policy step's stored record. */
 const soleOf = (rec: Record<string, StepObservationRecord>, id: string): StepObservation => rec[id].members[SOLE_MEMBER]
 
+/** The demo tenant's own directory facts, as a scan reads them (tracking.ts TrackingEvidence). */
+const demoScope = (): Parameters<typeof applyProgress>[7] => ({
+  groupMembers: Object.fromEntries([...DEMO.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
+  activePeople: activePeopleIds(DEMO.snapshot, DEMO.snapshot.asOf, notPeopleIds(DEMO.mapping)),
+})
+
+/**
+ * Microsoft's own records of one policy, watched clean: a report-only success for
+ * every active person in the tenant, so the "everybody in scope seen" half of the
+ * evidence gate closes whoever that policy actually reaches, and its failure
+ * count is a zero records prove rather than the zero an empty set adds up to.
+ *
+ * Readiness is *both* gates and neither of them alone (roadmap/tracking.ts
+ * `gates`). So every case below that is about continuity — a rename, a rewrite, a
+ * saved word, a legacy record — hands the engine records and the directory facts
+ * to read them against, as well as a window. Without them the case would be
+ * asserting that a week passing enforces a policy nobody has any evidence about,
+ * which is the reading this contract does not have.
+ */
+function cleanRecords(policyId: string, people: readonly string[], firstReportOnlyAt: string | null = null): unknown {
+  return {
+    policyId,
+    displayName: '',
+    counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: people.length, enforcedFailure: 0, enforcedSuccess: 0 },
+    affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [...people], enforcedFailure: [], enforcedSuccess: [] },
+    firstReportOnlyAt,
+  }
+}
+
+/** The active people a scan of each tenant resolves the policies' scopes against. */
+const demoPeople = (): readonly string[] => (demoScope()!.activePeople ?? []) as readonly string[]
+const pairPeople = (): readonly string[] => (pairScope()!.activePeople ?? []) as readonly string[]
+
+/** The demo snapshot with the admins policy's own window watched clean and complete. */
+function watchedClean(snapshot: typeof DEMO.snapshot = DEMO.snapshot, policyId?: string): typeof DEMO.snapshot {
+  const id = policyId ?? runFixture(DEMO).steps.find((s) => s.id === ADMINS)!.tracking!.policyId!
+  return { ...snapshot, evidencePolicyResults: [cleanRecords(id, demoPeople())] as typeof snapshot.evidencePolicyResults }
+}
+
 test('a policy watched for its whole window is ready to enforce; the same policy rewritten is not', () => {
   const kept = runFixture(DEMO)
-  applyProgress(kept.steps, DEMO.snapshot, kept.coverage, DEMO.planId, undefined, null, demoObservation())
+  applyProgress(kept.steps, watchedClean(), kept.coverage, DEMO.planId, undefined, null, demoObservation(), demoScope())
   const watched = kept.steps.find((s) => s.id === ADMINS)!
   assert.equal(watched.state.lifecycle, 'ready-to-enforce')
   assert.equal(watched.status, 'ready-to-enforce', 'the word follows the stage')
@@ -374,7 +413,7 @@ test('a policy watched for its whole window is ready to enforce; the same policy
   // the tenant's own policy with the patch applied, which had already absorbed
   // the drift, so the drift matched itself and the review was suppressed.
   const rewritten = runFixture(DEMO)
-  applyProgress(rewritten.steps, DEMO.snapshot, rewritten.coverage, DEMO.planId, undefined, null, demoObservation({ semantics: 'deadbeef', fields: { grantControls: 'deadbeef' } }))
+  applyProgress(rewritten.steps, watchedClean(), rewritten.coverage, DEMO.planId, undefined, null, demoObservation({ semantics: 'deadbeef', fields: { grantControls: 'deadbeef' } }), demoScope())
   const s = rewritten.steps.find((x) => x.id === ADMINS)!
   assert.equal(s.state.observation?.continuity, 'reset', 'these semantics have been watched for no time at all')
   assert.equal(s.state.observation?.expected, false, 'and the step submits no material dimension, so it asked for none of it')
@@ -391,7 +430,7 @@ test('a policy watched for its whole window is ready to enforce; the same policy
   const row = rows.find((p) => p.id === s.tracking?.policyId)!
   row.grantControls = { operator: 'OR', builtInControls: ['block'] }
   const run3 = runFixture(DEMO)
-  applyProgress(run3.steps, drifted, run3.coverage, DEMO.planId, undefined, null, demoObservation())
+  applyProgress(run3.steps, watchedClean(drifted), run3.coverage, DEMO.planId, undefined, null, demoObservation(), demoScope())
   const d = run3.steps.find((x) => x.id === ADMINS)!
   assert.equal(d.state.observation?.continuity, 'reset')
   assert.equal(d.state.observation?.expected, false, 'nobody asked for this')
@@ -407,7 +446,7 @@ test('a rename between two scans changes nothing the plan is waiting on', () => 
   const row = rows.find((p) => p.id === before.tracking?.policyId)!
   row.displayName = `${row.displayName ?? ''} (renamed)`
   row.modifiedDateTime = snapshot.asOf
-  applyProgress(run.steps, snapshot, run.coverage, DEMO.planId, undefined, null, demoObservation())
+  applyProgress(run.steps, watchedClean(snapshot), run.coverage, DEMO.planId, undefined, null, demoObservation(), demoScope())
   const after = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(after.state.observation?.changed, 'none')
   assert.equal(after.state.observation?.continuity, 'continues')
@@ -516,7 +555,10 @@ test('2: a rename of the same object keeps the window it earned', () => {
     row.displayName = `${String(row.displayName ?? '')} (renamed)`
     row.description = 'tidied up'
     row.modifiedDateTime = snapshot.asOf
-  }, prior)
+    // The records the window is read with: readiness is both gates, so a case
+    // about the window hands the engine the evidence too (`cleanRecords`).
+    snapshot.evidencePolicyResults = [cleanRecords(String(row.id), demoPeople())] as typeof snapshot.evidencePolicyResults
+  }, prior, demoScope())
   assert.equal(s.state.observation?.changed, 'none', 'a name and a fresh stamp are not a change')
   assert.equal(s.state.observation?.continuity, 'continues')
   assert.equal(s.state.observation?.reviewRequired, false)
@@ -580,17 +622,13 @@ test('5: a legacy record loads, explains itself, and closes no gate — unless t
 
   // Microsoft's own record of *this* policy in report-only is a different thing
   // from an inherited date, and it may still close the gate.
+  // A record with no sign-ins in it dates the window and closes no gate: an
+  // empty set is not a clean one, and readiness needs the records as well as the
+  // days. So the evidence that carries it is a real one — every active person
+  // seen, nothing failing — over the window it dates.
   const proven = rescan((row, snapshot) => {
-    snapshot.evidencePolicyResults = [
-      {
-        policyId: String(row.id),
-        displayName: String(row.displayName ?? ''),
-        counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 },
-        affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] },
-        firstReportOnlyAt: seenAt,
-      },
-    ] as typeof snapshot.evidencePolicyResults
-  }, legacy)
+    snapshot.evidencePolicyResults = [cleanRecords(String(row.id), demoPeople(), seenAt)] as typeof snapshot.evidencePolicyResults
+  }, legacy, demoScope())
   assert.equal(proven.tracking?.reportOnlyAt, seenAt)
   assert.equal(proven.tracking?.reportOnlyAtSource, 'sign-in-evidence', 'and it says whose evidence it is')
   assert.equal(proven.state.lifecycle, 'ready-to-enforce')
@@ -683,8 +721,20 @@ test('10: with the matched policy’s scope unresolved nothing is seen, and noth
   assert.equal(blind.tracking?.seenInScope, null)
   assert.equal(blind.tracking?.readyNow, false, 'and the "everybody seen" half cannot be vacuously true')
   assert.ok((blind.population.activeIds ?? blind.population.ids).length > 0, 'the goal’s people were right there')
-  // The time gate is untouched: it is about how long, not about who.
-  assert.equal(blind.state.lifecycle, 'ready-to-enforce', 'the window this policy served still counts')
+  // And nothing advances on the window alone. The time gate is about how long,
+  // not about who, so on its own it says nothing about whether enforcing this
+  // policy would lock anybody out — which is the whole question the report-only
+  // window was opened to answer. A scope IAMAI cannot settle is an unknown, and
+  // an unknown waits (roadmap/tracking.ts `gates`).
+  assert.notEqual(blind.state.lifecycle, 'ready-to-enforce', 'a served window is not evidence about anybody')
+  assert.equal(blind.state.lifecycle, 'report-only', 'so the policy is still being watched')
+  // The same policy, with the scope readable and its records clean, is ready:
+  // the correction withholds the stage for a missing gate and not for its own
+  // sake.
+  const seeing = rescan((row, snapshot) => {
+    snapshot.evidencePolicyResults = [cleanRecords(String(row.id), demoPeople())] as typeof snapshot.evidencePolicyResults
+  }, prior, demoScope())
+  assert.equal(seeing.state.lifecycle, 'ready-to-enforce')
 })
 
 // ---- a saved word is not a lifecycle ----
@@ -706,9 +756,7 @@ function withSaved(saved: Record<string, SavedStep>, observations: Record<string
   const run = runFixture(DEMO)
   const steps = generateRoadmap(run.input).steps
   mergePersisted(steps, saved)
-  applyProgress(steps, DEMO.snapshot, run.coverage, DEMO.planId, undefined, null, observations, {
-    groupMembers: Object.fromEntries([...DEMO.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), [...g.memberIds]])),
-  })
+  applyProgress(steps, watchedClean(), run.coverage, DEMO.planId, undefined, null, observations, demoScope())
   return steps.find((x) => x.id === ADMINS) as Step
 }
 
@@ -1079,14 +1127,14 @@ const watching = (row: PairRow, daysAgo: number, over: Partial<StepObservation> 
 
 const held = (members: Record<string, StepObservation>, unattributed: StepObservation | null = null): Record<string, StepObservationRecord> => ({ [GUESTS]: { members, unattributed } })
 
-/** Microsoft's own record of one policy having been evaluated in report-only. */
-const evidenceOf = (policyId: string, firstReportOnlyAt: string): unknown => ({
-  policyId,
-  displayName: '',
-  counts: { reportOnlyFailure: 0, reportOnlyInterrupted: 0, reportOnlySuccess: 0, enforcedFailure: 0, enforcedSuccess: 0 },
-  affectedUserIds: { reportOnlyFailure: [], reportOnlyInterrupted: [], reportOnlySuccess: [], enforcedFailure: [], enforcedSuccess: [] },
-  firstReportOnlyAt,
-})
+/**
+ * One pair member's own window, watched clean: Microsoft's records of that policy
+ * and no other's. Readiness is both gates (roadmap/tracking.ts `gates`), so a
+ * member a case means to be *ready* is handed records as well as days — a
+ * thirty-day-old policy nobody has any evidence about is not ready, and a case
+ * that leant on the calendar alone would be asserting that it is.
+ */
+const cleanPair = (policyId: string, firstReportOnlyAt: string | null = null): unknown => cleanRecords(policyId, pairPeople(), firstReportOnlyAt)
 
 /** The same coverage with the guests goal delivered: the goal-delivery contract agreeing. */
 function inPlaceCoverage(c: ReturnType<typeof runFixture>['coverage']): ReturnType<typeof runFixture>['coverage'] {
@@ -1156,7 +1204,7 @@ test('pair 3: A ready and B not is not a ready pair', () => {
   const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
   const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
   // A has been watched for thirty days; B was first seen at this scan.
-  const step = pairScan(() => [rowA, rowB], held({ [a.memberKey]: watching(rowA, 30) }))
+  const step = pairScan(() => [rowA, rowB], held({ [a.memberKey]: watching(rowA, 30) }), { evidence: [cleanPair(A_ID)] })
   assert.equal(memberOf(step, a.memberKey)?.ready, true, 'A has served its own window')
   assert.equal(memberOf(step, b.memberKey)?.ready, false, 'B has served none of one')
   assert.equal(step.state.lifecycle, 'report-only', 'so the pair is still being watched')
@@ -1167,7 +1215,7 @@ test('pair 3: A ready and B not is not a ready pair', () => {
 test('pair 4: A ready and B absent is not a deployed pair, and B inherits nothing', () => {
   const [a, b] = pairOps()
   const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
-  const step = pairScan(() => [rowA], held({ [a.memberKey]: watching(rowA, 30) }))
+  const step = pairScan(() => [rowA], held({ [a.memberKey]: watching(rowA, 30) }), { evidence: [cleanPair(A_ID)] })
   assert.equal(memberOf(step, a.memberKey)?.ready, true, 'A earned its window')
   assert.equal(memberOf(step, b.memberKey)?.policyId, null, 'B’s absence is represented rather than hidden')
   assert.equal(memberOf(step, b.memberKey)?.lifecycle, 'not-deployed')
@@ -1185,7 +1233,8 @@ test('pair 5: the pair is ready when every member is ready on its own window', (
   const rowA = deployed(a, A_ID, 'enabledForReportingButNotEnforced')
   const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
   const both = held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 20) })
-  const step = pairScan(() => [rowA, rowB], both)
+  const evidence = [cleanPair(A_ID), cleanPair(B_PAIR_ID)]
+  const step = pairScan(() => [rowA, rowB], both, { evidence })
   assert.equal(memberOf(step, a.memberKey)?.ready, true)
   assert.equal(memberOf(step, b.memberKey)?.ready, true)
   assert.equal(step.state.lifecycle, 'ready-to-enforce')
@@ -1196,7 +1245,7 @@ test('pair 5: the pair is ready when every member is ready on its own window', (
   // Take either member's window away and the pair is not ready.
   for (const key of [a.memberKey, b.memberKey]) {
     const one = held(Object.fromEntries(Object.entries(both[GUESTS].members).filter(([k]) => k !== key)))
-    assert.notEqual(pairScan(() => [rowA, rowB], one).status, 'ready-to-enforce', `${key} alone did not carry the pair`)
+    assert.notEqual(pairScan(() => [rowA, rowB], one, { evidence }).status, 'ready-to-enforce', `${key} alone did not carry the pair`)
   }
 })
 
@@ -1204,7 +1253,7 @@ test('pair 6: A enforced and B ready is a pair to enforce, and not a finished on
   const [a, b] = pairOps()
   const rowA = deployed(a, A_ID, 'enabled')
   const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
-  const step = pairScan(() => [rowA, rowB], held({ [b.memberKey]: watching(rowB, 30) }), { inPlace: true })
+  const step = pairScan(() => [rowA, rowB], held({ [b.memberKey]: watching(rowB, 30) }), { inPlace: true, evidence: [cleanPair(B_PAIR_ID)] })
   assert.equal(memberOf(step, a.memberKey)?.lifecycle, 'enforced')
   assert.equal(memberOf(step, b.memberKey)?.ready, true)
   assert.equal(step.state.lifecycle, 'ready-to-enforce', 'the remaining member may be enforced')
@@ -1236,7 +1285,7 @@ test('pair 8: replacing one member resets that member’s history and no other�
   const rowB = deployed(b, B_PAIR_ID, 'enabledForReportingButNotEnforced')
   const prior = held({ [a.memberKey]: watching(rowA, 30), [b.memberKey]: watching(rowB, 30) })
   // B is deleted and replaced by a different object meaning exactly the same thing.
-  const step = pairScan(() => [rowA, { ...rowB, id: B_OTHER_ID }], prior)
+  const step = pairScan(() => [rowA, { ...rowB, id: B_OTHER_ID }], prior, { evidence: [cleanPair(A_ID)] })
   assert.equal(observationOf(step, a.memberKey)?.continuity, 'continues', 'A is the object it was')
   assert.equal(observationOf(step, a.memberKey)?.latest.firstSeenAt, at(30), 'and keeps the window it earned')
   assert.equal(observationOf(step, b.memberKey)?.changed, 'artifact')
@@ -1344,7 +1393,7 @@ test('pair 13: one member’s Microsoft evidence closes no other member’s gate
   const step = pairScan(
     (x, y) => [deployed(x, A_ID, 'enabledForReportingButNotEnforced'), deployed(y, B_PAIR_ID, 'enabledForReportingButNotEnforced')],
     {},
-    { evidence: [evidenceOf(A_ID, provenAt)] },
+    { evidence: [cleanPair(A_ID, provenAt)] },
   )
   assert.equal(memberOf(step, a.memberKey)?.reportOnlyAt, provenAt, 'A’s own record dates A')
   assert.equal(memberOf(step, a.memberKey)?.reportOnlyAtSource, 'sign-in-evidence')
@@ -1439,7 +1488,9 @@ test('single 15: a stored observation from before members belongs to a one-polic
   assert.deepEqual(priorFor(loaded[ADMINS], SOLE_MEMBER, flat.artifact, true), flat, 'and a step with one member takes it')
   assert.equal(priorFor(loaded[ADMINS], SOLE_MEMBER, artifactIdOf('some-other-policy'), false), null, 'and a step with two members takes it only where the object proves whose it is')
   assert.equal(priorFor(loaded[ADMINS], SOLE_MEMBER, null, false), null, 'never for a member with no object at all')
-  const s = rescan(() => {}, loaded)
+  const s = rescan((row, snapshot) => {
+    snapshot.evidencePolicyResults = [cleanRecords(String(row.id), demoPeople())] as typeof snapshot.evidencePolicyResults
+  }, loaded, demoScope())
   assert.equal(s.state.observation?.prior?.firstSeenAt, seenAt, 'the window it earned carries over')
   assert.equal(s.state.observation?.continuity, 'continues', 'because it names the object this step is delivered by')
   assert.equal(s.state.lifecycle, 'ready-to-enforce')

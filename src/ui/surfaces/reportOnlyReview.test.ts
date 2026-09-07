@@ -47,6 +47,8 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { activePeopleIds } from '../../derive/population.ts'
+import { notPeopleIds } from '../../derive/sets.ts'
 import { stepContract } from './stepContract.ts'
 import { copyBoxes, stepExportView, stepLines } from './stepExport.ts'
 import { jsonOffered, policyJsonText, stepOperations } from './stepJson.ts'
@@ -106,7 +108,7 @@ function firstScan(): { run: ReturnType<typeof runFixture>; step: Step; record: 
  * runs, so the schedule, the forecast and the state reasons are the ones a
  * person would be looking at.
  */
-function laterScan(over: { edit?: (row: Row) => void; on?: string; days?: number; record?: (rec: Record<string, StepObservationRecord>) => Record<string, StepObservationRecord>; stepId?: string } = {}): Case {
+function laterScan(over: { edit?: (row: Row) => void; on?: string; days?: number; record?: (rec: Record<string, StepObservationRecord>) => Record<string, StepObservationRecord>; stepId?: string; seen?: boolean } = {}): Case {
   const f = fixture(FIXTURE)
   const first = firstScan()
   const target = over.on ?? first.policyId
@@ -117,7 +119,8 @@ function laterScan(over: { edit?: (row: Row) => void; on?: string; days?: number
     over.edit(copy)
     return copy
   })
-  const snapshot = { ...f.snapshot, asOf, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as TenantSnapshot
+  const dated = { ...f.snapshot, asOf, config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } } } as TenantSnapshot
+  const snapshot = over.seen === false ? dated : everybodySeen(dated, target, f.mapping)
   const record = over.record ? over.record(first.record) : first.record
   const run = runFixture({ ...f, snapshot }, { snapshot }, record)
   const step = run.steps.find((s) => s.id === (over.stepId ?? STEP_ID))
@@ -133,6 +136,32 @@ function laterScan(over: { edit?: (row: Row) => void; on?: string; days?: number
     reportOnlyAt: run.schedule.reportOnlyAt[step.id] ?? null,
   }
   return { step, ctx, steps: run.steps, snapshot, run, view: (s: Step) => stepExportView(s, ctx) }
+}
+
+/**
+ * The same records with every active person seen at least once under this
+ * policy: the counts and the ids the fixture already holds, plus a report-only
+ * success for anybody the window missed.
+ *
+ * Readiness is both gates and the whole of the evidence one (roadmap/tracking.ts
+ * `gates`): a window that has closed is not evidence about anybody, so the
+ * healthy control here has to be a policy the records actually clear. It used to
+ * be a policy with twenty-two of thirty-one people seen that the calendar
+ * carried, which is the reading this test is a control for.
+ */
+function everybodySeen(snapshot: TenantSnapshot, policyId: string, mapping: ReturnType<typeof fixture>['mapping']): TenantSnapshot {
+  const people = activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(mapping))
+  const results = (snapshot.evidencePolicyResults ?? []).map((r) => {
+    if (r.policyId !== policyId) return r
+    const already = new Set(Object.values(r.affectedUserIds).flat())
+    const missing = people.filter((id) => !already.has(id))
+    return {
+      ...r,
+      counts: { ...r.counts, reportOnlySuccess: r.counts.reportOnlySuccess + missing.length },
+      affectedUserIds: { ...r.affectedUserIds, reportOnlySuccess: [...r.affectedUserIds.reportOnlySuccess, ...missing] },
+    }
+  })
+  return { ...snapshot, evidencePolicyResults: results } as TenantSnapshot
 }
 
 /** The tenant-side edit the canonical case is about: somebody excluded an account nobody asked to exclude. */

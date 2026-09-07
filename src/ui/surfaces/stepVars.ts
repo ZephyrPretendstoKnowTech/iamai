@@ -179,7 +179,10 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (ready) {
     const TRACK = engine.tracking
     v.readyOn = absoluteDate(ready.date)
-    v.timeGate = fillText(ready.kind === 'on' ? TRACK.readyOn : TRACK.readySince, { date: absoluteDate(ready.date) })
+    // The time gate says one thing about time and nothing about readiness: a
+    // closed window is half of what a policy needs, and the Evidence line beside
+    // it is the other half (shared.policyDoneWhenTracked).
+    v.timeGate = fillText(ready.kind === 'on' ? TRACK.windowCloses : TRACK.windowClosed, { date: absoluteDate(ready.date) })
     // "3 of 30 active people seen" is a count over the deployed policy's own
     // scope. Where that scope could not be settled there is no count to show, so
     // the key is left unset and the line it sits in renders nothing rather than a

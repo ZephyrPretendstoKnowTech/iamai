@@ -151,7 +151,7 @@ function laterScan(over: { edit?: (row: Row) => void; days?: number; evidence?: 
  * under test here. A setting that was already there when the window opened is
  * what the window watched, and the enforcement is still the one change left.
  */
-function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean } = {}): Case {
+function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; records?: (result: Row) => void } = {}): Case {
   const f = fixture(FIXTURE)
   const target = runFixture(f).steps.find((s) => s.id === STEP_ID)!.tracking!.policyId!
   const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Row[]).map((r) => {
@@ -160,14 +160,122 @@ function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean } = {})
     over.edit(copy)
     return copy
   })
+  // What Microsoft's records say about this policy, where a case is about the
+  // evidence gate rather than the object: the fixture's own result for the
+  // matched policy, edited the way the records would read.
+  const results = ((f.snapshot.evidencePolicyResults ?? []) as unknown as Row[]).map((r) => {
+    if (r.policyId !== target || !over.records) return r
+    const copy = structuredClone(r)
+    over.records(copy)
+    return copy
+  })
   const snapshot = {
     ...f.snapshot,
     config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows } },
-    evidencePolicyResults: over.evidence === false ? [] : f.snapshot.evidencePolicyResults,
+    evidencePolicyResults: over.evidence === false ? [] : (results as typeof f.snapshot.evidencePolicyResults),
   } as TenantSnapshot
   const run = runFixture({ ...f, snapshot }, { snapshot })
   return caseOf(run, snapshot, f, STEP_ID)
 }
+
+/**
+ * Nothing an operator could act on. The gate this file is about decides whether
+ * IAMAI hands an enforcement over, so a control for it does not assert that a
+ * word changed — it asserts that every channel is shut: the implementation, the
+ * enforcement instant and the date beside it, the wave the schedule would have
+ * put the step in, the portal lines, the JSON tab, the PowerShell tab and the
+ * download the two share.
+ */
+function nothingIsOffered(c: Case): void {
+  assert.equal(c.step.state.lifecycle, 'report-only', 'the policy is still being watched')
+  assert.notEqual(c.step.status, 'ready-to-enforce')
+  assert.equal(statusOf(c.step).word, 'Report-only')
+  assert.equal(policyHold(c.step), 'observation-incomplete', 'Foundation A holds the operation, and names the reason')
+  assert.equal(implementationOffered(c.step), false)
+  assert.equal(enforcementUnearned(c.step), true)
+  assert.equal(c.step.events, null, 'no enforcement event while a gate is open')
+  assert.equal(enforcementTiming(c.step).basis !== 'committed', true, 'and no committed date behind it')
+  assert.equal(c.run.schedule.waves.filter((w) => w.stepIds.includes(c.step.id)).length, 0, 'and no enforcement wave')
+  assert.equal(portalOf(c.step, c.ctx), null, 'no portal lines')
+  assert.equal(jsonOffered(c.step), false, 'no JSON tab')
+  assert.deepEqual(stepOperations(c.step), [], 'and nothing for the JSON, PowerShell or Download tabs to serialise')
+  assert.doesNotMatch(powershellFor(stepOperations(c.step)), /Update-MgIdentityConditionalAccessPolicy|New-MgIdentityConditionalAccessPolicy/, 'no PowerShell that writes a policy')
+  assert.doesNotMatch(policyJsonText(c.step), /"state"/, 'and the download carries no enforcement body')
+  assert.ok(!/Ready to enforce/.test(everythingSaid(c)), everythingSaid(c))
+}
+
+// ---- control A2: each gate, short on its own ----
+
+test('007.11b: an elapsed window with no records read, and one with failing records, are both held and offer nothing', () => {
+  // The window has closed on the canonical policy and nobody has read a single
+  // sign-in evaluated under it. A week passing is a calendar fact and says
+  // nothing about whether enforcing this policy would lock anybody out, so it
+  // does not carry the stage on its own — and the failure count says unknown
+  // rather than printing the zero an empty set adds up to.
+  const unread = laterScan({ days: 3, evidence: false })
+  assert.ok(Date.parse(unread.step.tracking!.readyOn!) <= Date.parse(unread.snapshot.asOf), 'the window has closed')
+  assert.equal(unread.step.tracking?.failures, null, 'no records read is not a clean window')
+  assert.equal(unread.step.tracking?.signIns, 0)
+  assert.equal(unread.step.tracking?.readyNow, false)
+  assert.equal(readyWhen(unread.step)?.kind, 'since', 'the time gate is the only one that closed')
+  nothingIsOffered(unread)
+  // The same window with records that show people being stopped. This is the
+  // case the window was opened to find, and the one an operator must not be
+  // handed the enforcement for.
+  const failing = freshScan({
+    records: (r) => {
+      const counts = r.counts as Record<string, number>
+      const ids = r.affectedUserIds as Record<string, string[]>
+      const victim = ids.reportOnlySuccess[0]
+      counts.reportOnlyFailure = 3
+      ids.reportOnlyFailure = [victim]
+      r.byDay = null
+    },
+  })
+  assert.ok(Date.parse(failing.step.tracking!.readyOn!) <= Date.parse(failing.snapshot.asOf), 'the window has closed here too')
+  assert.equal(failing.step.tracking?.failures, 3, 'and three people were stopped by it')
+  assert.equal(failing.step.tracking?.readyNow, false)
+  nothingIsOffered(failing)
+  // And the numbers are on the row, so the operator is told what is outstanding
+  // rather than only that something is.
+  assert.equal(rowWhen(failing.step), 'held until the records clear')
+  assert.equal(rowReason(failing.step), readyBasis(readyWhen(failing.step)!))
+  assert.match(rowReason(failing.step)!, /^3 failing or interrupted/)
+})
+
+test('007.11c: clean, complete records before the window closes are not ready either, and offer nothing', () => {
+  // The other half of the same correction. The records are the fixture's own —
+  // every active person in scope seen, nothing failing — and the policy went
+  // into report-only yesterday. Clean records over two days are clean records
+  // for two days; the observation window is the plan's own statement of how long
+  // a tenant has to be watched before that reading means anything, and it has
+  // not been served.
+  const f = fixture(FIXTURE)
+  const yesterday = new Date(Date.parse(f.snapshot.asOf) - DAY).toISOString()
+  const c = freshScan({
+    edit: (row) => {
+      row.createdDateTime = yesterday
+      row.modifiedDateTime = yesterday
+    },
+    records: (r) => {
+      // Microsoft's own record of when this policy began to be evaluated moves
+      // with it: the window starts yesterday, and the records still cover
+      // everybody.
+      r.firstReportOnlyAt = yesterday
+      r.byDay = null
+    },
+  })
+  assert.equal(c.step.tracking?.reportOnlyAt, yesterday, 'the window opened yesterday')
+  assert.ok(Date.parse(c.step.tracking!.readyOn!) > Date.parse(c.snapshot.asOf), 'so it has not closed')
+  assert.equal(c.step.tracking?.failures, 0, 'the records are clean')
+  assert.ok((c.step.tracking?.signIns ?? 0) > 0, 'and they are a zero records prove')
+  assert.equal(c.step.tracking?.seenInScope, c.step.tracking?.activeInScope, 'and complete')
+  assert.equal(c.step.tracking?.readyNow, false, 'and still not ready: the window is the other gate')
+  assert.equal(readyWhen(c.step)?.kind, 'on', 'what it is waiting for is the day')
+  nothingIsOffered(c)
+  assert.equal(rowWhen(c.step), `ready ${absoluteDate(c.step.tracking!.readyOn!)}`)
+})
+
 
 /** The step's portal lines, as the screen and the exports both render them. */
 function portalOf(step: Step, ctx: StepVarContext): string[] | null {
