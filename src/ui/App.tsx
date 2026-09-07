@@ -1,8 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { initAuth } from '../graph/auth.ts'
-import { fetchTenantName } from '../graph/organization.ts'
-import { loadBaselineRecord, loadSnapshotRecord, saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
+import { saveGroupMembersCache, loadPlanRecord, savePlanRecord } from '../graph/collect/cache.ts'
 import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { GLOBAL_ADMINISTRATOR } from '../graph/collect/tokenRoles.ts'
 import { authErrorOf, classifyAuthError } from '../graph/authError.ts'
@@ -14,13 +13,11 @@ import { learnRoleNames } from '../roles.ts'
 import type { ShellState } from './shell/AppShell.tsx'
 import { Connect } from './surfaces/Connect.tsx'
 import type { BaselineUpdate } from './scan/connectView.ts'
-import type { ScanRecord } from './scan/scanRecord.ts'
 import { loadPinnedBaseline } from './baseline.ts'
-import type { BaselineResult } from './baseline.ts'
 import { Plan } from './surfaces/Plan.tsx'
 import { MfaReadiness } from './surfaces/MfaReadiness.tsx'
 import { IDLE_SCAN, setScan, setSession, useSession } from './session.ts'
-import { restoreChosenBaseline } from './actions.ts'
+import { restoreSession } from './actions.ts'
 // The surfaces a first visit does not open arrive on demand (prompt 53 queue
 // item 8): Export carries the print and every exporter, Inventory its tables,
 // How its endpoint tables. Plan, MFA Readiness and Connect stay in the first chunk.
@@ -277,25 +274,17 @@ export function App() {
     }
     initAuth()
       .then(async (a) => {
-        setSession({ account: a })
+        // Who is signed in, the tenant's name, its stored scan and the baseline
+        // its stored choice names, all restored by the one action, in one turn
+        // (ui/actions.ts): none of them is read here, because a tenant fact read
+        // outside the action module is one no trust action can take back. The
+        // shell waits for it, so it draws on a restored session and Connect does
+        // not load its default over a baseline that was about to come back.
         if (a) {
-          void fetchTenantName().then((name) => setSession({ tenantName: name }))
-          // Restore the last scan so nobody re-scans just to look around. Where
-          // the app lands depends on it (target-state §2: a scanned tenant
-          // lands on Plan), so the shell waits for the record before drawing.
-          const stored = await loadSnapshotRecord<ScanRecord>(a.tenantId).catch(() => null)
-          if (stored?.snapshot) setSession({ lastScan: { snapshot: stored.snapshot, at: stored.at } })
           // A blocked store shows as a plain sentence, never as a silently empty app.
           void probeStorage().catch((e: unknown) => setStorageWarning(e instanceof Error ? e.message : String(e)))
-          // The loaded baseline comes back too (prompt 14 §6): pinned index by
-          // commit, or the uploaded files themselves. Awaited, so Connect does
-          // not load the default over a baseline that was about to be restored.
-          const origin = await loadBaselineRecord<BaselineResult['origin']>(a.tenantId).catch(() => null)
-          // The action rebuilds it and, when it cannot, says so where Connect
-          // reads it; a tenant signed out of or forgotten while it was being
-          // rebuilt keeps neither (ui/actions.ts).
-          if (origin) await restoreChosenBaseline(origin)
         }
+        await restoreSession(a)
       })
       .catch((e: unknown) => setAuthError(classifyAuthError(authErrorOf(e))))
       .finally(() => setReady(true))

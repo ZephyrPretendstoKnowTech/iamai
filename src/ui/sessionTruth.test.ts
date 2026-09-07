@@ -18,6 +18,7 @@ import { PLAN_HREF, READINESS_HREF } from './shell/routes.ts'
 import { TOOL_PATH } from '../../scripts/toolPath.ts'
 
 const app = readFileSync('src/ui/App.tsx', 'utf8')
+const actions = readFileSync('src/ui/actions.ts', 'utf8')
 const msal = readFileSync('src/graph/msal.ts', 'utf8')
 
 /** Every non-test source file under a directory. */
@@ -38,13 +39,20 @@ test("a full local store is never a sign-in: the account decides the shell, and 
   assert.ok(path.length > 0, 'the sign-in path in App.tsx has moved')
   const guard = path.indexOf('if (a) {')
   assert.ok(guard >= 0, 'the sign-in path no longer guards on an account')
-  // Everything read out of the store is read inside that guard, for the tenant
-  // the account signed in to. Another tenant's rows are never asked for.
-  for (const call of ['loadSnapshotRecord', 'probeStorage', 'loadBaselineRecord']) {
-    assert.ok(path.indexOf(call) > guard, `${call} is reached without an account`)
-  }
-  assert.match(path, /loadSnapshotRecord<ScanRecord>\(a\.tenantId\)/)
-  assert.match(path, /loadBaselineRecord<BaselineResult\['origin'\]>\(a\.tenantId\)/)
+  // Whether this device's store can be written to at all is a device fact, so
+  // it is asked here — but only once there is an account, as before.
+  assert.ok(path.indexOf('probeStorage') > guard, 'probeStorage is reached without an account')
+  // The tenant's own records are not read here at all. They are read by the one
+  // action (ui/actions.ts restoreSession), which reads them in the tenant's turn
+  // so Sign out and Forget this tenant can cancel a read still in flight; a
+  // record read from a component is a record no trust action can take back.
+  assert.doesNotMatch(app, /loadSnapshotRecord|loadBaselineRecord|fetchTenantName/, 'App.tsx reads a tenant record itself')
+  assert.match(path, /await restoreSession\(a\)/, 'the sign-in path no longer restores through the action')
+  const restore = actions.slice(actions.indexOf('export async function restoreSession'))
+  assert.ok(restore.length > 0, 'the restore action has moved')
+  assert.match(restore, /if \(!account\) return/, 'the restore reaches the store with nobody signed in')
+  assert.match(restore, /loadSnapshotRecord<ScanRecord>\(account\.tenantId\)/)
+  assert.match(restore, /loadBaselineRecord<BaselineResult\['origin'\]>\(account\.tenantId\)/)
 })
 
 test("MSAL's session is this tab's, and the account the app takes is the one the redirect returned", () => {
