@@ -660,3 +660,35 @@ test('across every fixture, a done step names what satisfied it, says which outc
   assert.deepEqual(wrong, [])
   assert.ok(seen > 0, 'the fixtures have something already in place')
 })
+
+// ---- 19: the demo's week two, which is the walk's reading of this ----
+
+test("the demo's week two: the tenant switched its own policy on, so the row reads In place and nothing claims the plan enforced it", () => {
+  // The demo tenant's admins policy predates the plan by months and carries none
+  // of its tags. On week one it sits in report-only; between the two scans the
+  // tenant switches it on. That is the whole of the change, and it is the
+  // tenant's own work: the step moves from Report-only to In place, and the plan
+  // created nothing.
+  //
+  // Read off the lifecycle it said Enforced — "IAMAI rolled this out" over a
+  // policy IAMAI never touched — and the walk asserted that word, so the demo
+  // was the surface that taught the confusion. The plan's own two policies in
+  // week two are both still in report-only, so no row in that week has earned
+  // Enforced at all.
+  const week1 = runFixture(fixture('demo'))
+  const before = week1.steps.find((s) => s.id === STEP_ID)!
+  assert.equal(statusOf(before).word, 'Report-only')
+
+  const f = fixture('demo-week2')
+  const run = runFixture(f)
+  const step = run.steps.find((s) => s.id === STEP_ID)!
+  assert.equal(step.status, 'done')
+  assert.equal(findTaggedPolicies(f.snapshot, f.planId, step.id).length, 0, 'the demo tenant wrote this policy; the plan did not')
+  assert.equal(step.state.inPlace, true)
+  assert.equal(statusOf(step).word, 'In place')
+  // And it names the tenant's own policy, which is the point of preserving it.
+  assert.equal(step.satisfiedBy?.sufficient, 'Core - Grant - Admins phishing-resistant')
+
+  const claimed = run.steps.filter((s) => statusOf(s).word === 'Enforced').map((s) => s.id)
+  assert.deepEqual(claimed, [], "the plan's policies are still in report-only in week two")
+})

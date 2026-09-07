@@ -1335,7 +1335,7 @@ async function walkFixture(fx) {
   // have both closed reads Ready to enforce, and is no longer waiting on a day,
   // so its date column reads the day the enforcement lands and the evidence that
   // earned it goes on the reason line under the row (ui/surfaces/rowWhen.ts);
-  // the one the tenant turned on reads Enforced. Nothing asks the person to mark
+  // the one the tenant turned on reads In place. Nothing asks the person to mark
   // anything.
   if (fx.name.startsWith('demo')) {
     const reportOnly = rowStatuses.map((s, i) => (s === 'Report-only' ? rowWhens[i] : null)).filter((w) => w !== null)
@@ -1352,7 +1352,20 @@ async function walkFixture(fx) {
         if (!/ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" carries no evidence on its reason line; the row says a change is due and nothing about what earned it`)
       }
     }
-    if (fx.week2 && !rowStatuses.includes('Enforced')) add('P0', `${fx.name}: no row reads Enforced in week two (the tenant turned the admins policy on)`)
+    // The admins policy the tenant switched on between the two scans is the
+    // tenant's own — it predates the plan and carries none of its tags — so its
+    // row reads In place, the word for a control that was already there. It
+    // used to read Enforced, from the lifecycle stage, which cannot tell a
+    // policy the tenant wrote and switched on from one IAMAI rolled out. And
+    // Enforced is a claim about this plan's rollout: week two's two
+    // IAMAI-created policies are both still in report-only, so no row may make
+    // it (ui/surfaces/statusWord.ts, ui/surfaces/inPlacePreserve.test.ts).
+    if (fx.week2) {
+      const admins = rowTitles.indexOf('Require Phishing-Resistant MFA for Admins')
+      if (admins >= 0 && rowStatuses[admins] !== 'In place') add('P0', `${fx.name}: the admins row reads "${rowStatuses[admins]}" in week two; the tenant turned its own policy on, so it reads In place`)
+      const claimed = rowTitles.filter((_, i) => rowStatuses[i] === 'Enforced')
+      if (claimed.length > 0) add('P0', `${fx.name}: ${claimed.length} row(s) read Enforced in week two ("${claimed[0]}"); the plan's own policies are still in report-only, and Enforced says the plan rolled it out`)
+    }
   }
   // The device decision (E2): a Preparation row on the demo (phones and unjoined
   // computers sign in; the tenant holds Intune). While it is open, the
