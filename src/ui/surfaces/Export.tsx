@@ -13,7 +13,7 @@
 // label: the JSON and the PowerShell belong to one step and are on that step in
 // the Plan, and three of the eight prompts in the pack are grounded in a single
 // step, which the pack now names.
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { PINNED, PINNED_BASELINE } from '../baseline.ts'
@@ -23,6 +23,7 @@ import { BANDS } from '../../roadmap/constants.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
+import type { PlanComputed } from './planData.ts'
 import { inventoryTables, readinessTable } from './inventoryTables.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
@@ -34,6 +35,7 @@ import { planIdFor } from '../../roadmap/generate.ts'
 import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { facts } from '../../derive/facts.ts'
 import { announcementDraft, groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
+import type { PackItem } from '../../roadmap/prompts.ts'
 import { savePlanRecord } from '../../graph/collect/cache.ts'
 import { saveMappingState } from '../../mapping/store.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
@@ -83,6 +85,24 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const [printing, setPrinting] = useState(false)
   const c = data.computed
   const snapshot = scan?.snapshot ?? null
+
+  // The CSV tables are a row per account, per device and per policy in the
+  // tenant. The page renders their names, not their contents, so building them
+  // again for every copy confirmation and every checkbox was work nobody had
+  // asked for: on a five-thousand-person tenant it was 42 ms of every render.
+  // They are built once for the scan and the groups they read, which is what
+  // they are made of.
+  const csvTables = useMemo(
+    () => (snapshot ? [readinessTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups)] : []),
+    [snapshot, data.mapping, data.groups],
+  )
+  // The prompt pack is the whole plan rendered through the export view, once per
+  // prompt: 63 ms on that same tenant, for eight prompts that are behind a
+  // Download and a closed list. It is built when one of those is asked for, and
+  // kept for as long as the plan it speaks for is the plan on screen — every
+  // fact it reads comes from `computed`, which is a new object whenever any of
+  // them changes, so a kept pack can never speak for a plan that has moved.
+  const packCache = useRef<{ plan: PlanComputed; pack: PackItem[] } | null>(null)
 
   // The print document is mounted only while printing (prompt 49.1 item 4): it is
   // not in the screen DOM otherwise. Setting `printing` mounts it and hides the
@@ -195,7 +215,6 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     window.location.hash = '#/plan'
   }
 
-  const csvTables = [readinessTable(snapshot, data.mapping ?? undefined), ...inventoryTables(snapshot, data.groups)]
   // Every export speaks from the content-driven step (prompt 53 queue item 7):
   // the same variables the Plan builds for a step, then the same view.
   const dates = planDates(steps, schedule.start, coverage.organisation.naming, snapshot)
@@ -203,7 +222,12 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const view = (s: typeof steps[number]) => stepExportView(s, stepCtx(s))
   // The Cleanup rows as the screen says them (E4): calendar entries, the pack's and the bundle's cleanup list.
   const cleanupViews = cleanupExportViews(schedule.cleanup, data.mapping?.notAssessedNotes ?? {})
-  const pack = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps), cleanup: cleanupViews })
+  const getPack = (): PackItem[] => {
+    if (packCache.current?.plan === c) return packCache.current.pack
+    const built = promptPack({ view, tenant: tenantName, steps, schedule, changeRecord: '', planSummary: schedule.derivation.criticalPath, announcement: announcementDraft(steps), cleanup: cleanupViews })
+    packCache.current = { plan: c, pack: built }
+    return built
+  }
 
   return (
     <section className="surface export">
@@ -245,7 +269,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
         <Card className="export-card" title={P.cards.prompts[0]}>
           <p className="reason">{P.cards.prompts[1]}</p>
           <p className="actions">
-            <Button variant="secondary" onClick={() => exportDownload(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(pack, tenantName), 'text/markdown', REDACTED)}>
+            <Button variant="secondary" onClick={() => exportDownload(`iamai-prompts-${snapshot.tenantId.slice(0, 8)}.md`, promptPackMarkdown(getPack(), tenantName), 'text/markdown', REDACTED)}>
               {buttons('prompts')[0]}
             </Button>
           </p>
@@ -255,7 +279,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
                 eight are grounded in one step and five in the plan, and the
                 list used to read as though every one of them were the plan's. */}
             {showPrompts &&
-              pack.map((item, i) => (
+              getPack().map((item, i) => (
                 <p key={i} className="reason">
                   {item.title} <span className="muted">({item.scope === null ? A.promptWholePlan : fillText(A.promptScope, { step: item.scope })})</span>{' '}
                   {/* Eight rows, eight controls reading "Copy prompt": the

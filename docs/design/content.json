@@ -817,8 +817,6 @@
         "footerBuild": "Build {commit}, {date}",
         "footerBuildLocal": "Local build, {date}",
         "footerBuildTitle": "The commit this page was built from",
-        "needs": "Needs:",
-        "next": "Next: {label}",
         "baselineLoaded": "Baseline: {source}",
         "loading": "Loading…",
         "storageBlocked": "Saved data is not available yet",
