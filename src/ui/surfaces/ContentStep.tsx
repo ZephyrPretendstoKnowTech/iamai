@@ -12,7 +12,7 @@ import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts
 import { app, content, pages } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
-import { inBaselineConflict } from '../../roadmap/baselineConflict.ts'
+import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { Picker } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
@@ -139,6 +139,11 @@ export function ContentStep({
   // still read here is only whether the step has *dates* and a rollback to show,
   // which it does not while its policy cannot be written.
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
+  // The contradiction this step's own source carries, where it carries one
+  // (roadmap/baselineConflict.ts): the explanation follows the reviewed source
+  // policy recorded on the step, so it renders on whichever goal the active
+  // baseline hands that source.
+  const conflictWords = baselineConflictWords(step)
   // The content's leading "before" lines (a setting to change before the policy
   // is created: the device-settings toggle, password writeback, the SharePoint
   // access control) stay above the translator's portal lines, numbered with them.
@@ -158,9 +163,11 @@ export function ContentStep({
       <PolicyMembers members={contract.members} />
       <Line s={cs.changeLine} ex={ex} cls="reason" />
       {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
-          the step says so and offers no instructions. The words are the content
-          file's; nothing here composes them. */}
-      {inBaselineConflict(step) && cs.baselineConflict && <p className="reason conflict"><T s={cs.baselineConflict} ex={ex} /></p>}
+          the step says so and offers no instructions. The words belong to the
+          reviewed source policy the step's own state names, never to the goal,
+          so whichever goal a baseline hands that source says the same thing
+          about it. They are the content file's; nothing here composes them. */}
+      {conflictWords && <p className="reason conflict"><T s={conflictWords} ex={ex} /></p>}
       <Line s={cs.partner} ex={ex} cls="reason partner" />
 
       <h3>Why</h3>

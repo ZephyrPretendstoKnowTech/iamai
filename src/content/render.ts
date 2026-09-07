@@ -369,7 +369,6 @@ export function renderStep(st: Record<string, any>): string {
       parts.push(p(who.adminsNote, e2, 'evidence'))
     }
   }
-  if (st.baselineConflict) parts.push(p(st.baselineConflict, ex, 'reason conflict'))
   // Decision
   const d = st.decision
   if (d) {

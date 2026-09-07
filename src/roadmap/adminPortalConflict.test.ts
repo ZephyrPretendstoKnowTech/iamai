@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { inBaselineConflict, RETIRED_DECISION_STEPS } from './baselineConflict.ts'
+import { baselineConflictWords, inBaselineConflict, RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import { applyStepDecisions, DECISION_STEPS } from './decisions.ts'
 import { decisionsOf } from './progress.ts'
 import type { StepDecision } from './decisions.ts'
@@ -99,9 +99,12 @@ test('the step states the baseline conflict and gives no implementation', () => 
   const { step, cs, ctx, ex } = run()
   assert.equal(inBaselineConflict(step), true, 'the generated step carries the conflict')
 
-  // The explanation is the content file's, and it names the baseline as the cause.
-  const words = cs.baselineConflict
+  // The explanation is the content file's, it belongs to the reviewed source
+  // policy the step names rather than to this goal, and it names the baseline as
+  // the cause.
+  const words = baselineConflictWords(step)
   assert.equal(typeof words, 'string', 'the step carries the conflict explanation')
+  assert.equal(cs.baselineConflict, undefined, 'the explanation is keyed to the goal instead of to the source policy')
   assert.match(String(words), /baseline/i, 'it names the baseline')
   assert.match(String(words), /All users/, 'it states what the exported policy targets')
   assert.match(String(words), /Nothing is wrong in your tenant/i, 'it says the tenant is not at fault')

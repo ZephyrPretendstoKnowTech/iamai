@@ -54,6 +54,14 @@ export type Milestone = {
 export type StepState = {
   lifecycle: Lifecycle | null
   condition: Condition
+  /**
+   * The reviewed baseline source whose contradiction raised a `baseline-conflict`
+   * condition (baselineConflict.ts `REVIEWED_SOURCES`), by its stable key.
+   * Written only beside that condition, and it is what lets every surface state
+   * *which* contradiction the step carries without reading the goal id or the
+   * pinned map again. Absent on every other step.
+   */
+  conflictSource?: string
   /** The goal is delivered. */
   satisfied: boolean
   /** Delivered by something the tenant already had: preserve it, do not create it again. */

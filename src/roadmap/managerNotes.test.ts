@@ -72,7 +72,9 @@ test('a step whose baseline contradicts itself is told nothing about what its po
   // "requires MFA to open the Microsoft admin portals", which the operation does
   // not bear out — and there is no operation at all, because the baseline
   // contradicts itself. A manager is told the general thing, not the false one.
-  for (const name of ['demo-week2', 'getiamai'] as const) {
+  // Both fixtures that derive through the pinned package, which is the baseline
+  // carrying the reviewed source (roadmap/baselineConflict.ts).
+  for (const name of ['demo', 'demo-week2'] as const) {
     const s = runFixture(fixture(name)).steps.find((x) => x.goalId === 'admin-portals-protected')
     assert.ok(s, `${name}: the step is in the plan`)
     assert.deepEqual(stepEffects(s!), [], `${name}: it has no operation`)

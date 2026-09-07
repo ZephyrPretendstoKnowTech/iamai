@@ -20,17 +20,27 @@
 // assertion at the helper alone cannot show: the conflict follows the source
 // policy through generation, tracking and every surface, so the goal id that is
 // blocked under the pinned map is planned normally under another map, and the
-// goal carrying the contradicted source is blocked wherever it sits.
+// goal carrying the contradicted source is blocked wherever it sits. Section 10
+// finishes that path on the screen, the print, the exports and the prompt pack:
+// the explanation belongs to the source policy, so the goal with no conflict
+// sentence of its own still states the contradiction and what ends it.
+//
+// Sections 1b, 3c and 11 are the other half of "the active baseline's reading":
+// the policy id is a name for a thing that can be revised, so the conflict is
+// checked against what the run's own package still says. A package that does not
+// carry the reviewed policy, and a reviewed version that keeps its id and
+// settles either side of the contradiction, are planned like anything else —
+// 11 follows one of those to the implementation it earns.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { CONFLICTED_SOURCE_POLICIES, baselineConflictGoals, inBaselineConflict } from './baselineConflict.ts'
+import { REVIEWED_SOURCES, baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import { nextMilestone } from './lifecycle.ts'
 import { blockedReasonFor } from './stateReason.ts'
-import { policyResult } from './operations.ts'
+import { policyResult, unavailableReason } from './operations.ts'
 import { buildIcs } from './ics.ts'
 import { stepContext } from './prompts.ts'
 import { BLOCKED_REASON } from '../copy/reasons.ts'
@@ -43,7 +53,10 @@ import { rowReason, rowWhen, rowWhenWraps } from '../ui/surfaces/rowWhen.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import type { Step } from './types.ts'
+import type { BaselinePackage } from '../baseline/types.ts'
 
+/** The line break the artifacts join their lines with. */
+const NEWLINE = '\n'
 const GOAL = 'admin-portals-protected'
 const SOURCE = 'fafaa50c-0b61-4ac6-a589-f9a1120b2f9e'
 
@@ -76,6 +89,37 @@ function withMatchingTenantPolicy(): Fixture {
   return f
 }
 
+/** The Global Administrator role template id: stable everywhere, so a baseline can name it. */
+const GLOBAL_ADMIN_ROLE = '62e90394-69f5-4237-9190-012177145e10'
+
+/**
+ * The same package with the reviewed source policy revised the way a reviewed
+ * baseline version settles it: the block now spares the administrators the
+ * documentation always said it spared. Same id, same name, same map — the one
+ * thing that changed is what the policy says about itself.
+ *
+ * It also drops the pinned policy's service-provider guest carve-out, which is
+ * not part of the contradiction: it is a field this build has no submittable
+ * shape for (roadmap/operations.ts `isCompletePolicy`), and without dropping it
+ * the settled policy stops at "no operation" and the path cannot be followed to
+ * the implementation it earns.
+ */
+function withRevisedSource(pkg: BaselinePackage): BaselinePackage {
+  const policies = pkg.policies.map((p) => {
+    if (String(p.id ?? '').toLowerCase() !== SOURCE) return p
+    const users = { ...(p.conditions.users ?? {}), excludeRoles: [GLOBAL_ADMIN_ROLE] }
+    delete users.excludeGuestsOrExternalUsers
+    return { ...p, conditions: { ...p.conditions, users } }
+  })
+  return { ...pkg, policies }
+}
+
+/** The demo tenant planning against that reviewed version. */
+function withRevisedBaseline(): Fixture {
+  const f = fixture('demo-week2')
+  return { ...f, baseline: withRevisedSource(f.baseline) }
+}
+
 type Case = { f: Fixture; r: ReturnType<typeof runFixture>; step: Step; ctx: StepVarContext; contract: ReturnType<typeof stepContract> }
 
 function run(f: Fixture): Case {
@@ -100,19 +144,54 @@ test('the active baseline really does define this policy two ways', () => {
   for (const field of ['includeRoles', 'excludeRoles', 'excludeUsers', 'includeGroups'] as const) {
     assert.deepEqual(users[field] ?? [], [], `${field} is empty, so no administrator is preserved by it`)
   }
-  // Side two, the documented intent, is what the step's own words report; the two
-  // cannot both hold, and this is the whole of why the goal is conflicted.
-  const cs = contentStepFor({ id: 's-goal-admin-portals-protected', goalId: GOAL } as Step) as Record<string, unknown>
-  assert.match(String(cs.baselineConflict), /documentation/i, 'the step states the documented meaning')
-  assert.match(String(cs.baselineConflict), /All users/, 'and the exported meaning beside it')
+  // Side two, the documented intent, is what the generated step's own words
+  // report; the two cannot both hold, and this is the whole of why the goal is
+  // conflicted. The words belong to the source policy, not to the goal's content
+  // entry, so they are read from the step the run produced.
+  const words = baselineConflictWords(run(f).step)
+  assert.match(String(words), /documentation/i, 'the step states the documented meaning')
+  assert.match(String(words), /All users/, 'and the exported meaning beside it')
 
-  // And the block is bound to that source policy, never to the goal id: the same
-  // goal handed to any other source is not conflicted, and the same source under
-  // any other goal is.
-  assert.ok(CONFLICTED_SOURCE_POLICIES.has(SOURCE))
+  // And the block is bound to that source policy as this package carries it,
+  // never to the goal id: the same goal handed to any other source is not
+  // conflicted, and the same source under any other goal is.
+  assert.ok(REVIEWED_SOURCES.some((r) => r.key === SOURCE))
   assert.deepEqual(PINNED_GOAL_MAP[GOAL], [SOURCE], 'this pin is why this goal is conflicted')
-  assert.deepEqual([...baselineConflictGoals({ [GOAL]: ['some-other-source-policy'] })], [], 'the goal id alone conflicts nothing')
-  assert.deepEqual([...baselineConflictGoals({ 'a-different-goal': [SOURCE] })], ['a-different-goal'], 'the source policy conflicts whatever goal carries it')
+  assert.deepEqual([...baselineConflicts({ [GOAL]: ['some-other-source-policy'] }, f.baseline).keys()], [], 'the goal id alone conflicts nothing')
+  assert.deepEqual([...baselineConflicts({ 'a-different-goal': [SOURCE] }, f.baseline).keys()], ['a-different-goal'], 'the source policy conflicts whatever goal carries it')
+})
+
+// ---- 1b: and to what that source still says, not to its id ----
+
+test('the same map over a package that settles the contradiction conflicts nothing', () => {
+  const pinned = fixture('demo-week2').baseline
+  // The id is the one thing that does not move: each package below hands the
+  // goal the same key through the same pinned map.
+  assert.deepEqual(PINNED_GOAL_MAP[GOAL], [SOURCE])
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, pinned).keys()], [GOAL], 'the pinned package is the one the review read')
+
+  // A package that does not carry the policy at all carries no contradiction to
+  // report: there is no source there to define the goal twice.
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, { policies: [] }).keys()], [], 'an empty package inherited a conflict from the map')
+
+  // A reviewed version that keeps the id and settles the export — the block now
+  // spares the administrators it always claimed to spare — says one thing, and
+  // IAMAI has no finding about it.
+  assert.deepEqual([...baselineConflicts(PINNED_GOAL_MAP, withRevisedSource(pinned)).keys()], [], 'a revised source policy still inherits the conflict from its id')
+
+  // And a version that settles it the other way — the documentation now states
+  // the meaning the export really has — likewise.
+  assert.deepEqual(
+    [...baselineConflicts(PINNED_GOAL_MAP, { policies: pinned.policies, docs: [{ policyName: REVIEWED_SOURCES[0].reviewedName, intent: 'Blocks the Microsoft admin portals for every account in the tenant, administrators included.', sourcePath: 'Policies/Admin Portal/README.md' }] }).keys()],
+    [],
+    'documentation that settles the contradiction still leaves the goal blocked',
+  )
+  // Documentation that still claims the narrower scope does not settle it.
+  assert.deepEqual(
+    [...baselineConflicts(PINNED_GOAL_MAP, { policies: pinned.policies, docs: [{ policyName: REVIEWED_SOURCES[0].reviewedName, intent: 'Blocks access to the Microsoft admin portals for non-admin users.', sourcePath: 'Policies/Admin Portal/README.md' }] }).keys()],
+    [GOAL],
+    'the documented reading the review read was withdrawn by a README that repeats it',
+  )
 })
 
 // ---- 2: a tenant policy matching one side does not settle the source ----
@@ -174,9 +253,10 @@ test('the reason stays the baseline, with every tenant prerequisite met', () => 
 // ---- 3b: the collapsed row says the baseline, and shows no date ----
 
 test('the collapsed row reads the baseline conflict and no rollout date', () => {
-  // Every fixture, because this row is the same row in all of them: the cause is
-  // in the baseline the product ships, not in any one tenant.
-  for (const name of ['demo', 'demo-week2', 'small', 'hostile'] as const) {
+  // Both fixtures that derive through the pinned package, because this row is
+  // the same row in either of them: the cause is in the baseline the product
+  // ships, not in any one tenant.
+  for (const name of ['demo', 'demo-week2'] as const) {
     const { step } = run(fixture(name))
     // No date, and no threshold standing in for one. The step really is behind an
     // unmet MFA readiness number in these tenants, and that number is not what
@@ -193,6 +273,33 @@ test('the collapsed row reads the baseline conflict and no rollout date', () => 
     r.steps.some((s) => /readiness reaches/.test(rowWhen(s))),
     'no row reads its readiness threshold any more',
   )
+})
+
+// ---- 3c: a package that carries no such source carries no such conflict ----
+
+test('a tenant planning against a package without the reviewed source plans the goal normally', () => {
+  // These fixtures stand in for a custom baseline: the same pinned goal map,
+  // planned against a package that does not carry the policy the review read.
+  // There is no source there to define the goal twice, so there is nothing to
+  // report about it — the goal is planned from its own template like any other,
+  // and what holds it is the tenant's own readiness, said in the tenant's words.
+  for (const name of ['small', 'hostile'] as const) {
+    const f = fixture(name)
+    assert.equal(
+      f.baseline.policies.some((p) => String((p as { id?: unknown }).id ?? '').toLowerCase() === SOURCE),
+      false,
+      `${name}: the fixture carries the reviewed source policy after all`,
+    )
+    const r = runFixture(f)
+    assert.deepEqual(r.steps.filter((s) => inBaselineConflict(s)).map((s) => s.id), [], `${name}: a package with no reviewed source inherited the conflict from the pinned map`)
+    const step = r.steps.find((s) => s.goalId === GOAL)
+    assert.ok(step, `${name}: the goal is still planned`)
+    const s = step as Step
+    assert.equal(typeof s.action.json, 'string', `${name}: no policy body was written for a goal nothing contradicts`)
+    assert.notEqual(s.state.lifecycle, null, `${name}: the step lost its rollout stage`)
+    assert.notEqual(s.blockedReason, BLOCKED_REASON.baseline, `${name}: the row blamed a baseline that says nothing about this goal`)
+    assert.equal(baselineConflictWords(s), null, `${name}: the step carries a contradiction its own source does not have`)
+  }
 })
 
 // ---- 4: no implementation, on any channel ----
@@ -360,7 +467,7 @@ test('the contradicted source blocks whatever goal carries it, and takes nothing
   // product's canonical "Not deployed / Implement" case. Carrying the
   // contradicted source is the only thing that changed, and it withdraws the
   // whole rollout.
-  assert.deepEqual([...baselineConflictGoals(SWAPPED_MAP)], ['admin-session'], 'the map itself names the goal the source conflicts')
+  assert.deepEqual([...baselineConflicts(SWAPPED_MAP, fixture('demo-week2').baseline).keys()], ['admin-session'], 'the map itself names the goal the source conflicts')
   assert.equal(inBaselineConflict(s), true, 'the conflict did not follow the source policy')
   assert.equal(s.state.condition, 'baseline-conflict')
   assert.equal(s.status, 'blocked')
@@ -402,4 +509,94 @@ test('the contradicted source blocks whatever goal carries it, and takes nothing
   assert.ok(others.some((x) => typeof x.action.json === 'string'), 'the rest of the plan lost its bodies')
   assert.ok(others.some((x) => x.state.lifecycle !== null), 'the other steps lost their lifecycle')
   assert.ok(ics.split('BEGIN:VEVENT').length > 2, 'the rest of the plan lost its calendar entries')
+})
+
+// ---- 10: the alternate map's conflicted goal says it on every surface ----
+
+test('screen, export and prompt all carry the conflict on whichever goal the map hands the source', () => {
+  const { r, ctx } = swapped()
+  const step = r.steps.find((x) => x.goalId === 'admin-session')
+  assert.ok(step, 'the admin-session step is in the plan')
+  const s = step as Step
+
+  // The screen's paragraph. The explanation belongs to the reviewed source
+  // policy and not to a goal's content entry, so a goal that has no conflict
+  // sentence written for it still states the contradiction — and states the
+  // same one the goal the pinned map blocks states.
+  const words = baselineConflictWords(s)
+  assert.equal(typeof words, 'string', 'the conflicted goal has no explanation on the screen')
+  assert.equal(words, baselineConflictWords(run(fixture('demo-week2')).step), 'one source policy explains itself two ways')
+  assert.equal((contentStepFor(s) as Record<string, unknown>).baselineConflict, undefined, 'the goal carries an explanation of its own after all')
+  const contract = stepContract(s, ctx, stepVars(s, ctx))
+  assert.equal(contract.state.conditionLabel, 'Baseline conflict')
+  assert.equal(contract.whatToDo.kind, 'resolve')
+
+  // The export and the print, the calendar entry's body, and the prompt pack:
+  // the same problem named, and the same way out of it.
+  const view = stepExportView(s, ctx)
+  const context = stepContext(s, (x) => stepExportView(x, ctx))
+  const screen = [words, contract.whatToDo.text, ...contract.doneWhen].join(NEWLINE)
+  assert.ok(view.whatToDo.length > 0, 'the artifacts carry an empty What to do for a step nobody can implement')
+  for (const [where, text] of [['screen', screen], ['export', view.whatToDo.join(NEWLINE)], ['prompt', context]] as const) {
+    assert.match(text, /baseline/i, `${where} does not name the baseline`)
+    assert.match(text, /reviewed baseline/i, `${where} drops what would end the conflict`)
+  }
+  for (const [where, text] of [['export', view.whatToDo.join(NEWLINE)], ['prompt', context]] as const) {
+    assert.match(text, /Nothing is wrong in your tenant/i, `${where} reads as a tenant failure`)
+  }
+
+  // And none of them carries an implementation, a completion or a rollout.
+  assert.deepEqual(view.doneWhen, [], 'a rollout finish was written for a policy nobody can write')
+  assert.equal(view.dates, null, 'the artifacts carry a Dates line')
+  assert.equal(view.ifWrong, null, 'the artifacts carry a rollback for a change IAMAI will not define')
+  const rendered = [...stepLines(s, ctx), JSON.stringify(view), context].join(NEWLINE)
+  assert.equal(rendered.includes(SOURCE), false, 'the source policy id reached an artifact')
+  assert.equal(/"conditions"|includeUsers|grantControls/.test(rendered), false, 'a policy body reached an artifact')
+  assert.equal(/Announce|we will change|goes live/i.test(context), false, 'an artifact announces a change IAMAI will not define')
+
+  // The goal the pinned map blocks is planned here, and says none of it.
+  const other = r.steps.find((x) => x.goalId === GOAL) as Step
+  assert.equal(baselineConflictWords(other), null, 'the goal id carried the explanation with it')
+  assert.doesNotMatch(stepExportView(other, ctx).whatToDo.join(NEWLINE), /reviewed baseline/i, 'the artifacts hold the conflict against a source that has none')
+})
+
+// ---- 11: a reviewed version that settles it is planned, all the way through ----
+
+test('a revised source keeping the same id is implemented like any other policy', () => {
+  const f = withRevisedBaseline()
+  const r = runFixture(f)
+  const step = r.steps.find((x) => x.goalId === GOAL)
+  assert.ok(step, 'the admin-portals step is in the plan')
+  const s = step as Step
+  const nameOf = (id: string): string => r.input.names!.label(id)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+
+  // The map is the pin's and the id is the pin's: the only thing that changed is
+  // what the policy says about itself.
+  assert.deepEqual(PINNED_GOAL_MAP[GOAL], [SOURCE])
+  assert.ok(
+    f.baseline.policies.some((p) => String((p as { id?: unknown }).id ?? '').toLowerCase() === SOURCE),
+    'the revised package kept the reviewed policy id',
+  )
+
+  // So nothing about it is held by the baseline, on the step or on any surface.
+  assert.equal(inBaselineConflict(s), false, 'a revised source policy is still blocked by its id')
+  assert.equal(s.state.conflictSource ?? null, null)
+  assert.deepEqual(s.blockers.filter((b) => b.label === 'baseline-conflict'), [], 'a conflict blocker was raised for a source that no longer contradicts itself')
+  assert.notEqual(s.blockedReason, BLOCKED_REASON.baseline)
+  assert.equal(baselineConflictWords(s), null, 'the screen states a contradiction the reviewed version settled')
+  const result = policyResult(s as never)
+  assert.notEqual(result.kind === 'unavailable' ? result.reason : null, 'baseline-conflict')
+
+  // And the implementation the reviewed version earned is really there.
+  const contract = stepContract(s, ctx, stepVars(s, ctx))
+  assert.equal(unavailableReason(s), null, 'the settled policy is still held back from being written')
+  assert.equal(typeof s.action.json, 'string', 'no policy body was written for a policy that now says one thing')
+  assert.equal(jsonOffered(s), true, 'the JSON, PowerShell and Download tabs are withheld')
+  assert.notEqual(s.state.lifecycle, null, 'the step lost its rollout stage')
+  assert.equal(contract.implementation.offered, true, 'the implementation was withdrawn from a settled source')
+  assert.notEqual(contract.state.conditionLabel, 'Baseline conflict')
+  const view = stepExportView(s, ctx)
+  assert.doesNotMatch(view.whatToDo.join(NEWLINE), /reviewed baseline|Both cannot be true/i, 'the artifacts still ask for a reviewed baseline')
+  assert.ok(view.whatToDo.length > 0, 'the artifacts carry no instructions for a policy that can be written')
 })
