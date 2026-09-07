@@ -26,10 +26,21 @@ import { DEMO_TENANT_ID } from './demoMode.ts'
 
 export type DemoTenant = { snapshot: TenantSnapshot; mapping: MappingState; baseline: ReturnType<typeof fixture>['baseline']; operatorId: string; groups: GroupMembers; decisions: Record<string, StepDecision> | null; checkpoints: unknown[] | null }
 
-/** Shift every ISO date in a value by `offsetMs`, so the fixture reads as of now. */
+/**
+ * Shift every ISO date in a value by `offsetMs`, so the fixture reads as of now.
+ *
+ * A day is a date too. Sign-in records are bucketed by UTC day where what is
+ * asked of them is which window they fall in (collect/types.ts
+ * `reportOnlyDated`), and a day left behind while the instants around it moved
+ * puts the demo's records outside the window its own policy is being watched
+ * over — the readiness gate then reads the sample tenant as having no evidence
+ * at all.
+ */
 function shiftDates<T>(value: T, offsetMs: number): T {
   if (typeof value === 'string') {
-    return (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value) ? new Date(Date.parse(value) + offsetMs).toISOString() : value) as unknown as T
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) return new Date(Date.parse(value) + offsetMs).toISOString() as unknown as T
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(Date.parse(`${value}T00:00:00.000Z`) + offsetMs).toISOString().slice(0, 10) as unknown as T
+    return value as unknown as T
   }
   if (Array.isArray(value)) return value.map((v) => shiftDates(v, offsetMs)) as unknown as T
   if (value && typeof value === 'object') {

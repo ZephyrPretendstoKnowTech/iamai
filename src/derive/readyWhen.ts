@@ -40,6 +40,12 @@ export type ReadyWhen = {
    */
   seen: number | null
   people: number | null
+  /**
+   * Whether the sign-in collection covers the whole window these numbers are
+   * about (tracking.ts `windowRead`). False makes them a reading of part of it,
+   * and the line that states them says so rather than stating a clean window.
+   */
+  read: boolean
 }
 
 export function readyWhen(step: Step): ReadyWhen | null {
@@ -50,7 +56,7 @@ export function readyWhen(step: Step): ReadyWhen | null {
   // shapes of "not yet": the window has closed and the records are short, or the
   // window is still open.
   const kind = t.readyNow ? 'now' : Date.parse(t.readyOn) <= Date.parse(t.noticedAt) ? 'since' : 'on'
-  return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope }
+  return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope, read: t.windowRead }
 }
 
 /**
@@ -68,6 +74,10 @@ export function readyBasis(ready: ReadyWhen): string | null {
   const TRACK = engine.tracking
   if (ready.kind === 'now') return fillText(TRACK.readyNow, { n: ready.days })
   if (ready.seen === null || ready.people === null) return null
+  // A window the records do not reach across has no failure count to state and
+  // no clean stretch to claim: what the line can say is that the reading is
+  // short of the window, and how many people it did see.
+  if (!ready.read) return fillText(TRACK.evidenceWindowShort, { seen: ready.seen, people: ready.people, n: ready.days })
   return ready.failures === null
     ? fillText(TRACK.evidenceTodayUnread, { seen: ready.seen, people: ready.people, n: ready.days })
     : fillText(TRACK.evidenceToday, { failures: ready.failures, seen: ready.seen, people: ready.people, n: ready.days })
