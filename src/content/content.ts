@@ -7,16 +7,26 @@ import contentJson from '../../docs/design/content.json' with { type: 'json' }
 
 export type Learn = { url: string }
 
-/** One entry in the step catalogue; fields absent on a given step are null/undefined. */
+/**
+ * One entry in the step catalogue; fields absent on a given step are
+ * null/undefined.
+ *
+ * `title` and `why` are optional because two step families carry their own: a
+ * free-tier ladder rung is named by data/free-tier-ladder.json, and a validation
+ * blocker's title and its "N must-fix checks outstanding" sentence are composed
+ * from the failing checks (src/copy/validation.ts). Their entries here add only
+ * the words the engine does not have - What to do, and Done when - rather than
+ * writing the title down a second time.
+ */
 export type ContentStep = {
   id: string
   kind: 'blocker' | 'object' | 'check' | 'campaign' | 'policy' | 'ladder'
-  title: string
+  title?: string
   changeLine?: string | null
   partner?: string | null
   placement?: string | null
   licence?: string | null
-  why: string
+  why?: string
   learn?: Learn | null
   who?: Record<string, unknown> | null
   decision?: Record<string, unknown> | null

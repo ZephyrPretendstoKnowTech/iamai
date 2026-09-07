@@ -995,7 +995,7 @@ async function walkFixture(fx) {
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
         if (bodyTitle.trim() && bodyTitle.trim() !== title) add('P0', `${slabel}: the row says "${title}" and the opened step says "${bodyTitle.trim()}"`)
-        const emailText = await evaluate(`[...document.querySelectorAll('main.page .step-body .copy-box')].map((e) => e.innerText).join('\\n')`)
+        const emailText = await evaluate(`[...document.querySelectorAll('main.page .step-body .copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n')`)
         const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
         checkText(slabel, outsideEmail)
         checkText(`${slabel} (email)`, emailText, { emails: true })
@@ -1155,9 +1155,14 @@ async function walkFixture(fx) {
             if (!/carried no platform \(Outlook Mobile\)/.test(bodyText)) add('P0', `${slabel}: the step does not name the sign-in that carried no platform`)
           }
           if (/MFA Registration Campaign/.test(title)) {
-            if (week2 && !/· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
+            // The rungs' people are under More (task 011); the counts and the
+            // instruction stay on the step. More is closed here, so its innerText
+            // is empty: read textContent, which has no line breaks to anchor on.
+            const rungPeople = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
+            const devices = / · phone(?![a-z])/.test(rungPeople) || / · phone(?![a-z])/.test(bodyText)
+            if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
             if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
-            if (!week2 && /· phone$/m.test(bodyText)) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
+            if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
           }
         }
         // Cleanup completion (E3), on the demo. The emergency accounts signed in
@@ -1227,7 +1232,12 @@ async function walkFixture(fx) {
               diffContract(`${slabel} / More`, mc, md)
               const moreText = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).innerText || ''`)
               writeFileSync(join(wdir, `more-${String(i + 1).padStart(2, '0')}-${safe}.txt`), moreText)
-              checkText(`${slabel} / More`, moreText)
+              // The emails are in More now (task 011) and date things the long way
+              // on purpose, so they are measured under the email rule and the rest
+              // of More under the ordinary one — the same split the body made.
+              const moreEmail = await evaluate(`[...document.querySelectorAll('main.page .step-body details.more .copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n')`)
+              checkText(`${slabel} / More`, moreEmail ? moreText.replace(moreEmail, '') : moreText)
+              if (moreEmail) checkText(`${slabel} / More (email)`, moreEmail, { emails: true })
               if (md.emptyLists > 0) add('P0', `${slabel} / More: ${md.emptyLists} empty list(s) rendered`)
               for (const h of md.emptySections) add('P0', `${slabel} / More: the "${h}" section is empty`)
             }

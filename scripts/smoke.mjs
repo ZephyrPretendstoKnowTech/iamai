@@ -357,7 +357,10 @@ try {
   check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
   // The second header line left with docs/design/mockups/plan-top-v2.html; the tenant and the scan age live on Connect alone.
   check('Plan: no second header line; the tenant and the scan age live on Connect alone', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
-  check('Plan: the MFA Readiness header and five rung tiles under the steps line', /MFA Readiness/i.test(pt) && /of \d+ active (person|people)/i.test(pt) && (await evaluate(`document.querySelectorAll('main.page .rung-tiles .rung-tile').length`)) === 5)
+  // Task 011: the Plan is the rollout board and nothing above it. The readiness
+  // ladder is a tenant-wide diagnostic and stays where the evidence it summarises
+  // lives - Today, and Connect's Plan tile.
+  check('Plan: no MFA readiness ladder above the board', (await evaluate(`document.querySelectorAll('main.page .rung-tiles, main.page .rung-tile, main.page .strip-head').length`)) === 0)
   // The Start date proposes today in the display zone (a weekend: the Monday after), in the same control as Plan settings' inputs, its label spaced.
   const startField = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, padTop: ci.paddingTop, borderBottom: ci.borderBottomWidth } })()`)
   const startZone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.find((x) => x && x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)

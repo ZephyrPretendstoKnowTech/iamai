@@ -1,17 +1,37 @@
-// A step opened in place, rendered from content.json (prompt 51 §6, §8.9). Every
-// sentence is a string in the content file filled with the tenant's values
-// (src/ui/surfaces/stepVars.ts); the What-to-do on a policy step is the portal
-// translator over the goal's baseline policy (stepPortal.ts), because the
-// baseline wins. This is the React port of src/content/render.ts renderStep, with
-// the live controls the review page has no need of. Sections render in §6 order,
-// and only when they have content.
+// A step opened in place: the one body the Plan draws for every step it has, and
+// the only one (task 011).
+//
+// The order is the Step Contract's own (Foundation D): where it is and what
+// happens next, Why, What IAMAI found, Who this touches, What to do, Fix before
+// continuing, Done when, More. Every sentence is a string in content.json filled
+// with the tenant's values (stepVars.ts); the What-to-do on a policy step is the
+// portal translator over the goal's baseline policy (stepPortal.ts), because the
+// baseline wins.
+//
+// Three things this body will not do.
+//
+// It does not require a content entry. A free-tier ladder rung and a validation
+// blocker are named and explained by the engine, and before this they opened to
+// an empty panel; now the contract's own title, Why and next action stand, and
+// the content entry adds only the words the engine has none of.
+//
+// It does not put everything the engine knows on the first screen. A list of
+// names is a fact while it is short enough to read and an inventory once it is
+// not, so above NAMES_INLINE the default step keeps the count and the
+// consequence and the names themselves go to More. The person-by-person
+// registration state behind them belongs to the MFA readiness surface, not to a
+// rollout step.
+//
+// And it does not decide anything. What the step is, whether an implementation
+// is offered, what blocks it and what finishes it are the contract's answers,
+// asked once, below the UI.
 import { useState, useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, content, pages } from '../../content/content.ts'
-import { contentStepFor } from '../../content/stepTitle.ts'
-import { fillText, listCountVars, missingVars, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
+import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
+import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { Picker } from '../components/index.ts'
@@ -24,7 +44,7 @@ import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { jsonOffered, missingObjects, policyJsonText, stepOperations } from './stepJson.ts'
-import { commsFor, datesLineFor, ifWrongLineFor, managerText, whoEvidenceLines, decisionLine } from './stepExport.ts'
+import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -33,13 +53,15 @@ import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
 import { stepContract } from './stepContract.ts'
-import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
+import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepSection, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
+import { HEAD } from './stepHeadings.ts'
+import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
+import type { WhoBlock } from './whoBlocks.ts'
 
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
-const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}/g)].map((m) => m[1])
 
 /** A content string, filled with the tenant's values. */
 /** Under every copy box (Tell your people, For the help desk, For your manager): paste it into your own assistant. */
@@ -52,6 +74,17 @@ function offersDoesntApply(cs: Record<string, any>, step: Step): boolean {
   return true
 }
 const SHARED = content.shared as Record<string, string>
+
+/** One who block on the default step: the sentence, and its names under it when they are short enough to read. */
+function WhoBlockView({ block }: { block: WhoBlock }) {
+  if (block.names.length === 0) return <p className="reason">{block.lead}</p>
+  return (
+    <div className="names-group">
+      {block.lead && <p className="reason">{block.lead}</p>}
+      <ol className="names">{block.names.map((nm, i) => <li key={i}>{nm}</li>)}</ol>
+    </div>
+  )
+}
 
 function T({ s, ex }: { s: unknown; ex: Ex }) {
   if (s === null || s === undefined) return null
@@ -96,12 +129,18 @@ export function ContentStep({
   const [tab, setTab] = useState<DoTab>('portal')
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
-  const cs = contentStepFor(step) as Record<string, any> | undefined
+  // The step's own words, where the content file has any. A step it has no entry
+  // for is not a step without a body: the contract still knows where it is, why
+  // it matters and what to do next, and this renders that.
+  const cs = (contentStepFor(step) ?? {}) as Record<string, any>
   const ex = stepVars(step, ctx) as Ex
   // The Step Contract (stepContract.ts): the state, the next milestone, the one
   // action, the blockers and the completion, worked out once from Foundations A,
   // B and C. Everything below renders it; nothing below asks them again.
   const contract = stepContract(step, ctx, ex as Record<string, unknown>)
+  // The one title, from the one resolver the row reads (content/stepTitle.ts), so
+  // the row and the body it opens can never disagree.
+  const title = contentTitle(step)
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, REDACTED).then((ok) => {
       if (!ok) return
@@ -109,17 +148,13 @@ export function ContentStep({
       setTimeout(() => setCopied(null), 1500)
     })
   }
-  // No content for this step id (a step the baseline does not carry, or a
-  // non-content step): render nothing here — the row already carried its status.
-  if (!cs) return <div className="step-body" />
-
   const learn = cs.learn || {}
   const who = cs.who || {}
   const d = cs.decision
   const w = cs.whatToDo || {}
   // The tenant's objects behind the baseline's placeholders (a saved decision
   // included), or the names the plan proposes for them, so every line is a name.
-  const portalNames = portalNamesFor(ctx, ex, String(cs.title))
+  const portalNames = portalNamesFor(ctx, ex, title)
   // What to do offers today (stepInstructions.ts): the step's own resolved
   // policies through the translator — the same bodies the JSON, the PowerShell
   // and the download carry — the content's leading "before" lines, and the
@@ -149,15 +184,21 @@ export function ContentStep({
   // access control) stay above the translator's portal lines, numbered with them.
   const before = instructions.before
   const hasSteps = instructions.steps.length > 0
-  // Who the step reaches is the contract's answer (Foundation A): a reach this
-  // scan could not settle says so in one line and shows no count, which is why
-  // the section renders even where the step's own who-lines could not fill.
-  const showWho = whoHasContent(who, ex) || (contract.who !== null && !contract.who.known)
+  // Who this touches, split into what the default step shows and what More
+  // carries (whoBlocks.ts): the counts and the consequences here, the names
+  // behind them there, once there are more of them than a person reads at a
+  // glance. Whether the reach is knowable at all is the contract's answer
+  // (Foundation A) — a scope this scan could not settle says so in one line and
+  // shows no count, which is why the section renders even where the step's own
+  // who-lines could not fill.
+  const { inline: whoInline, held: whoHeld } = whoBlocks(who, ex as Record<string, unknown>)
+  const lead = whoLeadLine(who, ex as Record<string, unknown>, [...whoInline, ...whoHeld])
+  const showWho = lead !== null || whoInline.length > 0 || (contract.who !== null && !contract.who.known)
 
   return (
     <div className="step-body">
       <p className="line">
-        <span className="step-title">{cs.title}</span>
+        <span className="step-title">{title}</span>
       </p>
       <StepState contract={contract} />
       <PolicyMembers members={contract.members} />
@@ -170,9 +211,12 @@ export function ContentStep({
       {conflictWords && <p className="reason conflict"><T s={conflictWords} ex={ex} /></p>}
       <Line s={cs.partner} ex={ex} cls="reason partner" />
 
-      <h3>Why</h3>
+      {/* The contract's Why: the step's own sentence where the content file has
+          one, and the engine's where it does not (a validation blocker states how
+          many of its checks are outstanding, and that changes between scans). */}
+      <h3>{HEAD.why}</h3>
       <p>
-        <T s={cs.why} ex={ex} />{' '}
+        {contract.why}{' '}
         {learn.url && (
           <a href={learn.url} target="_blank" rel="noopener noreferrer">
             Learn →
@@ -182,30 +226,16 @@ export function ContentStep({
 
       <WhatIamaiFound found={contract.found} />
 
-      {showWho && <h3>Who this touches</h3>}
-      {whoLead(who, ex) && <Line s={who.lead} ex={ex} cls="line" />}
-      {evidenceLines(who, ex).filter((line) => whole(line, ex)).map((line, i) => (
-        <WhoLine key={i} line={line} ex={ex} />
-      ))}
-      {/* The campaign's people lists: each bucket with its members, only where the
-          bucket has people (walk-51 item 3). */}
-      {who.groups && Object.entries(who.groups as Record<string, unknown>).map(([gk, gl]) => {
-        const items = (ex[gk] as string[]) || []
-        if (items.length === 0) return null
-        return (
-          <div key={gk} className="names-group">
-            <p className="reason"><T s={gl} ex={{ ...(ex as Record<string, unknown>), n: items.length }} /></p>
-            <ol className="names">{items.map((nm, i) => <li key={i}>{nm}</li>)}</ol>
-          </div>
-        )
-      })}
-      {who.groups && who.overlap && <Line s={who.overlap} ex={ex} cls="sub" />}
-      {who.groups && who.adminsNote && truthy(ex.adminNames) && <p className="reason"><T s={who.adminsNote} ex={ex} /></p>}
+      {/* Who this touches: the counts and the consequences that decide the next
+          action. A list longer than NAMES_INLINE names is in More. */}
+      {showWho && <h3>{HEAD.who}</h3>}
+      {lead && <p className="line">{lead}</p>}
+      {whoInline.map((b) => <WhoBlockView key={b.key} block={b} />)}
       {/* Foundation A settled the reach and could not: no count, no names, and
           one line saying so rather than the goal's people standing in. */}
       {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
 
-      <h3>What to do</h3>
+      <h3>{HEAD.whatToDo}</h3>
       {/* The one action, always. Where nothing overrules the lifecycle this is the
           step's own lead; where an authority does — a policy the plan may not
           write, a goal already in place, a question waiting on a person — it is
@@ -264,7 +294,7 @@ export function ContentStep({
 
       {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>
-          <h3>Dates</h3>
+          <h3>{HEAD.dates}</h3>
           <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
         </>
       )}
@@ -273,47 +303,27 @@ export function ContentStep({
           where it has them; where a policy cannot be written yet, what would
           clear that instead — which is exactly the step that used to render no
           Done when at all (stepContract.ts doneWhenOf). */}
-      <DoneWhen heading="Done when" lines={contract.doneWhen} />
+      <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
 
-      {/* The rollback the step's operation earns, not the one its content was
-          written with: a created policy is set back to report-only or deleted,
-          a changed one has its settings put back (stepExport.ts ifWrongLineFor). */}
-      {reason === null && ifWrongLineFor(step, cs) && whole(ifWrongLineFor(step, cs), ex) && (
-        <>
-          <h3>If it goes wrong</h3>
-          <p className="line"><T s={ifWrongLineFor(step, cs)} ex={ex} /></p>
-        </>
-      )}
-      {cs.lockedOut && (
-        <>
-          <h3>{cs.lockedOut.label}</h3>
-          <ul className="sections">{(cs.lockedOut.steps || []).map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
-        </>
-      )}
-
-      {(() => {
-        // The email as the exports say it (stepExport.ts commsFor): the body keyed on the tenant's state, the extra lines only when whole.
-        const comms = reason !== null ? null : commsFor(cs, ex as Record<string, unknown>, step)
-        if (!comms) return null
-        const text = [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n')
-        return (
-          <>
-            <h3>Tell your people</h3>
-            <div className="copy-box">
-              <Button variant="secondary" onClick={() => copy('comms', text)}>
-                {copied === 'comms' ? 'Copied' : 'Copy'}
-              </Button>
-              <p>{comms.salutation}</p>
-              <p>{comms.body}</p>
-              {comms.extra.map((l, i) => <p key={i}>{l}</p>)}
-              <p>{comms.signature}</p>
-            </div>
-            <p className="reason adapt">{ADAPT_LINE}</p>
-          </>
-        )
-      })()}
-
-      <More cs={cs} ex={ex} step={step} onSkip={onSkip} onUnskip={onUnskip} onDoesntApply={onDoesntApply} copy={copy} copied={copied} open={printing === true} />
+      {/* Everything below the completion is audit depth and work artifacts: the
+          names behind the counts, the way back from a change nobody has made
+          yet, the recovery runbook, and the three copy boxes. None of it decides
+          the next action, so none of it stands between the operator and it. The
+          print opens More, so a printed step is unchanged. */}
+      <More
+        cs={cs}
+        ex={ex}
+        step={step}
+        contractWho={whoHeld}
+        ifWrong={reason === null ? ifWrongLineFor(step, cs) : null}
+        comms={reason === null ? commsFor(cs, ex as Record<string, unknown>, step) : null}
+        onSkip={onSkip}
+        onUnskip={onUnskip}
+        onDoesntApply={onDoesntApply}
+        copy={copy}
+        copied={copied}
+        open={printing === true}
+      />
 
       <p className="actions no-print">
         {cs.scanControl && onScan && (
@@ -327,54 +337,6 @@ export function ContentStep({
       </p>
     </div>
   )
-}
-
-/**
- * A lead that ends in a colon promises what follows it. It renders only when
- * something does: an evidence line, a none-branch line, a group list, or a list
- * the lead itself carries (the walk found "…with who signs in from each:" over
- * nothing on the countries step).
- */
-function whoLead(who: Record<string, any>, ex: Ex): boolean {
-  const lead = who.lead
-  if (typeof lead !== 'string' || !whole(lead, ex)) return false
-  if (!/:\s*$/.test(lead)) return true
-  if (evidenceLines(who, ex).some((line) => whole(line, ex))) return true
-  if (who.groups && Object.keys(who.groups as Record<string, unknown>).some((gk) => Array.isArray(ex[gk]) && (ex[gk] as unknown[]).length > 0)) return true
-  return false
-}
-
-/**
- * One who-line. A line that ends in a list of names — `{list:accounts}` alone,
- * or prose ending in `: {list:accounts}` — renders the names as a list, one per
- * row, never inline (§6.3, §6.5); the prose before it stays a line.
- */
-function WhoLine({ line, ex: stepEx }: { line: string; ex: Ex }) {
-  // A line that counts and lists counts its own list (render.ts listCountVars).
-  const ex = listCountVars(line, stepEx) as Ex
-  const m = /^(.*?)\s*\{list:([a-zA-Z0-9_]+)\}\s*$/.exec(line)
-  const items = m ? ex[m[2]] : undefined
-  if (!m || !Array.isArray(items) || items.length === 0) return <p className="reason"><T s={line} ex={ex} /></p>
-  const lead = m[1].trim()
-  return (
-    <div className="names-group">
-      {lead && <p className="reason"><T s={lead} ex={ex} /></p>}
-      <ol className="names">{(items as unknown[]).map((nm, i) => <li key={i}>{String(nm)}</li>)}</ol>
-    </div>
-  )
-}
-
-/** §8.7: the Who heading renders only when a lead, a line or a group renders under it. */
-function whoHasContent(who: Record<string, any>, ex: Ex): boolean {
-  if (whoLead(who, ex)) return true
-  if (evidenceLines(who, ex).some((line) => whole(line, ex))) return true
-  if (who.groups && Object.keys(who.groups as Record<string, unknown>).some((gk) => Array.isArray(ex[gk]) && (ex[gk] as unknown[]).length > 0)) return true
-  return false
-}
-
-/** The who-line evidence lines that apply to this tenant: the one gate the exports read too (stepExport.ts). */
-function evidenceLines(who: Record<string, any>, ex: Ex): string[] {
-  return whoEvidenceLines(who, ex as Record<string, unknown>)
 }
 
 function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
@@ -505,36 +467,108 @@ function Options({ name, options, answer, onAnswer, ex, universe, nameOf }: { na
   )
 }
 
-function More({ cs, ex, step, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: { cs: Record<string, any>; ex: Ex; step: Step; onSkip: (r: string) => void; onUnskip: () => void; onDoesntApply?: (reason: string) => void; copy: (id: string, t: string) => void; copied: string | null; open?: boolean }) {
+/**
+ * Audit depth and work artifacts, under one disclosure.
+ *
+ * What is here is what does not change the next action: the names behind the
+ * counts stated above, what could go wrong, the way back from a change, the
+ * recovery runbook, and the three boxes of text to send. What is never here is a
+ * blocker — those are the contract's `fix`, and they render above, in a section
+ * of their own.
+ *
+ * `open` while printing, so a printed step is the whole step (§7).
+ */
+function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onDoesntApply, copy, copied, open = false }: {
+  cs: Record<string, any>
+  ex: Ex
+  step: Step
+  /** The name lists the default step stated as counts (whoBlocks). */
+  contractWho: WhoBlock[]
+  /** The rollback the step's operation earns, where the change is one that could be made. */
+  ifWrong: string | null
+  /** The email as the exports say it (stepExport.ts commsFor), where the step asks anybody to do anything. */
+  comms: { salutation: string; body: string; extra: string[]; signature: string } | null
+  onSkip: (r: string) => void
+  onUnskip: () => void
+  onDoesntApply?: (reason: string) => void
+  copy: (id: string, t: string) => void
+  copied: string | null
+  open?: boolean
+}) {
   const more = cs.more || {}
   const [asking, setAsking] = useState(false)
   const [reason, setReason] = useState('')
   const risks = (more.risks || []) as { text: string; applies?: string }[]
   const applies = risks.filter((r) => r.applies && truthy(ex[r.applies]))
   const rest = risks.filter((r) => !(r.applies && truthy(ex[r.applies])))
+  const commsText = comms ? [comms.salutation, comms.body, ...comms.extra, comms.signature].join('\n\n') : null
   return (
     <details className="more" open={open || undefined}>
-      <summary>More</summary>
+      <summary>{HEAD.more}</summary>
+      {/* The people behind the counts above: the same lines, with their names
+          under them. Nothing here is new evidence; it is the evidence the step
+          already stated, at the length it actually is. */}
+      <StepSection heading={HEAD.namesHeld} when={contractWho.length > 0}>
+        {contractWho.map((b) => (
+          <div key={b.key} className="names-group">
+            {b.lead && <p className="reason">{b.lead}</p>}
+            {b.names.length > 0 && <ol className="names">{b.names.map((nm, i) => <li key={i}>{nm}</li>)}</ol>}
+          </div>
+        ))}
+      </StepSection>
       {risks.length > 0 && (
         <>
-          <h3>What could go wrong</h3>
+          <h3>{HEAD.risks}</h3>
           {/* The items that apply here first, marked; the rest under Also possible.
               When none applies the rest stand under the heading, never an empty list. */}
           {applies.length > 0 && <ul className="sections">{applies.map((r, i) => <li key={i}><T s={r.text} ex={ex} /> <span className="chip">applies here</span></li>)}</ul>}
-          {rest.length > 0 && applies.length > 0 && <p className="sub">Also possible</p>}
+          {rest.length > 0 && applies.length > 0 && <p className="sub">{HEAD.alsoPossible}</p>}
           {rest.length > 0 && <ul className="sections">{rest.map((r, i) => <li key={i}><T s={r.text} ex={ex} /></li>)}</ul>}
+        </>
+      )}
+      {/* The rollback the step's operation earns, not the one its content was
+          written with: a created policy is set back to report-only or deleted,
+          a changed one has its settings put back (stepExport.ts ifWrongLineFor). */}
+      {ifWrong && whole(ifWrong, ex) && (
+        <>
+          <h3>{HEAD.ifWrong}</h3>
+          <p className="line"><T s={ifWrong} ex={ex} /></p>
+        </>
+      )}
+      {/* The recovery runbook the emergency-access step carries: what to do the
+          day a change locks somebody out. It is not the next action on any step,
+          and it is here whole rather than half of it above. */}
+      {cs.lockedOut && (
+        <>
+          <h3>{cs.lockedOut.label}</h3>
+          <ul className="sections">{(cs.lockedOut.steps || []).map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
+        </>
+      )}
+      {comms && commsText && (
+        <>
+          <h3>{HEAD.comms}</h3>
+          <div className="copy-box">
+            <Button variant="secondary" onClick={() => copy('comms', commsText)}>
+              {copied === 'comms' ? 'Copied' : 'Copy'}
+            </Button>
+            <p>{comms.salutation}</p>
+            <p>{comms.body}</p>
+            {comms.extra.map((l, i) => <p key={i}>{l}</p>)}
+            <p>{comms.signature}</p>
+          </div>
+          <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
       {Array.isArray(more.helpDesk) && (more.helpDesk as unknown[]).filter((x) => whole(x, ex)).length > 0 && (
         <>
-          <h3>For the help desk</h3>
+          <h3>{HEAD.helpDesk}</h3>
           <ul className="sections">{(more.helpDesk as unknown[]).filter((x) => whole(x, ex)).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
           <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
       {managerText(cs, ex as Record<string, unknown>) !== null && (
         <>
-          <h3>For your manager</h3>
+          <h3>{HEAD.manager}</h3>
           {/* The three sentences, and the clause the records earn (managerNone under its applies, E9). */}
           <p className="reason">{managerText(cs, ex as Record<string, unknown>)}</p>
           <p className="actions"><Button variant="secondary" onClick={() => copy('manager', managerText(cs, ex as Record<string, unknown>) ?? '')}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
