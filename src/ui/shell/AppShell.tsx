@@ -1,8 +1,9 @@
 // The shell (prompt 47 Part 3, target-state §2): one 48px header with a
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
-// signed in it adds the MFA Readiness, Plan and Export tabs (enabled once a scan
-// exists) and the Account menu. No scan control and no scan age in the header:
+// signed in it adds the five destination tabs — Connect, Plan, MFA Readiness,
+// Export, How, in that order (task 017); the three that read a scan are enabled
+// once one exists — and the Account menu. No scan control and no scan age in the header:
 // the scan runs from any page's own button (ui/actions.ts), Connect's tile 3
 // shows its progress, and every other page shows one line under the header
 // while it runs, pauses or fails. Connect alone shows the tenant and when it
@@ -109,6 +110,16 @@ const SHELL = app.shell
 const CONNECT = app.connect
 const SCAN_WORDS = (pages.connect as unknown as { scan: { scanning: { state: string; stop: string } } }).scan.scanning
 
+/**
+ * One header destination. A tab whose data cannot exist yet stays in the list
+ * and says so rather than disappearing: `aria-disabled` carries the state to a
+ * screen reader, the muted ink carries it to the eye, and it keeps its place in
+ * the tab order so a keyboard cannot walk past a destination it will have.
+ *
+ * The current page is marked twice over (task 017): `aria-current="page"` for a
+ * screen reader, and an accent underline under an otherwise-underline-free tab,
+ * so the state does not depend on telling the accent from the muted ink.
+ */
 function Tab({ href, active, enabled, children }: { href: string; active: boolean; enabled: boolean; children: ReactNode }) {
   if (!enabled) {
     return (
@@ -158,7 +169,7 @@ function AccountMenu({ account }: { account: AccountInfo }) {
           <Button variant="tertiary" role="menuitem" title={SHELL.forgetTooltip} onClick={() => run(forgetTenant())}>
             {SHELL.forget}
           </Button>
-          {error && <p className="quiet menu-error">{error}</p>}
+          {error && <p className="quiet menu-error" role="status">{error}</p>}
         </div>
       )}
     </div>
@@ -229,14 +240,25 @@ export function AppShell({
         </a>
         {signedIn && (
           <nav aria-label={SHELL.navLabel}>
-            <Tab href={READINESS_HREF} active={readinessActive} enabled={tabsOn}>
-              {SHELL.tabs.readiness}
+            {/* The settled hierarchy, in the product's own order (task 017):
+                Connect, the Plan, the readiness diagnostic behind it, Export,
+                then How. Connect and How hold no tenant data of their own, so
+                they work before the first scan and are never offered dead; the
+                three that read a scan wait for one. */}
+            <Tab href="#/connect" active={route === 'connect'} enabled>
+              {SHELL.tabs.connect}
             </Tab>
             <Tab href={PLAN_HREF} active={planActive} enabled={tabsOn}>
               {SHELL.tabs.plan}
             </Tab>
+            <Tab href={READINESS_HREF} active={readinessActive} enabled={tabsOn}>
+              {SHELL.tabs.readiness}
+            </Tab>
             <Tab href="#/export" active={exportActive} enabled={tabsOn}>
               {SHELL.tabs.export}
+            </Tab>
+            <Tab href="#/how" active={route === 'how'} enabled>
+              {SHELL.tabs.how}
             </Tab>
           </nav>
         )}

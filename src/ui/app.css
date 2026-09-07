@@ -92,6 +92,16 @@ a:hover,
   outline: none;
   box-shadow: var(--focus-ring);
 }
+/* Windows High Contrast and every other forced-colours mode drops box-shadow,
+   which would leave the ring — the one focus indicator this interface has —
+   invisible. An outline survives, and forced-colours paints it in the system
+   highlight colour (task 017). */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid;
+    outline-offset: 1px;
+  }
+}
 ::selection {
   background: var(--accent);
   color: var(--on-accent);
@@ -290,11 +300,20 @@ td:last-child {
 }
 .datatable-footer {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   align-items: center;
   padding: 8px 0;
   color: var(--ink-2);
   font-size: var(--t-2);
+}
+/* A sortable column header is a button inside the th, so it inherits the
+   header's type rather than the browser's (task 017). */
+th .th-sort {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ================= details ================= */
@@ -382,8 +401,12 @@ details > *:not(summary) {
   gap: 20px;
   border-bottom: 1px solid var(--rule);
   background: transparent;
-  padding: 0;
-  margin: 0 0 16px;
+  /* The strip scrolls sideways when the labels do not fit, and a scroll box
+     clips at its padding edge — including the 2px focus ring on the first and
+     last tab. The inline padding is the room the ring needs; the negative
+     margin puts the strip back where it was (task 017). */
+  padding: 0 2px;
+  margin: 0 -2px 16px;
   position: static;
   overflow-x: auto;
 }
@@ -524,7 +547,8 @@ header.app .tenant {
 }
 header.app nav {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 0 20px;
 }
 header.app nav a {
   color: var(--ink-2);
@@ -536,8 +560,11 @@ header.app nav a.active {
   color: var(--ink);
   border-bottom-color: var(--accent);
 }
+/* A tab waiting on the first scan looks like the disabled controls elsewhere
+   (.btn:disabled): ink-3 and no pointer, so "not yet" is visible and not only
+   in `aria-disabled` (task 017). */
 header.app nav a[aria-disabled='true'] {
-  color: var(--ink-2);
+  color: var(--ink-3);
   cursor: default;
 }
 header.app .right {
@@ -1228,7 +1255,9 @@ footer.app a {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
+  /* The label and its control wrap rather than widen the page; the labels keep
+     their own `white-space: nowrap` so neither breaks mid-word (task 017). */
+  flex-wrap: wrap;
   padding: 10px 0;
 }
 .plan-start .rows > * {
@@ -1250,7 +1279,7 @@ footer.app a {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   border-bottom: 1px solid var(--rule);
   padding: 10px 0;
 }
@@ -1319,7 +1348,9 @@ footer.app a {
 /* ================= export cards (prompt 49) ================= */
 .export-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  /* min() keeps the track from being wider than the column it sits in: a fixed
+     20rem minimum overflowed the page on a phone (task 017). */
+  grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
   gap: 16px;
   margin-top: 16px;
 }
@@ -1622,9 +1653,18 @@ td .not-person {
   font-size: var(--t-2);
   color: var(--ink-3);
 }
+/* A pressed filter carries `aria-pressed` for a screen reader and a check mark
+   for anyone who cannot separate the accent from the hairline: the state is
+   never the colour alone (task 017). */
 .surface .toolbar .btn[aria-pressed='true'] {
   border-color: var(--accent);
   color: var(--accent);
+}
+.surface .toolbar .btn[aria-pressed='true']::before {
+  content: '\2713';
+}
+.group-tile.on .group-title::before {
+  content: '\2713';
 }
 
 /* ================= MFA Readiness (task 012) ================= */
@@ -1720,5 +1760,11 @@ td .group-word {
 @media (max-width: 640px) {
   .group-counts {
     grid-template-columns: 1fr;
+  }
+  /* The 7.5rem status column aligns the dots down a wide page; on a narrow one
+     it is a fixed track a long status word overflows, so it gives way to the
+     word (task 017). */
+  .plan-row-main .status {
+    flex: 0 0 auto;
   }
 }

@@ -7,6 +7,14 @@ import { COMPONENTS } from '../../copy/components.ts'
 // measures. Keyboard: focus + Enter/Space toggles, Esc closes. The tip renders
 // in a portal at the top layer, positioned from the button's rectangle, and
 // flips or shifts so it is never clipped.
+//
+// Touch (task 017): a tap fires focus *and* click, and a click that toggled
+// whatever focus had just done closed the tip in the same gesture that opened
+// it — the tip was mouse-and-keyboard only. So a press decides from the state
+// the tip was in before the gesture began, which a pointerdown records; a
+// keyboard activation has no pointerdown before it (`detail === 0`) and keeps
+// toggling. And while it is open the button is described by it, so the text is
+// announced rather than only drawn.
 const GAP = 6
 const MARGIN = 8
 
@@ -30,6 +38,8 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
   const ref = useRef<HTMLSpanElement>(null)
   const popRef = useRef<HTMLSpanElement>(null)
   const closeTimer = useRef<number | null>(null)
+  /** Whether the tip was open when the current pointer gesture began. */
+  const openBeforePress = useRef(false)
   const id = useId()
   const cancelClose = () => {
     if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
@@ -109,11 +119,16 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
         aria-label={COMPONENTS.infoTip.about(title)}
         aria-expanded={open}
         aria-controls={id}
+        aria-describedby={open ? id : undefined}
         onFocus={openNow}
         onBlur={closeSoon}
+        onPointerDown={() => {
+          openBeforePress.current = open
+        }}
         onClick={(e) => {
           e.stopPropagation()
-          setOpen((o) => !o)
+          if (e.detail === 0) setOpen((o) => !o)
+          else setOpen(!openBeforePress.current)
         }}
       >
         <span aria-hidden="true">i</span>

@@ -234,7 +234,10 @@ const extractIn = (rootExpr, excludeSel = '') => `(() => {
   // the surface's allow lists (page-contracts.json $comment).
   const repSelAll = REPEATERS.length > 0 ? REPEATERS.join(', ') : null
   const inRepeater = (e) => repSelAll !== null && e.closest(repSelAll) !== null && !e.matches(repSelAll)
-  const allButtons = [...root.querySelectorAll('button, a.btn, a.button-like, [role=button]')].filter(vis).filter((e) => !e.classList.contains('infotip-btn') && !isTab(e) && e.tagName !== 'TH')
+  // A column's sort control is part of its header, not a button on the page: it
+  // used to be the th itself carrying role=button, and since task 017 it is a
+  // real button inside the th, which is the same thing to this capture.
+  const allButtons = [...root.querySelectorAll('button, a.btn, a.button-like, [role=button]')].filter(vis).filter((e) => !e.classList.contains('infotip-btn') && !isTab(e) && e.tagName !== 'TH' && e.closest('th') === null)
   const buttons = uniq(allButtons.filter((e) => !e.closest('.setup-question, .workload-card, .picker, .decision') && !inRepeater(e)).map(txt))
   const links = uniq([...root.querySelectorAll('a[href]')].filter(vis).filter((e) => !e.classList.contains('btn') && !isTab(e) && !inRepeater(e)).map(txt))
   const chips = uniq([...root.querySelectorAll('.chip')].filter(vis).filter((e) => !inRepeater(e) && !e.closest('.picker')).map(txt))

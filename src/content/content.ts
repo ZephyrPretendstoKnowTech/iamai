@@ -72,7 +72,7 @@ export const planner = (content.pages.app.shell as { product: { name: string; de
 
 /** The words the app chrome and the surfaces show (pages.app): the header, the scan progress, the print cover, the export alerts. */
 export type AppWords = {
-  shell: Record<string, string> & { tabs: { readiness: string; plan: string; export: string } }
+  shell: Record<string, string> & { tabs: { connect: string; plan: string; readiness: string; export: string; how: string } }
   /** The error page (components/ErrorBoundary.tsx): the lead, what is intact, the three buttons and where to send the diagnostics. */
   error: { title: string; lead: string; body: string; reload: string; diagnostics: string; startOver: string; send: string; detail: string }
   scan: { reading: string; found: string; signInsBar: string; signInsBarCovered: string; evidenceStatus: Record<string, string>; sections: Record<string, string> }

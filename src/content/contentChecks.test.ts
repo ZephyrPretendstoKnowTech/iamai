@@ -41,10 +41,13 @@ test('the content authorities the walk reads still resolve', () => {
   assert.deepEqual(missing, [], `content keys the walk reads have moved: ${missing.join(', ')}`)
 })
 
-test('the header names its three tabs', () => {
+test('the header names the five destinations, the plan before the readiness diagnostic', () => {
   const tabs = headerTabsLine().split(' · ')
-  assert.equal(tabs.length, 3, `the header line reads "${headerTabsLine()}"`)
+  assert.deepEqual(tabs, ['Connect', 'Plan', 'MFA Readiness', 'Export', 'How'], `the header line reads "${headerTabsLine()}"`)
   assert.ok(!tabs.some((t) => !t || t === 'undefined'), `the header line reads "${headerTabsLine()}"`)
+  // The plan is the destination after a scan and MFA Readiness reads the people
+  // it waits on, so the header cannot put the diagnostic in front of it (task 017).
+  assert.ok(tabs.indexOf('Plan') < tabs.indexOf('MFA Readiness'), 'the header lists MFA Readiness before the Plan')
   // Today was replaced by MFA Readiness (task 012); the walk must not be able to
   // hold a name the header has stopped using.
   assert.ok(!tabs.includes('Today'), 'the header still names the retired Today tab')

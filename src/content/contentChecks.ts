@@ -40,9 +40,11 @@ export function textAt(path: string): string {
  */
 export const AUTHORITIES = [
   // The three header tabs, in order (ui/shell/AppShell.tsx).
-  'pages.app.shell.tabs.readiness',
+  'pages.app.shell.tabs.connect',
   'pages.app.shell.tabs.plan',
+  'pages.app.shell.tabs.readiness',
   'pages.app.shell.tabs.export',
+  'pages.app.shell.tabs.how',
   // The ladder's five rung titles: a person's badge and Connect's Plan tile.
   'pages.ladder.rungs.r5.title',
   'pages.ladder.rungs.r4.title',
@@ -90,9 +92,19 @@ export const RE = {
   readinessUnknown: /could not be read for (\d+) active people/,
 }
 
-/** The header tabs as the walk reads them off `header.app nav a`, in order. */
+/**
+ * The header tabs as the walk reads them off `header.app nav a`, in order.
+ *
+ * The order is the product's own (task 017): Connect, then the Plan, then the
+ * MFA Readiness diagnostic behind it, then Export, then How. The plan is the
+ * destination after a scan and the readiness surface reads the people it waits
+ * on, so the plan is named first; a header that listed readiness first would
+ * put the diagnostic in front of the thing it serves.
+ */
+export const HEADER_TAB_KEYS = ['connect', 'plan', 'readiness', 'export', 'how'] as const
+
 export function headerTabsLine(): string {
-  return ['readiness', 'plan', 'export'].map((k) => textAt(`pages.app.shell.tabs.${k}`)).join(' · ')
+  return HEADER_TAB_KEYS.map((k) => textAt(`pages.app.shell.tabs.${k}`)).join(' · ')
 }
 
 /** The ladder's rung titles, top rung first (derive/ladder.ts RUNGS through pages.ladder). */
@@ -174,7 +186,7 @@ export function staticFindings(): Finding[] {
 
   // The header names three tabs and no more; a renamed key would read "undefined".
   const tabs = headerTabsLine()
-  if (tabs.split(' · ').filter(Boolean).length !== 3) add(`content pages.app.shell.tabs: the header line reads "${tabs}"; three tabs are named`)
+  if (tabs.split(' · ').filter(Boolean).length !== HEADER_TAB_KEYS.length) add(`content pages.app.shell.tabs: the header line reads "${tabs}"; ${HEADER_TAB_KEYS.length} tabs are named`)
 
   // The ladder gives five rung titles, all distinct.
   const rungs = rungTitles()

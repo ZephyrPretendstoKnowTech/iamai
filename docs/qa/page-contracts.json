@@ -42,9 +42,11 @@
       "allow": {
         "headings": [],
         "tabs": [
-          "MFA Readiness",
+          "Connect",
           "Plan",
-          "Export"
+          "MFA Readiness",
+          "Export",
+          "How"
         ],
         "tiles": [],
         "columns": [],

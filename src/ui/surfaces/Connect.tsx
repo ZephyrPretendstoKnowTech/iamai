@@ -58,6 +58,8 @@ import { usePlanData } from './planData.ts'
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
+/** The baseline choices tile 2 opens in place; its button names it. */
+const BASELINE_CHOICES_ID = 'baseline-choices'
 
 type BaselineProps = {
   baseline: BaselineResult | null
@@ -419,7 +421,7 @@ function SignedIn({
           <Act action={t1.actions[0]} onClick={() => tile1.run(signInAnother())} />
           <Act action={t1.actions[1]} onClick={() => tile1.run(signOut())} />
         </div>
-        {tile1.error && <p className="quiet">{tile1.error}</p>}
+        {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
       </Tile>
       <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} />
       <ScanTileView
@@ -429,8 +431,8 @@ function SignedIn({
         bar={t3.kind === 'scanning' ? <ScanBar scan={runner} /> : null}
         actions={
           <>
-            {!scanning && runner.state === 'failed' && runner.error && <p className="quiet">{fillText(C.failed, { why: runner.error })}</p>}
-            {tile3.error && <p className="quiet">{tile3.error}</p>}
+            {!scanning && runner.state === 'failed' && runner.error && <p className="quiet" role="status">{fillText(C.failed, { why: runner.error })}</p>}
+            {tile3.error && <p className="quiet" role="status">{tile3.error}</p>}
             <div className="actions">{scanActions()}</div>
           </>
         }
@@ -535,8 +537,8 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
       {t2.paragraphs.map((text) => (
         <p key={text}>{text}</p>
       ))}
-      {error && <p className="quiet">{fillText(C.baselineFailed, { why: error })}</p>}
-      {!error && !baseline && restoreError && <p className="quiet">{C.restoreFailed}</p>}
+      {error && <p className="quiet" role="status">{fillText(C.baselineFailed, { why: error })}</p>}
+      {!error && !baseline && restoreError && <p className="quiet" role="status">{C.restoreFailed}</p>}
       {t2.update && (
         <details>
           <summary>{t2.update.summary}</summary>
@@ -560,13 +562,13 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
       {!busy && (
         <div className="actions">
           {/* Held while a scan runs: the baseline it reads against must not change under it. */}
-          <Button variant="secondary" aria-expanded={open} disabled={locked} onClick={() => setOpen((o) => !o)}>
+          <Button variant="secondary" aria-expanded={open} aria-controls={BASELINE_CHOICES_ID} disabled={locked} onClick={() => setOpen((o) => !o)}>
             {t2.actions[0].label}
           </Button>
         </div>
       )}
       {open && !locked && (
-        <div className="picker" role="group" aria-label={C.pickerLabel}>
+        <div className="picker" id={BASELINE_CHOICES_ID} role="group" aria-label={C.pickerLabel}>
           <Button
             variant="secondary"
             onClick={() => {
