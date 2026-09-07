@@ -119,6 +119,9 @@ const evaluate = async (expr) => {
   if (r.result.exceptionDetails) throw new Error(r.result.exceptionDetails.exception?.description ?? 'evaluate failed')
   return r.result.result.value
 }
+// The How page has drawn when its last section is on screen (the checks
+// registry and the limits below it), not when the shell has painted.
+const HOW_DRAWN = `/Every check IAMAI runs/.test(document.body.innerText) && /Field practice/.test(document.body.innerText)`
 const go = async (hash) => {
   await send('Page.navigate', { url: `${BASE}#/${hash}` })
   await sleep(900)
@@ -270,6 +273,10 @@ try {
   check('Inventory: the page uses the 1040px table column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))
   check('Inventory: the header row is a hairline, not a band', (await evaluate(`getComputedStyle(document.querySelector('main.page table.datatable th')).backgroundColor`)) === 'rgba(0, 0, 0, 0)')
   await go('how')
+  // How is a lazy chunk behind the shell's ready gate, so the page is read when
+  // its last section is on screen, never on a fixed sleep: a slower machine
+  // would otherwise be asked what the loading line says.
+  await waitFor(HOW_DRAWN)
   t = await text()
   check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check IAMAI runs/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
   check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
@@ -466,6 +473,7 @@ try {
 
   // The rule registry renders itself (validation-rules.md 5).
   await go('checks')
+  await waitFor(HOW_DRAWN)
   t = await text()
   check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
   check('Checks: the severities render', /Must fix/.test(t) && /Recommended/.test(t) && /Note/.test(t))
