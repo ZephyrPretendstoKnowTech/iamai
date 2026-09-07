@@ -48,6 +48,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # Which commit these links were read from, so a dead link can be traced to
+      # the content that cited it.
+      - name: Commit under test
+        run: |
+          echo "checked out : $(git rev-parse HEAD)"
+          echo "github.sha  : ${{ github.sha }}"
+          echo "subject     : $(git log -1 --pretty=%s)"
       - run: npm ci
 
       # Every Learn URL in content.json answers 2xx. The test still skips itself

@@ -46,6 +46,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # The walk names its report by short SHA; this is the same commit in full,
+      # so a report filename can be tied to a commit without guessing.
+      - name: Commit under test
+        run: |
+          echo "checked out : $(git rev-parse HEAD)"
+          echo "short       : $(git rev-parse --short=7 HEAD)"
+          echo "github.sha  : ${{ github.sha }}"
+          echo "ref         : ${{ github.ref }}"
+          echo "subject     : $(git log -1 --pretty=%s)"
       - run: npm ci
       # ubuntu-latest ships Google Chrome; the script finds it on its own.
       - run: npm run walk
@@ -73,6 +82,24 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: main/package-lock.json
+      # What is actually being published, which is not always what was pushed:
+      # the root is always main, whichever branch triggered the run. Printing
+      # both is the difference between "my push deployed" and "my push ran the
+      # walk and main deployed".
+      - name: Commit being published
+        working-directory: main
+        run: |
+          {
+            echo "publishing main : $(git rev-parse HEAD)  ($(git log -1 --pretty=%s))"
+            echo "pushed ref      : ${{ github.ref }}"
+            echo "pushed SHA      : ${{ github.sha }}"
+          } | tee "$RUNNER_TEMP/published.txt"
+          {
+            echo "### deploy-pages — what is being published"
+            echo '```'
+            cat "$RUNNER_TEMP/published.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - run: npm ci
         working-directory: main
       # Deterministic only: EXTERNAL_HEALTH is unset, so the Learn-link probe
