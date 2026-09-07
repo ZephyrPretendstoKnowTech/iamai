@@ -2,7 +2,7 @@
 // subject; and the registry regression test that makes dropping a rule fail the
 // build (validation-rules.md §6).
 import { test } from 'node:test'
-import { hasBaselineConflict } from '../roadmap/baselineConflict.ts'
+import { inBaselineConflict } from '../roadmap/baselineConflict.ts'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
@@ -601,7 +601,7 @@ test('with an emergency-access blocker, no step that can deny access is Ready', 
     // reason it shows is the baseline's: nothing in the tenant can clear that,
     // so naming a prerequisite there would read as the operator's fault
     // (roadmap/baselineConflict.ts, stateReason.ts).
-    if (hasBaselineConflict(s.goalId)) continue
+    if (inBaselineConflict(s)) continue
     // The row shows the binding reason, and both foundations hold these steps:
     // where the exclusions group is also unusable its own step is the nearer
     // next action and is the one named. Either way the reason is a foundation

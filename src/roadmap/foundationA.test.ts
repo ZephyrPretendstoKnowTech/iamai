@@ -55,7 +55,7 @@ function grantOfStepForTest(step: Step): 'mfa' | 'phishingResistant' | 'block' |
 }
 import { reached, stepPopulation } from '../derive/population.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
-import { hasBaselineConflict } from './baselineConflict.ts'
+import { inBaselineConflict } from './baselineConflict.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepLines } from '../ui/surfaces/stepExport.ts'
@@ -787,7 +787,7 @@ test('the goal a step is filed under decides none of its consequences either', (
     for (const s of openPolicies(r.steps)) {
       // A goal whose own baseline contradicts itself is unavailable *because* of
       // the goal, which is a decision about the baseline rather than the policy.
-      if (hasBaselineConflict(s.goalId)) continue
+      if (inBaselineConflict(s)) continue
       const anyone = r.viability[0]?.userId ?? 'nobody'
       const consequences = (step: Step): string =>
         JSON.stringify([
@@ -804,7 +804,9 @@ test('the goal a step is filed under decides none of its consequences either', (
         ])
       const asGenerated = consequences(s)
       for (const goalId of ['mfa-all-users', 'block-legacy-auth', 'geo-restriction', 'admins-phishing-resistant', 'a-goal-nobody-has-heard-of']) {
-        if (hasBaselineConflict(goalId)) continue
+        // No exemption for a conflicted goal id any more: the conflict is a
+        // reading of the source policy recorded on the step (baselineConflict.ts),
+        // so re-filing a step under any goal id moves nothing here either.
         const moved = consequences({ ...s, goalId })
         if (moved !== asGenerated) failures.push(`${f.name} ${s.id}: filing it under ${goalId} moved the reading\n  was ${asGenerated}\n  now ${moved}`)
       }

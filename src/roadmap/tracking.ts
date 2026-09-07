@@ -21,7 +21,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
-import { hasBaselineConflict } from './baselineConflict.ts'
+import { inBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { effectOf } from './operations.ts'
@@ -881,7 +881,7 @@ export function trackExecution(
     // would silently pick that side and report the goal delivered. Generation
     // already withdrew the claim (roadmap/generate.ts); this is the same rule at
     // the one place a later scan could put it back.
-    if (hasBaselineConflict(step.goalId)) continue
+    if (inBaselineConflict(step)) continue
 
     const lifecycle = aggregateLifecycle(memberTracking, observed)
     advanceState(step, { lifecycle: lifecycle === 'ready-to-enforce' ? 'report-only' : lifecycle })

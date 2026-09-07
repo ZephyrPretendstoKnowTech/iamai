@@ -6,7 +6,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
-import { hasBaselineConflict, RETIRED_DECISION_STEPS } from './baselineConflict.ts'
+import { inBaselineConflict, RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import { applyStepDecisions, DECISION_STEPS } from './decisions.ts'
 import { decisionsOf } from './progress.ts'
 import type { StepDecision } from './decisions.ts'
@@ -97,7 +97,7 @@ test('a historical admins-group decision has no applied, visible or exported eff
 
 test('the step states the baseline conflict and gives no implementation', () => {
   const { step, cs, ctx, ex } = run()
-  assert.equal(hasBaselineConflict(GOAL), true, 'the goal is known to be conflicted')
+  assert.equal(inBaselineConflict(step), true, 'the generated step carries the conflict')
 
   // The explanation is the content file's, and it names the baseline as the cause.
   const words = cs.baselineConflict

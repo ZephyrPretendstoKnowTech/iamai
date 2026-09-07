@@ -116,7 +116,10 @@ test('the three non-implementable reasons are named, and each stops the same thi
   const unmatched = stepWith([CREATE], null)
   unmatched.action.unmatchedPair = true
   assert.equal(unavailableReason(unmatched), 'unmatched-pair')
-  const conflicted = { ...stepWith([CREATE], null), goalId: 'admin-portals-protected' } as Step
+  // A step whose own baseline source contradicts itself. Generation records that
+  // reading on the step (roadmap/baselineConflict.ts) rather than on the goal id,
+  // so this is what one looks like whatever goal it is filed under.
+  const conflicted = { ...stepWith([CREATE], null), ...stateFields({ condition: 'baseline-conflict' }) } as Step
   assert.equal(unavailableReason(conflicted), 'baseline-conflict')
   for (const s of [missing, unmatched, conflicted]) {
     assert.equal(implementationOffered(s), false, `${unavailableReason(s)}: no implementation`)
@@ -591,7 +594,7 @@ test('a remapped strength with no authoritative name shows neither the author’
 test('done, in place, contradicted and broken are four different answers', () => {
   const done = { ...stepWith([], null), status: 'done' } as unknown as Step
   assert.deepEqual(policyResult(done), { kind: 'preserved' })
-  const doneConflicted = { ...stepWith([], null), status: 'done', goalId: 'admin-portals-protected' } as unknown as Step
+  const doneConflicted = { ...stepWith([], null), ...stateFields({ satisfied: true, inPlace: true, condition: 'baseline-conflict' }), status: 'done' } as unknown as Step
   assert.deepEqual(policyResult(doneConflicted), { kind: 'unavailable', reason: 'baseline-conflict' }, 'being in place does not settle a contradiction')
   assert.equal(isPreserved(doneConflicted), false)
   const doneMissing = { ...stepWith([], null), status: 'done' } as unknown as Step

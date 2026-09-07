@@ -3,7 +3,7 @@
 // baseline policy would, and every placeholder either resolves from the
 // assumptions or names the Wave 0 step that creates the missing object.
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
-import { hasBaselineConflict } from './baselineConflict.ts'
+import { inBaselineConflict } from './baselineConflict.ts'
 import { test } from 'node:test'
 import { PINNED_GOAL_MAP, goalInMap } from './goalMap.ts'
 import { isFloorGoal } from './floor.ts'
@@ -83,10 +83,10 @@ test('item 12: with no baseline at all, every create step still carries a body, 
   const r = runFixture({ ...f, baseline: { ...f.baseline, policies: [], docs: [] } })
   // A goal whose baseline contradicts itself carries no body on purpose
   // (roadmap/baselineConflict.ts): asserted here so the exception is not a gap.
-  const conflicted = r.steps.filter((s) => hasBaselineConflict(s.goalId))
+  const conflicted = r.steps.filter((s) => inBaselineConflict(s))
   assert.ok(conflicted.length > 0, 'the conflicted goal is in the plan')
   for (const s of conflicted) assert.equal(s.action.json, null, `${s.id}: a conflicted baseline offers no body`)
-  const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done' && !hasBaselineConflict(s.goalId))
+  const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done' && !inBaselineConflict(s))
   // The plan holds the pinned map's goals (walk-51 item 9): every create step is
   // one of them, and every held goal small does not enforce gets one.
   assert.ok(creates.length >= 8, `expected a create step per held goal small lacks, got ${creates.length}`)
