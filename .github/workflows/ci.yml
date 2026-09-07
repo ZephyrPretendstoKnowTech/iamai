@@ -1,5 +1,14 @@
-# Regression net for every prompt (prompt 20 §10): unit tests, the build, and
-# the headless first-run smoke test against the synthetic tenant.
+# Regression net for every prompt (prompt 20 §10): the typecheck, unit tests, the
+# build, and the headless first-run smoke test against the synthetic tenant.
+#
+# Everything here is deterministic: it runs against this checkout, the synthetic
+# tenant and localhost, so a red `ci` means IAMAI itself probably has a defect.
+# Checks that can only pass when a third party answers — Microsoft Learn serving
+# every link the content cites, login.microsoftonline.com serving the authority
+# metadata — are not here. They live in external-health.yml, which is not a
+# required check, so an outage on someone else's estate cannot redden this one.
+# The one network call this job does make is `npm ci` against the npm registry,
+# which is how the code gets here at all.
 name: ci
 
 on:
@@ -20,9 +29,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # The types are the first deterministic thing that can be wrong, and were
+      # the one check CI never ran: sessions run `npx tsc --noEmit` (CLAUDE.md)
+      # but nothing enforced it on push.
+      - run: npx tsc --noEmit
       - run: npm test
       - run: npm run build:site
       # ubuntu-latest ships Google Chrome; the scripts find it on their own.
+      # EXTERNAL_HEALTH is unset, so the one smoke check that needs Microsoft's
+      # login authority to answer is printed as skipped rather than asserted.
       - run: npm run smoke
         env:
           CHROME: /usr/bin/google-chrome

@@ -1,6 +1,14 @@
 // Every Learn link the content carries opens a page (step-audit.md C2). A
 // network test: it fetches each URL and fails on anything but a 2xx; offline,
 // where the first probe cannot reach Microsoft Learn at all, it is skipped.
+//
+// It answers a question about Microsoft Learn, not about IAMAI: a page Microsoft
+// moved, a 429 from a shared runner address or a Learn outage would redden a
+// check that is supposed to mean "IAMAI has a defect". So it runs only under
+// EXTERNAL_HEALTH=1, which .github/workflows/external-health.yml sets, and skips
+// (visibly, never silently) everywhere else. The two tests below it are pure
+// content checks and always run: a step that carries no Learn link at all is
+// IAMAI's own defect and stays in the core suite.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { content } from './content.ts'
@@ -23,7 +31,11 @@ async function status(href: string): Promise<number | null> {
   }
 }
 
-test('every Learn link answers 2xx (network; skipped offline)', async (t) => {
+test('every Learn link answers 2xx (external health; skipped unless EXTERNAL_HEALTH=1)', async (t) => {
+  if (process.env.EXTERNAL_HEALTH !== '1') {
+    t.skip('external health: set EXTERNAL_HEALTH=1 (external-health.yml) to probe Microsoft Learn')
+    return
+  }
   if ((await status('https://learn.microsoft.com/')) === null) {
     t.skip('offline: Microsoft Learn is not reachable from here')
     return

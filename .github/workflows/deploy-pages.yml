@@ -75,6 +75,9 @@ jobs:
           cache-dependency-path: main/package-lock.json
       - run: npm ci
         working-directory: main
+      # Deterministic only: EXTERNAL_HEALTH is unset, so the Learn-link probe
+      # skips itself here. A Microsoft Learn outage used to be able to fail this
+      # step and block the deploy of a site that was perfectly good.
       - run: npm test
         working-directory: main
       - run: npm run build:site
