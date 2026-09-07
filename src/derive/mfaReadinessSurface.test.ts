@@ -295,6 +295,31 @@ test('the handoff link carries the step and nothing about the people', () => {
   assert.match(handoff, /readinessStepHref\(step\.id\)/, 'the Plan links by step id')
 })
 
+test('an unknown reach keeps the step it came from, and never becomes a tenant-wide filter', () => {
+  const f = fixture('hostile')
+  const run = runFixture(f)
+  const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+  const unknown = run.steps.filter((step) => stepMfaHold(step, scored)?.ids === null)
+  assert.ok(unknown.length > 0, 'the hostile tenant holds MFA steps on readiness it could not measure')
+  for (const step of unknown) {
+    // The same destination a measured hold gets: the page resolves the step,
+    // says the reach is unknown and shows the table unfiltered.
+    const href = readinessStepHref(step.id)
+    assert.equal(stepFromReadinessHash(href), step.id, `${step.id}: the link names the step it came from`)
+    assert.equal(showFromReadinessHash(href), null, `${step.id}: unknown reach is not a Show filter`)
+    assert.notEqual(href, readinessHref('needsAction'), `${step.id}: and not the tenant-wide needs-action population`)
+  }
+  // One destination in the handoff, taken on both branches: the unknown line
+  // differs in its words, never in where it goes.
+  const handoff = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')
+  assert.doesNotMatch(handoff, /readinessHref/, 'the handoff has no second destination')
+  assert.equal(handoff.match(/href=\{readinessStepHref\(step\.id\)\}/g)?.length, 1, 'and the one it has is the step route')
+  // And the page it lands on has the unknown state to render.
+  const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
+  assert.match(page, /context\.ids === null \? fillText\(T\.planContext\.unknown/, 'the step-scoped page says the reach is unknown')
+  assert.match(page, /T\.planContext\.back/, 'and offers the way back to the step')
+})
+
 // ---- G. one surface ------------------------------------------------------------
 
 test('there is one MFA Readiness surface, and the old Today route reaches it', () => {

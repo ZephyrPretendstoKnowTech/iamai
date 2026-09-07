@@ -12,7 +12,10 @@
 // becomes a second source of truth about who is affected.
 //
 // Where the scan could not measure the family's readiness the line says so and
-// the link opens the page unfiltered: an unknown reach is never a list of nobody.
+// the link still carries the step: MFA Readiness names the step it came from,
+// says the reach is unknown, leaves the table unfiltered and offers the way
+// back. An unknown reach is never a list of nobody, and never a tenant-wide
+// filter standing in for one.
 // Task 014 owns the setup guidance, so there is nothing here about how to
 // register a passkey.
 import { useMemo } from 'react'
@@ -23,7 +26,7 @@ import { scoredPeople } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { readinessHref, readinessStepHref } from '../shell/routes.ts'
+import { readinessStepHref } from '../shell/routes.ts'
 
 const P = app.plan
 
@@ -37,7 +40,7 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
   return (
     <p className="line mfa-handoff">
       {n === null ? P.mfaReadinessHoldUnknown : fillText(P.mfaReadinessHold, { n })}{' '}
-      <a className="no-print" href={n === null ? readinessHref('needsAction') : readinessStepHref(step.id)}>
+      <a className="no-print" href={readinessStepHref(step.id)}>
         {n === null ? P.mfaReadinessLinkUnknown : P.mfaReadinessLink}
       </a>
     </p>
