@@ -4,6 +4,7 @@
 import { awaitingDeployment, enforcementUnearned } from './forecast.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { unavailableReason } from './operations.ts'
+import { heldForReview } from './lifecycle.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
 function icsDate(iso: string): string {
@@ -53,8 +54,15 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // enforcement wave of a window that has not closed — and whose evidence has
     // not been collected — in a person's calendar as the day the change lands.
     const reviewing = !deploying && enforcementUnearned(s) ? readyWhen(s) : null
-    const start = planned === null ? null : deploying ? (s.reportOnlyAt ?? null) : reviewing ? reviewing.date : planned
-    const end = start === null ? null : deploying || reviewing ? start : (s.rings.at(-1)?.plannedEnd ?? start)
+    // A policy held for review is due a look now, not on the day its window
+    // would have closed: that window was counted on a policy that is not the one
+    // deployed today, and booking the entry on it would tell a person there is
+    // nothing to do until then. Its day is the day IAMAI saw the change
+    // (Foundation B, roadmap/lifecycle.ts heldForReview).
+    const held = heldForReview(s) ? (s.state.observation?.latest.firstSeenAt ?? null) : null
+    const start = planned === null ? null : held ? held : deploying ? (s.reportOnlyAt ?? null) : reviewing ? reviewing.date : planned
+    const single = deploying || reviewing !== null || held !== null
+    const end = start === null ? null : single ? start : (s.rings.at(-1)?.plannedEnd ?? start)
     if (!start || !end) continue
     const endExclusive = new Date(Date.parse(end) + 86_400_000).toISOString()
     lines.push('BEGIN:VEVENT')

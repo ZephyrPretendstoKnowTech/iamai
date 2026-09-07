@@ -21,6 +21,7 @@ import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { heldForReview } from '../../roadmap/lifecycle.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 
@@ -62,6 +63,10 @@ const SHARED = content.shared as unknown as { commsForecastNote: string }
  */
 export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
   if (awaitingDeployment(step)) return '{datesDeploy}'
+  // A policy held for review dates no review either: the window's own date says
+  // when the *watching* would have been enough, and it was not counted on the
+  // policy that is deployed now (roadmap/lifecycle.ts heldForReview).
+  if (heldForReview(step)) return '{datesReview}'
   if (enforcementUnearned(step)) return '{datesObserve}'
   if (createsNewPolicy(step)) return '{datesNew}'
   if (step.kind === 'adjust') return '{datesChange}'
@@ -145,17 +150,25 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   // this the calendar entry, the prompt pack and the bundle began at the portal
   // path with the operation itself never said. Read from the frozen Step
   // Contract, not decided again here.
-  if (reason === null) {
-    const action = stepContract(step, ctx).whatToDo.text
+  const contract = reason === null ? stepContract(step, ctx) : null
+  if (contract) {
+    const action = contract.whatToDo.text
     if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   }
   // Nothing that implies the policy can be rolled out while it cannot be written:
   // no completion criteria, no rollback, no dates.
-  const doneWhen = reason !== null
+  const own = reason !== null
     ? []
     : doneWhenTemplates(step, (cs.doneWhen ?? []) as unknown[])
         .filter((x) => whole(x, ex))
         .map((x) => fillText(x, ex))
+  // The step's own gates, and the completion the contract adds in front of them
+  // where it has one: a policy held for review finishes on the change being
+  // accounted for as well as on its window and its records, and an artifact
+  // listing the gates alone would say the waiting is all that is left. The
+  // contract is read, not repeated — where it adds nothing this is `own`
+  // unchanged.
+  const doneWhen = contract && own.length > 0 ? contract.doneWhen : own
   return {
     title: String(cs.title),
     why: fillText(cs.why, ex),

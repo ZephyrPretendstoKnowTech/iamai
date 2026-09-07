@@ -17,7 +17,7 @@ import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
 import { undatedRows } from './planRows.ts'
-import { planFinish, heldByReadiness } from '../../derive/finish.ts'
+import { planFinish } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -27,7 +27,7 @@ import { LadderTiles } from './LadderTiles.tsx'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { statusOf } from './statusWord.ts'
-import { rowWhen } from './rowWhen.ts'
+import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
@@ -303,8 +303,8 @@ function Row({ step, isNext, waveStart, open, onToggle, schedule, tenantName, na
         title={contentTitle(step)}
         who={rowWho(step, nameOf)}
         when={rowWhen(step, waveStart)}
-        whenReason={heldByReadiness(step)}
-        reason={step.status === 'blocked' && step.blockedReason && !heldByReadiness(step) ? step.blockedReason : null}
+        whenReason={rowWhenWraps(step)}
+        reason={rowReason(step)}
         nextLabel={isNext ? PP.next : null}
         open={open}
         onToggle={onToggle}
