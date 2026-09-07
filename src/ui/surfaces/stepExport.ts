@@ -21,6 +21,7 @@ import { stepContract } from './stepContract.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
@@ -146,6 +147,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const waiting = reason === 'missing-object'
   const unmatched = reason === 'unmatched-pair'
   const conflicted = reason === 'baseline-conflict'
+  const conflictWords = baselineConflictWords(step)
   const noOperation = reason === 'no-operation'
   const emergencyUnsafe = reason === 'unsafe-emergency-access'
   const emergencyUnproven = reason === 'unverified-emergency-exclusion'
@@ -163,7 +165,11 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
-  else if (conflicted && typeof cs.baselineConflict === 'string') lines.push(fillText(cs.baselineConflict, ex))
+  // The conflict explanation belongs to the reviewed source policy the step's
+  // own state names (roadmap/baselineConflict.ts), never to the goal's content
+  // entry: the artifacts say the same thing the screen says about it, on
+  // whichever goal the active baseline hands that source.
+  else if (conflicted && conflictWords !== null) lines.push(fillText(conflictWords, ex))
   else if (noOperation) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.noOperation), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))

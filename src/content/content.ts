@@ -86,6 +86,8 @@ export type EngineWords = {
   personalDevices: { browserLimited: string; blocked: string }
   /** The single next thing on a step (roadmap/lifecycle.ts nextMilestone). */
   milestone: Record<string, string>
+  /** The contradiction a reviewed baseline source carries, one entry per reviewed source (roadmap/baselineConflict.ts). */
+  baselineConflict: Record<string, string>
   /** What this scan saw against what the last one saw (roadmap/observation.ts). */
   observation: Record<string, string> & { states: { absent: string; disabled: string; reportOnly: string; enforced: string; unknown: string } }
   /** Which half of a safety choice's detection came up short (mapping/safetyChoice.ts). */

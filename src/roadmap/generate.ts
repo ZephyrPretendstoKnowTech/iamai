@@ -13,7 +13,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
-import { BASELINE_CONFLICT, baselineConflictGoals } from './baselineConflict.ts'
+import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
 import { PINNED_GOAL_MAP, goalInMap, policyKey } from './goalMap.ts'
@@ -787,10 +787,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // fallback for a package that does not carry the mapped policy — the
   // synthetic test fixtures, which stand in for the pinned baseline.
   const goalMap = input.goalMap ?? PINNED_GOAL_MAP
-  // Read once, from the map this run is planning against (baselineConflict.ts):
-  // the conflict belongs to the source policy the active baseline hands the
-  // goal, so an uploaded baseline is judged by its own map and never by the pin.
-  const conflictGoals = baselineConflictGoals(goalMap)
+  // Read once, from the map *and the package* this run is planning against
+  // (baselineConflict.ts): the conflict belongs to the source policy the active
+  // baseline hands the goal, and to what that policy still says about itself. An
+  // uploaded baseline is judged by its own map and its own policies, never by
+  // the pin — and a revised version of a reviewed policy that settles the
+  // contradiction is planned like any other.
+  const conflictGoals = baselineConflicts(goalMap, input.baseline)
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned
@@ -1318,7 +1321,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // two definitions cannot both hold is never read for what its policy would
     // do — no operation, no effects, no reach, no announcement — and step 0 of
     // the sequence pass records the same reading on the step itself.
-    const conflictState = typeof goal.id === 'string' && conflictGoals.has(goal.id) ? { state: { condition: BASELINE_CONFLICT } } : {}
+    const conflictSource = typeof goal.id === 'string' ? (conflictGoals.get(goal.id) ?? null) : null
+    const conflictState = conflictSource !== null ? { state: { condition: BASELINE_CONFLICT, conflictSource } } : {}
 
     // Gating (roadmap.md §6).
     if (!state.satisfied) {
@@ -1743,7 +1747,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // including done: a policy the tenant already holds cannot make a
   // contradictory definition safe to act on.
   for (const s of steps) {
-    if (!(typeof s.goalId === 'string' && conflictGoals.has(s.goalId)) || s.state.setAside) continue
+    const conflictSource = typeof s.goalId === 'string' ? (conflictGoals.get(s.goalId) ?? null) : null
+    if (conflictSource === null || s.state.setAside) continue
     s.action = { kind: s.action.kind, summary: [], json: null, portalSteps: [] }
     s.deliveredBy = []
     // And the delivery claim goes with the implementation, for the same reason.
@@ -1757,7 +1762,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // define (Foundation B: no lifecycle progress on a resolution step).
     // Withdrawing this is conservative in the one direction that matters: it
     // never turns an unknown into "already done".
-    setState(s, { satisfied: false, inPlace: false, lifecycle: null })
+    // The reviewed source that raised it travels with the condition, so every
+    // surface can say *which* contradiction this step carries without reading
+    // the goal id or the pinned map again (baselineConflict.ts).
+    setState(s, { satisfied: false, inPlace: false, lifecycle: null, conflictSource })
     delete s.satisfiedBy
     // The safety edges stay (a deny-capable step still waits on the escape
     // hatch); the conflict is added beside them and binds the row's reason

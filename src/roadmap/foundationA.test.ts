@@ -444,20 +444,22 @@ test('every generated manager note is what the operation establishes, and the go
 })
 
 test('unknown resource semantics get general wording, never goal-derived specificity', () => {
-  // The admin-portals baseline contradicts itself, so there is no operation and
+  // A step whose own baseline source contradicts itself has no operation, so
   // nothing establishes a resource. The note claims nothing specific, and names
-  // neither the portals nor MFA — on every fixture that carries the step.
+  // neither the portals nor MFA — on every fixture that carries such a step
+  // (the ones deriving through the pinned package, whose Admin Portal policy is
+  // the reviewed source: roadmap/baselineConflict.ts).
   let seen = 0
   for (const { f, r } of runs) {
-    const s = r.steps.find((x) => x.goalId === 'admin-portals-protected')
-    if (!s) continue
-    seen += 1
-    assert.deepEqual(stepEffects(s), [], `${f.name}: no operation`)
-    assert.equal(policySemantics(stepEffects(s)).resource, null, `${f.name}: and no resource established`)
-    assert.equal(s.forManager, MANAGER.other(), `${f.name}: so the general note stands`)
-    assert.doesNotMatch(s.forManager, /admin portal|Azure|requires MFA/i, `${f.name}: and nothing specific is claimed`)
+    for (const s of r.steps.filter((x) => inBaselineConflict(x))) {
+      seen += 1
+      assert.deepEqual(stepEffects(s), [], `${f.name}: no operation`)
+      assert.equal(policySemantics(stepEffects(s)).resource, null, `${f.name}: and no resource established`)
+      assert.equal(s.forManager, MANAGER.other(), `${f.name}: so the general note stands`)
+      assert.doesNotMatch(s.forManager, /admin portal|Azure|requires MFA/i, `${f.name}: and nothing specific is claimed`)
+    }
   }
-  assert.ok(seen > 0, 'the fixtures carry the step')
+  assert.ok(seen > 0, 'no fixture carries a step whose baseline source contradicts itself')
 })
 
 // ---- 1d: what the records are counted over ----

@@ -81,12 +81,12 @@ test('item 12: with no baseline at all, every create step still carries a body, 
   const f = allFixtures().find((x) => x.name === 'small')
   assert.ok(f)
   const r = runFixture({ ...f, baseline: { ...f.baseline, policies: [], docs: [] } })
-  // A goal whose baseline contradicts itself carries no body on purpose
-  // (roadmap/baselineConflict.ts): asserted here so the exception is not a gap.
-  const conflicted = r.steps.filter((s) => inBaselineConflict(s))
-  assert.ok(conflicted.length > 0, 'the conflicted goal is in the plan')
-  for (const s of conflicted) assert.equal(s.action.json, null, `${s.id}: a conflicted baseline offers no body`)
-  const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done' && !inBaselineConflict(s))
+  // With no baseline at all there is no source to contradict itself: the
+  // conflict is a reading of the package this run plans against, never of the
+  // goal map alone (roadmap/baselineConflict.ts), so every goal here is planned
+  // from its own template and none of them is held.
+  assert.deepEqual(r.steps.filter((s) => inBaselineConflict(s)).map((s) => s.id), [], 'an empty package inherited a conflict from the pinned map')
+  const creates = r.steps.filter((s) => s.goalId && s.kind === 'create' && s.status !== 'done')
   // The plan holds the pinned map's goals (walk-51 item 9): every create step is
   // one of them, and every held goal small does not enforce gets one.
   assert.ok(creates.length >= 8, `expected a create step per held goal small lacks, got ${creates.length}`)
