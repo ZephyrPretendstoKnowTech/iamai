@@ -234,7 +234,7 @@ never outranks the pack for its surface.
 
 ## 4. Surface by surface
 
-### Home — `SUPERSEDED` implementation, evidenced cause: correct artifact never supplied, plus a false current-authority claim
+### Home — `SUPERSEDED` implementation, evidenced cause: correct artifact never committed, plus a false current-authority claim
 
 The approved pack is a 1040px editorial page: hero with eyebrow/serif h1/lede/two actions/meta
 row, then a two-column product section (steps list plus a bordered side rail), a two-column
@@ -245,7 +245,7 @@ is close; the *anatomy* is not. Task 016 built the prose and labelled it owner-a
 
 Restoration pending.
 
-### Connect — `SUPERSEDED` implementation, evidenced cause: correct artifact never supplied; progression landed, flow anatomy did not
+### Connect — `SUPERSEDED` implementation, evidenced cause: correct artifact never committed; progression landed, flow anatomy did not
 
 The approved pack is a 1040px page with a `.status-bar`, a `.flow` of numbered steps in
 `done` / `current` / `locked` states, and a `.ready` section. Production renders four
@@ -256,7 +256,7 @@ carried in prose. The lock/gating presentation and the status bar are unimplemen
 
 Restoration pending.
 
-### Plan — `SUPERSEDED` implementation, evidenced cause: correct artifact never supplied; semantics consumed, anatomy not
+### Plan — `SUPERSEDED` implementation, evidenced cause: correct artifact never committed; semantics consumed, anatomy not
 
 The Plan pack is largely an editorial design document — `h2` sections on what constitutes a
 step, lifecycle versus condition, detected versus confirmed, the data contract, and "Five
@@ -273,7 +273,7 @@ coherent direction.
 
 Restoration pending. **Plan step meaning, state and order are not reopened by this.**
 
-### MFA Readiness — closest to conformant, evidenced cause: correct artifact never supplied, but the prose paraphrase was faithful
+### MFA Readiness — closest to conformant, evidenced cause: correct artifact never committed, but the prose paraphrase was faithful
 
 The pack is a 1200px page: summary block with a headline and three `.summary-stat` counts,
 `.callout`, `.toolbar`, then one table of `.row`s carrying person / role / proof / action.
@@ -287,9 +287,13 @@ Partially conformant. Width, density and row treatment remain to be checked agai
 
 **Supported.**
 
-1. **Correct artifact identified, never supplied** (Findings 1 and 2). The primary cause. The
-   packs were named accurately in three contracts and were never in the repository, so a
-   prose fallback became the operative contract every time.
+1. **Correct artifact identified, never committed** (Findings 1 and 2). The primary cause, as
+   far as the repository can carry it. The packs were named accurately in three contracts and
+   were never committed, so each contract's "if present in the repository" condition was
+   unsatisfied and the prose fallback became the operative contract every time. Whether the
+   bytes reached a session by some other route is `UNKNOWN` (§7.1); what the tracked history
+   shows is that no implementation could read a pack from the path its contract named, and
+   none did.
 2. **Older artifact operative by availability** (Finding 3). The five committed mockups were
    the only design files any test, lint or walk check could name.
 3. **Shared shell and tokens prevented conformance** (Finding 4). A 760px page column and a
@@ -298,15 +302,17 @@ Partially conformant. Width, density and row treatment remain to be checked agai
 4. **Review standard accepted conceptual similarity** (Finding 2). Two contracts made the
    prose "binding even if the HTML file is not present", so review could only measure prose
    compliance. No rendered comparison against a pack exists anywhere in history.
-5. **Partially implemented where supplied in prose** (Findings 5, 6 and §4). Semantics and
-   section order landed; anatomy did not.
+5. **Partially implemented where the contract carried it in prose** (Findings 5, 6 and §4).
+   Semantics and section order landed; anatomy did not.
 
 **Not supported.**
 
 - **Later regression.** No commit reverts a conformant surface toward the older direction.
   Each surface has been non-conformant since it was built.
-- **Wrong artifact supplied to an implementer.** There is no evidence any implementer was
-  handed the wrong pack. The evidence is that no implementer was handed a pack at all.
+- **Wrong artifact supplied to an implementer.** No commit or contract points at a substituted
+  pack. Repository history cannot show what any session was handed either way, so what an
+  implementer did or did not hold stays `UNKNOWN` (§7.1). What is proven is narrower: no pack
+  was ever committed, so no tracked implementation read one from its contract's named path.
 
 ---
 
