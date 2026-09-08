@@ -14,7 +14,7 @@
 //
 // This is a derived artifact in our schema — not a copy of the author's files —
 // which is what the supply-chain rule protects (see CLAUDE.md).
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs'
+import { writeFileSync, mkdirSync } from 'node:fs'
 import { discoverPolicies } from '../src/baseline/discover.ts'
 import type { CaPolicy } from '../src/baseline/types.ts'
 import type { BaselineFile } from '../src/baseline/types.ts'
@@ -24,6 +24,9 @@ import type { GoalMapResult, PolicyForMap } from '../src/coverage/goalIdentity.t
 import { pinPolicy } from '../src/baseline/pinSource.ts'
 import type { PinnedPolicy } from '../src/baseline/pinSource.ts'
 import { pinArtifacts, pinMismatch } from '../src/baseline/pinArtifacts.ts'
+import type { PinnedFile } from '../src/baseline/pinArtifacts.ts'
+import type { BaselineIndex } from '../src/baseline/github.ts'
+import { fileURLToPath } from 'node:url'
 import { PINNED } from '../src/baseline/pinned.ts'
 import index from '../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 
@@ -144,6 +147,44 @@ function diff(oldP: PinnedPolicy[], newP: PinnedPolicy[]): { added: string[]; re
   return { added, removed, changed }
 }
 
+/**
+ * The generation path: one commit's values become both artifacts, through the
+ * one builder (src/baseline/pinArtifacts.ts), and a pair that disagrees never
+ * leaves this function. Exported so the pin script's own path is what a test
+ * exercises, rather than a helper the script does not call.
+ */
+export function pinGeneration(input: {
+  previousIndex: Partial<BaselineIndex>
+  owner: string
+  repo: string
+  label: string
+  commit: string
+  generatedAt: string
+  indexFiles: string[]
+  policies: PinnedPolicy[]
+  stripped: string[]
+  goalMap: Record<string, string[]>
+}): { pinned: PinnedFile; index: BaselineIndex } {
+  const out = pinArtifacts({ ...input, files: input.indexFiles })
+  return checked(out)
+}
+
+/** Both artifacts, written together for one commit. Neither file is written unless the pair agrees. */
+export function writePin(dir: string, base: string, out: { pinned: PinnedFile; index: BaselineIndex }): string[] {
+  checked(out)
+  mkdirSync(dir, { recursive: true })
+  const paths = [`${dir}/${base}.pinned.json`, `${dir}/${base}.index.json`]
+  writeFileSync(paths[0], JSON.stringify(out.pinned, null, 2) + '\n')
+  writeFileSync(paths[1], JSON.stringify(out.index, null, 2) + '\n')
+  return paths
+}
+
+function checked(out: { pinned: PinnedFile; index: BaselineIndex }): { pinned: PinnedFile; index: BaselineIndex } {
+  const why = pinMismatch(out.pinned, out.index)
+  if (why) throw new Error(`refusing to write a pin whose artifacts disagree: ${why}`)
+  return out
+}
+
 async function main(): Promise<void> {
   const target = process.argv[2] ?? (await api<{ sha: string }[]>(`https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=1`))[0].sha
   // The commit the shipped snapshot was built from — not index.commit, which
@@ -165,9 +206,24 @@ async function main(): Promise<void> {
     placeholders: p.placeholders,
   }))
   const goals: GoalMapResult = mapGoalsToPolicies(forMap)
-  const pinned = { commit: target, generatedAt, policies: next.policies, stripped: next.stripped, goalMap: goals.map }
-  writeFileSync(`baselines/${BASE}.pinned.json`, JSON.stringify(pinned, null, 2) + '\n')
-  process.stdout.write(`pin-baseline: wrote baselines/${BASE}.pinned.json (${next.policies.length} policies, ${next.stripped.length} stripped exclusions)\n`)
+  // One generation for both artifacts, at one commit: the snapshot the runtime
+  // reads and the index record that says where it came from (task 021 §11). The
+  // index used to be left behind at the previous pin, so the repository named
+  // two commits for one baseline.
+  const out = pinGeneration({
+    previousIndex: index as Partial<BaselineIndex>,
+    owner: OWNER,
+    repo: REPO,
+    label: index.label,
+    commit: target,
+    generatedAt,
+    indexFiles: next.indexFiles,
+    policies: next.policies,
+    stripped: next.stripped,
+    goalMap: goals.map,
+  })
+  const written = writePin('baselines', BASE, out)
+  process.stdout.write(`pin-baseline: wrote ${written.join(' and ')} at ${target} (${next.policies.length} policies, ${next.stripped.length} stripped exclusions, ${out.index.files.length} files recorded)\n`)
 
   process.stdout.write(`pin-baseline: diffing from ${oldCommit}\n`)
   const prev = await snapshotAt(oldCommit)
@@ -214,10 +270,12 @@ async function main(): Promise<void> {
   mkdirSync(`docs/baselines/${BASE}`, { recursive: true })
   writeFileSync(`docs/baselines/${BASE}/${target}.md`, md)
   process.stdout.write(`pin-baseline: wrote docs/baselines/${BASE}/${target}.md (added ${d.added.length}, removed ${d.removed.length}, changed ${d.changed.length})\n`)
-  void readFileSync
 }
 
-main().catch((e) => {
-  process.stderr.write(`pin-baseline: ${e instanceof Error ? e.message : String(e)}\n`)
-  process.exit(1)
-})
+// Imported for its generation path in a test; only a direct run pins anything.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((e) => {
+    process.stderr.write(`pin-baseline: ${e instanceof Error ? e.message : String(e)}\n`)
+    process.exit(1)
+  })
+}
