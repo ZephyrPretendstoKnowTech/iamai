@@ -112,8 +112,13 @@ correction finished them, and every weight the product sets now has a real face:
    rather than a browser-synthesised fake bold;
 4. `design-lint.test.ts` rule 4 admits a weight only through a named `--weight-*` role, and
    `src/ui/tokens.test.ts` fails if a role's weight has no staged face, if a staged file is
-   undeclared, or if a declared file is unstaged. `src/brand/brand.test.ts` fails if the
-   SHA-256 table above stops matching the bytes under `public/fonts/`.
+   undeclared, or if a declared file is unstaged. It also reads every rule in `src/ui/app.css`
+   and `home/home.css` that names a Plex family beside a weight and fails when that pair has
+   no staged face — a role is not the only way a page asks for a face, and Mono ships 400
+   only, so production sets the technical role at 400. `src/brand/brand.test.ts` applies the
+   same rule to `iamai-brand-system.html`, whose specimens are where a later pack reads the
+   approved weights, and fails if the SHA-256 table above stops matching the bytes under
+   `public/fonts/`.
 
 **Still open for a later pack:** typeset the header lockup as the mark asset beside the live
 text `IAMAI` in IBM Plex Sans 700 — never as an exported SVG carrying `<text>`.

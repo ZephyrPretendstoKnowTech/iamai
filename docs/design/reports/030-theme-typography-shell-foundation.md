@@ -281,10 +281,14 @@ canonical manifest was not changed.
 colour of its own — one system with two names. Pack 040 migrates the pages and deletes the
 block.
 
-**IBM Plex.** `@font-face` in the generated sheets; seven local `woff2` faces (Serif 400/500,
-Sans 400/500/600/700, Mono 400). Sans 600/700 were staged by 029 and are now declared, which
-is what the wordmark needs. Roles: `--weight-display` 500 (see the 029 gap above),
-`--weight-body` 400, `--weight-strong` 600, `--weight-wordmark` 700.
+**IBM Plex.** `@font-face` in the generated sheets; **nine** local `woff2` faces (Serif
+400/500/600/700, Sans 400/500/600/700, Mono 400). Sans 600/700 were staged by 029 and are now
+declared, which is what the wordmark needs; Serif 600/700 were staged by correction 1 (§C4,
+§C10), which is what the display role needs. Roles: `--weight-display` **700** — the brand's
+approved display weight, in a real IBM Plex Serif Bold — `--weight-body` 400,
+`--weight-strong` 600, `--weight-wordmark` 700. Correction 2 (§C11) settled the one family
+that still asked for a face it does not have: Mono ships its 400 only, and the two rules that
+paired `var(--font-mono)` with a literal 500 now set 400.
 
 **Typography capability.** The 26px ceiling is gone. `--t-micro` 10 · `--t-0` 11 · `--t-1` 12 ·
 `--t-2` 13 · `--t-3` 14 · `--t-4` 16 · `--t-lead` 17 · `--t-lead-lg` 18 · `--t-5` 20 ·
@@ -435,8 +439,12 @@ not prevent any of it.
 | **040** cross-product convergence | Export, How and Inventory, which no pack governs and which still read at `--table`; retiring the legacy alias block in `tokens.css`; migrating the pages off `--bg` / `--ink` / `--accent`. |
 | **041** final audit | Rendered comparison of all four surfaces against their packs; confirm no page-contract, lint or accessibility rule was weakened along the way. |
 
-Also outstanding, small: IBM Plex Serif SemiBold/Bold are not staged (§C4), so
-`--weight-display` is 500.
+Also outstanding, small: IBM Plex Mono ships one face (400). The brand approves 400–500 for
+the technical role, so a pack that restores a technical surface may want Mono Medium — which
+means normalising `IBMPlexMono-Regular-Latin1.woff2` onto `@ibm/plex-mono@1.1.0` at the same
+time, so the family is not typeset from two releases (`docs/brand/font-provenance.md`). That
+is a metric change to every code block and identifier, which is why it belongs to that pack
+and not to this foundation.
 
 ---
 
@@ -483,6 +491,41 @@ two records cannot drift apart again.
 **Evidence regenerated:** `docs/screens/30` (production plates) — the palette is unchanged,
 so what moved is the serif weight and the quiet text level. The canonical plates under
 `docs/design/approved/rendered` are renders of the approved HTML and are untouched.
+
+---
+
+## C11 — correction 2
+
+Two findings, both about the same thing said in two places: a weight requested without a face
+behind it.
+
+**1 — requested weights were still rendering through substitution (MAJOR).** Correction 1
+proved the four *named* roles resolve to staged faces. It did not read what the stylesheets
+actually ask for, and two rules — `.step-tile .n` and `.rung-badge` — paired
+`font-family: var(--font-mono)` with a literal `font-weight: 500`. IBM Plex Mono ships one
+staged face, so those numerals rendered in a substituted 400 or a synthesised medium. In the
+brand visual reference the same shape appeared the other way round: `iamai-brand-system.html`
+set its Serif 600 and 700 specimens against `@font-face` rules that declared only 400 and 500,
+so the page a later pack reads the approved display weight off was showing the browser's
+guess at it.
+
+Fixed at both sources, and each with the guard that was missing rather than a note.
+Production sets those two Mono numerals at 400: the brand approves 400–500 for the technical
+role, but staging Mono Medium means normalising Mono Regular onto the same release (§C8), and
+that metric change belongs to a technical-surface pack, not to a correction.
+`src/ui/tokens.test.ts` now reads every rule in `src/ui/app.css` and `home/home.css` that
+names a Plex family beside a weight and fails when that pair has no face in `FONT_FILES` —
+the request, not the role. The brand system declares Serif 600 and 700, and
+`src/brand/brand.test.ts` fails when the page sets a weight it does not declare.
+
+**2 — the report and the brand contract carried pre-correction typography state
+(FUNCTIONAL).** §C6 still said seven faces and `--weight-display` 500 while §C4 and §C10 of
+the same file said nine and 700; §C8 still listed the staging of Serif SemiBold/Bold as
+outstanding; `iamai-brand-contract.md` §3 still closed with 029's "did not switch production
+typography over"; the brand system's caption still said Serif 600/700 are not shipped. An
+engineer opening task 031 could have read any of them as current. All four now state the
+corrected end state, and 029's state is kept only where it is explicitly labelled as history
+(§C4, contract §12).
 
 ---
 

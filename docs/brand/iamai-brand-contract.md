@@ -143,8 +143,16 @@ a piece of the page occupies.
 Italic faces are deliberately not part of the system: nothing in the product's voice needs
 one, and every face shipped is a face downloaded.
 
-Task 029 made the wordmark face available locally. It did **not** switch production
-typography over; the shell, the scale and the token change are the restoration pack's work.
+Task 029 made the wordmark face available locally without switching production over. Task 030
+switched it over: `src/ui/tokens.ts` sets the three families and the four role weights above,
+and its correction staged IBM Plex Serif SemiBold and Bold so the display role is a real 700
+rather than a synthesised one. Every weight production requests has a staged face, and
+`src/ui/tokens.test.ts` fails if one does not. IBM Plex Mono ships its 400 only, so production
+sets the technical role at 400; a pack that restores a technical surface may add Medium.
+
+What typography still does **not** do is compose a page: the sizes production sets are the
+interface scale, and the display ramp is applied surface by surface as the restoration packs
+031–038 land. §12 records what is switched on.
 
 ---
 

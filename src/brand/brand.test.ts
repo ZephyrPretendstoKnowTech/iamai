@@ -503,3 +503,37 @@ test('brand: nothing served asks a third party for a font', () => {
     assert.doesNotMatch(readFileSync(file, 'utf8'), REMOTE, `${file} fetches a font from a third party`)
   }
 })
+
+test('brand: every weight the brand system sets is a face it declares and the repository stages', () => {
+  // The visual reference is where a later pack reads the brand from. It set its
+  // Serif 600 and 700 specimens against @font-face rules that declared only 400
+  // and 500, so the "approved" display weights on the page were whatever the
+  // browser substituted or synthesised.
+  const html = read(SYSTEM)
+  const declared = [...html.matchAll(/@font-face\s*\{[^}]*font-family:\s*'([^']+)'[^}]*font-weight:\s*(\d+)[^}]*url\('([^']+)'\)/g)].map((m) => ({
+    family: m[1],
+    weight: Number(m[2]),
+    file: m[3],
+  }))
+  assert.ok(declared.length >= 7, `only ${declared.length} @font-face rules found — the reader is broken, not the page`)
+  for (const d of declared) {
+    assert.ok(existsSync(join('docs/brand', d.file)), `${d.family} ${d.weight} is declared from ${d.file}, which is not staged`)
+  }
+  // Every block or inline style that sets a weight, with the family it is set
+  // in: named in the same block, or the page body's IBM Plex Sans.
+  const blocks = [...html.matchAll(/\{([^{}]*)\}/g)].map((m) => m[1]).concat([...html.matchAll(/style="([^"]*)"/g)].map((m) => m[1]))
+  let checked = 0
+  for (const body of blocks) {
+    if (/@font-face/.test(body)) continue
+    const weight = body.match(/font-weight:\s*(\d+)/)
+    if (!weight) continue
+    const named = body.match(/font-family:\s*'?(IBM Plex (?:Serif|Sans|Mono))'?/)
+    const family = named ? named[1] : 'IBM Plex Sans'
+    checked++
+    assert.ok(
+      declared.some((d) => d.family === family && d.weight === Number(weight[1])),
+      `the brand system sets ${family} ${weight[1]} without declaring that face`,
+    )
+  }
+  assert.ok(checked >= 8, `only ${checked} weight declarations found — the reader is broken, not the page`)
+})
