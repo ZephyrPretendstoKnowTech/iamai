@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>IAMAI brand system</title>
+<!--
+  The visual brand reference (task 029). It shows the brand: the mark, the lockup, the two
+  palettes, the type roles, the status colours, the icon and shape language, the control
+  states and the motion bands.
+
+  It is deliberately NOT an application design pack. It draws no Home, no Connect, no Plan
+  and no MFA Readiness page. The four owner-approved HTML packs listed at the bottom own
+  that, and they are linked rather than reproduced, because a copy is a second authority.
+
+  Fonts are the repository's own self-hosted faces, by relative path. No CDN.
+  The mark below is the exact geometry of src/brand/logo/iamai-guided-route-master.svg;
+  src/brand/brand.test.ts fails if the two ever differ.
+-->
+<style>
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 400; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexSans-Regular-Latin1.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 500; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexSans-Medium-Latin1.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 600; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexSans-SemiBold-Latin1.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Sans'; font-weight: 700; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexSans-Bold-Latin1.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Serif'; font-weight: 400; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexSerif-Regular-Latin1.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Serif'; font-weight: 500; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexSerif-Medium-Latin1.woff2') format('woff2'); }
+  @font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-style: normal; font-display: swap; src: url('../../public/fonts/IBMPlexMono-Regular-Latin1.woff2') format('woff2'); }
+
+  .theme-light {
+    --canvas:#F7F4EE; --surface:#FFFDF9; --surface-2:#F0ECE5; --line:#D8D3C9; --line-strong:#C1BCB3;
+    --text:#1D2528; --text-2:#4E5B5D; --text-muted:#7B8584;
+    --brand:#0C6A64; --brand-2:#18847A; --brand-soft:#DDEFEA; --brand-soft-text:#07534F;
+    --success:#2C7A5A; --attention:#B7791F; --danger:#B04A4A; --admin:#6658A4; --code:#EEEAE3;
+    --on-brand:#FFFDF9;
+  }
+  .theme-dark {
+    --canvas:#0E1516; --surface:#151F20; --surface-2:#111A1B; --line:#2A3737; --line-strong:#3B4B4A;
+    --text:#F0F4F2; --text-2:#C4CECA; --text-muted:#879693;
+    --brand:#59C7B7; --brand-2:#7AD9CB; --brand-soft:#173B37; --brand-soft-text:#D9FFF8;
+    --success:#79D7A6; --attention:#E3B35B; --danger:#E88A8A; --admin:#B9A7FF; --code:#0A1112;
+    --on-brand:#0E1516;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.5; }
+  .band { background: var(--canvas); color: var(--text); padding: 40px 34px 48px; }
+  .wrap { max-width: 940px; margin: 0 auto; }
+  h1 { font-family: 'IBM Plex Serif', Georgia, serif; font-weight: 700; font-size: 34px; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-family: 'IBM Plex Serif', Georgia, serif; font-weight: 700; font-size: 22px; margin: 40px 0 6px; }
+  h3 { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 26px 0 10px; }
+  p { margin: 0 0 12px; max-width: 68ch; color: var(--text-2); }
+  p.lead { color: var(--text); font-size: 17px; }
+  code, .mono { font-family: 'IBM Plex Mono', ui-monospace, Consolas, monospace; font-size: 13px; }
+  a { color: var(--brand); }
+  .rule { height: 1px; background: var(--line); margin: 30px 0; border: 0; }
+  .note { border-left: 3px solid var(--brand); background: var(--brand-soft); color: var(--brand-soft-text); padding: 12px 16px; border-radius: 0 8px 8px 0; max-width: 68ch; }
+  .note strong { color: inherit; }
+  .row { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; margin: 0 0 18px; }
+  .cell { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+  .cap { font-size: 11px; color: var(--text-muted); }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
+  .grid { display: grid; gap: 12px; }
+  .swatches { grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
+  .sw { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .sw i { display: block; height: 46px; }
+  .sw b { display: block; font-size: 12px; font-weight: 600; padding: 8px 10px 0; }
+  .sw span { display: block; padding: 0 10px 9px; }
+  .mark { color: var(--brand); display: block; }
+  .tile { display: inline-flex; align-items: center; justify-content: center; background: #0C6A64; }
+  .tile svg { color: #FFFDF9; display: block; }
+  .lock { display: inline-flex; align-items: center; gap: .28em; font-weight: 700; letter-spacing: .005em; color: var(--text); }
+  .lock svg { color: var(--brand); }
+  .chip { display: inline-flex; align-items: center; gap: 7px; border-radius: 999px; padding: 4px 12px 4px 10px; font-size: 13px; font-weight: 600; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .btn { font: inherit; font-weight: 600; font-size: 14px; border-radius: 8px; padding: 7px 15px; border: 1px solid transparent; cursor: pointer;
+         transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease; }
+  .btn-primary { background: var(--brand); color: var(--on-brand); }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-secondary { background: transparent; color: var(--brand); border-color: var(--line-strong); }
+  .btn-secondary:hover { border-color: var(--brand); }
+  .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--canvas), 0 0 0 4px var(--brand); }
+  .btn[disabled] { background: var(--surface-2); color: var(--text-muted); border-color: var(--line); cursor: not-allowed; }
+  .btn-selected { background: var(--brand-soft); color: var(--brand-soft-text); border-color: var(--brand); }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .radius-demo { width: 108px; height: 62px; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-2); }
+  .do-dont { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .dd { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: var(--surface); text-align: center; }
+  .dd .lab { font-size: 11px; font-weight: 600; margin-top: 9px; }
+  .yes .lab { color: var(--success); }
+  .no .lab { color: var(--danger); }
+  .dd svg, .dd .box { margin: 0 auto; }
+  .disclose { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; max-width: 420px; }
+  .disclose summary { padding: 10px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+  .disclose .body { padding: 0 14px 12px; color: var(--text-2); font-size: 13.5px; }
+  .swatch-line { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+  .swatch-line i { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 60ms !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================ LIGHT ============================ -->
+<div class="band theme-light" id="light">
+<div class="wrap">
+
+  <div class="row" style="margin-bottom:22px">
+    <svg class="mark" width="52" height="52" viewBox="0 0 64 64" aria-label="IAMAI" role="img">
+      <g fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M36 10H21c-6.1 0-11 4.9-11 11v22c0 6.1 4.9 11 11 11h22c6.1 0 11-4.9 11-11V29"/>
+        <path d="M21 43C27.5 43.5 31 40 34 35C37 30 43 21 50 15"/>
+        <path d="M42.5 15H50V22.5"/>
+      </g>
+      <circle cx="21" cy="43" r="5" fill="currentColor"/>
+      <circle cx="34" cy="35" r="4.1" fill="currentColor"/>
+    </svg>
+    <div>
+      <h1>IAMAI brand system</h1>
+      <p class="lead">Guided Route, version 1 &middot; Mineral Teal and Deep Mineral &middot; IBM Plex</p>
+    </div>
+  </div>
+
+  <div class="note" id="non-authority">
+    <strong>Application previews from branding exploration are not design authorities.</strong>
+    Home, Connect, Plan, and MFA Readiness architecture is governed by the canonical approved
+    HTML files. This page shows a skin: the mark, the colours, the type, the shapes and the
+    motion. It draws no product page, and it may not be read as one.
+  </div>
+
+  <p style="margin-top:16px">Precedence, highest first: <b>production technical and content truth</b>,
+  then <b>approved HTML application architecture</b>, then <b>this brand skin</b>. The written
+  contract is <a href="iamai-brand-contract.md"><code>iamai-brand-contract.md</code></a>; the
+  machine-readable values are <a href="brand-manifest.json"><code>brand-manifest.json</code></a>.</p>
+
+  <hr class="rule" />
+
+  <!-- 1 / 2 / 3 mark, lockup, icon -->
+  <h2>The mark</h2>
+  <p>Origin &rarr; guided rising route &rarr; waypoint &rarr; upper-right destination, travelling
+  through an open rounded window. An A-to-Z journey that draws neither letter. The master is
+  <code>src/brand/logo/iamai-guided-route-master.svg</code>: one path group, two nodes,
+  <code>currentColor</code>, no text.</p>
+
+  <h3>Primary mark &middot; 16 / 24 / 32 / 64 / 96</h3>
+  <div class="row" id="mark-sizes-light"></div>
+
+  <h3>Core horizontal lockup</h3>
+  <div class="row">
+    <span class="lock" style="font-size:20px" id="lock-20"></span>
+    <span class="lock" style="font-size:28px" id="lock-28"></span>
+    <span class="lock" style="font-size:40px" id="lock-40"></span>
+  </div>
+  <p>Mark plus the word <code>IAMAI</code> in IBM Plex Sans 700. Gap 0.25&ndash;0.32&times; the mark,
+  clear space at least 0.35&times; on every side, minimum standalone mark 16px, header mark
+  20&ndash;28px. <b>There is no tagline</b>, and no descriptor sits under the wordmark. The lockup is
+  composed from the mark asset and live text, never exported as an SVG carrying
+  <code>&lt;text&gt;</code>.</p>
+
+  <h3>Icon-only &middot; favicon and app icon</h3>
+  <div class="row" id="app-icons"></div>
+  <p>The favicon is the same logo on a rounded brand field, so it survives browser chrome at
+  16px: <code>public/brand/favicon.svg</code> and <code>public/brand/favicon-32.png</code>. A
+  treatment, not a second logo &mdash; same geometry, scaled 0.86, <code>#FFFDF9</code> on
+  <code>#0C6A64</code>. No text, no tagline, no gradient.</p>
+
+  <h3>Monochrome</h3>
+  <div class="row" id="mono-light"></div>
+  <p>Ink <code>#1D2528</code> on light, light <code>#FFFDF9</code> on dark, at full strength. The
+  mark is one colour by construction, so it prints, stamps and embosses without a second file.
+  Never screen it back: the origin node and the waypoint are the first things to go.</p>
+
+  <!-- 13 do / don't -->
+  <h3>Do &middot; don't</h3>
+  <div class="do-dont" id="do-dont"></div>
+
+  <hr class="rule" />
+
+  <!-- 5 swatches -->
+  <h2>Colour &mdash; Mineral Teal (light)</h2>
+  <div class="grid swatches" id="sw-light"></div>
+
+  <hr class="rule" />
+
+  <!-- 6 type -->
+  <h2>Typography</h2>
+  <p>IBM Plex Serif for display and editorial headings, IBM Plex Sans for the interface, IBM Plex
+  Mono for anything a person would paste into a terminal or a policy. Self-hosted Latin-1
+  <code>woff2</code>; no Google Fonts, no font CDN, no runtime third-party request
+  (<a href="font-provenance.md">provenance and licence</a>).</p>
+  <table>
+    <thead><tr><th>Role</th><th>Family / weight</th><th>Specimen</th></tr></thead>
+    <tbody>
+      <tr><td>Display / H1</td><td class="mono">Plex Serif 700</td>
+        <td style="font-family:'IBM Plex Serif',serif;font-weight:700;font-size:30px;line-height:1.2;color:var(--text)">Plan the rollout</td></tr>
+      <tr><td>H2 / H3 editorial</td><td class="mono">Plex Serif 600&ndash;700</td>
+        <td style="font-family:'IBM Plex Serif',serif;font-weight:600;font-size:21px;color:var(--text)">What this step changes</td></tr>
+      <tr><td>Body / interface</td><td class="mono">Plex Sans 400</td>
+        <td style="font-size:15px;color:var(--text)">Report-only first, then enforced. 14 of 62 people have proven a phishing-resistant method.</td></tr>
+      <tr><td>Strong body / label / control</td><td class="mono">Plex Sans 600</td>
+        <td style="font-weight:600;color:var(--text)">Needs a decision</td></tr>
+      <tr><td>Wordmark</td><td class="mono">Plex Sans 700</td>
+        <td style="font-weight:700;font-size:26px;letter-spacing:.005em;color:var(--text)">IAMAI</td></tr>
+      <tr><td>Technical / code</td><td class="mono">Plex Mono 400&ndash;500</td>
+        <td class="mono" style="color:var(--text)">/identity/conditionalAccess/policies</td></tr>
+    </tbody>
+  </table>
+  <p class="cap" style="margin-top:10px">Serif 600 and 700 are not yet shipped as local faces; the
+  specimens above synthesise them. The restoration pack adds those faces with the type
+  application &mdash; see <a href="font-provenance.md">font-provenance.md</a>.</p>
+
+  <hr class="rule" />
+
+  <!-- 7 status -->
+  <h2>Brand colour is not status colour</h2>
+  <p>This is the rule that is easiest to get wrong, and the most expensive. <b>Teal is IAMAI</b>:
+  identity, navigation, selection, the interactive emphasis. <b>Green is the tenant</b>: proven, in
+  place, healthy. A brand action painted in the success colour tells the reader something untrue
+  about their own tenant.</p>
+  <div class="row" id="status-light"></div>
+  <div class="row">
+    <button class="btn btn-primary">Brand action &mdash; teal</button>
+    <span class="chip" style="background:#DDEFEA;color:#07534F"><i class="dot" style="background:#2C7A5A"></i>Proven &mdash; success green</span>
+  </div>
+  <p class="cap">Light <code>#0C6A64</code> against <code>#2C7A5A</code>; dark <code>#59C7B7</code>
+  against <code>#79D7A6</code>. Two families, never one.</p>
+
+  <hr class="rule" />
+
+  <!-- 8 icons -->
+  <h2>Icons</h2>
+  <p>Restrained geometric strokes, roughly 1.75&ndash;2px at ordinary interface sizes, round caps and
+  joins, <code>currentColor</code>, no fill except where a node or a state dot is the point. No
+  emoji, no illustration, no duotone.</p>
+  <div class="row" id="icons"></div>
+
+  <hr class="rule" />
+
+  <!-- 9 shape -->
+  <h2>Shape</h2>
+  <div class="row">
+    <div class="cell"><div class="radius-demo" style="border-radius:4px">4px</div><span class="cap">compact row</span></div>
+    <div class="cell"><div class="radius-demo" style="border-radius:8px">8px</div><span class="cap">control</span></div>
+    <div class="cell"><div class="radius-demo" style="border-radius:12px">12px</div><span class="cap">grouped / key panel</span></div>
+  </div>
+  <p>A hierarchy, <b>not</b> a licence to cardify every section. Most of IAMAI is rows and rules on a
+  flat surface and should stay that way; 12px is for the few panels that are genuinely one grouped
+  object.</p>
+
+  <hr class="rule" />
+
+  <!-- 10 controls -->
+  <h2>Control states</h2>
+  <div class="row">
+    <button class="btn btn-primary">Primary</button>
+    <button class="btn btn-primary" style="background:var(--brand-2)">Hover</button>
+    <button class="btn btn-secondary">Secondary</button>
+    <button class="btn btn-secondary" style="box-shadow:0 0 0 2px var(--canvas),0 0 0 4px var(--brand)">Focus</button>
+    <button class="btn btn-selected">Selected</button>
+    <button class="btn btn-primary" disabled>Disabled</button>
+  </div>
+  <p>Focus is always visible and always the brand ring &mdash; never removed, never only a colour
+  change. Disabled states keep AA contrast for their label.</p>
+
+  <hr class="rule" />
+
+  <!-- 11 motion -->
+  <h2>Motion</h2>
+  <table>
+    <thead><tr><th>Element</th><th>Duration</th><th>Character</th></tr></thead>
+    <tbody>
+      <tr><td>Small control: hover, press, focus, tab</td><td class="mono">120&ndash;180ms</td><td>tactile, immediate</td></tr>
+      <tr><td>Disclosure: step expansion, panel, row reveal</td><td class="mono">180&ndash;240ms</td><td>continuity &mdash; where it came from</td></tr>
+    </tbody>
+  </table>
+  <div class="row" style="margin-top:14px">
+    <details class="disclose"><summary>A step expands in 180&ndash;240ms</summary>
+      <div class="body">Motion carries state and continuity, never spectacle. No looping decoration, no
+      attention pulse, no parallax, no animated logo.</div></details>
+  </div>
+  <div class="note" style="margin-top:16px"><strong>Reduced motion is not an afterthought.</strong>
+    Under <code>prefers-reduced-motion: reduce</code> every transition collapses to none, or to an
+    opacity change of at most 60ms. Nothing that conveys state may depend on an animation having
+    played. This page obeys its own rule.</div>
+
+  <hr class="rule" />
+
+  <!-- 12 voice -->
+  <h2>Voice</h2>
+  <p>A guardrail for later copy, not a licence to rewrite what is already accurate.
+  <code>docs/design/content.json</code> remains the copy authority.</p>
+  <table>
+    <thead><tr><th>IAMAI is</th><th>IAMAI is not</th></tr></thead>
+    <tbody>
+      <tr><td>informative; evidence first &mdash; the number, then what it means</td><td>chatty</td></tr>
+      <tr><td>short operational verbs</td><td>salesy</td></tr>
+      <tr><td>confident only where the evidence supports confidence</td><td>fear-based</td></tr>
+      <tr><td>explicit about what it does not know</td><td>narrating itself as an AI assistant</td></tr>
+      <tr><td>professional</td><td>saying &ldquo;I&rdquo;</td></tr>
+    </tbody>
+  </table>
+
+</div>
+</div>
+
+<!-- ============================ DARK ============================ -->
+<div class="band theme-dark" id="dark">
+<div class="wrap">
+  <h2 style="margin-top:0">Deep Mineral &mdash; dark</h2>
+  <p>Every part of the identity holds on the dark canvas: the mark takes the dark brand teal, the
+  app icon keeps its field, and brand teal still is not success green.</p>
+
+  <h3>Primary mark &middot; 16 / 24 / 32 / 64 / 96</h3>
+  <div class="row" id="mark-sizes-dark"></div>
+
+  <h3>Lockup and app icon</h3>
+  <div class="row">
+    <span class="lock" style="font-size:28px" id="lock-dark"></span>
+    <span id="app-icons-dark" style="display:flex;gap:18px;align-items:center"></span>
+  </div>
+
+  <h3>Monochrome on dark</h3>
+  <div class="row" id="mono-dark"></div>
+
+  <h3>Colour &mdash; Deep Mineral</h3>
+  <div class="grid swatches" id="sw-dark"></div>
+
+  <h3>Status against brand</h3>
+  <div class="row" id="status-dark"></div>
+  <div class="row">
+    <button class="btn btn-primary">Brand action &mdash; teal</button>
+    <span class="chip" style="background:#173B37;color:#D9FFF8"><i class="dot" style="background:#79D7A6"></i>Proven &mdash; success green</span>
+    <button class="btn btn-secondary">Secondary</button>
+    <button class="btn btn-selected">Selected</button>
+  </div>
+
+  <h3>Type on dark</h3>
+  <p style="color:var(--text);font-family:'IBM Plex Serif',serif;font-weight:700;font-size:26px;margin:0 0 6px">Plan the rollout</p>
+  <p style="margin:0 0 6px">Report-only first, then enforced. 14 of 62 people have proven a phishing-resistant method.</p>
+  <p class="mono" style="margin:0;color:var(--text-2)">/identity/conditionalAccess/policies</p>
+</div>
+</div>
+
+<!-- ============================ AUTHORITIES ============================ -->
+<div class="band theme-light" id="authorities">
+<div class="wrap">
+  <h2 style="margin-top:0">The application design authorities</h2>
+  <p>Task 028 established these four owner-approved HTML packs as the authority for application
+  architecture, composition, hierarchy, placement, disclosure, table and row anatomy and responsive
+  behaviour. They are <b>linked, not reproduced</b>: a copy inside a brand document would be a second
+  authority, and the copy would be the one that drifted. The bytes are the authority, so the SHA-256
+  is recorded here and enforced by <code>src/ui/design-authority.test.ts</code>.</p>
+  <table>
+    <thead><tr><th>Surface</th><th>Approved pack</th><th>SHA-256</th></tr></thead>
+    <tbody>
+      <tr><td>Home</td>
+        <td><a href="../design/approved/iamai-home-design-pack-v2.html"><code>docs/design/approved/iamai-home-design-pack-v2.html</code></a></td>
+        <td class="mono" style="word-break:break-all">88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50</td></tr>
+      <tr><td>Connect</td>
+        <td><a href="../design/approved/iamai-connect-design-pack-v3.html"><code>docs/design/approved/iamai-connect-design-pack-v3.html</code></a></td>
+        <td class="mono" style="word-break:break-all">903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b</td></tr>
+      <tr><td>Plan + step</td>
+        <td><a href="../design/approved/iamai-plan-step-design-pack.html"><code>docs/design/approved/iamai-plan-step-design-pack.html</code></a></td>
+        <td class="mono" style="word-break:break-all">1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec</td></tr>
+      <tr><td>MFA Readiness</td>
+        <td><a href="../design/approved/iamai-mfa-readiness-design-pack-v2.html"><code>docs/design/approved/iamai-mfa-readiness-design-pack-v2.html</code></a></td>
+        <td class="mono" style="word-break:break-all">12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512</td></tr>
+    </tbody>
+  </table>
+  <div class="note" style="margin-top:18px">
+    <strong>Application previews from branding exploration are not design authorities.</strong>
+    Home, Connect, Plan, and MFA Readiness architecture is governed by the canonical approved HTML
+    files above. Brand may repaint that anatomy; brand may never rearrange it.
+  </div>
+  <p style="margin-top:18px" class="cap">Records: <a href="../design/approved/manifest.json">design-authority manifest</a> &middot;
+  <a href="../design/authority-reconciliation.md">authority reconciliation</a> &middot;
+  <a href="../design/brand-decisions.md">brand decisions</a> &middot;
+  <a href="iamai-brand-contract.md">brand contract</a> &middot;
+  <a href="brand-manifest.json">brand manifest</a> &middot;
+  <a href="font-provenance.md">font provenance</a></p>
+</div>
+</div>
+
+<script>
+// The mark, once, from the master's geometry. Every specimen on this page is drawn from
+// this string, so the page cannot show two different marks.
+const GEO = `<g fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M36 10H21c-6.1 0-11 4.9-11 11v22c0 6.1 4.9 11 11 11h22c6.1 0 11-4.9 11-11V29"/>
+    <path d="M21 43C27.5 43.5 31 40 34 35C37 30 43 21 50 15"/>
+    <path d="M42.5 15H50V22.5"/>
+  </g>
+  <circle cx="21" cy="43" r="5" fill="currentColor"/>
+  <circle cx="34" cy="35" r="4.1" fill="currentColor"/>`
+const mark = (size, style = '') => `<svg class="mark" width="${size}" height="${size}" viewBox="0 0 64 64" style="${style}" aria-hidden="true">${GEO}</svg>`
+const cell = (inner, cap) => `<span class="cell">${inner}<span class="cap">${cap}</span></span>`
+const SIZES = [16, 24, 32, 64, 96]
+
+for (const id of ['mark-sizes-light', 'mark-sizes-dark']) {
+  document.getElementById(id).innerHTML = SIZES.map((s) => cell(mark(s), s + 'px')).join('')
+}
+document.getElementById('mono-light').innerHTML =
+  SIZES.map((s) => cell(mark(s, 'color:#1D2528'), s + 'px')).join('') +
+  cell(`<span style="background:#1D2528;padding:10px;border-radius:8px;display:inline-flex">${mark(48, 'color:#FFFDF9')}</span>`, 'light on ink')
+document.getElementById('mono-dark').innerHTML =
+  SIZES.map((s) => cell(mark(s, 'color:#FFFDF9'), s + 'px')).join('') +
+  cell(`<span style="background:#F7F4EE;padding:10px;border-radius:8px;display:inline-flex">${mark(48, 'color:#1D2528')}</span>`, 'ink on paper')
+
+const tile = (size) =>
+  `<span class="tile" style="width:${size}px;height:${size}px;border-radius:${(size * 0.22).toFixed(1)}px">${mark(size * 0.86)}</span>`
+for (const id of ['app-icons', 'app-icons-dark']) {
+  document.getElementById(id).innerHTML = [16, 24, 32, 64].map((s) => cell(tile(s), s + 'px')).join('')
+}
+
+for (const [id, size] of [['lock-20', 20], ['lock-28', 28], ['lock-40', 40], ['lock-dark', 28]]) {
+  document.getElementById(id).innerHTML = mark(size * 1.35) + '<span>IAMAI</span>'
+}
+
+const PALETTE = {
+  light: [['canvas', '#F7F4EE'], ['surface', '#FFFDF9'], ['secondary surface', '#F0ECE5'], ['line', '#D8D3C9'],
+    ['strong line', '#C1BCB3'], ['primary text', '#1D2528'], ['secondary text', '#4E5B5D'], ['muted text', '#7B8584'],
+    ['brand teal', '#0C6A64'], ['secondary teal', '#18847A'], ['soft teal', '#DDEFEA'], ['teal on soft', '#07534F'],
+    ['success', '#2C7A5A'], ['attention', '#B7791F'], ['danger', '#B04A4A'], ['admin', '#6658A4'], ['code surface', '#EEEAE3']],
+  dark: [['canvas', '#0E1516'], ['surface', '#151F20'], ['secondary surface', '#111A1B'], ['line', '#2A3737'],
+    ['strong line', '#3B4B4A'], ['primary text', '#F0F4F2'], ['secondary text', '#C4CECA'], ['muted text', '#879693'],
+    ['brand teal', '#59C7B7'], ['secondary teal', '#7AD9CB'], ['soft teal', '#173B37'], ['teal on soft', '#D9FFF8'],
+    ['success', '#79D7A6'], ['attention', '#E3B35B'], ['danger', '#E88A8A'], ['admin', '#B9A7FF'], ['code surface', '#0A1112']],
+}
+const swatches = (rows) => rows.map(([role, hex]) =>
+  `<div class="sw"><i style="background:${hex}"></i><b>${role}</b><span class="cap mono">${hex}</span></div>`).join('')
+document.getElementById('sw-light').innerHTML = swatches(PALETTE.light)
+document.getElementById('sw-dark').innerHTML = swatches(PALETTE.dark)
+
+const STATUS = {
+  light: [['brand / selected', '#0C6A64'], ['success', '#2C7A5A'], ['attention', '#B7791F'], ['danger', '#B04A4A'], ['admin', '#6658A4']],
+  dark: [['brand / selected', '#59C7B7'], ['success', '#79D7A6'], ['attention', '#E3B35B'], ['danger', '#E88A8A'], ['admin', '#B9A7FF']],
+}
+const statusRow = (rows) => rows.map(([role, hex]) =>
+  cell(`<span style="display:inline-flex;align-items:center;gap:8px"><i class="dot" style="background:${hex}"></i><span class="mono">${hex}</span></span>`, role)).join('')
+document.getElementById('status-light').innerHTML = statusRow(STATUS.light)
+document.getElementById('status-dark').innerHTML = statusRow(STATUS.dark)
+
+// A sample of the product's own icon set at the brand's stroke band.
+const ICONS = {
+  users: 'M7.5 9.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2.5 17c.5-2.8 2.6-4.5 5-4.5s4.5 1.7 5 4.5M13 3.7a3 3 0 0 1 0 5.6M14.5 12.7c1.7.5 2.8 1.9 3 4.3',
+  key: 'M12.5 2.5a5 5 0 0 0-4.7 6.7L2.5 14.5v3h3l1-1v-2h2v-2h2l1.3-1.3A5 5 0 1 0 12.5 2.5zM13.5 6.5h.01',
+  policy: 'M5 2.5h7l3 3v12H5zM12 2.5v3h3M7.5 9.5h5M7.5 12.5h5M7.5 15.5h3',
+  check: 'M4 10.5l4 4 8-9',
+  alert: 'M10 3l7.5 13h-15L10 3zM10 8v4M10 14.5h.01',
+  device: 'M3 4.5h14v9H3zM7 17.5h6M10 13.5v4',
+}
+document.getElementById('icons').innerHTML = Object.entries(ICONS).map(([name, d]) =>
+  cell(`<svg width="26" height="26" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text)"><path d="${d}"/></svg>`, name)).join('')
+
+const DO_DONT = [
+  ['yes', mark(44), 'Full colour on canvas'],
+  ['yes', `<span class="tile" style="width:44px;height:44px;border-radius:10px">${mark(38)}</span>`, 'App icon on the brand field'],
+  ['yes', mark(44, 'color:#1D2528'), 'One colour, full strength'],
+  ['no', mark(44, 'color:#2C7A5A'), 'Never a status colour'],
+  ['no', mark(44, 'opacity:.35'), 'Never screened back'],
+  ['no', mark(44, 'transform:rotate(-18deg)'), 'Never rotated or sheared'],
+  ['no', `<span style="display:inline-flex;flex-direction:column;align-items:center">${mark(34)}<span style="font-size:7px;font-weight:700;letter-spacing:.1em;color:var(--text-muted)">PLAN PROGRESS ACHIEVE</span></span>`, 'Never a generated tagline'],
+  ['no', mark(44, 'filter:drop-shadow(0 0 6px #0C6A64)'), 'Never a glow or shadow'],
+]
+document.getElementById('do-dont').innerHTML = DO_DONT.map(([kind, art, label]) =>
+  `<div class="dd ${kind}">${art}<div class="lab">${kind === 'yes' ? '✓ ' : '✕ '}${label}</div></div>`).join('')
+</script>
+</body>
+</html>

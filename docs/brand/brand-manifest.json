@@ -1,0 +1,224 @@
+{
+  "$comment": "The machine-readable IAMAI brand system (task 029). Every value the owner approved is written here exactly once, as a value rather than as prose: a later pack reads this file instead of re-reading a paragraph and guessing. src/brand/brand.test.ts holds the repository to it — the palette, the null tagline, the logo family and version, the asset paths, the forbidden SVG constructs and the four application-design hashes. The human record is docs/brand/iamai-brand-contract.md and the visual reference is docs/brand/iamai-brand-system.html; where a value and a sentence disagree, this file is the value.",
+  "schema": "iamai.brand/1",
+  "version": 1,
+  "establishedBy": "029-final-brand-assets-contract",
+  "establishedOn": "2026-09-08",
+  "brand": {
+    "name": "IAMAI",
+    "tagline": null,
+    "taglineNote": "There is no tagline. The exploratory lines produced while generating brand concepts (PLAN PROGRESS ACHIEVE, FROM HERE TO WHAT'S NEXT, IDENTITY ROADMAP, PLAN WITH EVIDENCE, GUIDED PROGRESSION, PEOPLE + AI + A BRIGHTER TOMORROW) are not approved copy and must not be baked into a logo asset. A descriptor joins the lockup only when a later task approves it as product or marketing copy.",
+    "forbiddenTaglines": [
+      "PLAN PROGRESS ACHIEVE",
+      "FROM HERE TO WHAT'S NEXT",
+      "IDENTITY ROADMAP",
+      "PLAN WITH EVIDENCE",
+      "GUIDED PROGRESSION",
+      "PEOPLE + AI + A BRIGHTER TOMORROW"
+    ]
+  },
+  "logo": {
+    "family": "Guided Route",
+    "variant": 2,
+    "version": 1,
+    "coreLockup": "mark + IAMAI",
+    "wordmark": {
+      "text": "IAMAI",
+      "family": "IBM Plex Sans",
+      "weight": 700,
+      "letterSpacingEm": 0.005,
+      "composition": "mark asset + semantic text",
+      "compositionNote": "The lockup is composed at use: the mark asset beside the live text IAMAI in the locally loaded IBM Plex Sans. There is no canonical exported lockup carrying <text>, because such a file renders in the wrong face wherever the font is not installed.",
+      "gapEmOfMark": 0.28,
+      "clearSpaceEmOfMark": 0.35,
+      "minimumMarkPx": 16,
+      "headerMarkPx": [20, 28],
+      "descriptorUnderWordmark": false
+    },
+    "topology": [
+      "an open rounded-window frame",
+      "a lower-left origin node",
+      "one rising route",
+      "one midpoint waypoint",
+      "an upper-right destination arrow",
+      "open space at the top-right corner and around the origin, so the route travels through the frame"
+    ],
+    "master": "src/brand/logo/iamai-guided-route-master.svg",
+    "masterRules": {
+      "viewBox": "0 0 64 64",
+      "colorSource": "currentColor",
+      "forbids": ["image", "script", "foreignObject", "text", "tspan", "linearGradient", "radialGradient", "filter", "external href", "embedded font"]
+    },
+    "assets": {
+      "master": "src/brand/logo/iamai-guided-route-master.svg",
+      "light": "src/brand/logo/iamai-mark-light.svg",
+      "dark": "src/brand/logo/iamai-mark-dark.svg",
+      "monoInk": "src/brand/logo/iamai-mark-mono-ink.svg",
+      "monoLight": "src/brand/logo/iamai-mark-mono-light.svg",
+      "faviconSvg": "public/brand/favicon.svg",
+      "favicon32": "public/brand/favicon-32.png"
+    },
+    "assetColors": {
+      "light": "#0C6A64",
+      "dark": "#59C7B7",
+      "monoInk": "#1D2528",
+      "monoLight": "#FFFDF9",
+      "appIconField": "#0C6A64",
+      "appIconMark": "#FFFDF9"
+    },
+    "derivation": {
+      "$comment": "Only the master is drawn by hand. Every other asset is written from it by the script, and the test re-derives and compares.",
+      "rule": "scripts/brandDerive.ts",
+      "command": "node scripts/gen-brand.mjs [--raster] [--evidence]",
+      "test": "src/brand/brand.test.ts",
+      "rasterNote": "public/brand/favicon-32.png is Chrome drawing public/brand/favicon.svg at 32px. The SVG is the authority; the test asserts the PNG's dimensions, not its bytes."
+    },
+    "deferredPlatformAssets": {
+      "$comment": "Not produced. Nothing in the site references them today, and an unreferenced icon is a file nobody maintains. A pack that adds a web app manifest or an Apple touch icon derives them from the same master.",
+      "appleTouchIcon180": null,
+      "appIcon192": null,
+      "appIcon512": null,
+      "favicon16Raster": null,
+      "faviconIco": null
+    }
+  },
+  "palette": {
+    "light": {
+      "name": "Mineral Teal",
+      "canvas": "#F7F4EE",
+      "surface": "#FFFDF9",
+      "secondarySurface": "#F0ECE5",
+      "line": "#D8D3C9",
+      "strongLine": "#C1BCB3",
+      "primaryText": "#1D2528",
+      "secondaryText": "#4E5B5D",
+      "mutedText": "#7B8584",
+      "brandPrimary": "#0C6A64",
+      "brandSecondary": "#18847A",
+      "brandSoft": "#DDEFEA",
+      "brandSoftText": "#07534F",
+      "success": "#2C7A5A",
+      "attention": "#B7791F",
+      "danger": "#B04A4A",
+      "admin": "#6658A4",
+      "codeSurface": "#EEEAE3"
+    },
+    "dark": {
+      "name": "Deep Mineral",
+      "canvas": "#0E1516",
+      "surface": "#151F20",
+      "secondarySurface": "#111A1B",
+      "line": "#2A3737",
+      "strongLine": "#3B4B4A",
+      "primaryText": "#F0F4F2",
+      "secondaryText": "#C4CECA",
+      "mutedText": "#879693",
+      "brandPrimary": "#59C7B7",
+      "brandSecondary": "#7AD9CB",
+      "brandSoft": "#173B37",
+      "brandSoftText": "#D9FFF8",
+      "success": "#79D7A6",
+      "attention": "#E3B35B",
+      "danger": "#E88A8A",
+      "admin": "#B9A7FF",
+      "codeSurface": "#0A1112"
+    }
+  },
+  "semantics": {
+    "$comment": "Brand and state are different questions. brandPrimary answers 'this is IAMAI, this is selected, this is the action'; success answers 'the tenant is in a good state'. A surface that paints a brand action in the success colour tells the reader something untrue about their tenant.",
+    "brandRoles": ["brand identity", "navigation", "selected", "interactive emphasis", "focus"],
+    "stateRoles": {
+      "success": "proven / in place / healthy",
+      "attention": "needs a decision, a date or a check",
+      "danger": "would break something, or is blocked",
+      "admin": "administrator scope and privileged population"
+    },
+    "brandPrimaryIsSuccess": false,
+    "distinctPairs": [
+      { "light": ["#0C6A64", "#2C7A5A"], "dark": ["#59C7B7", "#79D7A6"] }
+    ]
+  },
+  "typography": {
+    "families": {
+      "display": "IBM Plex Serif",
+      "interface": "IBM Plex Sans",
+      "technical": "IBM Plex Mono"
+    },
+    "roles": [
+      { "role": "display / H1 / major editorial heading", "family": "IBM Plex Serif", "weight": 700 },
+      { "role": "H2 / H3 editorial heading", "family": "IBM Plex Serif", "weight": [600, 700] },
+      { "role": "body / interface", "family": "IBM Plex Sans", "weight": 400 },
+      { "role": "strong body / label / control", "family": "IBM Plex Sans", "weight": 600 },
+      { "role": "wordmark", "family": "IBM Plex Sans", "weight": 700 },
+      { "role": "technical / identifier / JSON / PowerShell / Graph path", "family": "IBM Plex Mono", "weight": [400, 500] }
+    ],
+    "hosting": "self-hosted woff2 under public/fonts",
+    "remoteFontCdn": false,
+    "provenance": "docs/brand/font-provenance.md",
+    "appliedToProduction": false,
+    "appliedBy": "030 (shell/theme/typography restoration)"
+  },
+  "ui": {
+    "icons": {
+      "style": "restrained geometric stroke",
+      "strokePxAtOrdinaryUiSize": [1.75, 2],
+      "caps": "round",
+      "joins": "round",
+      "existingSet": "src/ui/components/Icon.tsx"
+    },
+    "radiusPx": { "compactRow": 4, "control": 8, "keyPanel": 12 },
+    "radiusNote": "A hierarchy, not a licence to cardify every section. Production enforces a single 4px token today (src/ui/tokens.ts LAYOUT.radiusPx, src/ui/design-lint.test.ts rule 3); pack 030 turns that rule into this hierarchy.",
+    "motionMs": { "control": [120, 180], "disclosure": [180, 240] },
+    "motionRules": ["functional and tactile", "no decorative looping animation", "respect prefers-reduced-motion"],
+    "texture": "evidence grid, marketing and brand surfaces only, never behind dense operational data"
+  },
+  "voice": {
+    "$comment": "A guardrail for later copy, not a licence to rewrite accurate production content. docs/design/content.json remains the copy authority.",
+    "is": ["informative", "evidence first", "short operational verbs", "confident only where evidence supports it", "explicit about uncertainty", "professional"],
+    "isNot": ["chatty", "salesy", "fear-based", "AI-assistant narration"],
+    "copyAuthority": "docs/design/content.json"
+  },
+  "applicationDesignAuthority": {
+    "$comment": "Task 028 established these four files as the owner-approved application authorities. Brand repaints them; brand never rearranges them. The hashes are repeated here so a brand change that quietly edited a pack fails this task's test as well as 028's.",
+    "manifest": "docs/design/approved/manifest.json",
+    "test": "src/ui/design-authority.test.ts",
+    "precedence": ["production technical/content truth", "approved HTML application architecture", "approved brand skin"],
+    "brandMayChange": ["palette", "type family within an approved role", "logo", "icons", "radius and surface treatment where compatible", "hover/press/focus treatment", "restrained motion"],
+    "brandMayNotChange": ["page anatomy", "major composition", "workflow", "information hierarchy", "major component placement", "disclosure structure", "table/row architecture", "responsive behaviour", "technical truth", "accurate production copy"],
+    "surfaces": [
+      { "surface": "home", "path": "docs/design/approved/iamai-home-design-pack-v2.html", "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50" },
+      { "surface": "connect", "path": "docs/design/approved/iamai-connect-design-pack-v3.html", "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b" },
+      { "surface": "plan", "path": "docs/design/approved/iamai-plan-step-design-pack.html", "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec" },
+      { "surface": "mfa-readiness", "path": "docs/design/approved/iamai-mfa-readiness-design-pack-v2.html", "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512" }
+    ]
+  },
+  "generatedBrandApplicationPreviews": {
+    "$comment": "Application-page previews produced while exploring the brand are colour and brand framing only. This block records no path, because a preview is never an authority for anything.",
+    "authoritative": false,
+    "applicationLayoutAuthority": false,
+    "architectureAuthority": false,
+    "componentPlacementAuthority": false,
+    "informationHierarchyAuthority": false,
+    "copyAuthority": false,
+    "workflowAuthority": false,
+    "interactionAuthority": false,
+    "responsiveAuthority": false,
+    "supersedes": []
+  },
+  "documents": {
+    "contract": "docs/brand/iamai-brand-contract.md",
+    "brandSystem": "docs/brand/iamai-brand-system.html",
+    "fontProvenance": "docs/brand/font-provenance.md",
+    "brandDecisions": "docs/design/brand-decisions.md",
+    "designAuthority": "docs/design/approved/manifest.json",
+    "visualEvidence": "docs/screens/29"
+  },
+  "production": {
+    "$comment": "What this task did and did not switch on. The favicon is an asset swap with no layout consequence; the palette, the type scale and the shell are the restoration pack's work, and tokens.ts still holds the paper/ink palette that shipped.",
+    "faviconWired": true,
+    "paletteApplied": false,
+    "typographyApplied": false,
+    "shellLogoApplied": false,
+    "appliedBy": "030"
+  }
+}

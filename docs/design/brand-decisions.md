@@ -9,8 +9,10 @@ says what the skin may repaint and what it may never move.
 
 **Production does not implement this palette yet.** The tokens in `src/ui/tokens.ts` are
 still the paper/ink direction that shipped before these decisions. Task 028 recorded the
-decisions; it did not change a single production colour. Pack 029 owns the assets and the
-token change.
+decisions; it did not change a single production colour. Pack 029 turned them into the
+finished assets and the brand contract (`docs/brand/`), and wired the favicon; the token
+change lands with the shell, the type scale and the surfaces in the restoration pack, so the
+palette and the anatomy move together against the approved packs rather than in halves.
 
 ---
 
@@ -112,8 +114,9 @@ maps, globes, or generic cyber-neon.
   (Production sets one radius token, 4px — `LAYOUT.radiusPx` — and design rule 3 in
   `src/ui/design-lint.test.ts` enforces a 4px ceiling with a named exception list: 8px on a
   `.wave` or `.export-card` panel, 50% on `.status::before`, a 999px picker chip. There is no
-  12px. Pack 029/030 turns that exception list into this hierarchy; task 028 deliberately left
-  the lint enforcing what production actually is.)
+  12px. The restoration pack turns that exception list into this hierarchy; task 028
+  deliberately left the lint enforcing what production actually is, and task 029 left it
+  alone for the same reason.)
 - **Motion**: tactile and functional. Roughly 120–180ms for controls, 180–240ms for
   disclosure and step expansion. Motion carries state continuity and progress, never
   spectacle. Respect `prefers-reduced-motion`. No looping decorative animation.
@@ -173,6 +176,10 @@ restored. There is no demo-specific visual design, and a branding preview is not
 architecture.
 
 ---
+
+The finished brand — the master mark, the derived assets, the exact values in machine-readable
+form, and the visual reference — is `docs/brand/iamai-brand-contract.md`,
+`docs/brand/brand-manifest.json` and `docs/brand/iamai-brand-system.html` (task 029).
 
 See `docs/design/authority-reconciliation.md` for the forensic record of how the visual
 authority drifted, and `docs/design/approved/manifest.json` for the machine-readable

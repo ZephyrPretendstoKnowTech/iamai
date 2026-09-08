@@ -1,0 +1,83 @@
+// Every IAMAI brand asset is derived from one file (task 029).
+//
+// src/brand/logo/iamai-guided-route-master.svg is the master Guided Route
+// mark: vector geometry, one colour source (`currentColor`), no text, no
+// raster, no gradient, no external reference. Everything else in the brand —
+// the theme marks, the monochrome marks, the favicon/app icon and the raster
+// derived from it — is written from that file by `node scripts/gen-brand.mjs`.
+// src/brand/brand.test.ts re-derives here and fails when a committed asset
+// differs, the way tokens.test.ts holds tokens.css to tokens.ts.
+//
+// Deriving rather than hand-drawing is the point: a second hand-drawn mark is
+// a second authority, and the two drift the moment one of them is corrected.
+
+/** The master. The only file in the brand a person edits by hand. */
+export const MASTER = 'src/brand/logo/iamai-guided-route-master.svg'
+
+/**
+ * The brand values a logo asset may carry, from docs/brand/brand-manifest.json
+ * (light `brandPrimary`, dark `brandPrimary`, light `primaryText`, light
+ * `surface`). Semantic colours are never a logo colour: the mark is brand, not
+ * a tenant state.
+ */
+export const MARK_COLORS = {
+  light: '#0C6A64',
+  dark: '#59C7B7',
+  monoInk: '#1D2528',
+  monoLight: '#FFFDF9',
+} as const
+
+/** The app-icon field, and the mark drawn on it. */
+export const APP_ICON = { field: '#0C6A64', mark: '#FFFDF9', radius: 14, scale: 0.86 } as const
+
+/** Line endings are not identity: git may hand back CRLF on Windows. */
+export const normalise = (svg: string): string => svg.replace(/\r\n/g, '\n')
+
+/** The master's geometry, without its own <svg> wrapper. */
+export function geometry(master: string): string {
+  return normalise(master)
+    .replace(/^[\s\S]*?<svg[^>]*>\n?/, '')
+    .replace(/<\/svg>\s*$/, '')
+    .replace(/\s+$/, '')
+}
+
+/** The master in one fixed colour: the same geometry, no `currentColor` to inherit. */
+export function tinted(master: string, hex: string): string {
+  return normalise(master).replace(/currentColor/g, hex)
+}
+
+/**
+ * The favicon/app icon: the same mark, drawn light on a rounded brand field.
+ * A transparent single-colour mark disappears into browser chrome at 16px;
+ * the field is a treatment of this logo, never a second logo, so the geometry
+ * comes from the master and only the colour and the scale change.
+ */
+export function appIcon(master: string): string {
+  const inner = geometry(tinted(master, APP_ICON.mark))
+    .split('\n')
+    .map((line) => (line.trim() === '' ? line : `  ${line}`))
+    .join('\n')
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">',
+    `  <rect width="64" height="64" rx="${APP_ICON.radius}" fill="${APP_ICON.field}"/>`,
+    `  <g transform="translate(32 32) scale(${APP_ICON.scale}) translate(-32 -32)">`,
+    inner,
+    '  </g>',
+    '</svg>',
+    '',
+  ].join('\n')
+}
+
+/** Every committed asset that is a function of the master, and the function. */
+export function derived(master: string): { path: string; content: string }[] {
+  return [
+    { path: 'src/brand/logo/iamai-mark-light.svg', content: tinted(master, MARK_COLORS.light) },
+    { path: 'src/brand/logo/iamai-mark-dark.svg', content: tinted(master, MARK_COLORS.dark) },
+    { path: 'src/brand/logo/iamai-mark-mono-ink.svg', content: tinted(master, MARK_COLORS.monoInk) },
+    { path: 'src/brand/logo/iamai-mark-mono-light.svg', content: tinted(master, MARK_COLORS.monoLight) },
+    { path: 'public/brand/favicon.svg', content: appIcon(master) },
+  ]
+}
+
+/** The raster derived from the favicon, and the size the file must be. */
+export const RASTER = { from: 'public/brand/favicon.svg', path: 'public/brand/favicon-32.png', size: 32 } as const
