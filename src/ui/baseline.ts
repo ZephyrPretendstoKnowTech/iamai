@@ -79,6 +79,27 @@ export type BaselineReview = { changes: PolicyChange[]; incomplete: boolean }
 /** Enough changed files to review by hand; past this the compare is not a baseline update but a repository reshuffle, and the review says so. */
 const MAX_CANDIDATE_FILES = 80
 
+/** Which commits a compare event says must hold a file. A side left false is absence the event itself establishes; anything else is source that should be there. */
+type Expectation = { base: boolean; head: boolean }
+
+/**
+ * The sides a compare status establishes for the *new* path of an event. An
+ * unknown or missing status establishes no absence, so both sides are expected
+ * and a 404 on either is unread source rather than a change IAMAI invented.
+ */
+function expectedSides(status: string | undefined): Expectation {
+  switch (status) {
+    case 'added':
+    case 'renamed':
+    case 'copied':
+      return { base: false, head: true }
+    case 'removed':
+      return { base: true, head: false }
+    default:
+      return { base: true, head: true }
+  }
+}
+
 /**
  * The author's *policy* changes between the pinned commit and a candidate head
  * (task 021), for pages.connectNoScan.baselineUpdated and its review list.
@@ -98,32 +119,43 @@ const MAX_CANDIDATE_FILES = 80
  * Nothing here fails to "no changes": a compare that will not load, a file that
  * will not fetch and a file that will not parse all set `incomplete`, and the
  * tile says the review is incomplete rather than that the baseline is understood.
+ * A 404 is the same rule: it is benign only on the side where the compare event
+ * itself establishes the file is absent (the new path at the base of an
+ * addition, the old path at the head of a rename or removal). A 404 anywhere the
+ * file should exist is source IAMAI could not read, so it sets `incomplete`
+ * rather than reading as an addition, a removal, or no change at all.
  */
 export async function baselineReview(head: string, fetchImpl: typeof fetch = fetch): Promise<BaselineReview> {
   const base = PINNED.commit
-  let files: { filename?: string; previous_filename?: string }[]
+  let files: { filename?: string; previous_filename?: string; status?: string }[]
   try {
     const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/compare/${base}...${head}`, { headers: { Accept: 'application/vnd.github+json' } })
     if (!res.ok) return { changes: [], incomplete: true }
-    files = ((await res.json()) as { files?: { filename?: string; previous_filename?: string }[] }).files ?? []
+    files = ((await res.json()) as { files?: { filename?: string; previous_filename?: string; status?: string }[] }).files ?? []
   } catch {
     return { changes: [], incomplete: true }
   }
 
   // A rename is paired by policy id, not by previous_filename, but the old path
-  // is still where the old body lives, so both sides of every event are fetched.
-  const paths: string[] = []
-  for (const f of files) {
-    for (const p of [f.filename, f.previous_filename]) {
-      if (typeof p !== 'string' || shouldSkip(p) !== null || paths.includes(p)) continue
-      paths.push(p)
-    }
+  // is still where the old body lives, so both sides of every event are fetched
+  // — each carrying which commits the event says must hold it (`expected`).
+  const candidates = new Map<string, Expectation>()
+  const expect = (path: string, e: Expectation): void => {
+    if (shouldSkip(path) !== null) return
+    const had = candidates.get(path)
+    candidates.set(path, had ? { base: had.base || e.base, head: had.head || e.head } : e)
   }
+  for (const f of files) {
+    if (typeof f.filename === 'string') expect(f.filename, expectedSides(f.status))
+    // previous_filename is only set by a rename or a copy, and names where the old body lives.
+    if (typeof f.previous_filename === 'string') expect(f.previous_filename, { base: true, head: false })
+  }
+  const paths = [...candidates.keys()]
   if (paths.length === 0) return { changes: [], incomplete: false }
   if (paths.length > MAX_CANDIDATE_FILES) return { changes: [], incomplete: true }
 
   let failed = false
-  const at = async (commit: string): Promise<SourceArtifact[]> => {
+  const at = async (commit: string, side: 'base' | 'head'): Promise<SourceArtifact[]> => {
     const out: SourceArtifact[] = []
     const q = [...paths]
     const worker = async (): Promise<void> => {
@@ -139,7 +171,12 @@ export async function baselineReview(head: string, fetchImpl: typeof fetch = fet
         }
         try {
           const res = await fetchImpl(url)
-          if (res.status === 404) continue
+          // Absent where the compare event says it is absent is the whole of a
+          // rename or an addition; absent where it should exist is unread source.
+          if (res.status === 404) {
+            if (candidates.get(path)?.[side]) failed = true
+            continue
+          }
           if (!res.ok) {
             failed = true
             continue
@@ -154,8 +191,8 @@ export async function baselineReview(head: string, fetchImpl: typeof fetch = fet
     return out
   }
 
-  const baseSet = sourceSet(await at(base))
-  const headSet = sourceSet(await at(head))
+  const baseSet = sourceSet(await at(base, 'base'))
+  const headSet = sourceSet(await at(head, 'head'))
   return { changes: policyChanges(baseSet, headSet), incomplete: failed || baseSet.unreadable.length > 0 || headSet.unreadable.length > 0 }
 }
 
