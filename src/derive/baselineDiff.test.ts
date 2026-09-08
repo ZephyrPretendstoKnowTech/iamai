@@ -248,6 +248,91 @@ test('H. representation-only differences are not changes, and a real grant or sc
   assert.equal(changes[0].reason, 'unmodelledField')
 })
 
+// ------------------------- I. an expanded Graph object is not a policy change
+
+/**
+ * The strength as the author's own repository holds it: the pinned package
+ * carries `authenticationStrength` fully expanded, so the referenced tenant
+ * object's own record — its timestamps, its policyType, its OData annotations —
+ * travels inside the policy. None of that is something the author wrote.
+ */
+const expandedStrength = (id: string, modified: string, combinations: string[]) => ({
+  id,
+  createdDateTime: '2026-05-04T23:40:40.6249015Z',
+  modifiedDateTime: modified,
+  displayName: 'Modern MFA + TAP',
+  description: '',
+  policyType: 'custom',
+  requirementsSatisfied: 'mfa',
+  allowedCombinations: combinations,
+  'combinationConfigurations@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#x',
+  combinationConfigurations: [],
+})
+
+const TAP_COMBINATIONS = ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor', 'temporaryAccessPassOneTime']
+
+const withStrength = (strength: unknown) => ({
+  ...registrationAfter,
+  grantControls: { operator: 'OR', builtInControls: [], 'authenticationStrength@odata.context': 'https://graph.microsoft.com/v1.0/$metadata#strength', authenticationStrength: strength },
+})
+
+test('I. a re-export that only moved the referenced strength object’s own record is not a policy change', () => {
+  const before = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS))
+  const after = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-09-06T09:41:11.5000000Z', TAP_COMBINATIONS))
+
+  // 1. Two copies at one commit that differ only in that record are one member.
+  const set = sourceSet([at('Policies', NEW_NAME, before), doc(NEW_NAME, after)])
+  assert.equal(set.conflicts.length, 0, `a moved timestamp is not two copies that disagree: ${JSON.stringify(set.conflicts)}`)
+  assert.equal(set.members.length, 1)
+
+  // 2. And a commit that only refreshed the export draws no review row at all.
+  const cmp = comparePolicies(normalizePolicy(before), normalizePolicy(after))
+  assert.deepEqual(cmp.changed, [], `nothing the author wrote moved: ${JSON.stringify(cmp.changed)}`)
+  assert.deepEqual(cmp.unreviewed, [], 'a timestamp is not an unreviewable change either')
+  assert.deepEqual(reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, after)]), [])
+
+  // The depth of the export is the exporter's choice: the same strength written
+  // as a bare id means the same thing as the expanded projection of it.
+  const bare = withStrength({ id: MODERN_MFA_TAP, displayName: 'Modern MFA + TAP', allowedCombinations: TAP_COMBINATIONS })
+  assert.deepEqual(reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, bare)]), [])
+})
+
+test('I2. the strength the policy points at is still material: its id and the combinations it allows', () => {
+  const before = withStrength(expandedStrength(BUILT_IN_MFA, '2026-08-12T13:23:05.2711028Z', ['password,microsoftAuthenticatorPush']))
+  const after = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS))
+  const cmp = comparePolicies(normalizePolicy(before), normalizePolicy(after))
+  assert.deepEqual(cmp.changed.map((c) => c.field), ['authenticationStrength'], 'a different strength is a change')
+  assert.deepEqual(cmp.unreviewed, [])
+
+  // The same strength id whose allowed combinations moved is a change too.
+  const widened = withStrength(expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', [...TAP_COMBINATIONS, 'deviceBasedPush']))
+  assert.deepEqual(comparePolicies(normalizePolicy(after), normalizePolicy(widened)).changed.map((c) => c.field), ['authenticationStrength'])
+
+  // As a person reads it, from the name the author gave the strength.
+  const [row] = reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, after)])
+  assert.deepEqual(row.deltas, [{ field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' }])
+  assert.equal(row.kind, 'changed')
+})
+
+test('I3. a control the model does not name is unreviewed, never counted as a field it understands', () => {
+  // A session control IAMAI has never heard of still changes what the policy
+  // does, so it is reported as a change nobody has established.
+  const before = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 12, type: 'hours' } } }
+  const after = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 12, type: 'hours' }, someFutureSessionControl: { isEnabled: true } } }
+  const cmp = comparePolicies(normalizePolicy(before), normalizePolicy(after))
+  assert.deepEqual(cmp.changed, [], 'the block is not reported as a field the model read')
+  assert.deepEqual(cmp.unreviewed, ['sessionControls.someFutureSessionControl.isEnabled'])
+  const [row] = reviewOf([at('Policies', NEW_NAME, before)], [at('Policies', NEW_NAME, after)])
+  assert.equal(row.kind, 'unknown')
+  assert.equal(row.reason, 'unmodelledField')
+
+  // A session control the model does name is material, and worded by the block.
+  const shorter = { ...registrationAfter, sessionControls: { signInFrequency: { isEnabled: true, value: 4, type: 'hours' } } }
+  const real = comparePolicies(normalizePolicy(before), normalizePolicy(shorter))
+  assert.deepEqual(real.changed.map((c) => c.field), ['sessionControls'])
+  assert.deepEqual(real.unreviewed, [])
+})
+
 // ------------------------------------------------ K. unreadable source is unknown
 
 test('K. a source file that will not parse makes the review incomplete, never shorter', () => {

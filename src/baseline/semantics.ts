@@ -4,35 +4,50 @@
 // of the same policy can be compared without a raw text diff, and names the
 // exact fields that differ.
 //
-// Two rules keep this honest:
+// Three rules keep this honest:
 //
 //  - only the fields the baseline model actually represents are compared by
-//    name (MATERIAL_PATHS). A difference anywhere else inside the policy's
-//    semantic blocks is reported as *unreviewed*, never dropped: IAMAI saying
-//    "nothing material changed" about a field it does not model would be a
-//    claim it cannot stand behind;
+//    name (MATERIAL_PATHS, reduced to MODELLED_SUBFIELDS where a path holds a
+//    block). A difference anywhere else inside the policy's semantic blocks is
+//    reported as *unreviewed*, never dropped: IAMAI saying "nothing material
+//    changed" about a field it does not model would be a claim it cannot stand
+//    behind;
 //  - canonicalisation only collapses representation. A string list is a set
 //    under the source model, so it is deduplicated, folded to lower case and
 //    sorted; an absent container and a semantically empty one are the same
 //    thing; a filter `rule` is compared as written, because its text is the
-//    value.
+//    value. A Graph timestamp or an OData annotation is representation at every
+//    depth, because an export carries the fetched object's own bookkeeping down
+//    with it and a re-export moves it without the author touching a policy;
+//  - a path that points at a *tenant object* rather than holding controls
+//    (MODELLED_REFERENCES) means the object it points at. How deeply an export
+//    expanded that object is the exporter's choice, not the author's.
 //
 // Pure: no DOM, no network.
 import type { CaPolicy } from './types.ts'
 
-/** The blocks of a policy that carry Conditional Access semantics. Everything else on a policy is metadata. */
-const MATERIAL_BLOCKS = ['state', 'conditions', 'grantControls', 'sessionControls'] as const
-
 /** Policy keys that are identity, wording or bookkeeping — never a control. */
 const METADATA_KEYS = new Set(['id', 'displayName', 'description', 'createdDateTime', 'modifiedDateTime', 'templateId'])
+
+/**
+ * Keys that carry no Conditional Access semantics *at any depth*. An export that
+ * expanded a nested Graph object brought that object's own record down with it,
+ * so a routine re-export moves these without the author changing a policy.
+ */
+const NESTED_METADATA_KEYS = new Set(['createddatetime', 'modifieddatetime'])
+
+/** True for a key that is the fetch's bookkeeping rather than the policy's meaning, wherever it sits. */
+function isNestedMetadata(key: string): boolean {
+  return NESTED_METADATA_KEYS.has(key.toLowerCase()) || key.includes('@odata')
+}
 
 /**
  * Every leaf of the supported source model, as a path into the policy. The last
  * segment of each path is unique across the whole model, so it is the field's
  * name wherever the review words it (connectView's diffFields).
  *
- * `sessionControls` is one leaf: its own type carries an index signature, so the
- * model represents the block but not each control inside it.
+ * A path here may still hold an object; MODELLED_SUBFIELDS and
+ * MODELLED_REFERENCES say how far into it the model reaches.
  */
 export const MATERIAL_PATHS: readonly string[] = [
   'state',
@@ -71,6 +86,39 @@ export const MATERIAL_PATHS: readonly string[] = [
   'sessionControls',
 ]
 
+/**
+ * How far the model reaches inside a path that holds a *block of controls*,
+ * relative to that path. Everything inside such a block is policy semantics, so
+ * whatever the model does not name here stays in the residual and is reported
+ * unreviewed — a session control IAMAI has never heard of still changes what
+ * the policy does to a person.
+ */
+const MODELLED_SUBFIELDS: Record<string, readonly string[]> = {
+  'conditions.users.includeGuestsOrExternalUsers': ['guestOrExternalUserTypes', 'externalTenants.membershipKind'],
+  'conditions.users.excludeGuestsOrExternalUsers': ['guestOrExternalUserTypes', 'externalTenants.membershipKind'],
+  'conditions.applications.applicationFilter': ['mode', 'rule'],
+  'conditions.devices.deviceFilter': ['mode', 'rule'],
+  'conditions.clientApplications.servicePrincipalFilter': ['mode', 'rule'],
+  'conditions.authenticationFlows': ['transferMethods'],
+  sessionControls: ['signInFrequency', 'persistentBrowser', 'applicationEnforcedRestrictions', 'cloudAppSecurity', 'disableResilienceDefaults', 'secureSignInSession'],
+}
+
+/**
+ * How far the model reaches inside a path that holds a *reference to a tenant
+ * object*. What the policy says is which object it points at and — for an
+ * authentication strength — which sign-in combinations that object allows.
+ *
+ * The rest of an expanded projection (its description, policyType,
+ * requirementsSatisfied, combination configurations) is the referenced object's
+ * own record, and the author's repository holds the same strength both expanded
+ * and as a bare id. That difference is the depth of an export, so it is
+ * representation: dropped rather than reported unreviewed. Identity is never
+ * dropped — the id is compared, so two different strengths are never one.
+ */
+const MODELLED_REFERENCES: Record<string, readonly string[]> = {
+  'grantControls.authenticationStrength': ['id', 'allowedCombinations'],
+}
+
 /** The field name a path is worded by: its last segment, unique across the model. */
 export function fieldOf(path: string): string {
   return path.split('.').pop() ?? path
@@ -84,8 +132,9 @@ function isObj(v: unknown): v is Record<string, unknown> {
  * Representation out, meaning in. A string list is a set (deduplicated, folded,
  * sorted); an empty list, an empty object, a null and an absent key are all
  * "not set"; object keys are ordered so two objects with the same entries read
- * the same. `key` is the key the value sits under, so a filter `rule` — whose
- * text is the value the author wrote — keeps its case.
+ * the same; a fetch's own bookkeeping is dropped at every depth. `key` is the
+ * key the value sits under, so a filter `rule` — whose text is the value the
+ * author wrote — keeps its case.
  */
 function canonical(v: unknown, key: string | null): unknown {
   if (Array.isArray(v)) {
@@ -97,6 +146,7 @@ function canonical(v: unknown, key: string | null): unknown {
   if (isObj(v)) {
     const out: Record<string, unknown> = {}
     for (const k of Object.keys(v).sort()) {
+      if (isNestedMetadata(k)) continue
       const c = canonical(v[k], k)
       if (c !== undefined) out[k] = c
     }
@@ -111,25 +161,8 @@ function canonical(v: unknown, key: string | null): unknown {
   return v
 }
 
-/**
- * One policy's semantics: `known` is the four material blocks canonicalised,
- * `rest` is every other non-metadata key the source carried. Nothing in `rest`
- * is modelled, so a difference there is unreviewed rather than material.
- */
-export function materialTree(p: CaPolicy): { known: Record<string, unknown>; rest: Record<string, unknown> } {
-  const known: Record<string, unknown> = {}
-  const rest: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(p as unknown as Record<string, unknown>)) {
-    if (METADATA_KEYS.has(k)) continue
-    const c = canonical(v, k)
-    if (c === undefined) continue
-    if ((MATERIAL_BLOCKS as readonly string[]).includes(k)) known[k] = c
-    else rest[k] = c
-  }
-  return { known, rest }
-}
-
-function at(tree: Record<string, unknown>, path: string): unknown {
+/** The value at a dotted path, or undefined where the path does not lead anywhere. */
+function at(tree: unknown, path: string): unknown {
   let cur: unknown = tree
   for (const seg of path.split('.')) {
     if (!isObj(cur)) return undefined
@@ -138,28 +171,95 @@ function at(tree: Record<string, unknown>, path: string): unknown {
   return cur
 }
 
-/** A deep copy with every modelled leaf removed, so what is left is what the model does not cover. */
-function residual(tree: Record<string, unknown>): Record<string, unknown> {
-  const copy = JSON.parse(JSON.stringify(tree)) as Record<string, unknown>
-  for (const path of MATERIAL_PATHS) {
-    const segs = path.split('.')
-    let cur: unknown = copy
-    for (const seg of segs.slice(0, -1)) {
-      if (!isObj(cur)) break
-      cur = cur[seg]
-    }
-    if (isObj(cur)) delete cur[segs[segs.length - 1]]
+/** Write a value at a dotted path, building the containers on the way. */
+function put(tree: Record<string, unknown>, path: string, value: unknown): void {
+  const segs = path.split('.')
+  let cur = tree
+  for (const seg of segs.slice(0, -1)) {
+    if (!isObj(cur[seg])) cur[seg] = {}
+    cur = cur[seg] as Record<string, unknown>
   }
-  const prune = (o: Record<string, unknown>): Record<string, unknown> => {
-    for (const k of Object.keys(o)) {
-      const v = o[k]
-      if (!isObj(v)) continue
-      const inner = prune(v)
-      if (Object.keys(inner).length === 0) delete o[k]
-    }
-    return o
+  cur[segs[segs.length - 1]] = value
+}
+
+/** Remove whatever sits at a dotted path, leaving the containers for `prune` to clear. */
+function drop(tree: Record<string, unknown>, path: string): void {
+  const segs = path.split('.')
+  let cur: unknown = tree
+  for (const seg of segs.slice(0, -1)) {
+    if (!isObj(cur)) return
+    cur = cur[seg]
+  }
+  if (isObj(cur)) delete cur[segs[segs.length - 1]]
+}
+
+/** How far the model reaches inside this path, when it holds more than one value. */
+function subfieldsOf(path: string): readonly string[] | undefined {
+  return MODELLED_SUBFIELDS[path] ?? MODELLED_REFERENCES[path]
+}
+
+/** A value cut down to the parts of it the model represents. */
+function project(v: unknown, path: string): unknown {
+  const subs = subfieldsOf(path)
+  if (!subs || !isObj(v)) return v
+  const out: Record<string, unknown> = {}
+  for (const sub of subs) {
+    const inner = at(v, sub)
+    if (inner !== undefined) put(out, sub, inner)
+  }
+  return Object.keys(out).length === 0 ? undefined : out
+}
+
+/** Drop every container that ended up holding nothing. */
+function prune(o: Record<string, unknown>): Record<string, unknown> {
+  for (const k of Object.keys(o)) {
+    const v = o[k]
+    if (!isObj(v)) continue
+    if (Object.keys(prune(v)).length === 0) delete o[k]
+  }
+  return o
+}
+
+/** Only what the model represents, at the depth it represents it. */
+function modelled(whole: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const path of MATERIAL_PATHS) {
+    const v = project(at(whole, path), path)
+    if (v !== undefined) put(out, path, v)
+  }
+  return out
+}
+
+/**
+ * Everything the model does not represent: the whole canonical policy with every
+ * modelled leaf taken out. A block's unnamed controls stay here; a reference's
+ * expanded projection does not, because how far an export expanded it is not
+ * something the author wrote.
+ */
+function unmodelled(whole: Record<string, unknown>): Record<string, unknown> {
+  const copy = JSON.parse(JSON.stringify(whole)) as Record<string, unknown>
+  for (const path of MATERIAL_PATHS) {
+    const subs = MODELLED_SUBFIELDS[path]
+    const node = at(copy, path)
+    if (subs && isObj(node)) for (const sub of subs) drop(node, sub)
+    else drop(copy, path)
   }
   return prune(copy)
+}
+
+/**
+ * One policy's semantics: `known` is every modelled leaf, `rest` is everything
+ * else the source carried that is not metadata. Nothing in `rest` is modelled,
+ * so a difference there is unreviewed rather than material.
+ */
+export function materialTree(p: CaPolicy): { known: Record<string, unknown>; rest: Record<string, unknown> } {
+  const whole: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(p as unknown as Record<string, unknown>)) {
+    if (METADATA_KEYS.has(k) || isNestedMetadata(k)) continue
+    const c = canonical(v, k)
+    if (c !== undefined) whole[k] = c
+  }
+  return { known: modelled(whole), rest: unmodelled(whole) }
 }
 
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
@@ -201,7 +301,6 @@ export function comparePolicies(base: CaPolicy, head: CaPolicy): PolicyCompariso
     if (!same(bv, hv)) changed.push({ path, field: fieldOf(path), base: bv, head: hv })
   }
   const unreviewed: string[] = []
-  differingPaths(residual(b.known), residual(h.known), '', unreviewed)
   differingPaths(b.rest, h.rest, '', unreviewed)
   return { changed, unreviewed: [...new Set(unreviewed.filter((p) => p.length > 0))].sort() }
 }
