@@ -839,12 +839,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const inBaseline = (goal: Goal): boolean => goalInMap(goalMap, goal.id)
   const factsByKey = new Map(baselineFactsList.map((b) => [b.key, b]))
   // The map describes this package when its keys resolve in it (the pinned
-  // baseline); then a goal the map does not hold has no source at all — the
-  // floor's step renders Microsoft's template, never a signature match that the
-  // pin-time rule rejected (the risky-users block for registration). Only a
-  // package the map does not describe (a synthetic fixture) falls back to matching.
+  // baseline). The fallback below exists only for a package the map does not
+  // describe — a synthetic fixture that carries the goal's policy under a key
+  // the map does not name.
   const mapDescribesPackage = Object.values(goalMap).flat().some((k) => factsByKey.has(k))
   const sourcesFor = (goal: Goal): typeof baselineFactsList => {
+    // The active baseline not holding the goal is the whole answer: it has no
+    // source, whatever a signature would match. Otherwise the floor's step —
+    // the one kind of step that renders a goal the baseline lacks — could say
+    // "Microsoft recommended, not in this baseline" over a body taken from that
+    // very baseline: the signature match the pin-time rule rejected (the
+    // risky-users block for registration), or, for a map with no key resolving
+    // into the package at all, any broadly matching policy in it. An absent
+    // goal renders Microsoft's own template or it does not render.
+    if (!inBaseline(goal)) return []
     const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((b): b is (typeof baselineFactsList)[number] => b !== undefined)
     if (mapped.length > 0) return mapped
     return mapDescribesPackage ? [] : baselineMatchesFor(goal)
