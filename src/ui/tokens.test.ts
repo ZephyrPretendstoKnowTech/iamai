@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { BRAND_ROLES, DARK, DERIVED_ROLES, DISPLAY, LIGHT, LAYOUT, ROLE_WEIGHTS, ROUTE_WIDTHS, TEXT_SURFACES, TYPE, contrastRatio, renderTokensCss, resolveColourVar, WEIGHTS } from './tokens.ts'
+import { BRAND_ROLES, DARK, DERIVED_ROLES, DISPLAY, FONT_FILES, LIGHT, LAYOUT, ROLE_WEIGHTS, ROUTE_WIDTHS, TEXT_SURFACES, TYPE, contrastRatio, renderTokensCss, resolveColourVar, WEIGHTS } from './tokens.ts'
 import type { Palette } from './tokens.ts'
 
 const AA_TEXT = 4.5
@@ -192,4 +192,50 @@ test('the shape hierarchy is the brand’s 4 / 8 / 12', () => {
 test('nothing in the token file asks a third party for a face', () => {
   const css = renderTokensCss()
   for (const m of css.matchAll(/url\(([^)]+)\)/g)) assert.match(m[1], /^'\/fonts\//, `${m[1]} is not served from this origin`)
+})
+
+/** The Plex family a `font-family: var(--font-*)` request resolves to. */
+const PLEX_FAMILY: Record<string, string> = {
+  '--font-serif': 'IBM Plex Serif',
+  '--font-sans': 'IBM Plex Sans',
+  '--font-mono': 'IBM Plex Mono',
+}
+
+/**
+ * Every (family, weight) a stylesheet actually asks for: a rule that names a
+ * Plex family and a weight in the same block. The role tests above prove the
+ * four NAMED roles have faces; this reads what the pages request, which is not
+ * the same set — a rule can set `var(--font-mono)` beside a bare `500`.
+ */
+function fontRequests(file: string): { where: string; family: string; weight: number }[] {
+  const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  const out: { where: string; family: string; weight: number }[] = []
+  for (const rule of css.matchAll(/([^{}]*)\{([^{}]*)\}/g)) {
+    const selector = rule[1].trim().split('\n').at(-1)?.trim() ?? ''
+    const family = rule[2].match(/font-family\s*:\s*var\((--font-(?:serif|sans|mono))\)/)
+    if (!family) continue
+    for (const m of rule[2].matchAll(/font-weight\s*:\s*([^;]+)/g)) {
+      const v = m[1].trim()
+      const role = v.match(/^var\(--weight-(display|body|strong|wordmark)\)$/)
+      const weight = role ? ROLE_WEIGHTS[role[1] as keyof typeof ROLE_WEIGHTS] : Number(v)
+      if (!Number.isFinite(weight)) continue
+      out.push({ where: `${file} — ${selector}`, family: PLEX_FAMILY[family[1]], weight })
+    }
+  }
+  return out
+}
+
+test('every family and weight the pages actually request has a staged face', () => {
+  // The role tests prove the four named roles resolve to real files. They say
+  // nothing about a rule that pairs a family with a literal weight, which is
+  // how `.rung-badge` came to ask IBM Plex Mono for a 500 that has never been
+  // staged: the browser substitutes the 400 face or synthesises a fake medium,
+  // and the "complete" typography foundation is not what renders.
+  const requests = [...fontRequests('src/ui/app.css'), ...fontRequests('home/home.css')]
+  assert.ok(requests.length >= 8, `only ${requests.length} family+weight requests found — the reader is broken, not the CSS`)
+  for (const { where, family, weight } of requests) {
+    const face = FONT_FILES.find((f) => f.family === family && f.weight === weight)
+    assert.ok(face, `${where}: asks for ${family} ${weight}, which has no staged face`)
+    assert.ok(existsSync(`public/fonts/${face.file}`), `${where}: ${face.file} is not staged under public/fonts`)
+  }
 })
