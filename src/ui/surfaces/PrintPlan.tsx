@@ -21,7 +21,7 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { floorRows, undatedRows } from './planRows.ts'
+import { floorGroupIds, floorRows, undatedRows } from './planRows.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -87,7 +87,7 @@ export function PrintPlan({
   // to the baseline author, and a wave left with nothing else prints no phase.
   const held = undatedRows(steps, schedule.waves)
   const floor = floorRows(steps)
-  const floorIds = new Set(floor.map((s) => s.id))
+  const floorIds = floorGroupIds(steps)
   const phaseStepIds = (w: Schedule['waves'][number]): string[] => w.stepIds.filter((id) => !floorIds.has(id))
   const waves = schedule.waves.filter((w) => phaseStepIds(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))

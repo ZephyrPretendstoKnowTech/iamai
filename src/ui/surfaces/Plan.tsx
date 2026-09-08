@@ -15,8 +15,8 @@ import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
-import { inWave, waveLabels } from '../../derive/phases.ts'
-import { floorRows, undatedRows } from './planRows.ts'
+import { waveLabels } from '../../derive/phases.ts'
+import { floorRows, phaseRows, undatedRows } from './planRows.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
@@ -126,7 +126,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // Filled once: one because, one full stop; the clause names steps by their content titles.
   const lengthTip = c.schedule.derivation.reason ? fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.reason }) : engine.critical.sentenceDone
 
-  const byId = new Map(c.steps.map((s) => [s.id, s]))
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
   // its wave, marked Skipped, so it can be found and put back (prompt 49.1 item 10).
   // The drill sits in Cleanup when Cleanup renders it (§5). A floor step (target-state
@@ -137,8 +136,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // under (roadmap/operations.ts). Its row still renders, in its own undated
   // group after the phases, saying what it waits on (planRows.ts).
   const heldRows = undatedRows(c.steps, c.schedule.waves)
+  // A numbered phase draws the rows planRows.ts gives it and decides nothing
+  // itself: the wave's steps, less the floor's group and less the footer's. A
+  // wave left with nothing draws no phase.
   const waveRows = c.schedule.waves
-    .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: w.stepIds.map((id) => byId.get(id)).filter((st): st is Step => st !== undefined && inWave(st)) }))
+    .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: phaseRows(c.steps, w) }))
     .filter((w) => w.steps.length > 0)
   const waveNames = waveLabels(waveRows)
   let nextMarked = false

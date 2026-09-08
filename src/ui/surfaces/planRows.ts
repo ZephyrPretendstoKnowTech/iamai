@@ -39,3 +39,27 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
 export function floorRows(steps: readonly Step[]): Step[] {
   return steps.filter((s) => s.floor === true && s.status !== 'done')
 }
+
+/**
+ * The ids a numbered phase may not draw: every floor step, whatever its state.
+ * The floor group holds the ones still to do; the footer holds the ones already
+ * in place. Neither is the author's phase work, so no phase draws them — the one
+ * fact both surfaces filter by, rather than each deciding for itself.
+ */
+export function floorGroupIds(steps: readonly Step[]): Set<string> {
+  return new Set(steps.filter((s) => s.floor === true).map((s) => s.id))
+}
+
+/**
+ * The rows a numbered phase draws: the steps the wave dates, less every row
+ * another group holds — the floor's own group, and the footer's In place and
+ * Doesn't apply here (derive/phases.ts inWave). A step renders once, and this is
+ * the only place that decides a phase's rows.
+ */
+export function phaseRows(steps: readonly Step[], wave: { stepIds: string[] }): Step[] {
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  const floor = floorGroupIds(steps)
+  return wave.stepIds
+    .map((id) => byId.get(id))
+    .filter((s): s is Step => s !== undefined && inWave(s) && !floor.has(s.id))
+}

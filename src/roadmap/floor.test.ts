@@ -5,7 +5,7 @@
 // through the same translator as a baseline policy.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { readFileSync } from 'node:fs'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
@@ -13,7 +13,7 @@ import type { GoalMap } from './goalMap.ts'
 import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { phases } from '../content/content.ts'
-import { floorRows } from '../ui/surfaces/planRows.ts'
+import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
@@ -147,6 +147,69 @@ test('the active baseline lacking a goal and the tenant already delivering it ar
   assert.deepEqual(floorRows(r.steps).map((s) => s.goalId), ['register-info-protected'], 'a delivered recommendation is not a row in the floor group')
 })
 
+// ---- Where a floor row is drawn: once, and never under a numbered phase ----
+
+test('a floor step a wave dates renders once, in the floor group, and in no numbered phase', () => {
+  const r = runFixture(fixture('demo-week2'))
+  const reg = r.steps.find((s) => s.goalId === 'register-info-protected')!
+  assert.equal(reg.floor, true)
+  // The premise this test exists for: the schedule does carry the id, so the
+  // rows a phase draws have to drop it rather than never see it.
+  assert.ok(r.schedule.waves.some((w) => w.stepIds.includes(reg.id)), 'a wave dates the floor step')
+  // Once, in the group named for what it is.
+  assert.deepEqual(floorRows(r.steps).filter((s) => s.id === reg.id).map((s) => s.id), [reg.id])
+  // And nowhere else: no numbered phase, and not the undated group either.
+  for (const w of r.schedule.waves) {
+    assert.equal(phaseRows(r.steps, w).some((s) => s.id === reg.id), false, `phase ${w.wave} draws the floor step`)
+  }
+  assert.equal(undatedRows(r.steps, r.schedule.waves).some((s) => s.id === reg.id), false, 'the undated group draws the floor step')
+})
+
+test('every step the Plan draws is drawn exactly once, over every fixture', () => {
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    const drawn = new Map<string, string[]>()
+    const put = (id: string, where: string): void => { drawn.set(id, [...(drawn.get(id) ?? []), where]) }
+    for (const w of r.schedule.waves) for (const s of phaseRows(r.steps, w)) put(s.id, `phase ${w.wave}`)
+    for (const s of undatedRows(r.steps, r.schedule.waves)) put(s.id, 'undated')
+    for (const s of floorRows(r.steps)) put(s.id, 'floor')
+    for (const [id, places] of drawn) assert.equal(places.length, 1, `${f.name}: ${id} renders in ${places.join(' and ')}`)
+    // And a step with a row to draw has one: a floor step is in the floor group,
+    // anything else the waves date is in its phase or the undated group.
+    for (const s of r.steps) {
+      if (s.status === 'done' || s.doesntApply) continue
+      assert.ok(drawn.has(s.id), `${f.name}: ${s.id} renders nowhere`)
+    }
+  }
+})
+
+test('a floor step already delivered is in the footer, not the floor group and not a phase', () => {
+  // The demo tenant blocks legacy authentication; take the goal out of the
+  // active baseline and the step is the floor's and done at once. Done rows are
+  // the footer's, so neither the group nor a numbered phase draws it.
+  const r = runFixture(fixture('demo'), { goalMap: without('block-legacy-auth') })
+  const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')!
+  assert.equal(legacy.floor, true)
+  assert.equal(legacy.status, 'done')
+  assert.ok(r.schedule.waves.some((w) => w.stepIds.includes(legacy.id)), 'a wave dates it')
+  assert.equal(floorRows(r.steps).some((s) => s.id === legacy.id), false, 'the floor group draws a delivered row')
+  for (const w of r.schedule.waves) {
+    assert.equal(phaseRows(r.steps, w).some((s) => s.id === legacy.id), false, `phase ${w.wave} draws a delivered floor row`)
+  }
+})
+
+test('a baseline holding both recommendations leaves no floor group to draw', () => {
+  // Both goals in the active map: nothing is the floor's, so floorRows is empty
+  // and each surface's `floor.length > 0` guard draws no heading at all.
+  const held: GoalMap = { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'], 'block-legacy-auth': ['(a baseline that holds it)'] }
+  const r = runFixture(fixture('demo-week2'), { goalMap: held })
+  assert.deepEqual(floorRows(r.steps), [], 'no row belongs to the floor')
+  for (const src of ['../ui/surfaces/Plan.tsx', '../ui/surfaces/PrintPlan.tsx']) {
+    const text = readFileSync(new URL(src, import.meta.url), 'utf8')
+    assert.ok(text.includes('{floor.length > 0 && ('), `${src} draws the group unguarded`)
+  }
+})
+
 // ---- The group on the page and in the printed document ----
 
 test('the Plan draws the floor as its own named group, after the phases and before Cleanup', () => {
@@ -159,6 +222,7 @@ test('the Plan draws the floor as its own named group, after the phases and befo
   // Placement, and not a numbered phase: a phase heading is built from
   // phases.heading with its dates; the floor group's is the plain name.
   assert.ok(at('{waveRows.map(') < at('{floor.length > 0 && ('), 'the floor group follows the numbered phases')
+  assert.match(src, /steps: phaseRows\(c\.steps, w\)/, 'a numbered phase decides its own rows')
   assert.ok(at('{floor.length > 0 && (') < at('{cleanupPhase && ('), 'and precedes Cleanup')
   assert.equal(src.includes('phases.heading, { name: phases.recommended'), false, 'the floor group is not dressed as a numbered, dated phase')
 })
@@ -169,6 +233,7 @@ test('the printed document carries the floor as the same named group, never unde
   // A floor step can sit in a wave's stepIds; the phase sections and the timeline
   // read the filtered list, so the document never attributes it to the author.
   assert.match(src, /w\.stepIds\.filter\(\(id\) => !floorIds\.has\(id\)\)/, 'the phases drop the floor\'s ids')
+  assert.match(src, /const floorIds = floorGroupIds\(steps\)/, 'the document decides alone which ids are the floor\'s')
   assert.equal(src.includes('w.stepIds.map('), false, 'no printed section reads a wave\'s raw step ids')
   const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
   assert.ok(at('{floor.length > 0 && (') < at('{schedule.cleanup && ('), 'the floor group precedes Cleanup')
