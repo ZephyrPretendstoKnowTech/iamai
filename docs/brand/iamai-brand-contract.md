@@ -183,6 +183,55 @@ with round caps and joins. No `<image>`, `<script>`, `<foreignObject>`, `<text>`
 filter, embedded font or external reference. It must stay readable at 16px, and it must work
 printed in one colour.
 
+### Refinement record
+
+The approved direction arrived as this starting geometry. It is kept here so any later
+question about what changed has an answer that is not somebody's memory:
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 10H43c6.1 0 11 4.9 11 11v5" stroke-width="5.2"/>
+    <path d="M54 40v3c0 6.1-4.9 11-11 11H21c-6.1 0-11-4.9-11-11V31" stroke-width="5.2"/>
+    <path d="M10 24v-3c0-6.1 4.9-11 11-11" stroke-width="5.2"/>
+    <path d="M15 46C21 44 23 38 28 35c5-3 8-1 12-5 4-4 5-9 10-13" stroke-width="5.2"/>
+    <path d="M44 14h10v10" stroke-width="5.2"/>
+  </g>
+  <circle cx="15" cy="46" r="5.2" fill="currentColor"/>
+  <circle cx="30.5" cy="34" r="4.3" fill="currentColor"/>
+</svg>
+```
+
+It is the right concept drawn with three collisions, each of which is a measurement rather
+than an opinion:
+
+- the arrowhead's bar (`M44 14h10`) and the frame's top-right corner arc overlap by about
+  **2.4 units** of a 5.2 stroke, so the two merge into one blob;
+- the arrowhead's vertical arm runs down `x=54` from `y=14` to `y=24`, and the frame's right
+  edge occupies `x=54` from `y=21`: the arm is drawn **on top of** the frame;
+- the origin node sits 6.7 units from the bottom-left corner's centre with a radius of 5.2,
+  which puts it **3.5 units inside** that arc's stroke, welding the node to the frame;
+- and the route ends at `(50,17)` while the arrowhead's vertex is at `(54,14)`, so the two
+  touch at a tangent instead of joining.
+
+At 16px the result fills in. The refinement keeps the concept and the topology and fixes the
+spacing:
+
+| Change | Why |
+|---|---|
+| the frame's gaps moved from mid-left and mid-right to the **top-right corner**, and the three other corners closed | the openings now sit where the route needs them, which is what topology point 6 asks for; a frame open on two opposite corners reads as a ring with a slash through it at 20px |
+| the origin node **nested at the bottom-left corner's centre** `(21,43)`, radius 5 | even 3.7-unit daylight from the arc on every side, instead of a 3.5-unit overlap |
+| the arrowhead moved into the open corner: vertex `(50,15)`, arms of 7.5 | 4.4 and 3.0 units of daylight from the two frame ends, and no overlap with anything |
+| the route's end **joined to the arrowhead vertex** | one arrow, not a line near a corner |
+| the route re-drawn from `(21,43)` through a waypoint at `(34,35)`, bowing below the diagonal | a route rather than a straight diagonal, which also keeps the mark clear of the "open in a new window" idiom |
+| stroke 5.2 → **4.6**, one weight for every element | 1.75px at a 24px icon, which is the brand's own icon band (§7) |
+
+Nothing else moved: same frame, same single origin, same single route, same single waypoint,
+same upper-right arrow, no letterform, no second route, no added detail. A change beyond
+optical refinement is a new `logo.version` in `brand-manifest.json`, and
+`src/brand/brand.test.ts` fails the moment the mark stops being three paths and two nodes at
+one stroke weight.
+
 ---
 
 ## 5. Assets and how they are made
