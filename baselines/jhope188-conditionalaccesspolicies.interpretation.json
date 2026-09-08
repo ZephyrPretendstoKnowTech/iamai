@@ -12,6 +12,7 @@
       "basis": "documented",
       "evidence": "Excluded from 31 of the 38 exported policies and included by none. Every per-policy README records the audit finding \"Break-glass group excluded\", and the author's naming guide (README.md) defines CA-GlobalExclusions as the universal exclusion group for emergency break-glass accounts, excluded from all CA policies.",
       "includedIn": [],
+      "excludedFromAtLeast": 31,
       "context": {}
     },
     {
@@ -43,7 +44,14 @@
       "basis": "documented",
       "evidence": "Named \"IAC - Trusted Locations (IP)\" in the Conditions row of the READMEs of both policies that exclude it: IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations and IAC - GLOBAL - BLOCK - Service Accounts.",
       "includedIn": [],
-      "context": {}
+      "excludedFrom": [
+        "1588fdc7-f34a-468e-8023-4d788ef5d226",
+        "99eabebd-877c-4800-aa15-d389b8767760"
+      ],
+      "context": {
+        "1588fdc7-f34a-468e-8023-4d788ef5d226": "96ff1183ebea5f74",
+        "99eabebd-877c-4800-aa15-d389b8767760": "30244e18d223b408"
+      }
     },
     {
       "id": "1d421232-4f10-4436-9883-27d9bd3f64cd",
@@ -52,7 +60,12 @@
       "basis": "documented",
       "evidence": "Named \"IAC - AllowedCountries\" in the Conditions row of the README of IAC - GLOBAL - BLOCK - Countries not Allowed, which excludes it so that sign-in from the permitted countries is not blocked. This is the goal geo-restriction's own location.",
       "includedIn": [],
-      "context": {}
+      "excludedFrom": [
+        "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5"
+      ],
+      "context": {
+        "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5": "216de10107500aed"
+      }
     },
     {
       "id": "1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748",

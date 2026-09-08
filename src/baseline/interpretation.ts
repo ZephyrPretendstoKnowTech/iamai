@@ -78,15 +78,52 @@ export type InterpretationRecord = {
   evidence: string
   /**
    * The source policies that *included* this reference when the meaning was
-   * settled, by stable policy id. The include side is the side that carries role
-   * evidence: a policy that targets a group says what the group is for, while
-   * one more exclusion says nothing new about it. So this is what a later
-   * package is checked against.
+   * settled, by stable policy id. A policy that targets a group says what the
+   * group is for, so an include is always evidence and every one of them is
+   * recorded.
    */
   includedIn: string[]
   /**
+   * The source policies whose *exclusion* of this reference the evidence rests
+   * on, by stable policy id.
+   *
+   * One more exclusion is the ordinary traffic of running a tenant and says
+   * nothing about what anything is, so exclusions are not collected wholesale
+   * the way includes are. But some readings are read off the exclusion side and
+   * nothing else: "the named location IAC - GLOBAL - BLOCK - Countries not
+   * Allowed excludes, so that sign-in from the permitted countries is not
+   * blocked" is a sentence about one policy excluding one location, and it is
+   * how the allowed-countries and trusted-network locations are settled. Those
+   * readings were carried across an update unexamined - the reference could move
+   * to another policy, or stay where it was while that policy became something
+   * else, and the old meaning still put one of the adopting tenant's own objects
+   * into their copy of it.
+   *
+   * So a record names the exclusions its own evidence cites, and each of them is
+   * checked in a later package exactly as an include is: still there, and still
+   * the policy the meaning was read off. Exclusions the evidence does not cite
+   * are not listed and do not disturb anything.
+   */
+  excludedFrom: string[]
+  /**
+   * For a reading that rests on how *widely* a reference is excluded rather than
+   * on any one policy: how many policies excluded it when the meaning was
+   * settled. 0 when breadth is not part of the evidence.
+   *
+   * The break-glass exclusion group is read this way - "excluded from 31 of the
+   * 38 policies and included by none, and the naming guide defines
+   * CA-GlobalExclusions as the universal exclusion" - and no single one of those
+   * 31 policies carries the reading, so listing them all in `excludedFrom` would
+   * send it for review every time the author changed any policy's grant. What
+   * would refute it is the breadth going away: a group excluded from three
+   * policies is not the universal exclusion any more, whatever it once was. So
+   * the count is what is checked, and a fall in it is the question.
+   */
+  excludedFromAtLeast: number
+  /**
    * What each of those policies *was* when the meaning was settled, by the same
-   * policy id: `policyContext`, one word per policy.
+   * policy id: `policyContext`, one word per policy, for every policy named in
+   * `includedIn` or `excludedFrom`.
    *
    * The set of policy ids alone is not the evidence. "The only group included by
    * IAC - GLOBAL - BLOCK - Service Accounts, whose README says the policy blocks
@@ -115,7 +152,7 @@ export type ReferenceUsage = {
   kind: ReferenceKind
   includedIn: string[]
   excludedFrom: string[]
-  /** `policyContext` for each policy in `includedIn`, by the same id. */
+  /** `policyContext` for each policy in `includedIn` or `excludedFrom`, by the same id. */
   context: Record<string, string>
 }
 
@@ -223,16 +260,24 @@ export function referenceUsage(policies: CaPolicy[]): ReferenceUsage[] {
   for (const p of policies) {
     const k = policyKey(p)
     const context = policyContext(p)
+    // Both sides carry the policy's context: a reading settled off an exclusion
+    // needs the same word about that policy as one settled off an include.
     const include = (id: string, kind: ReferenceKind): void => {
       const u = at(id, kind)
       if (!u) return
       u.includedIn.push(k)
       u.context[k] = context
     }
+    const exclude = (id: string, kind: ReferenceKind): void => {
+      const u = at(id, kind)
+      if (!u) return
+      u.excludedFrom.push(k)
+      u.context[k] = context
+    }
     for (const g of s(p.conditions?.users?.includeGroups)) include(g, 'group')
-    for (const g of s(p.conditions?.users?.excludeGroups)) at(g, 'group')?.excludedFrom.push(k)
+    for (const g of s(p.conditions?.users?.excludeGroups)) exclude(g, 'group')
     for (const l of s(p.conditions?.locations?.includeLocations)) include(l, 'namedLocation')
-    for (const l of s(p.conditions?.locations?.excludeLocations)) at(l, 'namedLocation')?.excludedFrom.push(k)
+    for (const l of s(p.conditions?.locations?.excludeLocations)) exclude(l, 'namedLocation')
   }
   for (const u of map.values()) {
     u.includedIn.sort()
@@ -257,9 +302,10 @@ export type Interpreted = {
  * a person still has to look at.
  *
  * A record is reused across an update only while the reference still means what
- * it was settled against: same kind, same set of policies including it. A
- * reference that gains or loses an include-side use has changed role in the
- * author's design, so its old reading is held for review rather than carried
+ * it was settled against: same kind, the same set of policies including it, the
+ * exclusions its evidence cites still there, breadth not fallen away, and each
+ * of those policies still the policy the meaning was read off. A reference that
+ * has moved in the author's design is held for review rather than carried
  * forward - a baseline update is a promotion, not a synchronisation.
  */
 export function interpretReferences(interpretation: BaselineInterpretation, usage: ReferenceUsage[]): Interpreted {
@@ -289,10 +335,27 @@ export function interpretReferences(interpretation: BaselineInterpretation, usag
       })
       continue
     }
+    // The exclusions the evidence cites, still excluding it. A reference that
+    // has moved out of the policy its meaning was read off - to another policy,
+    // or to nowhere - is not the reference that was settled, even though every
+    // policy that included it (none, for a reading of this shape) is unchanged.
+    const left = r.excludedFrom.filter((k) => !now.excludedFrom.includes(k))
+    if (left.length > 0) {
+      reviewRequired.push({ id, why: `settled against its exclusion from ${left.join(', ')} and ${left.length === 1 ? 'that policy no longer excludes it' : 'those policies no longer exclude it'}` })
+      continue
+    }
+    // And breadth, where breadth is the evidence: the universal exclusion that
+    // is now excluded from a handful of policies is a question, not a reading to
+    // carry forward. Being excluded from more says nothing new, so only a fall
+    // is checked.
+    if (now.excludedFrom.length < r.excludedFromAtLeast) {
+      reviewRequired.push({ id, why: `settled while ${r.excludedFromAtLeast} policies excluded it and ${now.excludedFrom.length} now do` })
+      continue
+    }
     // The same policies, and each of them still the policy the meaning was read
     // off (`policyContext`). An added exclusion is not in that word; a changed
     // grant, resource, condition or included population is.
-    const moved = is.filter((k) => (r.context[k] ?? '') !== (now.context[k] ?? ''))
+    const moved = [...is, ...r.excludedFrom].filter((k) => (r.context[k] ?? '') !== (now.context[k] ?? ''))
     if (moved.length > 0) {
       reviewRequired.push({ id, why: `settled against ${moved.join(', ')} and ${moved.length === 1 ? 'that policy has' : 'those policies have'} materially changed since` })
       continue
@@ -330,6 +393,10 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
     if (!BASES.includes(r.basis as InterpretationBasis)) return bad(`reference ${id} has an unknown basis`)
     if (typeof r.evidence !== 'string' || r.evidence.trim() === '') return bad(`reference ${id} records no evidence`)
     if (!Array.isArray(r.includedIn) || r.includedIn.some((x) => typeof x !== 'string')) return bad(`reference ${id} has no includedIn list`)
+    const excludedFrom = r.excludedFrom ?? []
+    if (!Array.isArray(excludedFrom) || excludedFrom.some((x) => typeof x !== 'string')) return bad(`reference ${id} has an excludedFrom that is not a list of policies`)
+    const atLeast = r.excludedFromAtLeast ?? 0
+    if (typeof atLeast !== 'number' || !Number.isInteger(atLeast) || atLeast < 0) return bad(`reference ${id} has an excludedFromAtLeast that is not a count`)
     const context = r.context
     if (context === null || typeof context !== 'object' || Array.isArray(context)) return bad(`reference ${id} has no context`)
     const ctx = context as Record<string, unknown>
@@ -337,11 +404,26 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
     // A record that names the policies it was settled against and not what they
     // were is a record that cannot be checked against a later package - which is
     // the same as having no invalidation rule at all.
-    for (const k of r.includedIn as string[]) if (typeof ctx[k] !== 'string') return bad(`reference ${id} was settled against ${k} and records nothing about what that policy was`)
+    for (const k of [...(r.includedIn as string[]), ...(excludedFrom as string[])]) if (typeof ctx[k] !== 'string') return bad(`reference ${id} was settled against ${k} and records nothing about what that policy was`)
     // A meaning other than unknown may not rest on the shape of the export
     // alone: structure cannot tell the service accounts from any other group
     // somebody excluded, which is exactly how the fall-through went wrong.
     if (r.meaning !== 'unknown' && r.basis === 'structural') return bad(`reference ${id} claims ${String(r.meaning)} on structure alone`)
+    // A meaning read out of the author's material is a reading of how they use
+    // the object, so it has to say which use: the policies that include it, the
+    // exclusions it is read off, or the breadth it is read off. A record with a
+    // specialised meaning and none of the three cannot be checked against a
+    // later package at all - the reference could move anywhere in the source and
+    // the meaning would still be applied, which is how the exclusion-side
+    // readings were carried forward unexamined.
+    //
+    // `authorConfirmed` is out of this: the author saying what an object is - in
+    // the export itself, as the token `CA-GlobalExclusions-GroupID-ReplaceMe`
+    // does - is evidence about the object, and it travels with the object rather
+    // than with the policy it happens to sit in.
+    if (r.meaning !== 'unknown' && r.basis !== 'authorConfirmed' && (r.includedIn as string[]).length === 0 && (excludedFrom as string[]).length === 0 && atLeast === 0) {
+      return bad(`reference ${id} claims ${String(r.meaning)} and names no source usage its evidence rests on`)
+    }
     return {
       id,
       kind: r.kind as ReferenceKind,
@@ -349,6 +431,8 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
       basis: r.basis as InterpretationBasis,
       evidence: r.evidence,
       includedIn: [...(r.includedIn as string[])].sort(),
+      excludedFrom: [...(excludedFrom as string[])].sort(),
+      excludedFromAtLeast: atLeast,
       context: { ...(ctx as Record<string, string>) },
     }
   })
