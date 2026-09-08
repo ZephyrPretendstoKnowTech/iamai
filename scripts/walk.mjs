@@ -1565,7 +1565,12 @@ function scanPlanFile() {
   return { present: true, steps: steps.length, savedAt: redact(plan.createdAt ?? '') }
 }
 
-// ---- the home page (the owner-approved Home v2 direction, task 016) ----
+// ---- the home page (as built by task 016) ----
+//
+// These checks read the page that exists. Home's design authority is
+// docs/design/approved/iamai-home-design-pack-v2.html (manifest.json in that
+// folder); the page does not implement it yet and packs 030+ own the
+// restoration, which moves these checks with the surface.
 //
 // getiamai.com's front page, generated from pages.home by scripts/build-home.ts
 // and assembled over the bundle by scripts/assemble-site.mjs, walked from the

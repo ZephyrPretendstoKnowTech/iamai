@@ -10,6 +10,11 @@ come from `docs/design/content.json`; the plan comes from the tenant snapshot + 
 - Never commit tenant-derived data (UPNs, object ids, tenant GUIDs).
 - Exclusions go through the exclusions group, never an emergency account by name.
 - The pinned baseline wins: policy steps render from `baselines/*.pinned.json` through the translator.
+- Design authority runs: product truth → the approved HTML packs in `docs/design/approved/`
+  (Home, Connect, Plan, MFA Readiness; `manifest.json` holds their hashes) → the brand skin in
+  `docs/design/brand-decisions.md`. The packs own anatomy, never copy or technical truth.
+  Production does not implement them yet; `docs/design/authority-reconciliation.md` says why,
+  and the mockups under `docs/design/` are superseded records of what was built.
 
 ## How to work
 - Before editing: open the files the task names, once. No repository survey, no reading tests or archive/. Grep only for a symbol a named file references.

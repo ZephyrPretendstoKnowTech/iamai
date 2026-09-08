@@ -1,6 +1,12 @@
 // Writes home/theme.css and home/index.html from the tool's own sources
-// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; the owner-approved Home v2
-// direction, task 016). The home page wears the same palette, type scale and
+// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; rebuilt by task 016).
+//
+// The composition below is the page as built. The owner's Home design authority
+// is docs/design/approved/iamai-home-design-pack-v2.html, recorded in
+// docs/design/approved/manifest.json; this generator does not implement it yet,
+// and packs 030+ own that restoration (docs/design/authority-reconciliation.md).
+//
+// The home page wears the same palette, type scale and
 // fonts as the planner (theme.css from the tokens), and every sentence it shows
 // is a string in docs/design/content.json (pages.home; the footer is the app's,
 // pages.footer; the theme control's labels are the app's, pages.app.shell),

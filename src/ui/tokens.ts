@@ -4,9 +4,19 @@
 // the two drift, and the design lint (design-lint.test.ts) fails on any colour
 // literal anywhere else.
 //
-// The product is a document people read, print and execute from: paper in
-// light mode, ink on charcoal in dark mode. No gradients, shadows, glows,
-// blur or opacity on text. The focus ring is the only box-shadow. Pure.
+// The values below are the palette production currently ships: paper in light
+// mode, ink on charcoal in dark mode. No gradients, shadows, glows, blur or
+// opacity on text. The focus ring is the only box-shadow.
+//
+// That is what is built, not the owner's approved brand. The approved skin is
+// Mineral Teal (light) and Deep Mineral (dark), recorded in full in
+// docs/design/brand-decisions.md, along with a 4/8/12px shape hierarchy and two
+// motion bands that LAYOUT.radiusPx and LAYOUT.motionMs below do not yet carry.
+// Pack 029 owns the brand assets and this token change; task 028 recorded the
+// decision and changed no value here (docs/design/authority-reconciliation.md).
+//
+// The three font families are already the approved ones: IBM Plex Serif for
+// display, Sans for interface, Mono for technical text.
 
 export type Palette = {
   /** The page. */
