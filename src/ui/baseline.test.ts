@@ -73,7 +73,13 @@ const OLD_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration-
 const OLD_DOC = 'Updated/Documentation/Device-Registration/policy.json'
 const NEW_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration---MFA-Strength.json'
 const NEW_DOC = 'Updated/Documentation/Device-Registration-MFA-Strength/policy.json'
-const HEAD = '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c'
+/**
+ * A candidate ahead of the pin. It used to be the real 90d9b890, because that
+ * was the commit task 021 reviewed and the pin was still behind it; task 022
+ * adopted it, so the pin *is* that commit and a candidate has to be a later one.
+ * The review is about the mechanism, not about a particular pair of shas.
+ */
+const HEAD = 'c0ffee11c0ffee22c0ffee33c0ffee44c0ffee55'
 
 /** One commit of the author's repository: the body at each path. A string body is source that is not JSON. */
 type Commit = Record<string, unknown>
@@ -119,17 +125,22 @@ function unfetchable(commits: Record<string, Commit>, path: string): typeof fetc
   }) as typeof fetch
 }
 
-test('I. the update is measured from the pinned snapshot commit, never from the older commit the index file records', async () => {
-  // The historical situation this guards: the two files name different commits.
-  assert.notEqual(PINNED_BASELINE.commit, PINNED.commit, 'the index records an older pin than the snapshot the plan is derived from')
+test('I. the update is measured from the pinned snapshot commit, never from the commit the index file records', async () => {
+  // The situation this guards: the snapshot and the index record naming two
+  // different commits, which is what the repository carried until task 022's
+  // re-pin ran through the repaired generation path. They agree now, so the
+  // guard is on where the review reads its base rather than on the divergence.
+  assert.equal(PINNED_BASELINE.commit, PINNED.commit, 'the pair disagrees again')
+  const source = readFileSync('src/ui/baseline.ts', 'utf8')
+  assert.match(source, /const base = PINNED\.commit/, 'the review no longer measures from the snapshot commit')
   const seen: string[] = []
   await baselineReview(HEAD, githubAt(AUDITED, seen))
   const trees = seen.filter((u) => u.includes('/git/trees/'))
   assert.equal(trees.length, 2, 'one inventory per compared commit')
   assert.ok(trees.some((u) => u.includes(`/git/trees/${PINNED.commit}`)), trees.join(' '))
   assert.ok(trees.some((u) => u.includes(`/git/trees/${HEAD}`)), trees.join(' '))
-  // And every body was fetched at the pinned commit or the candidate head, never at the index commit.
-  for (const u of seen) assert.equal(u.includes(PINNED_BASELINE.commit), false, u)
+  // And nothing was fetched at any other commit.
+  for (const u of seen) assert.ok(u.includes(PINNED.commit) || u.includes(HEAD), u)
 })
 
 test('the review counts policies, not files: four JSON file events for one renamed, strengthened policy are one change', async () => {

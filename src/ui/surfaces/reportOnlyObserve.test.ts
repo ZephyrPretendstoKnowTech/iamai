@@ -192,6 +192,23 @@ function instructionsOf(step: Step, ctx: StepVarContext): ReturnType<typeof step
 const SERVICE_ACCOUNTS_GROUP_ID = '00b2c9ad-2f3e-4c81-9a3d-7c1f6e4b5a01'
 
 /**
+ * The authentication strength the baseline asks for. Task 022 re-pinned the
+ * default baseline to a commit where this policy requires the author's custom
+ * "Modern MFA + TAP" rather than the built-in multifactor strength, so a tenant
+ * that has not created it is a tenant whose deployed copy IAMAI cannot credit
+ * with meeting the goal - correctly, since it cannot know what an unknown
+ * strength allows. This tenant has created it, which is what the plan's own
+ * prerequisite step asks for.
+ */
+const MODERN_STRENGTH = {
+  id: '42de22a7-5339-4a58-b560-28565d53b14d',
+  displayName: 'Modern MFA + TAP',
+  policyType: 'custom',
+  requirementsSatisfied: 'mfa',
+  allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor', 'temporaryAccessPassOneTime'],
+}
+
+/**
  * The same demo tenant one step further on: its people have working MFA, so the
  * readiness the plan waits for is met, and it has the service-accounts group the
  * device-registration policy excludes. That clears everything holding
@@ -207,7 +224,12 @@ const SERVICE_ACCOUNTS_GROUP_ID = '00b2c9ad-2f3e-4c81-9a3d-7c1f6e4b5a01'
  * would submit.
  */
 function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
-  const f = fixture(FIXTURE)
+  const base = fixture(FIXTURE)
+  const withStrength = {
+    ...base.snapshot,
+    config: { ...base.snapshot.config, authStrengths: { ...(base.snapshot.config.authStrengths ?? { rows: [] }), rows: [...(base.snapshot.config.authStrengths?.rows ?? []), MODERN_STRENGTH] } },
+  } as TenantSnapshot
+  const f = { ...base, snapshot: withStrength }
   const anyGroup = [...f.groups][0][1]
   const members = f.mapping.serviceAccountUserIds ?? []
   const groups = new Map([...f.groups, [SERVICE_ACCOUNTS_GROUP_ID, { ...anyGroup, memberIds: members, memberCount: members.length, displayName: 'Core - Service accounts' }]])
@@ -215,7 +237,7 @@ function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
   // The tenant's own viability rows with its active people ready on MFA: the
   // readiness percentage is derived from these (roadmap/readiness.ts), so this
   // is a tenant whose people can pass the policy, not a gate switched off.
-  const scored = runFixture({ ...f, groups, mapping })
+  const scored = runFixture({ ...f, groups, mapping }, { snapshot: withStrength })
   const viability = scored.viability.map((v) => (v.activity === 'active' ? { ...v, mfa: 'likelyViable' as const } : v))
   const asCase = (r: ReturnType<typeof runFixture>, snapshot: TenantSnapshot): Case => {
     const step = r.steps.find((x) => x.id === PREREQ_STEP_ID)
@@ -232,15 +254,15 @@ function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
     }
     return { step, ctx, steps: r.steps, snapshot, view: (x: Step) => stepExportView(x, ctx), run: r }
   }
-  const due = asCase(runFixture({ ...f, groups, mapping }, { viability }), f.snapshot)
+  const due = asCase(runFixture({ ...f, groups, mapping }, { snapshot: withStrength, viability }), f.snapshot)
   const op = operationsOf(due.step).find((o) => o.mode === 'create')
   assert.ok(op, `${PREREQ_STEP_ID} is no longer a policy the plan would create`)
   const at = new Date(Date.parse(f.snapshot.asOf) - days * 86_400_000).toISOString()
   const policyId = 'e5d0d3c6-0b6e-4a2e-9a3f-9c4b7a1d0006'
   const people = (f.snapshot.users ?? []).slice(0, 20).map((u) => String(u.id))
   const snapshot = {
-    ...f.snapshot,
-    config: { ...f.snapshot.config, caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
+    ...withStrength,
+    config: { ...withStrength.config, caPolicies: { ...withStrength.config.caPolicies!, rows: [...(withStrength.config.caPolicies?.rows ?? []), { id: policyId, createdDateTime: at, modifiedDateTime: at, ...(op!.body as Record<string, unknown>) }] } },
     evidencePolicyResults: [
       ...(f.snapshot.evidencePolicyResults ?? []),
       cleanReportOnly({ policyId, displayName: String((op!.body as Record<string, unknown>).displayName), people, asOf: f.snapshot.asOf, firstReportOnlyAt: at }),

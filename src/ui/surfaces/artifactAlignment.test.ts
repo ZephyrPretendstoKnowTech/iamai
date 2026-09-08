@@ -17,6 +17,7 @@ import assert from 'node:assert/strict'
 import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepExportView } from './stepExport.ts'
@@ -49,9 +50,10 @@ function once<T>(of: (s: Step) => T): (s: Step) => T {
   }
 }
 
-function load(name: string): Case {
-  const f = fixture(name as never)
-  const run = runFixture(f)
+function load(named: string | Fixture): Case {
+  const f = typeof named === 'string' ? fixture(named as never) : named
+  const name = typeof named === 'string' ? named : `${f.name} (exclusions unanswered)`
+  const run = typeof named === 'string' ? runFixture(f) : runFixture(f, { mapping: f.mapping })
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const ctx = once((s: Step): StepVarContext =>
     ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext)
@@ -175,7 +177,11 @@ test('013.B: where the Plan offers no implementation, no artifact carries one', 
 
 test('013.B: a step whose answer the operator still owes carries the question, not the work', () => {
   const kinds = new Set<string>()
-  for (const c of CASES) {
+  // The shipped fixtures all answer the exclusions question, so the case that
+  // waits on a person is built here (Foundation C, mapping/safetyChoice.ts
+  // `awaitsOperator`). It used to fall out of the sweep by accident, from a
+  // group the pin had misclassified as the service accounts (task 022).
+  for (const c of [...CASES, load(noExclusionsAnswer(fixture('demo')))]) {
     for (const s of c.run.steps) {
       if (s.state.condition !== 'needs-decision') continue
       const k = stepContract(s, c.ctx(s))

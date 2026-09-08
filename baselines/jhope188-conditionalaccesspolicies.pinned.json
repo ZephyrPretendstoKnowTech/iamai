@@ -1,6 +1,6 @@
 {
-  "commit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-  "generatedAt": "2026-09-01T19:56:41.187Z",
+  "commit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+  "generatedAt": "2026-09-08T03:23:20.810Z",
   "policies": [
     {
       "id": "0ab1380f-3863-40a5-ab97-24250e1cf44e",
@@ -145,9 +145,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
-        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -200,7 +197,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -244,7 +240,7 @@
         }
       },
       "placeholders": {
-        "CA-GlobalExclusions-GroupID-ReplaceMe": "serviceAccountsGroup"
+        "CA-GlobalExclusions-GroupID-ReplaceMe": "exclusionsGroup"
       }
     },
     {
@@ -293,9 +289,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "travellersGroup",
-        "902993ed-96f7-4af6-825c-510dfc97b258": "serviceAccountsGroup",
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -352,8 +345,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "9ee031a3-3551-4bc3-a81d-d6f0149ae329": "travellersGroup",
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -404,8 +395,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -455,7 +444,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -513,7 +501,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -689,7 +676,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -740,8 +726,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -916,7 +900,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -987,7 +970,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -1050,7 +1032,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
@@ -1111,7 +1092,6 @@
         }
       },
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1159,7 +1139,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1215,9 +1194,7 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "cc7f9bb7-425b-42fc-b025-311a1a3eb0f4": "travellersGroup",
         "1d421232-4f10-4436-9883-27d9bd3f64cd": "allowedCountries"
       }
     },
@@ -1270,9 +1247,7 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "1267ac22-ce4d-4a2e-ae00-fd3a3a7f4748": "allowedCountries"
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
     {
@@ -1327,11 +1302,9 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
+        "6612d6d7-12c8-4cbd-8ad5-7460ae2a6579": "serviceAccountsGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "trustedLocation",
-        "6612d6d7-12c8-4cbd-8ad5-7460ae2a6579": "serviceAccountsGroup"
+        "0403d368-f07f-4e4c-b75d-aa169d5b6683": "trustedLocation"
       }
     },
     {
@@ -1427,7 +1400,6 @@
         }
       },
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1479,7 +1451,6 @@
         }
       },
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -1536,86 +1507,71 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "2d25c298-555e-4f26-9984-90dfb7eae325": "serviceAccountsGroup",
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
     {
       "id": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
-      "displayName": "IAC - INTUNE – GRANT – Device Registration from trusted location",
+      "displayName": "IAC - INTUNE – GRANT – Device Registration - MFA Strength",
       "state": "enabledForReportingButNotEnforced",
       "conditions": {
-        "applications": {
-          "excludeApplications": [],
-          "includeApplications": [],
-          "includeAuthenticationContextClassReferences": [],
-          "includeUserActions": [
-            "urn:user:registerdevice"
-          ]
-        },
+        "userRiskLevels": [],
+        "signInRiskLevels": [],
         "clientAppTypes": [
           "all"
         ],
-        "servicePrincipalRiskLevels": [],
-        "signInRiskLevels": [],
-        "userRiskLevels": [],
+        "applications": {
+          "includeApplications": [],
+          "excludeApplications": [],
+          "includeUserActions": [
+            "urn:user:registerdevice"
+          ],
+          "includeAuthenticationContextClassReferences": []
+        },
         "users": {
+          "includeUsers": [
+            "All"
+          ],
+          "excludeUsers": [],
+          "includeGroups": [],
           "excludeGroups": [
             "2d25c298-555e-4f26-9984-90dfb7eae325",
             "62d67e66-2bc9-43cd-b00c-6326dae53d18",
-            "b63c3682-06c6-45f0-9692-ee76b604b4f9"
+            "b63c3682-06c6-45f0-9692-ee76b604b4f9",
+            "5628ad67-f9d1-4495-abe3-99dc8f9074f1"
           ],
-          "excludeRoles": [],
-          "excludeUsers": [],
-          "includeGroups": [],
           "includeRoles": [],
-          "includeUsers": [
-            "All"
-          ]
+          "excludeRoles": []
         }
       },
       "grantControls": {
+        "operator": "OR",
+        "builtInControls": [],
+        "customAuthenticationFactors": [],
+        "termsOfUse": [],
+        "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('aeb49474-5250-4b65-8b0a-56c47127ee0f')/grantControls/authenticationStrength/$entity",
         "authenticationStrength": {
+          "id": "42de22a7-5339-4a58-b560-28565d53b14d",
+          "createdDateTime": "2026-05-04T23:40:40.6249015Z",
+          "modifiedDateTime": "2026-08-12T13:23:05.2711028Z",
+          "displayName": "Modern MFA + TAP",
+          "description": "",
+          "policyType": "custom",
+          "requirementsSatisfied": "mfa",
           "allowedCombinations": [
             "windowsHelloForBusiness",
             "fido2",
             "x509CertificateMultiFactor",
-            "deviceBasedPush",
-            "temporaryAccessPassOneTime",
-            "temporaryAccessPassMultiUse",
-            "password,microsoftAuthenticatorPush",
-            "password,softwareOath",
-            "password,hardwareOath",
-            "password,sms",
-            "password,voice",
-            "federatedMultiFactor",
-            "microsoftAuthenticatorPush,federatedSingleFactor",
-            "softwareOath,federatedSingleFactor",
-            "hardwareOath,federatedSingleFactor",
-            "sms,federatedSingleFactor",
-            "voice,federatedSingleFactor"
+            "temporaryAccessPassOneTime"
           ],
-          "combinationConfigurations": [],
-          "createdDateTime": "2021-12-01T08:00:00Z",
-          "description": "Combinations of methods that satisfy strong authentication, such as a password + SMS",
-          "displayName": "Multifactor authentication",
-          "id": "00000000-0000-0000-0000-000000000002",
-          "modifiedDateTime": "2021-12-01T08:00:00Z",
-          "policyType": "builtIn",
-          "requirementsSatisfied": "mfa"
-        },
-        "builtInControls": [],
-        "customAuthenticationFactors": [],
-        "operator": "OR",
-        "termsOfUse": []
+          "combinationConfigurations@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('aeb49474-5250-4b65-8b0a-56c47127ee0f')/grantControls/authenticationStrength/combinationConfigurations",
+          "combinationConfigurations": []
+        }
       },
       "sessionControls": null,
       "placeholders": {
-        "2d25c298-555e-4f26-9984-90dfb7eae325": "serviceAccountsGroup",
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "00000000-0000-0000-0000-000000000002": "strength"
+        "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
     {
@@ -1785,9 +1741,7 @@
         }
       },
       "placeholders": {
-        "8d0564e5-ab28-4283-9a94-9883c581adde": "serviceAccountsGroup",
-        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup"
+        "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
     {
@@ -1927,8 +1881,6 @@
         }
       },
       "placeholders": {
-        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup",
-        "8d0564e5-ab28-4283-9a94-9883c581adde": "serviceAccountsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -2014,6 +1966,7 @@
           "excludeGuestsOrExternalUsers": {
             "guestOrExternalUserTypes": "internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider",
             "externalTenants": {
+              "@odata.type": "#microsoft.graph.conditionalAccessAllExternalTenants",
               "membershipKind": "all"
             }
           }
@@ -2048,7 +2001,6 @@
       "sessionControls": null,
       "placeholders": {
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup",
-        "5628ad67-f9d1-4495-abe3-99dc8f9074f1": "serviceAccountsGroup",
         "42de22a7-5339-4a58-b560-28565d53b14d": "strength"
       }
     },
@@ -2105,9 +2057,7 @@
         "authenticationStrength@odata.context": "https://graph.microsoft.com/beta/$metadata#identity/conditionalAccess/policies('021f1fec-4c8c-4900-aab6-9aaf64b0fafc')/grantControls/authenticationStrength/$entity"
       },
       "sessionControls": null,
-      "placeholders": {
-        "0de51b52-e831-4248-a053-a51aa56f28f1": "trustedLocation"
-      }
+      "placeholders": {}
     },
     {
       "id": "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e",
@@ -2115,7 +2065,12 @@
       "state": "enabledForReportingButNotEnforced",
       "conditions": {
         "applications": {
-          "excludeApplications": [],
+          "excludeApplications": [
+            "00000002-0000-0000-c000-000000000000",
+            "0000000c-0000-0000-c000-000000000000",
+            "1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7",
+            "8c59ead7-d703-4a27-9e55-c96a0054c8d2"
+          ],
           "includeApplications": [
             "708861da-226e-4d65-a57a-24128df64524",
             "797f4846-ba00-4fd7-ba43-dac1f8f63013",
@@ -2163,8 +2118,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -2231,7 +2184,6 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     },
@@ -2279,18 +2231,12 @@
       },
       "sessionControls": null,
       "placeholders": {
-        "62d67e66-2bc9-43cd-b00c-6326dae53d18": "travellersGroup",
-        "e663a7ce-daec-4062-88b8-5970bfec8019": "travellersGroup",
         "b63c3682-06c6-45f0-9692-ee76b604b4f9": "exclusionsGroup"
       }
     }
   ],
   "stripped": [
-    "IAC - GLOBAL - GRANT - MFA - AllUsers: 00000012-0000-0000-c000-000000000000",
-    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 00000002-0000-0000-c000-000000000000",
-    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 0000000c-0000-0000-c000-000000000000",
-    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7",
-    "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: 8c59ead7-d703-4a27-9e55-c96a0054c8d2"
+    "IAC - GLOBAL - GRANT - MFA - AllUsers: 00000012-0000-0000-c000-000000000000"
   ],
   "goalMap": {
     "mfa-all-users": [
