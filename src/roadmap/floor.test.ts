@@ -10,7 +10,7 @@ import { runFixture } from './fixtures/run.ts'
 import { readFileSync } from 'node:fs'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
-import { BREAK_GLASS_STEP_ID } from './stepIds.ts'
+import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { phases } from '../content/content.ts'
 import { floorRows } from '../ui/surfaces/planRows.ts'
@@ -184,4 +184,49 @@ test('the Plan page contract accepts the floor heading exactly, and nothing broa
     're:^Cleanup( · .+ → .+)?$',
     phases.recommended,
   ], 'the contract gained the exact heading and no new pattern')
+})
+
+// ---- Correction 1: absence from the active baseline is authoritative for the
+// step's body, not only for its label. The render-time signature fallback
+// (generate.ts sourcesFor) exists for a package whose policies the map does not
+// name — the synthetic fixtures. It must never reach a floor goal: a step that
+// says "Microsoft recommended, not in this baseline" cannot be built out of a
+// broadly matching policy in that very baseline.
+
+/** An active goal map whose one key resolves in no package: the signature fallback is live for every goal. */
+const NON_RESOLVING: GoalMap = { 'mfa-all-users': ['(a policy no package here carries)'] }
+
+test('a goal map that resolves nowhere in the active package still cannot lend a floor step that package\'s policy', () => {
+  // The demo package carries a policy that broadly matches registration
+  // protection — the risky-users registration block the pin-time rule rejected.
+  const r = runFixture(fixture('demo'), { goalMap: NON_RESOLVING })
+  const reg = r.steps.find((s) => s.id === stepIdForGoal('register-info-protected'))!
+  assert.equal(reg.floor, true, 'the active baseline does not carry it')
+  assert.equal(reg.naming?.fromBaseline ?? null, null, 'so nothing attributes it to a policy in that baseline')
+  assert.deepEqual(reg.action.resolution?.policies.map((p) => p.sourceName), ['register-info-protected'], 'the source is the catalogue template')
+  const body = JSON.parse(reg.action.json!) as { conditions: { applications: { includeUserActions?: string[] }; userRiskLevels?: string[] } }
+  assert.deepEqual(body.conditions.applications.includeUserActions, ['urn:user:registersecurityinfo'], 'the template\'s own semantics')
+  assert.deepEqual(body.conditions.userRiskLevels ?? [], [], 'and none of the matched policy\'s conditions came with it')
+  // Nothing else the active baseline lacks was revived by the same fallback.
+  assert.deepEqual(
+    r.steps.filter((s) => s.id.startsWith('s-goal-')).map((s) => s.goalId).sort(),
+    ['block-legacy-auth', 'mfa-all-users', 'register-info-protected'],
+    'the floor\'s two goals and the one goal the map holds, and no other',
+  )
+})
+
+test('the same for the legacy block, and a goal the map does hold keeps the fallback', () => {
+  const r = runFixture(fixture('getiamai'), { goalMap: NON_RESOLVING })
+  const legacy = r.steps.find((s) => s.id === stepIdForGoal('block-legacy-auth'))!
+  assert.equal(legacy.floor, true)
+  assert.equal(legacy.naming?.fromBaseline ?? null, null, 'not attributed to the package\'s own legacy policy')
+  assert.deepEqual(legacy.action.resolution?.policies.map((p) => p.sourceName), ['block-legacy-auth'], 'the source is the catalogue template')
+  const body = JSON.parse(legacy.action.json!) as { conditions: { clientAppTypes?: string[] }; grantControls: { builtInControls?: string[] } }
+  assert.deepEqual([...(body.conditions.clientAppTypes ?? [])].sort(), ['exchangeActiveSync', 'other'])
+  assert.deepEqual(body.grantControls.builtInControls, ['block'])
+  // The fallback itself is untouched where the map holds the goal: a package the
+  // map does not describe still renders that goal from its own policy.
+  const mfa = r.steps.find((s) => s.id === stepIdForGoal('mfa-all-users'))!
+  assert.ok(!mfa.floor, 'the map holds it, so it is the author\'s')
+  assert.deepEqual(mfa.action.resolution?.policies.map((p) => p.sourceName), ['IAC - GLOBAL - GRANT - MFA - AllUsers'], 'matched in the package, as a synthetic fixture needs')
 })
