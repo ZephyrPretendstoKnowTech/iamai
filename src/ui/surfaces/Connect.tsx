@@ -33,7 +33,8 @@ import { GLOBAL_ADMINISTRATOR, coreRoleGap, rolesInToken } from '../../graph/col
 import type { BaselineFile } from '../../baseline/index.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { policyLabel, stepsChangedBy } from '../../derive/baselineDiff.ts'
+import { stepsForChange } from '../../derive/baselineDiff.ts'
+import type { PolicyChange } from '../../derive/baselineDiff.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { ScanRecord } from '../scan/scanRecord.ts'
 import { roleName } from '../../roles.ts'
@@ -44,7 +45,7 @@ import { demoUrl, isDemo } from '../demoMode.ts'
 import SAMPLE_FACTS from 'virtual:demo-facts'
 import { elapsedLabel } from '../format.ts'
 import { Button, LinkButton } from '../components/index.ts'
-import { PINNED_BASELINE, baselineChanges, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
+import { PINNED_BASELINE, baselineReview, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
 import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
@@ -459,9 +460,11 @@ function useAuthorUpdate(mock: BaselineUpdate | null | undefined): BaselineUpdat
     let live = true
     void checkAuthorHead().then(async (head) => {
       if (!live || !head.updated || !head.head || !head.date) return
-      const changes = await baselineChanges(head.head)
-      if (!live || changes.length === 0) return
-      setUpdate({ date: head.date, changes })
+      const review = await baselineReview(head.head)
+      // An incomplete review still renders: a compare IAMAI could not finish is
+      // never reported as a baseline with nothing in it.
+      if (!live || (review.changes.length === 0 && !review.incomplete)) return
+      setUpdate({ date: head.date, changes: review.changes, incomplete: review.incomplete })
     })
     return () => {
       live = false
@@ -525,13 +528,13 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseline, restoreError])
 
-  // A changed file names a package policy; the steps it stands behind come
-  // through the baseline's goal map (derive/baselineDiff.ts). Absent means the pinned map.
+  // A changed source policy is named by its own stable identity; the steps it
+  // stands behind come through the baseline's goal map, which keys by that same
+  // identity (derive/baselineDiff.ts). Absent means the pinned map.
   const policies = baseline?.pkg.policies ?? []
   const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
-  const labelFor = (file: string): string => policyLabel(file, policies)
-  const stepsFor = (file: string): string[] => stepsChangedBy(file, policies, goalMap)
-  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, loading: busy, update, labelFor, stepsFor })
+  const stepsFor = (change: PolicyChange): string[] => stepsForChange(change, goalMap)
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, loading: busy, update, stepsFor })
   return (
     <Tile n={2} title={t2.title} state={t2.state} tone={t2.tone} stage={stage}>
       {t2.paragraphs.map((text) => (
@@ -542,6 +545,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
       {t2.update && (
         <details>
           <summary>{t2.update.summary}</summary>
+          {t2.update.note && <p className="quiet" role="status">{t2.update.note}</p>}
           <ul className="diff">
             {t2.update.rows.map((r, i) => (
               <li key={`${i}-${r.policy}`}>
@@ -549,6 +553,14 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
                   <span className="tag">{r.tag}</span>
                   <span className="policy">{r.policy}</span>
                 </div>
+                {r.was && <p className="was">{r.was}</p>}
+                {r.deltas.length > 0 && (
+                  <ul className="deltas">
+                    {r.deltas.map((d) => (
+                      <li key={d}>{d}</li>
+                    ))}
+                  </ul>
+                )}
                 <ul className="steps">
                   {r.steps.map((s) => (
                     <li key={s}>{s}</li>

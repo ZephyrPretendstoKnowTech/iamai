@@ -654,13 +654,21 @@ export function renderPages(): string {
         p(cx.baseline.what, {}) +
           p(cx.baseline.goal, {}) +
           p(cx.baseline.pinned, {}) +
-          `<details open><summary>${fill(cx.baseline.updated, { date: 'Sep 3, 2026', n: 3 })}</summary>` +
+          // The author's update, one row per evolving source policy (task 021):
+          // the change word, the policy, what it was called, what materially
+          // changed, and the steps under it.
+          `<details open><summary>${fill(cx.baseline.updated, { date: 'Sep 3, 2026', n: 4 })}</summary>` +
           li(
-            `${esc(cx.baseline.diff.added)} · IAC - INTUNE - GRANT - Device Registration · ${fill(cx.baseline.diffStep, { step: 'Require MFA to Register a Device' })}`,
+            `${esc(cx.baseline.diff.renamedChanged)} · IAC - INTUNE - GRANT - Device Registration - MFA Strength · ${fill(cx.baseline.diffWas, { oldName: 'IAC - INTUNE - GRANT - Device Registration from trusted location' })} · ${fill(cx.baseline.diffSet, { field: cx.baseline.diffFields.authenticationStrength, value: 'Modern MFA + TAP' })} · ${fill(cx.baseline.diffAdded, { field: cx.baseline.diffFields.excludeGroups, n: 1 })} · ${fill(cx.baseline.diffStep, { step: 'Require MFA to Register a Device' })}`,
+            `${esc(cx.baseline.diff.added)} · IAC - INTUNE - GRANT - Device Registration · ${esc(cx.baseline.diffNoStep)}`,
             `${esc(cx.baseline.diff.removed)} · IAC - OLD - BLOCK · ${esc(cx.baseline.diffNoStep)}`,
-            `${esc(cx.baseline.diff.changed)} · IAC - GLOBAL - GRANT - MFA - AllAdmins · ${fill(cx.baseline.diffStep, { step: 'Require Phishing-Resistant MFA for Admins' })}`,
+            `${esc(cx.baseline.diff.renamed)} · IAC - GLOBAL - GRANT - MFA - AllAdmins · ${fill(cx.baseline.diffBoth, { field: cx.baseline.diffFields.includeGroups, added: 2, removed: 1 })} · ${fill(cx.baseline.diffRemoved, { field: cx.baseline.diffFields.excludeLocations, n: 1 })} · ${fill(cx.baseline.diffChanged, { field: cx.baseline.diffFields.sessionControls })} · ${fill(cx.baseline.diffCleared, { field: cx.baseline.diffFields.termsOfUse })} · ${fill(cx.baseline.diffStep, { step: 'Require Phishing-Resistant MFA for Admins' })}`,
+            `${esc(cx.baseline.diff.unknown)} · IAC - GLOBAL - BLOCK - Legacy Authentication · ${esc(cx.baseline.diffConflict)} · ${fill(cx.baseline.diffUnreviewed, { field: 'conditions.someFutureCondition' })}`,
           ) +
           '</details>' +
+          // A review IAMAI could not finish says so, rather than reading as a baseline with nothing in it.
+          `<details open><summary>${fill(cx.baseline.updatedPartial, { date: 'Sep 3, 2026' })}</summary><p class="sub">${esc(cx.baseline.incomplete)}</p></details>` +
+          sub('The field names a review row can carry:', esc(Object.values(cx.baseline.diffFields as Record<string, string>).join(' · '))) +
           sub(fill(cx.baseline.loading, { source: exT.baselineName }), '·', esc(cx.baseline.none)) +
           acts(cx.baseline.change) +
           sub(btn(cx.baseline.howToMakeOne)),

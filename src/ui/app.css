@@ -1553,15 +1553,27 @@ footer.app a {
   gap: 10px;
 }
 .step-tile .diff .tag {
-  width: 64px;
+  width: 124px;
   flex: none;
   color: var(--ink-3);
 }
+/* Under the row: what it used to be called, what materially changed, then the steps. */
+.step-tile .diff .was,
+.step-tile .diff .deltas,
 .step-tile .diff .steps {
-  margin: 2px 0 0 74px;
+  margin: 2px 0 0 134px;
   padding: 0;
   list-style: none;
   color: var(--ink-3);
+}
+.step-tile .diff .deltas li,
+.step-tile .diff .steps li {
+  padding: 0;
+  border-bottom: none;
+  font-size: inherit;
+}
+.step-tile .diff .deltas {
+  color: var(--ink-2);
 }
 .step-tile details summary {
   cursor: pointer;

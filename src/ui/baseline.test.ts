@@ -3,7 +3,7 @@
 // Connect "Baseline updated" line.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { loadPinnedBaseline, checkAuthorHead, restoreBaseline, PINNED } from './baseline.ts'
+import { loadPinnedBaseline, baselineReview, checkAuthorHead, restoreBaseline, PINNED, PINNED_BASELINE } from './baseline.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
@@ -56,4 +56,104 @@ test('checkAuthorHead: a differing head is an update, a matching head is not, a 
   })
   assert.equal(failed.updated, false)
   assert.equal(failed.head, null)
+})
+
+// ---------------------------------------------------- task 021: the update review
+
+// The audited comparison: the author renamed one policy and strengthened it,
+// and his repository keeps every policy twice, so GitHub reported four JSON
+// file events for one evolving policy id.
+const REG_ID = 'aeb49474-5250-4b65-8b0a-56c47127ee0f'
+const before = { id: REG_ID, displayName: 'IAC - INTUNE - GRANT - Device Registration from trusted location', state: 'enabled', conditions: { users: { includeUsers: ['All'] }, applications: { includeUserActions: ['urn:user:registerdevice'] } }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000002', displayName: 'Multifactor authentication' } } }
+const after = { ...before, displayName: 'IAC - INTUNE - GRANT - Device Registration - MFA Strength', grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '42de22a7-5339-4a58-b560-28565d53b14d', displayName: 'Modern MFA + TAP' } } }
+const OLD_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration-from-trusted-location.json'
+const OLD_DOC = 'Updated/Documentation/Device-Registration/policy.json'
+const NEW_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration---MFA-Strength.json'
+const NEW_DOC = 'Updated/Documentation/Device-Registration-MFA-Strength/policy.json'
+const HEAD = '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c'
+
+/** GitHub as it answered: four file events, plus documentation and image churn that is not a policy. */
+function githubAt(bodies: Record<string, Record<string, unknown>>, seen: string[] = []): typeof fetch {
+  return (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    seen.push(url)
+    if (url.includes('/compare/')) {
+      return new Response(
+        JSON.stringify({
+          files: [
+            { filename: NEW_POLICY, status: 'added' },
+            { filename: NEW_DOC, status: 'added' },
+            { filename: OLD_POLICY, status: 'removed' },
+            { filename: OLD_DOC, status: 'removed' },
+            { filename: 'Documents/readme.md', status: 'modified' },
+            { filename: 'Images/screenshot.png', status: 'added' },
+          ],
+        }),
+        { status: 200 },
+      )
+    }
+    const path = url.split(`/${HEAD}/`)[1] ?? url.split(`/${PINNED.commit}/`)[1] ?? ''
+    const commit = url.includes(`/${HEAD}/`) ? HEAD : PINNED.commit
+    const body = bodies[`${commit}:${decodeURIComponent(path)}`]
+    return body ? new Response(JSON.stringify(body), { status: 200 }) : new Response('Not Found', { status: 404 })
+  }) as typeof fetch
+}
+
+const BODIES: Record<string, Record<string, unknown>> = {
+  [`${PINNED.commit}:${OLD_POLICY}`]: before,
+  [`${PINNED.commit}:${OLD_DOC}`]: before,
+  [`${HEAD}:${NEW_POLICY}`]: after,
+  [`${HEAD}:${NEW_DOC}`]: after,
+}
+
+test('I. the update is measured from the pinned snapshot commit, never from the older commit the index file records', async () => {
+  // The historical situation this guards: the two files name different commits.
+  assert.notEqual(PINNED_BASELINE.commit, PINNED.commit, 'the index records an older pin than the snapshot the plan is derived from')
+  const seen: string[] = []
+  await baselineReview(HEAD, githubAt(BODIES, seen))
+  const compare = seen.find((u) => u.includes('/compare/'))!
+  assert.ok(compare.includes(`/compare/${PINNED.commit}...${HEAD}`), compare)
+  assert.equal(compare.includes(PINNED_BASELINE.commit), false, 'the stale index commit reached the comparison base')
+  // And every body was fetched at the pinned commit or the candidate head, never at the index commit.
+  for (const u of seen) assert.equal(u.includes(PINNED_BASELINE.commit), false, u)
+})
+
+test('the review counts policies, not files: four JSON file events for one renamed, strengthened policy are one change', async () => {
+  const review = await baselineReview(HEAD, githubAt(BODIES))
+  assert.equal(review.incomplete, false)
+  assert.equal(review.changes.length, 1, JSON.stringify(review.changes.map((c) => [c.kind, c.newName])))
+  const [c] = review.changes
+  assert.equal(c.key, REG_ID)
+  assert.equal(c.kind, 'renamedChanged')
+  assert.equal(c.oldName, before.displayName)
+  assert.equal(c.newName, after.displayName)
+  assert.deepEqual(c.deltas, [{ field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' }])
+})
+
+test('K. a compare or a file IAMAI cannot read is an incomplete review, never zero changes', async () => {
+  const offline = await baselineReview(HEAD, (async () => {
+    throw new Error('offline')
+  }) as typeof fetch)
+  assert.deepEqual(offline, { changes: [], incomplete: true })
+
+  const rateLimited = await baselineReview(HEAD, (async () => new Response('rate limited', { status: 403 })) as typeof fetch)
+  assert.deepEqual(rateLimited, { changes: [], incomplete: true })
+
+  // The compare loads, one body does not: what parsed is still reported, and the review says it is incomplete.
+  const partial = await baselineReview(HEAD, (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    if (url.includes('/compare/')) return githubAt(BODIES)(input)
+    if (url.includes(encodeURIComponent('IAC---INTUNE---GRANT---Device-Registration---MFA-Strength.json'))) return new Response('boom', { status: 500 })
+    return githubAt(BODIES)(input)
+  }) as typeof fetch)
+  assert.equal(partial.incomplete, true, 'a file that would not fetch is not silently dropped')
+
+  // Source that parses as JSON but not as a policy is unreadable, not "no change".
+  const broken = await baselineReview(HEAD, (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    if (url.includes('/compare/')) return githubAt(BODIES)(input)
+    return new Response('{ "displayName": "half', { status: 200 })
+  }) as typeof fetch)
+  assert.equal(broken.incomplete, true)
+  assert.deepEqual(broken.changes, [])
 })

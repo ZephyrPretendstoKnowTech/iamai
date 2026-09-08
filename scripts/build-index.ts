@@ -4,7 +4,7 @@
 import { execSync } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import type { BaselineIndex } from "../src/baseline/github.ts";
+import { indexRecord } from "../src/baseline/pinArtifacts.ts";
 
 const [root, owner, repo, label] = process.argv.slice(2);
 if (!root || !owner || !repo) {
@@ -23,13 +23,14 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 const commit = execSync("git rev-parse HEAD", { cwd: root }).toString().trim();
-const index: BaselineIndex = {
+// One shape for an index record, shared with scripts/pin-baseline.ts, so a pin
+// and a clone walk cannot disagree about what one holds (src/baseline/pinArtifacts.ts).
+const index = indexRecord({}, {
   owner,
   repo,
   commit,
   label: label ?? `${owner}/${repo}`,
   generatedAt: new Date().toISOString(),
   files: walk(root),
-  attribution: `Policies and documentation © ${owner} (${owner}/${repo}). Fetched live from GitHub at commit ${commit.slice(0, 7)}; not redistributed by IAMAI.`,
-};
+});
 process.stdout.write(JSON.stringify(index, null, 2) + "\n");

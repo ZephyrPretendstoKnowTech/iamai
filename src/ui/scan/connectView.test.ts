@@ -14,6 +14,7 @@ import { unreadSources } from '../../graph/collect/coreSections.ts'
 import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
+import type { PolicyChange } from '../../derive/baselineDiff.ts'
 import { RUNGS, ladder } from '../../derive/ladder.ts'
 import { factsOf } from '../../derive/facts.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
@@ -25,8 +26,8 @@ const full = fixtureSnapshot()
 const last = { snapshot: full, at: full.asOf }
 const twoMinutesLater = Date.parse(full.asOf) + 120_000
 // The review rows' helpers, as Connect wires them (derive/baselineDiff.ts): a file names a policy; the goal map names its steps.
-const labelFor = (file: string): string => file.replace(/^.*\//, '').replace(/\.json$/, '').replace(/---/g, ' - ')
-const stepsFor = (file: string): string[] => (labelFor(file) === 'IAC - GLOBAL - GRANT - MFA - AllAdmins' ? ['Require Phishing-Resistant MFA for Admins', 'Require MFA for Everyone'] : [])
+const stepsFor = (c: PolicyChange): string[] => (c.key === 'admins' ? ['Require Phishing-Resistant MFA for Admins', 'Require MFA for Everyone'] : [])
+const change = (over: Partial<PolicyChange>): PolicyChange => ({ key: over.key ?? 'k', identity: 'id', kind: 'changed', renamed: false, oldName: null, newName: null, deltas: [], unreviewed: [], reason: null, ...over })
 
 const NEVER = ['Security Reader', 'Reports Reader', 'Directory Readers']
 const noOtherRole = (strings: string[]): void => {
@@ -53,7 +54,7 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
 // know what a baseline is, whose it is, why the source is credible, and what it
 // aims at — without Microsoft being made to endorse any of it.
 test('tile 2, Baseline: name · count as the state, what a baseline is, whose it is and its aim, the author-update rows, Change baseline (secondary)', () => {
-  const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, labelFor, stepsFor })
+  const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, stepsFor })
   assert.equal(t.n, 2)
   assert.equal(t.title, 'Baseline')
   assert.equal(t.state, 'Jon Hope — Defense in Depth · 46 policies')
@@ -72,27 +73,48 @@ test('tile 2, Baseline: name · count as the state, what a baseline is, whose it
     name: 'Jon Hope — Defense in Depth',
     policyCount: 46,
     loading: null,
-    update: { date: '2026-09-03T10:00:00Z', changes: [{ policy: 'Policies/IAC---INTUNE---GRANT---Device Registration.json', change: 'added' }, { policy: 'Policies/IAC---GLOBAL---GRANT---MFA---AllAdmins.json', change: 'updated' }, { policy: 'IAC - OLD - BLOCK', change: 'removed' }] },
-    labelFor,
+    update: {
+      date: '2026-09-03T10:00:00Z',
+      changes: [
+        change({ key: 'reg', kind: 'added', newName: 'IAC - INTUNE - GRANT - Device Registration' }),
+        change({ key: 'admins', kind: 'renamedChanged', renamed: true, oldName: 'IAC - GLOBAL - GRANT - MFA - Admins', newName: 'IAC - GLOBAL - GRANT - MFA - AllAdmins', deltas: [{ field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' }, { field: 'excludeGroups', kind: 'added', n: 1 }] }),
+        change({ key: 'old', kind: 'removed', oldName: 'IAC - OLD - BLOCK' }),
+      ],
+    },
     stepsFor,
   })
   assert.ok(u.update)
   assert.match(u.update.summary, /^Updated by its author on [A-Z][a-z]{2} \d+, \d{4} · 3 policies changed · review$/)
   // Every changed policy is named (added, removed, changed), and under each the plan steps that change, one line each, or "no step changes".
   assert.deepEqual(
-    u.update.rows.map((r) => [r.tag, r.policy, ...r.steps]),
+    u.update.rows.map((r) => [r.tag, r.policy, ...(r.was ? [r.was] : []), ...r.deltas, ...r.steps]),
     [
       ['added', 'IAC - INTUNE - GRANT - Device Registration', 'no step changes'],
-      ['changed', 'IAC - GLOBAL - GRANT - MFA - AllAdmins', 'changes Require Phishing-Resistant MFA for Admins', 'changes Require MFA for Everyone'],
+      [
+        'renamed and changed',
+        'IAC - GLOBAL - GRANT - MFA - AllAdmins',
+        'was IAC - GLOBAL - GRANT - MFA - Admins',
+        'Authentication strength: now Modern MFA + TAP',
+        'Excluded groups: 1 added',
+        'changes Require Phishing-Resistant MFA for Admins',
+        'changes Require MFA for Everyone',
+      ],
       ['removed', 'IAC - OLD - BLOCK', 'no step changes'],
     ],
   )
+  assert.equal(u.update.note, null, 'a complete review carries no incomplete note')
   for (const r of u.update.rows) {
-    assert.ok(['added', 'removed', 'changed'].includes(r.tag))
+    assert.ok(['added', 'removed', 'changed', 'renamed', 'renamed and changed', 'not reviewed'].includes(r.tag))
     assert.ok(r.policy.length > 3 && !/\bpolicy\b/.test(r.policy), `a row names its policy, never "policy": "${r.policy}"`)
     assert.ok(r.steps.length >= 1)
   }
-  assert.equal(baselineTile({ name: 'synthetic baseline', policyCount: 1, loading: null, update: null, labelFor, stepsFor }).state, 'synthetic baseline · 1 policy')
+  // A review IAMAI could not finish says so, and never renders as nothing to see.
+  const partial = baselineTile({ name: 'x', policyCount: 46, loading: null, update: { date: '2026-09-03T10:00:00Z', changes: [], incomplete: true }, stepsFor })
+  assert.ok(partial.update, 'an incomplete review with no readable change still renders')
+  assert.match(partial.update.summary, /IAMAI could not read every change · review$/)
+  assert.doesNotMatch(partial.update.summary, /0 polic/)
+  assert.match(partial.update.note ?? '', /^IAMAI could not read every changed file/)
+  assert.equal(baselineTile({ name: 'synthetic baseline', policyCount: 1, loading: null, update: null, stepsFor }).state, 'synthetic baseline · 1 policy')
   noOtherRole(tileStrings(u))
 })
 

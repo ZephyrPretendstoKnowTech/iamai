@@ -80,7 +80,8 @@ interface Candidate {
   precedence: number;
 }
 
-function extractPolicies(parsed: unknown): unknown[] {
+/** Every policy object a source file holds: a bare policy, a Graph list envelope, or an array. */
+export function extractPolicies(parsed: unknown): unknown[] {
   if (Array.isArray(parsed)) return parsed.filter(looksLikePolicy);
   if (parsed && typeof parsed === "object") {
     const o = parsed as Record<string, unknown>;
