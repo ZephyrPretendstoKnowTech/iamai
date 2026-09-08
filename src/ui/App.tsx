@@ -6,7 +6,6 @@ import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { GLOBAL_ADMINISTRATOR } from '../graph/collect/tokenRoles.ts'
 import { authErrorOf, classifyAuthError } from '../graph/authError.ts'
 import type { SignInError } from '../graph/authError.ts'
-import { planIdFor } from '../roadmap/generate.ts'
 import { AppShell, PLAN_HREF, useHashRoute } from './shell/AppShell.tsx'
 import { Callout, ErrorBoundary } from './components/index.ts'
 import { learnRoleNames } from '../roles.ts'
@@ -35,7 +34,9 @@ const DevSpikes = import.meta.env.DEV
   ? lazy(() => import('./DevSpikes.tsx').then((m) => ({ default: m.DevSpikes })))
   : () => null
 import { app, pages } from '../content/content.ts'
-import { DEMO_TENANT_ID, isDemo } from './demoMode.ts'
+import { DEMO_SNAPSHOT_STATE_ID, DEMO_TENANT_ID, isDemo } from './demoMode.ts'
+// Types only: the demo chunk itself loads on demand, in demo mode and nowhere else.
+import type { DemoPlanRecord, DemoSnapshotState } from './demo.ts'
 import { loadMappingState, saveMappingState } from '../mapping/store.ts'
 import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
 import { applyStepDecisions } from '../roadmap/decisions.ts'
@@ -59,6 +60,8 @@ const MOCK = DEV_PANEL && new URLSearchParams(window.location.search).get('mock'
 // asked to connect a production tenant. The fixture is synthetic, so shipping it
 // exposes nothing; it is imported lazily so it costs nothing until asked for.
 const DEMO = isDemo()
+// The demo's plan-record swaps, one after another (see the demo branch below).
+let demoSwap: Promise<void> = Promise.resolve()
 
 export function App() {
   // The session (ui/session.ts): who is signed in, the stored scan, the baseline
@@ -99,7 +102,7 @@ export function App() {
       // Re-scan); only the latest may land, or the earlier one finishing last
       // would leave day one's plan under week two's banner.
       let stale = false
-      void import('./demo.ts').then(async ({ demoTenant }) => {
+      void import('./demo.ts').then(async ({ demoTenant, demoSnapshotKey, nextDemoRecord }) => {
         const d = demoTenant(demoWeek2)
         if (stale) return
         // Seed the Setup answers, or the Roadmap has nothing to compute from and
@@ -117,17 +120,24 @@ export function App() {
             saveGroupMembersCache({ tenantId: DEMO_TENANT_ID, groupId, displayName: g.displayName ?? null, membershipRule: null, mailEnabled: false, memberCount: g.memberCount, memberIds: g.memberIds, sampled: g.sampled, asOf: d.snapshot.asOf }),
           ),
         )
-        // Week two carries the decisions the sample's technician made in week
-        // one (the fixture's), so every answer's effect shows on the plan. A
-        // decision the visitor saved themselves wins over the sample's.
-        // The checkpoints its technician recorded travel the same way (the
-        // emergency access drill, E3), once each, beside the visitor's own.
-        if (d.decisions || d.checkpoints) {
-          const rec: Record<string, unknown> & { stepDecisions?: Record<string, unknown>; checkpoints?: unknown[] } = (await loadPlanRecord<Record<string, unknown> & { stepDecisions?: Record<string, unknown>; checkpoints?: unknown[] }>(DEMO_TENANT_ID)) ?? { planId: planIdFor(DEMO_TENANT_ID), skips: {}, checkpoints: [] }
-          const have = new Set((rec.checkpoints ?? []).map((c: unknown) => JSON.stringify(c)))
-          const seeded = (d.checkpoints ?? []).filter((c: unknown) => !have.has(JSON.stringify(c)))
-          await savePlanRecord(DEMO_TENANT_ID, { ...rec, stepDecisions: { ...(d.decisions ?? {}), ...(rec.stepDecisions ?? {}) }, checkpoints: [...(rec.checkpoints ?? []), ...seeded] })
-        }
+        // The plan record for the snapshot being shown (demo.ts nextDemoRecord):
+        // each snapshot keeps its own, so selecting the initial scan again puts
+        // the initial scan's inputs back and the follow-up scan's seeded
+        // decisions, checkpoints and observations stay with the follow-up scan.
+        // The fixture's seed is written when a snapshot is first entered; from
+        // then on the record is the visitor's. Both rows are keyed on the demo
+        // tenant id, so neither can land on a real tenant's keys.
+        if (stale) return
+        // One swap at a time: two demo loads in flight would otherwise read the
+        // same record and the second's write would put back what the first
+        // moved (day one, then week two on a quick Re-scan).
+        demoSwap = demoSwap.then(async () => {
+          const [stored, live] = await Promise.all([loadPlanRecord<DemoSnapshotState>(DEMO_SNAPSHOT_STATE_ID), loadPlanRecord<DemoPlanRecord>(DEMO_TENANT_ID)])
+          const { record, state } = nextDemoRecord({ want: demoSnapshotKey(demoWeek2), stored, live, seed: { decisions: d.decisions, checkpoints: d.checkpoints } })
+          await savePlanRecord(DEMO_TENANT_ID, record)
+          await savePlanRecord(DEMO_SNAPSHOT_STATE_ID, state as unknown as Record<string, unknown>)
+        }).catch(() => undefined)
+        await demoSwap
         if (stale) return
         // The sample org's own name; the banner, not the tenant name, tells a
         // visitor it is sample data (prompt 50 item 12).

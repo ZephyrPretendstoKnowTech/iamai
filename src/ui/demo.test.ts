@@ -32,8 +32,9 @@ import { notPeopleIds } from '../derive/sets.ts'
 import { jsonOffered, missingObjects, policyJsonText } from './surfaces/stepJson.ts'
 import { statusOf } from './surfaces/statusWord.ts'
 import { readinessStepHref, resolveHash, PLAN_HREF, READINESS_HREF, VALID } from './shell/routes.ts'
-import { DEMO_TENANT_ID, DEMO_PARAM } from './demoMode.ts'
-import { demoTenant } from './demo.ts'
+import { DEMO_TENANT_ID, DEMO_PARAM, DEMO_SNAPSHOT_STATE_ID } from './demoMode.ts'
+import { demoSnapshotKey, demoTenant, nextDemoRecord } from './demo.ts'
+import type { DemoPlanRecord, DemoSnapshotState, DemoTenant } from './demo.ts'
 import type { Step } from '../roadmap/types.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
@@ -334,6 +335,14 @@ test('E: one demo tenant id, stamped on the sample and on nothing else', () => {
     assert.ok(at > 0, `the demo branch does not call ${call}`)
     assert.ok(branch.slice(at, at + 400).includes('DEMO_TENANT_ID'), `${call} in the demo branch is not keyed on the demo tenant id`)
   }
+  // Every plan-store key the demo reads or writes, spelled out: the sample
+  // tenant's record and the demo's own row. The demo's row is derived from the
+  // tenant id, so neither key can be a real tenant's.
+  const keys = [...branch.matchAll(/(?:load|save)PlanRecord(?:<[^>]*>)?\(([A-Za-z_]+)/g)].map((m) => m[1])
+  assert.ok(keys.length >= 3, `the demo branch reads and writes ${keys.length} plan record(s)`)
+  for (const k of keys) assert.ok(k === 'DEMO_TENANT_ID' || k === 'DEMO_SNAPSHOT_STATE_ID', `the demo branch keys a plan record on ${k}`)
+  assert.ok(DEMO_SNAPSHOT_STATE_ID.startsWith(DEMO_TENANT_ID), "the demo's own row is outside the demo namespace")
+  assert.notEqual(DEMO_SNAPSHOT_STATE_ID, DEMO_TENANT_ID, "the demo's own row would overwrite the sample tenant's plan record")
   assert.ok(/saveMappingState\(d\.mapping\)/.test(branch), 'the demo writes a mapping it did not stamp')
 })
 
@@ -362,6 +371,89 @@ test('E: the snapshot selector changes the input and nothing else, and does noth
   const demoBranch = scan.slice(scan.indexOf('if (isDemo())'), scan.indexOf('if (s.scan.state ==='))
   assert.equal(/demoWeek2: !s\.demoWeek2/.test(demoBranch), false, 'the demo scan toggles the snapshot')
   assert.ok(/setSession\(\{ demoWeek2: true \}\)/.test(demoBranch), 'the demo scan does not advance to the follow-up snapshot')
+})
+
+/**
+ * One visit to the sample, snapshot by snapshot: the rule App.tsx applies
+ * (demo.ts nextDemoRecord) over the two fixtures' seeds, with `persist`
+ * standing in for what the Plan writes back while a snapshot is on screen.
+ */
+function demoVisit(initial: DemoTenant, follow: DemoTenant): { show: (followUp: boolean) => DemoPlanRecord; persist: (extra: DemoPlanRecord) => void; record: () => DemoPlanRecord } {
+  let live: DemoPlanRecord | null = null
+  let stored: DemoSnapshotState | null = null
+  return {
+    show(followUp) {
+      const d = followUp ? follow : initial
+      const next = nextDemoRecord({ want: demoSnapshotKey(followUp), stored, live, seed: { decisions: d.decisions, checkpoints: d.checkpoints } })
+      live = { ...next.record, tenantId: DEMO_TENANT_ID }
+      stored = next.state
+      return next.record
+    },
+    // What the Plan writes back while a snapshot is shown: the visitor's own
+    // decisions, and what this scan saw of each policy (surfaces/planData.ts).
+    persist(extra) {
+      live = { ...(live ?? {}), ...extra, stepDecisions: { ...(live?.stepDecisions ?? {}), ...(extra.stepDecisions ?? {}) } }
+    },
+    record: () => ({ ...(live ?? {}) }),
+  }
+}
+
+test("E: selecting the initial scan restores the initial scan, and the follow-up scan's inputs stay with it", () => {
+  const initial = demoTenant(false)
+  const follow = demoTenant(true)
+  const visit = demoVisit(initial, follow)
+  // Day one, first visit: the sample's own answers, and nothing else.
+  const day1 = visit.show(false)
+  assert.deepEqual(Object.keys(day1.stepDecisions ?? {}).sort(), Object.keys(initial.decisions ?? {}).sort())
+  // The visitor answers a question, and the Plan records what day one saw.
+  visit.persist({ stepDecisions: { 's-visitor-answer': { option: 'Yes', at: initial.snapshot.asOf } }, observations: { 'p-day-one': 'seen' }, startDate: '2026-10-05' })
+  const mine = { ...visit.record() }
+  delete mine.tenantId
+  // Week two: the same tenant scanned again, so the visitor's plan comes with
+  // it, and the sample technician's week-one answers arrive beside it.
+  const week2 = visit.show(true)
+  const followOnly = Object.keys(follow.decisions ?? {}).filter((k) => !(k in (initial.decisions ?? {})))
+  assert.ok(followOnly.length > 0, 'the follow-up fixture seeds no decisions of its own')
+  for (const k of followOnly) assert.ok(k in (week2.stepDecisions ?? {}), `the follow-up scan does not carry ${k}`)
+  assert.ok('s-visitor-answer' in (week2.stepDecisions ?? {}), "a re-scan of one tenant restarted the visitor's plan")
+  // Week two runs, and the Plan records what week two saw.
+  visit.persist({ observations: { 'p-week-two': 'report-only proven' }, checkpoints: [{ kind: 'drill', done: true }] })
+  // Back to the initial scan: exactly the record day one was left with.
+  const back = visit.show(false)
+  assert.deepEqual(back, mine, 'the initial scan did not come back as it was left')
+  for (const k of followOnly) assert.equal(k in (back.stepDecisions ?? {}), false, `the follow-up scan's ${k} is still on the initial plan`)
+  assert.deepEqual(back.observations, { 'p-day-one': 'seen' }, "week two's proof is still on the initial plan")
+  assert.deepEqual(back.checkpoints, day1.checkpoints, "week two's checkpoints are still on the initial plan")
+  // And week two is still itself: selected again, it is what it was left as.
+  const again = visit.show(true)
+  assert.deepEqual(again.observations, { 'p-week-two': 'report-only proven' }, 'the follow-up scan lost what it saw')
+  assert.deepEqual(again.checkpoints, [{ kind: 'drill', done: true }])
+})
+
+test('E: the sample seeds a snapshot once, and never over the visitor', () => {
+  const initial = demoTenant(false)
+  const follow = demoTenant(true)
+  const seeded = Object.keys(initial.decisions ?? {})[0]
+  assert.ok(seeded, 'the initial fixture seeds no decision')
+  const visit = demoVisit(initial, follow)
+  visit.show(false)
+  // The visitor answers the seeded question themselves; the same snapshot shown
+  // again must not put the sample's answer back over theirs.
+  visit.persist({ stepDecisions: { [seeded]: { option: 'the visitor said this', at: initial.snapshot.asOf } } })
+  const reload = visit.show(false)
+  assert.deepEqual(reload.stepDecisions?.[seeded], { option: 'the visitor said this', at: initial.snapshot.asOf })
+  // A record written before this rule existed cannot be placed in a snapshot:
+  // no demo row says which one it belongs to, so the sample is seeded afresh
+  // rather than opened over inputs of unknown provenance.
+  const orphan = nextDemoRecord({
+    want: 'initial',
+    stored: null,
+    live: { tenantId: DEMO_TENANT_ID, stepDecisions: { 's-from-a-previous-build': { option: 'x', at: initial.snapshot.asOf } }, observations: { 'p-unknown': 'seen' } },
+    seed: { decisions: initial.decisions, checkpoints: initial.checkpoints },
+  })
+  assert.deepEqual(Object.keys(orphan.record.stepDecisions ?? {}).sort(), Object.keys(initial.decisions ?? {}).sort())
+  assert.equal('observations' in orphan.record, false)
+  assert.equal(orphan.state.current, 'initial')
 })
 
 test('E: the sample banner names the sample, names the snapshot on screen, and offers the way out', () => {

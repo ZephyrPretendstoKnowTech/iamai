@@ -79,3 +79,77 @@ export function demoTenant(week2 = false): DemoTenant {
   const checkpoints = f.checkpoints ? shiftDates(f.checkpoints, offset) : null
   return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions, checkpoints }
 }
+
+// ---------------------------------------------------------------------------
+// The two snapshots' plan records (task 026 correction)
+// ---------------------------------------------------------------------------
+//
+// A plan record holds the operator's inputs and the one thing a scan cannot
+// work out for itself: what the last scan saw of each policy (observations).
+// The app stores one per tenant, and the sample is one tenant read twice, so
+// when the visitor selected the initial scan again the follow-up scan's seeded
+// decisions, its checkpoints and its observations were still in that record and
+// the initial plan rendered over week two's inputs — a hybrid neither snapshot
+// ever was.
+//
+// So the demo keeps a record per snapshot and the tenant's record is a copy of
+// the selected one. Selecting a snapshot restores that snapshot's own record;
+// the fixture's seed is written once, when a snapshot is first entered, so a
+// visitor's edits are theirs from then on and no seed comes back over them.
+// Going forward for the first time (Scan again, day one to week two) carries
+// the visitor's record with it, because that is what a re-scan of one tenant
+// does: the plan does not restart because the tool looked again.
+
+export type DemoSnapshotKey = 'initial' | 'followUp'
+/** A stored plan record, in whatever shape it was written (roadmap/decisions.ts owns the shape). */
+export type DemoPlanRecord = Record<string, unknown> & { stepDecisions?: Record<string, unknown>; checkpoints?: unknown[] }
+/** The demo's own row: a record per snapshot, and which one the tenant's record is a copy of. */
+export type DemoSnapshotState = { current: DemoSnapshotKey; records: Partial<Record<DemoSnapshotKey, DemoPlanRecord>> }
+/** What the fixture supplies for a snapshot: its technician's answers and the checkpoints they recorded. */
+export type DemoSeed = { decisions: Record<string, StepDecision> | null; checkpoints: unknown[] | null }
+
+export function demoSnapshotKey(followUp: boolean): DemoSnapshotKey {
+  return followUp ? 'followUp' : 'initial'
+}
+
+/** The stored row carries its store key; a copy held inside the demo's row must not. */
+function withoutTenantId(rec: DemoPlanRecord): DemoPlanRecord {
+  const out = { ...rec }
+  delete out.tenantId
+  return out
+}
+
+/**
+ * The fixture's seed, under whatever the record already says: a decision the
+ * visitor saved themselves wins over the sample technician's, and a checkpoint
+ * the record already holds is not recorded twice.
+ */
+function seedInto(rec: DemoPlanRecord, seed: DemoSeed): DemoPlanRecord {
+  const have = new Set((rec.checkpoints ?? []).map((c) => JSON.stringify(c)))
+  const added = (seed.checkpoints ?? []).filter((c) => !have.has(JSON.stringify(c)))
+  return { ...rec, stepDecisions: { ...(seed.decisions ?? {}), ...(rec.stepDecisions ?? {}) }, checkpoints: [...(rec.checkpoints ?? []), ...added] }
+}
+
+/**
+ * Which plan record the sample tenant should hold for the snapshot being shown,
+ * and the demo's row to store beside it. Pure: App.tsx reads the two rows,
+ * calls this, and writes the two back.
+ *
+ * `live` with no `stored` row is a record written before this rule existed (or
+ * by a build that had none): it cannot be said which snapshot it belongs to, so
+ * it is not carried into one. The sample re-seeds and the visitor's first
+ * selection is the sample as its author built it.
+ */
+export function nextDemoRecord(args: { want: DemoSnapshotKey; stored: DemoSnapshotState | null; live: DemoPlanRecord | null; seed: DemoSeed }): { record: DemoPlanRecord; state: DemoSnapshotState } {
+  const { want, stored, live, seed } = args
+  const records: Partial<Record<DemoSnapshotKey, DemoPlanRecord>> = { ...(stored?.records ?? {}) }
+  const from = stored?.current ?? null
+  // The record on screen belongs to the snapshot it was selected for; put it away under that one.
+  if (from && live) records[from] = withoutTenantId(live)
+  const kept = records[want]
+  // Day one to week two, the first time: the same tenant, scanned again.
+  const carried = from === 'initial' && want === 'followUp' && live ? withoutTenantId(live) : null
+  const record = kept ?? seedInto(carried ?? { planId: planIdFor(DEMO_TENANT_ID), skips: {}, checkpoints: [] }, seed)
+  records[want] = record
+  return { record, state: { current: want, records } }
+}
