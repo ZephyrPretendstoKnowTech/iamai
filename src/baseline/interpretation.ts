@@ -36,12 +36,24 @@ import type { CaPolicy, ReferenceKind } from './types.ts'
  * `src/roadmap/resolvePolicy.ts` decides which of them name a tenant object.
  * `unknown` is a settled reading too: it records that the evidence was looked
  * for and is not there, so the next update does not rediscover the question.
+ *
+ * `authorEnvironment` is the one meaning that says a reference has no
+ * counterpart here and needs none: the evidence identifies it as something in
+ * the author's own environment - a vendor's service principal, one dependency's
+ * own addresses - which the adopting tenant does not have, so their copy of the
+ * policy is deployed without it. It is a positive finding about what the object
+ * *is*, never a reading of where it sits in a policy: "only ever excluded" is a
+ * fact about a collection and says nothing about whether the people behind it
+ * exist in another tenant. Leaving a carve-out out of a policy that blocks or
+ * demands a stronger sign-in reaches people the author's own tenant spared, so
+ * it takes the same evidence as naming a tenant object does.
  */
 export type SourceMeaning =
   | 'exclusionsGroup'
   | 'serviceAccountsGroup'
   | 'allowedCountries'
   | 'trustedLocation'
+  | 'authorEnvironment'
   | 'unknown'
 
 /**
@@ -107,7 +119,7 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation', 'unknown']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation', 'authorEnvironment', 'unknown']
 const BASES: InterpretationBasis[] = ['authorConfirmed', 'documented', 'structural']
 const KINDS: ReferenceKind[] = ['group', 'user', 'role', 'application', 'namedLocation', 'servicePrincipal', 'authenticationStrength', 'termsOfUse']
 

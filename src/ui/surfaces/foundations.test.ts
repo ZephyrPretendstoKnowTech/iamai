@@ -7,7 +7,10 @@
 // milestone — not "Announce · Change" (roadmap/forecast.ts enforcementUnearned).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
 import { adminsAtRung5, runFixture } from '../../roadmap/fixtures/run.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { buildIcs } from '../../roadmap/ics.ts'

@@ -102,6 +102,25 @@ test('only a settled record gives a specialised meaning, and it is scoped to its
   assert.equal(tokens.size, 1)
 })
 
+test('the author’s own environment is a settled reading like any other, and structure alone cannot claim it', () => {
+  // The one reading that lets an adopting tenant's copy of a policy go without a
+  // source reference (roadmap/resolvePolicy.ts `authorOnly`). It says what the
+  // object *is* — the author's own, with no counterpart needed here — so it
+  // takes the same evidence as naming a tenant object does, and none of the
+  // groups above reaches it by being excluded and never included.
+  assert.equal(tokensFor(NONE).get(BROAD), undefined, 'a group only ever excluded settles nothing by sitting there')
+  const interpretation: BaselineInterpretation = {
+    ...NONE,
+    references: [settled({ id: BROAD, meaning: 'authorEnvironment', evidence: 'the author states it is their vendor’s own group' })],
+  }
+  assert.equal(tokensFor(interpretation).get(BROAD), 'authorEnvironment')
+  assert.throws(
+    () => readInterpretation({ ...NONE, references: [{ ...settled({ id: BROAD, meaning: 'authorEnvironment' }), basis: 'structural' }] }),
+    /claims authorEnvironment on structure alone/,
+    'the shape of the export cannot establish that a tenant needs no counterpart',
+  )
+})
+
 test('an authentication strength takes its meaning from the field it sits in, not from a record', () => {
   const withStrength = [...SOURCE, policy({ id: 'p-str', displayName: 'anything at all', grantControls: { authenticationStrength: { id: '42de22a7-5339-4a58-b560-28565d53b14d' } } })]
   assert.equal(tokensFor(NONE, withStrength).get('42de22a7-5339-4a58-b560-28565d53b14d'), 'strength')

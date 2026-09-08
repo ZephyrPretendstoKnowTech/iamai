@@ -10,7 +10,10 @@
 // one shared Not licensed line and nothing asks.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'

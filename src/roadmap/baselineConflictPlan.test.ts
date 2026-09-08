@@ -33,7 +33,10 @@
 // 11 follows one of those to the implementation it earns.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from './fixtures/index.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { REVIEWED_SOURCES, baselineConflictWords, baselineConflicts, inBaselineConflict } from './baselineConflict.ts'

@@ -127,18 +127,21 @@ export type Action = {
    * Objects the body names that the tenant does not have yet: the token or id
    * left out of the JSON, and the Preparation step that creates it (null when no
    * step does). The JSON and PowerShell tabs wait on these; nothing is dropped silently.
+   *
+   * `unreadable` marks the ones no step ends: a source object no settled reading
+   * of the baseline explains, which the surfaces say in words rather than by
+   * naming an id out of the author's tenant (resolvePolicy.ts `unsettled`).
    */
-  missing?: { token: string; stepId: string | null }[]
+  missing?: { token: string; stepId: string | null; unreadable?: true }[]
   /**
    * The author's own objects this tenant's copy of the policy does without: a
-   * source group the baseline only ever excludes, which nothing in this tenant
-   * answers and no Preparation step creates (resolvePolicy.ts `authorOnly`).
+   * source reference the baseline's interpretation settles, with evidence, as
+   * the author's own environment — something this tenant has no counterpart for
+   * and needs none (resolvePolicy.ts `authorOnly`).
    *
-   * Apart from `missing` because it is not a prerequisite. There is nothing to
-   * go and do about it, and leaving an exclusion out reaches more people than
-   * the author's tenant did and never fewer, so it does not withhold the policy
-   * — a baseline whose author excludes a group of their own would otherwise be
-   * permanently unimplementable everywhere else.
+   * Apart from `missing` because that reading has already said there is nothing
+   * to go and do. It is never inferred from where the reference sits: a group
+   * only ever excluded, with nothing to say what it is, holds the step instead.
    */
   authorOnly?: string[]
   /**

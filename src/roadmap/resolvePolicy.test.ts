@@ -11,7 +11,11 @@ import type { CaPolicy } from '../baseline/types.ts'
 import { implementable, resolveTenantPolicy } from './resolvePolicy.ts'
 import type { TenantObjects } from './resolvePolicy.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
-import { fixture } from './fixtures/index.ts'
+// The plan-level cases below run on the curated baseline (fixtures/index.ts
+// `curatedFixture`), because they are about how a policy that can be written
+// reaches the four channels. What this baseline's own unsettled source groups do
+// to a policy is roadmap/sourceIdentity.test.ts, and the direct cases here.
+import { curatedFixture as fixture } from './fixtures/index.ts'
 import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
@@ -159,14 +163,17 @@ test('1: the author’s four exclusion groups on one policy come to the tenant�
   for (const g of authorGroups) if (g !== authorIdFor(source, 'exclusionsGroup')) assert.equal(resolved.substitutions.get(g), undefined, `${g} is nobody’s object but the author’s`)
   // Not a string check: the array on the body an implementation channel carries
   // holds the tenant's one group, once, and no id out of the author's tenant.
-  const impl = implementable(resolved.body, resolved.unresolved, resolved.authorOnly)
+  const impl = implementable(resolved.body, resolved)
   assert.deepEqual(excludeGroupsOf(impl.policy), [X])
-  assert.deepEqual(impl.missing, [], 'and nothing is waiting on an object this tenant could make')
-  assert.deepEqual(
-    impl.authorOnly.sort(),
-    authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort(),
-    'the three are reported as the author’s own, not dropped in silence',
-  )
+  // And the three the author's own tenant carved out hold the policy. Nothing
+  // here says who they are, so nothing can say who a copy of this policy made in
+  // another tenant would newly reach; they are reported as missing, marked as
+  // the ones no step of ours ends, and none of them is the author's to leave out
+  // (`authorOnly` takes a settled reading and there is none).
+  const others = authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort()
+  assert.deepEqual(impl.missing.map((m) => m.token.toLowerCase()).sort(), others, 'the three hold the policy')
+  assert.ok(impl.missing.every((m) => m.unreadable === true && m.stepId === null), 'no step of this tenant’s ends the wait')
+  assert.deepEqual(impl.authorOnly, [], 'and none of them is left out as the author’s own')
 })
 
 test('2: distinct resolved ids stay distinct, and no id crosses a collection', () => {
@@ -182,7 +189,7 @@ test('2: distinct resolved ids stay distinct, and no id crosses a collection', (
   const authorServiceAccounts = authorIdFor(source, 'serviceAccountsGroup')
   assert.equal(excludeGroupsOf(source as unknown as Record<string, unknown>).length, 3, 'the author excludes three groups')
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ serviceAccountsGroupId: SA }), 'service-accounts-trusted-network', POLICIES)
-  const impl = implementable(resolved.body, resolved.unresolved, resolved.authorOnly).policy
+  const impl = implementable(resolved.body, resolved).policy
   assert.deepEqual(usersOf(impl).includeGroups, [SA], 'the group the policy targets is the tenant’s service accounts')
   assert.deepEqual(excludeGroupsOf(impl), [X], 'and what it excludes is the exclusions group, named once')
   assert.deepEqual(resolved.substitutions.get(authorServiceAccounts), [SA])
@@ -201,7 +208,7 @@ test('8: an unrelated policy’s includes and excludes are untouched, and no id 
   // for the exclusions group every policy the plan writes excludes, which this
   // tenant has not settled: `implementable` takes it back out and the step waits
   // on the group, rather than the policy quietly excluding nobody.
-  const withoutSlot = implementable(resolved.body, resolved.unresolved, resolved.authorOnly)
+  const withoutSlot = implementable(resolved.body, resolved)
   assert.deepEqual(withoutSlot.policy, body, 'nothing the tenant does not resolve is changed')
   assert.deepEqual(
     withoutSlot.missing,
@@ -229,8 +236,10 @@ test('4: an explicit serviceAccountsGroup the tenant does not have stays unresol
   assert.equal(resolved.authorOnly.has(authorServiceAccounts), false, 'a group the policy targets is never left out as the author’s own')
   // The exclusions group is still there, where the policy independently needs it.
   assert.ok(excludeGroupsOf(resolved.body).includes(X), 'the exclusions group is applied')
-  const impl = implementable(resolved.body, resolved.unresolved, resolved.authorOnly)
-  assert.deepEqual(impl.missing.map((m) => m.stepId), [PREREQ_STEP_ID.serviceAccountsGroup])
+  const impl = implementable(resolved.body, resolved)
+  // The policy also excludes two groups of the author's that nothing settles;
+  // they hold it too, with no step, which is the case beside this one.
+  assert.deepEqual(impl.missing.filter((m) => !m.unreadable).map((m) => m.stepId), [PREREQ_STEP_ID.serviceAccountsGroup])
   assert.ok(!(((usersOf(impl.policy).includeGroups as string[] | undefined) ?? []).includes(authorServiceAccounts)), 'and it is not in the body a channel carries')
   assert.ok(excludeGroupsOf(impl.policy).includes(X), 'while the exclusions group still is')
 
@@ -274,7 +283,7 @@ test('3: a confirmed mapping for one author reference wins over the token and th
   // Two distinct tenant objects, each named once: the confirmed group where the
   // author's own exclusions group stood, and the tenant's exclusions group every
   // policy the plan writes carries. The author's other group is left out.
-  assert.deepEqual(excludeGroupsOf(implementable(resolved.body, resolved.unresolved, resolved.authorOnly).policy), [CONFIRMED, X])
+  assert.deepEqual(excludeGroupsOf(implementable(resolved.body, resolved).policy), [CONFIRMED, X])
 
   // On the plan: the record a person saved travels into the step, and Portal,
   // JSON, PowerShell and Download all describe that same body. Portal cannot

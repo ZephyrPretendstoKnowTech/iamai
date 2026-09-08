@@ -38,7 +38,7 @@ import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { statusOf } from './statusWord.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
-import { heldByTitle, missingObjects } from './stepJson.ts'
+import { heldByTitle, missingObjects, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -65,6 +65,7 @@ type ContractWords = {
   doneDecision: string
   doneReadiness: string
   doneMissing: string
+  doneMissingUnreadable: string
   donePair: string
   doneEscapeHatch: string
   doneEmergency: string
@@ -196,10 +197,9 @@ function stageOf(step: Step): string {
 
 /** The reason line an unavailable policy already shows, filled: Foundation A's answer in the operator's words. */
 function reasonLine(step: Step, reason: UnavailableReason, tenant: string): string {
-  const steps = list([...new Set(missingObjects(step).map((m) => m.title))])
   switch (reason) {
     case 'missing-object':
-      return fillText(app.plan.jsonWaits, { steps, tenant })
+      return waitingLine(step, tenant)
     case 'unmatched-pair':
       return fillText(app.plan.pairUnmatched, { tenant })
     case 'no-operation':
@@ -223,8 +223,18 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string): stri
 /** What clears this reason, said as a completion rather than as an instruction. */
 function doneForReason(step: Step, reason: UnavailableReason, tenant: string): string {
   switch (reason) {
-    case 'missing-object':
-      return fillText(CONTRACT.doneMissing, { tenant })
+    case 'missing-object': {
+      // Two ways to stop waiting, because there are two things to wait on: the
+      // tenant makes the object, and the baseline's reading of a source object
+      // nothing explains is settled. A step can be waiting on both, and then it
+      // says both — the same pair the reason line reads (stepJson.ts
+      // waitingLine), in the same order.
+      const objects = step.action.missing ?? []
+      const done: string[] = []
+      if (objects.some((m) => !m.unreadable)) done.push(fillText(CONTRACT.doneMissing, { tenant }))
+      if (objects.some((m) => m.unreadable)) done.push(fillText(CONTRACT.doneMissingUnreadable, { tenant }))
+      return done.join(' ')
+    }
     case 'unmatched-pair':
       return CONTRACT.donePair
     case 'no-operation':

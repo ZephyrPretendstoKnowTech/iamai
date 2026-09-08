@@ -16,7 +16,10 @@
 // are how readiness reaches the threshold in the first place.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from './fixtures/index.ts'
 import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { readinessFor } from './readiness.ts'

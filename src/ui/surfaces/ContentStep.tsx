@@ -43,7 +43,7 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { jsonOffered, missingObjects, policyJsonText, stepOperations } from './stepJson.ts'
+import { jsonOffered, policyJsonText, stepOperations, waitingLine } from './stepJson.ts'
 import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
@@ -279,7 +279,7 @@ export function ContentStep({
                 names exists in the tenant; otherwise one line names the Preparation
                 step that creates it, and Download JSON is not offered. */}
             {(tab === 'json' || tab === 'ps') && !jsonOffered(step) && (
-              <p className="reason">{fillText(app.plan.jsonWaits, { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') })}</p>
+              <p className="reason">{waitingLine(step, String(ex.tenant ?? ''))}</p>
             )}
             {tab === 'json' && jsonOffered(step) && <pre className="mono">{policyJsonText(step)}</pre>}
             {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}

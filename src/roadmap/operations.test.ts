@@ -18,7 +18,10 @@ import type { PolicyOperation, Step } from './types.ts'
 import { stateFields } from './lifecycle.ts'
 import { jsonOffered, policyJson, policyJsonText, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
-import { fixture } from './fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from './fixtures/index.ts'
 import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'

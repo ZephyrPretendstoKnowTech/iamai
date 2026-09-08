@@ -16,6 +16,7 @@ import { BREAK_GLASS_STEP_ID } from '../stepIds.ts'
 import { questionLabels } from '../decisions.ts'
 import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
+import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
 import { withCleanupDone } from '../cleanupDone.ts'
 
@@ -643,11 +644,68 @@ export function buildFixture(spec: Spec): Fixture {
   return { name: spec.name, snapshot, baseline, mapping, groups, planId, planCreatedAt, operatorId: ids[0], expect: spec.expect, ...(decisions ? { decisions } : {}), ...(checkpoints ? { checkpoints } : {}) }
 }
 
+/**
+ * The same baseline with the source groups its interpretation file settles as
+ * `unknown` settled instead as the author's own environment — the package as it
+ * will be once a curator reaches those references.
+ *
+ * The shipped Jon Hope interpretation settles six of the author's groups as
+ * unknown, because the evidence for what they are is not in anything he
+ * published. Every policy excluding one of them is therefore held, and the demo
+ * shows exactly that: it is the true state of that baseline today
+ * (src/roadmap/resolvePolicy.ts `unsettled`).
+ *
+ * The suites that begin *after* a policy can be written - what a create lands
+ * as, what a report-only window proves, what earns an enforcement - are about
+ * the lifecycle and not about this baseline's curation, so they run against the
+ * curated package. Settling a reference is a change to
+ * `baselines/*.interpretation.json` and to nothing else, so this is that one
+ * change and no other: `authorEnvironment`, the reading that the object is the
+ * author's own and an adopting tenant needs no counterpart for it, which is
+ * exactly the reading the engine may never make for itself.
+ *
+ * The list is the interpretation file's own, by id. It is not a rule about
+ * where a reference sits.
+ */
+export function asCuratedBaseline(pkg: BaselinePackage): BaselinePackage {
+  const settled: Record<string, string> = {}
+  for (const r of (interpretation as { references: { id: string; kind: string; meaning: string }[] }).references) {
+    if (r.kind === 'group' && r.meaning === 'unknown') settled[r.id.toLowerCase()] = 'authorEnvironment'
+  }
+  const policies = pkg.policies.map((p) => ({ ...p, placeholders: { ...settled, ...((p as unknown as { placeholders?: Record<string, string> }).placeholders ?? {}) } }))
+  return { ...pkg, policies } as BaselinePackage
+}
+
+/**
+ * A fixture on the curated baseline: the same tenant, with the source groups
+ * this baseline has not settled read as the author's own environment
+ * (`asCuratedBaseline`). What a suite about the policy lifecycle wants, and
+ * never what the demo gets.
+ */
+export function curatedFixture(name: FixtureName): Fixture {
+  const f = fixture(name)
+  return { ...f, baseline: asCuratedBaseline(f.baseline) }
+}
+
+/** Every fixture on its curated baseline, for a sweep that needs a policy to be writable at all. */
+export function allCuratedFixtures(): Fixture[] {
+  return allFixtures().map((f) => ({ ...f, baseline: asCuratedBaseline(f.baseline) }))
+}
+
 /** A baseline with one policy per catalogue family, so every family produces steps. */
 export function syntheticBaseline(seed: string): BaselinePackage {
   const g = (i: number) => guid(`${seed}-baseline`, i)
   const bg = g(1)
-  const pol = (id: number, displayName: string, body: Record<string, unknown>) => ({ id: g(id), displayName, state: 'enabled', conditions: { users: { includeUsers: ['All'], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, ...body })
+  // This baseline is ours, so its reading of its own objects is ours to state:
+  // `bg` is the author's global exclusion group, excluded from every policy and
+  // included by none, and the package says so in the same `placeholders` map a
+  // pinned baseline carries (scripts/pin-baseline.ts, from the interpretation
+  // file). Without it the group would be a source object nothing explains, which
+  // holds every policy back — which is exactly what it should do for a real
+  // baseline nobody has settled, and exactly the wrong thing for a fixture whose
+  // author is this file.
+  const placeholders = { [bg]: 'exclusionsGroup' }
+  const pol = (id: number, displayName: string, body: Record<string, unknown>) => ({ id: g(id), displayName, state: 'enabled', placeholders, conditions: { users: { includeUsers: ['All'], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, ...body })
   const policies = [
     pol(10, 'IAC - GLOBAL - GRANT - MFA - AllUsers', {}),
     pol(11, 'IAC - GLOBAL - BLOCK - LegacyAuth', { conditions: { users: { includeUsers: ['All'], excludeGroups: [bg] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['exchangeActiveSync', 'other'] }, grantControls: { operator: 'OR', builtInControls: ['block'] } }),

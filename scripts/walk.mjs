@@ -1012,6 +1012,11 @@ async function walkFixture(fx) {
         // (roadmap/operations.ts `escape-hatch-unverified`).
         const cannotWriteYet =
           / first: this policy names an object /.test(bodyText) ||
+          // The same fact for a source object no settled reading of the baseline
+          // explains: nothing this tenant does ends the wait, so the step names
+          // no step and says what it is waiting on in words
+          // (ui/surfaces/stepJson.ts waitingLine).
+          /leaves out a group IAMAI cannot identify/.test(bodyText) ||
           /in place already: nothing to create/.test(bodyText) ||
           /the way back in to .+ is not verified yet/.test(bodyText)
         if (cannotWriteYet) escapeHeld.add(title)
@@ -1427,16 +1432,21 @@ async function walkFixture(fx) {
   // the one the tenant turned on reads In place. Nothing asks the person to mark
   // anything.
   if (fx.name.startsWith('demo')) {
+    // A row the plan cannot write for is not asked for the day its change lands:
+    // there is no change to land until what holds it is settled, and the step
+    // says what that is (`escapeHeld`, the same set the passkey email reads).
+    const writable = (i) => !escapeHeld.has(rowTitles[i])
     const reportOnly = rowStatuses.map((s, i) => (s === 'Report-only' ? rowWhens[i] : null)).filter((w) => w !== null)
+    const reportOnlyWritable = rowStatuses.map((s, i) => (s === 'Report-only' && writable(i) ? rowWhens[i] : null)).filter((w) => w !== null)
     if (reportOnly.length === 0) add('P0', `${fx.name}: no plan row reads Report-only; the demo has a policy in report-only`)
-    if (!fx.week2 && !reportOnly.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
+    if (!fx.week2 && reportOnlyWritable.length > 0 && !reportOnlyWritable.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
     if (fx.week2) {
       // The reason lines are read once, with every decision still open, so they
       // are taken by title rather than by index (the rows move under a decision).
       const reasonByTitle = Object.fromEntries(rowTitlesOpen.map((t, k) => [t, rowReasonsOpen[k] ?? '']))
       const ready = rowStatuses.map((s, i) => (s === 'Ready to enforce' ? i : -1)).filter((i) => i >= 0)
       if (ready.length === 0) add('P0', `${fx.name}: no plan row reads Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
-      for (const i of ready) {
+      for (const i of ready.filter(writable)) {
         if (!/^\S.*\d{4}$/.test(rowWhens[i] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" reads "${rowWhens[i]}" in its date column; it must read the day the enforcement lands`)
         if (!/ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" carries no evidence on its reason line; the row says a change is due and nothing about what earned it`)
       }

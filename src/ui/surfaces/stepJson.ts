@@ -4,7 +4,9 @@
 // none of them reads `action.json`, which is a derived projection the engine
 // writes for the plan file and the exports. Pure.
 import type { Step } from '../../roadmap/types.ts'
-import { stepById } from '../../content/content.ts'
+import { app, stepById } from '../../content/content.ts'
+import { fillText } from '../../content/render.ts'
+import { list } from '../../copy/statements.ts'
 import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../../roadmap/operations.ts'
 
 /**
@@ -24,8 +26,29 @@ import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../
 export { implementationOffered }
 
 /** The objects the body names that the tenant lacks, with the step that creates each (its content title). */
-export function missingObjects(step: Step): { token: string; stepId: string | null; title: string }[] {
+export function missingObjects(step: Step): { token: string; stepId: string | null; unreadable?: true; title: string }[] {
   return (step.action.missing ?? []).map((m) => ({ ...m, title: (m.stepId && stepById[m.stepId]?.title) || m.token }))
+}
+
+/**
+ * What the step says instead of an implementation while something the policy
+ * names is not here — the one sentence the reason line, the JSON and PowerShell
+ * tabs and the exports all read, so the three cannot answer it three ways.
+ *
+ * Two things can be waited on and they read differently. An object this tenant
+ * has not made yet is a task, named by the Preparation step that makes it. A
+ * source object no settled reading of the baseline explains is not a task at
+ * all: nothing this tenant does ends it, and it is said in words — never by
+ * printing the author's own identifier, which is meaningless here and belongs to
+ * somebody else's tenant (roadmap/resolvePolicy.ts `unsettled`).
+ */
+export function waitingLine(step: Step, tenant: string): string {
+  const objects = missingObjects(step)
+  const named = [...new Set(objects.filter((m) => !m.unreadable).map((m) => m.title))]
+  const lines: string[] = []
+  if (named.length > 0) lines.push(fillText(app.plan.jsonWaits, { steps: list(named), tenant }))
+  if (objects.some((m) => m.unreadable)) lines.push(fillText(app.plan.jsonWaitsUnreadable, { tenant }))
+  return lines.join(' ')
 }
 
 /**
