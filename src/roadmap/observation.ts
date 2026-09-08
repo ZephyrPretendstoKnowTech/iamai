@@ -164,7 +164,17 @@ export function historyReset(change: ObservationChange): boolean {
 
 // ---- the material fingerprint ----
 
-const COSMETIC = new Set(['displayName', 'id', 'createdDateTime', 'modifiedDateTime', 'templateId', 'description', '@odata.context', '@odata.type'])
+// Nothing here is ever the policy's own bookkeeping: `canonical` is entered at
+// `conditions`, `grantControls` and `sessionControls`, so a key it drops is a key
+// on something the policy *points at*. `id` was in this set and named nothing in
+// a Conditional Access policy but `grantControls.authenticationStrength.id` —
+// which is the whole identity of the strength. Two policies requiring different
+// strengths fingerprinted the same, so a tenant watched in report-only under the
+// built-in "Multifactor authentication" carried that window straight through a
+// baseline change to a phishing-resistant strength and reached ready to enforce
+// on proof earned against the weaker requirement (task 022). A referenced
+// object's id is material; its display name is not.
+const COSMETIC = new Set(['displayName', 'createdDateTime', 'modifiedDateTime', 'templateId', 'description', '@odata.context', '@odata.type'])
 
 /**
  * The policy's material fields, canonically ordered: the conditions it acts on,

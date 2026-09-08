@@ -157,13 +157,22 @@ test('1: the author’s four exclusion groups on one policy resolve to the tenan
   assert.deepEqual(excludeGroupsOf(implementable(resolved.body, resolved.unresolved).policy), [X])
 })
 
-test('2: distinct resolved ids stay distinct and keep first-occurrence order', () => {
-  const source = authorPolicy('IAC - INTUNE - GRANT - RequireCompliantDevice')
-  // The author's service-accounts group is this tenant's own; its two other
-  // groups are the exclusions group. Three author ids, two tenant ids, in the
-  // order the first of each appeared.
-  const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ serviceAccountsGroupId: SA }), 'require-managed-device', POLICIES)
-  assert.deepEqual(excludeGroupsOf(resolved.body), [SA, X])
+test('2: distinct resolved ids stay distinct, and no id crosses a collection', () => {
+  // The author's service-accounts group is this tenant's own; the three groups
+  // the same policy excludes are all this tenant's exclusions group. Four author
+  // ids, two tenant ids, each named once and each on the side the author put it.
+  //
+  // Ordering *within* one collection is exercised by 8 below, on a synthetic
+  // body: no policy in the pinned baseline resolves two different tenant objects
+  // into one list, because only the references this baseline's interpretation
+  // settles carry a mapped token at all (src/baseline/interpretation.ts).
+  const source = authorPolicy('IAC - GLOBAL – BLOCK – Service Accounts')
+  const authorServiceAccounts = authorIdFor(source, 'serviceAccountsGroup')
+  assert.equal(excludeGroupsOf(source as unknown as Record<string, unknown>).length, 3, 'the author excludes three groups')
+  const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ serviceAccountsGroupId: SA }), 'service-accounts-trusted-network', POLICIES)
+  assert.deepEqual(usersOf(resolved.body).includeGroups, [SA], 'the group the policy targets is the tenant’s service accounts')
+  assert.deepEqual(excludeGroupsOf(resolved.body), [X], 'and its three exclusions are the one exclusions group, named once')
+  assert.deepEqual(resolved.substitutions.get(authorServiceAccounts), [SA])
 })
 
 test('8: an unrelated policy’s includes and excludes are untouched, and no id crosses a collection', () => {
@@ -187,23 +196,24 @@ test('8: an unrelated policy’s includes and excludes are untouched, and no id 
 // ---- 4 + 5: an explicit token means that object, or nothing ----
 
 test('4: an explicit serviceAccountsGroup the tenant does not have stays unresolved — it never becomes the exclusions group', () => {
-  const source = authorPolicy('IAC - INTUNE - GRANT - RequireCompliantDevice')
+  const source = authorPolicy('IAC - GLOBAL – BLOCK – Service Accounts')
   const authorServiceAccounts = authorIdFor(source, 'serviceAccountsGroup')
-  const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant(), 'require-managed-device', POLICIES)
-  assert.ok(excludeGroupsOf(resolved.body).includes(authorServiceAccounts), 'the author’s group is not substituted')
+  // The tenant has its trusted network, so the group is the one thing left.
+  const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ trustedLocationIds: ['loc-1'] }), 'service-accounts-trusted-network', POLICIES)
+  assert.deepEqual(usersOf(resolved.body).includeGroups, [authorServiceAccounts], 'the author’s group is not substituted')
   assert.equal(resolved.substitutions.get(authorServiceAccounts), undefined, 'nothing resolved it')
   assert.equal(resolved.unresolved.get(authorServiceAccounts), PREREQ_STEP_ID.serviceAccountsGroup, 'it waits on the service-accounts-group step')
   // The exclusions group is still there, where the policy independently needs it.
   assert.ok(excludeGroupsOf(resolved.body).includes(X), 'the exclusions group is applied')
   const impl = implementable(resolved.body, resolved.unresolved)
   assert.deepEqual(impl.missing.map((m) => m.stepId), [PREREQ_STEP_ID.serviceAccountsGroup])
-  assert.ok(!excludeGroupsOf(impl.policy).includes(authorServiceAccounts), 'and it is not in the body a channel carries')
+  assert.ok(!(((usersOf(impl.policy).includeGroups as string[] | undefined) ?? []).includes(authorServiceAccounts)), 'and it is not in the body a channel carries')
   assert.ok(excludeGroupsOf(impl.policy).includes(X), 'while the exclusions group still is')
 
   // On the plan: every channel waits on it together.
   const { rows } = policySteps('demo-week2')
-  const step = rows.find((x) => x.step.goalId === 'require-managed-device')
-  assert.ok(step, 'the compliant-device step is on the demo plan')
+  const step = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
+  assert.ok(step, 'the service-accounts step is on the demo plan')
   assert.ok(missingObjects(step.step).some((m) => m.stepId === PREREQ_STEP_ID.serviceAccountsGroup), 'it waits on the service-accounts group')
   assert.equal(implementationOffered(step.step), false)
   assert.equal(step.portal, null, 'no portal instructions')
@@ -211,18 +221,23 @@ test('4: an explicit serviceAccountsGroup the tenant does not have stays unresol
 })
 
 test('5: with a service-accounts group of its own, the tenant’s group is used and the exclusions group stays the exclusions group', () => {
-  const { rows, f } = policySteps('demo-week2', { serviceAccountsGroupId: SA })
+  // The policy also names the author's trusted network, so the tenant needs both
+  // before anything is offered: the point here is that its own service-accounts
+  // group is what stands where the author's did, and that it did not become the
+  // exclusions group on the way.
+  const { rows, f } = policySteps('demo-week2', { serviceAccountsGroupId: SA, trustedLocationIds: ['loc-1'] })
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId
   assert.ok(exclusions)
-  const step = rows.find((x) => x.step.goalId === 'require-managed-device')
-  assert.ok(step, 'the compliant-device step is on the plan')
+  const step = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
+  assert.ok(step, 'the service-accounts step is on the plan')
   assert.equal(implementationOffered(step.step), true, 'nothing is missing now')
   assert.equal(jsonOffered(step.step), true)
-  assert.deepEqual(excludeGroupsOf(policyJson(step.step) as Record<string, unknown>), [SA, exclusions], 'two tenant objects, distinct, in first-occurrence order')
+  const json = policyJson(step.step) as Record<string, unknown>
+  assert.deepEqual(usersOf(json).includeGroups, [SA], 'the tenant’s own service-accounts group is the target')
+  assert.deepEqual(excludeGroupsOf(json), [exclusions], 'and the exclusions group is still the exclusions group')
+  assert.notEqual(SA, exclusions, 'two distinct tenant objects, neither standing in for the other')
   assert.ok(step.portal && step.portal.length > 0, 'the portal instructions render')
-  const text = step.portal.join('\n')
-  assert.match(text, /Also exclude the service accounts group/, 'the instruction names the service-accounts group')
-  assert.match(text, /Core - Exclusions/, 'and the exclusions group')
+  assert.match(step.portal.join('\n'), /Core - Exclusions/, 'the instruction names the exclusions group')
 })
 
 // ---- 3: a confirmed per-reference mapping wins, and every channel agrees ----
@@ -627,8 +642,8 @@ test('a pair whose halves the plan cannot tell apart is withheld, not guessed', 
 
 test('an unresolved service-accounts reference leaves no executable body and no channel', () => {
   const { rows } = policySteps('demo-week2')
-  const step = rows.find((x) => x.step.goalId === 'require-managed-device')
-  assert.ok(step, 'the compliant-device step is on the plan')
+  const step = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
+  assert.ok(step, 'the service-accounts step is on the plan')
   assert.ok(missingObjects(step.step).some((m) => m.stepId === PREREQ_STEP_ID.serviceAccountsGroup), 'it waits on the service-accounts group')
   assert.equal(step.step.action.json, null, 'no executable body is exposed')
   assert.deepEqual(stepOperations(step.step), [], 'no operation to run')
@@ -640,7 +655,7 @@ test('an unresolved service-accounts reference leaves no executable body and no 
 
 test('an unresolved step is not scheduled and carries nothing that implies a rollout, but still names what it waits on', () => {
   const { r, ctx, rows } = policySteps('demo-week2')
-  const row = rows.find((x) => x.step.goalId === 'require-managed-device')
+  const row = rows.find((x) => x.step.goalId === 'service-accounts-trusted-network')
   assert.ok(row)
   const step = row.step
   assert.ok(!step.events, 'no enforcement or announcement event')

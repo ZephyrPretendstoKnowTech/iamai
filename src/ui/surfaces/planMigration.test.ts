@@ -21,7 +21,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { allFixtures } from '../../roadmap/fixtures/index.ts'
+import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -60,6 +60,21 @@ function ctxFor(f: Fixture, r: ReturnType<typeof runFixture>, step: Step): StepV
     groups: f.groups,
     reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null,
   }
+}
+
+/**
+ * The demo tenant with the exclusions question unanswered: the one thing an
+ * operator must settle before any policy can be written (Foundation C), and so
+ * the canonical step that waits on a person rather than on work.
+ */
+function unansweredExclusions(): Opened[] {
+  const f = noExclusionsAnswer(fixture('demo'))
+  const r = runFixture(f, { mapping: f.mapping })
+  return r.steps.map((step) => {
+    const ctx = ctxFor(f, r, step)
+    const ex = stepVars(step, ctx) as Record<string, unknown>
+    return { fixture: 'demo (exclusions unanswered)', step, ctx, ex, contract: stepContract(step, ctx, ex), cs: (contentStepFor(step) ?? {}) as Record<string, unknown> }
+  })
 }
 
 /** Every step of every fixture, as the Plan opens it. Derived once; the fixture runs are memoised. */
@@ -227,7 +242,13 @@ test('a check that passes is not on the step; a check that fails is, in its own 
 })
 
 test('a step waiting on a person says so as its one action, and never inside More', () => {
-  const decisions = everyStep().filter((o) => o.contract.state.condition === 'needs-decision')
+  // Every shipped fixture answers the exclusions question, because a tenant
+  // without an answer has no policy the plan can write - so the canonical
+  // needs-decision case is built here rather than swept for. It used to appear
+  // in the sweep by accident: the author's own CA-GlobalExclusions placeholder
+  // was classified as the service accounts, and the step that named it waited on
+  // a group the tenant had no reason to make (task 022).
+  const decisions = [...everyStep(), ...unansweredExclusions()].filter((o) => o.contract.state.condition === 'needs-decision')
   assert.ok(decisions.length > 0, 'no fixture produces a step that needs a decision')
   for (const { fixture, step, contract } of decisions) {
     assert.ok(contract.whatToDo.text.length > 0, `${fixture}/${step.id}: no action text`)

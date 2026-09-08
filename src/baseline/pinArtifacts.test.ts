@@ -18,6 +18,8 @@ import { PINNED } from './pinned.ts'
 const shippedIndex = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.index.json', 'utf8')) as Record<string, unknown>
 
 const NEXT = '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c'
+/** The commit the index record was stuck at while the pair was written apart. */
+const STALE = 'ceccdc2a6dc2e4a3e1f960fc2d91f05c8963265b'
 
 const generate = (commit: string) =>
   pinArtifacts({
@@ -41,7 +43,7 @@ test('J. one generation writes the snapshot and its index record at the same com
   assert.equal(pinMismatch(pinned, index), null)
   // The attribution names the commit, so it is regenerated rather than carried.
   assert.equal(index.attribution, attributionFor('Jhope188', 'ConditionalAccessPolicies', NEXT))
-  assert.equal((index.attribution ?? '').includes(String(shippedIndex.commit).slice(0, 7)), false, 'the previous commit survived in the attribution sentence')
+  assert.equal((index.attribution ?? '').includes(STALE.slice(0, 7)), false, 'the previous commit survived in the attribution sentence')
   // The file allowlist is the new commit's, sorted, and the descriptive fields carry.
   assert.deepEqual(index.files, ['Updated/Policies/a.json', 'Updated/Policies/b.json', 'readme.md'])
   assert.equal(index.description, shippedIndex.description)
@@ -51,12 +53,12 @@ test('J. one generation writes the snapshot and its index record at the same com
 
 test('J. a pair that disagrees is named, so a generation path cannot write one', () => {
   const { pinned, index } = generate(NEXT)
-  assert.match(pinMismatch(pinned, { ...index, commit: String(shippedIndex.commit) }) ?? '', /is at 90d9b890.* and its index records ceccdc2a/)
+  assert.match(pinMismatch(pinned, { ...index, commit: STALE }) ?? '', /is at 90d9b890.* and its index records ceccdc2a/)
   assert.match(pinMismatch(pinned, { ...index, attribution: attributionFor('Jhope188', 'ConditionalAccessPolicies', 'deadbeef0000') }) ?? '', /attribution names a commit other than/)
-  // The shipped pair is exactly the disagreement this fix stops recurring; the
-  // artifacts stay as the owner pinned them until a re-pin task changes them.
-  assert.notEqual(PINNED.commit, shippedIndex.commit)
-  assert.ok(pinMismatch(PINNED, shippedIndex as { commit: string }))
+  // And the shipped pair, which carried exactly that disagreement until the
+  // re-pin ran through this path, now names one commit.
+  assert.equal(PINNED.commit, shippedIndex.commit)
+  assert.equal(pinMismatch(PINNED, shippedIndex as { commit: string }), null)
 })
 
 test('J. indexRecord is the one shape for an index record, whether a pin or a clone walk builds it', () => {
@@ -111,7 +113,7 @@ test('J. the script refuses a disagreeing pair, and writes neither file', () => 
   const dir = mkdtempSync(join(tmpdir(), 'iamai-pin-'))
   try {
     const out = pinGeneration(scriptInput(NEXT))
-    const stale = { pinned: out.pinned, index: { ...out.index, commit: String(shippedIndex.commit) } }
+    const stale = { pinned: out.pinned, index: { ...out.index, commit: STALE } }
     assert.throws(() => writePin(dir, 'test-baseline', stale), /disagree/)
     assert.deepEqual(readdirSync(dir), [], 'a rejected pin still put a file on disk')
   } finally {

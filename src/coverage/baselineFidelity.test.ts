@@ -29,6 +29,13 @@ const GA = '62e90394-69f5-4237-9190-012177145e10'
 const PR_STRENGTH = '00000000-0000-0000-0000-000000000004'
 /** Microsoft Intune Enrollment: the one application the pinned MFA-all-users policy leaves out. */
 const INTUNE_ENROLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
+/** The author's four Microsoft first-party exclusions on the Admin Portal policy, which task 020 taught the pin to keep. */
+const ADMIN_PORTAL_APPS = [
+  '00000002-0000-0000-c000-000000000000',
+  '0000000c-0000-0000-c000-000000000000',
+  '1b912ec3-a9dd-4c4d-a53e-76aa7adb28d7',
+  '8c59ead7-d703-4a27-9e55-c96a0054c8d2',
+]
 /** Any other first-party application id, to stand for an exclusion the baseline does not make. */
 const OTHER_APP = 'cc15fd57-2c6c-4117-a88c-83b1d56b4bbe'
 
@@ -129,18 +136,31 @@ test('every application exclusion in the pinned source is inventoried and kept',
     assert.equal(apps.includeResources, undefined, `${p.displayName} uses includeResources, which nothing in IAMAI reads`)
     assert.equal(apps.applicationFilter, undefined, `${p.displayName} carries an application filter, which nothing in IAMAI evaluates`)
   }
-  assert.deepEqual(surviving, [`IAC - GLOBAL - GRANT - MFA - AllUsers: ${INTUNE_ENROLMENT}`], 'the pinned application exclusions changed; account for each one before changing this list')
+  assert.deepEqual(
+    surviving,
+    [
+      `IAC - GLOBAL - GRANT - MFA - AllUsers: ${INTUNE_ENROLMENT}`,
+      ...ADMIN_PORTAL_APPS.map((a) => `IAC - ZTCA - GLOBAL – BLOCK – Admin Portal: ${a}`),
+    ],
+    'the pinned application exclusions changed; account for each one before changing this list',
+  )
 
   // The exclusions the pin removed are recorded by policy and id, never dropped
-  // without a record: four on the Admin Portal policy, one on MFA-AllUsers.
-  assert.equal(pinnedJson.stripped.length, 5, 'the pin-time strip list changed')
-  assert.equal(pinnedJson.stripped.filter((s) => s.startsWith('IAC - ZTCA - GLOBAL – BLOCK – Admin Portal:')).length, 4)
+  // without a record. Task 020 repaired the first-party registry and task 022's
+  // re-pin is the first pin generated with it, so the author's four Admin Portal
+  // exclusions now survive and one strip is left: an application id IAMAI does
+  // not recognise, which is dropped because carrying somebody else's
+  // registration into another tenant is the thing this boundary exists to stop.
+  assert.equal(pinnedJson.stripped.length, 1, 'the pin-time strip list changed')
+  assert.equal(pinnedJson.stripped.filter((s) => s.startsWith('IAC - ZTCA - GLOBAL – BLOCK – Admin Portal:')).length, 0, 'an Admin Portal exclusion was stripped again')
   assert.equal(pinnedJson.stripped.filter((s) => s.startsWith('IAC - GLOBAL - GRANT - MFA - AllUsers:')).length, 1)
 
-  // What survived is a Microsoft first-party application, so no author-specific
-  // object reached the runtime; the validator that says so still passes.
+  // Everything that survived is a Microsoft first-party application, so no
+  // author-specific object reached the runtime; the validator that says so
+  // still passes.
   const ids = new Set((firstParty as { apps: { appId: string }[] }).apps.map((a) => a.appId.toLowerCase()))
   assert.ok(ids.has(INTUNE_ENROLMENT), 'the surviving exclusion is not a first-party application')
+  for (const a of ADMIN_PORTAL_APPS) assert.ok(ids.has(a), `${a} survived the pin and is not a first-party application`)
   assert.deepEqual(runBaselineValidators(PINNED_POLICIES).filter((v) => v.id === 'app-01'), [], 'an author-specific application exclusion survived the pin')
 })
 
@@ -319,20 +339,31 @@ test('a custom tenant policy is kept as evidence without touching pinned source 
 
 // ------------------------------------------------ 5. placeholders / templates
 
-test('an unresolved placeholder yields no implementation, never an equivalence', () => {
-  // The pinned Intune-enrolment policy carries a template token for the author's
-  // group. Nothing in the tenant resolves it, so the step names the token as a
-  // missing object and offers nothing — the token never becomes a tenant object.
+test('a named placeholder becomes the object the author named, and never reaches a body as itself', () => {
+  // The pinned Intune-enrolment policy excludes no group id at all: the author
+  // wrote `CA-GlobalExclusions-GroupID-ReplaceMe` for a consumer to fill in, and
+  // their naming guide defines CA-GlobalExclusions as the break-glass exclusion
+  // group. That is the author stating the meaning, so this baseline's
+  // interpretation settles it as the exclusions group and the tenant's own
+  // exclusions group stands there (src/baseline/interpretation.ts).
+  //
+  // What must never happen is the token travelling: a body carrying the literal
+  // string would be submitted to Graph as a group id. It is either the tenant's
+  // object or it is reported missing, and it is never itself.
   const step = runFixture(fixture('demo-week2')).steps.find((s) => s.goalId === 'intune-enrollment-reauth')
   assert.ok(step, 'the intune-enrolment step is in the plan')
   const s = step as Step
-  const result = policyResult(s as never)
-  assert.equal(result.kind, 'unavailable')
-  assert.equal(result.kind === 'unavailable' ? result.reason : null, 'missing-object')
-  assert.equal(s.action.json, null, 'a body was offered for an unresolved placeholder')
+  const json = s.action.json
+  assert.equal(typeof json === 'string' && (json as string).includes('ReplaceMe'), false, 'the raw token reached a submittable body')
   const missing = (s.action as unknown as { missing?: { token: string }[] }).missing ?? []
-  assert.ok(missing.some((m) => m.token === 'CA-GlobalExclusions-GroupID-ReplaceMe'), 'the unresolved token is not named as missing')
-  assert.equal(typeof s.action.json === 'string' && (s.action.json as string).includes('ReplaceMe'), false, 'the raw token reached a submittable body')
+  assert.equal(missing.some((m) => m.token.includes('ReplaceMe')), false, 'the token is both resolved and reported missing')
+  const excluded = (JSON.parse(String(json)).conditions?.users?.excludeGroups ?? []) as string[]
+  assert.ok(excluded.length > 0 && excluded.every((g) => /^[0-9a-f-]{36}$/i.test(g)), `only tenant object ids reach the body: ${JSON.stringify(excluded)}`)
+
+  // And it is the exclusions group, not some other object the plan had to hand.
+  const exclusions = fixture('demo-week2').mapping.records['__globalExclusion']?.resolvedId
+  assert.ok(exclusions)
+  assert.deepEqual(excluded, [exclusions], 'the author’s global-exclusions token became something other than the exclusions group')
 })
 
 // ------------------------------------------------------ 6. baseline conflict

@@ -26,9 +26,13 @@ import type { PinnedPolicy } from '../src/baseline/pinSource.ts'
 import { pinArtifacts, pinMismatch } from '../src/baseline/pinArtifacts.ts'
 import type { PinnedFile } from '../src/baseline/pinArtifacts.ts'
 import type { BaselineIndex } from '../src/baseline/github.ts'
+import { interpretReferences, readInterpretation, referenceUsage } from '../src/baseline/interpretation.ts'
+import type { BaselineInterpretation, Interpreted } from '../src/baseline/interpretation.ts'
+import { groupSignatures, ROLE_LABELS } from '../src/baseline/signatures.ts'
 import { fileURLToPath } from 'node:url'
 import { PINNED } from '../src/baseline/pinned.ts'
 import index from '../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
+import interpretationFile from '../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 
 const OWNER = index.owner
 const REPO = index.repo
@@ -71,53 +75,37 @@ async function fetchFiles(commit: string, paths: string[]): Promise<BaselineFile
   return out
 }
 
-const s = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
-
-/** Classify the author's object GUIDs to placeholder tokens (§2 stage 2), across the policy set. */
-function classify(policies: CaPolicy[]): { placeholderFor: Map<string, string>; strengthIds: Set<string> } {
-  const excludedCount = new Map<string, number>()
-  const strengthIds = new Set<string>()
+/**
+ * The pin's tokens for the author's own objects (§2 stage 2).
+ *
+ * There are exactly two ways a reference gets one. A settled reading in this
+ * baseline's interpretation file assigns a meaning, with the evidence it rests
+ * on (src/baseline/interpretation.ts). And an authentication strength id takes
+ * `strength` from the field it sits in — `grantControls.authenticationStrength.id`
+ * is a strength because Graph's own shape says so, which is the source stating
+ * it rather than us reading it.
+ *
+ * Nothing else. This function used to classify by policy display name over a
+ * fall-through, so a group nothing explained became `serviceAccountsGroup` and a
+ * policy whose name contained "allowed" made its exclusions `travellersGroup`.
+ * Both are gone: a reference no record settles carries no token, is returned in
+ * `read.unsettled`, and stays the author's own.
+ */
+export function placeholdersFor(policies: CaPolicy[], interpretation: BaselineInterpretation): { placeholderFor: Map<string, string>; read: Interpreted } {
+  const read = interpretReferences(interpretation, referenceUsage(policies))
+  const placeholderFor = new Map(read.tokens)
   for (const p of policies) {
-    for (const g of s(p.conditions?.users?.excludeGroups)) if (GUID.test(g)) excludedCount.set(g, (excludedCount.get(g) ?? 0) + 1)
-    const st = p.grantControls?.authenticationStrength?.id
-    if (typeof st === 'string' && GUID.test(st)) strengthIds.add(st.toLowerCase())
+    const id = p.grantControls?.authenticationStrength?.id
+    if (typeof id === 'string' && GUID.test(id) && !placeholderFor.has(id.toLowerCase())) placeholderFor.set(id.toLowerCase(), 'strength')
   }
-  const placeholderFor = new Map<string, string>()
-  // The group excluded from the most policies is the exclusions group (§2 stage 2).
-  const topExcluded = [...excludedCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
-  if (topExcluded) placeholderFor.set(topExcluded.toLowerCase(), 'exclusionsGroup')
-  for (const p of policies) {
-    const name = p.displayName.toLowerCase()
-    const isAdminPortal = s(p.conditions?.applications?.includeApplications).some((a) => /MicrosoftAdminPortals/i.test(a))
-    // A "TrustedLocations" policy names the trusted network, not the countries (E9: the
-    // break-glass policy's location was read as the countries location, and the
-    // service-accounts block excludes that same location, the trusted network).
-    const isCountries = /countr|geo|region|allowed/i.test(name) || (/location/i.test(name) && !/trusted/i.test(name))
-    const isServiceAccounts = /service.?accounts?/i.test(name)
-    for (const g of s(p.conditions?.users?.includeGroups)) if (GUID.test(g) && isAdminPortal) placeholderFor.set(g.toLowerCase(), 'adminsGroup')
-    // The group a service-accounts policy includes is the service-accounts group (E9).
-    for (const g of s(p.conditions?.users?.includeGroups)) if (GUID.test(g) && isServiceAccounts && !placeholderFor.has(g.toLowerCase())) placeholderFor.set(g.toLowerCase(), 'serviceAccountsGroup')
-    for (const g of s(p.conditions?.users?.excludeGroups)) {
-      const k = g.toLowerCase()
-      if (placeholderFor.has(k)) continue
-      if (isCountries) placeholderFor.set(k, 'travellersGroup')
-      else placeholderFor.set(k, 'serviceAccountsGroup')
-    }
-    for (const l of [...s(p.conditions?.locations?.includeLocations), ...s(p.conditions?.locations?.excludeLocations)]) {
-      const k = l.toLowerCase()
-      if (!GUID.test(l) || placeholderFor.has(k)) continue
-      placeholderFor.set(k, isCountries ? 'allowedCountries' : 'trustedLocation')
-    }
-  }
-  for (const id of strengthIds) placeholderFor.set(id, 'strength')
-  return { placeholderFor, strengthIds }
+  return { placeholderFor, read }
 }
 
-async function snapshotAt(commit: string): Promise<{ policies: PinnedPolicy[]; stripped: string[]; indexFiles: string[] }> {
+async function snapshotAt(commit: string, interpretation: BaselineInterpretation): Promise<{ policies: PinnedPolicy[]; stripped: string[]; indexFiles: string[]; read: Interpreted; discovered: CaPolicy[] }> {
   const tree = await treeAt(commit)
   const files = await fetchFiles(commit, tree.policyPaths)
   const discovered = discoverPolicies(files).policies
-  const { placeholderFor } = classify(discovered)
+  const { placeholderFor, read } = placeholdersFor(discovered, interpretation)
   const policies: PinnedPolicy[] = []
   const stripped: string[] = []
   for (const p of discovered) {
@@ -126,7 +114,7 @@ async function snapshotAt(commit: string): Promise<{ policies: PinnedPolicy[]; s
     stripped.push(...r.stripped)
   }
   policies.sort((a, b) => a.displayName.localeCompare(b.displayName))
-  return { policies, stripped, indexFiles: tree.indexFiles }
+  return { policies, stripped, indexFiles: tree.indexFiles, read, discovered }
 }
 
 function diff(oldP: PinnedPolicy[], newP: PinnedPolicy[]): { added: string[]; removed: string[]; changed: string[] } {
@@ -191,7 +179,19 @@ async function main(): Promise<void> {
   // recorded an older pin for as long as the two were written apart.
   const oldCommit = PINNED.commit
   process.stdout.write(`pin-baseline: pinning ${OWNER}/${REPO} at ${target}\n`)
-  const next = await snapshotAt(target)
+  // This baseline's settled readings of the author's own objects, which are the
+  // only thing that may give a reference a specialised meaning.
+  const interpretation = readInterpretation(interpretationFile)
+  const next = await snapshotAt(target, interpretation)
+  // A baseline update is a promotion, not a synchronisation. A reference whose
+  // role in the author's design moved is a question for a person, so the pin
+  // stops rather than carrying the old reading into a package it no longer fits.
+  if (next.read.reviewRequired.length > 0) {
+    throw new Error(
+      `refusing to pin: ${next.read.reviewRequired.length} settled reference(s) need review before this commit can be adopted:\n` +
+        next.read.reviewRequired.map((r) => `  ${r.id}: ${r.why}`).join('\n'),
+    )
+  }
   const generatedAt = new Date().toISOString()
 
   // Stage 3 (baseline-onboarding, owner resolution): map each goal to the one
@@ -222,12 +222,34 @@ async function main(): Promise<void> {
     stripped: next.stripped,
     goalMap: goals.map,
   })
+  if (next.read.stale.length > 0) process.stdout.write(`pin-baseline: ${next.read.stale.length} settled reading(s) name a reference this commit no longer has: ${next.read.stale.join(', ')}
+`)
   const written = writePin('baselines', BASE, out)
   process.stdout.write(`pin-baseline: wrote ${written.join(' and ')} at ${target} (${next.policies.length} policies, ${next.stripped.length} stripped exclusions, ${out.index.files.length} files recorded)\n`)
 
   process.stdout.write(`pin-baseline: diffing from ${oldCommit}\n`)
-  const prev = await snapshotAt(oldCommit)
+  const prev = await snapshotAt(oldCommit, interpretation)
   const d = diff(prev.policies, next.policies)
+  // What a person curating the next update reads: what this baseline's settled
+  // readings gave the package, and every reference still left as the author's
+  // own — each with the structural nomination `groupSignatures` makes of it,
+  // which is a candidate to look into and never a meaning.
+  const byRecord = new Map(interpretation.references.map((r) => [r.id, r]))
+  const signature = new Map(groupSignatures(next.discovered).map((g) => [g.id, g]))
+  const settledLines = [...next.read.tokens.entries()].sort().map(([id, token]) => `- \`${id}\` → **${token}** (${byRecord.get(id)?.basis ?? 'structural'}) — ${byRecord.get(id)?.evidence ?? 'the field it sits in.'}`)
+  const usage = new Map(referenceUsage(next.discovered).map((u) => [u.id, u]))
+  const where = (id: string): string => {
+    const u = usage.get(id)
+    return u ? `included by ${u.includedIn.length}, excluded from ${u.excludedFrom.length}` : 'not used'
+  }
+  const unknownLines = interpretation.references
+    .filter((r) => r.meaning === 'unknown' && usage.has(r.id))
+    .map((r) => `- \`${r.id}\` (${r.kind}, ${where(r.id)}) — ${r.evidence}`)
+  const unsettledLines = next.read.unsettled.map((u) => {
+    const sig = signature.get(u.id)
+    const nominated = sig ? `${ROLE_LABELS[sig.inferredRole]} (${sig.confidence}) — ${sig.evidence}` : 'no structural nomination'
+    return `- \`${u.id}\` (${u.kind}, ${where(u.id)}) — **no record**. Candidate to settle: ${nominated}`
+  })
   const md = [
     `# ${OWNER}/${REPO} — pinned at ${target}`,
     ``,
@@ -246,6 +268,19 @@ async function main(): Promise<void> {
     ``,
     `### Changed (${d.changed.length})`,
     ...d.changed.map((x) => `- ${x}`),
+    ``,
+    `## References (stage 2)`,
+    ``,
+    `A specialised meaning comes from this baseline's interpretation file and its evidence, never from a policy's name. A reference no record settles carries no token and stays the author's own.`,
+    ``,
+    `### Settled (${settledLines.length})`,
+    ...settledLines,
+    ``,
+    `### Settled as unknown — looked for, no evidence, left as the author's own (${unknownLines.length})`,
+    ...unknownLines,
+    ``,
+    `### Not settled either way — for review (${unsettledLines.length})`,
+    ...unsettledLines,
     ``,
     `## Goal map (stage 3)`,
     ``,

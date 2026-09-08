@@ -246,8 +246,16 @@ test('B: one invalid operation in a set makes the whole step unavailable', () =>
 // ---- C: no implementation text leaks while the policy cannot be written ----
 
 test('C: a policy waiting on an object exports only its next action — no lead, no before line', () => {
-  const { r, ctx } = demoRun()
-  const step = r.steps.find((s) => s.goalId === 'require-managed-device' && s.kind !== 'verify')!
+  // A step that both waits on an object and carries a content `before` line, so
+  // there is something to leak: the messy tenant's device-registration policy,
+  // whose exclusions group that tenant has not settled. The demo tenant no
+  // longer supplies one - a group the author's export never explains carries no
+  // tenant meaning any more (src/baseline/interpretation.ts), so its policies
+  // wait on fewer objects than they used to.
+  const f = fixture('messy')
+  const r = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
+  const step = r.steps.find((s) => s.goalId === 'device-registration-mfa' && s.kind !== 'verify')!
   assert.equal(unavailableReason(step), 'missing-object')
   const cs = contentStepFor(step) as unknown as { whatToDo?: { before?: string[] } }
   const before = cs.whatToDo?.before ?? []
