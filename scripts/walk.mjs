@@ -1015,6 +1015,13 @@ async function walkFixture(fx) {
           /in place already: nothing to create/.test(bodyText) ||
           /the way back in to .+ is not verified yet/.test(bodyText)
         if (cannotWriteYet) escapeHeld.add(title)
+        // The sibling fact for anything the step *dates*: its enforcement is held
+        // behind a readiness threshold nobody has met, so the plan writes it no
+        // enforcement day, no announcement date and no email at all
+        // (roadmap/operations.ts enforcementHeld, roadmap/timing.ts eventsFor).
+        // This is the step's own What IAMAI found row, which renders on exactly
+        // the steps that carry the gate (stepContract.ts foundOf).
+        const enforcementHeld = /enforcement waits for \d{1,3}%/.test(bodyText)
         // A policy in report-only says where it stands against its two gates, on
         // the row and in the step: the date column reads ready <date> · ready now
         // · held until the records clear, and Done when carries both gates with
@@ -1187,9 +1194,14 @@ async function walkFixture(fx) {
             else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} not yet at rung 5 and the step says ${m[1]}`)
             else if (!m && suffix) add('P0', `${slabel}: the row carries a lockout count the step does not`)
           }
-          if (/Require a Managed Device/.test(title) && !cannotWriteYet && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
-          // A policy the plan cannot write yet announces nothing at all.
-          if (/Require a Managed Device/.test(title) && cannotWriteYet && emailText.trim() !== '') add('P0', `${slabel}: it waits on an object and still announces a change`)
+          // The email states the day the change lands ("From {enforceLong}, …"),
+          // so a step with no such day writes none: the plan cannot write the
+          // policy yet, or its enforcement is held behind a readiness threshold.
+          // Where the step does announce, the email says what a personal device
+          // can still do.
+          if (/Require a Managed Device/.test(title) && !cannotWriteYet && !enforcementHeld && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
+          // A policy with no day to announce announces nothing at all.
+          if (/Require a Managed Device/.test(title) && (cannotWriteYet || enforcementHeld) && emailText.trim() !== '') add('P0', `${slabel}: it has no enforcement day (${cannotWriteYet ? 'it waits on an object' : 'its enforcement waits on a readiness threshold'}) and still announces a change`)
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
           // Small engine items (E9), on the demo: the admin-portals step names the
           // developer who opened the Azure portal; the service-accounts block is

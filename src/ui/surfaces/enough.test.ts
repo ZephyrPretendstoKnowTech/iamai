@@ -10,6 +10,8 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { missingVars, fillText } from '../../content/render.ts'
+import { commsFor } from './stepExport.ts'
+import { enforcementHeld } from '../../roadmap/operations.ts'
 import { engine, stepById } from '../../content/content.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { adminUserIds } from '../../roles.ts'
@@ -61,8 +63,14 @@ test('the managed-device email says what a personal device can still do, from th
   // The pinned baseline holds no unmanaged-browser goal: personal devices are blocked.
   const blocked = stepVars(md, ctx()) as Record<string, unknown>
   assert.equal(blocked.personalDevicesClause, engine.personalDevices.blocked)
-  // The compliant-device policy waits on this tenant's service-accounts group,
-  // so it has no enforcement date to announce; every other variable is filled.
+  // The policy's enforcement is held behind a readiness threshold this tenant
+  // has not met, so the plan writes it no enforcement day (roadmap/timing.ts
+  // eventsFor) and it announces nothing at all: the email states the day the
+  // change lands, and there is no such day. Every other variable is filled, so
+  // the clause is there the moment the day is.
+  assert.ok(enforcementHeld(md), 'the demo holds this step behind device readiness')
+  assert.equal(md.events, null, 'a held enforcement takes no date')
+  assert.equal(commsFor(cs as unknown as Record<string, unknown>, blocked, md), null, 'and no announcement')
   assert.deepEqual(missingVars(cs.comms.body, blocked), ['enforceLong'])
   assert.ok(fillText(cs.comms.body, { ...blocked, enforceLong: 'a date' }).includes(`Personal devices ${engine.personalDevices.blocked}.`))
   const limited = stepVars(md, ctx({ unmanagedBrowserOnPlan: true })) as Record<string, unknown>
