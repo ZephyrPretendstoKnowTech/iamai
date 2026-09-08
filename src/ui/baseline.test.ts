@@ -4,6 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { loadPinnedBaseline, baselineReview, checkAuthorHead, restoreBaseline, PINNED, PINNED_BASELINE } from './baseline.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
@@ -59,6 +60,7 @@ test('checkAuthorHead: a differing head is an update, a matching head is not, a 
   assert.equal(failed.head, null)
 })
 
+
 // ---------------------------------------------------- task 021: the update review
 
 // The audited comparison: the author renamed one policy and strengthened it,
@@ -73,54 +75,65 @@ const NEW_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration-
 const NEW_DOC = 'Updated/Documentation/Device-Registration-MFA-Strength/policy.json'
 const HEAD = '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c'
 
-/** The four file events GitHub reported, plus documentation and image churn that is not a policy. */
-type CompareFile = { filename: string; previous_filename?: string; status?: string }
+/** One commit of the author's repository: the body at each path. A string body is source that is not JSON. */
+type Commit = Record<string, unknown>
 
-const AUDITED_FILES: CompareFile[] = [
-  { filename: NEW_POLICY, status: 'added' },
-  { filename: NEW_DOC, status: 'added' },
-  { filename: OLD_POLICY, status: 'removed' },
-  { filename: OLD_DOC, status: 'removed' },
-  { filename: 'Documents/readme.md', status: 'modified' },
-  { filename: 'Images/screenshot.png', status: 'added' },
-]
+const textOf = (body: unknown): string => (typeof body === 'string' ? body : JSON.stringify(body))
+/** The blob id GitHub would give that body: the same bytes at two commits are one blob, which is how an untouched copy is recognised. */
+const blobOf = (body: unknown): string => createHash('sha1').update(textOf(body)).digest('hex')
 
-/** GitHub as it answered: a compare, then a raw body per path per commit — 404 for anything the fixture does not hold. */
-function githubAt(bodies: Record<string, Record<string, unknown>>, seen: string[] = [], compareFiles: CompareFile[] = AUDITED_FILES): typeof fetch {
+/**
+ * GitHub as it answers this review: a recursive tree per commit, then a raw
+ * body per path per commit. Anything the fixture does not hold is a 404.
+ */
+function githubAt(commits: Record<string, Commit>, seen: string[] = []): typeof fetch {
   return (async (input: RequestInfo | URL) => {
     const url = String(input)
     seen.push(url)
-    if (url.includes('/compare/')) {
-      return new Response(JSON.stringify({ files: compareFiles }), { status: 200 })
+    const tree = url.match(/\/git\/trees\/([0-9a-f]{40})/)
+    if (tree) {
+      const commit = commits[tree[1]]
+      if (!commit) return new Response('Not Found', { status: 404 })
+      return new Response(JSON.stringify({ truncated: false, tree: Object.entries(commit).map(([path, body]) => ({ path, type: 'blob', sha: blobOf(body) })) }), { status: 200 })
     }
-    const path = url.split(`/${HEAD}/`)[1] ?? url.split(`/${PINNED.commit}/`)[1] ?? ''
-    const commit = url.includes(`/${HEAD}/`) ? HEAD : PINNED.commit
-    const body = bodies[`${commit}:${decodeURIComponent(path)}`]
-    return body ? new Response(JSON.stringify(body), { status: 200 }) : new Response('Not Found', { status: 404 })
+    const commit = Object.keys(commits).find((c) => url.includes(`/${c}/`)) ?? ''
+    const path = decodeURIComponent(url.split(`/${commit}/`)[1] ?? '')
+    const body = commits[commit]?.[path]
+    return body === undefined ? new Response('Not Found', { status: 404 }) : new Response(textOf(body), { status: 200 })
   }) as typeof fetch
 }
 
-const BODIES: Record<string, Record<string, unknown>> = {
-  [`${PINNED.commit}:${OLD_POLICY}`]: before,
-  [`${PINNED.commit}:${OLD_DOC}`]: before,
-  [`${HEAD}:${NEW_POLICY}`]: after,
-  [`${HEAD}:${NEW_DOC}`]: after,
+/** The audited commits: the policy and its documentation copy both moved, so four file events stand for one policy. */
+const AUDITED: Record<string, Commit> = {
+  [PINNED.commit]: { [OLD_POLICY]: before, [OLD_DOC]: before, 'Documents/readme.md': 'not a candidate', 'Images/screenshot.png': 'not a candidate' },
+  [HEAD]: { [NEW_POLICY]: after, [NEW_DOC]: after, 'Documents/readme.md': 'not a candidate', 'Images/screenshot.png': 'not a candidate' },
+}
+
+/** The same commits, with one path the tree still lists but raw will not serve. */
+function unfetchable(commits: Record<string, Commit>, path: string): typeof fetch {
+  const inner = githubAt(commits)
+  return (async (input: RequestInfo | URL) => {
+    const url = String(input)
+    if (!url.includes('/git/trees/') && decodeURIComponent(url).includes(path)) return new Response('boom', { status: 500 })
+    return inner(input)
+  }) as typeof fetch
 }
 
 test('I. the update is measured from the pinned snapshot commit, never from the older commit the index file records', async () => {
   // The historical situation this guards: the two files name different commits.
   assert.notEqual(PINNED_BASELINE.commit, PINNED.commit, 'the index records an older pin than the snapshot the plan is derived from')
   const seen: string[] = []
-  await baselineReview(HEAD, githubAt(BODIES, seen))
-  const compare = seen.find((u) => u.includes('/compare/'))!
-  assert.ok(compare.includes(`/compare/${PINNED.commit}...${HEAD}`), compare)
-  assert.equal(compare.includes(PINNED_BASELINE.commit), false, 'the stale index commit reached the comparison base')
+  await baselineReview(HEAD, githubAt(AUDITED, seen))
+  const trees = seen.filter((u) => u.includes('/git/trees/'))
+  assert.equal(trees.length, 2, 'one inventory per compared commit')
+  assert.ok(trees.some((u) => u.includes(`/git/trees/${PINNED.commit}`)), trees.join(' '))
+  assert.ok(trees.some((u) => u.includes(`/git/trees/${HEAD}`)), trees.join(' '))
   // And every body was fetched at the pinned commit or the candidate head, never at the index commit.
   for (const u of seen) assert.equal(u.includes(PINNED_BASELINE.commit), false, u)
 })
 
 test('the review counts policies, not files: four JSON file events for one renamed, strengthened policy are one change', async () => {
-  const review = await baselineReview(HEAD, githubAt(BODIES))
+  const review = await baselineReview(HEAD, githubAt(AUDITED))
   assert.equal(review.incomplete, false)
   assert.equal(review.changes.length, 1, JSON.stringify(review.changes.map((c) => [c.kind, c.newName])))
   const [c] = review.changes
@@ -131,50 +144,91 @@ test('the review counts policies, not files: four JSON file events for one renam
   assert.deepEqual(c.deltas, [{ field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' }])
 })
 
-/** The fixture minus the bodies named, so those paths 404 at that commit. */
-function without(...keys: string[]): Record<string, Record<string, unknown>> {
-  const out = { ...BODIES }
-  for (const k of keys) delete out[k]
-  return out
-}
+// The duplicate rule. The author keeps one policy in two files, and a commit
+// that edits one copy leaves the other where it was — GitHub then leaves the
+// untouched copy out of the compare altogether. Discovery is the tree at each
+// commit rather than the files that moved, so the copy nobody touched is still
+// read, and a head that contradicts itself cannot read as an ordinary change.
+const SAME_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration.json'
+const SAME_DOC = 'Updated/Documentation/Device-Registration/policy.json'
 
-// The 404 rule. A missing body is only benign where the compare event itself
-// establishes the absence — the new path at the base of an addition, the old
-// path at the head of a rename or a removal. The audited fixture above proves
-// the benign half: every one of its four events 404s on one side and the review
-// is complete. These prove the other half, where a 404 used to be read as a
-// change rather than as source IAMAI could not fetch.
-test('L. a 404 where the compare says the file must exist is unread source, not an addition, a removal or a silence', async () => {
+test('a stale same-id copy nobody touched is a conflict, not a reviewed change', async () => {
+  const commits: Record<string, Commit> = {
+    [PINNED.commit]: { [SAME_POLICY]: before, [SAME_DOC]: before },
+    // The author strengthened the copy under Policies/ and left the
+    // documentation copy of the same id holding the old body.
+    [HEAD]: { [SAME_POLICY]: after, [SAME_DOC]: before },
+  }
+  const seen: string[] = []
+  const review = await baselineReview(HEAD, githubAt(commits, seen))
+  assert.ok(
+    seen.some((u) => !u.includes('/git/trees/') && decodeURIComponent(u).includes(SAME_DOC)),
+    'the untouched documentation copy was never read',
+  )
+  assert.equal(review.changes.length, 1, JSON.stringify(review.changes))
+  const [c] = review.changes
+  assert.equal(c.key, REG_ID)
+  assert.equal(c.kind, 'unknown', 'the head holds two copies of one id that disagree, so the change cannot be established')
+  assert.equal(c.reason, 'conflictingCopies')
+  assert.deepEqual(c.deltas, [], 'a conflict states no delta it cannot prove')
+})
+
+test('a same-id copy that agrees collapses: one row, and the blob both commits share is read once', async () => {
+  const commits: Record<string, Commit> = {
+    [PINNED.commit]: { [SAME_POLICY]: before, [SAME_DOC]: before },
+    [HEAD]: { [SAME_POLICY]: after, [SAME_DOC]: after },
+  }
+  const seen: string[] = []
+  const review = await baselineReview(HEAD, githubAt(commits, seen))
+  assert.equal(review.incomplete, false)
+  assert.equal(review.changes.length, 1, 'two agreeing copies of one policy are one change, not two')
+  assert.equal(review.changes[0].kind, 'renamedChanged')
+  // Four path/commit pairs, two distinct blobs: a copy is never fetched twice.
+  const bodies = seen.filter((u) => !u.includes('/git/trees/'))
+  assert.equal(bodies.length, 2, bodies.join(' '))
+})
+
+test('the untouched half of a pair still has to be readable: a body the tree lists and raw will not serve is incomplete', async () => {
+  const commits: Record<string, Commit> = {
+    [PINNED.commit]: { [SAME_POLICY]: before, [SAME_DOC]: before },
+    [HEAD]: { [SAME_POLICY]: after, [SAME_DOC]: before },
+  }
+  const review = await baselineReview(HEAD, unfetchable(commits, SAME_DOC))
+  assert.equal(review.incomplete, true, 'the copy that decides whether the head contradicts itself was not read')
+})
+
+// The absence rule. The tree names the blobs a commit holds, so a body that
+// does not come back is always source IAMAI could not read — never an addition,
+// a removal, or a silence.
+test('L. a body the tree lists and raw will not return is unread source, not an addition, a removal or a silence', async () => {
   // An addition whose body will not load: the review has nothing to show and
   // must still say so, or the tile suppresses the whole update (Connect).
-  const onlyAdded = await baselineReview(HEAD, githubAt(without(`${HEAD}:${NEW_POLICY}`), [], [{ filename: NEW_POLICY, status: 'added' }]))
+  const added: Record<string, Commit> = { [PINNED.commit]: {}, [HEAD]: { [NEW_POLICY]: after } }
+  const onlyAdded = await baselineReview(HEAD, unfetchable(added, NEW_POLICY))
   assert.deepEqual(onlyAdded.changes, [])
   assert.equal(onlyAdded.incomplete, true, 'an added policy that would not fetch read as no changes at all')
 
   // A removal whose *base* body will not load: the old policy is unknown, so the
   // pair cannot be read as an addition of the new one.
-  const removal = await baselineReview(HEAD, githubAt(without(`${PINNED.commit}:${OLD_POLICY}`, `${PINNED.commit}:${OLD_DOC}`)))
-  assert.equal(removal.incomplete, true, 'the removed bodies 404d at the base and the rename read as a plain addition')
+  const removal = await baselineReview(HEAD, unfetchable(AUDITED, OLD_POLICY))
+  assert.equal(removal.incomplete, true, 'the removed body would not fetch at the base and the rename read as a plain addition')
 
   // A modification whose head body will not load: not a removal.
-  const modified = await baselineReview(HEAD, githubAt(without(`${HEAD}:${NEW_POLICY}`), [], [{ filename: NEW_POLICY, status: 'modified' }]))
-  assert.equal(modified.incomplete, true, 'a modified policy that 404d at the head read as a removal')
+  const modified: Record<string, Commit> = { [PINNED.commit]: { [NEW_POLICY]: before }, [HEAD]: { [NEW_POLICY]: after } }
+  assert.equal((await baselineReview(HEAD, unfetchable(modified, NEW_POLICY))).incomplete, true, 'a modified policy that would not fetch at the head read as a removal')
 
-  // A rename: the old path must be readable at the base, the new at the head.
-  const renamed: CompareFile[] = [{ filename: NEW_POLICY, previous_filename: OLD_POLICY, status: 'renamed' }]
-  const wholeRename = await baselineReview(HEAD, githubAt(BODIES, [], renamed))
+  // A rename readable on both sides is complete, and is one change.
+  const renamed: Record<string, Commit> = { [PINNED.commit]: { [OLD_POLICY]: before }, [HEAD]: { [NEW_POLICY]: after } }
+  const wholeRename = await baselineReview(HEAD, githubAt(renamed))
   assert.equal(wholeRename.incomplete, false, 'a rename that fetched on both sides is complete')
   assert.equal(wholeRename.changes.length, 1)
-  const halfRename = await baselineReview(HEAD, githubAt(without(`${PINNED.commit}:${OLD_POLICY}`), [], renamed))
+  const halfRename = await baselineReview(HEAD, unfetchable(renamed, OLD_POLICY))
   assert.equal(halfRename.incomplete, true, 'the renamed policy had no readable old body, so the rename was not proven')
-
-  // A status IAMAI does not know establishes no absence at all, so neither side's 404 is benign.
-  const unknownStatus = await baselineReview(HEAD, githubAt(BODIES, [], [{ filename: NEW_POLICY, status: 'unrecognised' }]))
-  assert.equal(unknownStatus.incomplete, true)
 })
 
 test('L. a review with no rows still reaches the tile when it is incomplete', async () => {
-  const empty = await baselineReview(HEAD, githubAt(without(`${HEAD}:${NEW_POLICY}`), [], [{ filename: NEW_POLICY, status: 'added' }]))
+  const added: Record<string, Commit> = { [PINNED.commit]: {}, [HEAD]: { [NEW_POLICY]: after } }
+  const empty = await baselineReview(HEAD, unfetchable(added, NEW_POLICY))
   assert.deepEqual(empty.changes, [])
   assert.equal(empty.incomplete, true)
   // Connect drops a review only when it is both empty and complete, so this one renders.
@@ -182,7 +236,7 @@ test('L. a review with no rows still reaches the tile when it is incomplete', as
   assert.match(connect, /review\.changes\.length === 0 && !review\.incomplete/, 'the tile decides on emptiness alone')
 })
 
-test('K. a compare or a file IAMAI cannot read is an incomplete review, never zero changes', async () => {
+test('K. an inventory or a file IAMAI cannot read is an incomplete review, never zero changes', async () => {
   const offline = await baselineReview(HEAD, (async () => {
     throw new Error('offline')
   }) as typeof fetch)
@@ -191,21 +245,29 @@ test('K. a compare or a file IAMAI cannot read is an incomplete review, never ze
   const rateLimited = await baselineReview(HEAD, (async () => new Response('rate limited', { status: 403 })) as typeof fetch)
   assert.deepEqual(rateLimited, { changes: [], incomplete: true })
 
-  // The compare loads, one body does not: what parsed is still reported, and the review says it is incomplete.
-  const partial = await baselineReview(HEAD, (async (input: RequestInfo | URL) => {
+  // A tree GitHub truncated is not an inventory: the source it left out could hold another copy of any policy in it.
+  const truncated = await baselineReview(HEAD, (async (input: RequestInfo | URL) => {
     const url = String(input)
-    if (url.includes('/compare/')) return githubAt(BODIES)(input)
-    if (url.includes(encodeURIComponent('IAC---INTUNE---GRANT---Device-Registration---MFA-Strength.json'))) return new Response('boom', { status: 500 })
-    return githubAt(BODIES)(input)
+    if (!url.includes('/git/trees/')) return githubAt(AUDITED)(input)
+    return new Response(JSON.stringify({ truncated: true, tree: [{ path: NEW_POLICY, type: 'blob', sha: blobOf(after) }] }), { status: 200 })
   }) as typeof fetch)
+  assert.deepEqual(truncated, { changes: [], incomplete: true })
+
+  // The inventories load, one body does not: what parsed is still reported, and the review says it is incomplete.
+  const partial = await baselineReview(HEAD, unfetchable(AUDITED, 'IAC---INTUNE---GRANT---Device-Registration---MFA-Strength.json'))
   assert.equal(partial.incomplete, true, 'a file that would not fetch is not silently dropped')
 
-  // Source that parses as JSON but not as a policy is unreadable, not "no change".
-  const broken = await baselineReview(HEAD, (async (input: RequestInfo | URL) => {
-    const url = String(input)
-    if (url.includes('/compare/')) return githubAt(BODIES)(input)
-    return new Response('{ "displayName": "half', { status: 200 })
-  }) as typeof fetch)
+  // Source that does not parse is unreadable, not "no change".
+  const half: Record<string, Commit> = { [PINNED.commit]: { [OLD_POLICY]: '{ "displayName": "half' }, [HEAD]: { [NEW_POLICY]: '{ "displayName": "other' } }
+  const broken = await baselineReview(HEAD, githubAt(half))
   assert.equal(broken.incomplete, true)
   assert.deepEqual(broken.changes, [])
+})
+
+test('two commits whose candidate blobs all match are no update at all, and nothing is fetched to say so', async () => {
+  const same: Record<string, Commit> = { [PINNED.commit]: { [OLD_POLICY]: before }, [HEAD]: { [OLD_POLICY]: before } }
+  const seen: string[] = []
+  const review = await baselineReview(HEAD, githubAt(same, seen))
+  assert.deepEqual(review, { changes: [], incomplete: false })
+  assert.equal(seen.filter((u) => !u.includes('/git/trees/')).length, 0)
 })

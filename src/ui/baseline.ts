@@ -76,27 +76,54 @@ export async function checkAuthorHead(fetchImpl: typeof fetch = fetch): Promise<
 /** The author's changes at a candidate head, as policies. `incomplete` means IAMAI could not read enough source to establish the whole diff. */
 export type BaselineReview = { changes: PolicyChange[]; incomplete: boolean }
 
-/** Enough changed files to review by hand; past this the compare is not a baseline update but a repository reshuffle, and the review says so. */
-const MAX_CANDIDATE_FILES = 80
-
-/** Which commits a compare event says must hold a file. A side left false is absence the event itself establishes; anything else is source that should be there. */
-type Expectation = { base: boolean; head: boolean }
+/** Enough moved files to review by hand; past this the head is not a baseline update but a repository reshuffle, and the review says so. */
+const MAX_MOVED_FILES = 80
 
 /**
- * The sides a compare status establishes for the *new* path of an event. An
- * unknown or missing status establishes no absence, so both sides are expected
- * and a 404 on either is unread source rather than a change IAMAI invented.
+ * The whole source inventory one review may read. The author's repository holds
+ * around eighty JSON files at a commit; a repository far past that is source
+ * IAMAI cannot establish in one review, so it says incomplete rather than
+ * reviewing a subset of it.
  */
-function expectedSides(status: string | undefined): Expectation {
-  switch (status) {
-    case 'added':
-    case 'renamed':
-    case 'copied':
-      return { base: false, head: true }
-    case 'removed':
-      return { base: true, head: false }
-    default:
-      return { base: true, head: true }
+const MAX_INVENTORY_FILES = 400
+
+/** One commit's policy-candidate paths and the blob each one holds, so two commits can be compared before either is read. */
+type Inventory = Map<string, string>
+
+/**
+ * Every path at a commit that could carry a policy, read from the repository
+ * tree — the whole inventory, not the files a compare says moved.
+ *
+ * Discovery has to be the inventory. The author keeps most policies in two
+ * files (a copy under `Updated/Policies/` and another under
+ * `Updated/Documentation/`), and a commit that edits one copy leaves the other
+ * where it was; GitHub then omits the untouched copy from the compare
+ * altogether. Reading only the moved paths would show one copy of that policy
+ * at the head and report an ordinary reviewed change, when what the source
+ * actually holds is two copies of one policy id that contradict each other.
+ *
+ * `null` is IAMAI saying it could not establish the inventory — the tree would
+ * not load, or GitHub truncated it — and makes the review incomplete rather
+ * than a review of whatever subset came back.
+ */
+async function inventoryAt(commit: string, fetchImpl: typeof fetch): Promise<Inventory | null> {
+  try {
+    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/git/trees/${commit}?recursive=1`, { headers: { Accept: 'application/vnd.github+json' } })
+    if (!res.ok) return null
+    const body = (await res.json()) as { tree?: { path?: string; type?: string; sha?: string }[]; truncated?: boolean }
+    if (body.truncated === true || !Array.isArray(body.tree)) return null
+    const inv: Inventory = new Map()
+    for (const e of body.tree) {
+      if (e.type !== 'blob' || typeof e.path !== 'string') continue
+      if (shouldSkip(e.path) !== null) continue
+      // The blob id is what proves two commits hold the same bytes. An entry
+      // without one is read as its own blob at its own commit: fetched on the
+      // side it appears on, never assumed unchanged.
+      inv.set(e.path, typeof e.sha === 'string' && e.sha.length > 0 ? e.sha : `${commit}:${e.path}`)
+    }
+    return inv
+  } catch {
+    return null
   }
 }
 
@@ -104,95 +131,82 @@ function expectedSides(status: string | undefined): Expectation {
  * The author's *policy* changes between the pinned commit and a candidate head
  * (task 021), for pages.connectNoScan.baselineUpdated and its review list.
  *
- * The compare API is used for discovery only: it says which files moved, and
- * the author's repository carries one policy in more than one file and renames
- * a policy by adding one file and removing another. So every candidate file is
- * fetched at both commits and read through the baseline parser, and the review
- * is built from stable policy identity (derive/baselineDiff.ts) — four file
- * events for one renamed policy are one row.
+ * Both commits are read whole, from their trees (`inventoryAt`), because the
+ * author's repository carries one policy in more than one file and renames a
+ * policy by adding one file and removing another. Every candidate path is read
+ * through the baseline parser and the review is built from stable policy
+ * identity (derive/baselineDiff.ts): four file events for one renamed policy
+ * are one row, and two copies of one id that disagree are a conflict rather
+ * than a change — including when only one of the copies moved.
  *
  * The base is the pinned *package's* commit. `baselines/*.index.json` records an
  * older pin and is not the baseline the plan was derived from, so it never
  * decides what the update is measured against; only the owner/repo are read
  * from it.
  *
- * Nothing here fails to "no changes": a compare that will not load, a file that
- * will not fetch and a file that will not parse all set `incomplete`, and the
- * tile says the review is incomplete rather than that the baseline is understood.
- * A 404 is the same rule: it is benign only on the side where the compare event
- * itself establishes the file is absent (the new path at the base of an
- * addition, the old path at the head of a rename or removal). A 404 anywhere the
- * file should exist is source IAMAI could not read, so it sets `incomplete`
- * rather than reading as an addition, a removal, or no change at all.
+ * Nothing here fails to "no changes": a tree that will not load or came back
+ * truncated, a file that will not fetch and a file that will not parse all set
+ * `incomplete`, and the tile says the review is incomplete rather than that the
+ * baseline is understood. The tree is also what makes a 404 legible — it names
+ * the blobs the commit holds, so a body that will not come back is always
+ * unread source, never an addition, a removal, or a silence.
  */
 export async function baselineReview(head: string, fetchImpl: typeof fetch = fetch): Promise<BaselineReview> {
   const base = PINNED.commit
-  let files: { filename?: string; previous_filename?: string; status?: string }[]
-  try {
-    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/compare/${base}...${head}`, { headers: { Accept: 'application/vnd.github+json' } })
-    if (!res.ok) return { changes: [], incomplete: true }
-    files = ((await res.json()) as { files?: { filename?: string; previous_filename?: string; status?: string }[] }).files ?? []
-  } catch {
-    return { changes: [], incomplete: true }
-  }
+  const [baseInv, headInv] = await Promise.all([inventoryAt(base, fetchImpl), inventoryAt(head, fetchImpl)])
+  if (!baseInv || !headInv) return { changes: [], incomplete: true }
 
-  // A rename is paired by policy id, not by previous_filename, but the old path
-  // is still where the old body lives, so both sides of every event are fetched
-  // — each carrying which commits the event says must hold it (`expected`).
-  const candidates = new Map<string, Expectation>()
-  const expect = (path: string, e: Expectation): void => {
-    if (shouldSkip(path) !== null) return
-    const had = candidates.get(path)
-    candidates.set(path, had ? { base: had.base || e.base, head: had.head || e.head } : e)
+  const moved = [...new Set([...baseInv.keys(), ...headInv.keys()])].filter((p) => baseInv.get(p) !== headInv.get(p))
+  // No candidate blob moved: the two trees prove there is no update, with nothing fetched.
+  if (moved.length === 0) return { changes: [], incomplete: false }
+  if (moved.length > MAX_MOVED_FILES) return { changes: [], incomplete: true }
+
+  // One fetch per blob rather than per path per commit: a file both commits
+  // share is read once, which is what keeps reading both inventories whole
+  // affordable — the author's untouched copies are the same blob on both sides.
+  const plan = new Map<string, { commit: string; path: string }>()
+  for (const [commit, inv] of [[head, headInv] as const, [base, baseInv] as const]) {
+    for (const [path, blob] of inv) if (!plan.has(blob)) plan.set(blob, { commit, path })
   }
-  for (const f of files) {
-    if (typeof f.filename === 'string') expect(f.filename, expectedSides(f.status))
-    // previous_filename is only set by a rename or a copy, and names where the old body lives.
-    if (typeof f.previous_filename === 'string') expect(f.previous_filename, { base: true, head: false })
-  }
-  const paths = [...candidates.keys()]
-  if (paths.length === 0) return { changes: [], incomplete: false }
-  if (paths.length > MAX_CANDIDATE_FILES) return { changes: [], incomplete: true }
+  if (plan.size > MAX_INVENTORY_FILES) return { changes: [], incomplete: true }
 
   let failed = false
-  const at = async (commit: string, side: 'base' | 'head'): Promise<SourceArtifact[]> => {
-    const out: SourceArtifact[] = []
-    const q = [...paths]
-    const worker = async (): Promise<void> => {
-      while (q.length > 0) {
-        const path = q.shift()!
-        let url: string
-        try {
-          // The same path check every runtime fetch goes through (baseline/github.ts).
-          url = rawUrl({ ...PINNED_BASELINE, commit }, path)
-        } catch {
+  const texts = new Map<string, string>()
+  const q = [...plan.entries()]
+  const worker = async (): Promise<void> => {
+    while (q.length > 0) {
+      const [blob, where] = q.shift()!
+      let url: string
+      try {
+        // The same path check every runtime fetch goes through (baseline/github.ts).
+        url = rawUrl({ ...PINNED_BASELINE, commit: where.commit }, where.path)
+      } catch {
+        failed = true
+        continue
+      }
+      try {
+        const res = await fetchImpl(url)
+        // The tree said this commit holds this blob, so anything but a body —
+        // a 404 included — is source IAMAI could not read.
+        if (!res.ok) {
           failed = true
           continue
         }
-        try {
-          const res = await fetchImpl(url)
-          // Absent where the compare event says it is absent is the whole of a
-          // rename or an addition; absent where it should exist is unread source.
-          if (res.status === 404) {
-            if (candidates.get(path)?.[side]) failed = true
-            continue
-          }
-          if (!res.ok) {
-            failed = true
-            continue
-          }
-          out.push({ path, text: await res.text() })
-        } catch {
-          failed = true
-        }
+        texts.set(blob, await res.text())
+      } catch {
+        failed = true
       }
     }
-    await Promise.all(Array.from({ length: 6 }, worker))
-    return out
   }
+  await Promise.all(Array.from({ length: 6 }, worker))
 
-  const baseSet = sourceSet(await at(base, 'base'))
-  const headSet = sourceSet(await at(head, 'head'))
+  const at = (inv: Inventory): SourceArtifact[] =>
+    [...inv].flatMap(([path, blob]) => {
+      const text = texts.get(blob)
+      return text === undefined ? [] : [{ path, text }]
+    })
+  const baseSet = sourceSet(at(baseInv))
+  const headSet = sourceSet(at(headInv))
   return { changes: policyChanges(baseSet, headSet), incomplete: failed || baseSet.unreadable.length > 0 || headSet.unreadable.length > 0 }
 }
 
