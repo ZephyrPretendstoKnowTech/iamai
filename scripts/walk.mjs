@@ -721,15 +721,22 @@ async function walkFixture(fx) {
           if (!/^Baseline .+ · \d+ polic/.test(t2.h2)) add('P0', `${label}: tile 2 does not carry the baseline name and count as its state: "${t2.h2}"`)
           // One policy count, the pinned package's, signed out and (the demo runs on it) signed in.
           if ((signedOut || inDemo) && !new RegExp(' · ' + PINNED_COUNT + ' policies$').test(t2.state)) add('P0', `${label}: tile 2 reads "${t2.state}"; the pinned package holds ${PINNED_COUNT} policies`)
-          // The author's update: every changed policy named (added, removed, changed), under each the plan steps that change or "no step changes"; no row reads "policy".
+          // The author's update (task 021): one row per evolving source policy,
+          // never per changed file. The mock's source files at each commit hold
+          // one renamed-and-changed policy, one added, one changed and one
+          // removed, so the review reads four policies — and the renamed one
+          // carries what it was called, what materially changed, and the step it
+          // still stands behind, because its policy id never moved.
           if (fx.mock === 'author') {
-            const review = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /Updated by its author/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; return { summary: (d.querySelector('summary').textContent || '').replace(/\\s+/g, ' ').trim(), rows: [...d.querySelectorAll(':scope > ul.diff > li')].map((li) => ({ tag: ((li.querySelector('.tag') || {}).textContent || '').trim(), policy: ((li.querySelector('.policy') || {}).textContent || '').trim(), steps: [...li.querySelectorAll('.steps li')].map((x) => (x.textContent || '').trim()) })) } })()`)
+            const review = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /Updated by its author/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; return { summary: (d.querySelector('summary').textContent || '').replace(/\\s+/g, ' ').trim(), note: ((d.querySelector('p.quiet') || {}).textContent || '').trim(), rows: [...d.querySelectorAll(':scope > ul.diff > li')].map((li) => ({ tag: ((li.querySelector('.tag') || {}).textContent || '').trim(), policy: ((li.querySelector('.policy') || {}).textContent || '').trim(), was: ((li.querySelector('.was') || {}).textContent || '').trim(), deltas: [...li.querySelectorAll('.deltas li')].map((x) => (x.textContent || '').trim()), steps: [...li.querySelectorAll('.steps li')].map((x) => (x.textContent || '').trim()) })) } })()`)
             if (!review) add('P0', `${label}: tile 2 has no author-update review`)
             else {
               if (!/^Updated by its author on .+ · 4 policies changed · review$/.test(review.summary)) add('P0', `${label}: the review summary reads "${review.summary}"`)
               if (review.rows.length !== 4) add('P0', `${label}: the review lists ${review.rows.length} rows; one per changed policy (4)`)
+              if (review.note) add('P0', `${label}: the review says it is incomplete, although the mock reads every file: "${review.note}"`)
+              const TAGS = ['added', 'removed', 'changed', 'renamed', 'renamed and changed', 'not reviewed']
               for (const r of review.rows) {
-                if (!['added', 'removed', 'changed'].includes(r.tag)) add('P0', `${label}: a review row's change word is "${r.tag}"`)
+                if (!TAGS.includes(r.tag)) add('P0', `${label}: a review row's change word is "${r.tag}"`)
                 if (r.policy.length < 4 || /\bpolicy\b/.test(r.policy)) add('P0', `${label}: a review row does not name its policy: "${r.policy}"`)
                 const ok = r.steps.length >= 1 && (r.steps.every((x) => /^changes .{5,}$/.test(x)) || (r.steps.length === 1 && r.steps[0] === 'no step changes'))
                 if (!ok) add('P0', `${label}: the steps under "${r.policy}" read ${JSON.stringify(r.steps)}; "changes <step>" lines or "no step changes"`)
@@ -737,6 +744,15 @@ async function walkFixture(fx) {
               }
               if (!review.rows.some((r) => r.steps.some((x) => /^changes /.test(x)))) add('P0', `${label}: no review row names a step that changes, although the update touches mapped policies`)
               if (!review.rows.some((r) => r.steps[0] === 'no step changes')) add('P0', `${label}: no review row reads "no step changes", although the update touches an unmapped policy`)
+              // The renamed policy is one row, not an addition and a removal.
+              const evolved = review.rows.filter((r) => r.tag === 'renamed and changed')
+              if (evolved.length !== 1) add('P0', `${label}: ${evolved.length} rows read "renamed and changed"; a renamed, modified policy is one row`)
+              else {
+                if (!/^was .{5,}$/.test(evolved[0].was)) add('P0', `${label}: the renamed row does not say what it was called: "${evolved[0].was}"`)
+                if (!evolved[0].deltas.some((d) => /^Authentication strength: now .{3,}$/.test(d))) add('P0', `${label}: the renamed row does not name its authentication-strength change: ${JSON.stringify(evolved[0].deltas)}`)
+                if (!evolved[0].deltas.some((d) => /^Excluded groups: \d+ added$/.test(d))) add('P0', `${label}: the renamed row does not name its added exclusion: ${JSON.stringify(evolved[0].deltas)}`)
+                if (!evolved[0].steps.some((x) => /^changes /.test(x))) add('P0', `${label}: the renamed policy lost the step it stands behind: ${JSON.stringify(evolved[0].steps)}`)
+              }
             }
           }
           if (!/built and maintained by Jon Hope/.test(t2.text) || !/Its aim is layered protection/.test(t2.text)) add('P0', `${label}: tile 2 lacks the approved baseline sentences`)

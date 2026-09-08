@@ -25,6 +25,7 @@ import type { RoleGap } from '../../graph/collect/tokenRoles.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { SignInError } from '../../graph/authError.ts'
 import type { DemoFacts } from '../demoFacts.ts'
+import type { ChangeKind, PolicyChange, SemanticDelta } from '../../derive/baselineDiff.ts'
 
 type Words = {
   h1: string
@@ -47,7 +48,7 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string }
-  baseline: { title: string; state: string; loading: string; none: string; what: string; pinned: string; goal: string; updated: string; diff: { added: string; removed: string; changed: string }; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
+  baseline: { title: string; state: string; loading: string; none: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
     limitsSummary: string
@@ -148,41 +149,74 @@ export function accountTile({ tenant, upn, role }: { tenant: string; upn: string
 }
 
 // ---- 2 Baseline ----
-/** The author's changes: each a changed file (its base name, from the compare) and the change word GitHub gave it. */
-export type BaselineUpdate = { date: string; changes: { policy: string; change: string }[] }
-/** A review row: the change word, the policy as a person reads it, and under it the plan steps that change (one line each) or "no step changes". */
-export type BaselineTile = { n: 2; title: string; state: string; tone: Tone; paragraphs: string[]; update: { summary: string; rows: { tag: string; policy: string; steps: string[] }[] } | null; actions: Action[] }
+/**
+ * The author's update: the date of the head commit, and one entry per evolving
+ * source policy (derive/baselineDiff.ts), never per changed file. `incomplete`
+ * is set when IAMAI could not read enough of the author's source to establish
+ * the whole diff — an incomplete review still renders, because "nothing to see"
+ * is the one thing it must not say.
+ */
+export type BaselineUpdate = { date: string; changes: PolicyChange[]; incomplete?: boolean }
+/** A review row: the change word, the policy as a person reads it, what it was called, what materially changed, and the plan steps under it. */
+export type BaselineReviewRow = { tag: string; policy: string; was: string | null; deltas: string[]; steps: string[] }
+export type BaselineTile = { n: 2; title: string; state: string; tone: Tone; paragraphs: string[]; update: { summary: string; note: string | null; rows: BaselineReviewRow[] } | null; actions: Action[] }
+
+/** One material difference in the words the product uses; the field's own name comes from diffFields, or the path itself when the model does not cover it. */
+function deltaLine(d: SemanticDelta): string {
+  const B = W.baseline
+  const field = B.diffFields[d.field] ?? d.field
+  if (d.kind === 'added') return fillText(B.diffAdded, { field, n: d.n })
+  if (d.kind === 'removed') return fillText(B.diffRemoved, { field, n: d.n })
+  if (d.kind === 'both') return fillText(B.diffBoth, { field, added: d.added, removed: d.removed })
+  if (d.kind === 'set') return fillText(B.diffSet, { field, value: d.value })
+  if (d.kind === 'cleared') return fillText(B.diffCleared, { field })
+  return fillText(B.diffChanged, { field })
+}
+
 export function baselineTile({
   name,
   policyCount,
   loading,
   update,
-  labelFor,
   stepsFor,
 }: {
   name: string | null
   policyCount: number
   loading: string | null
   update: BaselineUpdate | null
-  /** The policy a changed file names, as the package spells it (derive/baselineDiff.ts policyLabel). */
-  labelFor: (file: string) => string
-  /** The plan steps that policy stands behind, from the goal map (derive/baselineDiff.ts stepsChangedBy). */
-  stepsFor: (file: string) => string[]
+  /** The plan steps that policy stands behind, from the goal map by stable identity (derive/baselineDiff.ts stepsForChange). */
+  stepsFor: (change: PolicyChange) => string[]
 }): BaselineTile {
   const B = W.baseline
   const state = loading ? fillText(B.loading, { source: loading }) : name ? fillText(B.state, { baselineName: name, policyCount }) : B.none
-  const tag = (change: string): string => (change === 'added' ? B.diff.added : change === 'removed' ? B.diff.removed : B.diff.changed)
-  const rows = (update?.changes ?? []).map((c) => {
-    const steps = stepsFor(c.policy)
-    return { tag: tag(c.change), policy: labelFor(c.policy), steps: steps.length > 0 ? steps.map((step) => fillText(B.diffStep, { step })) : [B.diffNoStep] }
+  const rows: BaselineReviewRow[] = (update?.changes ?? []).map((c) => {
+    const steps = stepsFor(c)
+    const deltas = c.deltas.map(deltaLine)
+    if (c.reason === 'conflictingCopies') deltas.push(B.diffConflict)
+    for (const path of c.unreviewed) deltas.push(fillText(B.diffUnreviewed, { field: B.diffFields[path] ?? path }))
+    return {
+      tag: B.diff[c.kind],
+      policy: c.newName ?? c.oldName ?? '',
+      was: c.renamed && c.oldName ? fillText(B.diffWas, { oldName: c.oldName }) : null,
+      deltas,
+      steps: steps.length > 0 ? steps.map((step) => fillText(B.diffStep, { step })) : [B.diffNoStep],
+    }
   })
+  const incomplete = update?.incomplete === true
   return {
     n: 2,
     title: B.title,
     state,
     tone: name ? 'done' : null,
     paragraphs: [B.what, B.goal, B.pinned],
-    update: update && rows.length > 0 ? { summary: fillText(B.updated, { date: absoluteDate(update.date), n: rows.length }), rows } : null,
+    update:
+      update && (rows.length > 0 || incomplete)
+        ? {
+            summary: incomplete ? fillText(B.updatedPartial, { date: absoluteDate(update.date) }) : fillText(B.updated, { date: absoluteDate(update.date), n: rows.length }),
+            note: incomplete ? B.incomplete : null,
+            rows,
+          }
+        : null,
     actions: [{ label: B.change, weight: 'secondary' }],
   }
 }

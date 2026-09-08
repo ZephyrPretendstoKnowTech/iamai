@@ -2,8 +2,11 @@
 // Part 4): the pinned index, loaded at its commit; an uploaded package; and
 // the restore of either on reload.
 import baselineIndex from '../../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
-import { loadBaseline } from '../baseline/index.ts'
+import { loadBaseline, rawUrl } from '../baseline/index.ts'
 import type { BaselineFile, BaselineIndex, BaselinePackage } from '../baseline/index.ts'
+import { shouldSkip } from '../baseline/discover.ts'
+import { policyChanges, sourceSet } from '../derive/baselineDiff.ts'
+import type { PolicyChange, SourceArtifact } from '../derive/baselineDiff.ts'
 import { PINNED, pinnedFiles, pinnedPackage } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP, goalMapFor } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
@@ -31,7 +34,8 @@ export { PINNED }
 /**
  * Load the bundled, pinned baseline — IAMAI's own snapshot in our schema,
  * read from baselines/*.pinned.json, no network (prompt 51 decision 1). The only
- * runtime network call is checkAuthorHead, which drives the "Baseline updated" line.
+ * runtime network calls are checkAuthorHead and the review it opens
+ * (baselineReview), which together drive the "Baseline updated" line.
  * The package is the one src/baseline/pinned.ts builds, shared with the demo.
  */
 export async function loadPinnedBaseline(onProgress?: (done: number, total: number) => void): Promise<BaselineResult> {
@@ -69,29 +73,90 @@ export async function checkAuthorHead(fetchImpl: typeof fetch = fetch): Promise<
   }
 }
 
-export type BaselineChange = { policy: string; change: string }
+/** The author's changes at a candidate head, as policies. `incomplete` means IAMAI could not read enough source to establish the whole diff. */
+export type BaselineReview = { changes: PolicyChange[]; incomplete: boolean }
+
+/** Enough changed files to review by hand; past this the compare is not a baseline update but a repository reshuffle, and the review says so. */
+const MAX_CANDIDATE_FILES = 80
 
 /**
- * The policy files that changed between the pinned commit and the author's head,
- * from the GitHub compare API (prompt 52 Part 1) — the data behind
- * pages.connectNoScan.baselineUpdated and its baselineUpdatedRow review list.
- * The compare returns the changed file list, so no policy content is fetched.
- * A network failure returns an empty list; Connect shows the update only when
- * the list is non-empty, so the count and rows are always real.
+ * The author's *policy* changes between the pinned commit and a candidate head
+ * (task 021), for pages.connectNoScan.baselineUpdated and its review list.
+ *
+ * The compare API is used for discovery only: it says which files moved, and
+ * the author's repository carries one policy in more than one file and renames
+ * a policy by adding one file and removing another. So every candidate file is
+ * fetched at both commits and read through the baseline parser, and the review
+ * is built from stable policy identity (derive/baselineDiff.ts) — four file
+ * events for one renamed policy are one row.
+ *
+ * The base is the pinned *package's* commit. `baselines/*.index.json` records an
+ * older pin and is not the baseline the plan was derived from, so it never
+ * decides what the update is measured against; only the owner/repo are read
+ * from it.
+ *
+ * Nothing here fails to "no changes": a compare that will not load, a file that
+ * will not fetch and a file that will not parse all set `incomplete`, and the
+ * tile says the review is incomplete rather than that the baseline is understood.
  */
-export async function baselineChanges(head: string, fetchImpl: typeof fetch = fetch): Promise<BaselineChange[]> {
-  const word: Record<string, string> = { added: 'added', modified: 'updated', changed: 'updated', removed: 'removed', renamed: 'renamed' }
+export async function baselineReview(head: string, fetchImpl: typeof fetch = fetch): Promise<BaselineReview> {
+  const base = PINNED.commit
+  let files: { filename?: string; previous_filename?: string }[]
   try {
-    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/compare/${PINNED.commit}...${head}`, { headers: { Accept: 'application/vnd.github+json' } })
-    if (!res.ok) return []
-    const body = (await res.json()) as { files?: { filename: string; status: string }[] }
-    return (body.files ?? [])
-      .filter((f) => /\.json$/i.test(f.filename) && !/\b(index|readme)\b/i.test(f.filename))
-      // The file's name as the compare gives it; the review names the package policy it matches, else this name (derive/baselineDiff.ts policyLabel).
-      .map((f) => ({ policy: f.filename.split('/').pop() ?? f.filename, change: word[f.status] ?? f.status }))
+    const res = await fetchImpl(`https://api.github.com/repos/${PINNED_BASELINE.owner}/${PINNED_BASELINE.repo}/compare/${base}...${head}`, { headers: { Accept: 'application/vnd.github+json' } })
+    if (!res.ok) return { changes: [], incomplete: true }
+    files = ((await res.json()) as { files?: { filename?: string; previous_filename?: string }[] }).files ?? []
   } catch {
-    return []
+    return { changes: [], incomplete: true }
   }
+
+  // A rename is paired by policy id, not by previous_filename, but the old path
+  // is still where the old body lives, so both sides of every event are fetched.
+  const paths: string[] = []
+  for (const f of files) {
+    for (const p of [f.filename, f.previous_filename]) {
+      if (typeof p !== 'string' || shouldSkip(p) !== null || paths.includes(p)) continue
+      paths.push(p)
+    }
+  }
+  if (paths.length === 0) return { changes: [], incomplete: false }
+  if (paths.length > MAX_CANDIDATE_FILES) return { changes: [], incomplete: true }
+
+  let failed = false
+  const at = async (commit: string): Promise<SourceArtifact[]> => {
+    const out: SourceArtifact[] = []
+    const q = [...paths]
+    const worker = async (): Promise<void> => {
+      while (q.length > 0) {
+        const path = q.shift()!
+        let url: string
+        try {
+          // The same path check every runtime fetch goes through (baseline/github.ts).
+          url = rawUrl({ ...PINNED_BASELINE, commit }, path)
+        } catch {
+          failed = true
+          continue
+        }
+        try {
+          const res = await fetchImpl(url)
+          if (res.status === 404) continue
+          if (!res.ok) {
+            failed = true
+            continue
+          }
+          out.push({ path, text: await res.text() })
+        } catch {
+          failed = true
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: 6 }, worker))
+    return out
+  }
+
+  const baseSet = sourceSet(await at(base))
+  const headSet = sourceSet(await at(head))
+  return { changes: policyChanges(baseSet, headSet), incomplete: failed || baseSet.unreadable.length > 0 || headSet.unreadable.length > 0 }
 }
 
 /**

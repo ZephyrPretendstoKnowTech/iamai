@@ -2,9 +2,12 @@
 // owner decision 1). Dev-only, the one place that reaches the network: fetch the
 // author's repo at a commit, normalise every policy to Graph shape, resolve the
 // author's object references to placeholder tokens (baseline-onboarding §2 stage
-// 2), strip author-specific app exclusions, and write
-// baselines/<repo>.pinned.json in our schema. The runtime reads that file; its
-// only network call is the author-head check that drives "Baseline updated".
+// 2), strip author-specific app exclusions, and write both
+// baselines/<repo>.pinned.json (the snapshot, in our schema) and
+// baselines/<repo>.index.json (its source record) at the same commit — one
+// generation path, so the two can never name different commits again. The
+// runtime reads the snapshot; its only network calls are the author-head check
+// and the update review it opens.
 //
 //   node scripts/pin-baseline.ts            # re-pin to the author's current head, diff from the old pin
 //   node scripts/pin-baseline.ts <commit>   # pin to a specific commit
@@ -20,6 +23,8 @@ import { mapGoalsToPolicies } from '../src/coverage/goalIdentity.ts'
 import type { GoalMapResult, PolicyForMap } from '../src/coverage/goalIdentity.ts'
 import { pinPolicy } from '../src/baseline/pinSource.ts'
 import type { PinnedPolicy } from '../src/baseline/pinSource.ts'
+import { pinArtifacts, pinMismatch } from '../src/baseline/pinArtifacts.ts'
+import { PINNED } from '../src/baseline/pinned.ts'
 import index from '../baselines/jhope188-conditionalaccesspolicies.index.json' with { type: 'json' }
 
 const OWNER = index.owner
@@ -33,12 +38,20 @@ async function api<T>(url: string): Promise<T> {
   return (await res.json()) as T
 }
 
-/** Every Policies/*.json path at a commit, from the git tree. */
-async function policyPaths(commit: string): Promise<string[]> {
+/**
+ * The author's tree at a commit, split two ways: the Policies/*.json paths the
+ * snapshot is built from, and every .json/README.md path, which is the index
+ * record's allowlist (the same rule scripts/build-index.ts walks a clone by).
+ */
+async function treeAt(commit: string): Promise<{ policyPaths: string[]; indexFiles: string[] }> {
   const tree = await api<{ tree: { path: string; type: string }[] }>(`https://api.github.com/repos/${OWNER}/${REPO}/git/trees/${commit}?recursive=1`)
+  const blobs = tree.tree.filter((t) => t.type === 'blob').map((t) => t.path)
   // The author moved Policies/ under Updated/ between ceccdc2 and head; match a
   // Policies directory at any depth, files directly in it (not Documentation/).
-  return tree.tree.filter((t) => t.type === 'blob' && /(^|\/)Policies\/[^/]+\.json$/i.test(t.path)).map((t) => t.path)
+  return {
+    policyPaths: blobs.filter((p) => /(^|\/)Policies\/[^/]+\.json$/i.test(p)),
+    indexFiles: blobs.filter((p) => /\.json$/i.test(p) || /(^|\/)readme\.md$/i.test(p)).sort(),
+  }
 }
 
 async function fetchFiles(commit: string, paths: string[]): Promise<BaselineFile[]> {
@@ -97,8 +110,9 @@ function classify(policies: CaPolicy[]): { placeholderFor: Map<string, string>; 
   return { placeholderFor, strengthIds }
 }
 
-async function snapshotAt(commit: string): Promise<{ policies: PinnedPolicy[]; stripped: string[] }> {
-  const files = await fetchFiles(commit, await policyPaths(commit))
+async function snapshotAt(commit: string): Promise<{ policies: PinnedPolicy[]; stripped: string[]; indexFiles: string[] }> {
+  const tree = await treeAt(commit)
+  const files = await fetchFiles(commit, tree.policyPaths)
   const discovered = discoverPolicies(files).policies
   const { placeholderFor } = classify(discovered)
   const policies: PinnedPolicy[] = []
@@ -109,11 +123,12 @@ async function snapshotAt(commit: string): Promise<{ policies: PinnedPolicy[]; s
     stripped.push(...r.stripped)
   }
   policies.sort((a, b) => a.displayName.localeCompare(b.displayName))
-  return { policies, stripped }
+  return { policies, stripped, indexFiles: tree.indexFiles }
 }
 
 function diff(oldP: PinnedPolicy[], newP: PinnedPolicy[]): { added: string[]; removed: string[]; changed: string[] } {
-  const key = (p: PinnedPolicy): string => p.displayName.toLowerCase().replace(/\s+/g, ' ').trim()
+  // Stable identity, so a renamed policy reads as one change here too, not as an addition and a removal.
+  const key = (p: PinnedPolicy): string => (p.id ? p.id.toLowerCase() : p.displayName.toLowerCase().replace(/\s+/g, ' ').trim())
   const oldByKey = new Map(oldP.map((p) => [key(p), p]))
   const newByKey = new Map(newP.map((p) => [key(p), p]))
   const added = newP.filter((p) => !oldByKey.has(key(p))).map((p) => p.displayName)
@@ -131,7 +146,9 @@ function diff(oldP: PinnedPolicy[], newP: PinnedPolicy[]): { added: string[]; re
 
 async function main(): Promise<void> {
   const target = process.argv[2] ?? (await api<{ sha: string }[]>(`https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=1`))[0].sha
-  const oldCommit = index.commit
+  // The commit the shipped snapshot was built from — not index.commit, which
+  // recorded an older pin for as long as the two were written apart.
+  const oldCommit = PINNED.commit
   process.stdout.write(`pin-baseline: pinning ${OWNER}/${REPO} at ${target}\n`)
   const next = await snapshotAt(target)
   const generatedAt = new Date().toISOString()
