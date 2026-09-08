@@ -14,7 +14,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { PINNED } from '../baseline/pinned.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
-import { comparePolicies } from '../baseline/semantics.ts'
+import { comparePolicies, samePolicySemantics } from '../baseline/semantics.ts'
 import { normalizePolicy } from '../baseline/normalize.ts'
 import { memberIdentity, policyChanges, sourceSet, stepsForChange } from './baselineDiff.ts'
 import type { SourceArtifact } from './baselineDiff.ts'
@@ -331,6 +331,44 @@ test('I3. a control the model does not name is unreviewed, never counted as a fi
   const real = comparePolicies(normalizePolicy(before), normalizePolicy(shorter))
   assert.deepEqual(real.changed.map((c) => c.field), ['sessionControls'])
   assert.deepEqual(real.unreviewed, [])
+})
+
+test('I4. a strength’s combination configuration is never lost inside the reference: the same id configured differently is unreviewed, not unchanged', () => {
+  // What a combination configuration does: the strength still allows fido2, but
+  // only these authenticators satisfy it. Narrowing or widening that list
+  // materially changes who can sign in, and the id does not move when it does.
+  const fido2Only = (aaGuids: string[]) => [{ '@odata.type': '#microsoft.graph.fido2CombinationConfiguration', id: 'a6b2f5e0-1f7c-4a3a-9c1a-2b3c4d5e6f70', appliesToCombinations: ['fido2'], allowedAAGUIDs: aaGuids }]
+  const plain = expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS)
+  const restricted = { ...plain, combinationConfigurations: fido2Only(['de1e552d-db1d-4423-a619-566b625cdc84']) }
+  const widened = { ...plain, combinationConfigurations: fido2Only(['de1e552d-db1d-4423-a619-566b625cdc84', '7d2a3b1c-0000-4c1d-9f00-11223344aabb']) }
+
+  // 1. Adding a configuration to the strength the policy points at cannot read
+  //    as no change, even though the id and the allowed combinations are equal.
+  const added = comparePolicies(normalizePolicy(withStrength(plain)), normalizePolicy(withStrength(restricted)))
+  assert.deepEqual(added.changed, [], 'the model does not claim to have read the configuration')
+  assert.deepEqual(added.unreviewed, ['grantControls.authenticationStrength.combinationConfigurations'], `a configured strength must be reported: ${JSON.stringify(added)}`)
+  const [row] = reviewOf([at('Policies', NEW_NAME, withStrength(plain))], [at('Policies', NEW_NAME, withStrength(restricted))])
+  assert.equal(row.kind, 'unknown', 'the review says it has not established the change')
+  assert.equal(row.reason, 'unmodelledField')
+
+  // 2. And so does a configuration whose own contents moved.
+  const moved = comparePolicies(normalizePolicy(withStrength(restricted)), normalizePolicy(withStrength(widened)))
+  assert.deepEqual(moved.changed, [])
+  assert.deepEqual(moved.unreviewed, ['grantControls.authenticationStrength.combinationConfigurations'])
+
+  // 3. Two copies at one commit that disagree about the configuration fail
+  //    closed: neither is taken as the answer.
+  assert.equal(samePolicySemantics(normalizePolicy(withStrength(restricted)), normalizePolicy(withStrength(widened))), false)
+  const set = sourceSet([at('Policies', NEW_NAME, withStrength(restricted)), doc(NEW_NAME, withStrength(widened))])
+  assert.equal(set.members.length, 0, 'a same-id copy that disagrees is not collapsed away')
+  assert.equal(set.conflicts.length, 1)
+
+  // 4. The referenced object's own record is still representation: an export
+  //    that only re-wrote its wording is not a change and not unreviewed.
+  const reworded = { ...plain, description: 'Modern MFA plus a temporary access pass', policyType: 'custom', requirementsSatisfied: 'mfa' }
+  const record = comparePolicies(normalizePolicy(withStrength(plain)), normalizePolicy(withStrength(reworded)))
+  assert.deepEqual(record.changed, [])
+  assert.deepEqual(record.unreviewed, [], `the strength object's own record is the exporter's, not the author's: ${JSON.stringify(record)}`)
 })
 
 // ------------------------------------------------ K. unreadable source is unknown
