@@ -231,10 +231,14 @@ test('the printed document carries the floor as the same named group, never unde
   const src = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
   assert.match(src, /<h2>\{phases\.recommended\}<\/h2>/, 'the document names the group with the Plan\'s own words')
   // A floor step can sit in a wave's stepIds; the phase sections and the timeline
-  // read the filtered list, so the document never attributes it to the author.
-  assert.match(src, /w\.stepIds\.filter\(\(id\) => !floorIds\.has\(id\)\)/, 'the phases drop the floor\'s ids')
-  assert.match(src, /const floorIds = floorGroupIds\(steps\)/, 'the document decides alone which ids are the floor\'s')
+  // read the Plan's own row rule, so the document never attributes it to the
+  // author. That rule (ui/surfaces/planRows.ts phaseRows) drops the floor's ids
+  // and the footer's alike, which is one authority rather than a filter the
+  // document keeps for itself (task 027).
+  assert.match(src, /phaseRows\(steps, w\)/, 'the phases drop the floor\'s ids')
+  assert.equal(src.includes('floorGroupIds'), false, 'the document decides for itself which ids a phase may draw')
   assert.equal(src.includes('w.stepIds.map('), false, 'no printed section reads a wave\'s raw step ids')
+  assert.equal(src.includes('w.stepIds.filter('), false, 'no printed section filters a wave\'s raw step ids itself')
   const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
   assert.ok(at('{floor.length > 0 && (') < at('{schedule.cleanup && ('), 'the floor group precedes Cleanup')
 })

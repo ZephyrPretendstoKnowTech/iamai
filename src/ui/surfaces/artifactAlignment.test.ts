@@ -31,7 +31,7 @@ import { powershellFor } from './stepPowerShell.ts'
 import { finalTargets, unavailableReason } from '../../roadmap/operations.ts'
 import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
-import { scheduledIds, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, scheduledIds, undatedRows } from './planRows.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
 import { readFileSync } from 'node:fs'
@@ -497,6 +497,7 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
   assert.match(src, /import \{[^}]*\bfloorRows\b[^}]*\} from '\.\/planRows\.ts'/, 'the print derives its own group')
   assert.match(src, /undatedRows\(steps, schedule\.waves\)/, 'the print does not read the undated group')
   assert.match(src, /floorRows\(steps\)/, 'the print does not decide alone which rows are the floor')
+  assert.match(src, /phaseRows\(steps, w\)/, 'the print decides a numbered phase’s rows itself')
   // All three printed step sections — the phases, the undated group and the
   // floor group (task 025) — use the screen's own step body, which is what
   // withholds the implementation, the dates, the announcement and the rollback.
@@ -507,4 +508,46 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
   assert.match(plan, /undatedRows\(c\.steps, c\.schedule\.waves\)/, 'the Plan no longer reads the undated group')
   assert.match(plan, /floorRows\(c\.steps\)/, 'the Plan reads the same floor rule the document does')
   assert.match(plan, /phaseRows\(c\.steps, w\)/, 'the Plan decides a phase\'s rows itself')
+})
+
+test('013.H: the printed document draws every step exactly once, and never dates finished work', () => {
+  for (const c of CASES) {
+    const steps = c.run.steps
+    const waves = c.run.schedule.waves
+    const seen = new Map<string, string[]>()
+    const at = (s: Step, where: string): void => {
+      seen.set(s.id, [...(seen.get(s.id) ?? []), where])
+    }
+    for (const w of waves) for (const s of phaseRows(steps, w)) at(s, `phase ${w.wave}`)
+    for (const s of undatedRows(steps, waves)) at(s, 'undated')
+    for (const s of floorRows(steps)) at(s, 'floor')
+    for (const [id, where] of seen) assert.equal(where.length, 1, `${c.name}/${id} is drawn in ${where.join(' and ')}`)
+    // A numbered phase carries dates, so what it draws is work still to do. A
+    // schedule keeps the id of a step that was planned and is now In place, of
+    // one the tenant does not need, and of a floor control this baseline does
+    // not carry; each of those belongs to another group, and printing it under
+    // a phase would give finished work a start date or hand the baseline author
+    // a control they never asked for.
+    for (const w of waves) {
+      for (const s of phaseRows(steps, w)) {
+        assert.ok(inWave(s), `${c.name}/${s.id}: a numbered phase draws a row the Plan holds elsewhere`)
+        assert.notEqual(s.status, 'done', `${c.name}/${s.id}: finished work is printed under a dated phase`)
+        assert.notEqual(s.floor, true, `${c.name}/${s.id}: a floor control is printed as the baseline author’s`)
+      }
+    }
+    // And the document's own In place list and its phases never name the same
+    // step: the cover would otherwise say a step is done on the page before the
+    // one that schedules it.
+    const inPhase = new Set(waves.flatMap((w) => phaseRows(steps, w).map((s) => s.id)))
+    for (const s of steps.filter((x) => x.status === 'done')) {
+      assert.ok(!inPhase.has(s.id), `${c.name}/${s.id}: the cover calls it In place and a phase schedules it`)
+    }
+    // And the rule is doing work: a wave really does keep the ids of steps that
+    // no phase may draw. A surface reading `w.stepIds` straight — which is what
+    // the printed document did — dates finished work, so if this ever stops
+    // being true the source assertions above are the only thing left holding it.
+    const raw = new Set(waves.flatMap((w) => w.stepIds))
+    const excluded = [...raw].filter((id) => !inPhase.has(id))
+    assert.ok(excluded.length > 0, `${c.name}: no wave carries a row a phase must not draw — the rule is untested here`)
+  }
 })

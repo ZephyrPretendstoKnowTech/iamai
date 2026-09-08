@@ -21,7 +21,7 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { floorGroupIds, floorRows, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, undatedRows } from './planRows.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -80,16 +80,22 @@ export function PrintPlan({
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
   const done = steps.filter((s) => s.status === 'done')
-  const byId = new Map(steps.map((s) => [s.id, s]))
-  // The undated group and the floor group, read from the Plan's rules and not
-  // recomputed here. A floor step can sit in a wave's stepIds; it prints in its
-  // own named group, never under the phase, so the document never attributes it
-  // to the baseline author, and a wave left with nothing else prints no phase.
+  // A numbered phase's rows, the undated group and the floor group, all read
+  // from the Plan's own rules (planRows.ts) and none of them recomputed here.
+  //
+  // A wave's `stepIds` is not the phase: the schedule dates a step when it is
+  // planned, and it keeps that id afterwards. A step already In place, one the
+  // tenant does not need, and a floor step Microsoft recommends but this
+  // baseline does not carry are all held by another group — the cover's In
+  // place list, Doesn't apply here, the floor's own section — and a document
+  // that also printed them under a numbered phase would give work that is
+  // finished a start date, and attribute a control to the baseline author who
+  // never asked for it. `phaseRows` is the one rule that decides this, and the
+  // screen reads it too, so a plan taken to PDF carries the same rows.
   const held = undatedRows(steps, schedule.waves)
   const floor = floorRows(steps)
-  const floorIds = floorGroupIds(steps)
-  const phaseStepIds = (w: Schedule['waves'][number]): string[] => w.stepIds.filter((id) => !floorIds.has(id))
-  const waves = schedule.waves.filter((w) => phaseStepIds(w).length > 0)
+  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w)
+  const waves = schedule.waves.filter((w) => phaseSteps(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
   const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''
@@ -181,7 +187,7 @@ export function PrintPlan({
                 <tr>
                   <td>{waveTitle(w)}</td>
                   <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
-                  <td>{phaseStepIds(w).map((id) => byId.get(id)?.title).filter(Boolean).join('; ')}</td>
+                  <td>{phaseSteps(w).map((s) => s.title).join('; ')}</td>
                 </tr>
                 {w.wave === 0 && schedule.verification.days > 0 && (
                   <tr key="verification">
@@ -207,15 +213,11 @@ export function PrintPlan({
         <section key={w.wave} className="print-page">
           <h2>{waveTitle(w)}</h2>
           <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
-          {phaseStepIds(w).map((id) => {
-            const s = byId.get(id)
-            if (!s) return null
-            return (
-              <article key={s.id} className="print-step">
-                <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
-              </article>
-            )
-          })}
+          {phaseSteps(w).map((s) => (
+            <article key={s.id} className="print-step">
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+            </article>
+          ))}
         </section>
       ))}
       {/* The undated group: a step no wave carries because something has to be
