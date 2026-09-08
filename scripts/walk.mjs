@@ -386,23 +386,24 @@ const learnLinks = new Set()
 // ---- the walk of one fixture ----
 async function walkFixture(fx) {
   const dir = join(OUT, fx.name)
-  // The demo's week two: Scan again on Connect's Scan tile flips the demo to
-  // its week-two snapshot (App.tsx demoWeek2; the header has no scan control),
-  // then the plan is walked again. Scan again toggles week two on and off, and
-  // a hash navigation keeps the page alive, so entering is idempotent: click
-  // only while the banner does not already say week 2, then come back to the route.
+  // The demo's follow-up snapshot (task 026): the sample-data banner carries a
+  // two-button snapshot selector on every surface, and the pressed button names
+  // the snapshot that has landed. Pressing "Follow-up scan" replaces the
+  // synthetic input facts and the ordinary derivation runs over them, so the
+  // plan is walked again on the new snapshot. Entering is idempotent: press only
+  // while the selector does not already read the follow-up scan.
+  const shownSnapshot = `((document.querySelector('.demo-banner .demo-snapshots button[aria-pressed="true"]') || {}).textContent || '').trim()`
   const ensureWeek2 = async (route) => {
     if (!fx.week2) return
-    if (await evaluate(`/week 2/i.test(document.body.innerText)`)) return
-    await evaluate(`location.hash = '#/connect'`)
-    const offered = await waitFor(`[...document.querySelectorAll('main.page section.step-tile button')].some((b) => /^Scan again$/.test((b.textContent || '').trim()))`, 15000)
+    if (await evaluate(`${shownSnapshot} === 'Follow-up scan'`)) return
+    const offered = await waitFor(`[...document.querySelectorAll('.demo-banner .demo-snapshots button')].some((b) => /^Follow-up scan$/.test((b.textContent || '').trim()))`, 15000)
     if (!offered) {
-      add('P0', `${fx.name}: Connect's Scan tile offers no Scan again`)
+      add('P0', `${fx.name}: the sample-data banner offers no snapshot selector`)
       return
     }
-    await clickText('button', /^Scan again$/, 'main.page')
-    const week2 = await waitFor(`/week 2/i.test(document.body.innerText)`, 10000)
-    if (!week2) add('P0', `${fx.name}: Scan again does not advance the demo to week two`)
+    await clickText('button', /^Follow-up scan$/, '.demo-banner')
+    const week2 = await waitFor(`${shownSnapshot} === 'Follow-up scan'`, 10000)
+    if (!week2) add('P0', `${fx.name}: the snapshot selector does not advance the demo to the follow-up scan`)
     await evaluate(`location.hash = ${JSON.stringify('#/' + route)}`)
     await sleep(800)
   }
@@ -674,8 +675,20 @@ async function walkFixture(fx) {
         }
         const CONSENT = /The first sign-in in a tenant needs an account that can grant consent \(a Global Administrator, once\); every sign-in after that can be Global Reader\./
         const READER = /Global Reader is the least privilege that reads everything IAMAI needs; a Global Administrator account works too, but sign in with less if you can\. It writes nothing\./
-        // 1 Signed in, or Sign in
-        if (t1 && !signedOut) {
+        // 1 Signed in, or Sign in, or (in the demo) the sample tenant. Nobody
+        // is signed in during the demo, so tile 1 says so and offers the way
+        // out; the signed-in tile's two actions are Microsoft's and would act
+        // on a real sign-in that does not exist here (task 026).
+        const demoFx = fx.name.startsWith('demo')
+        if (t1 && !signedOut && demoFx) {
+          if (!/^Sample tenant/.test(t1.h2) || !t1.state) add('P0', `${label}: tile 1 does not read Sample tenant with the sample tenant as its state: "${t1.h2}"`)
+          if (!/IAMAI is not connected to Microsoft\./.test(t1.text)) add('P0', `${label}: tile 1 does not say the sample is not connected to Microsoft`)
+          if (READER.test(t1.text)) add('P0', `${label}: tile 1 keeps the Global Reader line in the demo, where nobody signed in`)
+          expectBtn(t1, /^Leave the demo$/, 'secondary', 'tile 1')
+          for (const re of [/^Sign out$/, /^Sign in with another account$/]) if (t1.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 1 offers ${re} in the demo, where there is no Microsoft account to act on`)
+          if (await evaluate(`[...document.querySelectorAll('header.app button')].some((b) => /^Account$/.test((b.textContent || '').trim()))`)) add('P0', `${label}: the header offers the Account menu in the demo`)
+        }
+        if (t1 && !signedOut && !demoFx) {
           if (!/^Signed in /.test(t1.h2) || !t1.state) add('P0', `${label}: tile 1 does not read Signed in with the tenant as its state: "${t1.h2}"`)
           if (!READER.test(t1.text)) add('P0', `${label}: tile 1 lacks the Global Reader line as the mockup words it`)
           if (!CONSENT.test(t1.text)) add('P0', `${label}: tile 1 lacks the consent sentence`)

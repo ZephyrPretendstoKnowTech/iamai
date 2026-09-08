@@ -19,7 +19,7 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { Button } from '../components/index.ts'
 import { RingMark } from '../components/Ring.tsx'
-import { forgetTenant, signOut, stopScan } from '../actions.ts'
+import { forgetTenant, showDemoSnapshot, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { PausedNotice, laneOf } from '../scan/ScanProgress.tsx'
@@ -200,7 +200,7 @@ export function AppShell({
   tenantName: string | null
   route: Route
   state: ShellState
-  /** The demo is showing its week-two snapshot: the banner says so (prompt 50 item 14). */
+  /** The demo has landed on its follow-up snapshot: the banner's selector shows which of the two synthetic scans is on screen (task 026). */
   demoWeek2?: boolean
   /** Only for the feedback summary, which is counts and never names. */
   snapshot?: TenantSnapshot | null
@@ -248,12 +248,36 @@ export function AppShell({
           <button type="button" className="text-control" onClick={toggleTheme} title={SHELL.themeTooltip}>
             {theme === 'dark' ? SHELL.lightTheme : SHELL.darkTheme}
           </button>
-          {signedIn && <AccountMenu account={account} />}
+          {/* Nobody is signed in during the demo: the menu's Sign out clears the
+              real Microsoft sign-in cache and its Forget acts on a tenant that
+              is a fixture, so neither is offered. The banner below carries the
+              way out. */}
+          {signedIn && !isDemo() && <AccountMenu account={account} />}
         </div>
       </header>
       {isDemo() && (
-        <p className="demo-banner" role="status">
-          {demoWeek2 ? SHELL.demoBannerWeek2 : SHELL.demoBanner} · <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
+        <p className="demo-banner">
+          {/* The sample-data fact is a sentence, not a colour: it reads the same
+              in a screen reader, in print's absence and at any width. It stands
+              on its own so the live region announces the sample and never the
+              selector's own labels every time a snapshot lands. */}
+          <span role="status">{SHELL.demoBanner}</span>
+          {' · '}
+          {/* The progression: two synthetic scans, named. Pressing one changes
+              the facts the app derives from (ui/actions.ts showDemoSnapshot) and
+              nothing else. `aria-pressed` carries which one is showing, so the
+              selected snapshot is exposed without reading a style; the label
+              follows the snapshot that has landed, never the one requested. */}
+          <span className="demo-snapshots" role="group" aria-label={SHELL.demoSnapshots}>
+            <button type="button" className="text-control" aria-pressed={!demoWeek2} onClick={() => showDemoSnapshot(false)}>
+              {SHELL.demoSnapshotInitial}
+            </button>
+            <button type="button" className="text-control" aria-pressed={demoWeek2} onClick={() => showDemoSnapshot(true)}>
+              {SHELL.demoSnapshotFollowUp}
+            </button>
+          </span>
+          {' · '}
+          <a href={exitDemoUrl()}>{SHELL.demoLeave}</a>
         </p>
       )}
       {signedIn && <ScanLine route={route} />}

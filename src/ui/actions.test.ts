@@ -2,7 +2,8 @@
 // from a state with no MSAL account still lands signed out with the session
 // cleared; forget clears the store and the memory and stays signed in; a scan
 // with nobody signed in reports where the scan shows and never rejects; the
-// demo's scan is the week-two toggle; and every button on every surface
+// demo's scan advances the sample to its follow-up snapshot and the banner's
+// selector picks either one; and every button on every surface
 // reaches these functions, never the sign-in library, the store or the
 // collector directly.
 //
@@ -106,13 +107,31 @@ test('a scan with nobody signed in never rejects: it reports where the scan show
   assert.equal(fakeWindow.location.hash, '#/plan', 'nowhere to go')
 })
 
-test("the demo's scan is the week-two snapshot and back, with where to return kept for the landing", async () => {
+test("the demo's scan advances to the follow-up snapshot and only ever forwards, with where to return kept for the landing", async () => {
   fakeWindow.location.search = '?demo=1'
   setSession({ account })
   await actions.scan('#/plan/s-verify-mfa')
   assert.equal(getSession().demoWeek2, true)
   assert.equal(getSession().scan.returnTo, '#/plan/s-verify-mfa')
-  await actions.scan(null)
+  // A second Scan again on the follow-up snapshot does not walk the sample
+  // backwards in time: it stays where it is and goes where it was asked to go.
+  fakeWindow.location.hash = '#/connect'
+  await actions.scan('#/plan')
+  assert.equal(getSession().demoWeek2, true)
+  assert.equal(fakeWindow.location.hash, '#/plan', 'the second scan does not return to the page that asked for it')
+})
+
+test('the demo snapshot selector picks either synthetic scan, and does nothing outside the demo', () => {
+  fakeWindow.location.search = '?demo=1'
+  setSession({ account })
+  actions.showDemoSnapshot(true)
+  assert.equal(getSession().demoWeek2, true)
+  // Back to the initial scan: the selector is the way back, and it is the only one.
+  actions.showDemoSnapshot(false)
+  assert.equal(getSession().demoWeek2, false)
+  // Outside the demo it is not an action at all: a real tenant has one scan.
+  fakeWindow.location.search = ''
+  actions.showDemoSnapshot(true)
   assert.equal(getSession().demoWeek2, false)
 })
 

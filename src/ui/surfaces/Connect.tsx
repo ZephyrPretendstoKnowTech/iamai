@@ -38,7 +38,7 @@ import type { PolicyChange } from '../../derive/baselineDiff.ts'
 import { PINNED_GOAL_MAP } from '../../roadmap/goalMap.ts'
 import type { ScanRecord } from '../scan/scanRecord.ts'
 import { roleName } from '../../roles.ts'
-import { demoUrl, isDemo } from '../demoMode.ts'
+import { demoUrl, exitDemoUrl, isDemo } from '../demoMode.ts'
 // The sample tenant's four facts, computed from the demo fixture through the
 // plan engine at build time (vite.config.ts demoFactsModule): the signed-out
 // page reads four numbers and never loads the demo chunk.
@@ -52,7 +52,7 @@ import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { W, accountTile, baselineTile, planTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
+import { W, accountTile, baselineTile, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
 import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { usePlanData } from './planData.ts'
@@ -364,7 +364,11 @@ function SignedIn({
   // A first scan stays here and offers the plan; Scan again returns to the Plan when it lands (target-state §2).
   const start = (first: boolean): void => tile3.run(runScan(first ? null : PLAN_HREF))
 
-  const t1 = accountTile({ tenant, upn, role: accountRole(roleIds) })
+  // In the demo nobody is signed in: tile 1 is sample context, and its one
+  // action is the way out. The signed-in tile's two actions are Microsoft's
+  // (a real sign-in, and a clear of the real sign-in cache), so the demo must
+  // not offer them over a tenant that is a fixture.
+  const t1 = isDemo() ? sampleTile({ tenant, upn }) : accountTile({ tenant, upn, role: accountRole(roleIds) })
   // Tile 3's one state, in priority: no role, scanning, gaps, complete, ready.
   const scanInput: ScanInput = roleGap
     ? { kind: 'role', upn, gap: roleGap }
@@ -419,8 +423,14 @@ function SignedIn({
         <p>{lead(upn, t1.line)}</p>
         <p className="quiet">{t1.note}</p>
         <div className="actions">
-          <Act action={t1.actions[0]} onClick={() => tile1.run(signInAnother())} />
-          <Act action={t1.actions[1]} onClick={() => tile1.run(signOut())} />
+          {isDemo() ? (
+            <Act action={t1.actions[0]} href={exitDemoUrl()} />
+          ) : (
+            <>
+              <Act action={t1.actions[0]} onClick={() => tile1.run(signInAnother())} />
+              <Act action={t1.actions[1]} onClick={() => tile1.run(signOut())} />
+            </>
+          )}
         </div>
         {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
       </Tile>
