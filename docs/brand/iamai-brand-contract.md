@@ -324,9 +324,9 @@ does not.
 
 A hierarchy, **not** a licence to cardify every section. Most of IAMAI is rows and rules on a
 flat surface, and it should stay that way; 12px is for the small number of panels that are
-genuinely a grouped object. Production currently enforces one 4px token
-(`src/ui/tokens.ts`, `src/ui/design-lint.test.ts` rule 3); the restoration pack turns that
-rule into this hierarchy.
+genuinely a grouped object. Task 030 applied all three
+(`src/ui/tokens.ts` `LAYOUT.radiusPx` / `radiusControlPx` / `radiusPanelPx`), and
+`src/ui/design-lint.test.ts` rule 3 admits a radius only through one of them.
 
 ## 9. Motion
 
@@ -369,17 +369,24 @@ not say "I". It says what it read and what follows from it.
 
 ---
 
-## 12. What task 029 switched on
+## 12. What is switched on, and by which task
 
-| | |
-|---|---|
-| favicon / app icon | wired, both the home page and the planner |
-| wordmark face available locally | yes |
-| palette applied to production | no — restoration pack |
-| typography applied to production | no — restoration pack |
-| shell header logo | no — restoration pack |
+This section is the current state. Task 029 owned the assets and this contract; task 030 —
+the theme, typography and shell foundation — applied the palette, the type system and the
+shell lockup. `docs/brand/brand-manifest.json` `production` carries the same four flags in
+machine-readable form, and `src/brand/brand.test.ts` fails when the two disagree.
 
-`src/ui/tokens.ts` still holds the paper/ink palette that shipped. Task 029 owns the assets
-and the contract; the restoration pack owns the shell, the theme and the type, so the
-palette, the typography and the anatomy change together against the approved packs rather
-than in three separate half-states.
+| | | Applied by |
+|---|---|---|
+| favicon / app icon | wired, both the home page and the planner | 029 |
+| wordmark face available locally | yes | 029 |
+| palette applied to production | yes — `src/ui/tokens.ts` holds Mineral Teal and Deep Mineral, §2's values byte for byte | 030 |
+| typography applied to production | yes — three families, the interface scale, the display ramp, and every role weight in a real staged face | 030 |
+| shell header logo | yes — the mark asset beside the live text `IAMAI` in `src/ui/shell/AppShell.tsx` | 030 |
+| page composition restored | no — Home, Connect, Plan and MFA Readiness are still the pre-brand anatomy; packs 031–038 | — |
+
+**Historical, for a reader of the task-029 record:** at the end of 029 none of the last four
+rows was true. `src/ui/tokens.ts` still held the paper/ink palette that shipped, the two
+staged Sans faces were not declared to any browser, and the shell carried no mark. 029
+deliberately stopped there, so that the palette, the typography and the anatomy would change
+together against the approved packs rather than in three separate half-states.

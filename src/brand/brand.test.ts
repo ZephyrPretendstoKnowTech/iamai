@@ -348,6 +348,43 @@ test('brand: the wordmark role and the type roles are named, not implied', () =>
   assert.ok(read(PROVENANCE).includes('SIL Open Font License'), 'the provenance record names the licence')
 })
 
+test('brand: the contract’s current-state table says what the manifest’s production flags say', () => {
+  // Two records of one fact drift, and a reader following the older one rebuilds
+  // against a state that no longer exists: after task 030 the manifest said the
+  // palette and the type were applied while the contract still said they were
+  // the restoration pack's to do. The rows below carry the flag's name, so the
+  // table cannot answer differently from the flag.
+  const rows = new Map<string, string>()
+  for (const m of read(CONTRACT).matchAll(/^\|\s*([a-z][^|]*?)\s*\|\s*(yes|no)\b[^|]*\|/gm)) rows.set(m[1].trim(), m[2])
+  const flags = manifest().production as unknown as Record<string, boolean>
+  for (const [row, flag] of [
+    ['palette applied to production', 'paletteApplied'],
+    ['typography applied to production', 'typographyApplied'],
+    ['shell header logo', 'shellLogoApplied'],
+    ['page composition restored', 'pageCompositionRestored'],
+  ] as const) {
+    const said = rows.get(row)
+    assert.ok(said, `the contract's current-state table has no "${row}" row`)
+    assert.equal(said === 'yes', flags[flag], `the contract says ${said} for "${row}"; the manifest's ${flag} is ${flags[flag]}`)
+  }
+  assert.equal(manifest().typography.appliedToProduction, flags.typographyApplied)
+})
+
+test('brand: the provenance record’s SHA-256 table is the bytes actually staged', () => {
+  // The record exists so a reader can re-verify a face against IBM's published
+  // package. A hash that drifted from the file it names proves nothing.
+  const rows = [...read(PROVENANCE).matchAll(/\| `(IBMPlex[A-Za-z0-9-]+\.woff2)` \|[^|]*\|[^|]*\| `([0-9a-f]{64})` \|/g)]
+  const staged = readdirSync('public/fonts').filter((f) => f.endsWith('.woff2'))
+  assert.deepEqual(
+    rows.map((m) => m[1]).sort(),
+    [...staged].sort(),
+    'the provenance table and public/fonts name different faces',
+  )
+  for (const [, file, sha] of rows) {
+    assert.equal(createHash('sha256').update(readFileSync(`public/fonts/${file}`)).digest('hex'), sha, `${file}: the recorded SHA-256 drifted`)
+  }
+})
+
 test('brand: the shape and motion bands are the approved ones', () => {
   const { ui } = manifest()
   assert.deepEqual(ui.radiusPx, { compactRow: 4, control: 8, keyPanel: 12 })

@@ -426,14 +426,19 @@ record from 028 and 029 and found no preview recorded as architecture anywhere.
 under `docs/design/` remain `SUPERSEDED` records. The quotation of task 016's prompt in §4
 keeps the upload file names because it is a verbatim historical quotation.
 
-### 9.3 One gap found in task 029, recorded rather than papered over
+### 9.3 One gap found in task 029, closed by task 030's first correction
 
 `brand-manifest.json` approves the display role as IBM Plex **Serif 700**. Task 029 staged
 IBM Plex **Sans** SemiBold and Bold in `public/fonts` for the wordmark, and no serif face
-above Medium. Production therefore sets a display heading in the heaviest serif face the
-repository actually holds — 500 — through `ROLE_WEIGHTS.display`, and the approved value in
-the manifest is untouched. `docs/brand/font-provenance.md` carries the exact command that
-stages the two missing faces; the pack that needs the heavier display changes one number.
+above Medium; task 030 first shipped `ROLE_WEIGHTS.display = 500` — the heaviest face the
+repository held — while the manifest said typography was applied to production. Recording a
+compromise is not the same as being allowed to keep it, and an approved weight nothing sets
+is a manifest that cannot be trusted about the weights it does set.
+
+Correction 1 staged Serif SemiBold and Bold from `@ibm/plex-serif@1.1.0`, normalised Regular
+and Medium onto the same release, and set the display role to the approved 700.
+`src/ui/tokens.test.ts` reads each role's weight out of the manifest and fails if it has no
+staged, declared face, so the runtime and the authority cannot part again.
 
 ### 9.4 What task 030 did not do
 

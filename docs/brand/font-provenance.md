@@ -39,9 +39,9 @@ the same set of files IBM publishes for exactly this use:
 | [`@ibm/plex-mono`](https://www.npmjs.com/package/@ibm/plex-mono) | 1.1.0 | `fonts/split/woff2/` |
 | [`@ibm/plex`](https://www.npmjs.com/package/@ibm/plex) (umbrella) | 6.4.1 | `IBM-Plex-<Family>/fonts/split/woff2/` |
 
-No IBM Plex package is a dependency of this repository. The faces are seven files totalling
-about 150 KB; a ~4 MB (single family) to ~170 MB (umbrella) package in the lockfile to serve
-seven of them would be a cost every `npm ci` pays for nothing. The files are copied from the
+No IBM Plex package is a dependency of this repository. The faces are nine files totalling
+about 195 KB; a ~4 MB (single family) to ~170 MB (umbrella) package in the lockfile to serve
+nine of them would be a cost every `npm ci` pays for nothing. The files are copied from the
 published package, and their SHA-256 is recorded here so the copy can be re-verified against
 the source at any time:
 
@@ -58,8 +58,10 @@ IBM's published package.
 
 | File | Family | Weight | SHA-256 | Verified against |
 |---|---|---|---|---|
-| `IBMPlexSerif-Regular-Latin1.woff2` | IBM Plex Serif | 400 | `324a502545695a3e8dd9e9d9273ec56e3aa2a729689807756b9439e2c7a48071` | earlier Plex release (see below) |
-| `IBMPlexSerif-Medium-Latin1.woff2` | IBM Plex Serif | 500 | `3c9cce76ac4f3ced490650e2688f926e19f3da6cb49245db0a3b1c35d45c3253` | earlier Plex release (see below) |
+| `IBMPlexSerif-Regular-Latin1.woff2` | IBM Plex Serif | 400 | `6ebe5b7a2bbe864712e0d87a785a77ebde8a58d940d6163c1f03c6ffab1cd9a9` | `@ibm/plex-serif@1.1.0`, byte-identical |
+| `IBMPlexSerif-Medium-Latin1.woff2` | IBM Plex Serif | 500 | `63192198a475ef816e7bb4e8c08c92cb7a5375e7b2f49c0539dd81975ca03435` | `@ibm/plex-serif@1.1.0`, byte-identical |
+| `IBMPlexSerif-SemiBold-Latin1.woff2` | IBM Plex Serif | 600 | `1d34d4612be8d2f06a25858a8bc3c3c3b5c4ec0ee1285501c3a4df2ddace7afa` | `@ibm/plex-serif@1.1.0`, byte-identical |
+| `IBMPlexSerif-Bold-Latin1.woff2` | IBM Plex Serif | 700 | `73857a0df38d16f442de5b1dfcbd119c75d123e783aaa82de781dcb531c6320b` | `@ibm/plex-serif@1.1.0`, byte-identical |
 | `IBMPlexSans-Regular-Latin1.woff2` | IBM Plex Sans | 400 | `b5ad7bd39f996144915f0ad9849a90183b27d8c28ad97ed98af5b1bebc51f6b1` | `@ibm/plex-sans@1.1.0`, byte-identical |
 | `IBMPlexSans-Medium-Latin1.woff2` | IBM Plex Sans | 500 | `b5610af04d0d4b5a14a621d96d974b993e945a065db1a8861918f69ef9321934` | `@ibm/plex-sans@1.1.0`, byte-identical |
 | `IBMPlexSans-SemiBold-Latin1.woff2` | IBM Plex Sans | 600 | `fff0ab3a88b0b4aa0b693e4f0201359a15183b08e3fa5696d1918d8f0ade8ad5` | `@ibm/plex-sans@1.1.0`, byte-identical |
@@ -76,42 +78,42 @@ emphasises with weight and with structure, not with slant — and an unshipped f
 request never made. A browser will synthesise an oblique if some future CSS asks for italic;
 the design lint's font rules are what stop that being asked for.
 
-### The two the Sans release does not match
+### The one face the current release does not match
 
-`IBMPlexSans-Regular/Medium` are byte-identical to `@ibm/plex-sans@1.1.0`. The Serif and Mono
-faces predate that release: they are IBM Plex split Latin-1 `woff2` under the same OFL, from
-an earlier Plex version than 6.4.1, and their bytes differ from the current publication.
+Every Sans and every Serif face is byte-identical to `@ibm/plex-sans@1.1.0` /
+`@ibm/plex-serif@1.1.0`. Task 030's correction normalised the Serif family: Regular and
+Medium predated 1.1.0, and adding SemiBold and Bold from 1.1.0 beside them would have left
+one family typeset from two releases, so all four were replaced from the same package at the
+same time. That is a metric change to every rendered serif heading, which is why it belongs
+to a typography task and not to an asset task.
 
-This is recorded rather than repaired. Replacing a shipped face changes the metrics of every
-rendered page, which is a typography change, and typography application belongs to the
-restoration pack — where it can be seen against the approved packs instead of landing
-invisibly inside an asset task. **Pack 030 should normalise all four Serif/Mono faces onto
-one Plex release** at the same time it applies the type roles.
+`IBMPlexMono-Regular-Latin1.woff2` still predates 1.1.0. It is a single face in a family of
+one, so it cannot disagree with a sibling, and nothing in the type roles asks Mono for a
+second weight. Normalising it changes the metrics of every code block and identifier for no
+correctness gain; a pack that restores a technical surface can take it.
 
-## Local readiness — what 029 did, what 030 owes
+## Local readiness — what is switched on
 
-Task 029 added the two faces the brand contract's roles need and nothing else:
+Task 029 staged the two Sans faces the brand contract's roles need:
 
 - `IBMPlexSans-SemiBold-Latin1.woff2` (600) — strong body, labels, controls;
 - `IBMPlexSans-Bold-Latin1.woff2` (700) — the `IAMAI` wordmark.
 
-They are **staged, not switched on**: `FONT_FILES` in `src/ui/tokens.ts` still lists the five
-faces production renders, so `tokens.css`, the preloads in `index.html` and every rendered
-page are byte-for-byte unchanged by their presence. Nothing downloads them yet.
+Task 029 staged them without switching them on: `FONT_FILES` in `src/ui/tokens.ts` listed
+five faces, so nothing downloaded the other two. Task 030 applied the type roles and its
+correction finished them, and every weight the product sets now has a real face:
 
-That is deliberate. The wordmark's face has to exist before anything can typeset the wordmark
-— a browser asked for weight 700 with no 700 face draws a synthesised fake bold, which is not
-the approved wordmark — but turning the weights on is a production typography change, and
-this task does not make one.
+1. all nine faces are registered in `FONT_FILES`, so `@font-face` declares each one in the
+   generated `src/ui/tokens.css` and `home/theme.css`;
+2. `index.html` preloads the seven a first paint sets text in — Serif Regular, Medium and
+   Bold, Sans Regular, Medium and SemiBold, Mono Regular. Serif SemiBold is declared and not
+   preloaded, because no rule sets it yet;
+3. `ROLE_WEIGHTS.display` is the brand's approved **700**, set in a real IBM Plex Serif Bold
+   rather than a browser-synthesised fake bold;
+4. `design-lint.test.ts` rule 4 admits a weight only through a named `--weight-*` role, and
+   `src/ui/tokens.test.ts` fails if a role's weight has no staged face, if a staged file is
+   undeclared, or if a declared file is unstaged. `src/brand/brand.test.ts` fails if the
+   SHA-256 table above stops matching the bytes under `public/fonts/`.
 
-**Pack 030 owes:**
-
-1. register 600 and 700 in `FONT_FILES`, regenerate `src/ui/tokens.css` (`node
-   scripts/gen-tokens.mjs`) and `home/theme.css`, and preload only the faces the first paint
-   actually uses;
-2. widen `design-lint.test.ts` rule 4 from `400|500` to the weights the contract's role table
-   names;
-3. add IBM Plex Serif 600/700 for the display and heading roles, from the same release it
-   normalises Serif onto;
-4. typeset the header lockup as the mark asset beside the live text `IAMAI` in IBM Plex Sans
-   700 — never as an exported SVG carrying `<text>`.
+**Still open for a later pack:** typeset the header lockup as the mark asset beside the live
+text `IAMAI` in IBM Plex Sans 700 — never as an exported SVG carrying `<text>`.
