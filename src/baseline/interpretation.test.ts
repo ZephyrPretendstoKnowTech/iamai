@@ -59,15 +59,20 @@ const NONE = noInterpretation('Jhope188', 'ConditionalAccessPolicies')
 
 /**
  * A record settled against SOURCE as it stands: the policies that include the
- * reference, and what each of those policies was when it was read
- * (`policyContext`). A record that names the policies and not what they were is
- * a record no later package can be checked against.
+ * reference, any exclusion of it the evidence cites, and what each of those
+ * policies was when it was read (`policyContext`). A record that names the
+ * policies and not what they were is a record no later package can be checked
+ * against.
  */
 const settled = (over: Partial<InterpretationRecord> & Pick<InterpretationRecord, 'id' | 'meaning'>, policies: CaPolicy[] = SOURCE): InterpretationRecord => {
   const includedIn = over.includedIn ?? (referenceUsage(policies).find((u) => u.id === over.id.toLowerCase())?.includedIn ?? [])
+  const excludedFrom = over.excludedFrom ?? []
   const context: Record<string, string> = {}
-  for (const p of policies) if (includedIn.includes(p.id ?? p.displayName)) context[p.id ?? p.displayName] = policyContext(p)
-  return { kind: 'group', basis: 'documented', evidence: 'documented', ...over, id: over.id.toLowerCase(), includedIn, context }
+  for (const p of policies) {
+    const k = p.id ?? p.displayName
+    if (includedIn.includes(k) || excludedFrom.includes(k)) context[k] = policyContext(p)
+  }
+  return { kind: 'group', basis: 'documented', evidence: 'documented', excludedFromAtLeast: 0, ...over, id: over.id.toLowerCase(), includedIn, excludedFrom, context }
 }
 
 const tokensFor = (interpretation: BaselineInterpretation, policies: CaPolicy[] = SOURCE): Map<string, string> =>
@@ -179,6 +184,104 @@ test('a benign change to that policy does not disturb the reading', () => {
   assert.equal(read.tokens.get(SVC), 'serviceAccountsGroup')
 })
 
+// ---- a reading settled off the exclusion side ----
+//
+// Three of the shipped baseline's specialised readings are read off exclusions
+// and nothing else - the allowed-countries location the countries policy
+// excludes, the trusted network two policies exclude, and the group excluded
+// from almost every policy. They were checked against the include side alone, so
+// the reference could move to another policy, or stay put while that policy
+// became something else, and the meaning was carried forward anyway - and each
+// of these meanings writes one of the adopting tenant's own objects into their
+// copy of the policy.
+
+/** The allowed-countries shape: a location no policy includes, read off the one that excludes it. */
+const settledPlace: BaselineInterpretation = {
+  ...NONE,
+  references: [settled({ id: PLACE, kind: 'namedLocation', meaning: 'allowedCountries', excludedFrom: ['p-geo'], evidence: 'the README of the policy that excludes it names it IAC - AllowedCountries' })],
+}
+
+const elsewhere = policy({ id: 'p-else', displayName: 'IAC - APP - BLOCK - Somewhere Else', conditions: { users: { includeUsers: ['All'] }, locations: { excludeLocations: [PLACE] } } })
+
+test('a reading settled off an exclusion is held for review when the reference moves to another policy', () => {
+  const moved = SOURCE.map((p) => (p.id === 'p-geo' ? policy({ id: 'p-geo', displayName: p.displayName, conditions: { users: { includeUsers: ['All'], excludeGroups: [BROAD] } } }) : p)).concat(elsewhere)
+  const read = interpretReferences(settledPlace, referenceUsage(moved))
+  assert.equal(read.reviewRequired.length, 1, 'the policy the meaning was read off no longer excludes it')
+  assert.match(read.reviewRequired[0].why, /no longer excludes it/)
+  assert.equal(read.tokens.get(PLACE), undefined, 'and the tenant is not given the allowed-countries location on the old reading')
+})
+
+test('a reading settled off an exclusion is held for review when that policy changes purpose', () => {
+  // Still excluded by the same policy, and the policy is not a countries block
+  // any more: it now grants a strength to one group. "The location that policy
+  // excludes so permitted countries are not blocked" is about a policy that is
+  // no longer there.
+  const rewritten = SOURCE.map((p) =>
+    p.id === 'p-geo'
+      ? policy({ id: 'p-geo', displayName: p.displayName, conditions: { users: { includeGroups: [SVC] }, locations: { excludeLocations: [PLACE] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+      : p,
+  )
+  const read = interpretReferences(settledPlace, referenceUsage(rewritten))
+  assert.equal(read.reviewRequired.length, 1)
+  assert.match(read.reviewRequired[0].why, /materially changed/)
+  assert.equal(read.tokens.get(PLACE), undefined)
+})
+
+test('a rename, a rollout and an unrelated exclusion leave a reading settled off an exclusion alone', () => {
+  const benign = SOURCE.map((p) =>
+    p.id === 'p-geo'
+      ? policy({
+          id: 'p-geo',
+          displayName: 'IAC - GLOBAL - BLOCK - Countries not Allowed (v2)',
+          state: 'enabled',
+          conditions: { users: { includeUsers: ['All'], excludeGroups: [BROAD, AVD] }, locations: { excludeLocations: [PLACE] } },
+        })
+      : p,
+  ).concat(elsewhere)
+  const read = interpretReferences(settledPlace, referenceUsage(benign))
+  assert.deepEqual(read.reviewRequired, [], 'none of that is what the location is')
+  assert.equal(read.tokens.get(PLACE), 'allowedCountries')
+})
+
+/** The global-exclusion shape: no policy includes it, and breadth is the evidence. */
+const settledBroad: BaselineInterpretation = {
+  ...NONE,
+  references: [settled({ id: BROAD, meaning: 'exclusionsGroup', excludedFromAtLeast: 3, evidence: 'excluded from every policy, and the naming guide defines the universal exclusion group' })],
+}
+
+test('a standing exclusion whose breadth has fallen away is held for review', () => {
+  const narrowed = SOURCE.map((p) => (p.id === 'p-svc' ? p : policy({ id: p.id!, displayName: p.displayName, conditions: { ...p.conditions, users: { ...p.conditions?.users, excludeGroups: [] } } })))
+  const read = interpretReferences(settledBroad, referenceUsage(narrowed))
+  assert.equal(read.reviewRequired.length, 1, 'a group excluded from one policy is not the universal exclusion')
+  assert.match(read.reviewRequired[0].why, /3 policies excluded it and 1 now do/)
+  assert.equal(read.tokens.get(BROAD), undefined, 'and the tenant’s break-glass group is not written in on the old reading')
+})
+
+test('being excluded from more policies does not disturb a standing exclusion', () => {
+  const more = [...SOURCE, policy({ id: 'p-new', displayName: 'IAC - GLOBAL - BLOCK - Something New', conditions: { users: { includeUsers: ['All'], excludeGroups: [BROAD] } } })]
+  const read = interpretReferences(settledBroad, referenceUsage(more))
+  assert.deepEqual(read.reviewRequired, [])
+  assert.equal(read.tokens.get(BROAD), 'exclusionsGroup')
+})
+
+test('a specialised reading that names no source usage at all is refused', () => {
+  // The record shape the exclusion-side readings shipped in: a meaning, evidence
+  // in prose, and nothing a later package can be checked against, so the
+  // reference could move anywhere in the source and the meaning would still be
+  // applied.
+  const record = (over: Record<string, unknown>) => ({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning: 'exclusionsGroup', basis: 'documented', evidence: 'excluded from almost every policy and the naming guide names it', includedIn: [], context: {}, ...over }] })
+  assert.throws(() => readInterpretation(record({})), /names no source usage/)
+  assert.doesNotThrow(() => readInterpretation(record({ excludedFromAtLeast: 31 })), 'breadth is a usage the next package can be checked against')
+  assert.doesNotThrow(() => readInterpretation(record({ excludedFrom: ['p-1'], context: { 'p-1': 'ctx' } })), 'so is the exclusion the evidence cites')
+  assert.throws(() => readInterpretation(record({ excludedFrom: ['p-1'] })), /records nothing about what that policy was/)
+  // The author stating what their own object is - the token they wrote into the
+  // export for a consumer to fill in - is evidence about the object, and it
+  // travels with the object rather than with any policy.
+  assert.doesNotThrow(() => readInterpretation(record({ basis: 'authorConfirmed' })))
+  // And an unknown reading carries no token, so it settles nothing to check.
+  assert.doesNotThrow(() => readInterpretation(record({ meaning: 'unknown' })))
+})
+
 test('a reference used as another kind is held for review', () => {
   const asLocation: BaselineInterpretation = { ...NONE, references: [settled({ id: PLACE, meaning: 'exclusionsGroup', includedIn: [] })] }
   const read = interpretReferences(asLocation, referenceUsage(SOURCE))
@@ -275,13 +378,31 @@ test('no group in the shipped pin carries a specialised meaning nothing settles'
 test('every shipped record that names a policy records what that policy was', () => {
   const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
   for (const r of shipped.references) {
-    assert.deepEqual(Object.keys(r.context).sort(), [...r.includedIn].sort(), `${r.id}: one context per policy it was settled against`)
-    for (const k of r.includedIn) assert.equal(r.context[k], usage.get(r.id)?.context[k], `${r.id}: the context recorded for ${k} is not the one this pin's ${k} has`)
+    const named = [...r.includedIn, ...r.excludedFrom]
+    assert.deepEqual(Object.keys(r.context).sort(), named.sort(), `${r.id}: one context per policy it was settled against`)
+    for (const k of named) assert.equal(r.context[k], usage.get(r.id)?.context[k], `${r.id}: the context recorded for ${k} is not the one this pin's ${k} has`)
+    for (const k of r.excludedFrom) assert.ok(usage.get(r.id)?.excludedFrom.includes(k), `${r.id}: settled against its exclusion from ${k} and this pin's ${k} does not exclude it`)
+    assert.ok((usage.get(r.id)?.excludedFrom.length ?? 0) >= r.excludedFromAtLeast, `${r.id}: settled on breadth this pin does not have`)
   }
   // And the shipped file passes its own reuse rule against the pin beside it:
   // nothing in it is being carried forward into a package it no longer fits.
   const read = interpretReferences(shipped, referenceUsage(pinnedPackage().policies))
   assert.deepEqual(read.reviewRequired, [])
+})
+
+test('every specialised reading the shipped pin uses names the usage it rests on', () => {
+  // The check the tokens in the pin actually depend on: a meaning that puts one
+  // of the adopting tenant's objects into a policy has to name a use of the
+  // reference the next package can be measured against - the policies that
+  // include it, the exclusions its evidence cites, or the breadth it is read
+  // off. Without one nothing about the source could move it out of review.
+  const used = new Set<string>()
+  for (const p of pinned.policies) for (const [id, token] of Object.entries(p.placeholders ?? {})) if (token !== 'strength') used.add(id.toLowerCase())
+  assert.ok(used.size > 0)
+  for (const r of shipped.references) {
+    if (!used.has(r.id) || r.basis === 'authorConfirmed') continue
+    assert.ok(r.includedIn.length > 0 || r.excludedFrom.length > 0 || r.excludedFromAtLeast > 0, `${r.id} carries ${r.meaning} in the pin and names no source usage it rests on`)
+  }
 })
 
 test('the pin left the author own everything the interpretation settles as unknown', () => {
