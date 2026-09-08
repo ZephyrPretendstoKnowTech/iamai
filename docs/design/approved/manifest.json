@@ -1,8 +1,17 @@
 {
-  "$comment": "The design-authority manifest (task 028). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Current production is NOT assumed to match: task 028 established the authority, packs 030+ do the restoration. The brand skin is recorded in docs/design/brand-decisions.md and the forensic record in docs/design/authority-reconciliation.md.",
-  "version": 1,
+  "$comment": "The design-authority manifest (task 028, corrected by task 030). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Current production is NOT assumed to match: task 028 established the authority, task 030 built the theme/typography/shell foundation, and packs 031+ do the surface restoration. The brand skin is recorded in docs/brand/brand-manifest.json and docs/design/brand-decisions.md; the forensic record is docs/design/authority-reconciliation.md.",
+  "version": 2,
   "establishedBy": "028-design-brand-authority-reconciliation",
   "establishedOn": "2026-09-08",
+  "correctedBy": "030-theme-typography-shell-foundation",
+  "correctedOn": "2026-09-08",
+  "correctionNote": "Version 1 recorded each surface under the owner's upload file name (iamai-home-design-pack-v2.html and so on). The canonical repository file names are the short forms below, and task 030 deleted the byte-identical long-named copies so a surface cannot have two current files. The bytes and the hashes did not change; only the paths did. The original upload names are kept as `ownerApprovedSourceName` provenance.",
+  "authority": {
+    "$comment": "The three sentences a later pack must be able to read as values rather than infer from prose.",
+    "canonicalHtmlIsApplicationDesignAuthority": true,
+    "renderedReferenceIsDerivedOnly": true,
+    "generatedBrandApplicationPreviewsAreAuthoritative": false
+  },
   "precedence": {
     "$comment": "Resolution order when two authorities appear to disagree. Truth outranks the picture; the picture outranks the skin. A design that appears to require a different technical meaning does not get one: the design adapts, or the bounded sub-item stops.",
     "order": [
@@ -17,28 +26,48 @@
       "name": "Home",
       "produces": "home/index.html (getiamai.com/)",
       "ownerApprovedSourceName": "iamai-home-design-pack-v2.html",
-      "path": "docs/design/approved/iamai-home-design-pack-v2.html",
+      "path": "docs/design/approved/home-v2.html",
       "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50",
+      "declaredTitle": "IAMAI Home Design Pack v2",
+      "observed": {
+        "$comment": "Read directly out of the file by task 030, not paraphrased from a prompt.",
+        "desktopWidthCss": "min(1040px, calc(100% - 40px))",
+        "desktopWidthPx": 1040,
+        "displayFamily": "serif",
+        "displayPx": 50,
+        "breakpointsPx": [760, 560]
+      },
       "authorityRole": "application visual/interaction/hierarchy/density/responsive",
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
       "implementationState": "restoration-pending",
-      "productionAssumedConformant": false
+      "productionAssumedConformant": false,
+      "restorationPack": "038"
     },
     {
       "surface": "connect",
       "name": "Connect",
       "produces": "#/connect",
       "ownerApprovedSourceName": "iamai-connect-design-pack-v3.html",
-      "path": "docs/design/approved/iamai-connect-design-pack-v3.html",
+      "path": "docs/design/approved/connect-v3.html",
       "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b",
+      "declaredTitle": "IAMAI Connect Design Pack v1",
+      "declaredTitleNote": "The <title> inside the file still says v1; the owner's file name, and this record, say v3. The bytes and the hash are the identity — a stale title element inside an approved file is not a reason to edit the file.",
+      "observed": {
+        "desktopWidthCss": "min(1040px, calc(100% - 40px))",
+        "desktopWidthPx": 1040,
+        "displayFamily": "serif",
+        "displayPx": 40,
+        "breakpointsPx": [760]
+      },
       "authorityRole": "application visual/interaction/hierarchy/density/responsive",
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
       "implementationState": "restoration-pending",
-      "productionAssumedConformant": false
+      "productionAssumedConformant": false,
+      "restorationPack": "032"
     },
     {
       "surface": "plan",
@@ -46,33 +75,54 @@
       "produces": "#/plan and the opened step",
       "ownerApprovedSourceName": "plan-step-design-pack(1).html",
       "sourceNameNote": "The (1) is upload provenance from the owner's original file name only. The canonical repository file name drops it; nothing may reintroduce a second current Plan pack under the (1) name.",
-      "path": "docs/design/approved/iamai-plan-step-design-pack.html",
+      "path": "docs/design/approved/plan-step-v1.html",
       "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec",
+      "declaredTitle": "IAMAI Plan Step Design Pack",
+      "observed": {
+        "desktopWidthCss": "min(1240px, calc(100% - 44px))",
+        "desktopWidthPx": 1240,
+        "displayFamily": "serif",
+        "displayPx": 42,
+        "breakpointsPx": [940, 650],
+        "stickyTopbar": true,
+        "rightRailPx": 290
+      },
       "authorityRole": "application visual/interaction/hierarchy/density/responsive",
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
       "implementationState": "restoration-pending",
-      "productionAssumedConformant": false
+      "productionAssumedConformant": false,
+      "restorationPack": "033-036"
     },
     {
       "surface": "mfa-readiness",
       "name": "MFA Readiness",
       "produces": "#/readiness",
       "ownerApprovedSourceName": "iamai-mfa-readiness-design-pack-v2.html",
-      "path": "docs/design/approved/iamai-mfa-readiness-design-pack-v2.html",
+      "path": "docs/design/approved/mfa-readiness-v2.html",
       "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512",
+      "declaredTitle": "IAMAI MFA Readiness Design Pack v2",
+      "observed": {
+        "desktopWidthCss": "min(1200px, calc(100% - 40px))",
+        "desktopWidthPx": 1200,
+        "displayFamily": "serif",
+        "displayPx": 38,
+        "breakpointsPx": [900, 620]
+      },
       "authorityRole": "application visual/interaction/hierarchy/density/responsive",
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
       "implementationState": "restoration-pending",
-      "productionAssumedConformant": false
+      "productionAssumedConformant": false,
+      "restorationPack": "037"
     }
   ],
   "brand": {
-    "$comment": "The approved brand skin. It may repaint the approved anatomy; it may not rearrange it.",
+    "$comment": "The approved brand skin. It may repaint the approved anatomy; it may not rearrange it. The machine-readable brand authority is docs/brand/brand-manifest.json (task 029).",
     "record": "docs/design/brand-decisions.md",
+    "manifest": "docs/brand/brand-manifest.json",
     "light": "Mineral Teal",
     "dark": "Deep Mineral",
     "typography": {
@@ -82,10 +132,12 @@
     },
     "logoDirection": "Guided Route — Variant 2",
     "assetsOwnedBy": "029-final-brand-assets-contract",
+    "appliedToProductionBy": "030-theme-typography-shell-foundation",
     "applicationLayoutAuthority": false
   },
   "generatedPreviews": {
-    "$comment": "Application-page previews produced during the branding exploration. They are brand/colour framing only. This manifest deliberately records no path for them: a generated preview is never an entry in `surfaces`, and nothing may promote one to an application authority.",
+    "$comment": "Application-page previews produced during the branding exploration. They are brand/colour framing only. This manifest deliberately records no path for them: a generated preview is never an entry in `surfaces`, and nothing may promote one to an application authority. Task 030 re-checked every design and brand record created by tasks 028 and 029 and found no preview recorded as architecture.",
+    "authoritative": false,
     "applicationLayoutAuthority": false,
     "architectureAuthority": false,
     "componentPlacementAuthority": false,
@@ -97,10 +149,22 @@
     "supersedes": []
   },
   "renderedEvidence": {
-    "$comment": "Passing code and tests cannot prove visual conformance. A restoration task compares the rendered surface with its pack.",
+    "$comment": "Passing code and tests cannot prove visual conformance. A restoration task compares the rendered surface with its pack. The canonical HTML is the authority and a PNG under `output` is derived reference only — never the other way round.",
     "widths": [1280, 768, 390],
-    "mechanism": "scripts/walk.mjs",
+    "mechanism": "scripts/render-design.mjs",
+    "command": "node scripts/render-design.mjs [--canonical] [--production]",
+    "output": "docs/design/approved/rendered/<surface>/<width>.png",
+    "walkNote": "scripts/walk.mjs renders the built application at 1280 only. Version 1 of this manifest named the walk as the mechanism for all three widths, which was never true; task 030 added the renderer above, which takes all three and renders the canonical HTML itself.",
     "contract": "docs/design/authority-reconciliation.md#6-rendered-evidence-contract-for-packs-029"
+  },
+  "foundation": {
+    "$comment": "What task 030 put underneath the restoration packs. It is capability, not composition: no page anatomy was restored.",
+    "task": "030-theme-typography-shell-foundation",
+    "report": "docs/design/reports/030-theme-typography-shell-foundation.md",
+    "tokens": "src/ui/tokens.ts",
+    "generatedCss": "src/ui/tokens.css",
+    "shell": "src/ui/shell/AppShell.tsx",
+    "routeWidths": { "home": 1040, "connect": 1040, "plan": 1240, "mfa-readiness": 1200, "default": 760 }
   },
   "reconciliation": "docs/design/authority-reconciliation.md"
 }

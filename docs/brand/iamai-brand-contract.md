@@ -22,10 +22,10 @@ Brand is a skin over an anatomy.
 
    | Surface | File | SHA-256 |
    |---|---|---|
-   | Home | [`docs/design/approved/iamai-home-design-pack-v2.html`](../design/approved/iamai-home-design-pack-v2.html) | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
-   | Connect | [`docs/design/approved/iamai-connect-design-pack-v3.html`](../design/approved/iamai-connect-design-pack-v3.html) | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
-   | Plan + step | [`docs/design/approved/iamai-plan-step-design-pack.html`](../design/approved/iamai-plan-step-design-pack.html) | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
-   | MFA Readiness | [`docs/design/approved/iamai-mfa-readiness-design-pack-v2.html`](../design/approved/iamai-mfa-readiness-design-pack-v2.html) | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
+   | Home | [`docs/design/approved/home-v2.html`](../design/approved/home-v2.html) | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
+   | Connect | [`docs/design/approved/connect-v3.html`](../design/approved/connect-v3.html) | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
+   | Plan + step | [`docs/design/approved/plan-step-v1.html`](../design/approved/plan-step-v1.html) | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
+   | MFA Readiness | [`docs/design/approved/mfa-readiness-v2.html`](../design/approved/mfa-readiness-v2.html) | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
 
 3. **This brand skin.**
 

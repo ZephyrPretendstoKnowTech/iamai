@@ -585,7 +585,10 @@ try {
       /Account/.test(t),
     t.replace(/\s+/g, ' ').slice(0, 120),
   )
-  check('Name: the wordmark is IAMAI Planner and the tab title carries the descriptor', /^IAMAI Planner/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', await evaluate('document.title'))
+  // The lockup is the brand's, the tab title is the product's (task 030): the
+  // approved packs and docs/brand/brand-manifest.json both set the wordmark to
+  // IAMAI, while IAMAI Planner stays the registered application and the title.
+  check('Name: the wordmark is IAMAI and the tab title carries the product name and descriptor', /^IAMAI(?!\s+Planner)/.test(t.trim()) && (await evaluate('document.title')) === 'IAMAI Planner — Conditional Access rollout planner', `${t.trim().slice(0, 40)} | ${await evaluate('document.title')}`)
   check('Header: no scan control and no scan age on any page', !/Scan to update the plan|scanned|Re-scan/.test(t), t.replace(/\s+/g, ' ').slice(0, 120))
   check('Header: the theme and Account controls are text, not button faces', await evaluate(`document.querySelectorAll('header.app .right button').length >= 2 && [...document.querySelectorAll('header.app .right button')].every((b) => { const cs = getComputedStyle(b); return cs.borderTopWidth === '0px' && cs.backgroundColor === 'rgba(0, 0, 0, 0)' && cs.paddingLeft === '0px' })`))
   check('Header: no sidebar, no stepper', (await evaluate(`document.querySelectorAll('.stepper, .body-grid, .topbar').length`)) === 0)

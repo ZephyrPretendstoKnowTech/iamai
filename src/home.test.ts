@@ -2,7 +2,7 @@
 //
 // These assertions hold the page as built to its generator and to its content.
 // They are not the owner's design target: Home's visual authority is
-// docs/design/approved/iamai-home-design-pack-v2.html (see
+// docs/design/approved/home-v2.html (see
 // docs/design/approved/manifest.json), which this page does not yet implement.
 // A restoration pack updates these structural assertions with the page; task 028
 // only corrected what they claim to be (docs/design/authority-reconciliation.md).
@@ -453,19 +453,19 @@ test('the built page, with its stylesheet, renders the tokens: the primary butto
     })()`)) as Rendered
     assert.deepEqual(r.sheets, Object.keys(built).filter((n) => n !== 'index.html'), 'the page holds the versioned sheets')
     assert.deepEqual(r.primary, {
-      backgroundColor: rgb(LIGHT.accent),
-      color: rgb(LIGHT.onAccent),
-      borderTopColor: rgb(LIGHT.accent),
+      backgroundColor: rgb(LIGHT.brandPrimary),
+      color: rgb(LIGHT.onBrand),
+      borderTopColor: rgb(LIGHT.brandPrimary),
       borderTopLeftRadius: `${LAYOUT.radiusPx}px`,
       height: `${LAYOUT.controlPx}px`,
       fontWeight: '500',
       textDecorationLine: 'none',
     })
-    assert.deepEqual(r.secondary, { backgroundColor: 'rgba(0, 0, 0, 0)', color: rgb(LIGHT.accent), borderTopColor: rgb(LIGHT.accent), textDecorationLine: 'none' })
-    assert.deepEqual(r.tertiary, { backgroundColor: rgb(LIGHT.bgInset), color: rgb(LIGHT.ink2), borderTopColor: rgb(LIGHT.ruleStrong), textDecorationLine: 'none' })
+    assert.deepEqual(r.secondary, { backgroundColor: 'rgba(0, 0, 0, 0)', color: rgb(LIGHT.brandPrimary), borderTopColor: rgb(LIGHT.brandPrimary), textDecorationLine: 'none' })
+    assert.deepEqual(r.tertiary, { backgroundColor: rgb(LIGHT.secondarySurface), color: rgb(LIGHT.secondaryText), borderTopColor: rgb(LIGHT.strongLine), textDecorationLine: 'none' })
     // A section is a rule and nothing else: no fill, no radius, no box.
-    assert.deepEqual(r.band, { backgroundColor: 'rgba(0, 0, 0, 0)', borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: rgb(LIGHT.rule), borderTopLeftRadius: '0px' })
-    assert.deepEqual(r.bandHeading, { textTransform: 'uppercase', fontSize: `${TYPE['t-2']}px`, fontWeight: '500', color: rgb(LIGHT.ink3) })
+    assert.deepEqual(r.band, { backgroundColor: 'rgba(0, 0, 0, 0)', borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: rgb(LIGHT.line), borderTopLeftRadius: '0px' })
+    assert.deepEqual(r.bandHeading, { textTransform: 'uppercase', fontSize: `${TYPE['t-2']}px`, fontWeight: '500', color: rgb(LIGHT.mutedText) })
     // The buttons are the only boxed things on the page: no card wall came back.
     assert.equal(r.boxes, 5, `${r.boxes} boxed elements in the page body; only the five buttons carry a border, and nothing else is a panel`)
     assert.deepEqual(r.beat, { display: 'inline-block', width: '76px' })

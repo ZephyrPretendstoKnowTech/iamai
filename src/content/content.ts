@@ -69,7 +69,7 @@ export const pages = content.pages
  * live with the app's own words (pages.app.shell.product) rather than on the home
  * page, which since task 016 introduces IAMAI by what it does, not by a tool card.
  */
-export const planner = (content.pages.app.shell as { product: { name: string; descriptor: string } }).product
+export const planner = (content.pages.app.shell as { product: { wordmark: string; name: string; descriptor: string } }).product
 
 /** The words the app chrome and the surfaces show (pages.app): the header, the scan progress, the print cover, the export alerts. */
 export type AppWords = {

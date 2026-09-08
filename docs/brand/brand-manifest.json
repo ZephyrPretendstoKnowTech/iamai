@@ -155,8 +155,9 @@
     "hosting": "self-hosted woff2 under public/fonts",
     "remoteFontCdn": false,
     "provenance": "docs/brand/font-provenance.md",
-    "appliedToProduction": false,
-    "appliedBy": "030 (shell/theme/typography restoration)"
+    "appliedToProduction": true,
+    "appliedBy": "030-theme-typography-shell-foundation",
+    "appliedNote": "Task 030 wired the three families and the interface scale, and added the display ramp read out of the four approved packs (src/ui/tokens.ts DISPLAY). IBM Plex Serif SemiBold and Bold are NOT staged under public/fonts — task 029 staged Sans 600/700 for the wordmark only — so production sets a display heading in the heaviest staged serif face, Medium/500 (src/ui/tokens.ts ROLE_WEIGHTS.display). The approved display weight above stays 700: it is the owner's value, and the pack that stages the two faces changes one token."
   },
   "ui": {
     "icons": {
@@ -186,10 +187,10 @@
     "brandMayChange": ["palette", "type family within an approved role", "logo", "icons", "radius and surface treatment where compatible", "hover/press/focus treatment", "restrained motion"],
     "brandMayNotChange": ["page anatomy", "major composition", "workflow", "information hierarchy", "major component placement", "disclosure structure", "table/row architecture", "responsive behaviour", "technical truth", "accurate production copy"],
     "surfaces": [
-      { "surface": "home", "path": "docs/design/approved/iamai-home-design-pack-v2.html", "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50" },
-      { "surface": "connect", "path": "docs/design/approved/iamai-connect-design-pack-v3.html", "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b" },
-      { "surface": "plan", "path": "docs/design/approved/iamai-plan-step-design-pack.html", "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec" },
-      { "surface": "mfa-readiness", "path": "docs/design/approved/iamai-mfa-readiness-design-pack-v2.html", "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512" }
+      { "surface": "home", "path": "docs/design/approved/home-v2.html", "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50" },
+      { "surface": "connect", "path": "docs/design/approved/connect-v3.html", "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b" },
+      { "surface": "plan", "path": "docs/design/approved/plan-step-v1.html", "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec" },
+      { "surface": "mfa-readiness", "path": "docs/design/approved/mfa-readiness-v2.html", "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512" }
     ]
   },
   "generatedBrandApplicationPreviews": {
@@ -214,11 +215,12 @@
     "visualEvidence": "docs/screens/29"
   },
   "production": {
-    "$comment": "What this task did and did not switch on. The favicon is an asset swap with no layout consequence; the palette, the type scale and the shell are the restoration pack's work, and tokens.ts still holds the paper/ink palette that shipped.",
+    "$comment": "What is switched on in production. Task 029 wired the favicon; task 030 applied the palette, the type system and the shell lockup. Page-specific composition for Home, Connect, Plan and MFA Readiness is still pending, and belongs to packs 031-038.",
     "faviconWired": true,
-    "paletteApplied": false,
-    "typographyApplied": false,
-    "shellLogoApplied": false,
-    "appliedBy": "030"
+    "paletteApplied": true,
+    "typographyApplied": true,
+    "shellLogoApplied": true,
+    "appliedBy": "030-theme-typography-shell-foundation",
+    "pageCompositionRestored": false
   }
 }

@@ -18,7 +18,7 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { Button } from '../components/index.ts'
-import { RingMark } from '../components/Ring.tsx'
+import { BrandMark } from '../components/Mark.tsx'
 import { forgetTenant, showDemoSnapshot, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
@@ -30,8 +30,20 @@ import type { Route } from './routes.ts'
 export { PLAN_HREF, PLAN_ROUTE, resolveHash } from './routes.ts'
 export type { Route } from './routes.ts'
 
-// Pages whose main content is a table read better with the wider cap.
-const WIDE_ROUTES = new Set<Route>(['readiness', 'inventory', 'how'])
+/**
+ * The width a route reads at is CSS, keyed off `data-route` on the page element
+ * (src/ui/app.css, `main.page[data-route=…]`). The values are one authority,
+ * src/ui/tokens.ts ROUTE_WIDTHS, and each of them was read out of that
+ * surface's approved pack in docs/design/approved/: Connect 1040, Plan 1240,
+ * MFA Readiness 1200. Every other route keeps the prose page.
+ *
+ * A wide page is not a wide paragraph: prose stays at the reading measure
+ * (`--measure`) and a lead at `--measure-lead`, so widening Plan gave the plan
+ * room without setting a sentence 1240px long.
+ *
+ * This replaced a boolean `page-wide` class, which could only say "the table
+ * one" and had no way to say what each approved surface is actually set to.
+ */
 
 export const REPO_URL = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 
@@ -215,9 +227,14 @@ export function AppShell({
   return (
     <div className="shell">
       <header className="app">
+        {/* The brand lockup: the Guided Route mark beside the wordmark IAMAI,
+            composed at use in IBM Plex Sans (task 029). No tagline and no
+            descriptor beside it — the product's full name, IAMAI Planner, is
+            the registered application and the tab title, not the wordmark
+            (docs/brand/brand-manifest.json logo). */}
         <a className="wordmark" href="#/connect">
-          <RingMark size={18} />
-          {planner.name}
+          <BrandMark size={20} />
+          {planner.wordmark}
         </a>
         {signedIn && (
           <nav aria-label={SHELL.navLabel}>
@@ -281,7 +298,7 @@ export function AppShell({
         </p>
       )}
       {signedIn && <ScanLine route={route} />}
-      <main className={`page ${WIDE_ROUTES.has(route) ? 'page-wide' : ''}`} data-route={route}>
+      <main className="page" data-route={route}>
         {signedIn && (
           <div className="print-only muted">
             {fillText(SHELL.printHeader, { tenant: tenantName ?? account.username, date: absoluteDate(new Date().toISOString()), by: account.username })}

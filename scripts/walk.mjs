@@ -1568,7 +1568,7 @@ function scanPlanFile() {
 // ---- the home page (as built by task 016) ----
 //
 // These checks read the page that exists. Home's design authority is
-// docs/design/approved/iamai-home-design-pack-v2.html (manifest.json in that
+// docs/design/approved/home-v2.html (manifest.json in that
 // folder); the page does not implement it yet and packs 030+ own the
 // restoration, which moves these checks with the surface.
 //

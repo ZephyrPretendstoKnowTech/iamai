@@ -3,11 +3,13 @@
    from src/ui/tokens.ts; the design lint reads this file.
 
    What this file describes is the page as built, not the owner's design target. The
-   Home authority is docs/design/approved/iamai-home-design-pack-v2.html
+   Home authority is docs/design/approved/home-v2.html
    (docs/design/approved/manifest.json), which this page does not yet implement —
    the pack is a 1040px page with a two-column product section and a side rail, and
-   this is one 760px column. Restoration belongs to packs 030+; task 028 established
-   the authority and changed no rule here. See docs/design/authority-reconciliation.md.
+   this page is still one column. Task 028 established the authority, task 030 gave
+   the page the brand tokens, the Guided Route mark and the 1040px column the pack
+   asks for, and pack 038 owns the composition itself.
+   See docs/design/authority-reconciliation.md.
 
    As built, one column: the hero with the only pair of actions, then five sections
    separated by a rule — what it does, the standard it plans towards, what it catches,
@@ -48,7 +50,7 @@ h1,
 h2,
 h3 {
   font-family: var(--font-serif);
-  font-weight: 400;
+  font-weight: var(--weight-display);
   line-height: var(--lh-heading);
   color: var(--ink);
 }
@@ -92,18 +94,22 @@ header.app {
   border-bottom: 1px solid var(--rule);
   background: var(--bg);
 }
+/* The lockup, the same one the planner's shell composes: the Guided Route mark
+   beside the live text IAMAI in IBM Plex Sans at the wordmark weight, with the
+   brand's gap of 0.28 of the mark. No tagline (docs/brand/brand-manifest.json). */
 header.app .wordmark {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: var(--t-4);
-  font-weight: 400;
+  font-weight: var(--weight-wordmark);
   color: var(--ink);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  letter-spacing: 0.005em;
 }
 header.app .wordmark svg {
-  color: var(--accent);
+  color: var(--brand-primary);
 }
 header.app .right {
   margin-left: auto;
@@ -128,13 +134,23 @@ header.app .right .text-control:focus-visible {
   color: var(--ink);
 }
 
+/* The column the approved Home pack sets: min(1040px, 100% - 40px)
+   (docs/design/approved/home-v2.html, src/ui/tokens.ts ROUTE_WIDTHS.home). The
+   page is still one column of prose, which reads at --measure inside it; pack
+   038 composes the two-column product section and the side rail that use the
+   rest of the width. */
 main.page {
   flex: 1;
   width: 100%;
-  max-width: calc(var(--page) + 2 * var(--pad));
+  max-width: calc(var(--w-home) + 2 * var(--pad));
   padding: var(--pad);
   margin: 0 auto;
   min-width: 0;
+  /* `break-word`, not `anywhere`: a long URL still breaks rather than widening
+     the page, and ordinary prose is never squeezed below a word (task 030). */
+  overflow-wrap: break-word;
+}
+main.page a[href] {
   overflow-wrap: anywhere;
 }
 

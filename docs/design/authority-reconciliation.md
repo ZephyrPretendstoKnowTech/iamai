@@ -29,10 +29,10 @@ the design adapts, or the bounded sub-item stops and reports.
 
 | Surface | Canonical path | SHA-256 |
 |---|---|---|
-| Home | `docs/design/approved/iamai-home-design-pack-v2.html` | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
-| Connect | `docs/design/approved/iamai-connect-design-pack-v3.html` | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
-| Plan | `docs/design/approved/iamai-plan-step-design-pack.html` | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
-| MFA Readiness | `docs/design/approved/iamai-mfa-readiness-design-pack-v2.html` | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
+| Home | `docs/design/approved/home-v2.html` | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
+| Connect | `docs/design/approved/connect-v3.html` | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
+| Plan | `docs/design/approved/plan-step-v1.html` | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
+| MFA Readiness | `docs/design/approved/mfa-readiness-v2.html` | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
 
 The machine copy is `docs/design/approved/manifest.json`; `src/ui/design-authority.test.ts`
 fails when a byte, a hash or a record drifts.
@@ -173,7 +173,7 @@ direction, task 016". It added no HTML pack (`git show --stat 09f7874` touches o
 > One column … No cards, no grid of tiles, no pill: the hierarchy is type, space and a
 > hairline.
 
-The approved `iamai-home-design-pack-v2.html` is a 1040px page whose product section is
+The approved Home pack (`docs/design/approved/home-v2.html`) is a 1040px page whose product section is
 `grid-template-columns: minmax(0,1.5fr) minmax(280px,.8fr)` with a bordered `.side` rail,
 and whose `.catch` rows are a 160px/1fr two-column grid collapsing at 760px. Production
 `home/home.css` contains no `display:grid`, no `grid-template-columns` and no side rail.
@@ -205,10 +205,10 @@ Not everything drifted.
 
 | Artifact | Classification | Note |
 |---|---|---|
-| `docs/design/approved/iamai-home-design-pack-v2.html` | `CURRENT_AUTHORITY` | Home anatomy |
-| `docs/design/approved/iamai-connect-design-pack-v3.html` | `CURRENT_AUTHORITY` | Connect anatomy |
-| `docs/design/approved/iamai-plan-step-design-pack.html` | `CURRENT_AUTHORITY` | Plan anatomy; source name `plan-step-design-pack(1).html` |
-| `docs/design/approved/iamai-mfa-readiness-design-pack-v2.html` | `CURRENT_AUTHORITY` | MFA Readiness anatomy |
+| `docs/design/approved/home-v2.html` | `CURRENT_AUTHORITY` | Home anatomy |
+| `docs/design/approved/connect-v3.html` | `CURRENT_AUTHORITY` | Connect anatomy |
+| `docs/design/approved/plan-step-v1.html` | `CURRENT_AUTHORITY` | Plan anatomy; source name `plan-step-design-pack(1).html` |
+| `docs/design/approved/mfa-readiness-v2.html` | `CURRENT_AUTHORITY` | MFA Readiness anatomy |
 | `docs/design/brand-decisions.md` | `CURRENT_AUTHORITY` | brand skin only |
 | `docs/design/approved/manifest.json` | `CURRENT_AUTHORITY` | machine copy of the chain |
 | `docs/design/home-mockup.html` | `SUPERSEDED` | by the Home pack |
@@ -391,3 +391,56 @@ production has not been restored yet.
 
 Current production is still visually non-conformant with the approved packs. That is the
 expected outcome of an authority task, and it is now written down instead of assumed.
+
+---
+
+## 9. Task 030 — the authority recovery pass
+
+Task 030 opened all four canonical files and reconciled every design and brand record tasks
+028 and 029 created against what those files actually say. The bytes were unchanged: all four
+hashes still match the owner's values, and `src/ui/design-authority.test.ts` now proves the
+working tree equals the committed blob as well as the recorded hash.
+
+### 9.1 Corrections made
+
+| # | Prior assumption | Why it was wrong | Evidence | Corrected to |
+|---|---|---|---|---|
+| 1 | Each surface's authority path was the owner's upload name (`iamai-home-design-pack-v2.html` and the other three) | Commit `dbf69c0` added byte-identical short-named copies, so every surface had **two** current files with one hash and the manifest could only point at one. "The authority is whatever file happens to be present" is the exact failure task 028 exists to stop | `sha256sum docs/design/approved/*.html` returned eight files and four distinct hashes | The short names are canonical; the four long-named copies are deleted; `ownerApprovedSourceName` keeps the upload name as provenance; a test fails if either copy returns |
+| 2 | `renderedEvidence.mechanism = scripts/walk.mjs`, `widths = [1280, 768, 390]` | The walk renders the built application at 1280 only (`WIDTHS = [1280]`) and cannot render an approved pack at all. The evidence contract named a tool that could not produce the evidence | `scripts/walk.mjs:45` | `scripts/render-design.mjs`, which renders the canonical HTML itself at all three widths; the walk's actual single width is recorded beside it |
+| 3 | The design lint enforced "what production is": a 4px radius ceiling with a growing named exception list, and every `font-size` one of `--t-1 … --t-6` (26px maximum) | The approved packs set display headings at 38-50px and the brand sets the wordmark at 700. The lint did not merely describe the unbuilt state, it made the approved state unreachable, while still admitting raw px wherever the exception list grew | `home-v2.html` `h1{font:700 50px…}`; `plan-step-v1.html` `42px`; `connect-v3.html` `40px`; `mfa-readiness-v2.html` `38px` | Three shape tokens (4/8/12) and no raw px; the display ramp `--d-1 … --d-15`, every value read out of a pack; a weight above 500 only through a named brand role |
+| 4 | `brand-manifest.json` `production.paletteApplied / typographyApplied / shellLogoApplied = false`; `typography.appliedToProduction = false` | True when task 029 wrote them, false after task 030 applied all three | `src/ui/tokens.ts`, `src/ui/app.css`, `src/ui/shell/AppShell.tsx` | All four true, with `pageCompositionRestored: false` added so the honest half stays recorded |
+| 5 | `brand-decisions.md`: "Production does not implement this palette yet … the tokens are still the paper/ink direction"; and "Production sets one radius token, 4px … There is no 12px" | Both were accurate records of tasks 028/029 and are now stale | `src/ui/tokens.css` | Rewritten to say what is applied and what is still pending |
+| 6 | `main.page { overflow-wrap: anywhere }` protected the page from long tenant strings | `anywhere` also lets a flex or grid track shrink below its longest word, so ordinary prose is squeezed into broken words in a narrow track. No approved pack sets it — none of the four contains `overflow-wrap`, `word-break` or `anywhere` at all | `grep overflow-wrap docs/design/approved/*.html` → no match | `break-word` on the page; `anywhere` plus `min-width: 0` on the roles that carry a UPN, an object id, a policy or group name, a Graph path, a URL or code |
+| 7 | The shell's lockup was `[ring mark] IAMAI Planner`, and the ring was both the logo and the step progress indicator | The approved brand lockup is the Guided Route mark beside the wordmark **IAMAI** with no descriptor, and all four packs render the header brand as `IAMAI`. A progress indicator that is also the logo means a change to either moves the other | `brand-manifest.json` `logo.coreLockup = "mark + IAMAI"`, `descriptorUnderWordmark: false`; the four packs' `.brand` markup | `src/ui/components/Mark.tsx` renders the master's geometry; `IAMAI Planner` stays the registered application name and the tab title, which is what it actually is |
+
+### 9.2 Verified as correct, and left alone
+
+The palette values in both themes; the IBM Plex decision and the three roles; Guided Route
+Variant 2; `tagline = null` and the six forbidden lines; the font provenance and the OFL
+copy; the brand-versus-application authority hierarchy and its three-step precedence; every
+logo asset and its derivation from the one master; all four design hashes; the rule that a
+generated branding preview is authority for nothing — task 030 re-read every design and brand
+record from 028 and 029 and found no preview recorded as architecture anywhere.
+
+`docs/design/target-state.md`'s task-028 scope header is correct and unchanged. The mockups
+under `docs/design/` remain `SUPERSEDED` records. The quotation of task 016's prompt in §4
+keeps the upload file names because it is a verbatim historical quotation.
+
+### 9.3 One gap found in task 029, recorded rather than papered over
+
+`brand-manifest.json` approves the display role as IBM Plex **Serif 700**. Task 029 staged
+IBM Plex **Sans** SemiBold and Bold in `public/fonts` for the wordmark, and no serif face
+above Medium. Production therefore sets a display heading in the heaviest serif face the
+repository actually holds — 500 — through `ROLE_WEIGHTS.display`, and the approved value in
+the manifest is untouched. `docs/brand/font-provenance.md` carries the exact command that
+stages the two missing faces; the pack that needs the heavier display changes one number.
+
+### 9.4 What task 030 did not do
+
+No page composition. Home, Connect, Plan and MFA Readiness do not wear the anatomy of their
+packs, and every record still says `restoration-pending` and
+`productionAssumedConformant: false`. No baseline, no tenant evidence, no lifecycle or
+condition semantics, no MFA proof or rung truth, no emergency-access semantics, no canonical
+operation, no Graph permission or collection, no session behaviour, no demo truth, and no
+change to accurate production copy other than adding the brand wordmark string beside the
+product name it was standing in for.

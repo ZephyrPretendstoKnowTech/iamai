@@ -2,9 +2,12 @@
 // (prompt 47.1 Part 3 item 11; prompt 52 Part 1; rebuilt by task 016).
 //
 // The composition below is the page as built. The owner's Home design authority
-// is docs/design/approved/iamai-home-design-pack-v2.html, recorded in
-// docs/design/approved/manifest.json; this generator does not implement it yet,
-// and packs 030+ own that restoration (docs/design/authority-reconciliation.md).
+// is docs/design/approved/home-v2.html, recorded in
+// docs/design/approved/manifest.json; this generator does not implement its
+// composition, and pack 038 owns that restoration
+// (docs/design/authority-reconciliation.md). Task 030 gave the page the brand
+// it will be restored in: the Mineral Teal tokens, IBM Plex, the Guided Route
+// mark in the lockup, and the pack's 1040px column.
 //
 // The home page wears the same palette, type scale and
 // fonts as the planner (theme.css from the tokens), and every sentence it shows
@@ -27,6 +30,7 @@
 import { createHash } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { MARK_GEOMETRY, MARK_VIEWBOX } from '../src/brand/logo/mark.ts'
 import { renderTokensCss } from '../src/ui/tokens.ts'
 import { pages } from '../src/content/content.ts'
 
@@ -175,10 +179,7 @@ export function renderHomeHtml(): string {
   <body>
     <header class="app">
       <a class="wordmark" href="/">
-        <svg width="18" height="18" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-          <circle cx="16" cy="16" r="4" fill="currentColor" />
-          <path d="M16 6 A10 10 0 1 1 6 16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
-        </svg>
+        <svg width="20" height="20" viewBox="${MARK_VIEWBOX}" aria-hidden="true" focusable="false">${MARK_GEOMETRY}</svg>
         ${esc(h.brand)}
       </a>
       <div class="right">

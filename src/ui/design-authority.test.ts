@@ -1,4 +1,4 @@
-// The design-authority guard (task 028).
+// The design-authority guard (task 028; canonical paths corrected by task 030).
 //
 // IAMAI's four owner-approved HTML design packs were named as authority by
 // tasks 011, 012 and 016 and were never actually in the repository, so each of
@@ -18,10 +18,24 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 
 const DIR = 'docs/design/approved'
 const MANIFEST = `${DIR}/manifest.json`
+
+/**
+ * The long upload names task 028 committed the packs under. Task 030 made the
+ * short names canonical and deleted these, because two byte-identical files
+ * for one surface is two current authorities and a later reader has to guess
+ * which one moved. Nothing may bring them back.
+ */
+const SUPERSEDED_COPIES = [
+  'iamai-home-design-pack-v2.html',
+  'iamai-connect-design-pack-v3.html',
+  'iamai-plan-step-design-pack.html',
+  'iamai-mfa-readiness-design-pack-v2.html',
+] as const
 
 /**
  * The owner's decision, written out here rather than read from the manifest:
@@ -31,13 +45,13 @@ const MANIFEST = `${DIR}/manifest.json`
 const APPROVED = [
   {
     surface: 'home',
-    file: 'iamai-home-design-pack-v2.html',
+    file: 'home-v2.html',
     sourceName: 'iamai-home-design-pack-v2.html',
     sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50',
   },
   {
     surface: 'connect',
-    file: 'iamai-connect-design-pack-v3.html',
+    file: 'connect-v3.html',
     sourceName: 'iamai-connect-design-pack-v3.html',
     sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b',
   },
@@ -46,13 +60,13 @@ const APPROVED = [
     // provenance, not identity: the canonical file drops it so no later task
     // has two "current" Plan packs to choose between.
     surface: 'plan',
-    file: 'iamai-plan-step-design-pack.html',
+    file: 'plan-step-v1.html',
     sourceName: 'plan-step-design-pack(1).html',
     sha256: '1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec',
   },
   {
     surface: 'mfa-readiness',
-    file: 'iamai-mfa-readiness-design-pack-v2.html',
+    file: 'mfa-readiness-v2.html',
     sourceName: 'iamai-mfa-readiness-design-pack-v2.html',
     sha256: '12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512',
   },
@@ -74,7 +88,8 @@ type Manifest = {
   precedence: { order: string[] }
   generatedPreviews: Record0
   brand: { applicationLayoutAuthority: boolean }
-  renderedEvidence: { widths: number[] }
+  renderedEvidence: { widths: number[]; mechanism: string; output: string }
+  authority: { canonicalHtmlIsApplicationDesignAuthority: boolean; renderedReferenceIsDerivedOnly: boolean; generatedBrandApplicationPreviewsAreAuthoritative: boolean }
 }
 type Record0 = { [k: string]: unknown }
 
@@ -92,6 +107,47 @@ test('every approved design pack is present with the owner-approved bytes', () =
         'Restore the exact bytes; if only line endings differ, .gitattributes must keep docs/design/approved/*.html as -text.',
     )
   }
+})
+
+test('one file per surface: the upload-named copies are gone and cannot come back', () => {
+  // Task 028 committed each pack under the owner's upload name; the canonical
+  // short names arrived later, byte-identical. Two files with one hash is two
+  // current authorities, and the manifest can only point at one of them.
+  for (const file of SUPERSEDED_COPIES) {
+    assert.ok(!existsSync(`${DIR}/${file}`), `${DIR}/${file} is a second copy of an authority that already has a canonical name`)
+  }
+  const html = readdirSync(DIR).filter((f) => f.endsWith('.html')).sort()
+  assert.deepEqual(html, [...APPROVED.map((a) => a.file)].sort(), 'docs/design/approved holds exactly the four canonical packs')
+})
+
+test('no task edits an approved byte: the working tree is what the commit holds', () => {
+  // The hashes above are the owner's values, so the test above already proves
+  // the bytes. This proves the same thing against git rather than against a
+  // constant, which is what catches a hash and its file edited together in one
+  // change. A shallow CI checkout still has HEAD, and a source tarball with no
+  // git at all skips rather than fails.
+  let head: Buffer[] | null = null
+  try {
+    head = APPROVED.map(({ file }) => execFileSync('git', ['cat-file', '-p', `HEAD:${DIR}/${file}`], { maxBuffer: 8 * 1024 * 1024 }))
+  } catch {
+    return
+  }
+  APPROVED.forEach(({ file, sha256 }, i) => {
+    const blob = head![i]
+    assert.equal(createHash('sha256').update(blob).digest('hex'), sha256, `${file}: the committed authority is not the owner-approved file`)
+    assert.deepEqual(readFileSync(`${DIR}/${file}`), blob, `${file}: the working tree differs from the committed authority`)
+  })
+})
+
+test('the manifest says, as values, what is authority and what is derived', () => {
+  const { authority } = manifest()
+  assert.equal(authority.canonicalHtmlIsApplicationDesignAuthority, true)
+  assert.equal(authority.renderedReferenceIsDerivedOnly, true)
+  assert.equal(authority.generatedBrandApplicationPreviewsAreAuthoritative, false)
+  // A render is derived from the HTML; it is never the input to it.
+  const { mechanism, output } = manifest().renderedEvidence
+  assert.match(mechanism, /^scripts\/[a-z-]+\.mjs$/)
+  assert.match(output, /\.png$/, 'the rendered reference is an image, and the HTML above it is the authority')
 })
 
 test('the Plan authority is canonical without the (1) upload name', () => {

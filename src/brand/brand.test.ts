@@ -18,6 +18,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { APP_ICON, MARK_COLORS, MASTER, RASTER, derived, normalise } from '../../scripts/brandDerive.ts'
+import { BRAND_ROLES, DARK as TOKENS_DARK, LIGHT as TOKENS_LIGHT } from '../ui/tokens.ts'
 
 const MANIFEST = 'docs/brand/brand-manifest.json'
 const CONTRACT = 'docs/brand/iamai-brand-contract.md'
@@ -47,11 +48,12 @@ type Manifest = {
   }
   palette: { light: Hexes; dark: Hexes }
   semantics: { brandPrimaryIsSuccess: boolean }
-  typography: { families: Record<string, string>; roles: { role: string; family: string; weight: number | number[] }[]; remoteFontCdn: boolean }
+  typography: { families: Record<string, string>; roles: { role: string; family: string; weight: number | number[] }[]; remoteFontCdn: boolean; appliedToProduction: boolean }
   applicationDesignAuthority: { surfaces: { surface: string; path: string; sha256: string }[]; precedence: string[] }
   generatedBrandApplicationPreviews: Record<string, unknown>
   ui: { radiusPx: Record<string, number>; motionMs: Record<string, number[]> }
   documents: Record<string, string>
+  production: Record<string, boolean | string>
 }
 
 /**
@@ -101,10 +103,10 @@ const DARK: Hexes = {
 
 /** Task 028's four approved application authorities, by name and by bytes. */
 const APPROVED = [
-  { surface: 'home', path: 'docs/design/approved/iamai-home-design-pack-v2.html', sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50' },
-  { surface: 'connect', path: 'docs/design/approved/iamai-connect-design-pack-v3.html', sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b' },
-  { surface: 'plan', path: 'docs/design/approved/iamai-plan-step-design-pack.html', sha256: '1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec' },
-  { surface: 'mfa-readiness', path: 'docs/design/approved/iamai-mfa-readiness-design-pack-v2.html', sha256: '12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512' },
+  { surface: 'home', path: 'docs/design/approved/home-v2.html', sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50' },
+  { surface: 'connect', path: 'docs/design/approved/connect-v3.html', sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b' },
+  { surface: 'plan', path: 'docs/design/approved/plan-step-v1.html', sha256: '1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec' },
+  { surface: 'mfa-readiness', path: 'docs/design/approved/mfa-readiness-v2.html', sha256: '12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512' },
 ] as const
 
 /** Lines generated while exploring the brand. None of them is IAMAI's. */
@@ -277,6 +279,34 @@ test('brand: the palette agrees with task 028s brand decisions', () => {
   for (const hex of [...Object.values(LIGHT), ...Object.values(DARK)]) {
     assert.ok(decisions.includes(hex), `${hex} is not in ${DECISIONS}`)
   }
+})
+
+test('brand: production paints the owner palette, value for value', () => {
+  // Task 029 recorded the palette and task 030 applied it. Two records of one
+  // decision: if src/ui/tokens.ts and the manifest can disagree, the interface
+  // is wearing a colour nobody approved.
+  const { palette } = manifest()
+  for (const [theme, tokens] of [['light', TOKENS_LIGHT], ['dark', TOKENS_DARK]] as const) {
+    for (const role of BRAND_ROLES) {
+      assert.equal(
+        (tokens as Record<string, string>)[role].toUpperCase(),
+        palette[theme][role].toUpperCase(),
+        `${theme}.${role}: src/ui/tokens.ts and ${MANIFEST} disagree`,
+      )
+    }
+  }
+  assert.equal(manifest().production.paletteApplied, true, 'the manifest must say the palette is applied once it is')
+})
+
+test('brand: the interface is set in the three approved families, from this origin', () => {
+  const tokensCss = read('src/ui/tokens.css')
+  for (const family of ['IBM Plex Serif', 'IBM Plex Sans', 'IBM Plex Mono']) {
+    assert.ok(tokensCss.includes(`font-family: '${family}'`), `${family} has no @font-face`)
+  }
+  // The wordmark's weight has a real face; nothing is synthesised for it.
+  assert.match(tokensCss, /IBMPlexSans-Bold-Latin1\.woff2/)
+  assert.match(tokensCss, /IBMPlexSans-SemiBold-Latin1\.woff2/)
+  assert.equal(manifest().typography.appliedToProduction, true)
 })
 
 test('brand: brand teal is not success green', () => {
