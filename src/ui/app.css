@@ -38,20 +38,34 @@ h4 {
 }
 /* The brand's type roles (docs/brand/brand-manifest.json typography.roles):
    editorial headings in IBM Plex Serif at the display weight, interface text
-   and labels in IBM Plex Sans, technical text in Mono. The SIZES here are the
-   page as built; the display ramp read out of the approved packs is --d-1 …
-   --d-15, and the pack that restores a surface applies it through `.display`
-   below. */
-h1 {
+   and labels in IBM Plex Sans, technical text in Mono.
+
+   The display role, in one declaration, with the size as its only knob (task
+   031). The four approved packs resolve which headings are editorial: every
+   page h1 is serif (Home 50, Plan 42, Connect 40, MFA 38), and so is every
+   section h2 (Home 29, Plan 27) and the section-level h3/h2 beside it (Home
+   .product h3 and Connect .ready h2, both 25). What they resolve as NOT
+   display is just as load-bearing: the opened Plan step's 21px h3 is set in
+   the interface face, which is why h3 and h4 below stay sans.
+   Production already assigns those roles; what it has not done is take the
+   packs' SIZES, because each surface sets its own and that is page
+   composition — packs 032-038. So --display-size carries the size production
+   is built at today, and a restoration pack moves its surface onto the ramp by
+   setting that one variable. Nothing here changes a rendered heading. */
+h1,
+h2,
+.wave-title,
+.display {
   font-family: var(--font-serif);
-  font-size: var(--t-6);
+  font-size: var(--display-size);
   font-weight: var(--weight-display);
+}
+h1 {
+  --display-size: var(--t-6);
 }
 h2,
 .wave-title {
-  font-family: var(--font-serif);
-  font-size: var(--t-5);
-  font-weight: var(--weight-display);
+  --display-size: var(--t-5);
 }
 h3 {
   font-family: var(--font-sans);
@@ -67,15 +81,14 @@ strong,
 b {
   font-weight: var(--weight-strong);
 }
-/* A display heading at any size on the approved ramp. The role is here; a
-   restoration pack sets --display-size to the token its pack asks for
-   (--d-1 is the approved Home h1, --d-2 the Plan's, and so on) rather than
-   writing a px value into a surface stylesheet. */
+/* `.display` is that same role put on the approved ramp: a pack sets
+   --display-size to the token its pack asks for (--d-1 is the approved Home
+   h1, --d-2 the Plan's, and so on) rather than writing a px value into a
+   surface stylesheet. It also carries the tighter display line-height, and it
+   outranks the h1/h2 rule above, so a heading moved onto the ramp is leaded
+   for the size it actually became. */
 .display {
   --display-size: var(--d-6);
-  font-family: var(--font-serif);
-  font-size: var(--display-size);
-  font-weight: var(--weight-display);
   line-height: var(--lh-display);
 }
 code,
@@ -708,6 +721,135 @@ footer.app a {
 }
 .surface-code {
   background: var(--code-surface);
+}
+
+/* ================= shared approved-design roles (task 031) =================
+
+   The low-level visual grammar more than one approved pack declares, so that
+   packs 032-038 compose the approved anatomy instead of each re-deriving the
+   same five declarations. Everything here was read out of the four canonical
+   files in docs/design/approved/ and is shared BY EVIDENCE: a pattern that
+   only one pack draws is that pack's, and stays there. What the packs draw
+   differently — Connect's 46px/1fr/auto step, the Plan's 126/1fr/240/125
+   roadmap row, MFA's six-zone person grid, Home's 78px/1fr steps — is page
+   anatomy and is deliberately absent.
+
+   The packs are dark Inter mockups: they own the anatomy, not the typeface or
+   the colour. So a weight of 750 arrives here as the brand's named strong
+   role, and a hard-coded ink arrives as the token for the same reading level.
+   That translation is the rule task 030 established, not a new decision. */
+
+/* The eyebrow: the micro-label that introduces a display heading or a block.
+   All four packs declare it with the same five values, byte for byte:
+   `color:var(--muted);font-size:11px;text-transform:uppercase;
+   letter-spacing:.11em;font-weight:750`. It is the single most-shared thing in
+   the approved design, and without it Home, Connect, Plan and MFA would each
+   write it again. The ink is the quiet level rather than the muted component
+   colour, because at 11px this is text and has to pass AA (task 030's
+   correction 1). */
+.eyebrow {
+  font-family: var(--font-sans);
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+/* One step quieter and smaller: the key that names a field or a column rather
+   than introducing a section. The Plan sets it on a side block's label and on
+   a finding's key, MFA on its person-table head — 10px uppercase 700, tracked
+   at .08em in two of the three and .07em in the third. */
+.key-label {
+  font-family: var(--font-sans);
+  font-size: var(--t-micro);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* The pill: geometry only. The Plan's state badge and MFA's readiness cell are
+   the same object measured twice — inline-flex, 7px gap, a 1px border, a full
+   round, 5px/8px of padding and 11px text — so the shape is shared and the
+   MEANING is not. It carries no state colour and no status list: a pill is
+   what a status word sits in, and `.status` remains the one place a state
+   colour is chosen (design lint rule 5). `.status.pill` is the two composed,
+   which is exactly what both packs draw. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  max-width: 100%;
+  padding: 4px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: var(--t-0);
+  line-height: var(--lh-body);
+}
+
+/* The attention panel. Two packs draw the same object: the Plan calls it
+   `.attention` and MFA calls it `.callout`, and both are a 1px tone border
+   over a ~5% tone tint at a control radius. (The Plan ALSO has a `.callout`
+   that is a 3px left-edge strip — a different anatomy with no second surface
+   using it, so it stays the Plan's and is pack 035's.)
+   Production has had a `Callout` component with five call sites and no rule
+   behind it at all, so an attention notice has been rendering as plain body
+   text. This is that missing treatment, not a new component.
+   The tone is carried by the border, the tint AND the icon, never by colour
+   alone: the title and body stay in the body ink, which keeps the notice at
+   full contrast and keeps the meaning in the words. */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-control);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+/* min-width:0 so a long tenant object inside a notice wraps in the panel
+   instead of pushing the panel wider than its column. */
+.callout-body {
+  min-width: 0;
+}
+.callout svg {
+  color: var(--accent);
+  flex: none;
+}
+.callout-warning {
+  border-color: var(--attention);
+  background: var(--warning-soft);
+}
+.callout-warning svg {
+  color: var(--attention-text);
+}
+.callout-danger {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+.callout-danger svg {
+  color: var(--danger-text);
+}
+/* Success is the semantic green, never the brand teal: the two are different
+   colours in both themes and are asserted apart (src/ui/tokens.test.ts). */
+.callout-success {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+.callout-success svg {
+  color: var(--success-text);
+}
+
+/* A run of rows inside one panel, separated by a hairline and not boxed
+   individually. Every pack draws it and every pack draws it the same way —
+   Home's steps and catches, Connect's flow steps, MFA's person rows all take
+   `border-top: 1px solid <line>` with the first child exempt. The separator is
+   shared; the column grid inside each row is not, and belongs to the pack that
+   owns that surface. */
+.row-group > * + * {
+  border-top: 1px solid var(--rule);
 }
 
 /* A sticky planner topbar, which the approved Plan pack defines. The capability

@@ -12,13 +12,16 @@ const ICON: Record<CalloutKind, 'info' | 'alert' | 'check'> = {
 
 export function Callout({ kind = 'info', title, children }: { kind?: CalloutKind; title?: string; children: ReactNode }) {
   return (
+    // The layout belongs to the `.callout` role in app.css (task 031). It used
+    // to be an inner `row` div with two inline styles, and `.row` is declared
+    // by no stylesheet in the product — so the icon stacked above its own
+    // sentence instead of sitting beside it, and neither inline style did
+    // anything without a `display` to apply to.
     <div className={`callout callout-${kind}`} role={kind === 'danger' ? 'alert' : undefined}>
-      <div className="row" style={{ alignItems: 'flex-start', flexWrap: 'nowrap' }}>
-        <Icon name={ICON[kind]} />
-        <div style={{ minWidth: 0 }}>
-          {title && <strong>{title} </strong>}
-          {children}
-        </div>
+      <Icon name={ICON[kind]} />
+      <div className="callout-body">
+        {title && <strong>{title} </strong>}
+        {children}
       </div>
     </div>
   )
