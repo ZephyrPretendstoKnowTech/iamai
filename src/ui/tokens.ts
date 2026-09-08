@@ -18,11 +18,13 @@
 //      owner brand decision.
 //   2. DERIVED. A small, bounded set production needs and the brand manifest
 //      deliberately does not carry: the ink that sits ON the brand colour, the
-//      two production-only ladder states, and the AA-safe text variant of each
-//      state colour. The canonical value is the fill, the dot, the border and
-//      the badge; the derived value is the same colour as small text, darkened
-//      in light mode only as far as WCAG AA requires. tokens.test.ts measures
-//      every one of them, so a derived value cannot quietly stop being legible.
+//      two production-only ladder states, and the AA-safe text variant of the
+//      muted ink and of each state colour. The canonical value is the fill, the
+//      dot, the border and the badge; the derived value is the same colour as
+//      small text, darkened in light mode only as far as WCAG AA requires.
+//      tokens.test.ts measures every one of them against every surface, and
+//      against every `color:` the two stylesheets actually declare, so a
+//      derived value cannot quietly stop being legible.
 //   3. LEGACY. The names the pages already read (--bg, --ink, --accent, --ok …)
 //      resolve to a canonical or derived value with `var()`. They are one token
 //      system with two names, not two systems: no legacy name carries a value
@@ -47,7 +49,11 @@ export type Palette = {
   strongLine: string
   primaryText: string
   secondaryText: string
-  /** Icons, dividers and the idle state: a component colour, below AA as text by design. */
+  /**
+   * Icons, dividers, a state dot and the idle fill: a component colour, 3:1 and
+   * below AA as text by design. Nothing sets a WORD in it — `quietText` is the
+   * third reading level.
+   */
   mutedText: string
   /** Brand identity, navigation, selected, interactive emphasis, focus. Never a tenant state. */
   brandPrimary: string
@@ -71,6 +77,13 @@ export type Palette = {
   // ---- derived: production roles the brand manifest does not carry ----
   /** Text on brandPrimary. The light surface in light mode, the dark canvas in dark. */
   onBrand: string
+  /**
+   * The third reading level, AA on every text surface: a Plan row's reason, the
+   * affected-user and date lines, a tile's quiet note, a section label. It is
+   * `mutedText` as small TEXT — darkened in light mode only as far as AA needs,
+   * because a reason nobody can read is not a quieter reason, it is a lost one.
+   */
+  quietText: string
   /** Not started, dormant, nothing to say. The muted ink, named for the state. */
   idle: string
   /** Set up, not proven: the MFA ladder's rung 2, between attention and danger. */
@@ -105,6 +118,9 @@ export const LIGHT: Palette = {
   codeSurface: '#EEEAE3',
 
   onBrand: '#FFFDF9',
+  // mutedText darkened to the smallest step that is AA on all four text
+  // surfaces (4.62:1 at its worst, on the code surface).
+  quietText: '#626A6A',
   idle: '#7B8584',
   unproven: '#9E5014',
   // Each darkened from its canonical value by the smallest step that reaches
@@ -138,6 +154,9 @@ export const DARK: Palette = {
   codeSurface: '#0A1112',
 
   onBrand: '#0E1516',
+  // On the dark canvas the muted ink is already 5.46:1 at its worst, so the
+  // quiet text level is the canonical value rather than a second one.
+  quietText: '#879693',
   idle: '#879693',
   unproven: '#C98A2E',
   // On a dark canvas every canonical state colour is already AA as text, so a
@@ -174,6 +193,7 @@ export const BRAND_ROLES = [
 /** The derived roles, and why each one exists. Documented here because they are not the owner's. */
 export const DERIVED_ROLES = {
   onBrand: 'text on brandPrimary',
+  quietText: 'the muted ink as small text: AA, where mutedText is a component colour',
   idle: 'the dormant state; the muted ink under a state name',
   unproven: 'MFA ladder rung 2: set up, not proven',
   successText: 'success as small text',
@@ -200,6 +220,8 @@ export const FONTS = {
 export const FONT_FILES = [
   { family: 'IBM Plex Serif', weight: 400, file: 'IBMPlexSerif-Regular-Latin1.woff2' },
   { family: 'IBM Plex Serif', weight: 500, file: 'IBMPlexSerif-Medium-Latin1.woff2' },
+  { family: 'IBM Plex Serif', weight: 600, file: 'IBMPlexSerif-SemiBold-Latin1.woff2' },
+  { family: 'IBM Plex Serif', weight: 700, file: 'IBMPlexSerif-Bold-Latin1.woff2' },
   { family: 'IBM Plex Sans', weight: 400, file: 'IBMPlexSans-Regular-Latin1.woff2' },
   { family: 'IBM Plex Sans', weight: 500, file: 'IBMPlexSans-Medium-Latin1.woff2' },
   { family: 'IBM Plex Sans', weight: 600, file: 'IBMPlexSans-SemiBold-Latin1.woff2' },
@@ -209,21 +231,19 @@ export const FONT_FILES = [
 
 /**
  * The weights production may set. 600 and 700 arrived with task 030: the brand
- * sets the wordmark and a strong label in IBM Plex Sans, and task 029 already
- * staged those two faces.
+ * sets the wordmark and a strong label in IBM Plex Sans, and a display heading
+ * in IBM Plex Serif Bold.
  *
- * IBM Plex Serif SemiBold and Bold are NOT staged, so a display heading is set
- * in the heaviest serif face the repository actually has — Medium, 500, named
- * `--weight-display` below. The brand's approved display weight is 700
- * (docs/brand/brand-manifest.json typography.roles); nothing here changes that
- * value, and a later pack that stages the two faces changes one token.
+ * Every weight here has a real staged face in FONT_FILES. A weight without a
+ * face is a browser-synthesised fake, which is not the approved brand and is
+ * what `tokens.test.ts` refuses.
  */
 export const WEIGHTS = [400, 500, 600, 700] as const
 
-/** The weight a role is set in. Only `display` is a compromise, and only until the serif faces are staged. */
+/** The weight a role is set in. Each one is the brand manifest's approved weight, and each has a staged face. */
 export const ROLE_WEIGHTS = {
-  /** Display / editorial heading, IBM Plex Serif. The manifest approves 700; 500 is the heaviest staged face. */
-  display: 500,
+  /** Display / editorial heading, IBM Plex Serif 700 (docs/brand/brand-manifest.json typography.roles). */
+  display: 700,
   /** Body, IBM Plex Sans. */
   body: 400,
   /** Strong body, label, control, IBM Plex Sans. */
@@ -390,6 +410,7 @@ const VAR_NAMES: Record<keyof Palette, string> = {
   admin: '--admin',
   codeSurface: '--code-surface',
   onBrand: '--on-brand',
+  quietText: '--quiet-text',
   idle: '--idle',
   unproven: '--unproven',
   successText: '--success-text',
@@ -415,7 +436,10 @@ export const LEGACY_COLOUR_ALIASES: Record<string, string> = {
   '--bg-inset': '--secondary-surface',
   '--ink': '--primary-text',
   '--ink-2': '--secondary-text',
-  '--ink-3': '--muted-text',
+  // The pages set small text in --ink-3 (a Plan row's reason, the who and when
+  // lines, a tile's quiet note, a home section label), so it resolves to the
+  // AA text level, not to the component colour.
+  '--ink-3': '--quiet-text',
   '--rule': '--line',
   '--rule-strong': '--strong-line',
   '--accent': '--brand-primary',
@@ -434,6 +458,30 @@ export const RUNG_COLOURS: Record<string, string> = {
   '--rung-2': '--unproven-text',
   '--rung-1': '--danger-text',
   '--rung-0': '--idle',
+}
+
+/**
+ * The palette role a CSS custom property resolves to, following the legacy
+ * aliases and the ladder's rung names to the value a browser would compute.
+ * Returns null for a name that is not a colour at all (`--pad`, `--t-3`) or
+ * that is composed rather than named (a `color-mix()` soft tint).
+ *
+ * It exists so a test can read a `color:` out of a stylesheet and measure the
+ * contrast of what the browser actually paints, instead of trusting that the
+ * alias chain still points somewhere legible.
+ */
+export function resolveColourVar(name: string): keyof Palette | null {
+  const seen = new Set<string>()
+  let at = name
+  for (;;) {
+    if (seen.has(at)) return null
+    seen.add(at)
+    const role = (Object.keys(VAR_NAMES) as (keyof Palette)[]).find((k) => VAR_NAMES[k] === at)
+    if (role) return role
+    const next = LEGACY_COLOUR_ALIASES[at] ?? RUNG_COLOURS[at]
+    if (!next) return null
+    at = next
+  }
 }
 
 function paletteBlock(p: Palette, indent = '  '): string {

@@ -157,7 +157,7 @@
     "provenance": "docs/brand/font-provenance.md",
     "appliedToProduction": true,
     "appliedBy": "030-theme-typography-shell-foundation",
-    "appliedNote": "Task 030 wired the three families and the interface scale, and added the display ramp read out of the four approved packs (src/ui/tokens.ts DISPLAY). IBM Plex Serif SemiBold and Bold are NOT staged under public/fonts — task 029 staged Sans 600/700 for the wordmark only — so production sets a display heading in the heaviest staged serif face, Medium/500 (src/ui/tokens.ts ROLE_WEIGHTS.display). The approved display weight above stays 700: it is the owner's value, and the pack that stages the two faces changes one token."
+    "appliedNote": "Task 030 wired the three families and the interface scale, and added the display ramp read out of the four approved packs (src/ui/tokens.ts DISPLAY). Its correction staged IBM Plex Serif SemiBold and Bold and normalised the Serif family onto @ibm/plex-serif@1.1.0, so every role weight above is set in a real face: ROLE_WEIGHTS.display is the approved 700, not a browser-synthesised fake bold. src/ui/tokens.test.ts fails if a role's weight has no staged face. What typography does NOT yet do is compose a page: the sizes production sets are the interface scale, and a surface expresses the display ramp when its restoration pack (031-038) lands."
   },
   "ui": {
     "icons": {
@@ -168,7 +168,7 @@
       "existingSet": "src/ui/components/Icon.tsx"
     },
     "radiusPx": { "compactRow": 4, "control": 8, "keyPanel": 12 },
-    "radiusNote": "A hierarchy, not a licence to cardify every section. Production enforces a single 4px token today (src/ui/tokens.ts LAYOUT.radiusPx, src/ui/design-lint.test.ts rule 3); pack 030 turns that rule into this hierarchy.",
+    "radiusNote": "A hierarchy, not a licence to cardify every section. Task 030 replaced production's single 4px token with these three (src/ui/tokens.ts LAYOUT.radiusPx / radiusControlPx / radiusPanelPx), and src/ui/design-lint.test.ts rule 3 now admits a radius only through one of them.",
     "motionMs": { "control": [120, 180], "disclosure": [180, 240] },
     "motionRules": ["functional and tactile", "no decorative looping animation", "respect prefers-reduced-motion"],
     "texture": "evidence grid, marketing and brand surfaces only, never behind dense operational data"

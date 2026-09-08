@@ -915,7 +915,8 @@ footer.app a {
   font-size: var(--t-lead);
 }
 /* A marker beside a name (Admin, Guest) stands off it, small and quiet (item 6).
-   ink-2, not ink-3: at 12px ink-3 measures 4.35:1 on the page and AA text needs 4.5. */
+   ink-2, not ink-3: both reading levels are AA, and a tag that qualifies a name
+   sits one level below the name rather than two. */
 .surface .tag {
   margin-left: 8px;
   font-size: var(--t-2);

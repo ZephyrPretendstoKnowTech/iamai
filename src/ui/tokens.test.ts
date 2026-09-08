@@ -8,8 +8,8 @@
 // tokens.ts carries a small derived set beside the canonical one.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { BRAND_ROLES, DARK, DERIVED_ROLES, DISPLAY, LIGHT, LAYOUT, ROLE_WEIGHTS, ROUTE_WIDTHS, TEXT_SURFACES, TYPE, contrastRatio, renderTokensCss, WEIGHTS } from './tokens.ts'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { BRAND_ROLES, DARK, DERIVED_ROLES, DISPLAY, LIGHT, LAYOUT, ROLE_WEIGHTS, ROUTE_WIDTHS, TEXT_SURFACES, TYPE, contrastRatio, renderTokensCss, resolveColourVar, WEIGHTS } from './tokens.ts'
 import type { Palette } from './tokens.ts'
 
 const AA_TEXT = 4.5
@@ -30,7 +30,7 @@ function check(name: string, p: Palette): void {
     assert.ok(contrastRatio(p.brandSoftText, p.brandSoft) >= AA_TEXT, contrastRatio(p.brandSoftText, p.brandSoft).toFixed(2))
   })
   test(`${name}: every derived text colour is AA on every surface text sits on`, () => {
-    for (const fg of ['successText', 'attentionText', 'dangerText', 'adminText', 'unprovenText', 'brandSecondaryText'] as const) {
+    for (const fg of ['quietText', 'successText', 'attentionText', 'dangerText', 'adminText', 'unprovenText', 'brandSecondaryText'] as const) {
       for (const key of TEXT_SURFACES) {
         const r = contrastRatio(p[fg], p[key])
         assert.ok(r >= AA_TEXT, `${fg} on ${key} = ${r.toFixed(2)}`)
@@ -39,6 +39,9 @@ function check(name: string, p: Palette): void {
   })
   test(`${name}: the muted ink is an icon colour, the state fills read as components, the strong rule is perceptible`, () => {
     assert.ok(contrastRatio(p.mutedText, p.canvas) >= AA_COMPONENT, `mutedText on canvas = ${contrastRatio(p.mutedText, p.canvas).toFixed(2)}`)
+    // And the three reading levels stay three: primary, secondary, quiet.
+    assert.ok(contrastRatio(p.primaryText, p.canvas) > contrastRatio(p.secondaryText, p.canvas))
+    assert.ok(contrastRatio(p.secondaryText, p.canvas) > contrastRatio(p.quietText, p.canvas))
     for (const c of [p.success, p.attention, p.danger, p.admin, p.unproven, p.idle]) {
       assert.ok(contrastRatio(c, p.canvas) >= AA_COMPONENT, `${c} on canvas = ${contrastRatio(c, p.canvas).toFixed(2)}`)
     }
@@ -57,6 +60,51 @@ function check(name: string, p: Palette): void {
 check('light', LIGHT)
 check('dark', DARK)
 
+/**
+ * Every colour the two stylesheets actually declare as `color:`, resolved
+ * through the alias chain to the palette role a browser would compute.
+ *
+ * The pair tests above prove a role is legible. This proves the pages are
+ * PAINTING with a legible role — which is a different fact, and the one that
+ * was wrong: `--ink-3` sets the Plan row's reason, the who and when lines, a
+ * tile's quiet note and the home section labels, and it resolved to the muted
+ * component colour at 3.46:1 on the page.
+ */
+const PAINTED_ON_ANOTHER_FILL: Record<string, string> = {
+  // The ink on the brand fill and the ink on the brand tint are never set on a
+  // page surface; both pairs are measured directly in the check() block above.
+  onBrand: 'brandPrimary',
+  brandSoftText: 'brandSoft',
+}
+
+function declaredTextColours(file: string): { where: string; token: string }[] {
+  const src = readFileSync(file, 'utf8').replace(/\r\n/g, '\n')
+  const out: { where: string; token: string }[] = []
+  for (const m of src.matchAll(/(?:^|[;{\s])(?:-webkit-text-fill-)?color:\s*var\((--[a-z0-9-]+)\)/g)) {
+    out.push({ where: `${file}:${src.slice(0, m.index).split('\n').length}`, token: m[1] })
+  }
+  return out
+}
+
+test('every colour the pages set text in resolves to a role that is AA on every surface', () => {
+  const declared = [...declaredTextColours('src/ui/app.css'), ...declaredTextColours('home/home.css')]
+  assert.ok(declared.length > 100, `only ${declared.length} colour declarations found — the reader is broken, not the CSS`)
+  for (const { where, token } of declared) {
+    const role = resolveColourVar(token)
+    assert.ok(role, `${where}: ${token} is not a palette colour`)
+    if (role in PAINTED_ON_ANOTHER_FILL) continue
+    for (const [theme, p] of [
+      ['light', LIGHT],
+      ['dark', DARK],
+    ] as const) {
+      for (const key of TEXT_SURFACES) {
+        const r = contrastRatio(p[role], p[key])
+        assert.ok(r >= AA_TEXT, `${where}: ${token} → ${role} on ${theme} ${key} = ${r.toFixed(2)}`)
+      }
+    }
+  }
+})
+
 test('tokens.css is generated from tokens.ts and has not drifted', () => {
   const onDisk = readFileSync('src/ui/tokens.css', 'utf8').replace(/\r\n/g, '\n')
   assert.equal(onDisk, renderTokensCss(), 'run: node scripts/gen-tokens.mjs')
@@ -69,16 +117,49 @@ test('every palette entry is an opaque hex, and the two themes carry the same ro
   assert.deepEqual(Object.keys(LIGHT).sort(), [...BRAND_ROLES, ...Object.keys(DERIVED_ROLES)].sort())
 })
 
-test('the weights are the four the brand names, and a display heading has a real face to be set in', () => {
+test('the weights are the four the brand names, and every role is the manifest’s approved weight', () => {
   assert.deepEqual([...WEIGHTS], [400, 500, 600, 700])
-  assert.equal(ROLE_WEIGHTS.wordmark, 700, 'the wordmark is IBM Plex Sans 700')
-  assert.equal(ROLE_WEIGHTS.strong, 600)
-  // IBM Plex Serif SemiBold/Bold are not staged under public/fonts, so the
-  // display weight is the heaviest serif face that actually exists. A pack that
-  // stages them changes this one number and nothing else.
+  const manifest = JSON.parse(readFileSync('docs/brand/brand-manifest.json', 'utf8')) as {
+    typography: { roles: { role: string; family: string; weight: number | number[] }[] }
+  }
+  const approved = (match: RegExp): number | number[] => manifest.typography.roles.find((r) => match.test(r.role))!.weight
+  assert.equal(ROLE_WEIGHTS.display, approved(/^display/), 'the display role is not the brand’s approved display weight')
+  assert.equal(ROLE_WEIGHTS.wordmark, approved(/^wordmark/))
+  assert.equal(ROLE_WEIGHTS.strong, approved(/^strong body/))
+  assert.equal(ROLE_WEIGHTS.body, approved(/^body/))
+})
+
+test('every role weight has a real staged face, on this origin, in the family the role is set in', () => {
+  // A weight with no face is drawn by the browser as a synthesised fake bold,
+  // which is not the approved brand. The file has to exist on disk AND be
+  // declared to the browser: task 029 staged two faces that no @font-face
+  // mentioned, and nothing downloaded them.
   const css = renderTokensCss()
-  const serif = [...css.matchAll(/font-family: 'IBM Plex Serif';[\s\S]*?font-weight: (\d+);/g)].map((m) => Number(m[1]))
-  assert.ok(serif.includes(ROLE_WEIGHTS.display), `no IBM Plex Serif face is staged at ${ROLE_WEIGHTS.display}`)
+  const declared = [...css.matchAll(/font-family: '([^']+)';\n\s*src: url\('\/fonts\/([^']+)'\)[\s\S]*?font-weight: (\d+);/g)].map((m) => ({
+    family: m[1],
+    file: m[2],
+    weight: Number(m[3]),
+  }))
+  for (const [role, family] of [
+    ['display', 'IBM Plex Serif'],
+    ['body', 'IBM Plex Sans'],
+    ['strong', 'IBM Plex Sans'],
+    ['wordmark', 'IBM Plex Sans'],
+  ] as const) {
+    const weight = ROLE_WEIGHTS[role]
+    const face = declared.find((d) => d.family === family && d.weight === weight)
+    assert.ok(face, `no @font-face declares ${family} ${weight} for the ${role} role`)
+    assert.ok(existsSync(`public/fonts/${face.file}`), `${face.file} is declared but not staged under public/fonts`)
+  }
+})
+
+test('every declared face is staged, and every staged face is declared', () => {
+  const css = renderTokensCss()
+  const files = [...css.matchAll(/url\('\/fonts\/([^']+)'\)/g)].map((m) => m[1]).sort()
+  const staged = readdirSync('public/fonts')
+    .filter((f) => f.endsWith('.woff2'))
+    .sort()
+  assert.deepEqual(files, staged, 'a face is shipped that nothing declares, or declared that nothing ships')
 })
 
 test('the display ramp can express the approved packs, well past the old 26px ceiling', () => {

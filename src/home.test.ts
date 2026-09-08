@@ -465,7 +465,9 @@ test('the built page, with its stylesheet, renders the tokens: the primary butto
     assert.deepEqual(r.tertiary, { backgroundColor: rgb(LIGHT.secondarySurface), color: rgb(LIGHT.secondaryText), borderTopColor: rgb(LIGHT.strongLine), textDecorationLine: 'none' })
     // A section is a rule and nothing else: no fill, no radius, no box.
     assert.deepEqual(r.band, { backgroundColor: 'rgba(0, 0, 0, 0)', borderTopWidth: '1px', borderTopStyle: 'solid', borderTopColor: rgb(LIGHT.line), borderTopLeftRadius: '0px' })
-    assert.deepEqual(r.bandHeading, { textTransform: 'uppercase', fontSize: `${TYPE['t-2']}px`, fontWeight: '500', color: rgb(LIGHT.mutedText) })
+    // The section label is the quiet reading level, not the muted component
+    // colour: at 13px it is text, and text is AA (task 030 correction 1).
+    assert.deepEqual(r.bandHeading, { textTransform: 'uppercase', fontSize: `${TYPE['t-2']}px`, fontWeight: '500', color: rgb(LIGHT.quietText) })
     // The buttons are the only boxed things on the page: no card wall came back.
     assert.equal(r.boxes, 5, `${r.boxes} boxed elements in the page body; only the five buttons carry a border, and nothing else is a panel`)
     assert.deepEqual(r.beat, { display: 'inline-block', width: '76px' })

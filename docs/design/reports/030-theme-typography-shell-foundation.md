@@ -213,12 +213,16 @@ prompt verbatim, including the upload file names. A quotation is not a path refe
 **UNKNOWN — not guessed:** the four items in §7 of the reconciliation stand. Nothing task 030
 saw resolved or contradicted them.
 
-**One gap found in 029:** the brand approves IBM Plex **Serif 700** for display; only Serif
-Regular and Medium are staged in `public/fonts` (029 staged Sans 600/700 for the wordmark).
-Production sets display at the heaviest staged serif face, 500, via
-`ROLE_WEIGHTS.display`. The approved value in the manifest is untouched;
-`docs/brand/font-provenance.md` holds the command that stages the missing faces; the pack that
-needs a heavier display changes one number.
+**One gap found in 029, closed by correction 1:** the brand approves IBM Plex **Serif 700**
+for display, and 029 staged only Serif Regular and Medium (its Sans 600/700 were for the
+wordmark). Task 030 first shipped `ROLE_WEIGHTS.display = 500`, the heaviest staged face,
+while `typography.appliedToProduction` said true — a manifest claiming a weight production
+did not set. The correction staged Serif SemiBold and Bold from `@ibm/plex-serif@1.1.0`,
+normalised Regular and Medium onto the same release so one family is not typeset from two,
+set the display role to the approved 700, and preloads the seven faces a first paint uses.
+`src/ui/tokens.test.ts` now reads each role's weight out of the brand manifest and fails if
+that weight has no staged, declared face, so the runtime and the authority cannot disagree
+again.
 
 ---
 
@@ -436,13 +440,59 @@ Also outstanding, small: IBM Plex Serif SemiBold/Bold are not staged (§C4), so
 
 ---
 
+## C10 — correction 1
+
+Three findings against the shipped foundation, all corrected at their source.
+
+**1 — the muted ink was painting small text (MAJOR).** `--ink-3` aliased to `--muted-text`,
+which is `#7B8584` on the light canvas: 3.46:1, a component colour by design and below AA as
+text. Fifteen rules set text in it — a Plan row's reason, its who and when lines, a step
+tile's quiet note, the Home section labels and notes, Connect's quiet text — so the light
+theme's third reading level was, in production, unreadable-adjacent supporting content, and
+every restoration pack would have inherited it.
+
+The fix keeps the canonical role and adds the missing one. `mutedText` stays the owner's
+value and stays a component colour (icons, dividers, the idle dot). A derived `quietText`
+joins the existing derived text variants: `#626A6A` in light, mutedText darkened by the
+smallest step that is AA on all four text surfaces (4.62:1 at worst); in dark the muted ink
+is already 5.46:1, so `quietText` is the canonical value rather than a second one — the same
+rule the state colours follow. `--ink-3` resolves to it.
+
+The guard is new and reads the real stylesheets: `resolveColourVar()` in `tokens.ts` walks a
+custom property through the alias chain to the palette role a browser would compute, and
+`tokens.test.ts` takes every `color: var(...)` declared in `src/ui/app.css` and
+`home/home.css` and asserts AA on all four text surfaces in both themes. Reverted to
+`--muted-text` it fails with `src/ui/app.css:167: --ink-3 → mutedText on light canvas =
+3.46`. The pair tests prove a role is legible; this proves the pages paint with a legible
+role, which is the fact that was wrong.
+
+**2 — the display weight was not the approved one (MAJOR).** See C4. Serif SemiBold and Bold
+staged, the Serif family normalised onto one release, `ROLE_WEIGHTS.display = 700`, preloads
+corrected, and `tokens.test.ts` now reads each role's approved weight out of
+`brand-manifest.json` and refuses a weight with no staged, declared face.
+
+**3 — two brand records disagreed about the current state (FUNCTIONAL).** The manifest said
+palette, typography and shell logo were applied; `iamai-brand-contract.md` §12 still said all
+three were the restoration pack's to do and that `tokens.ts` held the paper/ink palette, and
+`ui.radiusNote` still said pack 030 *would* introduce the radius hierarchy it had already
+introduced. §12 is now the current state with an applied-by column, and task 029's state is
+kept below it under an explicit historical label rather than deleted. `brand.test.ts` reads
+the contract's table and fails when a row disagrees with the manifest flag it names, so the
+two records cannot drift apart again.
+
+**Evidence regenerated:** `docs/screens/30` (production plates) — the palette is unchanged,
+so what moved is the serif weight and the quiet text level. The canonical plates under
+`docs/design/approved/rendered` are renders of the approved HTML and are untouched.
+
+---
+
 ## C9 — validation
 
 | Check | Result |
 |---|---|
 | `src/ui/design-authority.test.ts` (028 integrity, extended) | pass — four files, four hashes, no second copy, bytes equal the committed blob |
 | `src/brand/brand.test.ts` (029 integrity, extended) | pass — palette, master, derived assets, no tagline, no font CDN, tokens agree with the brand manifest |
-| `src/ui/tokens.test.ts` | pass — both palettes AA, derived text AA on all four surfaces, ramp, widths, shape |
+| `src/ui/tokens.test.ts` | pass — both palettes AA, derived text AA on all four surfaces, every `color:` the two stylesheets declare AA in both themes, every role weight in a staged face, ramp, widths, shape |
 | `src/ui/design-lint.test.ts` | pass — all eight rules, three of them stricter than before |
 | `src/ui/foundation.test.ts` (new) | pass — typography, widths, lockup, nav, theme, shape, print, renderer, honest manifests |
 | `src/ui/accessibility.test.ts` (017) | pass |

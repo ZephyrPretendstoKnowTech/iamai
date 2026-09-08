@@ -22,11 +22,16 @@
     -->
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
     <link rel="alternate icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
-    <!-- Three faces, self-hosted Latin subsets (OFL, public/fonts/OFL.txt); preloaded so the first paint uses them (prompt 47 Part 1). -->
+    <!-- The faces the first paint sets text in, self-hosted Latin subsets (OFL, public/fonts/OFL.txt): the display
+         heading's Serif Bold and the label's Sans SemiBold joined the list when task 030's roles were corrected, so
+         nothing on a first paint is drawn as a synthesised fake bold. Serif SemiBold is declared, not preloaded:
+         no rule sets it yet. -->
     <link rel="preload" href="/fonts/IBMPlexSerif-Regular-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/IBMPlexSerif-Medium-Latin1.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/IBMPlexSerif-Bold-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/IBMPlexSans-Regular-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/IBMPlexSans-Medium-Latin1.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/IBMPlexSans-SemiBold-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/IBMPlexMono-Regular-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Filled from content.json's pages.home.planner at build (vite.config.ts): the name lives in one place. -->
     <title>__PRODUCT_TITLE__</title>
