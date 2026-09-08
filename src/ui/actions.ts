@@ -66,8 +66,18 @@ let baselineSave: Promise<void> = Promise.resolve()
 export async function scan(returnTo: string | null = null): Promise<void> {
   const s = getSession()
   if (isDemo()) {
+    // The demo has two synthetic scans and no tenant to read, so Scan again
+    // moves to the follow-up one — and only ever forwards. A control labelled
+    // "Scan again" that silently returned the visitor to the initial scan would
+    // be the one thing the sample must never say: that the plan went backwards
+    // because IAMAI looked again. The way back to the initial scan is the
+    // banner's snapshot selector, which names the snapshot it selects.
+    if (s.demoWeek2) {
+      if (returnTo) go(returnTo)
+      return
+    }
     setScan({ returnTo })
-    setSession({ demoWeek2: !s.demoWeek2 })
+    setSession({ demoWeek2: true })
     return
   }
   if (s.scan.state === 'running' || s.scan.state === 'paused') return
@@ -112,6 +122,22 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     clearInterval(tick)
     handle = null
   }
+}
+
+/**
+ * Which of the sample tenant's two synthetic scans is on screen (task 026): the
+ * banner's selector calls this. It changes the *input* the app derives from and
+ * nothing else — App.tsx reloads the fixture for the snapshot asked for and the
+ * ordinary derivation runs over it — so the plan, the readiness table and the
+ * artifacts that follow are the production ones over different facts, never a
+ * second set of conclusions swapped in behind the surfaces.
+ *
+ * Outside the demo it does nothing: a real tenant has one scan, the one it read.
+ */
+export function showDemoSnapshot(followUp: boolean): void {
+  if (!isDemo()) return
+  if (getSession().demoWeek2 === followUp) return
+  setSession({ demoWeek2: followUp })
 }
 
 /** Stop the running scan: back to where the page was, with nothing to report. */

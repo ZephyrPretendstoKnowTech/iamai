@@ -624,6 +624,34 @@ footer.app a {
   color: var(--ink-2);
   font-size: var(--t-2);
 }
+/* The sample's two synthetic scans (task 026). The selected one is marked by
+   weight and an underline as well as ink, so which snapshot is showing does not
+   depend on telling two greys apart; aria-pressed carries the same fact to a
+   screen reader. */
+.demo-banner .demo-snapshots {
+  display: inline-flex;
+  gap: 12px;
+}
+.demo-banner .demo-snapshots button {
+  font: inherit;
+  color: var(--ink-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.demo-banner .demo-snapshots button:hover,
+.demo-banner .demo-snapshots button:focus-visible {
+  color: var(--ink);
+}
+.demo-banner .demo-snapshots button[aria-pressed='true'] {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: default;
+}
 /* The scan in flight, on every page but Connect (ui/actions.ts): one line under the header. */
 .scan-line {
   margin: 0;

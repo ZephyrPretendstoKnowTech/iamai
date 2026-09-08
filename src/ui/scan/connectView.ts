@@ -47,7 +47,7 @@ type Words = {
       failed: { state: string; lead: string }
     }
   }
-  account: { title: string; line: string; note: string; signInAnother: string; signOut: string }
+  account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
   baseline: { title: string; state: string; loading: string; none: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
@@ -145,6 +145,26 @@ export function accountTile({ tenant, upn, role }: { tenant: string; upn: string
       { label: W.account.signInAnother, weight: 'secondary' },
       { label: W.account.signOut, weight: 'tertiary' },
     ],
+  }
+}
+
+/**
+ * Tile 1 in the demo (task 026). The sample tenant is loaded; nobody is signed
+ * in. The tile says exactly that, and the only thing it offers is the way out,
+ * because the two actions the signed-in tile offers are Microsoft's: one starts
+ * a real sign-in and the other clears the real sign-in cache, and neither has
+ * anything to act on when the tenant on screen is a fixture. Leaving is the
+ * canonical demo exit (ui/demoMode.ts), the same one the banner offers.
+ */
+export function sampleTile({ tenant, upn }: { tenant: string; upn: string }): AccountTile {
+  return {
+    n: 1,
+    title: W.account.sampleTitle,
+    state: tenant,
+    tone: 'done',
+    line: upn,
+    note: W.account.sampleNote,
+    actions: [{ label: app.shell.demoLeave, weight: 'secondary' }],
   }
 }
 

@@ -923,14 +923,18 @@ try {
   await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
   await sleep(200)
 
-  // Re-scan advances to week two, and a second Re-scan returns to day one
-  // (item 14). By week two the exclusions-group step is done and two Wave 1
+  // The banner's snapshot selector moves the sample between its two synthetic
+  // scans (task 026), and Connect's Scan again advances to the follow-up one.
+  // On the follow-up scan the exclusions-group step is done and two Wave 1
   // policies are in report-only, so the plan differs in its rows and the header's
   // "in place" count rises (prompt 50.1 item 5) — the fix a decisions-only record
   // makes possible: the ratchet no longer pins day-one statuses across the scan.
   await demoGo('plan')
   await waitFor(`/Sample data/.test(document.body.innerText)`)
   await sleep(400)
+  // The pressed button in the banner's selector names the snapshot on screen.
+  const shownSnapshot = () => evaluate(`((document.querySelector('.demo-banner .demo-snapshots button[aria-pressed="true"]') || {}).textContent || '').trim()`)
+  check('Demo: the banner names the snapshot on screen and the sample starts on the initial scan', (await shownSnapshot()) === 'Initial scan', await shownSnapshot())
   // The plan may still be a chunk away on a slow runner (the surfaces load on
   // demand since prompt 53): wait for its rows, and never read a missing main.
   const planBody = async () => {
@@ -942,14 +946,24 @@ try {
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
   // The header has no scan control: the demo's Scan again lives on Connect's
-  // Scan tile, and a hash change keeps the page (and the week) alive.
+  // Scan tile, and a hash change keeps the page (and the snapshot) alive.
   const demoScanAgain = async () => {
     await demoGo('connect')
     await waitFor(`[...document.querySelectorAll('main.page section.step-tile button')].some((b) => /^Scan again$/.test((b.textContent || '').trim()))`)
     return clickText('/^Scan again$/', 'main.page')
   }
+  // Connect in the demo: nobody is signed in, so tile 1 is sample context and
+  // neither Microsoft action is on the page or in the header (task 026).
+  await demoGo('connect')
+  await waitFor(`document.querySelectorAll('main.page section.step-tile').length > 0`)
+  const demoConnectText = await mainText()
+  check(
+    'Demo: Connect tile 1 is the sample tenant, not a Microsoft sign-in, and offers no Microsoft action',
+    /Sample tenant/.test(demoConnectText) && /IAMAI is not connected to Microsoft\./.test(demoConnectText) && !/Sign out|Sign in with another account/.test(demoConnectText) && !/Account/.test(await evaluate(`document.querySelector('header.app').innerText`)),
+    demoConnectText.replace(/\s+/g, ' ').slice(0, 160),
+  )
   check('Demo: Connect offers Scan again', await demoScanAgain())
-  check('Demo: Scan again advances to the week-two snapshot', await waitFor(`/Sample data . week 2/.test(document.body.innerText)`))
+  check('Demo: Scan again advances to the follow-up snapshot', await waitFor(`((document.querySelector('.demo-banner .demo-snapshots button[aria-pressed="true"]') || {}).textContent || '').trim() === 'Follow-up scan'`))
   await demoGo('plan')
   // The week-two snapshot reloads asynchronously (a dynamic import, then a
   // regenerate); the banner flips first. Poll the plan until its body changes
@@ -967,8 +981,17 @@ try {
     inPlaceOf(week2Body) > inPlaceOf(day1Body),
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
+  // Scan again only ever moves forward; the way back to the initial scan is the
+  // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
-  check('Demo: a second Scan again returns to day one', await waitFor(`/Sample data . nothing here is from a real tenant/.test(document.body.innerText)`))
+  check('Demo: a second Scan again stays on the follow-up snapshot', (await shownSnapshot()) === 'Follow-up scan', await shownSnapshot())
+  await demoGo('plan')
+  const backToInitial = await clickText('/^Initial scan$/', '.demo-banner')
+  check(
+    'Demo: the banner selector returns to the initial scan and the plan re-derives from it',
+    backToInitial && (await waitFor(`((document.querySelector('.demo-banner .demo-snapshots button[aria-pressed="true"]') || {}).textContent || '').trim() === 'Initial scan'`)) && (await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)),
+    await shownSnapshot(),
+  )
 
   // Leave the demo: back to the signed-out app, no banner (item 12).
   await clickText('/Leave the demo/', '.demo-banner')
