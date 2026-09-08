@@ -21,6 +21,13 @@ export type CollectorSpec = {
   /** The scan-progress source this collector reports under (lanes A and B). */
   sourceKey?: SourceKey
   endpoint: string
+  /**
+   * The same read without the part of it a tenant's Graph may refuse (a 400 on
+   * an `$expand`), tried once when the first read fails that way. What comes
+   * back is the narrower answer, and every reading of it treats the fields it
+   * lacks as unread rather than absent.
+   */
+  fallbackEndpoint?: string
   version: 'v1.0' | 'beta'
   paged?: boolean
   scopes: string[]
@@ -33,7 +40,13 @@ export const COLLECTOR_REGISTRY: CollectorSpec[] = [
   // ---- Lane 0: config reads ----
   { name: 'CA policies', lane: '0', configKey: 'caPolicies', endpoint: '/identity/conditionalAccess/policies', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged.' },
   { name: 'Named locations', lane: '0', configKey: 'namedLocations', endpoint: '/identity/conditionalAccess/namedLocations', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Trusted-location validation and location-based intents.' },
-  { name: 'Authentication strengths', lane: '0', configKey: 'authStrengths', endpoint: '/policies/authenticationStrengthPolicies', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Resolve strength references in policies, incl. custom strengths.' },
+  // The combination configurations come only when they are asked for, and they
+  // are what a strength restricts its combinations to — which security keys,
+  // which certificate issuers. Without them IAMAI cannot say that a tenant
+  // strength is the same requirement as a baseline's (roadmap/resolvePolicy.ts),
+  // so it asks, and falls back to the plain list where a tenant's Graph refuses
+  // the expand rather than losing the section.
+  { name: 'Authentication strengths', lane: '0', configKey: 'authStrengths', endpoint: '/policies/authenticationStrengthPolicies?$expand=combinationConfigurations', fallbackEndpoint: '/policies/authenticationStrengthPolicies', version: 'v1.0', paged: true, scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Resolve strength references in policies, incl. custom strengths and the configurations that restrict them.' },
   { name: 'Auth methods policy', lane: '0', configKey: 'authMethodsPolicy', endpoint: '/policies/authenticationMethodsPolicy', version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Method availability, registrationEnforcement, policyMigrationState (read from beta when v1.0 returns none).' },
   { name: 'Security defaults', lane: '0', configKey: 'securityDefaults', endpoint: '/policies/identitySecurityDefaultsEnforcementPolicy', version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Whether security defaults are on (mutually exclusive with CA).' },
   { name: 'Cross-tenant access', lane: '0', configKey: 'crossTenantAccess', endpoint: '/policies/crossTenantAccessPolicy', version: 'v1.0', scopes: ['Policy.Read.All'], requiredCapability: null, gate: 'none', purpose: 'Guest/B2B posture affecting external-user intents.' },

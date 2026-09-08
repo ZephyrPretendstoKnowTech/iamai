@@ -56,7 +56,7 @@ B = sign-in evidence, on-demand = after baseline selection).
 |---|---|---|---|---|---|---|
 | 0 | The tenant policy set the diff and roadmap work from; Microsoft-managed policies are flagged. | `/identity/conditionalAccess/policies` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Trusted-location validation and location-based intents. | `/identity/conditionalAccess/namedLocations` | v1.0 | Policy.Read.All | Security Reader | none |
-| 0 | Resolve strength references in policies, incl. custom strengths. | `/policies/authenticationStrengthPolicies` | v1.0 | Policy.Read.All | Security Reader | none |
+| 0 | Resolve strength references in policies, incl. custom strengths and the configurations that restrict them. | `/policies/authenticationStrengthPolicies?$expand=combinationConfigurations` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Method availability, registrationEnforcement, policyMigrationState (read from beta when v1.0 returns none). | `/policies/authenticationMethodsPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Whether security defaults are on (mutually exclusive with CA). | `/policies/identitySecurityDefaultsEnforcementPolicy` | v1.0 | Policy.Read.All | Security Reader | none |
 | 0 | Guest/B2B posture affecting external-user intents. | `/policies/crossTenantAccessPolicy` | v1.0 | Policy.Read.All | Security Reader | none |

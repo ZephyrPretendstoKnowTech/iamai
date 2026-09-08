@@ -7,7 +7,7 @@ import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
 import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
-import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, unavailableReason } from './operations.ts'
+import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, tenantStrengthsOf, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
@@ -706,11 +706,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionGroupReport =
     exclusions.actionableId === null ? null : reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusions.actionableId) ?? null], validationCtx)
   const policyUsableExclusionsGroupId = exclusionGroupPolicySafety(exclusionGroupReport).safe ? exclusions.actionableId : null
-  // What this tenant's own authentication strengths allow, so the author's
-  // custom strength can find the tenant's own by what it demands rather than by
-  // its id, which is the author's (resolvePolicy.ts tenantStrengthFor).
+  // What this tenant's own authentication strengths allow, for every reading
+  // that asks how strong a policy is.
   const tenantStrengths = strengthLookupOf(snapshot)
-  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengths)
+  // And what they demand *whole* — the combinations and the restrictions on
+  // them — so the author's custom strength can find the tenant's own by what it
+  // demands rather than by its id, which is the author's (resolvePolicy.ts
+  // tenantStrengthFor).
+  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengthsOf(snapshot))
   /**
    * The resolved policy with its authentication strength as the request may
    * carry it: the tenant's id, and nothing that describes the object it points

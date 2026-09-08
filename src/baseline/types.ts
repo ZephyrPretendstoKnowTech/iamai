@@ -47,7 +47,10 @@ export interface CaGrantControls {
   builtInControls?: string[];
   customAuthenticationFactors?: string[];
   termsOfUse?: string[];
-  authenticationStrength?: { id?: string; displayName?: string; allowedCombinations?: string[] } | null;
+  // `combinationConfigurations` is what the strength restricts those combinations to
+  // (which security keys, which certificate issuers). It decides what the strength
+  // actually demands, so it travels with it — see roadmap/resolvePolicy.ts.
+  authenticationStrength?: { id?: string; displayName?: string; allowedCombinations?: string[]; combinationConfigurations?: unknown[] } | null;
 }
 
 export interface CaSessionControls {

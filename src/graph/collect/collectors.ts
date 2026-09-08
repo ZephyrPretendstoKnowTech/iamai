@@ -26,9 +26,13 @@ export type Ctx = {
 const CONFIG_ENDPOINTS = Object.fromEntries(
   COLLECTOR_REGISTRY.filter((s) => s.lane === '0' && s.configKey).map((s) => [
     s.configKey,
-    { url: `${s.version === 'beta' ? BETA : V1}${s.endpoint}`, paged: s.paged },
+    {
+      url: `${s.version === 'beta' ? BETA : V1}${s.endpoint}`,
+      fallbackUrl: s.fallbackEndpoint ? `${s.version === 'beta' ? BETA : V1}${s.fallbackEndpoint}` : null,
+      paged: s.paged,
+    },
   ]),
-) as Record<ConfigSectionKey, { url: string; paged?: boolean }>
+) as Record<ConfigSectionKey, { url: string; fallbackUrl: string | null; paged?: boolean }>
 
 // Item 2 of the data-model lock: Microsoft-managed CA policies are flagged by
 // display-name prefix or a present templateId.
@@ -59,7 +63,7 @@ export function deriveRoles(
 }
 
 export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Promise<ConfigSection> {
-  const { url, paged } = CONFIG_ENDPOINTS[key]
+  const { url, fallbackUrl, paged } = CONFIG_ENDPOINTS[key]
   // How the read went travels with the section (prompt 46 item 24), so a
   // diagnostics bundle can say whether a read failed or succeeded and returned
   // a body without the field a rule wanted.
@@ -73,7 +77,7 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
   })
   try {
     if (paged) {
-      const rows = await graphPaged(ctx.tokens, url, { signal: ctx.signal, onResponse })
+      const rows = await pagedWithFallback(ctx, url, fallbackUrl, onResponse)
       return { status: 'ok', reason: null, rows, ...how() }
     }
     const body = await graphRequest(ctx.tokens, url, { signal: ctx.signal, onResponse })
@@ -82,6 +86,27 @@ export async function collectConfigSection(ctx: Ctx, key: ConfigSectionKey): Pro
   } catch (e) {
     if (e instanceof SectionDisabledError) return { status: 'disabled', reason: e.message, rows: [], ...how(e.status) }
     return { status: 'error', reason: e instanceof Error ? e.message : String(e), rows: [], ...how(e instanceof GraphRequestError ? e.status : null) }
+  }
+}
+
+/**
+ * The registry's read, and — where it names one — the narrower read to try when
+ * a tenant's Graph rejects the first with a 400. That is the answer to an
+ * `$expand` this tenant will not serve, and it is the one failure worth
+ * retrying: a 401/403 is a permission answer (SectionDisabledError), an abort is
+ * the scan stopping, and neither becomes a second request.
+ */
+async function pagedWithFallback(
+  ctx: Ctx,
+  url: string,
+  fallbackUrl: string | null,
+  onResponse: (info: { status: number; bytes: number }) => void,
+): Promise<unknown[]> {
+  try {
+    return await graphPaged(ctx.tokens, url, { signal: ctx.signal, onResponse })
+  } catch (e) {
+    if (fallbackUrl === null || !(e instanceof GraphRequestError) || e.status !== 400) throw e
+    return await graphPaged(ctx.tokens, fallbackUrl, { signal: ctx.signal, onResponse })
   }
 }
 
