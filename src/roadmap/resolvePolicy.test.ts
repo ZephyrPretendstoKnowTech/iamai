@@ -145,16 +145,28 @@ const X_TENANT = (step: Step): string => String(step.action.resolution?.tenant.e
 
 // ---- 1 + 2 + 8: the resolved object itself ----
 
-test('1: the author’s four exclusion groups on one policy resolve to the tenant’s one exclusions group, once', () => {
-  // Jon Hope's SharePoint block excludes three travellers groups and the
-  // author's own exclusions group: four author objects, one tenant group.
+test('1: the author’s four exclusion groups on one policy come to the tenant’s one exclusions group, once', () => {
+  // Jon Hope's SharePoint block excludes three groups of his own and his
+  // exclusions group. One of those four is a reading this baseline settles
+  // (interpretation.ts: the break-glass group); the other three are his tenant's
+  // and nothing explains them, so they are not substituted with anything - they
+  // are left out, and reported as left out.
   const source = authorPolicy('IAC - APP - BLOCK - SharePoint-OneDrive-NonTrustedLocations')
-  assert.equal(excludeGroupsOf(source as unknown as Record<string, unknown>).length, 4, 'the author names four groups')
+  const authorGroups = excludeGroupsOf(source as unknown as Record<string, unknown>)
+  assert.equal(authorGroups.length, 4, 'the author names four groups')
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant(), 'x', POLICIES)
-  assert.deepEqual(excludeGroupsOf(resolved.body), [X], 'the tenant group is named once')
-  // Not a string check: the array on the object holds one entry, and the body an
-  // implementation channel carries keeps it that way.
-  assert.deepEqual(excludeGroupsOf(implementable(resolved.body, resolved.unresolved).policy), [X])
+  assert.deepEqual(resolved.substitutions.get(authorIdFor(source, 'exclusionsGroup')), [X], 'the one group a record settles is the tenant’s')
+  for (const g of authorGroups) if (g !== authorIdFor(source, 'exclusionsGroup')) assert.equal(resolved.substitutions.get(g), undefined, `${g} is nobody’s object but the author’s`)
+  // Not a string check: the array on the body an implementation channel carries
+  // holds the tenant's one group, once, and no id out of the author's tenant.
+  const impl = implementable(resolved.body, resolved.unresolved, resolved.authorOnly)
+  assert.deepEqual(excludeGroupsOf(impl.policy), [X])
+  assert.deepEqual(impl.missing, [], 'and nothing is waiting on an object this tenant could make')
+  assert.deepEqual(
+    impl.authorOnly.sort(),
+    authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort(),
+    'the three are reported as the author’s own, not dropped in silence',
+  )
 })
 
 test('2: distinct resolved ids stay distinct, and no id crosses a collection', () => {
@@ -170,8 +182,9 @@ test('2: distinct resolved ids stay distinct, and no id crosses a collection', (
   const authorServiceAccounts = authorIdFor(source, 'serviceAccountsGroup')
   assert.equal(excludeGroupsOf(source as unknown as Record<string, unknown>).length, 3, 'the author excludes three groups')
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ serviceAccountsGroupId: SA }), 'service-accounts-trusted-network', POLICIES)
-  assert.deepEqual(usersOf(resolved.body).includeGroups, [SA], 'the group the policy targets is the tenant’s service accounts')
-  assert.deepEqual(excludeGroupsOf(resolved.body), [X], 'and its three exclusions are the one exclusions group, named once')
+  const impl = implementable(resolved.body, resolved.unresolved, resolved.authorOnly).policy
+  assert.deepEqual(usersOf(impl).includeGroups, [SA], 'the group the policy targets is the tenant’s service accounts')
+  assert.deepEqual(excludeGroupsOf(impl), [X], 'and what it excludes is the exclusions group, named once')
   assert.deepEqual(resolved.substitutions.get(authorServiceAccounts), [SA])
 })
 
@@ -184,7 +197,17 @@ test('8: an unrelated policy’s includes and excludes are untouched, and no id 
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
   }
   const resolved = resolveTenantPolicy(body, tenant({ exclusionsGroupId: null }), 'x')
-  assert.deepEqual(resolved.body, body, 'nothing the tenant does not resolve is changed')
+  // Nothing the tenant does not resolve is changed. The one addition is the slot
+  // for the exclusions group every policy the plan writes excludes, which this
+  // tenant has not settled: `implementable` takes it back out and the step waits
+  // on the group, rather than the policy quietly excluding nobody.
+  const withoutSlot = implementable(resolved.body, resolved.unresolved, resolved.authorOnly)
+  assert.deepEqual(withoutSlot.policy, body, 'nothing the tenant does not resolve is changed')
+  assert.deepEqual(
+    withoutSlot.missing,
+    [{ token: '{exclusionsGroup}', stepId: PREREQ_STEP_ID.exclusionsGroup }],
+    'and the exclusions group is what it waits on',
+  )
   const withGroup = resolveTenantPolicy(body, tenant(), 'x')
   const users = usersOf(withGroup.body)
   assert.deepEqual(users.includeGroups, ['g-1', 'g-2'])
@@ -203,9 +226,10 @@ test('4: an explicit serviceAccountsGroup the tenant does not have stays unresol
   assert.deepEqual(usersOf(resolved.body).includeGroups, [authorServiceAccounts], 'the author’s group is not substituted')
   assert.equal(resolved.substitutions.get(authorServiceAccounts), undefined, 'nothing resolved it')
   assert.equal(resolved.unresolved.get(authorServiceAccounts), PREREQ_STEP_ID.serviceAccountsGroup, 'it waits on the service-accounts-group step')
+  assert.equal(resolved.authorOnly.has(authorServiceAccounts), false, 'a group the policy targets is never left out as the author’s own')
   // The exclusions group is still there, where the policy independently needs it.
   assert.ok(excludeGroupsOf(resolved.body).includes(X), 'the exclusions group is applied')
-  const impl = implementable(resolved.body, resolved.unresolved)
+  const impl = implementable(resolved.body, resolved.unresolved, resolved.authorOnly)
   assert.deepEqual(impl.missing.map((m) => m.stepId), [PREREQ_STEP_ID.serviceAccountsGroup])
   assert.ok(!(((usersOf(impl.policy).includeGroups as string[] | undefined) ?? []).includes(authorServiceAccounts)), 'and it is not in the body a channel carries')
   assert.ok(excludeGroupsOf(impl.policy).includes(X), 'while the exclusions group still is')
@@ -247,9 +271,10 @@ test('3: a confirmed mapping for one author reference wins over the token and th
   const authorExclusions = authorIdFor(source, 'exclusionsGroup')
   const resolved = resolveTenantPolicy(source as unknown as Record<string, unknown>, tenant({ confirmed: new Map([[authorExclusions, CONFIRMED]]) }), 'admin-session', POLICIES)
   assert.deepEqual(resolved.substitutions.get(authorExclusions), [CONFIRMED], 'the confirmed object wins over the token')
-  // The travellers group still resolves by the generic rule to the tenant's
-  // exclusions group: two distinct ids, each named once.
-  assert.deepEqual(excludeGroupsOf(resolved.body), [X, CONFIRMED])
+  // Two distinct tenant objects, each named once: the confirmed group where the
+  // author's own exclusions group stood, and the tenant's exclusions group every
+  // policy the plan writes carries. The author's other group is left out.
+  assert.deepEqual(excludeGroupsOf(implementable(resolved.body, resolved.unresolved, resolved.authorOnly).policy), [CONFIRMED, X])
 
   // On the plan: the record a person saved travels into the step, and Portal,
   // JSON, PowerShell and Download all describe that same body. Portal cannot
@@ -270,7 +295,7 @@ test('3: a confirmed mapping for one author reference wins over the token and th
   // the exclusions group in its own sentence, the confirmed group by name. A
   // line that collapsed the second into the first would leave a person excluding
   // one group where the body excludes two.
-  assert.deepEqual(excludeGroupsOf(body), [X_TENANT(step.step), CONFIRMED], 'the body excludes both, in order')
+  assert.deepEqual(excludeGroupsOf(body), [CONFIRMED, X_TENANT(step.step)], 'the body excludes both, in order')
   const named = (id: string): string => (id === CONFIRMED ? 'Confirmed exclusions' : id)
   const lines = stepPortalLines(step.step, { nameOf: named, policyName: step.step.title }) ?? []
   const users = lines.find((l) => l.startsWith('Users → Include:'))

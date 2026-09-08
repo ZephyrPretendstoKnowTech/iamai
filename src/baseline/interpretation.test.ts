@@ -17,9 +17,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { interpretReferences, noInterpretation, readInterpretation, referenceUsage } from './interpretation.ts'
-import type { BaselineInterpretation } from './interpretation.ts'
+import { interpretReferences, noInterpretation, policyContext, readInterpretation, referenceUsage } from './interpretation.ts'
+import type { BaselineInterpretation, InterpretationRecord } from './interpretation.ts'
 import { placeholdersFor } from '../../scripts/pin-baseline.ts'
+import { pinnedPackage } from './pinned.ts'
 import type { CaPolicy } from './types.ts'
 
 const BASE = 'baselines/jhope188-conditionalaccesspolicies'
@@ -56,6 +57,19 @@ const SOURCE: CaPolicy[] = [
 
 const NONE = noInterpretation('Jhope188', 'ConditionalAccessPolicies')
 
+/**
+ * A record settled against SOURCE as it stands: the policies that include the
+ * reference, and what each of those policies was when it was read
+ * (`policyContext`). A record that names the policies and not what they were is
+ * a record no later package can be checked against.
+ */
+const settled = (over: Partial<InterpretationRecord> & Pick<InterpretationRecord, 'id' | 'meaning'>, policies: CaPolicy[] = SOURCE): InterpretationRecord => {
+  const includedIn = over.includedIn ?? (referenceUsage(policies).find((u) => u.id === over.id.toLowerCase())?.includedIn ?? [])
+  const context: Record<string, string> = {}
+  for (const p of policies) if (includedIn.includes(p.id ?? p.displayName)) context[p.id ?? p.displayName] = policyContext(p)
+  return { kind: 'group', basis: 'documented', evidence: 'documented', ...over, id: over.id.toLowerCase(), includedIn, context }
+}
+
 const tokensFor = (interpretation: BaselineInterpretation, policies: CaPolicy[] = SOURCE): Map<string, string> =>
   placeholdersFor(policies, interpretation).placeholderFor
 
@@ -80,7 +94,7 @@ test('a policy name does not give anything geography', () => {
 test('only a settled record gives a specialised meaning, and it is scoped to its own reference', () => {
   const interpretation: BaselineInterpretation = {
     ...NONE,
-    references: [{ id: SVC, kind: 'group', meaning: 'serviceAccountsGroup', basis: 'documented', evidence: 'the policy targets it and its README names CA-ServiceAccounts', includedIn: ['p-svc'] }],
+    references: [settled({ id: SVC, meaning: 'serviceAccountsGroup', evidence: 'the policy targets it and its README names CA-ServiceAccounts' })],
   }
   const tokens = tokensFor(interpretation)
   assert.equal(tokens.get(SVC), 'serviceAccountsGroup')
@@ -95,10 +109,7 @@ test('an authentication strength takes its meaning from the field it sits in, no
 
 // ---- reuse across an update ----
 
-const settledSvc: BaselineInterpretation = {
-  ...NONE,
-  references: [{ id: SVC, kind: 'group', meaning: 'serviceAccountsGroup', basis: 'documented', evidence: 'documented', includedIn: ['p-svc'] }],
-}
+const settledSvc: BaselineInterpretation = { ...NONE, references: [settled({ id: SVC, meaning: 'serviceAccountsGroup' })] }
 
 test('one more exclusion does not disturb a settled reading', () => {
   const more = [...SOURCE, policy({ id: 'p-new', displayName: 'IAC - GLOBAL - BLOCK - Something New', conditions: { users: { includeUsers: ['All'], excludeGroups: [SVC] } } })]
@@ -115,15 +126,49 @@ test('a reference that changes role is held for review rather than carried forwa
   assert.equal(read.tokens.get(SVC), undefined, 'and the old meaning is not applied while it is in question')
 })
 
+test('the policy that gave a reference its meaning changing materially holds the reading for review', () => {
+  // Same reference, same policy id, still the only group that policy includes -
+  // and the policy now blocks nothing and grants a strength instead. The
+  // sentence the meaning rests on ("that policy blocks interactive sign-in for
+  // this group") is about a policy that is no longer there.
+  const rewritten = SOURCE.map((p) =>
+    p.id === 'p-svc'
+      ? policy({ id: 'p-svc', displayName: p.displayName, conditions: { users: { includeGroups: [SVC], excludeGroups: [BROAD] } }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } })
+      : p,
+  )
+  const read = interpretReferences(settledSvc, referenceUsage(rewritten))
+  assert.equal(read.reviewRequired.length, 1, 'the policy the meaning was read off has changed')
+  assert.match(read.reviewRequired[0].why, /materially changed/)
+  assert.equal(read.tokens.get(SVC), undefined, 'and the old meaning is not applied while it is in question')
+})
+
+test('a benign change to that policy does not disturb the reading', () => {
+  // One more group excluded, and the policy is renamed, moved out of report-only
+  // and re-exported with new timestamps. None of that is what the group is.
+  const benign = SOURCE.map((p) =>
+    p.id === 'p-svc'
+      ? policy({
+          id: 'p-svc',
+          displayName: 'IAC - GLOBAL - BLOCK - Service Accounts (v2)',
+          state: 'enabled',
+          conditions: { users: { includeGroups: [SVC], excludeGroups: [BROAD, AVD] } },
+        })
+      : p,
+  )
+  const read = interpretReferences(settledSvc, referenceUsage(benign))
+  assert.deepEqual(read.reviewRequired, [], 'a rename, a rollout and one more exclusion say nothing about what the group is')
+  assert.equal(read.tokens.get(SVC), 'serviceAccountsGroup')
+})
+
 test('a reference used as another kind is held for review', () => {
-  const asLocation: BaselineInterpretation = { ...NONE, references: [{ id: PLACE, kind: 'group', meaning: 'exclusionsGroup', basis: 'documented', evidence: 'documented', includedIn: [] }] }
+  const asLocation: BaselineInterpretation = { ...NONE, references: [settled({ id: PLACE, meaning: 'exclusionsGroup', includedIn: [] })] }
   const read = interpretReferences(asLocation, referenceUsage(SOURCE))
   assert.equal(read.reviewRequired.length, 1)
   assert.match(read.reviewRequired[0].why, /namedLocation/)
 })
 
 test('a settled reading whose reference has left the source is reported, not enforced', () => {
-  const gone: BaselineInterpretation = { ...NONE, references: [{ id: '99999999-9999-4999-8999-999999999999', kind: 'group', meaning: 'exclusionsGroup', basis: 'documented', evidence: 'documented', includedIn: [] }] }
+  const gone: BaselineInterpretation = { ...NONE, references: [settled({ id: '99999999-9999-4999-8999-999999999999', meaning: 'exclusionsGroup', includedIn: [] })] }
   const read = interpretReferences(gone, referenceUsage(SOURCE))
   assert.deepEqual(read.reviewRequired, [])
   assert.deepEqual(read.stale, ['99999999-9999-4999-8999-999999999999'])
@@ -141,13 +186,29 @@ test('a malformed interpretation file is refused, never read as an empty one', (
   assert.throws(() => readInterpretation({ version: 1, owner: 'o', repo: 'r' }), /references/)
   assert.throws(() => readInterpretation({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning: 'exclusionsGroup', basis: 'documented' }] }), /evidence/)
   assert.throws(
-    () => readInterpretation({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning: 'unknown', basis: 'documented', evidence: 'x', includedIn: [] }, { id: 'A', kind: 'group', meaning: 'unknown', basis: 'documented', evidence: 'x', includedIn: [] }] }),
+    () =>
+      readInterpretation({
+        version: 1,
+        owner: 'o',
+        repo: 'r',
+        references: [
+          { id: 'a', kind: 'group', meaning: 'unknown', basis: 'documented', evidence: 'x', includedIn: [], context: {} },
+          { id: 'A', kind: 'group', meaning: 'unknown', basis: 'documented', evidence: 'x', includedIn: [], context: {} },
+        ],
+      }),
     /twice/,
+  )
+  // A record that names the policy its meaning came from and records nothing
+  // about what that policy was cannot be checked against a later package, which
+  // is the same as having no invalidation rule at all.
+  assert.throws(
+    () => readInterpretation({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning: 'serviceAccountsGroup', basis: 'documented', evidence: 'the policy targets it', includedIn: ['p-1'], context: {} }] }),
+    /records nothing about what that policy was/,
   )
 })
 
 test('structure alone may record that nothing is known and may not claim a role', () => {
-  const structural = (meaning: string) => ({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning, basis: 'structural', evidence: 'excluded from a lot of policies', includedIn: [] }] })
+  const structural = (meaning: string) => ({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning, basis: 'structural', evidence: 'excluded from a lot of policies', includedIn: [], context: {} }] })
   assert.doesNotThrow(() => readInterpretation(structural('unknown')))
   assert.throws(() => readInterpretation(structural('serviceAccountsGroup')), /structure alone/)
   assert.throws(() => readInterpretation(structural('exclusionsGroup')), /structure alone/)
@@ -190,6 +251,18 @@ test('no group in the shipped pin carries a specialised meaning nothing settles'
       assert.ok(r.evidence.length > 20, `${id} carries ${token} on a one-word reason`)
     }
   }
+})
+
+test('every shipped record that names a policy records what that policy was', () => {
+  const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
+  for (const r of shipped.references) {
+    assert.deepEqual(Object.keys(r.context).sort(), [...r.includedIn].sort(), `${r.id}: one context per policy it was settled against`)
+    for (const k of r.includedIn) assert.equal(r.context[k], usage.get(r.id)?.context[k], `${r.id}: the context recorded for ${k} is not the one this pin's ${k} has`)
+  }
+  // And the shipped file passes its own reuse rule against the pin beside it:
+  // nothing in it is being carried forward into a package it no longer fits.
+  const read = interpretReferences(shipped, referenceUsage(pinnedPackage().policies))
+  assert.deepEqual(read.reviewRequired, [])
 })
 
 test('the pin left the author own everything the interpretation settles as unknown', () => {

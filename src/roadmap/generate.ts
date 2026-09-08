@@ -6,7 +6,7 @@ import { docFor } from '../baseline/index.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
-import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
+import { PLACEHOLDER_STEP, implementable, resolveTenantPolicy, tenantObjectsOf, unmatchedStrengths } from './resolvePolicy.ts'
 import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, operationsOf, stepEffects, strengthLookupOf, submitsEnforcement, unavailableReason } from './operations.ts'
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
@@ -400,6 +400,27 @@ function patchOf(body: RawPolicy, sections: ReadonlySet<ChangedSection>): RawPol
 }
 
 /**
+ * The body without Graph's own reply annotations. An `@odata.context` is a URL
+ * into the metadata of the tenant the object was *read* from — the author's —
+ * and it carries that tenant's policy id in it: `…/policies('aeb49474-…')/`.
+ * It is never part of a request, so it is nothing this tenant submits, and while
+ * it stood in the body the author's own policy id was in the JSON tab, the
+ * PowerShell and the download.
+ *
+ * `@odata.type` is not this: it is a type discriminator the request needs, and
+ * task 021 put it back on purpose.
+ */
+function withoutResponseAnnotations(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(withoutResponseAnnotations)
+  if (v === null || typeof v !== 'object') return v
+  return Object.fromEntries(
+    Object.entries(v as Record<string, unknown>)
+      .filter(([k]) => !k.endsWith('@odata.context'))
+      .map(([k, val]) => [k, withoutResponseAnnotations(val)]),
+  )
+}
+
+/**
  * The step's action, built once from the canonical resolved policies the caller
  * has already produced. This is the only place a policy becomes an operation:
  * the answers are applied here, the tenant's name and state and tag go on here,
@@ -441,7 +462,7 @@ export function buildCreateAction(
   const tagFor = (i: number): string => `[IAMAI:${planId}:${stepId}:${memberKeys[i]}]`
   /** One policy as the whole policy it is meant to be in this tenant. */
   const artifact = (source: RawPolicy, p: StepPolicyInput, tag: string): RawPolicy => {
-    const body = structuredClone(source)
+    const body = withoutResponseAnnotations(structuredClone(source)) as RawPolicy
     const sourceDescription = body.description
     delete body.id
     delete body.createdDateTime
@@ -456,6 +477,15 @@ export function buildCreateAction(
   }
   const sections = opts.sections ?? new Set<ChangedSection>()
   const missing: NonNullable<Action['missing']> = []
+  /**
+   * The author's own objects this tenant's copy of the policy does without: a
+   * source group used only to exclude somebody, which this tenant has no
+   * counterpart for and no step of ours creates (resolvePolicy.ts `authorOnly`).
+   * Kept out of `missing` because it is not a prerequisite — there is nothing to
+   * go and do — and kept here rather than dropped because the policy this tenant
+   * deploys is then not, in that one respect, the policy the author wrote.
+   */
+  const authorOnly: string[] = []
   const operations: PolicyOperation[] = []
   for (const [i, p] of policies.entries()) {
     const tag = tagFor(i)
@@ -468,9 +498,10 @@ export function buildCreateAction(
     const deviated = answered !== clone
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
-    const whole = implementable(artifact(answered, p, tag), p.resolved.unresolved)
+    const whole = implementable(artifact(answered, p, tag), p.resolved.unresolved, p.resolved.authorOnly)
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
-    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved.unresolved).policy : undefined
+    for (const a of whole.authorOnly) if (!authorOnly.includes(a)) authorOnly.push(a)
+    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved.unresolved, p.resolved.authorOnly).policy : undefined
     const target = p.target ?? null
     if (target) {
       const patch = patchOf(whole.policy, sections)
@@ -500,7 +531,7 @@ export function buildCreateAction(
   const bodies = operations.map((o) => o.body)
   const json = runnable ? JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2) : null
   const kind = operations.some((o) => o.mode === 'update') ? 'adjust' : 'create'
-  return { kind, summary: [], json, portalSteps: [], missing, resolution: { policies: operations, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } }
+  return { kind, summary: [], json, portalSteps: [], missing, authorOnly, resolution: { policies: operations, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } }
 }
 
 export { proposedPolicyName } from '../coverage/naming.ts'
@@ -671,7 +702,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const exclusionGroupReport =
     exclusions.actionableId === null ? null : reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusions.actionableId) ?? null], validationCtx)
   const policyUsableExclusionsGroupId = exclusionGroupPolicySafety(exclusionGroupReport).safe ? exclusions.actionableId : null
-  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId)
+  // What this tenant's own authentication strengths allow, so the author's
+  // custom strength can find the tenant's own by what it demands rather than by
+  // its id, which is the author's (resolvePolicy.ts tenantStrengthFor).
+  const tenantStrengths = strengthLookupOf(snapshot)
+  const tenantObjects = tenantObjectsOf(mapping, countriesLocationId, policyUsableExclusionsGroupId, tenantStrengths)
   /**
    * The resolved policy with its authentication strength as the request may
    * carry it: the tenant's id, and nothing that describes the object it points
@@ -716,7 +751,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   const strandContext = {
     allowedCountries: mapping.allowedCountries,
     countryLocations,
-    strengths: strengthLookupOf(snapshot),
+    strengths: tenantStrengths,
     groupMembers: knownGroupMembers,
   }
   // ---- the rollout cohort (Foundation A) ----
@@ -850,6 +885,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       ...stateFields(ipLocations.length > 0 ? { satisfied: true, inPlace: true } : {}),
       deliveredBy: ipLocations.map((l) => l.displayName ?? l.id ?? '').filter((n) => n.length > 0),
     })
+  }
+
+  // The baseline's own authentication strength (task 022 correction). Jon Hope's
+  // policies require a custom strength of their tenant's — "Modern MFA + TAP" —
+  // and its id is theirs: it does not exist in the tenant reading this, so a
+  // policy naming it cannot be created here. The strength is answered by a
+  // tenant strength allowing exactly the same combinations, which is the same
+  // requirement under another name (resolvePolicy.ts); where none does, this is
+  // the step that makes one, and the policies that require it wait on it.
+  const strengthStepId = PREREQ_STEP_ID.authStrength
+  const strengthsUnanswered = canUseConditionalAccess ? unmatchedStrengths(input.baseline.policies, tenantObjects) : []
+  if (strengthsUnanswered.length > 0) {
+    // The author's own name for it, which is what the step's words call it: the
+    // strength this tenant is being asked to make is the baseline's, not one of
+    // ours to rename.
+    const name = strengthsUnanswered.map((x) => x.name).find((n): n is string => typeof n === 'string' && n.trim() !== '') ?? null
+    steps.push(name ? { ...prereq(strengthStepId), naming: { proposed: name, fromBaseline: name } } : prereq(strengthStepId))
   }
 
   // Allowed countries (prompt 16 §4): the named location is created in phase
@@ -1308,6 +1360,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       if (goal.id === 'geo-restriction') {
         if (steps.some((s) => s.id === countriesStepId)) blockByStep(countriesStepId, 'create-object')
       }
+      // Every policy that requires the baseline's own custom strength waits on
+      // the step that creates it — read off the step's own missing list, so the
+      // dependency is the same fact the body already reports and never a second
+      // reading of which goals happen to use a strength.
+      if ((action.missing ?? []).some((m) => m.stepId === strengthStepId) && steps.some((x) => x.id === strengthStepId)) blockByStep(strengthStepId, 'create-object')
       // The service-accounts block names the group and the trusted network (E9): it waits on both.
       if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL) {
         if (steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')

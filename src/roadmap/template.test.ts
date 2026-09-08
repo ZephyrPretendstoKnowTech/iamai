@@ -36,7 +36,9 @@ test('prompt 49.1 item 1: an unresolved reference is stripped from the JSON, nev
   // Nothing executable while an object the policy names is missing: no body at
   // all, and the reference named as what the step waits on.
   assert.equal(action.json, null, 'no incomplete body is exposed')
-  assert.deepEqual(action.missing?.map((m) => m.token), ['ref-exclusions'], 'the reference is what it waits on')
+  // Both: the author's own group, and the exclusions group every policy the plan
+  // writes excludes, which this tenant has not settled either (resolvePolicy.ts).
+  assert.deepEqual(action.missing?.map((m) => m.token), ['ref-exclusions', '{exclusionsGroup}'], 'the references are what it waits on')
   // The operation the step carries holds no placeholder either.
   const op = action.resolution!.policies[0]
   assert.doesNotMatch(JSON.stringify(op.body), /__IAMAI_|ref-exclusions/, 'no placeholder token or raw reference in the body')
@@ -49,7 +51,10 @@ test('item 12: every goal × implementation renders Do it from the template with
     for (const impl of goal.implementations) {
       const { body, unresolved } = resolveTemplate(impl.template as TemplateBody, SAMPLE_VALUES)
       assert.deepEqual(unresolved, [], `${goal.id}: sample values resolve everything`)
-      const resolved = resolveTenantPolicy(body, { exclusionsGroupId: null, serviceAccountsGroupId: null, allowedCountriesLocationId: null }, goal.id)
+      // A tenant with its exclusions group settled: what is under test here is
+      // the template, not the safety gate that withholds a policy from a tenant
+      // with no group to exclude (resolvePolicy.ts).
+      const resolved = resolveTenantPolicy(body, { exclusionsGroupId: 'x-exclusions', serviceAccountsGroupId: null, allowedCountriesLocationId: null }, goal.id)
       const action = buildCreateAction([{ sourceName: goal.id, sourceKey: goal.id, resolved, displayName: `CA - ${actionVerb(impl)} - ${goal.shortName}` }], mapping, 'plan-1', `s-goal-${goal.id}`, goal.id)
       assert.ok(action.json, `${goal.id}: json`)
       const parsed = JSON.parse(action.json) as { grantControls?: { builtInControls?: string[]; authenticationStrength?: unknown } | null; sessionControls?: Record<string, unknown> | null; state: string; description: string }

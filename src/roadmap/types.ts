@@ -130,6 +130,18 @@ export type Action = {
    */
   missing?: { token: string; stepId: string | null }[]
   /**
+   * The author's own objects this tenant's copy of the policy does without: a
+   * source group the baseline only ever excludes, which nothing in this tenant
+   * answers and no Preparation step creates (resolvePolicy.ts `authorOnly`).
+   *
+   * Apart from `missing` because it is not a prerequisite. There is nothing to
+   * go and do about it, and leaving an exclusion out reaches more people than
+   * the author's tenant did and never fewer, so it does not withhold the policy
+   * — a baseline whose author excludes a group of their own would otherwise be
+   * permanently unimplementable everywhere else.
+   */
+  authorOnly?: string[]
+  /**
    * The step's operations. Portal, JSON, PowerShell and Download all render
    * from these; nothing resolves a baseline reference or decides a mode again.
    */

@@ -9,15 +9,24 @@
 // runtime reads the snapshot; its only network calls are the author-head check
 // and the update review it opens.
 //
-//   node scripts/pin-baseline.ts            # re-pin to the author's current head, diff from the old pin
-//   node scripts/pin-baseline.ts <commit>   # pin to a specific commit
+//   node scripts/pin-baseline.ts <commit> [--from <commit>]
+//
+// The commit is required and must be a full 40-character sha. This script used
+// to default to the author's current head, which made "re-pin" and "adopt
+// whatever the author pushed since" the same command: a baseline update is a
+// promotion of one reviewed version, and a run that discovers its own target has
+// already made the decision the review exists to make.
+//
+// `--from` is the commit the report's diff is read against; it defaults to the
+// pin this repository is on. Name it when the artifacts have already moved and
+// the report still has to show the promotion a reviewer is reading.
 //
 // This is a derived artifact in our schema — not a copy of the author's files —
 // which is what the supply-chain rule protects (see CLAUDE.md).
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { discoverPolicies } from '../src/baseline/discover.ts'
 import type { CaPolicy } from '../src/baseline/types.ts'
-import type { BaselineFile } from '../src/baseline/types.ts'
+import type { BaselineFile, LoadReport } from '../src/baseline/types.ts'
 import { policyFacts } from '../src/coverage/facts.ts'
 import { mapGoalsToPolicies } from '../src/coverage/goalIdentity.ts'
 import type { GoalMapResult, PolicyForMap } from '../src/coverage/goalIdentity.ts'
@@ -38,6 +47,45 @@ const OWNER = index.owner
 const REPO = index.repo
 const BASE = 'jhope188-conditionalaccesspolicies'
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const COMMIT = /^[0-9a-f]{40}$/
+
+/**
+ * The one commit this run pins, from the command line and from nowhere else.
+ *
+ * There is no default. A pin is the promotion of a version somebody reviewed and
+ * approved by name, so a run with no argument has nothing to promote — it does
+ * not get to ask the author what is newest and adopt that. A short sha is
+ * refused too: an abbreviation is not the identity the index record, the
+ * attribution and the report all claim to name.
+ */
+export function targetCommit(argv: readonly string[], fallbackFrom: string): { commit: string; from: string } {
+  const args = argv.filter((a) => a.trim() !== '')
+  const sha = (raw: string, what: string): string => {
+    const v = raw.toLowerCase()
+    if (!COMMIT.test(v)) throw new Error(`pin-baseline needs a full 40-character commit sha for ${what}, not "${raw}"`)
+    return v
+  }
+  let from: string | null = null
+  const rest: string[] = []
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--from') {
+      const next = args[i + 1]
+      if (next === undefined) throw new Error('pin-baseline: --from needs a commit')
+      from = sha(next, '--from')
+      i++
+      continue
+    }
+    const eq = args[i].match(/^--from=(.*)$/)
+    if (eq) {
+      from = sha(eq[1], '--from')
+      continue
+    }
+    rest.push(args[i])
+  }
+  if (rest.length === 0) throw new Error('pin-baseline needs the commit to pin: node scripts/pin-baseline.ts <40-character sha>')
+  if (rest.length > 1) throw new Error(`pin-baseline pins one commit; got ${rest.length}: ${rest.join(' ')}`)
+  return { commit: sha(rest[0], 'the commit to pin'), from: from ?? fallbackFrom }
+}
 
 async function api<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { 'User-Agent': 'iamai-pin-baseline', Accept: 'application/vnd.github+json' } })
@@ -61,18 +109,66 @@ async function treeAt(commit: string): Promise<{ policyPaths: string[]; indexFil
   }
 }
 
-async function fetchFiles(commit: string, paths: string[]): Promise<BaselineFile[]> {
-  const out: BaselineFile[] = []
+/**
+ * Every path, or an account of what did not come back. A failed fetch used to be
+ * dropped on the floor, so one 500 from the raw host produced a baseline missing
+ * a policy and a pin that claimed the commit anyway — the snapshot would be
+ * short a policy and nothing in the artifacts would say so.
+ */
+async function fetchFiles(commit: string, paths: string[]): Promise<{ files: BaselineFile[]; failed: { path: string; why: string }[] }> {
+  const files: BaselineFile[] = []
+  const failed: { path: string; why: string }[] = []
   const q = [...paths]
   const worker = async (): Promise<void> => {
     while (q.length) {
       const path = q.shift()!
-      const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${commit}/${encodeURI(path)}`)
-      if (res.ok) out.push({ path, text: await res.text() })
+      try {
+        const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${commit}/${encodeURI(path)}`)
+        if (res.ok) files.push({ path, text: await res.text() })
+        else failed.push({ path, why: `HTTP ${res.status}` })
+      } catch (e) {
+        failed.push({ path, why: e instanceof Error ? e.message : String(e) })
+      }
     }
   }
   await Promise.all(Array.from({ length: 8 }, worker))
-  return out
+  return { files, failed }
+}
+
+/** What one commit's read of the author's policy files came to. */
+export type Acquisition = {
+  /** Policy paths the commit's tree listed. */
+  requested: readonly string[]
+  fetched: number
+  parsed: number
+  skipped: number
+  duplicates: number
+  errors: number
+  failed: readonly { path: string; why: string }[]
+}
+
+/**
+ * Why this read of the source may not become a pin, or null when it may.
+ *
+ * A pin is a claim about one commit *whole*: these are our schema's version of
+ * everything the author published there, and the runtime and every later diff
+ * read it as complete. So an incomplete or uncertain read is not a smaller pin,
+ * it is a wrong one — a policy that failed to fetch reads afterwards as a policy
+ * the author removed, and a file that would not parse reads as one they never
+ * wrote. Both must stop the run before anything is written.
+ *
+ * A duplicate is not uncertainty: `discoverPolicies` has stated rules for a
+ * second copy of a policy — same id, same display name, an older generation —
+ * and each one is a decision it made and reported, not a file it could not read.
+ * Duplicates are counted and allowed.
+ */
+export function acquisitionFailure(a: Acquisition, report: LoadReport): string | null {
+  if (a.failed.length > 0) return `${a.failed.length} of ${a.requested.length} source file(s) did not come back: ${a.failed.map((f) => `${f.path} (${f.why})`).join(', ')}`
+  if (a.fetched !== a.requested.length) return `the commit's tree lists ${a.requested.length} policy file(s) and ${a.fetched} were read`
+  if (report.errors.length > 0) return `${report.errors.length} source file(s) could not be read: ${report.errors.map((e) => `${e.path} (${e.error})`).join(', ')}`
+  if (report.skipped.length > 0) return `${report.skipped.length} source file(s) held nothing this reader recognised: ${report.skipped.map((x) => `${x.path} (${x.reason})`).join(', ')}`
+  if (report.parsed === 0) return 'no policy was read from the commit at all'
+  return null
 }
 
 /**
@@ -101,10 +197,29 @@ export function placeholdersFor(policies: CaPolicy[], interpretation: BaselineIn
   return { placeholderFor, read }
 }
 
-async function snapshotAt(commit: string, interpretation: BaselineInterpretation): Promise<{ policies: PinnedPolicy[]; stripped: string[]; indexFiles: string[]; read: Interpreted; discovered: CaPolicy[] }> {
+async function snapshotAt(
+  commit: string,
+  interpretation: BaselineInterpretation,
+): Promise<{ policies: PinnedPolicy[]; stripped: string[]; indexFiles: string[]; read: Interpreted; discovered: CaPolicy[]; acquisition: Acquisition }> {
   const tree = await treeAt(commit)
-  const files = await fetchFiles(commit, tree.policyPaths)
-  const discovered = discoverPolicies(files).policies
+  const { files, failed } = await fetchFiles(commit, tree.policyPaths)
+  const found = discoverPolicies(files)
+  const report = found.report
+  const acquisition: Acquisition = {
+    requested: tree.policyPaths,
+    fetched: files.length,
+    parsed: report.parsed,
+    skipped: report.skipped.length,
+    duplicates: report.duplicates.length,
+    errors: report.errors.length,
+    failed,
+  }
+  process.stdout.write(
+    `pin-baseline: ${commit.slice(0, 8)} — ${acquisition.requested.length} listed, ${acquisition.fetched} fetched, ${acquisition.parsed} parsed, ${acquisition.skipped} skipped, ${acquisition.duplicates} duplicate, ${acquisition.errors} error, ${acquisition.failed.length} unread\n`,
+  )
+  const why = acquisitionFailure(acquisition, report)
+  if (why) throw new Error(`refusing to pin ${commit}: the source was not read whole — ${why}`)
+  const discovered = found.policies
   const { placeholderFor, read } = placeholdersFor(discovered, interpretation)
   const policies: PinnedPolicy[] = []
   const stripped: string[] = []
@@ -114,7 +229,7 @@ async function snapshotAt(commit: string, interpretation: BaselineInterpretation
     stripped.push(...r.stripped)
   }
   policies.sort((a, b) => a.displayName.localeCompare(b.displayName))
-  return { policies, stripped, indexFiles: tree.indexFiles, read, discovered }
+  return { policies, stripped, indexFiles: tree.indexFiles, read, discovered, acquisition }
 }
 
 function diff(oldP: PinnedPolicy[], newP: PinnedPolicy[]): { added: string[]; removed: string[]; changed: string[] } {
@@ -174,10 +289,10 @@ function checked(out: { pinned: PinnedFile; index: BaselineIndex }): { pinned: P
 }
 
 async function main(): Promise<void> {
-  const target = process.argv[2] ?? (await api<{ sha: string }[]>(`https://api.github.com/repos/${OWNER}/${REPO}/commits?per_page=1`))[0].sha
   // The commit the shipped snapshot was built from — not index.commit, which
-  // recorded an older pin for as long as the two were written apart.
-  const oldCommit = PINNED.commit
+  // recorded an older pin for as long as the two were written apart — unless the
+  // run names the commit to read the promotion against.
+  const { commit: target, from: oldCommit } = targetCommit(process.argv.slice(2), PINNED.commit)
   process.stdout.write(`pin-baseline: pinning ${OWNER}/${REPO} at ${target}\n`)
   // This baseline's settled readings of the author's own objects, which are the
   // only thing that may give a reference a specialised meaning.
@@ -257,6 +372,7 @@ async function main(): Promise<void> {
     ``,
     `- Policies: ${next.policies.length} (was ${prev.policies.length})`,
     `- Author-specific app exclusions stripped: ${next.stripped.length}`,
+    `- Source read: ${next.acquisition.requested.length} policy files listed, ${next.acquisition.fetched} fetched, ${next.acquisition.parsed} parsed, ${next.acquisition.skipped} skipped, ${next.acquisition.duplicates} duplicate, ${next.acquisition.errors} error, ${next.acquisition.failed.length} unread`,
     ``,
     `## Diff from ${oldCommit.slice(0, 7)}`,
     ``,

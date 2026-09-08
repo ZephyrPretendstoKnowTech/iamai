@@ -24,6 +24,8 @@ export const PREREQ_STEP_ID = {
   trustedLocation: 's-prereq-trusted-location',
   allowedCountries: 's-prereq-allowed-countries',
   serviceAccountsGroup: 's-prereq-service-accounts-group',
+  /** The custom authentication strength the baseline's policies require, which the author's tenant has and this one may not. */
+  authStrength: 's-prereq-auth-strength',
   /** The device decision (E2): how phones and computers are managed, before any device policy is offered. */
   devicePlan: 's-prereq-device-plan',
 } as const

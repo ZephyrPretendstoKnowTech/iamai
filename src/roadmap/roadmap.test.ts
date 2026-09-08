@@ -6,6 +6,8 @@ import { buildStrengthLookup } from '../coverage/strength.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import type { MappingState } from '../mapping/types.ts'
+import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
+import type { GroupMembers } from '../coverage/population.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
@@ -48,7 +50,11 @@ function mkSnapshot(over: Partial<TenantSnapshot> = {}): TenantSnapshot {
     sources: {
       signInEvidence: { status: 'ok', coveredWindow: { from: '2026-07-27T00:00:00Z', to: '2026-08-26T00:00:00Z' }, reason: null, asOf: '' },
     } as unknown as TenantSnapshot['sources'],
-    config: { caPolicies: { status: 'ok', reason: null, rows: [] } } as unknown as TenantSnapshot['config'],
+    // The role read is declared so the exclusions group's own checks can run: a
+    // check that cannot see the directory's roles is unknown, and an unknown
+    // check is not a pass, so the group would never be one a policy may name
+    // (Foundation C).
+    config: { caPolicies: { status: 'ok', reason: null, rows: [] }, roleAssignments: { status: 'ok', reason: null, rows: [] } } as unknown as TenantSnapshot['config'],
     registrationDetails: [],
     users,
     devices: [],
@@ -106,6 +112,26 @@ function viabilityRows(readyCount: number, total = 10): MfaViability[] {
   }))
 }
 
+/**
+ * A tenant that has answered the exclusions-group question, with a group these
+ * cases can safely write into a policy: the emergency accounts are its only
+ * members, its membership was read whole, and it holds no administrator
+ * (Foundation C, mapping/safetyChoice.ts).
+ *
+ * Every policy the plan writes excludes that group, so a tenant with none has no
+ * policy to hand over at all (resolvePolicy.ts) - which is its own case, proved
+ * in foundationC.test.ts, and not what these translator cases are about.
+ */
+const XGROUP = 'x-exclusions'
+function withExclusions(mapping: MappingState): MappingState {
+  return {
+    ...mapping,
+    breakGlassUserIds: ['u9'],
+    records: { ...mapping.records, [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(undefined, XGROUP) },
+  }
+}
+const exclusionsMembers = (): GroupMembers => new Map([[XGROUP, { memberIds: ['u9'], memberCount: 1, sampled: false, displayName: 'CA - Exclusions', membershipRule: null, mailEnabled: false }]])
+
 function build(args: {
   tenantPolicies?: P[]
   baselinePolicies?: P[]
@@ -138,7 +164,8 @@ function build(args: {
       docs: [],
     },
     baselineAuthor: { author: 'Author', url: 'https://example.test' },
-    mapping: args.mapping ?? emptyMappingState('t'),
+    mapping: args.mapping ?? withExclusions(emptyMappingState('t')),
+    groupMembers: exclusionsMembers(),
     viability: viabilityRows(args.ready ?? 10),
     strengths,
   }
@@ -167,7 +194,7 @@ test('2: absent goal with mapped references → create step JSON has mapped ids,
       clientAppTypes: ['all'],
     },
   })
-  const mapping = emptyMappingState('t')
+  const mapping = withExclusions(emptyMappingState('t'))
   mapping.records['old-group-id'] = {
     placeholder: 'old-group-id',
     kind: 'group',
@@ -223,7 +250,11 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   snap2.config.caPolicies = {
     status: 'ok',
     reason: null,
-    rows: [mkPolicy({ id: 'created-1', displayName: 'Created', state: 'enabledForReportingButNotEnforced', description: tag })],
+    // The policy the plan created, as the plan writes it: excluding the tenant's
+    // exclusions group, which every policy the plan writes excludes. A deployed
+    // policy that does not is not the policy the step submits, and Foundation B
+    // would rightly refuse to call it deployed as planned.
+    rows: [mkPolicy({ id: 'created-1', displayName: 'Created', state: 'enabledForReportingButNotEnforced', description: tag, conditions: { users: { includeUsers: ['All'], excludeUsers: [], includeGroups: [], excludeGroups: [XGROUP], includeRoles: [], excludeRoles: [] }, applications: { includeApplications: ['All'], excludeApplications: [], includeUserActions: [] }, clientAppTypes: ['all'] } })],
   }
   applyProgress(steps, snap2, input.coverage, PLAN)
   assert.equal(step.status, 'in-report-only')
@@ -242,7 +273,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
     ...snap2,
     evidencePolicyResults: [cleanReportOnly({ policyId: 'created-1', displayName: 'Created', people: everyone, asOf: snap2.asOf })],
   } as unknown as TenantSnapshot
-  applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
+  applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
   assert.equal(step.status, 'ready-to-enforce')
 
   // The same eight days with no records read is not the same answer: the window
@@ -250,7 +281,7 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   // still being watched.
   const blind = generateRoadmap(input).steps
   const blindStep = stepFor(blind, 'mfa-all-users')
-  applyProgress(blind, snap2, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
+  applyProgress(blind, snap2, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
   assert.equal(blindStep.tracking?.failures, null, 'no records read is not a clean window')
   assert.equal(blindStep.status, 'in-report-only', 'a served window is not evidence about anybody')
 
@@ -268,14 +299,14 @@ test('6: re-scan matching — report-only, then exit criterion, then enabled', (
   // is done if and only if its goal's verdict is inPlace (target-state §8.2,
   // prompt 46 item 9), so the policy's own state cannot finish it on its own:
   // that is exactly how the Plan came to count 11 in place against Findings' 6.
-  applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone })
+  applyProgress(steps, clean, input.coverage, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
   assert.equal(step.status, 'ready-to-enforce', 'an enabled policy does not make a step done while coverage disagrees')
   // On a real re-scan coverage is recomputed and agrees; then, and only then, the step is done.
   const agreeing = {
     ...input.coverage,
     results: input.coverage.results.map((r) => (r.goal.id === 'mfa-all-users' ? { ...r, status: 'enforced' as const, verdict: 'inPlace' as const } : r)),
   }
-  applyProgress(steps, clean, agreeing, PLAN, undefined, null, watched, { activePeople: everyone })
+  applyProgress(steps, clean, agreeing, PLAN, undefined, null, watched, { activePeople: everyone, groupMembers: { [XGROUP]: ['u9'] } })
   assert.equal(step.status, 'done')
   assert.equal(step.history.length, 3)
 })

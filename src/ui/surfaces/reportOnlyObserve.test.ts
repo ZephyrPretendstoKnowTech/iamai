@@ -192,23 +192,6 @@ function instructionsOf(step: Step, ctx: StepVarContext): ReturnType<typeof step
 const SERVICE_ACCOUNTS_GROUP_ID = '00b2c9ad-2f3e-4c81-9a3d-7c1f6e4b5a01'
 
 /**
- * The authentication strength the baseline asks for. Task 022 re-pinned the
- * default baseline to a commit where this policy requires the author's custom
- * "Modern MFA + TAP" rather than the built-in multifactor strength, so a tenant
- * that has not created it is a tenant whose deployed copy IAMAI cannot credit
- * with meeting the goal - correctly, since it cannot know what an unknown
- * strength allows. This tenant has created it, which is what the plan's own
- * prerequisite step asks for.
- */
-const MODERN_STRENGTH = {
-  id: '42de22a7-5339-4a58-b560-28565d53b14d',
-  displayName: 'Modern MFA + TAP',
-  policyType: 'custom',
-  requirementsSatisfied: 'mfa',
-  allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor', 'temporaryAccessPassOneTime'],
-}
-
-/**
  * The same demo tenant one step further on: its people have working MFA, so the
  * readiness the plan waits for is met, and it has the service-accounts group the
  * device-registration policy excludes. That clears everything holding
@@ -225,10 +208,13 @@ const MODERN_STRENGTH = {
  */
 function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
   const base = fixture(FIXTURE)
-  const withStrength = {
-    ...base.snapshot,
-    config: { ...base.snapshot.config, authStrengths: { ...(base.snapshot.config.authStrengths ?? { rows: [] }), rows: [...(base.snapshot.config.authStrengths?.rows ?? []), MODERN_STRENGTH] } },
-  } as TenantSnapshot
+  // The baseline requires the author's custom "Modern MFA + TAP", which is an
+  // object of *their* tenant; what stands in for it here is this tenant's own
+  // strength allowing the same combinations, which the fixture carries because a
+  // tenant without one cannot create the policy at all (resolvePolicy.ts). One
+  // is the answer: a second strength allowing the same thing would be two, and
+  // the plan does not choose between them.
+  const withStrength = base.snapshot
   const f = { ...base, snapshot: withStrength }
   const anyGroup = [...f.groups][0][1]
   const members = f.mapping.serviceAccountUserIds ?? []

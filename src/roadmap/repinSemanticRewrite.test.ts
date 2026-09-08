@@ -39,6 +39,17 @@ const NEW_NAME = 'IAC - INTUNE – GRANT – Device Registration - MFA Strength'
 const BUILTIN = '00000000-0000-0000-0000-000000000002'
 /** The author's custom "Modern MFA + TAP", which the re-pinned baseline asks for. */
 const MODERN = '42de22a7-5339-4a58-b560-28565d53b14d'
+/**
+ * The tenant's own strength for it: the id the plan's operation actually
+ * submits. The author's id is the author's, and no other tenant has it, so what
+ * a tenant deployed as planned holds is its own strength allowing exactly what
+ * the baseline asks for (resolvePolicy.ts tenantStrengthFor).
+ */
+const TENANT_MODERN = (): string => {
+  const st = (asked.grantControls as { authenticationStrength?: { id?: string } } | null)?.authenticationStrength
+  assert.ok(st?.id && st.id !== MODERN, 'the plan submits the tenant’s own strength, never the author’s id')
+  return st.id
+}
 const PID = 'dddddddd-0000-4000-8000-000000000001'
 const DAY = 86_400_000
 
@@ -127,13 +138,15 @@ function deployed(strengthId: string) {
   const grantControls = structuredClone(asked.grantControls) as Record<string, unknown>
   grantControls.authenticationStrength = { id: strengthId }
   const row = { ...structuredClone(asked), id: PID, state: 'enabledForReportingButNotEnforced', description: '', createdDateTime: at, modifiedDateTime: at, grantControls }
-  const strengths = f.snapshot.config.authStrengths?.rows ?? []
+  // The fixture tenant already has its own strength allowing what the baseline
+  // asks for; nothing is added here, because a second strength allowing the same
+  // combinations would be two answers to one question and the plan would decline
+  // to pick between them (resolvePolicy.ts).
   const snapshot = {
     ...f.snapshot,
     config: {
       ...f.snapshot.config,
       caPolicies: { ...f.snapshot.config.caPolicies!, rows: [...(f.snapshot.config.caPolicies?.rows ?? []), row] },
-      authStrengths: { ...(f.snapshot.config.authStrengths ?? { rows: [] }), rows: [...strengths, { id: MODERN, displayName: 'Modern MFA + TAP', policyType: 'custom', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor', 'temporaryAccessPassOneTime'] }] },
     },
     evidencePolicyResults: [...(f.snapshot.evidencePolicyResults ?? []), cleanReportOnly({ policyId: PID, people, asOf: f.snapshot.asOf, firstReportOnlyAt: at })],
   } as TenantSnapshot
@@ -141,7 +154,7 @@ function deployed(strengthId: string) {
 }
 
 test('a tenant deployed with what the baseline now asks reaches ready to enforce', () => {
-  const step = deployed(MODERN)
+  const step = deployed(TENANT_MODERN())
   assert.equal(step.state?.lifecycle, 'ready-to-enforce')
   assert.equal(step.action.resolution?.policies?.[0]?.mode, 'update', 'the one change left is turning on the policy the tenant has')
   assert.equal(step.tracking?.policyId, PID)

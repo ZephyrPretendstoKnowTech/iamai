@@ -16,6 +16,7 @@ import { BREAK_GLASS_STEP_ID } from '../stepIds.ts'
 import { questionLabels } from '../decisions.ts'
 import type { StepDecision } from '../decisions.ts'
 import { pinnedPackage } from '../../baseline/pinned.ts'
+import { baselineStrength } from '../resolvePolicy.ts'
 import { withCleanupDone } from '../cleanupDone.ts'
 
 export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
@@ -74,6 +75,43 @@ function guid(seed: string, i: number): string {
   // The index lives in the first group so two ids from one seed never collide.
   return `${i.toString(16).padStart(8, '0').slice(-8)}-${part(4)}-4${part(3)}-8${part(3)}-${part(12)}`
 }
+/**
+ * The tenant's own version of every custom authentication strength the pinned
+ * baseline requires: the same combinations under this tenant's own id, which is
+ * what `s-prereq-auth-strength` asks an operator to make.
+ *
+ * Jon Hope's policies point at a custom strength of *his* tenant ("Modern MFA +
+ * TAP"), and that id exists nowhere else, so a tenant without a strength of its
+ * own allowing the same combinations cannot create eleven of the baseline's
+ * policies at all (resolvePolicy.ts). These fixtures are tenants that have done
+ * that prerequisite, so what they exercise is the rollout and not the wait; a
+ * tenant that has not is what `strengthMissing` below builds.
+ */
+function baselineStrengths(seed: string): Record<string, unknown>[] {
+  const policies = pinnedPackage().policies
+  const seen = new Set<string>()
+  const out: Record<string, unknown>[] = []
+  for (const p of policies) {
+    const st = (p as unknown as { grantControls?: { authenticationStrength?: { id?: string; policyType?: string } } | null }).grantControls?.authenticationStrength
+    if (!st || typeof st.id !== 'string' || st.policyType === 'builtIn' || seen.has(st.id)) continue
+    seen.add(st.id)
+    // What the strength allows is read the one way the product reads it
+    // (resolvePolicy.ts): the source's own newest definition, not whichever
+    // policy's embedded copy came first.
+    const definition = baselineStrength(policies, st.id)
+    if (!definition || definition.allowedCombinations.length === 0) continue
+    out.push({ id: guid(seed, 5_000_000 + seen.size), displayName: definition.name ?? 'Baseline strength', policyType: 'custom', allowedCombinations: [...definition.allowedCombinations] })
+  }
+  return out
+}
+
+/** The same snapshot with no custom strength of its own: the tenant before that prerequisite. */
+export function strengthMissing(snapshot: TenantSnapshot): TenantSnapshot {
+  const section = snapshot.config.authStrengths ?? { status: 'ok' as const, reason: null, rows: [] }
+  const rows = (section.rows ?? []).filter((r) => (r as { policyType?: string }).policyType === 'builtIn')
+  return { ...snapshot, config: { ...snapshot.config, authStrengths: { ...section, rows } } }
+}
+
 function hash(s: string): number {
   let h = 2166136261
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
@@ -502,7 +540,7 @@ export function buildFixture(spec: Spec): Fixture {
     config: {
       caPolicies: section(policies),
       namedLocations: section([{ '@odata.type': '#microsoft.graph.ipNamedLocation', id: guid(seed, 4_000_001), displayName: 'Head office', isTrusted: true, ipRanges: [{ cidrAddress: '203.0.113.0/24' }] }]),
-      authStrengths: section([{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }]),
+      authStrengths: section([{ id: '00000000-0000-0000-0000-000000000004', displayName: 'Phishing-resistant MFA', policyType: 'builtIn', allowedCombinations: ['windowsHelloForBusiness', 'fido2', 'x509CertificateMultiFactor'] }, ...baselineStrengths(seed)]),
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
       crossTenantAccess: section([]),
