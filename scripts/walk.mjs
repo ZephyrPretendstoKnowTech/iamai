@@ -679,8 +679,10 @@ async function walkFixture(fx) {
         // is signed in during the demo, so tile 1 says so and offers the way
         // out; the signed-in tile's two actions are Microsoft's and would act
         // on a real sign-in that does not exist here (task 026).
-        const demoFx = fx.name.startsWith('demo')
-        if (t1 && !signedOut && demoFx) {
+        // Demo mode is the URL's, never the fixture's name: the product reads
+        // ?demo=1 (ui/demoMode.ts isDemo), and mock-author is a demo fixture
+        // named mock- so the plan checks skip it. inDemo is that one reading.
+        if (t1 && !signedOut && inDemo) {
           if (!/^Sample tenant/.test(t1.h2) || !t1.state) add('P0', `${label}: tile 1 does not read Sample tenant with the sample tenant as its state: "${t1.h2}"`)
           if (!/IAMAI is not connected to Microsoft\./.test(t1.text)) add('P0', `${label}: tile 1 does not say the sample is not connected to Microsoft`)
           if (READER.test(t1.text)) add('P0', `${label}: tile 1 keeps the Global Reader line in the demo, where nobody signed in`)
@@ -688,7 +690,7 @@ async function walkFixture(fx) {
           for (const re of [/^Sign out$/, /^Sign in with another account$/]) if (t1.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 1 offers ${re} in the demo, where there is no Microsoft account to act on`)
           if (await evaluate(`[...document.querySelectorAll('header.app button')].some((b) => /^Account$/.test((b.textContent || '').trim()))`)) add('P0', `${label}: the header offers the Account menu in the demo`)
         }
-        if (t1 && !signedOut && !demoFx) {
+        if (t1 && !signedOut && !inDemo) {
           if (!/^Signed in /.test(t1.h2) || !t1.state) add('P0', `${label}: tile 1 does not read Signed in with the tenant as its state: "${t1.h2}"`)
           if (!READER.test(t1.text)) add('P0', `${label}: tile 1 lacks the Global Reader line as the mockup words it`)
           if (!CONSENT.test(t1.text)) add('P0', `${label}: tile 1 lacks the consent sentence`)
