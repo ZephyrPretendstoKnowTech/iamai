@@ -6,8 +6,8 @@ export redaction test) run in CI on every push; this list is the rest.
 
 ## App registration (Entra)
 
-> **Before the /rollout/ move goes live.** The planner now sends
-> `https://getiamai.com/rollout/` as its redirect URI, derived from the origin
+> **Before the planner goes live.** The planner sends
+> `https://getiamai.com/planner/` as its redirect URI, derived from the origin
 > plus the build base. Until that exact value is registered, sign-in fails with
 > `AADSTS50011` and the tool is unusable on the live site. Add it first.
 
@@ -15,11 +15,11 @@ export redaction test) run in CI on every push; this list is the rest.
 - [ ] Add the published redirect URI to the IAMAI app registration under Authentication →
       Single-page application. The app sends `window.location.origin + BASE_URL`, so the
       value follows the base the bundle was built with, and the trailing slash matters:
-      - custom domain (the default): `https://getiamai.com/rollout/` and
-        `https://www.getiamai.com/rollout/`
+      - custom domain (the default): `https://getiamai.com/planner/` and
+        `https://www.getiamai.com/planner/`
       - github.io fallback (`VITE_BASE=/iamai/`): `https://<owner>.github.io/iamai/`
-      The bare apex and www URIs from before the move can be removed once
-      `/rollout/` is confirmed working.
+      The bare apex and www URIs, and any URI from a path this tool no longer
+      publishes, can be removed once `/planner/` is confirmed working.
       Keep `http://localhost:5173` for development. Adding both published URIs is fine;
       a redirect URI that is registered and unused costs nothing.
 - [ ] Set the publisher domain on the registration so the consent screen shows a verified
@@ -30,9 +30,9 @@ export redaction test) run in CI on every push; this list is the rest.
 ## Repository
 
 - [ ] Confirm the repository is public and the licence (MIT) is present.
-- [ ] Run the scrub from the pre-share audit (`docs/qa/pre-share-audit.md`, part 2): no
-      sign-in names, tenant ids, user or device ids, device names or IP ranges in committed
-      files, fixtures, screenshots or QA logs. `git grep -E
+- [ ] Run the tenant-data scrub: no sign-in names, tenant ids, user or device ids,
+      device names or IP ranges in committed files, fixtures, screenshots or QA logs.
+      `git grep -E
       "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.(com|net|org|au)"` should return only
       `example.com`, `example.test` and `noreply@` addresses.
 - [ ] Confirm `docs/spikes/raw/` is ignored and empty in the tree.
@@ -58,8 +58,9 @@ export redaction test) run in CI on every push; this list is the rest.
 - [ ] Tick **Enforce HTTPS** once the certificate is issued (it can take up to 24 hours to
       become available). Confirm with `gh api repos/<owner>/<repo>/pages` showing
       `"https_enforced": true`.
-- [ ] Confirm the base matches the layout. The workflow builds with `TOOL_PATH`, defaulting
-      to `rollout`: the home page lands at `dist/index.html` and the planner at
+- [ ] Confirm the base matches the layout. `TOOL_PATH` is a source constant
+      (`scripts/toolPath.ts`, currently `planner`) and no deployment variable names the
+      folder: the home page lands at `dist/index.html` and the planner at
       `dist/<TOOL_PATH>/`, with the Vite base matching. If the site is ever served from `<owner>.github.io/<repo>/`
       instead, set the `VITE_BASE` repository variable to `/<repo>/` and update the redirect
       URI to match. A mismatch is silent: the page returns 200 with its title and the app
@@ -69,10 +70,11 @@ export redaction test) run in CI on every push; this list is the rest.
       lives in repository settings instead; the file is kept so the intent is visible in the
       repository and so a switch back to branch publishing does not silently drop the domain.
 - [ ] After the first deploy, open `https://getiamai.com/` for the home page and
-      `https://getiamai.com/rollout/#/connect` for the planner, sign in to a
-      test tenant, and walk Start → Connect → Baseline → Scan → Setup → Findings → Roadmap.
-      Print the Roadmap. Save the plan, forget the tenant, reload the plan.
-- [ ] Take the first-run screenshots (Start, Findings, Roadmap Progress, Roadmap Plan) at
+      `https://getiamai.com/planner/#/connect` for the planner, sign in to a
+      test tenant, and walk Connect → Plan → MFA Readiness → Export, with How for the
+      permission and storage disclosure. Print the Plan. Save the plan, forget the
+      tenant, reload the plan.
+- [ ] Take the first-run screenshots (Connect, Plan, MFA Readiness, Export) at
       360 and 1440 in both themes and commit them under `docs/screens/release/`.
 - [ ] Confirm the deployed page actually renders: fetch the site root and check the script
       tag resolves. A blank page with a correct `<title>` is the signature of a base-path
@@ -80,11 +82,15 @@ export redaction test) run in CI on every push; this list is the rest.
 
 ## Baseline
 
-- [ ] Confirm the baseline index (`baselines/*.index.json`) points at a commit that still
-      exists, that the attribution on the Baseline page names the source repository,
-      author and commit, and that policy files are fetched live from that commit rather
-      than redistributed.
+- [ ] Confirm the pinned snapshot (`baselines/*.pinned.json`) and its index
+      (`baselines/*.index.json`) name the same commit, that the commit still exists
+      upstream, and that Connect's baseline tile names the source repository, author and
+      that commit. `pinMismatch` (`src/baseline/pinArtifacts.ts`) is the check, and
+      `src/baseline/pinArtifacts.test.ts` runs it in CI; the policies ship pinned, so the
+      commit is the provenance the product shows rather than a URL it fetches at runtime.
 
 ## Blockers
 
-- [ ] `docs/qa/pre-share-blockers.md` is empty, or every line in it has a decision.
+- [ ] Every blocker recorded against this release has a decision. The original pre-share
+      list is `archive/qa/pre-share-blockers.md`, kept for its history; anything still
+      open on it is answered here before the app is shown outside the project.
