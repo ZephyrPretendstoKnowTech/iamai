@@ -55,13 +55,15 @@ export type TenantObjects = {
   /** The named locations the tenant marked as its trusted network; empty until it names one. */
   trustedLocationIds?: readonly string[]
   /**
-   * Every authentication strength this tenant has, by id, with the combinations
-   * it allows (coverage/strength.ts buildStrengthLookup). Two strengths that
-   * allow exactly the same combinations *are* the same requirement, whatever
-   * they are called, so this is how the author's own custom strength finds the
-   * tenant's - by what it demands, not by a name or a guess.
+   * Every authentication strength this tenant has, by id, as the scan read it
+   * (roadmap/operations.ts tenantStrengthsOf). Two strengths that demand exactly
+   * the same thing *are* the same requirement, whatever they are called, so this
+   * is how the author's own custom strength finds the tenant's - by what it
+   * demands, not by a name or a guess. What it demands is the combinations it
+   * allows *and* the restrictions it places on them, so both are here and a
+   * strength whose restrictions nothing read carries `null`.
    */
-  strengths?: ReadonlyMap<string, readonly string[]>
+  strengths?: ReadonlyMap<string, TenantStrength>
   /** Author reference id → the tenant object a person confirmed for it (mapping.records). */
   confirmed?: ReadonlyMap<string, string>
 }
@@ -80,7 +82,7 @@ export function tenantObjectsOf(
   mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId' | 'trustedLocationIds'>,
   allowedCountriesLocationId: string | null = null,
   exclusionsGroupId: string | null = null,
-  strengths: ReadonlyMap<string, readonly string[]> = new Map(),
+  strengths: ReadonlyMap<string, TenantStrength> = new Map(),
 ): TenantObjects {
   const confirmed = new Map<string, string>()
   for (const r of Object.values(mapping.records ?? {})) {
@@ -198,6 +200,14 @@ export type BaselineStrength = {
   allowedCombinations: string[]
   /** The author's own name for it. */
   name: string | null
+  /**
+   * The restrictions the source places on those combinations - which
+   * authenticators a FIDO2 combination accepts, which issuers an X.509 one
+   * does - as the source's newest copy carries them. `[]` is a strength that
+   * restricts nothing, which is a different fact from `null`: nothing in the
+   * source says, so what the strength demands is not known.
+   */
+  combinationConfigurations: unknown[] | null
 }
 
 const strengthCache = new WeakMap<object, Map<string, BaselineStrength>>()
@@ -224,15 +234,18 @@ function strengthsOf(policies: readonly CaPolicy[]): Map<string, BaselineStrengt
   if (policies.length === 0) return new Map()
   const hit = strengthCache.get(policies as unknown as object)
   if (hit) return hit
-  type Copy = { combinations: string[]; name: string | null; at: string }
+  type Copy = { combinations: string[]; configurations: unknown[] | null; name: string | null; at: string }
   const copies = new Map<string, Copy[]>()
   for (const p of policies) {
-    const st = (p as unknown as { grantControls?: { authenticationStrength?: { id?: unknown; displayName?: unknown; allowedCombinations?: unknown; modifiedDateTime?: unknown } } | null }).grantControls?.authenticationStrength
+    const st = (p as unknown as { grantControls?: { authenticationStrength?: { id?: unknown; displayName?: unknown; allowedCombinations?: unknown; combinationConfigurations?: unknown; modifiedDateTime?: unknown } } | null }).grantControls?.authenticationStrength
     if (!st || typeof st.id !== 'string' || !Array.isArray(st.allowedCombinations)) continue
     const key = st.id.toLowerCase()
     const list = copies.get(key) ?? []
     list.push({
       combinations: st.allowedCombinations.filter((c): c is string => typeof c === 'string'),
+      // An export that never fetched the restrictions carries no key at all,
+      // which is not the same as a strength that restricts nothing.
+      configurations: Array.isArray(st.combinationConfigurations) ? st.combinationConfigurations : null,
       name: typeof st.displayName === 'string' && st.displayName.trim() !== '' ? st.displayName : null,
       at: typeof st.modifiedDateTime === 'string' ? st.modifiedDateTime : '',
     })
@@ -241,8 +254,9 @@ function strengthsOf(policies: readonly CaPolicy[]): Map<string, BaselineStrengt
   const map = new Map<string, BaselineStrength>()
   for (const [id, list] of copies) {
     const newest = list.reduce((a, b) => (b.at > a.at ? b : a))
-    const rivals = list.filter((c) => c.at === newest.at && combinationKey(c.combinations) !== combinationKey(newest.combinations))
-    map.set(id, { allowedCombinations: rivals.length > 0 ? [] : newest.combinations, name: newest.name })
+    const rivals = list.filter((c) => c.at === newest.at && demandKey(c.combinations, c.configurations) !== demandKey(newest.combinations, newest.configurations))
+    const settled = rivals.length === 0
+    map.set(id, { allowedCombinations: settled ? newest.combinations : [], name: newest.name, combinationConfigurations: settled ? newest.configurations : null })
   }
   strengthCache.set(policies as unknown as object, map)
   return map
@@ -257,24 +271,86 @@ export function baselineStrength(policies: readonly CaPolicy[], id: string): Bas
 const combinationKey = (combinations: readonly string[]): string => [...new Set(combinations.map((c) => c.toLowerCase().split(',').map((x) => x.trim()).sort().join('+')))].sort().join(' ')
 
 /**
- * The tenant's own authentication strength that *is* the author's: the one whose
- * allowed combinations are exactly the author's strength's.
+ * One authentication strength as this tenant's scan read it.
  *
- * This is an identity, not a heuristic. A strength is nothing but the set of
- * combinations it accepts, so a tenant strength accepting exactly those is the
- * same requirement under another name — and one accepting anything else is a
- * different requirement and may not stand in for it. Where none matches, the
- * reference stays unresolved and waits on the step that creates the strength.
+ * `combinationConfigurations` is `null` where the scan did not read them —
+ * Graph returns them only when they are asked for
+ * (graph/collect/registry.ts), and an older snapshot was collected before they
+ * were. Null is not "restricts nothing": it is "nobody knows", and it is the
+ * difference between a strength that can stand in for the author's and one that
+ * cannot.
+ */
+export type TenantStrength = {
+  allowedCombinations: readonly string[]
+  combinationConfigurations: unknown[] | null
+}
+
+/**
+ * The configuration objects a strength carries, as one comparable word: the
+ * whole of each one except its own identifier and the reply annotations Graph
+ * puts beside it, which are that tenant's copy of the restriction rather than
+ * the restriction. Everything else is in, including a field IAMAI has never
+ * heard of — an unrecognised restriction is a difference, and a difference is
+ * what stops the substitution.
+ *
+ * `null` in, `null` out: nothing read is not an empty list.
+ */
+function configurationKey(configurations: unknown[] | null): string | null {
+  if (configurations === null) return null
+  const strip = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(strip)
+    if (v === null || typeof v !== 'object') return v
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      const key = k.toLowerCase()
+      if (key === 'id' || key.endsWith('@odata.context') || key.endsWith('@odata.id')) continue
+      out[k] = strip(val)
+    }
+    return out
+  }
+  const stable = (v: unknown): string => {
+    if (Array.isArray(v)) return `[${v.map(stable).sort().join(',')}]`
+    if (v === null || typeof v !== 'object') return JSON.stringify(v) ?? 'null'
+    return `{${Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([k, val]) => `${JSON.stringify(k.toLowerCase())}:${stable(val)}`).join(',')}}`
+  }
+  return stable(strip(configurations))
+}
+
+/** Everything a strength demands, as one word — or null where any part of it is unread. */
+function demandKey(combinations: readonly string[], configurations: unknown[] | null): string | null {
+  const configured = configurationKey(configurations)
+  if (combinations.length === 0 || configured === null) return null
+  return `${combinationKey(combinations)}||${configured}`
+}
+
+/**
+ * The tenant's own authentication strength that *is* the author's: the one that
+ * demands exactly what the author's strength demands.
+ *
+ * This is an identity, not a heuristic — and the identity is the whole
+ * requirement, not its headline. A strength names the combinations it accepts
+ * *and*, in `combinationConfigurations`, the restrictions it puts on them: which
+ * security keys a FIDO2 combination will take, which certificate issuers and
+ * policy OIDs an X.509 one will. Two strengths listing `fido2` are not the same
+ * requirement when one takes any key and the other takes three models, and
+ * substituting the narrower one demands of this tenant's people something the
+ * baseline never asked for — of exactly the people the readiness figures counted
+ * as able to sign in.
+ *
+ * So both sides must be read and both must agree. Where either side's
+ * restrictions were not read — an export that never fetched them, a snapshot
+ * collected before IAMAI asked for them — nothing is known about them and no
+ * tenant strength can be shown to be the author's; the reference stays
+ * unresolved and waits on the step that creates the strength. Where two tenant
+ * strengths both are the author's, the plan does not pick one for the operator
+ * (roadmap/generate.ts, the same rule the pair matching uses).
  */
 function tenantStrengthFor(authorId: string, strengths: Map<string, BaselineStrength>, tenant: TenantObjects): string | null {
-  const want = strengths.get(authorId)?.allowedCombinations
-  if (!want || want.length === 0) return null
-  const key = combinationKey(want)
+  const want = strengths.get(authorId)
+  const key = want ? demandKey(want.allowedCombinations, want.combinationConfigurations) : null
+  if (key === null) return null
   const hits: string[] = []
-  for (const [id, allows] of tenant.strengths ?? []) if (combinationKey(allows) === key) hits.push(id)
-  // Two tenant strengths that both are the author's is not an answer: the plan
-  // does not pick one for the operator (roadmap/generate.ts, the same rule the
-  // pair matching uses).
+  for (const [id, own] of tenant.strengths ?? []) if (demandKey(own.allowedCombinations, own.combinationConfigurations) === key) hits.push(id)
   return hits.length === 1 ? hits[0] : null
 }
 
@@ -332,10 +408,19 @@ function stepForReference(kind: ReferenceKind, token: string | null, goalId: str
   // answer it, and saying it does would send somebody to do a task that leaves
   // the policy exactly as blocked as it was.
   if (kind === 'group') return token === 'serviceAccountsGroup' ? PREREQ_STEP_ID.serviceAccountsGroup : token === 'exclusionsGroup' ? PREREQ_STEP_ID.exclusionsGroup : null
+  // A named location, likewise. The two the product maps have their steps; the
+  // countries goal's own location has one by construction, because that goal
+  // *is* the allowed-countries list (rule 4 below). Anything else is a location
+  // of the author's that nothing settles, and it has no step: this baseline's
+  // Entra Connect policy carves out an IP range holding one dependency's own
+  // sync addresses, which is not this tenant's trusted network and is not
+  // answered by marking one. Sending somebody to finish the Trusted network step
+  // would leave the policy exactly as blocked as it was and dress a question
+  // about the author's baseline up as a task in their tenant.
   if (kind === 'namedLocation') {
     if (token === 'allowedCountries') return PREREQ_STEP_ID.allowedCountries
     if (token === 'trustedLocation') return PREREQ_STEP_ID.trustedLocation
-    return goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : PREREQ_STEP_ID.trustedLocation
+    return goalId === 'geo-restriction' ? PREREQ_STEP_ID.allowedCountries : null
   }
   if (kind === 'authenticationStrength') return PREREQ_STEP_ID.authStrength
   return null
@@ -398,7 +483,8 @@ function substitutionsFor(
     }
     /** Unresolved — and what, if anything, this tenant can do about it. */
     const leave = (): void => {
-      unresolved.set(r.id, stepForReference(r.kind, token, goalId))
+      const step = stepForReference(r.kind, token, goalId)
+      unresolved.set(r.id, step)
       // The author's own environment, settled by evidence in this baseline's
       // interpretation file: this tenant has no such object and needs none, so
       // the policy is whole without it. That is a finding about what the object
@@ -413,7 +499,13 @@ function substitutionsFor(
       // the author's own tenant did not, and it will not hand one over on the
       // assumption that the answer is nobody. Held, and cleared by evidence
       // rather than by a task in this tenant.
-      if (r.kind === 'group' && token === null) unsettled.add(r.id)
+      //
+      // And a named location nothing settles, which is the same case: no token
+      // names it, no step of this tenant's would answer it, and what it is is a
+      // reading of the author's baseline. Saying so is the whole difference
+      // between "nobody can copy this yet" and "go and finish the Trusted
+      // network step", which never ends the wait.
+      if (token === null && (r.kind === 'group' || (r.kind === 'namedLocation' && step === null))) unsettled.add(r.id)
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
       // A token the product maps means that object and no other. The trusted

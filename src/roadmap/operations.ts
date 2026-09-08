@@ -20,6 +20,7 @@
 import type { Action, PolicyOperation, Step } from './types.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import builtinStrengths from '../../data/builtin-strengths.json' with { type: 'json' }
+import type { TenantStrength } from './resolvePolicy.ts'
 
 const isObject = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v)
 
@@ -726,6 +727,31 @@ export function strengthLookupOf(snapshot: { config?: Record<string, { rows?: un
     if (typeof row.id === 'string' && Array.isArray(row.allowedCombinations)) lookup.set(row.id.toLowerCase(), strings(row.allowedCombinations))
   }
   return lookup
+}
+
+/**
+ * The same strengths, whole: what each allows *and* what it restricts those
+ * combinations to. `strengthLookupOf` answers "how strong is this policy",
+ * which is a question about the combinations alone; this answers "is this
+ * tenant's strength the author's", which is a question about the whole
+ * requirement (roadmap/resolvePolicy.ts tenantStrengthFor).
+ *
+ * A row whose `combinationConfigurations` the scan did not read carries `null`:
+ * Graph returns them only when they are asked for, and a snapshot taken before
+ * IAMAI asked has no answer rather than an empty one. Microsoft's own strengths
+ * are seeded restricting nothing, which is a fact about a built-in — it is the
+ * same object in every tenant and carries no configuration to read.
+ */
+export function tenantStrengthsOf(snapshot: { config?: Record<string, { rows?: unknown[] } | undefined> }): Map<string, TenantStrength> {
+  const out = new Map<string, TenantStrength>()
+  for (const [id, allowedCombinations] of BUILT_IN_STRENGTHS) out.set(id, { allowedCombinations, combinationConfigurations: [] })
+  for (const row of (snapshot.config?.authStrengths?.rows ?? []) as Record<string, unknown>[]) {
+    if (typeof row.id !== 'string' || !Array.isArray(row.allowedCombinations)) continue
+    const key = row.id.toLowerCase()
+    const read = Array.isArray(row.combinationConfigurations) ? row.combinationConfigurations : null
+    out.set(key, { allowedCombinations: strings(row.allowedCombinations), combinationConfigurations: read ?? out.get(key)?.combinationConfigurations ?? null })
+  }
+  return out
 }
 
 /**

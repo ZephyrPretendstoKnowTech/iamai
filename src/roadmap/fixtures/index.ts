@@ -101,7 +101,18 @@ function baselineStrengths(seed: string): Record<string, unknown>[] {
     // policy's embedded copy came first.
     const definition = baselineStrength(policies, st.id)
     if (!definition || definition.allowedCombinations.length === 0) continue
-    out.push({ id: guid(seed, 5_000_000 + seen.size), displayName: definition.name ?? 'Baseline strength', policyType: 'custom', allowedCombinations: [...definition.allowedCombinations] })
+    // Including what the source restricts those combinations to: this tenant's
+    // strength is meant to *be* the baseline's requirement under its own id, and
+    // a strength is its combinations plus its restrictions on them
+    // (resolvePolicy.ts tenantStrengthFor). A scan reads them from Graph; a
+    // fixture states them.
+    out.push({
+      id: guid(seed, 5_000_000 + seen.size),
+      displayName: definition.name ?? 'Baseline strength',
+      policyType: 'custom',
+      allowedCombinations: [...definition.allowedCombinations],
+      combinationConfigurations: structuredClone(definition.combinationConfigurations ?? []),
+    })
   }
   return out
 }
