@@ -38,7 +38,26 @@ const MAX_HEIGHT = 4000
 
 const MANIFEST = 'docs/design/approved/manifest.json'
 const OUT_CANONICAL = 'docs/design/approved/rendered'
-const OUT_PRODUCTION = 'docs/screens/30'
+
+/**
+ * Where the production plates land. The canonical set is the authority's own
+ * render and always overwrites itself — the packs do not change, so a second
+ * copy would only rot. The production set is evidence *about one task*: task
+ * 030 shot `docs/screens/30`, and a later pack that overwrote it would destroy
+ * the before-picture its own report cites. So the directory is an argument,
+ * the task-numbered convention is kept, and 030's plates stay where its report
+ * says they are.
+ *
+ *   node scripts/render-design.mjs --production --out docs/screens/031
+ *
+ * Mind the numbering. `docs/screens/21` … `45` are the ORIGINAL prompt series'
+ * screenshots and are still tracked; `docs/screens/30` is task 030's set
+ * sharing a directory with prompt 30's. A restoration pack writes to its
+ * zero-padded number (`docs/screens/031`) so it cannot land on top of a
+ * historical record — 39 and 41-45 are occupied too.
+ */
+const outFlag = process.argv.indexOf('--out')
+const OUT_PRODUCTION = outFlag !== -1 && process.argv[outFlag + 1] ? process.argv[outFlag + 1].replace(/\\/g, '/') : 'docs/screens/30'
 
 /** The four approved packs, read from the manifest rather than listed again here. */
 export function canonicalTargets() {
@@ -56,6 +75,11 @@ const PRODUCTION_SHOTS = [
   { name: 'connect', hash: '#/connect' },
   { name: 'plan', hash: '#/plan' },
   { name: 'readiness', hash: '#/readiness' },
+  // Export is governed by no pack, and it is the one surface that renders an
+  // attention notice unconditionally. Task 031 added it because a renderer that
+  // cannot show a shared primitive cannot be the evidence for it — the same gap
+  // task 030 closed for the packs themselves.
+  { name: 'export', hash: '#/export' },
 ]
 const THEMES = ['light', 'dark']
 

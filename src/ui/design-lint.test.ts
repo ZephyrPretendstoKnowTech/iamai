@@ -135,8 +135,13 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       if (SHAPE.has(v)) continue
       // The Connect tiles' number badge is a circle (docs/design/connect-mockup.html), and so is the ladder's rung badge (docs/design/mockups/today-v2.html).
       if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.step-tile \.n/.test(r.selector) || /\.rung-badge/.test(r.selector))) continue
-      // A picker's chip is a pill (the accent tint, the name, a separate x).
-      if (v === '999px' && /\.chip-(select|remove)/.test(r.selector)) continue
+      // A picker's chip is a pill (the accent tint, the name, a separate x),
+      // and so is the shared `.pill` role — the Plan pack's state badge and the
+      // MFA pack's readiness cell are both `border-radius:999px`
+      // (docs/design/approved/plan-step-v1.html `.badge`,
+      // docs/design/approved/mfa-readiness-v2.html `.status`), which is a full
+      // round rather than a value on the 4/8/12 shape hierarchy.
+      if (v === '999px' && /\.chip-(select|remove)|\.pill\b/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
