@@ -3,6 +3,7 @@
 // Connect "Baseline updated" line.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { loadPinnedBaseline, baselineReview, checkAuthorHead, restoreBaseline, PINNED, PINNED_BASELINE } from './baseline.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
@@ -72,25 +73,25 @@ const NEW_POLICY = 'Updated/Policies/IAC---INTUNE---GRANT---Device-Registration-
 const NEW_DOC = 'Updated/Documentation/Device-Registration-MFA-Strength/policy.json'
 const HEAD = '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c'
 
-/** GitHub as it answered: four file events, plus documentation and image churn that is not a policy. */
-function githubAt(bodies: Record<string, Record<string, unknown>>, seen: string[] = []): typeof fetch {
+/** The four file events GitHub reported, plus documentation and image churn that is not a policy. */
+type CompareFile = { filename: string; previous_filename?: string; status?: string }
+
+const AUDITED_FILES: CompareFile[] = [
+  { filename: NEW_POLICY, status: 'added' },
+  { filename: NEW_DOC, status: 'added' },
+  { filename: OLD_POLICY, status: 'removed' },
+  { filename: OLD_DOC, status: 'removed' },
+  { filename: 'Documents/readme.md', status: 'modified' },
+  { filename: 'Images/screenshot.png', status: 'added' },
+]
+
+/** GitHub as it answered: a compare, then a raw body per path per commit — 404 for anything the fixture does not hold. */
+function githubAt(bodies: Record<string, Record<string, unknown>>, seen: string[] = [], compareFiles: CompareFile[] = AUDITED_FILES): typeof fetch {
   return (async (input: RequestInfo | URL) => {
     const url = String(input)
     seen.push(url)
     if (url.includes('/compare/')) {
-      return new Response(
-        JSON.stringify({
-          files: [
-            { filename: NEW_POLICY, status: 'added' },
-            { filename: NEW_DOC, status: 'added' },
-            { filename: OLD_POLICY, status: 'removed' },
-            { filename: OLD_DOC, status: 'removed' },
-            { filename: 'Documents/readme.md', status: 'modified' },
-            { filename: 'Images/screenshot.png', status: 'added' },
-          ],
-        }),
-        { status: 200 },
-      )
+      return new Response(JSON.stringify({ files: compareFiles }), { status: 200 })
     }
     const path = url.split(`/${HEAD}/`)[1] ?? url.split(`/${PINNED.commit}/`)[1] ?? ''
     const commit = url.includes(`/${HEAD}/`) ? HEAD : PINNED.commit
@@ -128,6 +129,57 @@ test('the review counts policies, not files: four JSON file events for one renam
   assert.equal(c.oldName, before.displayName)
   assert.equal(c.newName, after.displayName)
   assert.deepEqual(c.deltas, [{ field: 'authenticationStrength', kind: 'set', value: 'Modern MFA + TAP' }])
+})
+
+/** The fixture minus the bodies named, so those paths 404 at that commit. */
+function without(...keys: string[]): Record<string, Record<string, unknown>> {
+  const out = { ...BODIES }
+  for (const k of keys) delete out[k]
+  return out
+}
+
+// The 404 rule. A missing body is only benign where the compare event itself
+// establishes the absence — the new path at the base of an addition, the old
+// path at the head of a rename or a removal. The audited fixture above proves
+// the benign half: every one of its four events 404s on one side and the review
+// is complete. These prove the other half, where a 404 used to be read as a
+// change rather than as source IAMAI could not fetch.
+test('L. a 404 where the compare says the file must exist is unread source, not an addition, a removal or a silence', async () => {
+  // An addition whose body will not load: the review has nothing to show and
+  // must still say so, or the tile suppresses the whole update (Connect).
+  const onlyAdded = await baselineReview(HEAD, githubAt(without(`${HEAD}:${NEW_POLICY}`), [], [{ filename: NEW_POLICY, status: 'added' }]))
+  assert.deepEqual(onlyAdded.changes, [])
+  assert.equal(onlyAdded.incomplete, true, 'an added policy that would not fetch read as no changes at all')
+
+  // A removal whose *base* body will not load: the old policy is unknown, so the
+  // pair cannot be read as an addition of the new one.
+  const removal = await baselineReview(HEAD, githubAt(without(`${PINNED.commit}:${OLD_POLICY}`, `${PINNED.commit}:${OLD_DOC}`)))
+  assert.equal(removal.incomplete, true, 'the removed bodies 404d at the base and the rename read as a plain addition')
+
+  // A modification whose head body will not load: not a removal.
+  const modified = await baselineReview(HEAD, githubAt(without(`${HEAD}:${NEW_POLICY}`), [], [{ filename: NEW_POLICY, status: 'modified' }]))
+  assert.equal(modified.incomplete, true, 'a modified policy that 404d at the head read as a removal')
+
+  // A rename: the old path must be readable at the base, the new at the head.
+  const renamed: CompareFile[] = [{ filename: NEW_POLICY, previous_filename: OLD_POLICY, status: 'renamed' }]
+  const wholeRename = await baselineReview(HEAD, githubAt(BODIES, [], renamed))
+  assert.equal(wholeRename.incomplete, false, 'a rename that fetched on both sides is complete')
+  assert.equal(wholeRename.changes.length, 1)
+  const halfRename = await baselineReview(HEAD, githubAt(without(`${PINNED.commit}:${OLD_POLICY}`), [], renamed))
+  assert.equal(halfRename.incomplete, true, 'the renamed policy had no readable old body, so the rename was not proven')
+
+  // A status IAMAI does not know establishes no absence at all, so neither side's 404 is benign.
+  const unknownStatus = await baselineReview(HEAD, githubAt(BODIES, [], [{ filename: NEW_POLICY, status: 'unrecognised' }]))
+  assert.equal(unknownStatus.incomplete, true)
+})
+
+test('L. a review with no rows still reaches the tile when it is incomplete', async () => {
+  const empty = await baselineReview(HEAD, githubAt(without(`${HEAD}:${NEW_POLICY}`), [], [{ filename: NEW_POLICY, status: 'added' }]))
+  assert.deepEqual(empty.changes, [])
+  assert.equal(empty.incomplete, true)
+  // Connect drops a review only when it is both empty and complete, so this one renders.
+  const connect = readFileSync('src/ui/surfaces/Connect.tsx', 'utf8')
+  assert.match(connect, /review\.changes\.length === 0 && !review\.incomplete/, 'the tile decides on emptiness alone')
 })
 
 test('K. a compare or a file IAMAI cannot read is an incomplete review, never zero changes', async () => {
