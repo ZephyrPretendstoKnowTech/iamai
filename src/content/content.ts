@@ -48,7 +48,8 @@ export type ContentFile = {
   $comment: string
   version: number
   shared: Record<string, unknown>
-  phases: { first: string; middle: string; last: string; heading: string }
+  /** The Plan's group names: the numbered phases, and the floor group (roadmap/floor.ts), which is dated by nothing and named by itself. */
+  phases: { first: string; middle: string; last: string; heading: string; recommended: string }
   pages: Record<string, Record<string, unknown>>
   cleanup: Record<string, { title: string; learn: Learn; why: string; whatToDo: string[]; doneWhen: string[] }>
   steps: ContentStep[]

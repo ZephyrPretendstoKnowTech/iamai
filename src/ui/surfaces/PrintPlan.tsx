@@ -21,7 +21,7 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { undatedRows } from './planRows.ts'
+import { floorRows, undatedRows } from './planRows.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -35,6 +35,12 @@ import { undatedRows } from './planRows.ts'
 // clears it and its one next action are all there, and the implementation, the
 // rollout dates, the announcement and the rollback stay withheld because
 // ContentStep withholds them (task 013 correction).
+//
+// The floor group prints the same way, and for the same reason it is a group on
+// the screen: a control Microsoft recommends that this baseline does not carry
+// (roadmap/floor.ts) is not the baseline author's work, and a schedule that
+// happens to carry the step's id must not print it under a numbered phase and
+// say it is.
 const noop = (): void => undefined
 const C = app.print
 
@@ -75,9 +81,15 @@ export function PrintPlan({
   const today = absoluteDate(new Date().toISOString())
   const done = steps.filter((s) => s.status === 'done')
   const byId = new Map(steps.map((s) => [s.id, s]))
-  const waves = schedule.waves.filter((w) => w.stepIds.length > 0)
-  // The undated group, read from the Plan's rule and not recomputed here.
+  // The undated group and the floor group, read from the Plan's rules and not
+  // recomputed here. A floor step can sit in a wave's stepIds; it prints in its
+  // own named group, never under the phase, so the document never attributes it
+  // to the baseline author, and a wave left with nothing else prints no phase.
   const held = undatedRows(steps, schedule.waves)
+  const floor = floorRows(steps)
+  const floorIds = new Set(floor.map((s) => s.id))
+  const phaseStepIds = (w: Schedule['waves'][number]): string[] => w.stepIds.filter((id) => !floorIds.has(id))
+  const waves = schedule.waves.filter((w) => phaseStepIds(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
   const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''
@@ -147,6 +159,7 @@ export function PrintPlan({
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
           {held.length > 0 && <li>{C.held.heading}</li>}
+          {floor.length > 0 && <li>{phases.recommended}</li>}
           {schedule.cleanup && <li>{phases.last}</li>}
         </ol>
       </section>
@@ -168,7 +181,7 @@ export function PrintPlan({
                 <tr>
                   <td>{waveTitle(w)}</td>
                   <td>{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</td>
-                  <td>{w.stepIds.map((id) => byId.get(id)?.title).filter(Boolean).join('; ')}</td>
+                  <td>{phaseStepIds(w).map((id) => byId.get(id)?.title).filter(Boolean).join('; ')}</td>
                 </tr>
                 {w.wave === 0 && schedule.verification.days > 0 && (
                   <tr key="verification">
@@ -194,7 +207,7 @@ export function PrintPlan({
         <section key={w.wave} className="print-page">
           <h2>{waveTitle(w)}</h2>
           <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
-          {w.stepIds.map((id) => {
+          {phaseStepIds(w).map((id) => {
             const s = byId.get(id)
             if (!s) return null
             return (
@@ -214,6 +227,19 @@ export function PrintPlan({
           <h2>{C.held.heading}</h2>
           <p className="muted">{C.held.lead}</p>
           {held.map((s) => (
+            <article key={s.id} className="print-step">
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+            </article>
+          ))}
+        </section>
+      )}
+      {/* The floor group (roadmap/floor.ts), after the phases and before Cleanup,
+          as the Plan draws it: named for what it is, so the document never reads
+          as if the baseline author asked for these. */}
+      {floor.length > 0 && (
+        <section className="print-page">
+          <h2>{phases.recommended}</h2>
+          {floor.map((s) => (
             <article key={s.id} className="print-step">
               <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
             </article>

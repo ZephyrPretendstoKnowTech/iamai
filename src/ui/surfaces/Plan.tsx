@@ -16,7 +16,7 @@ import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { inWave, waveLabels } from '../../derive/phases.ts'
-import { undatedRows } from './planRows.ts'
+import { floorRows, undatedRows } from './planRows.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
@@ -132,7 +132,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // The drill sits in Cleanup when Cleanup renders it (§5). A floor step (target-state
   // §13: Microsoft recommended, not in this baseline) sits in its own group after
   // the phases, grouped as not the author's.
-  const floorRows = c.steps.filter((st) => st.floor && st.status !== 'done')
+  const floor = floorRows(c.steps)
   // A policy the plan cannot write yet is in no wave: it has no date to sit
   // under (roadmap/operations.ts). Its row still renders, in its own undated
   // group after the phases, saying what it waits on (planRows.ts).
@@ -199,9 +199,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
         )
       })}
 
-      {/* The floor (target-state §13): the recommended controls this baseline lacks,
-          from Microsoft's templates. The group's label is pages.plan.footer.recommended*,
-          which content.json does not carry yet (logged), so the group renders unlabelled. */}
       {heldRows.length > 0 && (
         <section className="phase held">
           {heldRows.map((s) => (
@@ -210,9 +207,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
         </section>
       )}
 
-      {floorRows.length > 0 && (
+      {/* The floor (target-state §13, roadmap/floor.ts): the two controls Microsoft
+          recommends that this baseline does not carry, from Microsoft's own templates.
+          The group is named, so nobody reads these rows as the author's work, and it
+          is not a numbered phase: it has no dates of its own. It renders only when it
+          has rows. */}
+      {floor.length > 0 && (
         <section className="phase floor">
-          {floorRows.map((s) => (
+          <h2>{phases.recommended}</h2>
+          {floor.map((s) => (
             <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}
         </section>

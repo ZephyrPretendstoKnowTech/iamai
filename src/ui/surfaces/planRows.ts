@@ -27,3 +27,15 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
   const scheduled = scheduledIds(waves)
   return steps.filter((s) => inWave(s) && !s.floor && !scheduled.has(s.id))
 }
+
+/**
+ * The rows the floor's own group draws (roadmap/floor.ts): a control Microsoft
+ * recommends that the active baseline does not carry. It is provenance and
+ * nothing else — the row still says whatever its own state says — but it decides
+ * where the row is drawn, because a floor step under a numbered phase reads as
+ * the baseline author's work. A schedule may still carry the step's id; the
+ * group is where it renders, on the screen and in the printed document alike.
+ */
+export function floorRows(steps: readonly Step[]): Step[] {
+  return steps.filter((s) => s.floor === true && s.status !== 'done')
+}

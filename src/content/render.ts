@@ -757,7 +757,7 @@ export function renderPages(): string {
       btn(pl.startControl, true) +
       p('After starting: ' + fill(pl.line1Started, { ...exT, done: 4, start: 'Mon Sep 7' }), exT, 'sub') +
       `<p class="sub">If it cannot finish: ${fill(pl.line1CannotFinish, exT)}</p><p class="sub">Length tooltip: ${fill(pl.lengthTip, exT)}</p>` +
-      `<p class="sub">Phase heading: <b>${fill(C.phases.heading, exT)}</b> — first phase <b>${esc(C.phases.first)}</b>, last <b>${esc(C.phases.last)}</b></p>` +
+      `<p class="sub">Phase heading: <b>${fill(C.phases.heading, exT)}</b> — first phase <b>${esc(C.phases.first)}</b>, last <b>${esc(C.phases.last)}</b>, and the group the baseline does not carry <b>${esc(C.phases.recommended)}</b></p>` +
       '<div class="settings"><b>' +
       esc(s.h3) +
       '</b>' +

@@ -463,7 +463,8 @@
           "Plan",
           "re:^Preparation( · .+ → .+)?$",
           "re:^Phase \\d+ · .+ → .+$",
-          "re:^Cleanup( · .+ → .+)?$"
+          "re:^Cleanup( · .+ → .+)?$",
+          "Microsoft recommended, not in this baseline"
         ],
         "tabs": [],
         "tiles": [],
