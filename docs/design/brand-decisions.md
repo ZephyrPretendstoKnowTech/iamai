@@ -7,12 +7,18 @@ Brand is a skin over an anatomy. The anatomy is owned by the four approved HTML 
 `docs/design/approved/` (`manifest.json` names them and holds their hashes). This file
 says what the skin may repaint and what it may never move.
 
-**Production does not implement this palette yet.** The tokens in `src/ui/tokens.ts` are
-still the paper/ink direction that shipped before these decisions. Task 028 recorded the
-decisions; it did not change a single production colour. Pack 029 turned them into the
-finished assets and the brand contract (`docs/brand/`), and wired the favicon; the token
-change lands with the shell, the type scale and the surfaces in the restoration pack, so the
-palette and the anatomy move together against the approved packs rather than in halves.
+**Production implements this palette as of task 030.** Task 028 recorded the decisions and
+changed no production colour; task 029 turned them into the finished assets and the brand
+contract (`docs/brand/`) and wired the favicon; task 030 applied the palette, the three type
+families, the shape hierarchy and the shell lockup, and `src/ui/tokens.ts` now carries the
+seventeen roles below with the values in `docs/brand/brand-manifest.json`
+(`src/brand/brand.test.ts` fails when the two disagree).
+
+What task 030 did **not** do is the anatomy: Home, Connect, Plan and MFA Readiness still do
+not wear the composition of their approved packs, and
+`docs/design/approved/manifest.json` still records every one of them as
+`restoration-pending`. Packs 031-038 own that
+(`docs/design/reports/030-theme-typography-shell-foundation.md`).
 
 ---
 
@@ -111,12 +117,12 @@ maps, globes, or generic cyber-neon.
   where appropriate.
 - **Shape hierarchy**: roughly 4px for compact rows, 8px for controls, 12px for deliberate
   grouped or key panels. This is a hierarchy, **not** a licence to cardify every section.
-  (Production sets one radius token, 4px — `LAYOUT.radiusPx` — and design rule 3 in
-  `src/ui/design-lint.test.ts` enforces a 4px ceiling with a named exception list: 8px on a
-  `.wave` or `.export-card` panel, 50% on `.status::before`, a 999px picker chip. There is no
-  12px. The restoration pack turns that exception list into this hierarchy; task 028
-  deliberately left the lint enforcing what production actually is, and task 029 left it
-  alone for the same reason.)
+  (Task 030 made this the production hierarchy: `LAYOUT.radiusPx`, `radiusControlPx` and
+  `radiusPanelPx` in `src/ui/tokens.ts` render `--radius`, `--radius-control` and
+  `--radius-panel`, and design rule 3 in `src/ui/design-lint.test.ts` now requires a radius
+  to be one of those three rather than allowing a raw px value under a growing exception
+  list. The two remaining exceptions are shapes rather than sizes: 50% on a circle, 999px on
+  a pill.)
 - **Motion**: tactile and functional. Roughly 120–180ms for controls, 180–240ms for
   disclosure and step expansion. Motion carries state continuity and progress, never
   spectacle. Respect `prefers-reduced-motion`. No looping decorative animation.

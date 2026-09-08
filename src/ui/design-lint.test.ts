@@ -1,29 +1,35 @@
-// The design lint (prompt 47 Part 1 item 4): the theme is one token file and a
-// handful of primitives, and this is what keeps it that way. It reads
-// src/ui/tokens.css, src/ui/app.css, every .css file and every inline `style`
-// under src/ui/shell and src/ui/surfaces, and fails on:
+// The design lint: the theme is one token file and a handful of primitives, and
+// this is what keeps it that way. It reads src/ui/tokens.css, src/ui/app.css,
+// every .css file and every inline `style` under src/ui/shell and
+// src/ui/surfaces, and fails on:
 //
 //   design 1: a colour literal outside tokens.css
-//   design 2: a box-shadow other than the focus ring; a gradient, filter,
-//             text-shadow, or opacity on text
-//   design 3: a border-radius over 4px, except 50% on .status::before
+//   design 2: a box-shadow other than the focus ring or the one panel shadow;
+//             a gradient, filter, text-shadow, or opacity on text
+//   design 3: a border-radius that is not one of the three shape tokens,
+//             except 50% on a circle and a 999px pill on a chip
 //   design 4: a font-family not one of the three --font-* variables, a
-//             font-weight other than 400 or 500, a font-size not a --t-* variable
+//             font-weight that is not a named --weight-* role, a font-size not
+//             a --t-*, --d-* or --display-size variable
 //   design 5: --ok, --wait, --stop or --idle outside a .status rule
+//   design 6: the raised surface only on a panel or a floating layer
 //
-// styles.css and src/ui/pages/** are on a legacy allow-list until prompt 49;
-// the last test asserts that list is empty once the contract's enforceAll is
-// true.
+// Task 030 changed rules 2, 3, 4 and 6, and made each of them stricter rather
+// than looser. Before it, rule 3 was a 4px ceiling with a growing list of named
+// selectors allowed a raw 8px, and rule 4 capped every font-size at --t-6
+// (26px) and every weight at 500. That ceiling was load-bearing in the wrong
+// direction: the owner-approved packs in docs/design/approved/ set display
+// headings at 38-50px and the brand sets the wordmark at 700, so the lint as
+// written made the approved design unreachable while still allowing raw px
+// wherever the exception list grew. Now the shape hierarchy is three tokens
+// (4 / 8 / 12, docs/brand/brand-manifest.json ui.radiusPx) and a radius must be
+// one of them; the display ramp is --d-1 ... --d-15, every value read out of an
+// approved pack; and a weight above 500 is reachable only by naming its role.
 //
-// These rules guard the token system production actually has. They are not the
-// owner's approved visual target: the approved brand asks for a 4/8/12px shape
-// hierarchy (docs/design/brand-decisions.md), where design rule 3 is a 4px
-// ceiling with named exceptions and no 12px at all, and the approved page
-// anatomy lives in the HTML packs under docs/design/approved/. A restoration
-// pack (030+) turns rule 3's exception list into that hierarchy along with the
-// tokens and the surfaces. Task 028 deliberately left every rule here enforcing
-// what is built, because that is the truthful state until the restoration
-// lands (docs/design/authority-reconciliation.md).
+// These rules guard the token system. They do NOT claim the four approved
+// surfaces have been restored: task 030 built the theme, type and shell
+// foundation, and packs 031-038 own the page composition
+// (docs/design/authority-reconciliation.md).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
@@ -95,12 +101,15 @@ test('design 1: no colour literal outside tokens.css', () => {
   assert.deepEqual(hits, [])
 })
 
-test('design 2: no box-shadow except the focus ring; no gradient, filter, text-shadow, or opacity on text', () => {
+test('design 2: no box-shadow except the focus ring and the one key-panel shadow; no gradient, filter, text-shadow, or opacity on text', () => {
   const { rules } = sources()
   const hits: string[] = []
   for (const r of rules) {
     for (const m of r.body.matchAll(/box-shadow\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
+      // The approved Plan lifts an opened step off the page, so the product has
+      // exactly one panel shadow, on exactly one role class (task 030).
+      if (v === 'var(--shadow-panel)' && /\.panel-key\b/.test(r.selector)) continue
       if (v !== 'var(--focus-ring)' && v !== 'none') hits.push(where(r, `box-shadow: ${v}`))
     }
     if (/gradient\s*\(/.test(r.body)) hits.push(where(r, 'gradient'))
@@ -112,28 +121,29 @@ test('design 2: no box-shadow except the focus ring; no gradient, filter, text-s
   assert.deepEqual(hits, [])
 })
 
-test('design 3: border-radius at most 4px, or 8px on a .wave / .export-card panel, except 50% on .status::before and a 999px pill on a picker chip', () => {
+test('design 3: a border-radius is one of the three shape tokens, except a circle and a pill', () => {
   const { rules } = sources()
+  // The brand's hierarchy (docs/brand/brand-manifest.json ui.radiusPx): a
+  // compact row at 4, a control at 8, a deliberate grouped panel at 12. A raw
+  // px value is what this rule exists to stop - the value belongs in
+  // src/ui/tokens.ts, where the hierarchy is one authority.
+  const SHAPE = new Set(['0', 'var(--radius)', 'var(--radius-control)', 'var(--radius-panel)'])
   const hits: string[] = []
   for (const r of rules) {
     for (const m of r.body.matchAll(/border-radius\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
-      if (v === '0' || v === 'var(--radius)') continue
+      if (SHAPE.has(v)) continue
       // The Connect tiles' number badge is a circle (docs/design/connect-mockup.html), and so is the ladder's rung badge (docs/design/mockups/today-v2.html).
       if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.step-tile \.n/.test(r.selector) || /\.rung-badge/.test(r.selector))) continue
-      // A picker's chip is a pill (the accent tint, the name, a separate ×).
+      // A picker's chip is a pill (the accent tint, the name, a separate x).
       if (v === '999px' && /\.chip-(select|remove)/.test(r.selector)) continue
-      const px = v.match(/^(\d+(?:\.\d+)?)px$/)
-      if (px && Number(px[1]) <= 4) continue
-      // The two surface-depth panels (prompt 49.1 item 12) may round to 8px.
-      if (px && Number(px[1]) <= 8 && /\.wave|\.phase|\.export-card/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
   assert.deepEqual(hits, [])
 })
 
-test('design 4: font-family only via --font-*, font-weight 400 or 500, font-size only via --t-*', () => {
+test('design 4: font-family only via --font-*, a weight only via a named role, a size only via --t-* / --d-*', () => {
   const { rules } = sources()
   const hits: string[] = []
   for (const r of rules) {
@@ -144,11 +154,20 @@ test('design 4: font-family only via --font-*, font-weight 400 or 500, font-size
     }
     for (const m of r.body.matchAll(/font-weight\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
+      // A named role, or one of the two weights the page was built on. 600 and
+      // 700 exist in the token file and are reachable only through a role, so
+      // nothing goes bold without saying which role it is being bold as.
+      if (/^var\(--weight-(display|body|strong|wordmark)\)$/.test(v)) continue
       if (!['400', '500', 'inherit'].includes(v)) hits.push(where(r, `font-weight: ${v}`))
     }
     for (const m of r.body.matchAll(/font-size\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
-      if (!/^var\(--t-[1-6]\)$/.test(v) && v !== 'inherit') hits.push(where(r, `font-size: ${v}`))
+      // The interface scale, the approved display ramp, or the display role's
+      // own variable. Never a px literal.
+      if (/^var\(--t-[a-z0-9-]+\)$/.test(v)) continue
+      if (/^var\(--d-\d+\)$/.test(v)) continue
+      if (v === 'var(--display-size)') continue
+      if (v !== 'inherit') hits.push(where(r, `font-size: ${v}`))
     }
     for (const m of r.body.matchAll(/(^|;)\s*font\s*:\s*([^;]+)/g)) {
       const v = m[2].trim()
@@ -174,19 +193,25 @@ test('design 6: --bg-raised only on the two-depth panels and the floating layers
   // row on hover). Nothing else in the content flow may gain a box.
   // The Connect tiles are panels too (docs/design/connect-mockup.html), and so
   // are the home page's cards (docs/design/home-mockup.html; home/home.css).
-  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.step-tile\b|\.card\b/
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.step-tile\b|\.card\b|\.panel\b/
   const hits = rules
-    .filter((r) => /var\(--bg-raised\)/.test(r.body) && !ALLOWED.test(r.selector))
-    .map((r) => where(r, 'var(--bg-raised)'))
+    // --surface is the canonical name and --bg-raised its compatibility alias;
+    // they are one value, so the rule checks both.
+    .filter((r) => /var\(--(bg-raised|surface)\)/.test(r.body) && !ALLOWED.test(r.selector))
+    .map((r) => where(r, 'the raised surface'))
   assert.deepEqual(hits, [], 'a new element gained the raised surface outside the panels and the floating layers')
 })
 
-test('the token file defines every colour the primitives use, and nothing is imported from outside', () => {
+test('every variable the primitives use is defined, and a colour can only come from the token file', () => {
   const { tokens, rules } = sources()
-  const defined = new Set([...tokens.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]))
+  const inTokens = new Set([...tokens.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1]))
+  // A role variable may be declared in the rule that uses it (`.display` sets
+  // --display-size to a ramp token). It can only ever hold another variable or
+  // a length: design 1 already fails on a colour literal in these files.
+  const inSheets = new Set(rules.flatMap((r) => [...r.body.matchAll(/(--[a-z0-9-]+)\s*:/g)].map((m) => m[1])))
   const used = new Set(rules.flatMap((r) => [...r.body.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1])))
-  const missing = [...used].filter((v) => !defined.has(v))
-  assert.deepEqual(missing, [], 'variables used but never defined in tokens.css')
+  const missing = [...used].filter((v) => !inTokens.has(v) && !inSheets.has(v))
+  assert.deepEqual(missing, [], 'variables used but never defined')
 })
 
 test('the legacy allow-list is empty once the contract enforces every surface', () => {

@@ -538,11 +538,23 @@ test('the readiness rung badge carries its title where assistive technology can 
 
 // ------------------------------------------------------------- F. reflow / width
 
-test('ordinary content cannot widen the page', () => {
+test('ordinary content cannot widen the page, and ordinary prose is not broken to achieve it', () => {
   // A UPN, a GUID, a policy name or a group name breaks rather than pushing the
-  // column out.
-  assert.match(rule(css, 'main.page') ?? '', /overflow-wrap:\s*anywhere/)
-  assert.match(rule(homeCss, 'main.page') ?? '', /overflow-wrap:\s*anywhere/)
+  // column out — but the page as a whole gets `break-word`, not `anywhere`
+  // (task 030). Both break a word too long for its column; only `anywhere` also
+  // lets a flex or grid track shrink below the longest word, which turns
+  // ordinary prose into a ladder of broken words in a narrow track. The strings
+  // that really are unbreakable carry `anywhere` themselves.
+  for (const sheet of [css, homeCss]) {
+    const page = rule(sheet, 'main.page') ?? ''
+    assert.match(page, /overflow-wrap:\s*break-word/)
+    assert.doesNotMatch(page, /overflow-wrap:\s*anywhere/, 'the page-wide rule must not squeeze prose below a word')
+  }
+  const tenant = rule(css, '.tenant-object') ?? ''
+  assert.match(tenant, /overflow-wrap:\s*anywhere/, 'a tenant object, a policy name and a technical face break anywhere')
+  assert.match(tenant, /min-width:\s*0/, 'and can shrink inside a flex or grid parent so the break can happen')
+  assert.match(rule(css, 'main.page a[href]') ?? '', /overflow-wrap:\s*anywhere/, 'a long URL breaks')
+  assert.match(rule(homeCss, 'main.page a[href]') ?? '', /overflow-wrap:\s*anywhere/)
   assert.match(rule(css, 'main.page img,\nmain.page svg,\nmain.page table,\nmain.page pre') ?? rule(css, 'main.page pre') ?? '', /max-width:\s*100%/)
   // Five destinations wrap onto a second line rather than scrolling the page.
   assert.match(rule(css, 'header.app nav') ?? '', /flex-wrap:\s*wrap/)

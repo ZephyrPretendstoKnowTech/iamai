@@ -1,18 +1,11 @@
-// The ring motif (ux-review-07 §F1): staged rollout as concentric arcs. One
-// shape, used as the logo mark, the favicon, the print cover and the progress
-// indicator on step tiles. Inline SVG, currentColor, no assets.
+// The ring motif (ux-review-07 §F1): staged rollout as concentric arcs, one
+// arc per ring, as the progress indicator on a step.
+//
+// It used to be the logo as well. It is not any more: the mark is the Guided
+// Route logo the owner approved (task 029), drawn from one master and rendered
+// by src/ui/components/Mark.tsx. A progress indicator and a brand mark being
+// the same shape meant a change to either one moved the other.
 import type { Step } from '../../roadmap/types.ts'
-
-/** The logo mark: three concentric arcs in the accent colour. */
-export function RingMark({ size = 22, className = '' }: { size?: number; className?: string }) {
-  return (
-    <svg className={`ring-mark ${className}`} width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <circle cx="16" cy="16" r="4" fill="currentColor" />
-      <path d="M16 6 A10 10 0 1 1 6 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M16 1.5 A14.5 14.5 0 0 1 30.5 16" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" opacity="0.55" />
-    </svg>
-  )
-}
 
 /**
  * Ring progress for a step: one arc per ring, filled by completion. A step

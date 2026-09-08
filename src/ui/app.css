@@ -36,30 +36,47 @@ h4 {
   line-height: var(--lh-heading);
   letter-spacing: 0;
 }
+/* The brand's type roles (docs/brand/brand-manifest.json typography.roles):
+   editorial headings in IBM Plex Serif at the display weight, interface text
+   and labels in IBM Plex Sans, technical text in Mono. The SIZES here are the
+   page as built; the display ramp read out of the approved packs is --d-1 …
+   --d-15, and the pack that restores a surface applies it through `.display`
+   below. */
 h1 {
   font-family: var(--font-serif);
   font-size: var(--t-6);
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 h2,
 .wave-title {
   font-family: var(--font-serif);
   font-size: var(--t-5);
-  font-weight: 400;
+  font-weight: var(--weight-display);
 }
 h3 {
   font-family: var(--font-sans);
   font-size: var(--t-4);
-  font-weight: 500;
+  font-weight: var(--weight-strong);
 }
 h4 {
   font-family: var(--font-sans);
   font-size: var(--t-3);
-  font-weight: 500;
+  font-weight: var(--weight-strong);
 }
 strong,
 b {
-  font-weight: 500;
+  font-weight: var(--weight-strong);
+}
+/* A display heading at any size on the approved ramp. The role is here; a
+   restoration pack sets --display-size to the token its pack asks for
+   (--d-1 is the approved Home h1, --d-2 the Plan's, and so on) rather than
+   writing a px value into a surface stylesheet. */
+.display {
+  --display-size: var(--d-6);
+  font-family: var(--font-serif);
+  font-size: var(--display-size);
+  font-weight: var(--weight-display);
+  line-height: var(--lh-display);
 }
 code,
 pre,
@@ -121,8 +138,8 @@ hr {
 .small {
   font-size: var(--t-2);
 }
-.ring-mark {
-  color: var(--accent);
+.brand-mark {
+  color: var(--brand-primary);
 }
 
 /* ================= controls ================= */
@@ -521,16 +538,20 @@ header.app {
   border-bottom: 1px solid var(--rule);
   background: var(--bg);
 }
+/* The lockup: the Guided Route mark beside the live text IAMAI, in IBM Plex
+   Sans at the wordmark weight, with the brand's gap of 0.28 of the mark
+   (20px mark, so 6px). No tagline, no descriptor: docs/brand/brand-manifest.json
+   logo.wordmark. */
 header.app .wordmark {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: var(--t-4);
-  font-weight: 400;
-  color: var(--ink);
+  font-weight: var(--weight-wordmark);
+  color: var(--primary-text);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  letter-spacing: 0;
+  gap: 6px;
+  letter-spacing: 0.005em;
 }
 header.app .tenant {
   color: var(--ink-2);
@@ -587,14 +608,36 @@ header.app .right .text-control:hover,
 header.app .right .text-control:focus-visible {
   color: var(--ink);
 }
+/* The page column. The default is the prose page; a surface with an approved
+   pack reads at the width that pack sets, keyed off `data-route` (AppShell).
+   The values are one authority, src/ui/tokens.ts ROUTE_WIDTHS, read out of the
+   files in docs/design/approved/. */
 main.page {
   max-width: calc(var(--page) + 2 * var(--pad));
   padding: var(--pad);
   margin: 0 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  /* `break-word`, not `anywhere` (task 030). Both break a word too long for its
+     column; only `anywhere` also lets a flex or grid track shrink below the
+     longest word, which squeezes ordinary prose into a ladder of broken words.
+     A UPN, a GUID, a policy or group name and a Graph path carry `anywhere`
+     themselves, under `.tenant-object` and the technical faces below, so long
+     tenant data still cannot widen the page. */
+  overflow-wrap: break-word;
 }
-main.page.page-wide {
+main.page[data-route='connect'] {
+  max-width: calc(var(--w-connect) + 2 * var(--pad));
+}
+main.page[data-route='plan'] {
+  max-width: calc(var(--w-plan) + 2 * var(--pad));
+}
+main.page[data-route='readiness'] {
+  max-width: calc(var(--w-readiness) + 2 * var(--pad));
+}
+/* Inventory and How are tables and reference prose with no pack of their own:
+   they keep the wide table cap until pack 040 converges them. */
+main.page[data-route='inventory'],
+main.page[data-route='how'] {
   max-width: calc(var(--table) + 2 * var(--pad));
 }
 main.page img,
@@ -602,6 +645,27 @@ main.page svg,
 main.page table,
 main.page pre {
   max-width: 100%;
+}
+/* A tenant string is not prose: a UPN, an object id, a policy or group name, an
+   app or service-principal name, a URL or a Graph path breaks wherever it has
+   to rather than pushing its column out. `min-width: 0` is the other half —
+   without it a flex or grid child refuses to shrink below its content and the
+   break never gets the chance to happen. */
+.tenant-object,
+.policy-name,
+.portal-path,
+code,
+kbd,
+.mono {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+main.page a[href] {
+  overflow-wrap: anywhere;
+}
+main.page td,
+main.page th {
+  min-width: 0;
 }
 footer.app {
   max-width: calc(var(--table) + 2 * var(--pad));
@@ -616,6 +680,47 @@ footer.app {
 }
 footer.app a {
   color: var(--ink-2);
+}
+
+/* ================= foundation capability (task 030) =================
+
+   Shape, depth and sticky behaviour the approved packs need, provided as roles
+   rather than applied to a page. Task 030 built the capability; packs 031-038
+   compose the surfaces that use it. */
+
+/* The brand's shape hierarchy: a compact row at 4px, a control at 8px, a
+   deliberate grouped panel at 12px (docs/brand/brand-manifest.json ui.radiusPx).
+   It is a hierarchy, not a licence to round every section into a card. */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+/* The one key panel: the approved Plan lifts an opened step off the page. This
+   and the focus ring are the only shadows in the product. Dark leans on surface
+   tone and border, and its shadow is depth under the panel, never a glow. */
+.panel-key {
+  box-shadow: var(--shadow-panel);
+}
+/* The two quieter depths under a panel: an inset block, and technical text. */
+.surface-inset {
+  background: var(--secondary-surface);
+}
+.surface-code {
+  background: var(--code-surface);
+}
+
+/* A sticky planner topbar, which the approved Plan pack defines. The capability
+   is here and the activation is a class, because a header that sticks changes
+   where every in-page anchor lands — the Plan packs turn it on for the surface
+   that needs it, together with the anatomy that expects it. */
+.shell.shell-sticky header.app {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+.shell.shell-sticky [id] {
+  scroll-margin-top: calc(var(--header) + 8px);
 }
 .demo-banner {
   margin: 0;
@@ -794,11 +899,20 @@ footer.app a {
 .surface details.permissions td:first-child code {
   font-size: var(--t-2);
 }
-/* Connect is prose, and reads at the page column, not the measure (item 5). */
+/* Connect's prose reads wider than the body measure but nothing like its page:
+   the approved pack caps its lead at 780px and its quiet copy at 710
+   (docs/design/approved/connect-v3.html), so the column here is --measure-lead
+   rather than the 1040px the page is now set to. Widening a page is not
+   widening a sentence. */
 .surface.connect p,
 .surface.connect ul,
 .surface.connect ol {
-  max-width: none;
+  max-width: var(--measure-lead);
+}
+/* The lead under a display heading, on any surface. */
+.lead {
+  max-width: var(--measure-lead);
+  font-size: var(--t-lead);
 }
 /* A marker beside a name (Admin, Guest) stands off it, small and quiet (item 6).
    ink-2, not ink-3: at 12px ink-3 measures 4.35:1 on the page and AA text needs 4.5. */
@@ -1060,8 +1174,8 @@ footer.app a {
     color: var(--ink);
     text-decoration: none;
   }
-  .ring-mark {
-    color: var(--accent);
+  .brand-mark {
+    color: var(--brand-primary);
   }
 }
 
@@ -1117,7 +1231,7 @@ footer.app a {
 .phase {
   background: var(--bg-raised);
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 4px 16px 8px;
   margin: 20px 0;
 }
@@ -1131,7 +1245,7 @@ footer.app a {
   display: block;
   padding: 10px 6px;
   border-bottom: 1px solid var(--rule);
-  border-radius: 4px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 .plan-row:last-child {
@@ -1361,7 +1475,7 @@ footer.app a {
   .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--rule); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-2); }
   .print-plan pre, .print-plan .code-block { font-size: var(--t-2); border: 1px solid var(--rule); background: var(--bg-inset); }
   .export-grid, .journey { grid-template-columns: 1fr !important; }
-  .print-cover .ring-mark { color: var(--accent); margin-bottom: 8mm; }
+  .print-cover .brand-mark { color: var(--brand-primary); margin-bottom: 8mm; }
   .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: var(--t-2); }
   .print-progress { border: 1px solid var(--rule); padding: 3mm 4mm; margin: 4mm 0; }
   .print-progress p { margin: 0 0 1mm; }
@@ -1380,7 +1494,7 @@ footer.app a {
 .export-card {
   background: var(--bg-raised);
   border: 1px solid var(--rule);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 16px;
 }
 .export-card .actions {

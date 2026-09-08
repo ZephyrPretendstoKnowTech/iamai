@@ -1,8 +1,13 @@
 // The scan runs from any page (ui/actions.ts): Connect's tile 3 shows its
 // progress, every other page one line under the header, outside header.app,
-// so the header keeps no scan control and no scan age. Today's table reads
-// better with the wide cap (WIDE_ROUTES); its ladder keeps its own, narrower
-// intrinsic width and sits above the wider table.
+// so the header keeps no scan control and no scan age.
+//
+// The page's width is route-aware (task 030): the shell puts `data-route` on
+// main.page and src/ui/app.css gives each approved surface the column its pack
+// sets — Connect 1040, Plan 1240, MFA Readiness 1200, everything else the prose
+// page. It replaced a boolean `page-wide` class that could only say "the wide
+// one". MFA Readiness's ladder and counts keep their own, narrower measure and
+// sit above the wider table.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -35,8 +40,13 @@ const specificity = (selector: string): number => {
   return classes * 1000 + elements
 }
 
-test('the wide cap keeps MFA Readiness, Inventory and How; the diagnostic above the table keeps the page column instead of stretching to the wide table', () => {
-  assert.match(shell, /const WIDE_ROUTES = new Set<Route>\(\['readiness', 'inventory', 'how'\]\)/)
+test('each surface reads at its approved width; the diagnostic above the table keeps the page column instead of stretching to it', () => {
+  assert.match(shell, /<main className="page" data-route=\{route\}>/, 'the width is decided by the route, in CSS')
+  const widths = readFileSync('src/ui/app.css', 'utf8')
+  for (const [route, token] of [['connect', 'w-connect'], ['plan', 'w-plan'], ['readiness', 'w-readiness']]) {
+    assert.match(widths, new RegExp(`main\\.page\\[data-route='${route}'\\] \\{\\s*max-width: calc\\(var\\(--${token}\\)`), `${route} has no approved column`)
+  }
+  assert.match(widths, /main\.page\[data-route='inventory'\],\s*\n\s*main\.page\[data-route='how'\] \{\s*\n\s*max-width: calc\(var\(--table\)/, 'Inventory and How keep the wide table cap')
   const today = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
   assert.match(today, /<div className="page-head">[\s\S]*<h1>\{T\.h1\}<\/h1>[\s\S]*CONNECT_WORDS\.scan\.complete\.again/, 'Scan again sits beside the heading')
   assert.match(today, /<div className="group-counts">/, 'the three readiness counts, not five equal rung tiles')

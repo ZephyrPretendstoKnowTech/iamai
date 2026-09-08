@@ -878,6 +878,7 @@
         "scanNeedsConnect": "The scan reads the tenant into a local record. Connect a tenant first.",
         "connectLink": "Connect a tenant",
         "product": {
+          "wordmark": "IAMAI",
           "name": "IAMAI Planner",
           "descriptor": "Conditional Access rollout planner"
         }

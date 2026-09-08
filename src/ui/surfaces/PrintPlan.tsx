@@ -9,7 +9,7 @@ import { waveLabels } from '../../derive/phases.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
-import { RingMark } from '../components/Ring.tsx'
+import { BrandMark } from '../components/Mark.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
@@ -125,7 +125,7 @@ export function PrintPlan({
       <div className="print-running">{fillText(C.runningHeader, { tenant: tenantName, date: today })}</div>
 
       <section className="print-cover">
-        <RingMark size={56} />
+        <BrandMark size={56} />
         <h1>{fillText(C.title, { tenant: tenantName })}</h1>
         <dl>
           <dt>{C.cover.tenant}</dt>

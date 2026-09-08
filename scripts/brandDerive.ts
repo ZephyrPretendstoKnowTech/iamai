@@ -68,6 +68,24 @@ export function appIcon(master: string): string {
   ].join('\n')
 }
 
+/**
+ * The master's geometry as a module the interface imports, so the application
+ * shell draws the master rather than a second mark of its own. The lockup is
+ * composed at use — this geometry beside the live text IAMAI in IBM Plex Sans —
+ * because an exported lockup carrying <text> renders in the wrong face wherever
+ * the font is not installed (docs/brand/brand-manifest.json logo.wordmark).
+ */
+export function markModule(master: string): string {
+  return `// GENERATED from ${MASTER} by scripts/gen-brand.mjs. Do not edit by hand:
+// src/brand/brand.test.ts re-derives this file from the master and fails on drift.
+//
+// The Guided Route mark's geometry, one \`currentColor\` so it takes the theme.
+// src/ui/components/Mark.tsx is the only thing that renders it.
+export const MARK_VIEWBOX = '0 0 64 64'
+export const MARK_GEOMETRY = ${JSON.stringify(geometry(master))}
+`
+}
+
 /** Every committed asset that is a function of the master, and the function. */
 export function derived(master: string): { path: string; content: string }[] {
   return [
@@ -76,6 +94,7 @@ export function derived(master: string): { path: string; content: string }[] {
     { path: 'src/brand/logo/iamai-mark-mono-ink.svg', content: tinted(master, MARK_COLORS.monoInk) },
     { path: 'src/brand/logo/iamai-mark-mono-light.svg', content: tinted(master, MARK_COLORS.monoLight) },
     { path: 'public/brand/favicon.svg', content: appIcon(master) },
+    { path: 'src/brand/logo/mark.ts', content: markModule(master) },
   ]
 }
 
