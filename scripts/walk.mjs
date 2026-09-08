@@ -1167,7 +1167,11 @@ async function walkFixture(fx) {
           }
           // The admin-sessions email says how long a session lasts (the merge
           // follow-up: {wantedLong} was unfilled, and the email vanished whole).
-          if (/^Shorten Admin Sessions$/.test(title)) {
+          // A step with no day to announce has no email at all, and that is the
+          // rule one line above rather than a fault here (roadmap/timing.ts
+          // eventsFor): the check is about the sessions clause of an email that
+          // is written, so it asks for one only where there is one to write.
+          if (/^Shorten Admin Sessions$/.test(title) && !cannotWriteYet && !enforcementHeld) {
             if (!/expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/.test(emailText)) add('P0', `${slabel}: the admin email does not say how long sessions last (expire after {wantedLong})`)
           }
           // One definition of enough (E7): the campaign email dates the MFA
@@ -1219,7 +1223,12 @@ async function walkFixture(fx) {
             if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
-          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title)) {
+          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title) && !cannotWriteYet) {
+            // Work the plan cannot write proves nothing at all, least of all a
+            // zero (roadmap/timing.ts nobodyAffected): the records counted here
+            // were counted against the policy this step would run, and while
+            // there is no policy to run there is no count to report. So the
+            // clause is asked for only where the step can write.
             // More is closed at this point, so its innerText is empty: read textContent.
             const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
             if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)

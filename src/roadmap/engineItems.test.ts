@@ -8,7 +8,7 @@
 // only when the records show nobody affected.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { curatedFixture, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from './generate.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
@@ -20,8 +20,9 @@ import { policyFacts } from '../coverage/facts.ts'
 import type { CaPolicy } from '../baseline/types.ts'
 import { stepById } from '../content/content.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
-import { managerText, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
+import { commsFor, managerText, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
 import { implementationOffered } from '../ui/surfaces/stepJson.ts'
+import { unavailableReason } from './operations.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming })
@@ -60,6 +61,43 @@ test("the manager's nobody-here-used-it clause applies only when the records sho
   const upLines = stepLines(up, ctx)
   assert.ok(upLines.some((l) => /^1 sign-in since .+ carried no platform \(Outlook Mobile\) by /.test(l)), upLines.filter((l) => /platform/.test(l)).join(' | '))
   assert.ok(!upLines.some((l) => /^Every sign-in since/.test(l)))
+})
+
+test('a step the plan cannot write reports no zero and announces nothing; on a baseline it can write, both lines are there', () => {
+  // These two lines used to be asserted on the shipped demo by the walk, until
+  // this baseline's unexplained source groups held thirteen of its seventeen
+  // policy steps (task 022). Both facts are conditional on the step being
+  // writable, so both halves are pinned here rather than on a screen where the
+  // condition is invisible.
+  //
+  // On the curated baseline, where the policies can be written: the manager's
+  // clause reports the zero the records show, and the email states the session
+  // length it is warning people about.
+  const cf = curatedFixture('demo')
+  const cr = runFixture(cf)
+  const cctx = ctxFor(cf, cr)
+  const cAt = cr.steps.find((x) => x.goalId === 'block-auth-transfer')!
+  const cSession = cr.steps.find((x) => x.goalId === 'admin-session')!
+  assert.equal(unavailableReason(cAt), null)
+  assert.equal(unavailableReason(cSession), null)
+  assert.match(managerText(stepById['block-auth-transfer'] as unknown as Record<string, unknown>, stepVars(cAt, cctx) as Record<string, unknown>)!, /Nobody here used it since /)
+  const cEmail = commsFor(stepById['admin-session'] as unknown as Record<string, unknown>, stepVars(cSession, cctx) as Record<string, unknown>, cSession)
+  assert.ok(cEmail, 'a step with an enforcement day writes its email')
+  assert.match(cEmail.body, /expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/)
+
+  // On the baseline as it ships, where both steps wait on a source group nothing
+  // settles: there is no policy to run, so nothing was measured against one and
+  // no zero is claimed, and there is no day to announce so no email is written.
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const ctx = ctxFor(f, r)
+  const at = r.steps.find((x) => x.goalId === 'block-auth-transfer')!
+  const session = r.steps.find((x) => x.goalId === 'admin-session')!
+  assert.equal(unavailableReason(at), 'missing-object')
+  assert.equal(unavailableReason(session), 'missing-object')
+  assert.equal(nobodyAffected(at), false, 'work the plan cannot write is no zero')
+  assert.doesNotMatch(managerText(stepById['block-auth-transfer'] as unknown as Record<string, unknown>, stepVars(at, ctx) as Record<string, unknown>)!, /Nobody here/)
+  assert.equal(commsFor(stepById['admin-session'] as unknown as Record<string, unknown>, stepVars(session, ctx) as Record<string, unknown>, session), null, 'a step with no day to announce announces nothing')
 })
 
 test("step 16's evidence names the Azure sign-ins by people with no directory role", () => {
