@@ -16,9 +16,13 @@
 //    under the source model, so it is deduplicated, folded to lower case and
 //    sorted; an absent container and a semantically empty one are the same
 //    thing; a filter `rule` is compared as written, because its text is the
-//    value. A Graph timestamp or an OData annotation is representation at every
-//    depth, because an export carries the fetched object's own bookkeeping down
-//    with it and a re-export moves it without the author touching a policy;
+//    value. A Graph timestamp or an OData *annotation* is representation at
+//    every depth, because an export carries the fetched object's own
+//    bookkeeping down with it and a re-export moves it without the author
+//    touching a policy. `@odata.type` is not one of those: it is the object's
+//    own derived type, the only field that tells a FIDO2 combination
+//    configuration from an X.509 one, so it is kept and a change to it is
+//    reported;
 //  - a path that points at a *tenant object* rather than holding controls
 //    (MODELLED_REFERENCES) means the object it points at. How deeply an export
 //    expanded that object is the exporter's choice, not the author's, so the
@@ -41,8 +45,17 @@ const METADATA_KEYS = new Set(['id', 'displayName', 'description', 'createdDateT
  */
 const NESTED_METADATA_KEYS = new Set(['createddatetime', 'modifieddatetime'])
 
+/**
+ * The one OData key that is not the fetch's bookkeeping: `@odata.type` names the
+ * derived type of the object it sits on, so a FIDO2 combination configuration is
+ * told apart from an X.509 one by it and by nothing else. It stays in the tree,
+ * where a change to it is unreviewed evidence rather than nothing.
+ */
+const TYPE_DISCRIMINATOR = '@odata.type'
+
 /** True for a key that is the fetch's bookkeeping rather than the policy's meaning, wherever it sits. */
 function isNestedMetadata(key: string): boolean {
+  if (key.toLowerCase() === TYPE_DISCRIMINATOR) return false
   return NESTED_METADATA_KEYS.has(key.toLowerCase()) || key.includes('@odata')
 }
 
@@ -119,20 +132,22 @@ const MODELLED_REFERENCES: Record<string, readonly string[]> = {
 
 /**
  * The named parts of an expanded reference that are the referenced object's own
- * *record* rather than what it permits: its wording, its type, and the summary
- * Graph derives from the combinations it already compared. The author's
- * repository holds the same strength both expanded and as a bare id, so a
- * difference in these is the depth of an export — representation, dropped.
+ * *record* rather than what it permits: its wording, its type — its Graph class
+ * as much as its policyType — and the summary Graph derives from the
+ * combinations it already compared. The author's repository holds the same
+ * strength both expanded and as a bare id, so a difference in these is the depth
+ * of an export — representation, dropped.
  *
  * Nothing else inside a reference is dropped. A field that decides what the
  * strength actually accepts — combinationConfigurations, which restricts a FIDO2
- * or X.509 combination to particular authenticators or issuers, or anything
+ * or X.509 combination to particular authenticators or issuers, down to the
+ * `@odata.type` that says which of those two a configuration is, or anything
  * Graph adds later — stays in the residual and is reported unreviewed. IAMAI
  * cannot say two strengths mean the same thing on the strength of an id when
  * the copies in front of it disagree about how that strength is configured.
  */
 const REFERENCE_RECORD_KEYS: Record<string, readonly string[]> = {
-  'grantControls.authenticationStrength': ['displayName', 'description', 'policyType', 'requirementsSatisfied'],
+  'grantControls.authenticationStrength': ['displayName', 'description', 'policyType', 'requirementsSatisfied', TYPE_DISCRIMINATOR],
 }
 
 /** The field name a path is worded by: its last segment, unique across the model. */
@@ -209,6 +224,12 @@ function drop(tree: Record<string, unknown>, path: string): void {
   if (isObj(cur)) delete cur[segs[segs.length - 1]]
 }
 
+/** Remove one named part of a node: its own key first, because an OData annotation carries a dot that is not a path. */
+function dropNamed(node: Record<string, unknown>, name: string): void {
+  if (Object.prototype.hasOwnProperty.call(node, name)) delete node[name]
+  else drop(node, name)
+}
+
 /** How far the model reaches inside this path, when it holds more than one value. */
 function subfieldsOf(path: string): readonly string[] | undefined {
   return MODELLED_SUBFIELDS[path] ?? MODELLED_REFERENCES[path]
@@ -260,7 +281,7 @@ function unmodelled(whole: Record<string, unknown>): Record<string, unknown> {
     const node = at(copy, path)
     if (reach && isObj(node)) {
       for (const sub of reach) drop(node, sub)
-      for (const rec of REFERENCE_RECORD_KEYS[path] ?? []) drop(node, rec)
+      for (const rec of REFERENCE_RECORD_KEYS[path] ?? []) dropNamed(node, rec)
     } else drop(copy, path)
   }
   return prune(copy)
