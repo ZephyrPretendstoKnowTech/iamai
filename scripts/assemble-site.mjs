@@ -58,4 +58,11 @@ for (const name of readdirSync(home)) {
 // The custom domain has to be declared at the site root, not inside the tool.
 cpSync(join(root, 'public', 'CNAME'), join(dist, 'CNAME'))
 
+// The brand icons, at the site root as well as inside the tool. Vite copies
+// public/ into the tool folder, so the planner is already served
+// /<TOOL_PATH>/brand/favicon.svg; the home page is at the root and asks for
+// /brand/favicon.svg. One source (public/brand, written by scripts/gen-brand.mjs
+// from the master mark), published twice, never a second drawing.
+cpSync(join(root, 'public', 'brand'), join(dist, 'brand'), { recursive: true })
+
 console.log(`assemble-site: home page at dist/index.html, planner at dist/${TOOL_PATH}/`)

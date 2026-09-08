@@ -9,11 +9,14 @@
 // opacity on text. The focus ring is the only box-shadow.
 //
 // That is what is built, not the owner's approved brand. The approved skin is
-// Mineral Teal (light) and Deep Mineral (dark), recorded in full in
-// docs/design/brand-decisions.md, along with a 4/8/12px shape hierarchy and two
-// motion bands that LAYOUT.radiusPx and LAYOUT.motionMs below do not yet carry.
-// Pack 029 owns the brand assets and this token change; task 028 recorded the
-// decision and changed no value here (docs/design/authority-reconciliation.md).
+// Mineral Teal (light) and Deep Mineral (dark), with a 4/8/12px shape hierarchy
+// and two motion bands that LAYOUT.radiusPx and LAYOUT.motionMs below do not yet
+// carry. Every value of it is machine-readable in docs/brand/brand-manifest.json,
+// with the rules in docs/brand/iamai-brand-contract.md (task 029). Task 028
+// recorded the decision, task 029 built the assets, and neither changed a value
+// here: the restoration pack changes these tokens together with the shell, the
+// type scale and the surfaces, against the approved packs in
+// docs/design/approved/ (docs/design/authority-reconciliation.md).
 //
 // The three font families are already the approved ones: IBM Plex Serif for
 // display, Sans for interface, Mono for technical text.

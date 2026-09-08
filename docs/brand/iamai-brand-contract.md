@@ -1,0 +1,336 @@
+# IAMAI brand contract
+
+Task 029. This is the durable record of the finished IAMAI brand: one logo, one palette,
+one set of typographic roles, and the rules that keep them apart from the things they are
+not allowed to move.
+
+The machine copy of every value here is `docs/brand/brand-manifest.json`, and the visual
+reference is `docs/brand/iamai-brand-system.html`. Where a sentence here and a value there
+disagree, the value wins; `src/brand/brand.test.ts` fails when either drifts.
+
+---
+
+## 1. Authority and precedence
+
+Brand is a skin over an anatomy.
+
+1. **Production technical and content truth.** The engine, the pinned baseline, Graph,
+   lifecycle, MFA proof, and the copy in `docs/design/content.json`. Brand never edits a
+   fact.
+2. **Approved HTML application architecture.** The four owner-approved packs recorded by
+   task 028 in `docs/design/approved/manifest.json`:
+
+   | Surface | File | SHA-256 |
+   |---|---|---|
+   | Home | [`docs/design/approved/iamai-home-design-pack-v2.html`](../design/approved/iamai-home-design-pack-v2.html) | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
+   | Connect | [`docs/design/approved/iamai-connect-design-pack-v3.html`](../design/approved/iamai-connect-design-pack-v3.html) | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
+   | Plan + step | [`docs/design/approved/iamai-plan-step-design-pack.html`](../design/approved/iamai-plan-step-design-pack.html) | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
+   | MFA Readiness | [`docs/design/approved/iamai-mfa-readiness-design-pack-v2.html`](../design/approved/iamai-mfa-readiness-design-pack-v2.html) | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
+
+3. **This brand skin.**
+
+> The approved Home, Connect, Plan and MFA Readiness HTML packs own application
+> architecture, composition, hierarchy, major placement, disclosure, table and row anatomy
+> and responsive behaviour. Branding changes only the compatible visual skin and identity.
+
+**Brand may change** the palette, the type family within an approved role, the logo, the
+icons, radius and surface treatment where compatible, hover/press/focus appearance, and
+restrained motion.
+
+**Brand may not change** page anatomy, major composition, workflow, information hierarchy,
+major component placement, disclosure structure, table and row architecture, responsive
+behaviour, technical truth, or accurate production copy.
+
+Nothing in this document, and nothing in `iamai-brand-system.html`, is an application
+design authority. This file describes a skin.
+
+### Generated branding application previews
+
+> Application previews from branding exploration are not design authorities. Home, Connect,
+> Plan, and MFA Readiness architecture is governed by the canonical approved HTML files.
+
+Application-page previews produced while exploring the brand — a "Plan page in the new
+colours", a "Connect page in the new colours" — are **colour and brand framing only**. They
+are non-authoritative for layout, architecture, component placement, information hierarchy,
+copy, workflow, interaction and responsive behaviour. `brand-manifest.json` records no path
+for one, exactly as `docs/design/approved/manifest.json` records none: a preview is never an
+entry in `surfaces`, and nothing may promote one.
+
+---
+
+## 2. Palette
+
+Two themes. Every value is exact; an approximation is a different colour.
+
+### Light — Mineral Teal
+
+| Role | Value |
+|---|---|
+| canvas | `#F7F4EE` |
+| surface | `#FFFDF9` |
+| secondary surface | `#F0ECE5` |
+| line | `#D8D3C9` |
+| strong line | `#C1BCB3` |
+| primary text | `#1D2528` |
+| secondary text | `#4E5B5D` |
+| muted text | `#7B8584` |
+| brand teal | `#0C6A64` |
+| secondary teal | `#18847A` |
+| soft teal | `#DDEFEA` |
+| teal on soft | `#07534F` |
+| success | `#2C7A5A` |
+| attention | `#B7791F` |
+| danger | `#B04A4A` |
+| admin / violet | `#6658A4` |
+| code surface | `#EEEAE3` |
+
+### Dark — Deep Mineral
+
+| Role | Value |
+|---|---|
+| canvas | `#0E1516` |
+| surface | `#151F20` |
+| secondary surface | `#111A1B` |
+| line | `#2A3737` |
+| strong line | `#3B4B4A` |
+| primary text | `#F0F4F2` |
+| secondary text | `#C4CECA` |
+| muted text | `#879693` |
+| brand teal | `#59C7B7` |
+| secondary teal | `#7AD9CB` |
+| soft teal | `#173B37` |
+| teal on soft | `#D9FFF8` |
+| success | `#79D7A6` |
+| attention | `#E3B35B` |
+| danger | `#E88A8A` |
+| admin / violet | `#B9A7FF` |
+| code surface | `#0A1112` |
+
+### Semantic separation — the rule that is easy to get wrong
+
+**Brand teal is not success green.** Teal says *this is IAMAI*: identity, navigation,
+selection, the interactive emphasis, the focus ring. Green says *the tenant is in a good
+state*: proven, in place, healthy. Attention says a decision or a date is missing, danger
+says something would break or is blocked, and violet says administrator scope.
+
+A surface that paints a brand action in the success colour tells the reader something untrue
+about their tenant. The two families must never be collapsed because both look green-ish.
+
+A logo asset carries a brand colour, a monochrome value, or the app-icon pair. A logo is
+never drawn in a semantic colour.
+
+---
+
+## 3. Typography
+
+Three families, self-hosted. No Google Fonts, no third-party font CDN, no runtime request
+to anyone: the product reads a tenant, and the page it reads it on must not phone home.
+Provenance and licensing are recorded in [`font-provenance.md`](font-provenance.md).
+
+| Role | Family | Weight |
+|---|---|---|
+| display, H1, major editorial heading | IBM Plex Serif | 700 |
+| H2 / H3 editorial heading | IBM Plex Serif | 600–700 |
+| body, interface | IBM Plex Sans | 400 |
+| strong body, label, control | IBM Plex Sans | 600 |
+| wordmark | IBM Plex Sans | 700 |
+| technical: identifiers, JSON, PowerShell, Graph paths, code | IBM Plex Mono | 400–500 |
+
+The *scale* — which size a heading takes on a page — belongs to the approved packs, not to
+this file. Brand chooses the family and weight inside a role; it does not decide which role
+a piece of the page occupies.
+
+Italic faces are deliberately not part of the system: nothing in the product's voice needs
+one, and every face shipped is a face downloaded.
+
+Task 029 made the wordmark face available locally. It did **not** switch production
+typography over; the shell, the scale and the token change are the restoration pack's work.
+
+---
+
+## 4. The mark — Guided Route
+
+The approved logo family is **Guided Route, variant 2**, version 1. The master is
+[`src/brand/logo/iamai-guided-route-master.svg`](../../src/brand/logo/iamai-guided-route-master.svg).
+
+### Intent
+
+```text
+origin  →  guided rising route  →  waypoint  →  upper-right destination
+```
+
+Where the tenant is now, the ordered plan, a meaningful step reached, where the tenant is
+going. It is an A-to-Z journey that never draws an `A` or a `Z`.
+
+### Topology
+
+1. an open rounded-window frame;
+2. a lower-left origin node, nested in the frame's bottom-left corner;
+3. one rising route, easing out of the origin and bowing below the diagonal;
+4. one midpoint waypoint on that route;
+5. an upper-right destination arrow;
+6. the frame's top-right corner is open, so the route travels **through** the frame rather
+   than sitting inside a box.
+
+Nothing else. No second route, no extra waypoint, no map contours, no closed generic rounded
+square, and never a shield, padlock, brain, sparkle, AI glyph, GPS pin, folded map, globe or
+neon.
+
+### Master rules
+
+`viewBox="0 0 64 64"`, vector geometry only, one colour source (`currentColor`), stroke 4.6
+with round caps and joins. No `<image>`, `<script>`, `<foreignObject>`, `<text>`, gradient,
+filter, embedded font or external reference. It must stay readable at 16px, and it must work
+printed in one colour.
+
+---
+
+## 5. Assets and how they are made
+
+Only the master is drawn by hand. Every other asset is written from it by
+`node scripts/gen-brand.mjs`, with the derivation in `scripts/brandDerive.ts`;
+`src/brand/brand.test.ts` re-derives and fails on drift. A second hand-drawn mark would be a
+second authority, and the two would part company the first time one was corrected.
+
+| Asset | Path | Colour |
+|---|---|---|
+| master | `src/brand/logo/iamai-guided-route-master.svg` | `currentColor` |
+| light theme mark | `src/brand/logo/iamai-mark-light.svg` | `#0C6A64` |
+| dark theme mark | `src/brand/logo/iamai-mark-dark.svg` | `#59C7B7` |
+| monochrome ink | `src/brand/logo/iamai-mark-mono-ink.svg` | `#1D2528` |
+| monochrome light | `src/brand/logo/iamai-mark-mono-light.svg` | `#FFFDF9` |
+| favicon / app icon | `public/brand/favicon.svg` | `#FFFDF9` on `#0C6A64` |
+| 32px raster favicon | `public/brand/favicon-32.png` | as above |
+
+### Usage
+
+- On a light surface use the light mark; on a dark surface use the dark mark. In a themed
+  interface prefer the master with `currentColor` and let the theme supply the value.
+- **Monochrome**: ink on light, light on dark, at full strength. Never a tinted, screened or
+  50%-opacity mark; the origin node and the waypoint are the first things to disappear.
+- **Minimum size**: 16px for the standalone mark. Below that use the app icon.
+- **Header size**: 20–28px.
+- **Clear space**: at least 0.35 × the mark's height on every side of the mark or the
+  lockup. Nothing sits inside it.
+- Do not rotate, shear, outline, add a shadow or glow, re-colour a single element, place the
+  mark on a busy photograph, or redraw it at a different stroke weight. Scale it.
+- The app icon is a treatment of this logo, not another logo: the same geometry, scaled to
+  0.86 and drawn light on a rounded brand field so it survives browser chrome at 16px.
+
+---
+
+## 6. The lockup
+
+The core lockup is exactly:
+
+```text
+[Guided Route mark]  IAMAI
+```
+
+There is **no tagline**. `brand-manifest.json` records `tagline: null`. The lines produced
+while generating brand concepts — `PLAN PROGRESS ACHIEVE`, `FROM HERE TO WHAT'S NEXT`,
+`IDENTITY ROADMAP`, `PLAN WITH EVIDENCE`, `GUIDED PROGRESSION`,
+`PEOPLE + AI + A BRIGHTER TOMORROW` — are not approved copy, are not part of the mark, and
+must not appear in a logo asset's name or contents. A descriptor may join the lockup only if
+a later task approves it as product or marketing copy, and never as a line under the
+wordmark.
+
+| Measure | Value |
+|---|---|
+| mark | 1.0× (the unit) |
+| gap, mark to word | 0.25–0.32× |
+| clear space around the lockup | ≥ 0.35× |
+| minimum standalone mark | 16px |
+| header mark | 20–28px |
+| wordmark | IBM Plex Sans 700, letter-spacing 0.005em |
+| alignment | the wordmark's optical centre on the mark's centre; cap height reads ≈ 0.5× the mark |
+
+**Compose the lockup; do not export it.** A static lockup SVG that carries `<text>` renders
+in whatever face the reader happens to have, so it is not self-contained and is not a
+canonical asset. The product's header, and any other digital use, places the mark asset
+beside the live text `IAMAI` in the locally loaded IBM Plex Sans. If a flattened lockup is
+ever needed for a third party, it is generated with outlined glyphs, dated, and recorded as
+a derived export — never as the master.
+
+---
+
+## 7. Icon language
+
+Restrained geometric strokes: roughly 1.75–2px at ordinary interface icon sizes, round caps
+and joins, no fill except where a node or a state dot is the point. Icons are drawn on a
+consistent grid and inherit `currentColor`. The product's set is
+`src/ui/components/Icon.tsx` (20px grid, 1.5px stroke today); a restoration pack brings its
+weight into this band.
+
+No emoji, no pictorial illustration, no duotone, no icon that states a tenant fact the page
+does not.
+
+## 8. Shape
+
+| Element | Radius |
+|---|---|
+| compact row | 4px |
+| control | 8px |
+| deliberate grouped or key panel | 12px |
+
+A hierarchy, **not** a licence to cardify every section. Most of IAMAI is rows and rules on a
+flat surface, and it should stay that way; 12px is for the small number of panels that are
+genuinely a grouped object. Production currently enforces one 4px token
+(`src/ui/tokens.ts`, `src/ui/design-lint.test.ts` rule 3); the restoration pack turns that
+rule into this hierarchy.
+
+## 9. Motion
+
+| Element | Duration |
+|---|---|
+| small control: hover, press, focus, checkbox, tab | 120–180ms |
+| disclosure: step expansion, panel open, row reveal | 180–240ms |
+
+Motion is functional and tactile. It carries continuity — where a thing came from, what just
+changed — and never spectacle. No looping decoration, no attention-seeking pulse, no
+parallax, no animated logo.
+
+**Reduced motion is not an afterthought.** Under `prefers-reduced-motion: reduce` every
+transition above collapses to none or to an opacity change of at most 60ms. Nothing that
+conveys state may depend on the animation having played.
+
+## 10. Texture
+
+A subtle evidence-grid may appear on marketing and brand surfaces. It never appears behind
+dense operational data: a plan is read, not admired.
+
+---
+
+## 11. Voice
+
+A guardrail for later copy, not a licence to rewrite what is already accurate.
+`docs/design/content.json` remains the copy authority, and task 029 changed no product copy.
+
+IAMAI is:
+
+- informative, not chatty;
+- evidence first — the number, then what it means;
+- short operational verbs;
+- confident only where the evidence supports confidence;
+- explicit about what it does not know;
+- professional.
+
+IAMAI is not salesy, not fear-based, and never narrates itself as an AI assistant. It does
+not say "I". It says what it read and what follows from it.
+
+---
+
+## 12. What task 029 switched on
+
+| | |
+|---|---|
+| favicon / app icon | wired, both the home page and the planner |
+| wordmark face available locally | yes |
+| palette applied to production | no — restoration pack |
+| typography applied to production | no — restoration pack |
+| shell header logo | no — restoration pack |
+
+`src/ui/tokens.ts` still holds the paper/ink palette that shipped. Task 029 owns the assets
+and the contract; the restoration pack owns the shell, the theme and the type, so the
+palette, the typography and the anatomy change together against the approved packs rather
+than in three separate half-states.
