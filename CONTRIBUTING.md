@@ -59,9 +59,12 @@ the test that asserts it.
 
 `.github/CODEOWNERS` routes every path to the repository owner.
 
-The maintainer's commits are signed with an SSH key. No repository rule requires
-a signature today, so an unsigned contribution is not rejected; if that rule is
-ever enabled, this file changes with it.
+`main` requires signed commits. The rule that requires the `ci` check also
+requires a signature, so a commit reaching `main` is rejected unless it carries
+one, and the maintainer's commits are signed with an SSH key. A pull request is
+not rejected for having unsigned commits of its own: the commit GitHub writes
+when it squashes or merges is signed by GitHub. The repository admin holds a
+bypass on that rule while the build-out is running, and it will be removed.
 
 ## Reporting a problem
 
