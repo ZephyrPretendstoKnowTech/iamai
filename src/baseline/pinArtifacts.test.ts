@@ -1,18 +1,21 @@
 // Task 021 §11: a pin writes its snapshot and its index record together.
 //
-// The defect this guards was in the *generation* code, and the repository still
-// carries its result: baselines/*.pinned.json is at 8461e0f2 and
-// baselines/*.index.json is at ceccdc2a, because pin-baseline wrote the first
-// and left the second. Nothing here changes those artifacts — the current pin is
-// the owner's, and a re-pin is its own task. What is proved here is that the next
-// authorized pin cannot leave the pair disagreeing again.
+// The defect this guards was in the *generation* code, and the repository
+// carried its result for as long as the two were written apart:
+// baselines/*.pinned.json was at 8461e0f2 while baselines/*.index.json was still
+// at ceccdc2a, because pin-baseline wrote the first and left the second. Task
+// 022 re-pinned both through this path at 90d9b890; what is proved here is that
+// no later pin can leave the pair disagreeing again — and, below, that no pin
+// can happen at all except as the promotion of one named, wholly-read commit.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { attributionFor, indexRecord, pinArtifacts, pinMismatch } from './pinArtifacts.ts'
-import { pinGeneration, writePin } from '../../scripts/pin-baseline.ts'
+import { acquisitionFailure, pinGeneration, targetCommit, writePin } from '../../scripts/pin-baseline.ts'
+import type { Acquisition } from '../../scripts/pin-baseline.ts'
+import type { LoadReport } from './types.ts'
 import { PINNED } from './pinned.ts'
 
 const shippedIndex = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.index.json', 'utf8')) as Record<string, unknown>
@@ -20,6 +23,7 @@ const shippedIndex = JSON.parse(readFileSync('baselines/jhope188-conditionalacce
 const NEXT = '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c'
 /** The commit the index record was stuck at while the pair was written apart. */
 const STALE = 'ceccdc2a6dc2e4a3e1f960fc2d91f05c8963265b'
+const STALE_SHA = '8461e0f2fd10167bf034e7c20ed8ea293827d890'
 
 const generate = (commit: string) =>
   pinArtifacts({
@@ -126,4 +130,71 @@ test('J. the pin script has one write path for its artifacts', () => {
   assert.match(script, /const out = pinGeneration\(\{/, 'the script builds its artifacts through the shared generation path')
   assert.match(script, /writePin\('baselines', BASE, out\)/, 'and writes both through the one write path')
   assert.doesNotMatch(script, /writeFileSync\(`baselines\//, 'a second, hand-built write of a baselines/ artifact')
+})
+
+// ---- the promotion boundary (task 022 correction) ----
+//
+// A pin is the promotion of one version somebody reviewed and approved by name.
+// Two ways that boundary was not held:
+//
+//  - the script defaulted its target to the author's current head, so a run with
+//    no argument asked the author what was newest and adopted it. "Re-pin" and
+//    "adopt whatever they have pushed since" were the same command, and the
+//    review the approval exists for happened after the write.
+//  - a raw-file fetch that did not come back was dropped on the floor, and the
+//    discovery report's parse errors and skips were never read, so an incomplete
+//    read became a pin that claimed the commit whole. Afterwards a policy that
+//    failed to fetch reads as a policy the author deleted.
+
+test('K. the commit to pin comes from the command line, and nothing else supplies one', () => {
+  const HEAD = 'a'.repeat(40)
+  assert.throws(() => targetCommit([], HEAD), /needs the commit to pin/, 'a run with no argument has nothing to promote')
+  assert.throws(() => targetCommit(['90d9b890'], HEAD), /full 40-character/, 'an abbreviation is not the identity the artifacts claim')
+  assert.throws(() => targetCommit(['not-a-sha-at-all'], HEAD), /full 40-character/)
+  assert.throws(() => targetCommit([NEXT, 'b'.repeat(40)], HEAD), /pins one commit/)
+  assert.deepEqual(targetCommit([NEXT], HEAD), { commit: NEXT, from: HEAD }, 'the argument is the target, and the diff base defaults to the pin we are on')
+  assert.deepEqual(targetCommit([NEXT.toUpperCase()], HEAD).commit, NEXT, 'case is not identity')
+  // --from moves only what the report is read against, never what is pinned.
+  assert.deepEqual(targetCommit([NEXT, '--from', STALE_SHA], HEAD), { commit: NEXT, from: STALE_SHA })
+  assert.deepEqual(targetCommit(['--from=' + STALE_SHA, NEXT], HEAD), { commit: NEXT, from: STALE_SHA })
+  assert.throws(() => targetCommit([NEXT, '--from', 'ceccdc2a'], HEAD), /full 40-character/)
+  assert.throws(() => targetCommit([NEXT, '--from'], HEAD), /--from needs a commit/)
+})
+
+test('K. the pin script asks the author what is newest for nothing that decides what is pinned', () => {
+  const script = readFileSync('scripts/pin-baseline.ts', 'utf8')
+  const main = script.slice(script.indexOf('async function main('))
+  assert.doesNotMatch(main, /commits\?per_page/, 'the run resolves its own target from the author’s head')
+  assert.match(script, /const \{ commit: target, from: oldCommit \} = targetCommit\(process\.argv/, 'the target is the validated argument')
+})
+
+const clean: LoadReport = { considered: 2, parsed: 2, skipped: [], errors: [], duplicates: [], warnings: [] }
+const read = (over: Partial<Acquisition> = {}): Acquisition => ({ requested: ['Policies/a.json', 'Policies/b.json'], fetched: 2, parsed: 2, skipped: 0, duplicates: 0, errors: 0, failed: [], ...over })
+
+test('K. a source that was not read whole is refused before either artifact is written', () => {
+  assert.equal(acquisitionFailure(read(), clean), null, 'a complete read pins')
+  assert.match(
+    acquisitionFailure(read({ fetched: 1, failed: [{ path: 'Policies/b.json', why: 'HTTP 500' }] }), { ...clean, parsed: 1 }) ?? '',
+    /did not come back.*Policies\/b\.json \(HTTP 500\)/s,
+    'a file that did not come back',
+  )
+  assert.match(acquisitionFailure(read({ fetched: 1 }), { ...clean, parsed: 1 }) ?? '', /tree lists 2 policy file\(s\) and 1 were read/, 'a file that went missing without an error')
+  assert.match(acquisitionFailure(read(), { ...clean, errors: [{ path: 'Policies/b.json', error: 'invalid JSON: x' }] }) ?? '', /could not be read.*invalid JSON/s, 'a file that would not parse')
+  assert.match(acquisitionFailure(read(), { ...clean, skipped: [{ path: 'Policies/b.json', reason: 'no Conditional Access policy object found' }] }) ?? '', /held nothing this reader recognised/, 'a file this reader did not understand')
+  assert.match(acquisitionFailure(read({ parsed: 0 }), { ...clean, parsed: 0 }) ?? '', /no policy was read/, 'a commit that yielded nothing')
+  // A duplicate is a decision discoverPolicies made and reported, not a file it
+  // could not read: the equivalent-copy rules stand and the pin proceeds.
+  assert.equal(
+    acquisitionFailure(read({ duplicates: 1, parsed: 3 }), { ...clean, parsed: 3, duplicates: [{ path: 'Policies/b.json', supersededBy: 'Policies/a.json', reason: 'same policy id p-1' }] }),
+    null,
+    'a superseded copy does not stop a pin',
+  )
+})
+
+test('K. the shipped pin, index and report are one run’s output', () => {
+  const pinnedFile = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')) as { commit: string; generatedAt: string }
+  const report = readFileSync(`docs/baselines/jhope188-conditionalaccesspolicies/${pinnedFile.commit}.md`, 'utf8')
+  assert.equal(shippedIndex.generatedAt, pinnedFile.generatedAt, 'the pair carries one generation time')
+  assert.ok(report.includes(`Generated ${pinnedFile.generatedAt}.`), `the report is that run’s: ${report.split('\n')[2]}`)
+  assert.match(report, /Source read: \d+ policy files listed, \d+ fetched, \d+ parsed, \d+ skipped, \d+ duplicate, \d+ error, \d+ unread/, 'and it says how the source was read')
 })

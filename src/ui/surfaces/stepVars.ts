@@ -34,6 +34,7 @@ import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planProposedNames, proposedNamesFor } from './proposedNames.ts'
 import { policyPairNames } from '../../coverage/naming.ts'
 import type { ProposedObjectNames } from './proposedNames.ts'
@@ -230,6 +231,20 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (wanted) v.wanted = wanted
   const wantedLong = own === null ? sessionWantedLongForGoal(step.goalId) : hours === null ? null : hoursAsDuration(hours)
   if (wantedLong) v.wantedLong = wantedLong
+
+  // The step that makes the baseline's own authentication strength: it names the
+  // strength by the author's name for it (the step carries it, generate.ts) and
+  // lists what this tenant has of its own to compare against. Built-ins are not
+  // in that list — every tenant has those, and the question the step asks is
+  // which *custom* strength, if any, already is the baseline's.
+  if (step.id === PREREQ_STEP_ID.authStrength) {
+    if (step.naming?.proposed) v.strengthName = step.naming.proposed
+    const customs = ((ctx.snapshot.config.authStrengths?.rows ?? []) as Record<string, unknown>[])
+      .filter((r) => String(r.policyType ?? 'custom') !== 'builtIn')
+      .map((r) => (typeof r.displayName === 'string' ? r.displayName : typeof r.id === 'string' ? r.id : ''))
+      .filter((n) => n.length > 0)
+    if (customs.length > 0) v.strengths = customs
+  }
 
   // Nobody affected (timing.ts, the one definition): the records show nobody
   // using what this step blocks, so the manager's "nobody here used it" clause

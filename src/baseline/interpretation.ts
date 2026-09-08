@@ -72,6 +72,22 @@ export type InterpretationRecord = {
    * package is checked against.
    */
   includedIn: string[]
+  /**
+   * What each of those policies *was* when the meaning was settled, by the same
+   * policy id: `policyContext`, one word per policy.
+   *
+   * The set of policy ids alone is not the evidence. "The only group included by
+   * IAC - GLOBAL - BLOCK - Service Accounts, whose README says the policy blocks
+   * interactive sign-in for CA-ServiceAccounts" is a reading of what that policy
+   * *does*; the author can keep the policy, keep its id, keep including the same
+   * group, and change it into something else entirely — a different grant, a
+   * different resource, a different condition, another group included beside
+   * this one — and every word of the evidence would then be about a policy that
+   * no longer exists. Without this the old meaning was carried into the new
+   * package unexamined, and it is a meaning that decides which of the adopting
+   * tenant's objects goes into their policy.
+   */
+  context: Record<string, string>
 }
 
 export type BaselineInterpretation = {
@@ -87,6 +103,8 @@ export type ReferenceUsage = {
   kind: ReferenceKind
   includedIn: string[]
   excludedFrom: string[]
+  /** `policyContext` for each policy in `includedIn`, by the same id. */
+  context: Record<string, string>
 }
 
 const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation', 'unknown']
@@ -106,6 +124,74 @@ const KEYWORDS = new Set(['all', 'none', 'alltrusted', 'guestsorexternalusers', 
 export const policyKey = (p: CaPolicy): string => p.id ?? p.displayName
 
 /**
+ * The parts of a policy a reading of one of its references rests on, as one
+ * word.
+ *
+ * What is in it: what the policy grants or blocks, what it applies to, who and
+ * what it includes, and every condition it sets. Change any of those and the
+ * sentence "this group is the service accounts, because *that* policy blocks
+ * interactive sign-in for it" is about a policy that is no longer there.
+ *
+ * What is deliberately not in it:
+ *
+ * - every exclusion. One more group excluded from a policy is the ordinary
+ *   traffic of running a tenant and says nothing about what any other reference
+ *   means, so it must not send a settled reading back for review.
+ * - the display name, the description and the state. A rename is not a change of
+ *   purpose (task 021 pinned identity to the source id for exactly that reason),
+ *   and a policy moving out of report-only is a rollout, not a redefinition.
+ * - an authentication strength's own metadata beyond what it demands: its name
+ *   and timestamps travel with the export and are not what the policy asks for.
+ */
+export function policyContext(p: CaPolicy): string {
+  return hash(stable(strip(p as unknown as Record<string, unknown>)))
+}
+
+const OUT = new Set(['id', 'displayname', 'description', 'state', 'createddatetime', 'modifieddatetime', 'templateid', 'placeholders'])
+
+function strip(v: unknown, depth = 0): unknown {
+  if (Array.isArray(v)) return v.map((x) => strip(x, depth + 1))
+  if (v === null || typeof v !== 'object') return v
+  const out: Record<string, unknown> = {}
+  for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+    const key = k.toLowerCase()
+    if (depth === 0 && OUT.has(key)) continue
+    // Every exclusion, wherever it sits: excludeGroups, excludeUsers,
+    // excludeRoles, excludeApplications, excludeLocations, excludePlatforms,
+    // excludeServicePrincipals, excludeGuestsOrExternalUsers.
+    if (key.startsWith('exclude')) continue
+    // A strength is what it demands. `id` is in because a *different* strength
+    // is a different requirement even when it allows the same things.
+    if (key === 'authenticationstrength' && val !== null && typeof val === 'object') {
+      const st = val as Record<string, unknown>
+      out[k] = { id: st.id ?? null, allowedCombinations: Array.isArray(st.allowedCombinations) ? [...st.allowedCombinations].sort() : null }
+      continue
+    }
+    if (key.endsWith('@odata.context')) continue
+    out[k] = strip(val, depth + 1)
+  }
+  return out
+}
+
+/** JSON with its object keys in one order, so two equal policies are one word. */
+function stable(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`
+  if (v === null || typeof v !== 'object') return JSON.stringify(v) ?? 'null'
+  const entries = Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+  return `{${entries.map(([k, val]) => `${JSON.stringify(k)}:${stable(val)}`).join(',')}}`
+}
+
+/** FNV-1a, 64-bit, hex. Not a security claim: a short stable word for a long one. */
+function hash(text: string): string {
+  let h = 0xcbf29ce484222325n
+  for (let i = 0; i < text.length; i++) {
+    h ^= BigInt(text.charCodeAt(i))
+    h = (h * 0x100000001b3n) & 0xffffffffffffffffn
+  }
+  return h.toString(16).padStart(16, '0')
+}
+
+/**
  * How every group and named location in a package is used. Only the two kinds a
  * record can settle are collected; an authentication strength is not here
  * because its meaning is the field it sits in, not a reading of it.
@@ -117,16 +203,23 @@ export function referenceUsage(policies: CaPolicy[]): ReferenceUsage[] {
     if (KEYWORDS.has(key)) return null
     let u = map.get(key)
     if (!u) {
-      u = { id: key, kind, includedIn: [], excludedFrom: [] }
+      u = { id: key, kind, includedIn: [], excludedFrom: [], context: {} }
       map.set(key, u)
     }
     return u
   }
   for (const p of policies) {
     const k = policyKey(p)
-    for (const g of s(p.conditions?.users?.includeGroups)) at(g, 'group')?.includedIn.push(k)
+    const context = policyContext(p)
+    const include = (id: string, kind: ReferenceKind): void => {
+      const u = at(id, kind)
+      if (!u) return
+      u.includedIn.push(k)
+      u.context[k] = context
+    }
+    for (const g of s(p.conditions?.users?.includeGroups)) include(g, 'group')
     for (const g of s(p.conditions?.users?.excludeGroups)) at(g, 'group')?.excludedFrom.push(k)
-    for (const l of s(p.conditions?.locations?.includeLocations)) at(l, 'namedLocation')?.includedIn.push(k)
+    for (const l of s(p.conditions?.locations?.includeLocations)) include(l, 'namedLocation')
     for (const l of s(p.conditions?.locations?.excludeLocations)) at(l, 'namedLocation')?.excludedFrom.push(k)
   }
   for (const u of map.values()) {
@@ -184,6 +277,14 @@ export function interpretReferences(interpretation: BaselineInterpretation, usag
       })
       continue
     }
+    // The same policies, and each of them still the policy the meaning was read
+    // off (`policyContext`). An added exclusion is not in that word; a changed
+    // grant, resource, condition or included population is.
+    const moved = is.filter((k) => (r.context[k] ?? '') !== (now.context[k] ?? ''))
+    if (moved.length > 0) {
+      reviewRequired.push({ id, why: `settled against ${moved.join(', ')} and ${moved.length === 1 ? 'that policy has' : 'those policies have'} materially changed since` })
+      continue
+    }
     if (r.meaning !== 'unknown') tokens.set(id, r.meaning)
   }
   return { tokens, reviewRequired, stale, unsettled: usage.filter((u) => !settled.has(u.id)) }
@@ -217,6 +318,14 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
     if (!BASES.includes(r.basis as InterpretationBasis)) return bad(`reference ${id} has an unknown basis`)
     if (typeof r.evidence !== 'string' || r.evidence.trim() === '') return bad(`reference ${id} records no evidence`)
     if (!Array.isArray(r.includedIn) || r.includedIn.some((x) => typeof x !== 'string')) return bad(`reference ${id} has no includedIn list`)
+    const context = r.context
+    if (context === null || typeof context !== 'object' || Array.isArray(context)) return bad(`reference ${id} has no context`)
+    const ctx = context as Record<string, unknown>
+    if (Object.values(ctx).some((x) => typeof x !== 'string' || x.trim() === '')) return bad(`reference ${id} has a context that is not one word per policy`)
+    // A record that names the policies it was settled against and not what they
+    // were is a record that cannot be checked against a later package - which is
+    // the same as having no invalidation rule at all.
+    for (const k of r.includedIn as string[]) if (typeof ctx[k] !== 'string') return bad(`reference ${id} was settled against ${k} and records nothing about what that policy was`)
     // A meaning other than unknown may not rest on the shape of the export
     // alone: structure cannot tell the service accounts from any other group
     // somebody excluded, which is exactly how the fall-through went wrong.
@@ -228,6 +337,7 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
       basis: r.basis as InterpretationBasis,
       evidence: r.evidence,
       includedIn: [...(r.includedIn as string[])].sort(),
+      context: { ...(ctx as Record<string, string>) },
     }
   })
   return { version: v.version, owner: v.owner, repo: v.repo, references }
