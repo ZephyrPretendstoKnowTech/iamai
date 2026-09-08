@@ -22,13 +22,23 @@
 //     every policy the plan writes — but `substitutions` claimed a resolution
 //     that had not happened, and the claim, not the body, is what the next
 //     reading trusts.
+//  3. The same group was then simply left out, and the policy offered anyway,
+//     because "only ever excluded" was read as "the author's own environment,
+//     which this tenant needs no counterpart for". That is not a reading of the
+//     object; it is a reading of where the object sits in a collection. An
+//     exclusion is people the author's tenant spared from a policy that blocks
+//     sign-in or demands a stronger one, and a copy made without it stops those
+//     people here. Which people, in this tenant, is exactly what nobody knows —
+//     so the policy is held, and only a reading settled with evidence in this
+//     baseline's interpretation file (`authorEnvironment`) lets one be left out.
 //
-// What the sweep below asserts is the whole property rather than those two
+// What the sweep below asserts is the whole property rather than those three
 // cases: take every step of every fixture that offers an implementation, and no
 // identifier the source names may appear anywhere in what it hands over.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, strengthMissing } from './fixtures/index.ts'
+import { curatedFixture, fixture, strengthMissing } from './fixtures/index.ts'
+import interpretation from '../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import type { FixtureName } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
@@ -75,7 +85,9 @@ test('nothing the plan offers carries an identifier out of the author’s tenant
 })
 
 test('the author’s own authentication strength is never handed over, and the step says what it waits on', () => {
-  const base = fixture('demo-week2')
+  // On the curated baseline: this is about the strength, and the same policy's
+  // unexplained carve-outs are the case below.
+  const base = curatedFixture('demo-week2')
   // The same tenant with no custom strength of its own: it has not made the one
   // the baseline requires, so the policies that require it cannot be created.
   const snapshot = strengthMissing(base.snapshot)
@@ -106,18 +118,69 @@ test('the author’s own authentication strength is never handed over, and the s
   assert.ok(r.steps.length > 0)
 })
 
-test('a group of the author’s that nothing settles is left out, not swapped for one of this tenant’s', () => {
+/** The author's groups this baseline's interpretation settles as nothing (its own list, by id). */
+function unsettledGroups(): string[] {
+  return (interpretation as { references: { id: string; kind: string; meaning: string }[] }).references
+    .filter((r) => r.kind === 'group' && r.meaning === 'unknown')
+    .map((r) => r.id.toLowerCase())
+}
+
+test('a group of the author’s that nothing settles holds the policy: no operation, and no channel offers one', () => {
+  // The case the reviewer named. The author's Device Registration policy carves
+  // three groups of his own out of a requirement for Modern MFA + TAP. Nothing
+  // he published says what any of them is, so nothing here can say who a copy of
+  // that policy made in another tenant would newly stop — and a carve-out left
+  // out of a policy that demands a stronger sign-in is people who cannot sign in.
+  //
+  // It used to be dropped and the policy offered anyway, on the reading that an
+  // author's exclusion is the author's own business because leaving it out
+  // reaches more people and never fewer. More people is the danger, and "only
+  // ever excluded" was never a reading of the object at all.
   const r = runFixture(fixture('demo-week2'))
-  const settled = new Set<string>()
-  for (const p of pinnedPackage().policies) for (const [id, token] of Object.entries((p as unknown as { placeholders?: Record<string, string> }).placeholders ?? {})) if (token !== 'strength') settled.add(id.toLowerCase())
-  let reported = 0
+  const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
+  assert.ok(step, 'the device-registration step is on the demo plan')
+  const unsettled = unsettledGroups()
+  const held = (step.action.missing ?? []).filter((m) => unsettled.includes(m.token.toLowerCase()))
+  assert.ok(held.length >= 3, `the source policy's own unexplained carve-outs are what it waits on (${held.length})`)
+  assert.ok(held.every((m) => m.unreadable === true && m.stepId === null), 'and no step of this tenant’s ends the wait')
+  assert.equal(implementationOffered(step), false, 'no channel offers a policy this tenant cannot honestly copy')
+  assert.deepEqual(operationsOf(step), [], 'and there is no operation to run')
+  assert.equal(step.action.json, null, 'nothing is written for the plan file or the exports either')
+})
+
+test('nothing is left out as the author’s own without a settled reading, anywhere on the demo', () => {
+  // `authorOnly` is the one list whose entries are dropped from a body an
+  // implementation channel carries and do not hold the step. Reaching it takes a
+  // reading settled in this baseline's interpretation file with the evidence it
+  // rests on (`authorEnvironment`), and this baseline settles no such reading —
+  // so on the demo the list is empty everywhere, however many groups the author
+  // only ever excludes.
+  const r = runFixture(fixture('demo-week2'))
+  let steps = 0
   for (const step of r.steps) {
-    for (const id of step.action.authorOnly ?? []) {
-      reported += 1
-      assert.equal(settled.has(id.toLowerCase()), false, `${id} carries a settled meaning and is not the author's to leave out`)
-      // Left out, and not standing in for anything: no substitution claims it.
-      for (const op of step.action.resolution?.policies ?? []) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
-    }
+    steps += 1
+    assert.deepEqual(step.action.authorOnly ?? [], [], `${step.id} leaves out a source object nothing settles`)
   }
-  assert.ok(reported > 0, 'the demo plan does name the author’s own groups it does without')
+  assert.ok(steps > 10, `the sweep saw the whole plan (${steps})`)
+})
+
+test('a settled authorEnvironment reference is left out, and does not hold the policy', () => {
+  // The other half of the same rule. A curator who establishes that a source
+  // reference is the author's own environment — a vendor's service principal,
+  // one dependency's own addresses — records it, and then the adopting tenant's
+  // copy is whole without it: dropped from every body, reported as the author's
+  // own, and holding nothing. `asCuratedBaseline` is that one change to the
+  // interpretation file and nothing else.
+  const base = curatedFixture('demo-week2')
+  const r = runFixture(base)
+  const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
+  assert.ok(step, 'the device-registration step is on the plan')
+  assert.equal(implementationOffered(step), true, 'the policy can be written once the readings are settled')
+  const reported = step.action.authorOnly ?? []
+  assert.ok(reported.length >= 3, `and what it does without is named (${reported.length})`)
+  for (const id of reported) {
+    assert.ok(unsettledGroups().includes(id.toLowerCase()), `${id} is one of the settled readings, not a guess`)
+    for (const op of operationsOf(step)) assert.doesNotMatch(JSON.stringify(op.body).toLowerCase(), new RegExp(id.toLowerCase()), `${step.id}: ${id} is in a body`)
+  }
+  assert.deepEqual((step.action.missing ?? []).filter((m) => m.unreadable), [], 'and nothing is waiting on them')
 })

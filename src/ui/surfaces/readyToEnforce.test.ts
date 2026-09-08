@@ -34,7 +34,13 @@
 // calendar and the schedule. Nothing here builds a Step.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures, fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+// The canonical cases here run on the curated baseline (fixtures/index.ts
+// `curatedFixture`): the same tenant, with the six source groups this baseline's
+// interpretation has not settled read as the author's own environment. They are
+// about what a policy does once it can be written at all; whether *this*
+// baseline's unexplained references let it be written is
+// roadmap/sourceIdentity.test.ts, and on the demo it is the true answer today.
+import { allFixtures, curatedFixture as fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { scannedAt, seenOn } from '../../roadmap/fixtures/records.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'

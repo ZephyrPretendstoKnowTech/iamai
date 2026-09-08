@@ -479,11 +479,15 @@ export function buildCreateAction(
   const missing: NonNullable<Action['missing']> = []
   /**
    * The author's own objects this tenant's copy of the policy does without: a
-   * source group used only to exclude somebody, which this tenant has no
-   * counterpart for and no step of ours creates (resolvePolicy.ts `authorOnly`).
-   * Kept out of `missing` because it is not a prerequisite — there is nothing to
-   * go and do — and kept here rather than dropped because the policy this tenant
+   * source reference this baseline's interpretation settles, with evidence, as
+   * the author's own environment (resolvePolicy.ts `authorOnly`). Kept out of
+   * `missing` because that settled reading has already said there is nothing to
+   * go and do, and kept here rather than dropped because the policy this tenant
    * deploys is then not, in that one respect, the policy the author wrote.
+   *
+   * A source object nothing settles is not here. It is in `missing`, where it
+   * holds the step, because a copy of a blocking policy without the author's
+   * carve-out reaches people theirs did not and nobody can say who.
    */
   const authorOnly: string[] = []
   const operations: PolicyOperation[] = []
@@ -498,10 +502,10 @@ export function buildCreateAction(
     const deviated = answered !== clone
     // Nothing is dropped silently: an object the tenant does not have comes back
     // in `missing`, and while any does there is no operation to run.
-    const whole = implementable(artifact(answered, p, tag), p.resolved.unresolved, p.resolved.authorOnly)
+    const whole = implementable(artifact(answered, p, tag), p.resolved)
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     for (const a of whole.authorOnly) if (!authorOnly.includes(a)) authorOnly.push(a)
-    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved.unresolved, p.resolved.authorOnly).policy : undefined
+    const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
     const target = p.target ?? null
     if (target) {
       const patch = patchOf(whole.policy, sections)

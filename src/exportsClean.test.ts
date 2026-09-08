@@ -6,7 +6,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { fixture } from './roadmap/fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
 import { buildIcs } from './roadmap/ics.ts'
 import { groundingBundle, promptPack, promptPackMarkdown } from './roadmap/prompts.ts'

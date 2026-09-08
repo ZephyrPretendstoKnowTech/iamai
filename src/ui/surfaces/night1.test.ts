@@ -4,7 +4,10 @@
 // the scan; a session goal fills {wanted} from the baseline policy it maps to.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { missingVars } from '../../content/render.ts'

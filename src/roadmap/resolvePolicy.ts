@@ -97,8 +97,18 @@ export function tenantObjectsOf(
   }
 }
 
-/** A reference nothing in the tenant resolves: the token left out, and the Preparation step that creates it. */
-export type MissingReference = { token: string; stepId: string | null }
+/**
+ * A reference nothing in the tenant resolves: the token left out, and the
+ * Preparation step that creates it.
+ *
+ * `unreadable` is the one this tenant cannot go and make: a source object no
+ * settled reading of this baseline explains, so IAMAI cannot say what it is,
+ * what it would be here, or whether this tenant needs one at all. There is no
+ * step because there is nothing to create - the answer is a reading of the
+ * author's baseline, not a task in this tenant - and the surfaces say so in
+ * words instead of naming an id out of somebody else's tenant.
+ */
+export type MissingReference = { token: string; stepId: string | null; unreadable?: true }
 
 export type ResolvedPolicy = {
   /**
@@ -117,20 +127,40 @@ export type ResolvedPolicy = {
   /** Author id → the Preparation step that creates the tenant's object (null when no step does). */
   unresolved: ReadonlyMap<string, string | null>
   /**
-   * The subset of `unresolved` that is the author's own environment and never
-   * this tenant's work: a group of theirs the baseline only ever *excludes*,
-   * which this tenant has no counterpart for and no step of ours creates.
+   * The subset of `unresolved` this tenant's copy of the policy is complete
+   * without: a source reference this baseline's interpretation settles as
+   * `authorEnvironment` — the author's own environment, identified by evidence,
+   * with no counterpart here and none needed
+   * (src/baseline/interpretation.ts).
    *
    * It is unresolved for the same reason as anything else here — nothing in the
    * mapping names it — so it is taken out of the body an implementation channel
-   * carries. It is separated from the rest because there is nothing to wait for:
-   * leaving an author's exclusion out applies the policy to *more* people than
-   * the author's tenant did, never fewer, and the product's rule is that a
-   * reading may narrow scope and never weaken a grant. Withholding the whole
-   * policy over it would withhold the baseline permanently over an object that
-   * will never exist here.
+   * carries. It is separated from the rest because a settled reading has already
+   * said there is nothing to wait for.
+   *
+   * This used to be read off the shape of the export instead: a group the
+   * baseline only ever *excluded* was taken to be the author's own and dropped,
+   * on the argument that leaving an exclusion out reaches more people and never
+   * fewer. More people is the whole danger. The policies here block sign-in and
+   * demand stronger authentication, so the people an author carved out are
+   * exactly the ones a copy made here would newly stop — and which people those
+   * are is what nobody knows. Where they sit in a collection says nothing about
+   * it, so that reading is gone and what is left is `unsettled`.
    */
   authorOnly: ReadonlySet<string>
+  /**
+   * The source references no settled reading of this baseline explains, which
+   * this tenant therefore has no honest copy of: neither an object of its own
+   * nor a positive finding that it needs none.
+   *
+   * They are unresolved, so they are taken out of the body — and unlike
+   * `authorOnly` they hold the whole policy back, because a copy without them is
+   * a different policy reaching people the author's own tenant left alone. What
+   * clears one is evidence, settled once in the baseline's interpretation file
+   * and carried into every later update of it; there is nothing for this tenant
+   * to go and do, so no Preparation step waits on it.
+   */
+  unsettled: ReadonlySet<string>
 }
 
 // Author references are inventoried from the baseline's policies, which are a
@@ -281,15 +311,27 @@ const LOCATION_KEYWORDS = new Set(['all', 'alltrusted'])
  * exclusions group — an exclusion of the service accounts is not an exclusion
  * of the emergency accounts, and substituting one for the other would write a
  * policy the author did not describe.
- *
- * `travellersGroup` is deliberately not here: the product has no tenant object
- * for it, so it is a plain exclusion group and the generic rule applies.
  */
 const MAPPED_TOKENS = new Set(['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation'])
 
+/**
+ * The pin's token for a source reference this baseline's interpretation settles
+ * as the author's own environment: something identified by evidence as theirs,
+ * which this tenant does not have and does not need
+ * (src/baseline/interpretation.ts `authorEnvironment`). It names no tenant
+ * object, so it resolves to nothing and is left out — the one reference a
+ * complete policy may go without.
+ */
+const AUTHOR_ENVIRONMENT = 'authorEnvironment'
+
 /** The Preparation step that creates the tenant's object for a reference the tenant lacks. */
 function stepForReference(kind: ReferenceKind, token: string | null, goalId: string): string | null {
-  if (kind === 'group') return token === 'serviceAccountsGroup' ? PREREQ_STEP_ID.serviceAccountsGroup : PREREQ_STEP_ID.exclusionsGroup
+  // A group is only ever created by the two steps that create *this tenant's*
+  // groups, and it takes a settled meaning to say a source group is one of them.
+  // A group nothing settles has no step: creating the exclusions group does not
+  // answer it, and saying it does would send somebody to do a task that leaves
+  // the policy exactly as blocked as it was.
+  if (kind === 'group') return token === 'serviceAccountsGroup' ? PREREQ_STEP_ID.serviceAccountsGroup : token === 'exclusionsGroup' ? PREREQ_STEP_ID.exclusionsGroup : null
   if (kind === 'namedLocation') {
     if (token === 'allowedCountries') return PREREQ_STEP_ID.allowedCountries
     if (token === 'trustedLocation') return PREREQ_STEP_ID.trustedLocation
@@ -321,12 +363,17 @@ function stepForReference(kind: ReferenceKind, token: string | null, goalId: str
  * of exactly the kind src/baseline/interpretation.ts now refuses. The author's
  * twenty-three-policy exclusion group is not this tenant's break-glass group,
  * and putting it in `substitutions` claimed a resolution that had not happened.
- * Now nothing is claimed: the reference is unresolved, and `authorOnly` says
- * whether this tenant has any work to do about it.
  *
- * Anything left over is unresolved, with the Preparation step that creates it —
- * or, where the source object is the author's own environment and no step of
- * ours makes one, in `authorOnly`.
+ * What is left over is unresolved, and there are three ways to be unresolved:
+ * with the Preparation step that creates the tenant's object; settled as the
+ * author's own environment, which this tenant is complete without (`authorOnly`);
+ * or settled as nothing at all (`unsettled`), which holds the policy back. The
+ * middle one takes evidence. Reading it off the shape of the export — "only ever
+ * excluded, so this tenant needs no counterpart" — is what this module used to
+ * do, and it is not a reading of the object at all: it is a reading of a
+ * collection. The author excluded somebody from a policy that blocks sign-in;
+ * the copy made here without that exclusion blocks those people instead, and
+ * whether this tenant has any is the very thing nobody established.
  */
 function substitutionsFor(
   refs: Reference[],
@@ -334,10 +381,11 @@ function substitutionsFor(
   strengths: Map<string, BaselineStrength>,
   tenant: TenantObjects,
   goalId: string,
-): { ids: Map<string, string[]>; unresolved: Map<string, string | null>; authorOnly: Set<string> } {
+): { ids: Map<string, string[]>; unresolved: Map<string, string | null>; authorOnly: Set<string>; unsettled: Set<string> } {
   const ids = new Map<string, string[]>()
   const unresolved = new Map<string, string | null>()
   const authorOnly = new Set<string>()
+  const unsettled = new Set<string>()
   for (const r of refs) {
     // Graph's own words for a location ("All", "AllTrusted") are not objects:
     // nothing resolves them and nothing is missing while they stand.
@@ -348,28 +396,24 @@ function substitutionsFor(
       ids.set(r.id, [confirmed])
       continue
     }
-    /** Unresolved — and whether this tenant has anything to do about it. */
+    /** Unresolved — and what, if anything, this tenant can do about it. */
     const leave = (): void => {
       unresolved.set(r.id, stepForReference(r.kind, token, goalId))
-      // The author's own environment: a *group* of theirs used only to exclude
-      // somebody, which no token names and no step of ours creates. A group
-      // exclusion names people the author's tenant carved out; this tenant has
-      // none of those people, and its own carve-outs are its exclusions group,
-      // which every policy the plan writes already excludes. So leaving it out
-      // changes who is carved out of the policy and not what the policy is, and
-      // that is what this tenant's copy honestly is.
-      //
-      // No other kind. A location, an application, a service principal or a
-      // named account on the exclude side is part of what the policy *does* —
-      // "block sign-in from everywhere except the allowed countries" is not the
-      // same policy without its location, it is a tenant-wide lockout — so those
-      // stay in `missing` and the step waits, which is what they did before.
-      // Nor a token the author wrote for a consumer to fill in
-      // (`CA-GlobalExclusions-GroupID-ReplaceMe`, which `inventoryReferences`
-      // marks as a placeholder because it is not an id at all). That is the
-      // author asking this tenant for one of its objects, which is the opposite
-      // of an object of theirs this tenant does without.
-      if (r.kind === 'group' && r.placeholder !== true && token === null && r.uses.length > 0 && r.uses.every((u) => u.side === 'exclude')) authorOnly.add(r.id)
+      // The author's own environment, settled by evidence in this baseline's
+      // interpretation file: this tenant has no such object and needs none, so
+      // the policy is whole without it. That is a finding about what the object
+      // *is* — a vendor's own service principal, one dependency's addresses —
+      // and it is the only thing that lets a source reference be left out.
+      if (token === AUTHOR_ENVIRONMENT) {
+        authorOnly.add(r.id)
+        return
+      }
+      // A group nothing settles. IAMAI cannot say what the author's group is,
+      // so it cannot say who a copy of this policy made here would reach that
+      // the author's own tenant did not, and it will not hand one over on the
+      // assumption that the answer is nobody. Held, and cleared by evidence
+      // rather than by a task in this tenant.
+      if (r.kind === 'group' && token === null) unsettled.add(r.id)
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
       // A token the product maps means that object and no other. The trusted
@@ -415,7 +459,7 @@ function substitutionsFor(
     }
     leave()
   }
-  return { ids, unresolved, authorOnly }
+  return { ids, unresolved, authorOnly, unsettled }
 }
 
 /**
@@ -482,7 +526,7 @@ function dedupeCollections(value: unknown): unknown {
  * group and the de-duplication.
  */
 export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
-  const { ids, unresolved, authorOnly } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), tenant, goalId)
+  const { ids, unresolved, authorOnly, unsettled } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), tenant, goalId)
   const body = substitute(structuredClone(policy), ids) as RawPolicy
   // The exclusions group is excluded from every policy the plan writes; it is
   // added before the de-duplication, so a policy that already excludes it (the
@@ -501,7 +545,7 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   users.excludeGroups = [...(Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]) : []), tenant.exclusionsGroupId ?? '{exclusionsGroup}']
   conditions.users = users
   body.conditions = conditions
-  return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly }
+  return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly, unsettled }
 }
 
 /**
@@ -522,16 +566,26 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
  * reading it, and `missing` stayed empty, so every channel offered it.
  *
  * Nothing is dropped silently: every entry left out comes back in `missing`,
- * with the Preparation step that creates it, and the JSON, PowerShell and
- * Download channels all wait on that one list — except the author's own
- * environment (`authorOnly`, `ResolvedPolicy`), which is reported separately
- * because this tenant has nothing to create and nothing to wait for.
+ * with the Preparation step that creates it where one does, and the JSON,
+ * PowerShell and Download channels all wait on that one list — except the
+ * author's own environment (`authorOnly`, `ResolvedPolicy`), which is reported
+ * separately because a settled reading has already said this tenant has nothing
+ * to create and nothing to wait for.
+ *
+ * A reference `unsettled` names is in `missing` like any other, marked
+ * `unreadable` because no step of ours ends the wait: what it takes is evidence
+ * about the author's baseline. It is in `missing` and not beside it on purpose —
+ * one list is what every channel and the whole gate read, so a source object
+ * nobody can explain withholds the policy by the same rule as a tenant object
+ * nobody has made yet.
  */
 export function implementable(
   body: RawPolicy,
-  unresolved: ReadonlyMap<string, string | null> = new Map(),
-  authorOnly: ReadonlySet<string> = new Set(),
+  refs: { unresolved?: ReadonlyMap<string, string | null>; authorOnly?: ReadonlySet<string>; unsettled?: ReadonlySet<string> } = {},
 ): { policy: RawPolicy; missing: MissingReference[]; authorOnly: string[] } {
+  const unresolved = refs.unresolved ?? new Map<string, string | null>()
+  const authorOnly = refs.authorOnly ?? new Set<string>()
+  const unsettled = refs.unsettled ?? new Set<string>()
   const isUnresolved = (s: string): boolean => unresolved.has(s.toLowerCase()) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s)
   const missing: MissingReference[] = []
   const authorsOwn: string[] = []
@@ -540,7 +594,12 @@ export function implementable(
       if (!authorsOwn.includes(token)) authorsOwn.push(token)
       return
     }
-    if (!missing.some((m) => m.token === token)) missing.push({ token, stepId: unresolved.get(token.toLowerCase()) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? null })
+    if (missing.some((m) => m.token === token)) return
+    if (unsettled.has(token.toLowerCase())) {
+      missing.push({ token, stepId: null, unreadable: true })
+      return
+    }
+    missing.push({ token, stepId: unresolved.get(token.toLowerCase()) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? null })
   }
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) {

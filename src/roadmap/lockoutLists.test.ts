@@ -6,7 +6,10 @@
 // strength beside it on the portal lines and deferred in the JSON.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture } from './fixtures/index.ts'
 import { adminsAtRung5, runFixture } from './fixtures/run.ts'
 import { contentLists, NAMES_UP_TO } from '../derive/contentLists.ts'
 import { adminUserIds } from '../roles.ts'

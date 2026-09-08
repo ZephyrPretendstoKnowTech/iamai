@@ -17,7 +17,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
 import { stepContract } from './stepContract.ts'
-import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, missingObjects } from './stepJson.ts'
+import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
@@ -185,7 +185,7 @@ export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   if (!held && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
   if (!held && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
-  else if (waiting) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.jsonWaits), { steps: list([...new Set(missingObjects(step).map((m) => m.title))]), tenant: String(ex.tenant ?? '') }))
+  else if (waiting) lines.push(waitingLine(step, String(ex.tenant ?? '')))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
   // The conflict explanation belongs to the reviewed source policy the step's
   // own state names (roadmap/baselineConflict.ts), never to the goal's content

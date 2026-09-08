@@ -4,7 +4,10 @@
 // line names the group the exclusions step proposes, never an unnamed thing.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+// On the curated baseline (fixtures/index.ts `curatedFixture`): this is about a
+// policy that can be written, not about the source groups this baseline has not
+// settled (roadmap/sourceIdentity.test.ts).
+import { curatedFixture as fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
 import { EXCLUSIONS_RECORD_KEY, operatorExclusionsDecision } from '../../mapping/safetyChoice.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { FixtureRun } from '../../roadmap/fixtures/run.ts'
