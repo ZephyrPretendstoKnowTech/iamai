@@ -762,7 +762,7 @@ try {
   // the demo query survives (go() rebuilds the URL from BASE and would drop it).
   const DEMO_TENANT_ID = 'demo-sample-tenant'
   const realKeys = () =>
-    evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const out = []; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); for (const x of rows) if (x && x.tenantId && x.tenantId !== ${JSON.stringify(DEMO_TENANT_ID)}) out.push(name + ':' + x.tenantId) } db.close(); return out.sort() })()`)
+    evaluate(`(async () => { const req = indexedDB.open('iamai'); const db = await new Promise((r) => { req.onsuccess = () => r(req.result) }); const out = []; for (const name of [...db.objectStoreNames]) { const tx = db.transaction(name); const rows = await new Promise((r) => { const q = tx.objectStore(name).getAll(); q.onsuccess = () => r(q.result) }); for (const x of rows) if (x && x.tenantId && !String(x.tenantId).startsWith(${JSON.stringify(DEMO_TENANT_ID)})) out.push(name + ':' + x.tenantId) } db.close(); return out.sort() })()`)
   const demoGo = async (hash) => {
     await evaluate(`location.hash = ${JSON.stringify('#/' + hash)}`)
     await sleep(900)
@@ -945,6 +945,16 @@ try {
   const inPlaceOf = (body) => Number((body.match(/(\d+) in place/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
+  // Each plan row as the visitor reads it, flattened in Node (a regex in an
+  // evaluate() template loses its backslashes).
+  const planRows = async () => {
+    await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+    return (await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((r) => r.textContent.trim())`)).join(' ~ ')
+  }
+  // The initial scan as the visitor leaves it: the plan on screen, and the
+  // inputs behind it (this run has already saved a decision and a skip on it).
+  const day1Rows = await planRows()
+  const day1Record = await planRecord()
   // The header has no scan control: the demo's Scan again lives on Connect's
   // Scan tile, and a hash change keeps the page (and the snapshot) alive.
   const demoScanAgain = async () => {
@@ -991,6 +1001,31 @@ try {
     'Demo: the banner selector returns to the initial scan and the plan re-derives from it',
     backToInitial && (await waitFor(`((document.querySelector('.demo-banner .demo-snapshots button[aria-pressed="true"]') || {}).textContent || '').trim() === 'Initial scan'`)) && (await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)),
     await shownSnapshot(),
+  )
+  // And it is the initial scan, not a hybrid: the sample is one tenant read
+  // twice and the app stores one plan record per tenant, so the follow-up
+  // scan's seeded decisions, its checkpoints and what it saw of each policy
+  // used to stay behind in that record and the initial plan rendered over week
+  // two's inputs. Each snapshot keeps its own record now (ui/demo.ts
+  // nextDemoRecord), so the plan comes back as it was left — including the
+  // decision and the skip this run saved on it — and the record behind it does
+  // too. The re-derivation is asynchronous: poll until it settles.
+  let backRows = ''
+  let backRecord = null
+  for (let i = 0; i < 25; i++) {
+    await sleep(200)
+    backRows = await planRows()
+    backRecord = await planRecord()
+    if (backRows === day1Rows && backRecord === day1Record) break
+  }
+  check(
+    'Demo: the initial scan comes back as it was left, with none of the follow-up scan\'s inputs',
+    backRows === day1Rows && backRecord === day1Record,
+    backRows === day1Rows && backRecord === day1Record
+      ? `${day1Rows.split(' ~ ').length} rows and the record are what the initial scan was left with`
+      : backRecord === day1Record
+        ? `rows differ: left "${day1Rows.slice(0, 200)}" / back "${backRows.slice(0, 200)}"`
+        : `record: left ${String(day1Record).slice(0, 200)} / back ${String(backRecord).slice(0, 200)}`,
   )
 
   // Leave the demo: back to the signed-out app, no banner (item 12).

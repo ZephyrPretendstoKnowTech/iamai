@@ -12,6 +12,19 @@ export const DEMO_PARAM = 'demo'
  */
 export const DEMO_TENANT_ID = 'demo-sample-tenant'
 
+/**
+ * Where the demo keeps its two snapshots' plan records (task 026 correction).
+ *
+ * The sample is one tenant read twice, and the app stores one plan record per
+ * tenant, so the record on screen belongs to whichever snapshot is selected.
+ * The other snapshot's record is held here until it is selected again, which is
+ * what keeps the follow-up scan's decisions and its observations out of the
+ * initial scan's plan. It is the demo's own row and it is not a tenant: every
+ * store id the demo writes begins with `DEMO_TENANT_ID`, which is how the smoke
+ * tells a demo row from a real tenant's.
+ */
+export const DEMO_SNAPSHOT_STATE_ID = `${DEMO_TENANT_ID}#snapshots`
+
 /** True when this page load is a demo. Read from the URL, never from storage. */
 export function isDemo(search: string = window.location.search): boolean {
   return new URLSearchParams(search).get(DEMO_PARAM) === '1'
