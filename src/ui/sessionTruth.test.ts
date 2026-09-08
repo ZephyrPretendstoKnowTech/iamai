@@ -91,11 +91,18 @@ test('the app routes by hash: the folder the bundle is published under is one de
   const tool = readFileSync('scripts/toolPath.ts', 'utf8')
   assert.match(tool, /export const TOOL_NAME = 'planner'/)
   assert.equal(TOOL_PATH, 'planner')
-  for (const file of ['vite.config.ts', 'scripts/assemble-site.mjs', 'scripts/walk.mjs', '.github/workflows/deploy-pages.yml']) {
+  // docs/RELEASE-CHECKLIST.md is on this list because it is the one place that
+  // tells the owner which SPA redirect URI to register, and nothing in the build
+  // reads it: it named /rollout/ for four tasks after the cut, so following it
+  // would have registered a URI the app never sends and left the live site on
+  // AADSTS50011 (task 024).
+  for (const file of ['vite.config.ts', 'scripts/assemble-site.mjs', 'scripts/walk.mjs', '.github/workflows/deploy-pages.yml', 'docs/RELEASE-CHECKLIST.md']) {
     // The path form only: "rollout" is also an ordinary word in this product.
     assert.doesNotMatch(readFileSync(file, 'utf8'), /\/rollout\b|['"]rollout['"]/, `${file} still names the retired /rollout/ path`)
   }
   assert.match(msal, /redirectUri: window\.location\.origin \+ \(import\.meta\.env\.BASE_URL \?\? '\/'\)/)
+  // And it names the path the app actually sends, not merely some path.
+  assert.match(readFileSync('docs/RELEASE-CHECKLIST.md', 'utf8'), new RegExp(`https://getiamai\\.com/${TOOL_PATH}/`), 'the release checklist must name the redirect URI the app sends')
 })
 
 test('a baseline nobody picked is not recorded for the tenant, so the page Forget lands on cannot undo it', () => {
