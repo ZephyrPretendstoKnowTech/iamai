@@ -290,7 +290,8 @@
     "first": "Preparation",
     "middle": "Phase {n}",
     "last": "Cleanup",
-    "heading": "{name} · {start} → {end}"
+    "heading": "{name} · {start} → {end}",
+    "recommended": "Microsoft recommended, not in this baseline"
   },
   "pages": {
     "connect": {

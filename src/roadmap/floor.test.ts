@@ -7,8 +7,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { readFileSync } from 'node:fs'
 import { PINNED_GOAL_MAP } from './goalMap.ts'
+import type { GoalMap } from './goalMap.ts'
+import { BREAK_GLASS_STEP_ID } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
+import { phases } from '../content/content.ts'
+import { floorRows } from '../ui/surfaces/planRows.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
@@ -60,4 +65,123 @@ test('the floor step\'s What to do is the template through the translator: the u
   for (const id of f.mapping.breakGlassUserIds) assert.ok(!text.includes(names(id)), 'never an emergency account by name')
   assert.doesNotMatch(text, /\{[a-zA-Z]+\}|__IAMAI|urn:user:/, 'no raw placeholder or URN')
   assert.match(text, /Report-only/, 'ends in report-only')
+})
+
+// ---- Task 025: the floor set, proved against a supplied active baseline ----
+//
+// Everything below decides floor eligibility from a goal map handed to the run,
+// never from the pin and never from what the tenant happens to have. The active
+// baseline is what carries a goal or does not; the tenant's own state is a
+// separate fact, and one test here keeps the two apart.
+
+/** A goal map with the named goals removed: an active baseline that does not carry them. */
+const without = (...goalIds: string[]): GoalMap => {
+  const m: GoalMap = { ...PINNED_GOAL_MAP }
+  for (const id of goalIds) delete m[id]
+  return m
+}
+
+test('an active baseline that carries neither floor goal renders both, flagged, from Microsoft\'s own templates', () => {
+  const r = runFixture(fixture('getiamai'), { goalMap: without(...FLOOR_GOAL_IDS) })
+  const reg = r.steps.find((s) => s.goalId === 'register-info-protected')
+  const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')
+  assert.ok(reg && legacy, 'both floor goals render')
+  assert.equal(reg.floor, true)
+  assert.equal(legacy.floor, true)
+  // Registration protection is the security-information registration user action, not something near it.
+  const regBody = JSON.parse(reg.action.json!) as { conditions: { applications: { includeUserActions?: string[] } } }
+  assert.deepEqual(regBody.conditions.applications.includeUserActions, ['urn:user:registersecurityinfo'])
+  // The legacy block is the legacy block: the two legacy client-app types, blocked.
+  const legacyBody = JSON.parse(legacy.action.json!) as { conditions: { clientAppTypes?: string[] }; grantControls: { builtInControls?: string[] } }
+  assert.deepEqual([...(legacyBody.conditions.clientAppTypes ?? [])].sort(), ['exchangeActiveSync', 'other'])
+  assert.deepEqual(legacyBody.grantControls.builtInControls, ['block'])
+  // And nothing else the baseline lacks came with them.
+  for (const s of r.steps) if (s.floor) assert.ok(s.goalId !== undefined && isFloorGoal(s.goalId), `${s.id} is flagged floor but is not a floor goal`)
+})
+
+test('an active baseline that carries both floor goals renders no floor row at all', () => {
+  const holds: GoalMap = { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'], 'block-legacy-auth': ['(a baseline that holds it)'] }
+  const r = runFixture(fixture('demo'), { goalMap: holds })
+  assert.deepEqual(r.steps.filter((s) => s.floor).map((s) => s.id), [], 'a goal the baseline carries is the author\'s')
+  // Emergency access is untouched by any of this: it is the Preparation step, on every plan.
+  assert.equal(r.steps.filter((s) => s.id === BREAK_GLASS_STEP_ID).length, 1)
+})
+
+test('a goal the active baseline lacks and the floor does not name stays absent: no signature match revives it', () => {
+  const map = without(...FLOOR_GOAL_IDS)
+  const r = runFixture(fixture('getiamai'), { goalMap: map })
+  const rendered = new Set(r.steps.map((s) => s.goalId).filter((g): g is string => g !== undefined))
+  const absentAndNotFloor = r.coverage.results.map((c) => c.goal.id).filter((id) => (map[id] ?? []).length === 0 && !isFloorGoal(id))
+  assert.ok(absentAndNotFloor.length > 0, 'the catalogue holds goals this baseline does not')
+  for (const id of absentAndNotFloor) assert.ok(!rendered.has(id), `${id} is not in the active baseline and is not a floor goal, so it does not render`)
+})
+
+test('emergency access is the Preparation check, never a floor policy', () => {
+  const r = runFixture(fixture('getiamai'), { goalMap: without(...FLOOR_GOAL_IDS) })
+  const bg = r.steps.filter((s) => s.id === BREAK_GLASS_STEP_ID)
+  assert.equal(bg.length, 1, 'one emergency-access path, not two')
+  assert.equal(bg[0].kind, 'prerequisite')
+  assert.ok(!bg[0].floor, 'the prerequisite is not a Microsoft-floor recommendation row')
+  assert.equal(bg[0].action.json ?? null, null, 'no Conditional Access body was invented for it')
+})
+
+test('the floor flag is provenance, not permission: a floor step whose references cannot resolve stays held', () => {
+  const r = runFixture(fixture('messy'), { goalMap: without(...FLOOR_GOAL_IDS) })
+  const reg = r.steps.find((s) => s.goalId === 'register-info-protected')!
+  assert.equal(reg.floor, true)
+  assert.equal(reg.action.json ?? null, null, 'no body is offered while the objects it names are not settled')
+  assert.ok(reg.status !== 'done' && reg.status !== 'ready', `held, not offered (status ${reg.status})`)
+})
+
+test('the active baseline lacking a goal and the tenant already delivering it are two facts', () => {
+  // The demo tenant already blocks legacy authentication. Take the goal out of
+  // the active baseline and the recommendation becomes the floor's — but the
+  // tenant's own policy still delivers it, so nothing offers to create a second
+  // one, and the row is not drawn in the floor group.
+  const r = runFixture(fixture('demo'), { goalMap: without('block-legacy-auth') })
+  const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')!
+  assert.equal(legacy.floor, true, 'provenance survives: the active baseline does not carry it')
+  assert.equal(legacy.status, 'done', 'the tenant\'s own policy delivers it')
+  assert.ok(legacy.satisfiedBy && legacy.satisfiedBy.policies.length > 0, 'and the plan says which policy does')
+  assert.equal(legacy.action.json ?? null, null, 'nothing offers a duplicate to create')
+  assert.deepEqual(floorRows(r.steps).map((s) => s.goalId), ['register-info-protected'], 'a delivered recommendation is not a row in the floor group')
+})
+
+// ---- The group on the page and in the printed document ----
+
+test('the Plan draws the floor as its own named group, after the phases and before Cleanup', () => {
+  assert.equal(phases.recommended, 'Microsoft recommended, not in this baseline')
+  const src = readFileSync(new URL('../ui/surfaces/Plan.tsx', import.meta.url), 'utf8')
+  const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
+  // Conditional: the heading exists only where the group has rows.
+  const group = src.slice(at('{floor.length > 0 && ('), at('{floor.length > 0 && (') + 400)
+  assert.match(group, /<h2>\{phases\.recommended\}<\/h2>/, 'the group is named, from content.phases')
+  // Placement, and not a numbered phase: a phase heading is built from
+  // phases.heading with its dates; the floor group's is the plain name.
+  assert.ok(at('{waveRows.map(') < at('{floor.length > 0 && ('), 'the floor group follows the numbered phases')
+  assert.ok(at('{floor.length > 0 && (') < at('{cleanupPhase && ('), 'and precedes Cleanup')
+  assert.equal(src.includes('phases.heading, { name: phases.recommended'), false, 'the floor group is not dressed as a numbered, dated phase')
+})
+
+test('the printed document carries the floor as the same named group, never under a numbered phase', () => {
+  const src = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
+  assert.match(src, /<h2>\{phases\.recommended\}<\/h2>/, 'the document names the group with the Plan\'s own words')
+  // A floor step can sit in a wave's stepIds; the phase sections and the timeline
+  // read the filtered list, so the document never attributes it to the author.
+  assert.match(src, /w\.stepIds\.filter\(\(id\) => !floorIds\.has\(id\)\)/, 'the phases drop the floor\'s ids')
+  assert.equal(src.includes('w.stepIds.map('), false, 'no printed section reads a wave\'s raw step ids')
+  const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
+  assert.ok(at('{floor.length > 0 && (') < at('{schedule.cleanup && ('), 'the floor group precedes Cleanup')
+})
+
+test('the Plan page contract accepts the floor heading exactly, and nothing broader', () => {
+  const contract = JSON.parse(readFileSync(new URL('../../docs/qa/page-contracts.json', import.meta.url), 'utf8')) as { surfaces: { id: string; allow: { headings: string[] } }[] }
+  const headings = contract.surfaces.find((s) => s.id === 'plan')!.allow.headings
+  assert.deepEqual(headings, [
+    'Plan',
+    're:^Preparation( · .+ → .+)?$',
+    're:^Phase \\d+ · .+ → .+$',
+    're:^Cleanup( · .+ → .+)?$',
+    phases.recommended,
+  ], 'the contract gained the exact heading and no new pattern')
 })
