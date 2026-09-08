@@ -21,7 +21,12 @@
 //    with it and a re-export moves it without the author touching a policy;
 //  - a path that points at a *tenant object* rather than holding controls
 //    (MODELLED_REFERENCES) means the object it points at. How deeply an export
-//    expanded that object is the exporter's choice, not the author's.
+//    expanded that object is the exporter's choice, not the author's, so the
+//    named parts of that object's own record (REFERENCE_RECORD_KEYS) are
+//    representation. What the object *permits* is not: a part of an expanded
+//    reference that is neither compared nor a known record field stays
+//    unreviewed, so a configuration IAMAI does not model cannot pass as no
+//    change.
 //
 // Pure: no DOM, no network.
 import type { CaPolicy } from './types.ts'
@@ -107,16 +112,27 @@ const MODELLED_SUBFIELDS: Record<string, readonly string[]> = {
  * How far the model reaches inside a path that holds a *reference to a tenant
  * object*. What the policy says is which object it points at and — for an
  * authentication strength — which sign-in combinations that object allows.
- *
- * The rest of an expanded projection (its description, policyType,
- * requirementsSatisfied, combination configurations) is the referenced object's
- * own record, and the author's repository holds the same strength both expanded
- * and as a bare id. That difference is the depth of an export, so it is
- * representation: dropped rather than reported unreviewed. Identity is never
- * dropped — the id is compared, so two different strengths are never one.
  */
 const MODELLED_REFERENCES: Record<string, readonly string[]> = {
   'grantControls.authenticationStrength': ['id', 'allowedCombinations'],
+}
+
+/**
+ * The named parts of an expanded reference that are the referenced object's own
+ * *record* rather than what it permits: its wording, its type, and the summary
+ * Graph derives from the combinations it already compared. The author's
+ * repository holds the same strength both expanded and as a bare id, so a
+ * difference in these is the depth of an export — representation, dropped.
+ *
+ * Nothing else inside a reference is dropped. A field that decides what the
+ * strength actually accepts — combinationConfigurations, which restricts a FIDO2
+ * or X.509 combination to particular authenticators or issuers, or anything
+ * Graph adds later — stays in the residual and is reported unreviewed. IAMAI
+ * cannot say two strengths mean the same thing on the strength of an id when
+ * the copies in front of it disagree about how that strength is configured.
+ */
+const REFERENCE_RECORD_KEYS: Record<string, readonly string[]> = {
+  'grantControls.authenticationStrength': ['displayName', 'description', 'policyType', 'requirementsSatisfied'],
 }
 
 /** The field name a path is worded by: its last segment, unique across the model. */
@@ -232,17 +248,20 @@ function modelled(whole: Record<string, unknown>): Record<string, unknown> {
 
 /**
  * Everything the model does not represent: the whole canonical policy with every
- * modelled leaf taken out. A block's unnamed controls stay here; a reference's
- * expanded projection does not, because how far an export expanded it is not
- * something the author wrote.
+ * modelled leaf taken out. A block's unnamed controls stay here, and so does a
+ * part of an expanded reference the model neither compares nor has proven to be
+ * the referenced object's own record — a change there is unreviewed, never
+ * nothing.
  */
 function unmodelled(whole: Record<string, unknown>): Record<string, unknown> {
   const copy = JSON.parse(JSON.stringify(whole)) as Record<string, unknown>
   for (const path of MATERIAL_PATHS) {
-    const subs = MODELLED_SUBFIELDS[path]
+    const reach = subfieldsOf(path)
     const node = at(copy, path)
-    if (subs && isObj(node)) for (const sub of subs) drop(node, sub)
-    else drop(copy, path)
+    if (reach && isObj(node)) {
+      for (const sub of reach) drop(node, sub)
+      for (const rec of REFERENCE_RECORD_KEYS[path] ?? []) drop(node, rec)
+    } else drop(copy, path)
   }
   return prune(copy)
 }
