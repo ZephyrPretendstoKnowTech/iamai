@@ -6,6 +6,20 @@ import type { CaPolicy } from "./types.ts";
  */
 const DROP_KEYS = new Set(["additionalProperties"]);
 
+/**
+ * True for a REST envelope key: the fetch's own bookkeeping (`@odata.context`,
+ * `@odata.etag`, the next link) rather than anything the author wrote.
+ *
+ * `@odata.type` is the one exception, and it is not bookkeeping: it names the
+ * derived type of the object it sits on, so a FIDO2 combination configuration
+ * and an X.509 one are told apart by it and nothing else. Dropping it here
+ * would let two different objects arrive identical, which the baseline-update
+ * review would then have to call no change (baseline/semantics.ts).
+ */
+function isEnvelopeKey(key: string): boolean {
+  return key.startsWith("@odata") && key.toLowerCase() !== "@odata.type";
+}
+
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -15,9 +29,9 @@ function lowerFirst(k: string): string {
 }
 
 /**
- * Deep-convert keys to camelCase, drop `@odata.*` and SDK-only keys, and
- * prune nulls / empty objects. Empty arrays are kept — an empty
- * `excludeGroups: []` is meaningful.
+ * Deep-convert keys to camelCase, drop the `@odata.*` envelope (never the type
+ * discriminator) and SDK-only keys, and prune nulls / empty objects. Empty
+ * arrays are kept — an empty `excludeGroups: []` is meaningful.
  */
 export function normalizeValue(v: unknown): unknown {
   if (Array.isArray(v)) {
@@ -26,7 +40,7 @@ export function normalizeValue(v: unknown): unknown {
   if (isPlainObject(v)) {
     const out: Record<string, unknown> = {};
     for (const [rawKey, rawVal] of Object.entries(v)) {
-      if (rawKey.startsWith("@odata")) continue;
+      if (isEnvelopeKey(rawKey)) continue;
       const key = lowerFirst(rawKey);
       if (DROP_KEYS.has(key)) continue;
       const val = normalizeValue(rawVal);

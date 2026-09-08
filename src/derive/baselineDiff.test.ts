@@ -371,6 +371,47 @@ test('I4. a strength’s combination configuration is never lost inside the refe
   assert.deepEqual(record.unreviewed, [], `the strength object's own record is the exporter's, not the author's: ${JSON.stringify(record)}`)
 })
 
+test('I5. a nested object’s type is what it is, not how it was fetched: a changed @odata.type is unreviewed, a moved @odata.context is nothing', () => {
+  // `@odata.type` names the derived type of the object it sits on: a FIDO2
+  // combination configuration restricts which authenticators satisfy the
+  // combination, an X.509 one restricts which issuers do. Two strengths sharing
+  // an id, an allowed-combinations list and a configuration id can still mean
+  // different things, and the discriminator is the only field that says so.
+  const config = (type: string) => [{ '@odata.type': type, id: 'a6b2f5e0-1f7c-4a3a-9c1a-2b3c4d5e6f70', appliesToCombinations: ['fido2'] }]
+  const plain = expandedStrength(MODERN_MFA_TAP, '2026-08-12T13:23:05.2711028Z', TAP_COMBINATIONS)
+  const asFido2 = { ...plain, combinationConfigurations: config('#microsoft.graph.fido2CombinationConfiguration') }
+  const asX509 = { ...plain, combinationConfigurations: config('#microsoft.graph.x509CertificateCombinationConfiguration') }
+
+  // 1. The change is reported, as one the model has not read.
+  const cmp = comparePolicies(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(asX509)))
+  assert.deepEqual(cmp.changed, [], 'the model does not claim to have read the configuration')
+  assert.deepEqual(cmp.unreviewed, ['grantControls.authenticationStrength.combinationConfigurations'], `a changed type discriminator must be reported: ${JSON.stringify(cmp)}`)
+  const [row] = reviewOf([at('Policies', NEW_NAME, withStrength(asFido2))], [at('Policies', NEW_NAME, withStrength(asX509))])
+  assert.equal(row.kind, 'unknown')
+  assert.equal(row.reason, 'unmodelledField')
+
+  // 2. Two copies at one commit that disagree only about that type fail closed.
+  assert.equal(samePolicySemantics(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(asX509))), false)
+  const set = sourceSet([at('Policies', NEW_NAME, withStrength(asFido2)), doc(NEW_NAME, withStrength(asX509))])
+  assert.equal(set.members.length, 0, 'a same-id copy that disagrees about a nested type is not collapsed away')
+  assert.equal(set.conflicts.length, 1)
+
+  // 3. The fetch's own bookkeeping still normalizes away at every depth: a
+  //    re-export that only moved an OData context is not a policy change.
+  const refetched = { ...asFido2, 'combinationConfigurations@odata.context': 'https://graph.microsoft.com/beta/$metadata#refetched' }
+  const moved = comparePolicies(normalizePolicy(withStrength(asFido2)), normalizePolicy(withStrength(refetched)))
+  assert.deepEqual(moved.changed, [])
+  assert.deepEqual(moved.unreviewed, [], `an OData context is the fetch's, not the author's: ${JSON.stringify(moved)}`)
+  assert.equal(sourceSet([at('Policies', NEW_NAME, withStrength(asFido2)), doc(NEW_NAME, withStrength(refetched))]).members.length, 1)
+
+  // 4. And the referenced object's own class is part of its record: how deeply
+  //    an export expanded the strength is still the exporter's choice.
+  const typed = { ...plain, '@odata.type': '#microsoft.graph.authenticationStrengthPolicy' }
+  const depth = comparePolicies(normalizePolicy(withStrength(plain)), normalizePolicy(withStrength(typed)))
+  assert.deepEqual(depth.changed, [])
+  assert.deepEqual(depth.unreviewed, [], `the strength's own class is its record: ${JSON.stringify(depth)}`)
+})
+
 // ------------------------------------------------ K. unreadable source is unknown
 
 test('K. a source file that will not parse makes the review incomplete, never shorter', () => {
