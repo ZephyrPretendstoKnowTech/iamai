@@ -64,7 +64,8 @@ requires a signature, so a commit reaching `main` is rejected unless it carries
 one, and the maintainer's commits are signed with an SSH key. A pull request is
 not rejected for having unsigned commits of its own: the commit GitHub writes
 when it squashes or merges is signed by GitHub. The repository admin holds a
-bypass on that rule while the build-out is running, and it will be removed.
+bypass while the build-out is running. The bypass is on the rule as a whole, so
+it covers the required `ci` check as much as the signature; it will be removed.
 
 ## Reporting a problem
 
