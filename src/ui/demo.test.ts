@@ -379,6 +379,29 @@ test('E: the sample banner names the sample, names the snapshot on screen, and o
   assert.ok(/font-weight|text-decoration/.test(pressed.slice(0, 200)), 'the selected snapshot is marked by colour alone')
 })
 
+test('E: demo mode is the URL, not a fixture name, so every demo page is walked as the sample tenant', () => {
+  // Connect draws the sample tile exactly when the page is in demo mode, and
+  // the product decides that from the URL (ui/demoMode.ts isDemo).
+  assert.ok(/const t1 = isDemo\(\) \? sampleTile\(/.test(read('src/ui/surfaces/Connect.tsx')), 'Connect no longer picks tile 1 by demo mode')
+  assert.ok(/get\(DEMO_PARAM\) === '1'/.test(read('src/ui/demoMode.ts')), 'isDemo no longer reads the demo switch from the URL')
+  // The walk holds one reading of the same fact, taken from the fixture's URL,
+  // and tile 1's two branches are the only consumers that decide sample-vs-
+  // signed-in. A fixture's name is not that fact.
+  const walk = read('scripts/walk.mjs')
+  assert.ok(/const inDemo = \/\[\?&\]demo=1\/\.test\(fx\.base\)/.test(walk), 'the walk has no URL reading of demo mode')
+  assert.ok(/if \(t1 && !signedOut && inDemo\)/.test(walk), "the walk's sample tile-1 branch does not key on demo mode")
+  assert.ok(/if \(t1 && !signedOut && !inDemo\)/.test(walk), "the walk's signed-in tile-1 branch does not key on demo mode")
+  assert.equal(/name\.startsWith\('demo'\)[\s\S]{0,80}sampleTile|demoFx/.test(walk), false, 'the walk decides tile 1 from the fixture name again')
+  // mock-author is a demo-mode fixture named mock- so the plan checks skip it;
+  // it renders the sample tile like any other demo page.
+  const list = walk.slice(walk.indexOf('const fixtures = ['), walk.indexOf('const summaries = {}'))
+  const fixtures = [...list.matchAll(/\{ name: '([^']+)', base: `([^`]*)`/g)].map((m) => ({ name: m[1], demo: /[?&]demo=1/.test(m[2]) }))
+  assert.ok(fixtures.length >= 10, 'the walk fixture list did not parse')
+  assert.ok(fixtures.find((f) => f.name === 'mock-author')?.demo, 'mock-author is no longer a demo-mode fixture')
+  assert.ok(fixtures.some((f) => f.demo && !f.name.startsWith('demo')), 'no demo fixture is named outside the demo- prefix, so the name would do')
+  for (const f of fixtures) if (f.name.startsWith('demo')) assert.ok(f.demo, `${f.name} is named for the demo and does not run in it`)
+})
+
 // ---------------------------------------------------------------------------
 // The two snapshots: the follow-up moves because the facts moved
 // ---------------------------------------------------------------------------
