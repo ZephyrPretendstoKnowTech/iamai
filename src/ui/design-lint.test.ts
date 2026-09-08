@@ -14,6 +14,16 @@
 // styles.css and src/ui/pages/** are on a legacy allow-list until prompt 49;
 // the last test asserts that list is empty once the contract's enforceAll is
 // true.
+//
+// These rules guard the token system production actually has. They are not the
+// owner's approved visual target: the approved brand asks for a 4/8/12px shape
+// hierarchy (docs/design/brand-decisions.md), where design rule 3 is a 4px
+// ceiling with named exceptions and no 12px at all, and the approved page
+// anatomy lives in the HTML packs under docs/design/approved/. A restoration
+// pack (030+) turns rule 3's exception list into that hierarchy along with the
+// tokens and the surfaces. Task 028 deliberately left every rule here enforcing
+// what is built, because that is the truthful state until the restoration
+// lands (docs/design/authority-reconciliation.md).
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'

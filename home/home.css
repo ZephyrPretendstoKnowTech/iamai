@@ -1,12 +1,20 @@
-/* The home page on the planner's tokens (prompt 47.1 Part 3; the owner-approved Home v2
-   direction, task 016). Every value is a variable from home/theme.css, which
-   scripts/build-home.ts writes from src/ui/tokens.ts; the design lint reads this file.
-   One column: the hero with the only pair of actions, then five sections separated by a
-   rule — what it does, the standard it plans towards, what it catches, what it does with
-   your tenant, About — and the app's footer. No cards, no grid of tiles, no pill: the
-   hierarchy is type, space and a hairline. The header's text control, the three button
-   weights and the footer are the app's rules (src/ui/app.css) on the same tokens;
-   home.test.ts holds them equal. */
+/* The home page on the planner's tokens (prompt 47.1 Part 3; rebuilt by task 016).
+   Every value is a variable from home/theme.css, which scripts/build-home.ts writes
+   from src/ui/tokens.ts; the design lint reads this file.
+
+   What this file describes is the page as built, not the owner's design target. The
+   Home authority is docs/design/approved/iamai-home-design-pack-v2.html
+   (docs/design/approved/manifest.json), which this page does not yet implement —
+   the pack is a 1040px page with a two-column product section and a side rail, and
+   this is one 760px column. Restoration belongs to packs 030+; task 028 established
+   the authority and changed no rule here. See docs/design/authority-reconciliation.md.
+
+   As built, one column: the hero with the only pair of actions, then five sections
+   separated by a rule — what it does, the standard it plans towards, what it catches,
+   what it does with your tenant, About — and the app's footer. No cards, no grid of
+   tiles, no pill: the hierarchy is type, space and a hairline. The header's text
+   control, the three button weights and the footer are the app's rules
+   (src/ui/app.css) on the same tokens; home.test.ts holds them equal. */
 
 * {
   box-sizing: border-box;

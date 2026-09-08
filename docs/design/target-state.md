@@ -1,16 +1,32 @@
 # IAMAI target state
 
+> **Scope, as of task 028 (2026-09-08).** This document is no longer the visual authority for
+> Home, Connect, Plan or MFA Readiness. Those four surfaces are owned by the owner-approved
+> HTML packs in `docs/design/approved/`, listed with their hashes in
+> `docs/design/approved/manifest.json`; the brand skin is `docs/design/brand-decisions.md`.
+> Where this document describes the **anatomy** of one of those four surfaces — composition,
+> widths, density, placement, disclosure structure, responsive behaviour — it is `SUPERSEDED`
+> and records what was built, not what the owner approved.
+>
+> It remains current authority for what the product *is*: the questions each screen answers,
+> the engine rules, the content rules, the plan's semantics, and the surfaces no pack governs
+> (Export, How, Inventory). Product truth still outranks the picture.
+>
+> Production has not been restored to the packs yet, and this document is the honest record of
+> the pre-restoration composition. See `docs/design/authority-reconciliation.md`.
+
 Version 2.1 · Sep 1, 2026. Supersedes version 1 (prompts 46–50) and version 2 of earlier today. Incorporates the owner-feedback
 rounds 1–3 (`docs/design/owner-feedback-log.md`) and the Stage 2 deep audit
 (`docs/design/stage2-deep-audit.md`).
 
-This document says what each screen contains, in full, and nothing else.
+Within the scope above, this document says what each screen contains, in full, and nothing else.
 `docs/qa/page-contracts.json` (version 2) is the machine copy; the build fails on anything a
 surface renders that its contract does not list.
 
-Claude Code does not edit this document or the contract; a violation is fixed by removing what
-violates it, or reported for review with the case. Anything in §13 is undecided: it is not built,
-and not approximated.
+A violation of what this document still governs is fixed by removing what violates it, or
+reported for review with the case. A visual-restoration pack (030+) may change what this
+document says about one of the four governed surfaces, because the pack for that surface
+outranks it. Anything in §13 is undecided: it is not built, and not approximated.
 
 Version 2.1 adds the owner's round-4 and round-5 decisions: the plan's unit is a phase, numbered
 and unnamed except Preparation and Cleanup; every product sentence lives in

@@ -2,3 +2,7 @@
 *.png binary
 *.jpg binary
 *.pdf binary
+
+# The approved design packs are byte-exact authorities: their SHA-256 is the
+# authority, so git must never normalise them (src/ui/design-authority.test.ts).
+docs/design/approved/*.html -text

@@ -1,0 +1,106 @@
+{
+  "$comment": "The design-authority manifest (task 028). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Current production is NOT assumed to match: task 028 established the authority, packs 030+ do the restoration. The brand skin is recorded in docs/design/brand-decisions.md and the forensic record in docs/design/authority-reconciliation.md.",
+  "version": 1,
+  "establishedBy": "028-design-brand-authority-reconciliation",
+  "establishedOn": "2026-09-08",
+  "precedence": {
+    "$comment": "Resolution order when two authorities appear to disagree. Truth outranks the picture; the picture outranks the skin. A design that appears to require a different technical meaning does not get one: the design adapts, or the bounded sub-item stops.",
+    "order": [
+      "production technical/content truth",
+      "approved HTML application architecture",
+      "approved brand skin"
+    ]
+  },
+  "surfaces": [
+    {
+      "surface": "home",
+      "name": "Home",
+      "produces": "home/index.html (getiamai.com/)",
+      "ownerApprovedSourceName": "iamai-home-design-pack-v2.html",
+      "path": "docs/design/approved/iamai-home-design-pack-v2.html",
+      "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50",
+      "authorityRole": "application visual/interaction/hierarchy/density/responsive",
+      "copyAuthority": false,
+      "technicalTruthAuthority": false,
+      "approvalState": "current",
+      "implementationState": "restoration-pending",
+      "productionAssumedConformant": false
+    },
+    {
+      "surface": "connect",
+      "name": "Connect",
+      "produces": "#/connect",
+      "ownerApprovedSourceName": "iamai-connect-design-pack-v3.html",
+      "path": "docs/design/approved/iamai-connect-design-pack-v3.html",
+      "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b",
+      "authorityRole": "application visual/interaction/hierarchy/density/responsive",
+      "copyAuthority": false,
+      "technicalTruthAuthority": false,
+      "approvalState": "current",
+      "implementationState": "restoration-pending",
+      "productionAssumedConformant": false
+    },
+    {
+      "surface": "plan",
+      "name": "Plan",
+      "produces": "#/plan and the opened step",
+      "ownerApprovedSourceName": "plan-step-design-pack(1).html",
+      "sourceNameNote": "The (1) is upload provenance from the owner's original file name only. The canonical repository file name drops it; nothing may reintroduce a second current Plan pack under the (1) name.",
+      "path": "docs/design/approved/iamai-plan-step-design-pack.html",
+      "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec",
+      "authorityRole": "application visual/interaction/hierarchy/density/responsive",
+      "copyAuthority": false,
+      "technicalTruthAuthority": false,
+      "approvalState": "current",
+      "implementationState": "restoration-pending",
+      "productionAssumedConformant": false
+    },
+    {
+      "surface": "mfa-readiness",
+      "name": "MFA Readiness",
+      "produces": "#/readiness",
+      "ownerApprovedSourceName": "iamai-mfa-readiness-design-pack-v2.html",
+      "path": "docs/design/approved/iamai-mfa-readiness-design-pack-v2.html",
+      "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512",
+      "authorityRole": "application visual/interaction/hierarchy/density/responsive",
+      "copyAuthority": false,
+      "technicalTruthAuthority": false,
+      "approvalState": "current",
+      "implementationState": "restoration-pending",
+      "productionAssumedConformant": false
+    }
+  ],
+  "brand": {
+    "$comment": "The approved brand skin. It may repaint the approved anatomy; it may not rearrange it.",
+    "record": "docs/design/brand-decisions.md",
+    "light": "Mineral Teal",
+    "dark": "Deep Mineral",
+    "typography": {
+      "display": "IBM Plex Serif",
+      "interface": "IBM Plex Sans",
+      "technical": "IBM Plex Mono"
+    },
+    "logoDirection": "Guided Route — Variant 2",
+    "assetsOwnedBy": "029-final-brand-assets-contract",
+    "applicationLayoutAuthority": false
+  },
+  "generatedPreviews": {
+    "$comment": "Application-page previews produced during the branding exploration. They are brand/colour framing only. This manifest deliberately records no path for them: a generated preview is never an entry in `surfaces`, and nothing may promote one to an application authority.",
+    "applicationLayoutAuthority": false,
+    "architectureAuthority": false,
+    "componentPlacementAuthority": false,
+    "informationHierarchyAuthority": false,
+    "copyAuthority": false,
+    "workflowAuthority": false,
+    "interactionAuthority": false,
+    "responsiveAuthority": false,
+    "supersedes": []
+  },
+  "renderedEvidence": {
+    "$comment": "Passing code and tests cannot prove visual conformance. A restoration task compares the rendered surface with its pack.",
+    "widths": [1280, 768, 390],
+    "mechanism": "scripts/walk.mjs",
+    "contract": "docs/design/authority-reconciliation.md#6-rendered-evidence-contract-for-packs-029"
+  },
+  "reconciliation": "docs/design/authority-reconciliation.md"
+}

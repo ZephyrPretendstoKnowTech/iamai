@@ -1,5 +1,11 @@
-// The home page (prompt 35 §1, §2; prompt 52 Part 1; the owner-approved Home v2
-// direction, task 016).
+// The home page (prompt 35 §1, §2; prompt 52 Part 1; rebuilt by task 016).
+//
+// These assertions hold the page as built to its generator and to its content.
+// They are not the owner's design target: Home's visual authority is
+// docs/design/approved/iamai-home-design-pack-v2.html (see
+// docs/design/approved/manifest.json), which this page does not yet implement.
+// A restoration pack updates these structural assertions with the page; task 028
+// only corrected what they claim to be (docs/design/authority-reconciliation.md).
 //
 // The page is generated from docs/design/content.json (pages.home) by
 // scripts/build-home.ts, the way the theme file is generated from the tokens.
