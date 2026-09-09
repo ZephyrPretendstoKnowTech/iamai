@@ -51,6 +51,9 @@ type ContractWords = {
   trackLabel: string
   railMilestone: string
   railImplementation: string
+  railExisting: string
+  railExistingKeep: string
+  railExistingTogether: string
   implementationReady: string
   implementationNone: string
   railChannels: Record<string, string>
@@ -173,6 +176,33 @@ export type ContractFix = { key: string; text: string }
  */
 export type ContractStage = { key: Lifecycle; label: string; reached: boolean; current: boolean }
 
+/**
+ * Which of the rail's blocks this step has a fact for, and therefore whether
+ * the opened step has a rail at all.
+ *
+ * The pack's `.step-side` is a 290px column beside the main one, and a rail
+ * with nothing in it is 290px of nothing: the frame reads it to decide whether
+ * to lay the body out in two columns, and the rail itself reads it to decide
+ * what to draw. One predicate, so those two answers cannot differ.
+ *
+ * It is a projection and adds no fact — each block is shown exactly where the
+ * contract already holds what it would say. Nothing is filled in to make the
+ * rail look populated (task 034 §5, task 036 §9).
+ */
+export function railBlocks(c: StepContract): { milestone: boolean; implementation: boolean; existing: boolean } {
+  return {
+    milestone: c.milestone.at !== null || c.milestone.gatedBy !== null,
+    implementation: c.members.length > 0,
+    existing: c.existing !== null,
+  }
+}
+
+/** Whether the opened step has a rail beside its main column at all. */
+export function hasRail(c: StepContract): boolean {
+  const b = railBlocks(c)
+  return b.milestone || b.implementation || b.existing
+}
+
 /** The lifecycle in order. The one place the stages are sequenced. */
 const LIFECYCLE_ORDER: Lifecycle[] = ['not-deployed', 'report-only', 'ready-to-enforce', 'enforced']
 
@@ -214,6 +244,26 @@ export type ContractMember = {
 }
 
 /**
+ * The tenant's own policy that already delivers this goal, named.
+ *
+ * The approved Plan pack's In-place variant draws it as a side block
+ * (`docs/design/approved/plan-step-v1.html` V4 `.side-block`, "Existing
+ * implementation" over the policy's name): the one fact that variant's rail
+ * exists to carry, and the one an operator needs to check IAMAI accepted the
+ * right control before they leave it alone.
+ *
+ * It is `Step.satisfiedBy` — the coverage result that decided the goal was
+ * satisfied — and nothing else. `sufficient` is the single policy the
+ * classifier proved covers the whole goal; where two cover it between them,
+ * `names` holds both and `together` is true, because naming the first would
+ * present a policy that does not cover the goal as the one that delivers it.
+ * Null where this scan classified no satisfying policy: the rail then shows no
+ * block rather than an invented name. The same reading `foundOf` makes for the
+ * main column's finding, made once and handed to both.
+ */
+export type ContractExisting = { names: string[]; together: boolean }
+
+/**
  * Whether the four implementation channels are offered, and why not when they
  * are not (Foundation A).
  *
@@ -244,6 +294,8 @@ export type StepContract = {
   members: ContractMember[]
   /** True when the step delivers more than one policy, so the members must be shown apart. */
   multiPolicy: boolean
+  /** The tenant's own policy already delivering this goal; null where there is none to name. */
+  existing: ContractExisting | null
   implementation: ContractImplementation
 }
 
@@ -346,13 +398,13 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // Where this scan classified no satisfying policy the unnamed line stands
   // rather than an invented one.
   if (isPreserved(step)) {
-    const by = step.satisfiedBy
+    const by = existingOf(step)
     const text =
-      !by || by.policies.length === 0
+      by === null
         ? fillText(CONTRACT.foundInPlace, { tenant })
-        : by.sufficient !== null
-          ? fillText(CONTRACT.foundInPlaceNamed, { policies: by.sufficient })
-          : fillText(CONTRACT.foundInPlaceTogether, { policies: list(by.policies) })
+        : by.together
+          ? fillText(CONTRACT.foundInPlaceTogether, { policies: list(by.names) })
+          : fillText(CONTRACT.foundInPlaceNamed, { policies: by.names[0] })
     out.push(found('in-place', text))
   }
   // The step's one observation is Foundation B's own aggregate over its members
@@ -363,6 +415,23 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   const obs = step.state.observation
   if (obs && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
   return out
+}
+
+/**
+ * The satisfying policy the classifier recorded, read once for both the main
+ * column's finding and the rail's block.
+ *
+ * Null where the step is not preserved, or where this scan classified no
+ * satisfying policy — an unnamed in-place goal keeps its unnamed sentence and
+ * grows no rail block. Nothing here re-decides satisfaction: `isPreserved` and
+ * `Step.satisfiedBy` are the coverage authority's own answers.
+ */
+function existingOf(step: Step): ContractExisting | null {
+  if (!isPreserved(step)) return null
+  const by = step.satisfiedBy
+  if (!by || by.policies.length === 0) return null
+  if (by.sufficient !== null) return { names: [by.sufficient], together: false }
+  return { names: [...by.policies], together: by.policies.length > 1 }
 }
 
 /** Who the policy reaches, from the reach Foundation A settled — never the goal's population standing in for it. */
@@ -605,6 +674,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     doneWhen: doneWhenOf(step, reason, cs, ex, fix, tenant),
     members,
     multiPolicy: members.length > 1,
+    existing: existingOf(step),
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },

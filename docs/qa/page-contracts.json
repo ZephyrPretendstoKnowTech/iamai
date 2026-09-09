@@ -466,7 +466,8 @@
           "re:^Preparation( · .+ → .+)?$",
           "re:^Phase \\d+ · .+ → .+$",
           "re:^Cleanup( · .+ → .+)?$",
-          "Microsoft recommended, not in this baseline"
+          "Microsoft recommended, not in this baseline",
+          "Waiting on something else"
         ],
         "tabs": [],
         "tiles": [],

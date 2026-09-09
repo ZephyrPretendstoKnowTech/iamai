@@ -43,6 +43,8 @@ import { floorRows, phaseRows, undatedRows } from './planRows.ts'
 // say it is.
 const noop = (): void => undefined
 const C = app.print
+/** The undated group's own words, which the screen draws too (app.plan.held, task 036). */
+const HELD = (app.plan as unknown as { held: { heading: string; lead: string } }).held
 
 export function PrintPlan({
   tenantName,
@@ -164,7 +166,7 @@ export function PrintPlan({
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
-          {held.length > 0 && <li>{C.held.heading}</li>}
+          {held.length > 0 && <li>{HELD.heading}</li>}
           {floor.length > 0 && <li>{phases.recommended}</li>}
           {schedule.cleanup && <li>{phases.last}</li>}
         </ol>
@@ -226,8 +228,8 @@ export function PrintPlan({
           prints no date, because it has none. */}
       {held.length > 0 && (
         <section className="print-page">
-          <h2>{C.held.heading}</h2>
-          <p className="muted">{C.held.lead}</p>
+          <h2>{HELD.heading}</h2>
+          <p className="muted">{HELD.lead}</p>
           {held.map((s) => (
             <article key={s.id} className="print-step">
               <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />

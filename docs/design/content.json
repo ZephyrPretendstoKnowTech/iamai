@@ -993,6 +993,11 @@
         "notAssessedRow": "{policy}: does not apply: {reason}",
         "notAssessedSave": "Save",
         "lockoutSuffix": "{n} not yet at Passkey or security key, proven",
+        "held": {
+          "$comment": "The undated group both the Plan and the print draw after the numbered phases (task 036): the steps whose policy cannot be written yet, so they sit in no wave and under no date (planRows.ts undatedRows). These were the print's words alone while the screen drew the same rows under no heading at all; it is one group with one name, so it is one entry both surfaces read. The lead is the print's only — on screen each row already says what holds it, in its own date column.",
+          "heading": "Waiting on something else",
+          "lead": "These steps have no date yet. Each one below says what is holding it and what clears it. Until it is cleared there is nothing to submit, so no policy, no rollout dates, no announcement and no way back are given for it."
+        },
         "stepContract": {
           "$comment": "The Step Contract (Foundation D, src/ui/surfaces/stepContract.ts). Every Plan step answers the same questions in the same order: where it is now and what happens next, why, what IAMAI found, who it touches, what to do, what to fix first, how you will know it is done, and More. These are the words the contract itself supplies; each step's own sentences stay in its steps[] entry.",
           "lifecycle": {
@@ -1015,6 +1020,10 @@
           "trackLabel": "Rollout lifecycle",
           "railMilestone": "Next milestone",
           "railImplementation": "Implementation",
+          "$commentRailExisting": "The In-place variant's own side block (task 036; docs/design/approved/plan-step-v1.html V4 draws `Existing implementation` over the policy's name). The name is Step.satisfiedBy — the coverage result that decided the goal was satisfied — so the rail names the tenant's own policy and never the baseline's. `railExistingKeep` is the sub under one sufficient policy; `railExistingTogether` is the sub where two cover the goal between them and neither covers it alone.",
+          "railExisting": "Existing implementation",
+          "railExistingKeep": "Nothing to create; keep it as it is.",
+          "railExistingTogether": "Together — neither covers the goal on its own.",
           "implementationReady": "Portal steps, JSON and PowerShell",
           "implementationNone": "Nothing to submit yet",
           "railChannels": {
@@ -1151,10 +1160,6 @@
           "wave": "Wave",
           "dates": "Dates",
           "steps": "Steps"
-        },
-        "held": {
-          "heading": "Waiting on something else",
-          "lead": "These steps have no date yet. Each one below says what is holding it and what clears it. Until it is cleared there is nothing to submit, so no policy, no rollout dates, no announcement and no way back are given for it."
         },
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",

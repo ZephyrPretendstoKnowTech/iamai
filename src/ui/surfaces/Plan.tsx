@@ -41,6 +41,8 @@ import { scan as runScan } from '../actions.ts'
 
 type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
 const PP = pages.plan as unknown as PlanPage
+/** The undated group's heading, the same entry the print draws over the same rows (task 036). */
+const HELD = (app.plan as unknown as { held: { heading: string; lead: string } }).held
 const S = app.shell
 
 /** The settings panel the Plan settings link opens in place. */
@@ -201,8 +203,16 @@ export function Plan({ scan: lastScan, baseline, account }: {
         )
       })}
 
+      {/* The undated group (planRows.ts undatedRows): steps whose policy the plan
+          cannot write yet, so they sit in no wave and under no date. It is named,
+          for the same reason the floor group is: a set of rows after the numbered
+          phases with no heading over it reads as a phase whose title failed to
+          render, and the print has named this exact group "Waiting on something
+          else" since it was built. One group, one name, one content entry both
+          surfaces read (app.plan.held, task 036). */}
       {heldRows.length > 0 && (
         <section className="phase held">
+          <h2>{HELD.heading}</h2>
           {heldRows.map((s) => (
             <Row key={s.id} step={s} isNext={false} waveStart={null} open={open === s.id} onToggle={() => openStep(s.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[s.id] ?? null} onDecide={(d) => data.onDecide(s.id, d)} />
           ))}

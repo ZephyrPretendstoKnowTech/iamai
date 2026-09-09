@@ -115,6 +115,39 @@ const PRODUCTION_SHOTS = [
     hash: '#/plan',
     after: `(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (const r of document.querySelectorAll('main.page .plan-row')) { r.click(); await wait(180); const step = document.querySelector('main.page .step'); if (step && step.querySelector('.findings')) { const more = step.querySelector('details.more'); if (more) more.open = true; await wait(120); return true } r.click(); await wait(60) } return false })()`,
   },
+  // The remaining canonical variants, end to end (task 036). A restoration pack
+  // cannot claim "all variants" from one polished implement plate, and the four
+  // below are the cases the approved pack draws that the shots above do not
+  // reach: the In-place step and its existing-implementation rail, the blocked
+  // step and its attention panel, the baseline conflict, and a step whose
+  // action is a decision only a person can make.
+  //
+  // Each is FOUND rather than named: the driver opens roadmap rows until the
+  // opened step satisfies a predicate about what it contains, so the evidence
+  // survives a change to the demo fixture and cannot silently shoot the wrong
+  // step. The In-place rows live behind the footer's own disclosure, so that is
+  // opened first.
+  ...[
+    ['plan-step-inplace', `!!s.querySelector('.step-side .metric-name')`],
+    ['plan-step-blocked', `!!s.querySelector('.callout') && !!s.querySelector('.blocking')`],
+    ['plan-step-conflict', `!!s.querySelector('.callout-danger, .callout.danger') && !s.querySelector('.blocking')`],
+    ['plan-step-decision', `!!s.querySelector('.decision .dlabel')`],
+  ].map(([name, test]) => ({
+    name,
+    hash: '#/plan',
+    after: `(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+      for (const d of document.querySelectorAll('main.page .plan-footer details')) d.open = true
+      await wait(200)
+      for (const r of document.querySelectorAll('main.page .plan-row')) {
+        r.click(); await wait(180)
+        const s = r.parentElement && r.parentElement.querySelector('.step') || document.querySelector('main.page .step')
+        if (s && (${test})) { r.scrollIntoView({ block: 'start' }); await wait(120); return true }
+        r.click(); await wait(60)
+      }
+      return false
+    })()`,
+  })),
   { name: 'readiness', hash: '#/readiness' },
   // Export is governed by no pack, and it is the one surface that renders an
   // attention notice unconditionally. Task 031 added it because a renderer that
@@ -233,7 +266,13 @@ async function shoot(url, out, width, { before = null, after = null } = {}) {
     // A shot of a state the operator reaches by acting — opening a Plan step —
     // rather than by a URL. It runs after the page has settled and before the
     // shutter, and it changes nothing outside the page.
-    await send('Runtime.evaluate', { expression: after, awaitPromise: true })
+    //
+    // Its answer is whether it FOUND the state it was looking for. A variant
+    // shot that found nothing would otherwise write a plate of the collapsed
+    // Plan under a name claiming to be evidence for that variant, so it says so
+    // on the run log instead (task 036).
+    const found = await send('Runtime.evaluate', { expression: after, awaitPromise: true, returnByValue: true })
+    if (found.result?.result?.value === false) console.log(`render-design: NOT FOUND for ${out} — the plate is not evidence for that variant`)
     await sleep(700)
   }
   await send('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true })

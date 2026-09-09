@@ -1372,6 +1372,16 @@ footer.app a {
   margin-left: 8px;
   white-space: nowrap;
 }
+/* The Plan's heading, on the approved display ramp (task 036, closing the size
+   tasks 033 and 034 both deferred). The pack sets `.hero h1{font:700 42px}`,
+   34px at its 940 breakpoint and 30px at its 650 — which are --d-2, --d-6 and
+   --d-9 on the ramp task 030 read out of the four canonical files. Task 031
+   landed the `.display` mechanism and left each surface's size to its
+   restoration pack; this is the Plan taking its, the way Connect took --d-3. */
+.surface.plan h1 {
+  --display-size: var(--d-2);
+  line-height: var(--lh-display);
+}
 /* A wave is a raised panel, so a section reads as a unit (prompt 49.1 item 12):
    --bg-raised, a hairline border, an 8px radius, the header inside, its rows
    separated by hairlines within it. Nothing else outside .export-card gets a box. */
@@ -1631,6 +1641,17 @@ footer.app a {
   margin: 6px 0 0;
   font-size: var(--t-lead-lg);
   font-weight: var(--weight-strong);
+}
+/* A metric that is a tenant object's name and not a date or a number: the pack
+   drops it a step for exactly this block (`docs/design/approved/plan-step-v1.html`
+   V4 sets the existing policy's name to 14px against the 18px of a date), and a
+   real Conditional Access policy name is longer than "Sep 22" — long enough to
+   push the 290px rail wide if it is allowed to. So it takes the smaller step of
+   the ramp and breaks inside a word rather than overflowing (task 036). */
+.side-block .metric-name {
+  font-size: var(--t-3);
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .side-block .metric-sub {
   margin: 2px 0 0;
@@ -2666,6 +2687,10 @@ td .group-word {
    to wrap gets vertical padding, because the pack's 64px minimum stops being
    the row's height once the metadata takes three lines. */
 @media (max-width: 940px) {
+  /* The pack's heading drops to 34px here (--d-6). */
+  .surface.plan h1 {
+    --display-size: var(--d-6);
+  }
   .plan-row {
     grid-template-columns: 110px minmax(0, 1fr);
     padding: 12px 17px;
@@ -2704,6 +2729,10 @@ td .group-word {
    under the title, and the stage labels one step smaller so four of them still
    read across a phone. Nothing is hidden. */
 @media (max-width: 650px) {
+  /* And to 30px at the pack's second breakpoint (--d-9). */
+  .surface.plan h1 {
+    --display-size: var(--d-9);
+  }
   .step-head,
   .step-main {
     padding-left: 10px;
