@@ -330,9 +330,13 @@ export function usePlanData(
       checkpoints: saved.checkpoints ?? [],
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
       stepDecisions: saved.stepDecisions ?? {},
-      // What this scan saw of each step's policy: the one history the next
-      // scan cannot work out for itself (roadmap/observation.ts).
-      observations: observationsOf(computed.steps),
+      // What this scan saw of each step's policy, over what the record already
+      // held: the one history the next scan cannot work out for itself
+      // (roadmap/observation.ts). A scan updates it and never replaces it — the
+      // steps this scan derived are not every step the plan has ever had, and a
+      // goal this scan could not assess is not a rollout that never happened
+      // (tracking.ts observationsOf).
+      observations: observationsOf(computed.steps, saved.observations ?? null),
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt

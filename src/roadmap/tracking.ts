@@ -572,14 +572,37 @@ export function trackable(steps: Step[]): Step[] {
 }
 
 /**
- * The observations the plan record keeps (PlanDecisions.observations): what this
- * scan saw of each *required policy member* of each step, so the next scan can
- * say what moved — for that member, and for no other. The one thing a
- * regeneration cannot work out again: a snapshot shows the state now, never when
- * a scan first saw it.
+ * The observations the plan record keeps (PlanDecisions.observations) after this
+ * scan: what this scan saw of each *required policy member* of each step, over
+ * whatever the record already held. The one thing a regeneration cannot work out
+ * again — a snapshot shows the state now, never when a scan first saw it — so it
+ * is also the one thing a scan may only ADD to.
+ *
+ * `prior` is what the record carried into this scan, and passing it is what
+ * makes this an update rather than a replacement. A scan does not derive a step
+ * for every goal: a goal whose coverage this scan could not settle produces no
+ * step at all (generate.ts skips an `unknown` result), and one failed group read
+ * is enough to do that to every goal whose policies name that group. Rebuilding
+ * the block from the current plan therefore DELETED the rollout history of every
+ * goal this scan could not assess — and the next scan that could assess it again
+ * saw the deployed policy for the first time, restarted its report-only window
+ * from that day, and moved "in report-only since" forward by however long the
+ * read had been failing. A transient failure to read one group is not evidence
+ * about a policy, and silence is not a deletion.
+ *
+ * What a step this scan DID derive holds is this scan's own reading, entire: its
+ * required members are the ones the baseline asks for now, so a member the plan
+ * no longer has is not a member whose history is being lost.
+ *
+ * Carrying a record forward is safe in the direction that matters. Nothing reads
+ * it except `priorFor`, and only for a step the plan holds; and what it hands
+ * over is then put through `observe`, which asks whether the object it names is
+ * the object deployed now (observation.ts `artifactIdOf`) before any window
+ * carries. A record about an object that is no longer there resets; a record
+ * about the object still there is the history it always was.
  */
-export function observationsOf(steps: Step[]): Record<string, StepObservationRecord> {
-  const out: Record<string, StepObservationRecord> = {}
+export function observationsOf(steps: Step[], prior: Record<string, StepObservationRecord> | null = null): Record<string, StepObservationRecord> {
+  const out: Record<string, StepObservationRecord> = { ...(prior ?? {}) }
   for (const s of steps) {
     if (s.state.members.length === 0) continue
     const members: Record<string, StepObservation> = {}
