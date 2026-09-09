@@ -689,9 +689,11 @@ test('the narrow widths keep every section, in order, and widen nothing', () => 
   const pack = read(PACK)
   assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.findings,\.more-grid\{grid-template-columns:1fr\}/, 'the pack no longer collapses its grids')
   const narrow = atWidth(940)
-  assert.match(narrow, /\.step \.more-grid \{[\s\S]*grid-template-columns: 1fr;/, 'the More grid does not collapse')
-  // The findings grid collapses on its own track sizing rather than by a rule,
-  // which is why it is not in the narrow block: min(100%, …) is the floor.
+  // Both grids are one column below 940, by the rule and not by their track
+  // sizing: at a 768px viewport the opened step's main column is still wide
+  // enough for two 260px tracks, so auto-fit alone would leave two findings
+  // side by side at the width the pack draws them stacked.
+  assert.match(narrow, /\.step \.findings,\s*\.step \.more-grid \{[\s\S]*?grid-template-columns: 1fr;/, 'the findings and More grids do not both collapse at 940')
   assert.match(rule('.step .findings'), /minmax\(min\(100%, 260px\), 1fr\)/, 'a finding card can be wider than the column it sits in')
   // Nothing is hidden to make the step shorter: the sections, the attention
   // panel, the strip and the rail are all still rendered at every width.

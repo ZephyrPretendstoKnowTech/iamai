@@ -2686,9 +2686,11 @@ td .group-word {
   .step-body.has-rail {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* `.findings,.more-grid{grid-template-columns:1fr}` at the same width. The
-     findings grid already collapses on its own track sizing; the More grid is
-     two fixed columns and needs telling. */
+  /* `.findings,.more-grid{grid-template-columns:1fr}` at the same width. Both
+     grids are told, because neither collapses on its own here: the opened
+     step's main column is still around 666px at a 768px viewport, which fits
+     two 260px tracks, and the pack puts one card per row from 940 down. */
+  .step .findings,
   .step .more-grid {
     grid-template-columns: 1fr;
   }
