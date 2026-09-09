@@ -46,3 +46,23 @@ export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null |
   const rows = cleanup?.rows ?? []
   return { steps: trackableSteps(counted).length + rows.length, done: doneSteps(counted).length + rows.filter((r) => r.done).length }
 }
+
+/**
+ * The active people who have no MFA method they have been seen to use: rung 1
+ * (nothing set up) and rung 2 (a method registered, and no sign-in record that
+ * names it). The population the registration and verification window exists
+ * for, and the one the printed plan states beside it.
+ *
+ * It is a count over the ladder and never a second readiness score: the rungs
+ * are derive/ladder.ts's and this only adds two of them. It deliberately does
+ * NOT include rung 3 (Windows Hello on one PC) or rung 4 (an Authenticator app,
+ * proven) — both of those people can already pass MFA, so asking them to set
+ * something up in this window would be asking for work nobody needs. Whether
+ * they hold a *passkey* is a different question, and MFA Readiness's three
+ * groups are the answer to it (derive/mfaReadiness.ts).
+ *
+ * This lived in Export.tsx as `rungs[1] + rungs[2]` inline in JSX (task 042).
+ */
+export function toSetUp(f: Facts): number {
+  return f.rungs[1] + f.rungs[2]
+}

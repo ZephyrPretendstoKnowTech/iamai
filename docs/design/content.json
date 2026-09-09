@@ -1202,7 +1202,10 @@
         },
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",
-        "observationText": "Every new policy collects report-only evidence at the same time."
+        "observationText": "Every new policy collects report-only evidence at the same time.",
+        "$commentVerificationNote": "The verification window row's third column (task 042). The count is derive/facts.ts toSetUp over the ladder: the active people at rung 1 or 2, who have no method they have been seen to use. Both sentences lived in Export.tsx JSX until task 042; they are the only two the printed plan said that no content file held.",
+        "verificationNote": "{n} of {active} active people still to set up.",
+        "verificationNoteReady": "Everyone active can already pass MFA."
       },
       "how": {
         "h1": "How IAMAI works",

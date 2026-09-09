@@ -65,3 +65,32 @@ export function isRecordedDrill(signInIso: string, drills: readonly string[]): b
   if (drills.length === 0 || Number.isNaN(at)) return false
   return drills.some((d) => Math.abs(at - Date.parse(d)) <= DRILL_WINDOW_MS)
 }
+
+/**
+ * The two facts that can complete the emergency-access alerting row, read as
+ * one (task 042).
+ *
+ * A Cleanup row is normally complete because somebody pressed its Done control,
+ * which records a date (`row.done`). Alerting has a second way to be complete
+ * and always has: the emergency-access attestation `bg.signInMonitoring`, which
+ * the operator ticks on the emergency step and which the validation authority
+ * already reads as the answer to "does a sign-in by an emergency account raise
+ * an alert somebody sees" (validation/rules.ts). An attestation records no date,
+ * so it cannot be a `row.done`, and the two facts had to be read together
+ * somewhere.
+ *
+ * They were being read together in Plan.tsx and read apart in PrintPlan.tsx, so
+ * a tenant that had ticked the attestation saw the alerting row as In place on
+ * the Plan and as Ready in the printed document — one row, one fact, two
+ * answers. This is that reading, once, for both.
+ *
+ * `answers` is the mapping's `breakGlassAnswers`; absent or null is not "no",
+ * it is nothing recorded, and nothing recorded does not complete a row.
+ */
+export function cleanupComplete(
+  row: { kind: CleanupKind; done: string | null },
+  answers: { signInMonitoring: boolean | null } | null | undefined,
+): boolean {
+  if (row.done !== null) return true
+  return row.kind === 'alerting' && answers?.signInMonitoring === true
+}

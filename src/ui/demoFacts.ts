@@ -5,7 +5,7 @@
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { facts, stepFacts } from '../derive/facts.ts'
-import { planFinish } from '../derive/finish.ts'
+import { planFinish, planWeeks } from '../derive/finish.ts'
 import { demoTenant } from './demo.ts'
 
 export type DemoFacts = { people: number; steps: number; inPlace: number; weeks: number }
@@ -19,8 +19,8 @@ export function demoFacts(): DemoFacts {
   const cleanup = run.schedule.cleanup ?? null
   const { steps, done: inPlace } = stepFacts(run.steps, cleanup)
   const finish = planFinish(run.steps, cleanup?.end ?? null)
-  // Weeks derive from the finish date, as the Plan header does.
-  const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(run.schedule.start)) / (7 * 86_400_000))) : run.schedule.weeks
+  // Weeks derive from the finish date, as the Plan header does, from the Plan header's own derivation (derive/finish.ts).
+  const weeks = planWeeks(finish, run.schedule.start, run.schedule.weeks)
   // The active people, as the Plan tile and Today count them (derive/facts.ts); never the directory's row count.
   cached = { people: facts(d.snapshot, d.mapping).active, steps, inPlace, weeks }
   return cached

@@ -426,7 +426,7 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
  * grows no rail block. Nothing here re-decides satisfaction: `isPreserved` and
  * `Step.satisfiedBy` are the coverage authority's own answers.
  */
-function existingOf(step: Step): ContractExisting | null {
+export function existingOf(step: Step): ContractExisting | null {
   if (!isPreserved(step)) return null
   const by = step.satisfiedBy
   if (!by || by.policies.length === 0) return null

@@ -67,3 +67,21 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
   const list = [...waiting.values()]
   return { finish, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0), unwritable: { count: unwritable, waitsOn } }
 }
+
+/**
+ * How many weeks the plan runs, as the header says it (task 042).
+ *
+ * From the finish date, never the last blocked wave (prompt 47 item 15): a
+ * plan whose enforcement is held finishes on no date at all, and then the
+ * schedule's own week count stands. At least one week, because a plan that ends
+ * the week it starts still takes a week.
+ *
+ * The Plan header, the printed cover and the sample tenant's Connect tile each
+ * carried this expression, and three copies of one calculation is three places
+ * for it to drift; the sample tile in particular states a number a person
+ * compares with the Plan's.
+ */
+export function planWeeks(finish: PlanFinish, start: string, scheduleWeeks: number): number {
+  if (finish.finish === null) return scheduleWeeks
+  return Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(start)) / (7 * 86_400_000)))
+}
