@@ -798,19 +798,24 @@ export function renderPages(): string {
   const ledgerParts = ['active', 'notActive', 'emergency', 'service', 'shared', 'disabled'].map((k) => fill(td.ledger[k], { n: 3 })).join(' · ')
   // The three groupings the page counts (derive/mfaReadiness.ts): a view over the rungs above, never a second reading of them.
   const groupRows = ['ready', 'needsProof', 'needsPasskey', 'unknown']
-    .map((k) => `<li><b>${esc(td.groups[k].title)}</b> — ${esc(td.groups[k].tip)}${td.groups[k].next ? ` <span class="sub">Next: ${esc(td.groups[k].next)}</span>` : ''}</li>`)
+    .map((k) => `<li><b>${esc(td.groups[k].title)}</b> — ${esc(td.groups[k].hint)} — ${esc(td.groups[k].tip)}${td.groups[k].next ? ` <span class="sub">Next: ${esc(td.groups[k].next)}</span>` : ''}</li>`)
     .join('')
   sec(
     'MFA Readiness',
-    `<h2 class="h1">${esc(td.h1)}</h2>` +
+    `<p class="sub">${esc(td.eyebrow)}</p>` +
+      `<h2 class="h1">${esc(td.h1)}</h2>` +
       p(td.lead, {}) +
+      h('The integrated summary') +
+      `<p class="sub">${esc(td.summaryEyebrow)}</p>` +
       p(fill(td.summary, { ready: 4, active: 12 }), {}) +
+      p(fill(td.summarySub, { n: 8 }), {}) +
       p(td.summaryNone, {}) +
+      p(td.summarySubNone, {}) +
       h('The three groupings') +
       `<ul>${groupRows}</ul>` +
       p(fill(td.unknownMethods, { n: 3 }), {}) +
-      h('Opened from a Plan step') +
-      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back], {}) +
+      h('Opened from a Plan step, and the plan dependency the page states on its own') +
+      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back, td.planContext.dependencyTitle, fill(td.planContext.dependency, { n: 6, step: 'Require MFA for everyone' }), td.planContext.dependencyLink], {}) +
       h('The ladder behind the groupings') +
       `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })}</p>` +
       `<ul>${rungRows}</ul>` +

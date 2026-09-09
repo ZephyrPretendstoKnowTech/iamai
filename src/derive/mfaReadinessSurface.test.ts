@@ -394,7 +394,8 @@ test('the handoff link carries the step and nothing about the people', () => {
   // Nothing about who is affected can travel in the URL: the page resolves the
   // people from the plan it computes, over the rows it already shows.
   const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(src, /stepMfaHold\(step, data\.computed\.viability\)/, 'the affected people come from the plan the page computes')
+  assert.match(src, /const scored = data\.computed\?\.viability \?\? \[\]/, 'the scoring is the plan the page computes')
+  assert.match(src, /stepMfaHold\(step, scored\)/, 'the affected people come from that scoring')
   assert.doesNotMatch(src, /displayName.*hash|hash.*displayName/, 'no display name is read from the URL')
   const handoff = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')
   assert.match(handoff, /readinessStepHref\(step\.id\)/, 'the Plan links by step id')

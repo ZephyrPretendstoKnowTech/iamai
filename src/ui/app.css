@@ -2588,77 +2588,190 @@ td .not-person {
 .surface .toolbar .btn[aria-pressed='true']::before {
   content: '\2713';
 }
-.group-tile.on .group-title::before {
-  content: '\2713';
+
+/* ================= MFA Readiness — the approved pack (tasks 012, 037) =========
+
+   The anatomy here is read out of `docs/design/approved/mfa-readiness-v2.html`
+   and belongs to that surface alone: the integrated summary, the filter pills,
+   the six-zone person table and the stacked row are MFA's page composition, not
+   shared roles. What IS shared it composes rather than re-declares — `.panel`,
+   `.eyebrow`, `.key-label`, `.pill`, `.callout` (task 031).
+
+   The pack is a dark Inter mockup and owns none of the colour or the typeface:
+   its `#9aa5b1` arrives as the quiet ink, its `Georgia 700 24px` as the display
+   role at `--d-14`. That translation is task 030's rule. */
+
+/* The pack's heading: serif 38, one step down at its second breakpoint. */
+.surface.readiness .display {
+  --display-size: var(--d-5);
 }
-
-/* ================= MFA Readiness (task 012) ================= */
-
-/* The page widens for the table (WIDE_ROUTES); the summary and the three counts
-   keep the page column above it, so the diagnostic reads at a measure. */
-.surface.readiness .line.summary {
+/* `.intro`: 16px, capped short of the page column so the sentence reads at a
+   measure while the table below it takes the full 1200. */
+.surface.readiness .line.intro {
   font-size: var(--t-4);
   max-width: var(--page);
+  color: var(--ink-2);
 }
-.group-counts {
+.surface.readiness > .eyebrow {
+  margin-bottom: 6px;
+}
+
+/* The integrated summary. One panel with one border and one radius, divided
+   into a dominant cell and three stats by its own hairlines — never four cards.
+   `overflow: hidden` is what makes the outer radius clip the cells inside it,
+   which is how the pack draws it (`.summary{overflow:hidden}`). */
+.readiness-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 10px 0 16px;
-  max-width: var(--page);
+  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(120px, 0.65fr));
+  overflow: hidden;
+  margin: 24px 0 14px;
 }
-/* One count: the group's title, then its number. A filter, so the tile's face is
-   a button; the tip sits beside it, outside the control. Pressed is the accent
-   border and aria-pressed, never colour alone. */
-.group-tile {
-  position: relative;
+.readiness-summary .summary-main,
+.readiness-summary .summary-stat {
+  padding: 18px 20px;
+  min-width: 0;
 }
-.group-tile:hover,
-.group-tile:focus-within,
-.group-tile.on {
-  border-color: var(--accent);
+/* The divide is a hairline between cells, not a box around each. */
+.readiness-summary .summary-stat {
+  border-left: 1px solid var(--rule);
 }
-.group-tile .infotip {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+.readiness-summary .summary-main .headline {
+  --display-size: var(--d-14);
+  margin: 4px 0 5px;
+  max-width: none;
 }
-.group-count {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 12px 14px;
-  padding-right: 32px;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.group-count .group-title {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.readiness-summary .summary-main .sub {
+  margin: 0;
+  color: var(--ink-2);
   font-size: var(--t-2);
-  font-weight: 500;
-  color: var(--ink);
 }
-.group-count .group-n {
-  display: block;
+.readiness-summary .stat-n {
   font-family: var(--font-serif);
-  font-size: var(--t-6);
-  font-weight: 500;
-  line-height: 1.1;
-  margin-top: 8px;
+  font-size: var(--d-11);
+  font-weight: var(--weight-display);
+  line-height: var(--lh-display);
+  margin-bottom: 7px;
+}
+.readiness-summary .stat-k {
+  font-size: var(--t-1);
   color: var(--ink);
 }
-.group-count .group-n.group-ready {
+.readiness-summary .stat-hint {
+  margin-top: 3px;
+  font-size: var(--t-0);
+  color: var(--ink-3);
+}
+/* Passkey-ready is the one count the page is about, so it takes the rung it
+   names. The other two stay in the body ink: a stat is not a status, and the
+   word beside every number is what carries the meaning. */
+.readiness-summary .stat-n.group-ready {
   color: var(--rung-5);
 }
+
+/* The pack's toolbar: the search, then the filters as pills. `.pill` is the
+   shared geometry (task 031); the pressed treatment is the toolbar rule above,
+   which is a check mark as well as the accent. */
+.surface.readiness .toolbar .btn.pill {
+  height: var(--control);
+}
+
+/* The person table. The pack draws it as a panel: a head band on the inset
+   surface in the small uppercase key, then rows divided by top hairlines, all
+   inside one border with one radius. */
+.surface.readiness .datatable-wrap.panel {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.surface.readiness table.datatable th {
+  background: var(--bg-inset);
+  border-bottom: 1px solid var(--rule);
+  padding: 11px 14px;
+  font-size: var(--t-micro);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.surface.readiness table.datatable td {
+  padding: 12px 14px;
+  border-bottom: 0;
+  border-top: 1px solid var(--rule);
+  vertical-align: middle;
+}
+.surface.readiness table.datatable tbody tr:first-child td {
+  border-top: 0;
+}
+.surface.readiness table.datatable th:last-child,
+.surface.readiness table.datatable td:last-child {
+  padding-right: 14px;
+}
+/* The pack's Person cell: the name over the sign-in address. */
+.surface.readiness .person-name {
+  display: block;
+  font-weight: var(--weight-strong);
+}
+.surface.readiness .person-upn {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-2);
+  color: var(--ink-3);
+}
 /* The group's word beside the rung badge in a row. */
-td .group-word {
+.surface.readiness td .group-word {
   margin-left: 6px;
 }
+/* The Readiness cell: the rung's badge and the group's word on one line. The
+   pack draws the state as a pill, which does not break; production's word is
+   longer and carries the rung beside it, so the column is given the width the
+   pair needs rather than the word being broken across two lines. */
+.surface.readiness td .group-word,
+.surface.readiness td .not-person {
+  white-space: nowrap;
+}
+/* Nothing to do: the pack's em rule in the quiet ink. */
+.surface.readiness .no-action {
+  color: var(--ink-3);
+}
+/* The Role cell. The admin ink is the pack's violet role colour, and it is the
+   second signal: the word "Admin" is already there and says it on its own. */
+.surface.readiness .role {
+  font-size: var(--t-2);
+  color: var(--ink-2);
+}
+.surface.readiness .role-admin {
+  color: var(--admin-text);
+}
+/* The footer note the pack closes the table with: the quiet line about what the
+   counts do not include, and the one link out of the surface. */
+.surface.readiness .footer-note {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+.surface.readiness .footer-note .ledger,
+.surface.readiness .footer-note .footer-link {
+  margin: 0;
+  font-size: var(--t-2);
+}
+
+/* A stacked row's cell key. It is a real element with real text, hidden at the
+   widths where the column header is on screen and shown where it is not — the
+   pack labels its stacked cells with `::before`, which no screen reader reads
+   (src/ui/accessibility.test.ts), so production draws the same label out of the
+   DOM instead. */
+.cell-key {
+  display: none;
+  margin-bottom: 2px;
+}
+
 /* The remediation panel (task 014): one person, under the table, and only after
    their Next step is pressed. It is a card in the page column so it reads as one
    thing and never as a rail beside the diagnostic. */
@@ -2755,9 +2868,92 @@ td .group-word {
     line-height: var(--lh-body);
   }
 }
-@media (max-width: 640px) {
-  .group-counts {
+/* MFA Readiness's own first breakpoint (task 037). The pack collapses the
+   summary to `1fr 1fr` with the main cell spanning both, and turns the person
+   table into stacked rows: `.table-head{display:none}` and `.row{
+   grid-template-columns:1fr}`, every cell under its own key.
+
+   Production keeps a real `<table>` through the change — the element, the
+   `<th scope="col">` heads and the explicit ARIA roles that survive the display
+   swap (components/DataTable.tsx) — and shows the key that was already in the
+   DOM. The head is hidden from sight and stays in the accessibility tree, so a
+   screen reader still hears which column a value belongs to; the visible key is
+   `aria-hidden` for exactly that reason. */
+@media (max-width: 900px) {
+  .readiness-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .readiness-summary .summary-main {
+    grid-column: 1 / -1;
+  }
+  .readiness-summary .summary-stat {
+    border-top: 1px solid var(--rule);
+  }
+  /* The third stat opens a second row, so it takes a left hairline of its own
+     rather than sitting flush against the panel edge. */
+  .readiness-summary .summary-stat:nth-child(4) {
+    border-left: 0;
+  }
+  /* The head goes off screen and stays in the accessibility tree: `clip` rather
+     than `display: none`, which would take the column header a stacked cell is
+     still associated with out of it. */
+  .surface.readiness table.datatable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .surface.readiness .datatable-wrap.panel {
+    overflow-x: visible;
+  }
+  .surface.readiness table.datatable,
+  .surface.readiness table.datatable tbody,
+  .surface.readiness table.datatable tr,
+  .surface.readiness table.datatable td {
+    display: block;
+  }
+  .surface.readiness table.datatable tr {
+    padding: 14px 16px;
+    border-top: 1px solid var(--rule);
+  }
+  .surface.readiness table.datatable tbody tr:first-child {
+    border-top: 0;
+  }
+  .surface.readiness table.datatable td {
+    padding: 0;
+    border-top: 0;
+  }
+  .surface.readiness table.datatable td + td {
+    margin-top: 8px;
+  }
+  .surface.readiness table.datatable tbody tr:first-child td {
+    border-top: 0;
+  }
+  .surface.readiness .cell-key {
+    display: block;
+  }
+}
+/* The pack's second breakpoint: the summary becomes one column and the callout
+   stacks its sentence above its link. The heading drops to 31px (--d-8). */
+@media (max-width: 620px) {
+  .surface.readiness .display {
+    --display-size: var(--d-8);
+  }
+  .readiness-summary {
     grid-template-columns: 1fr;
+  }
+  .readiness-summary .summary-main {
+    grid-column: auto;
+  }
+  .readiness-summary .summary-stat {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .surface.readiness .footer-note {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

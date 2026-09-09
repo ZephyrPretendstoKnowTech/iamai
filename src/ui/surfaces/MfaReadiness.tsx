@@ -1,10 +1,23 @@
-// MFA Readiness (task 012): the surface that replaced Today.
+// MFA Readiness (task 012, restored to the approved pack by task 037): the
+// surface that replaced Today.
 //
 // One job, and the page is arranged around it — see who is ready for passkeys,
-// who still needs to prove one, and who still needs a stronger method. So it is
-// a heading, one sentence, one summary of the active people, three counts under
-// it, one filter row and one table. It is diagnostic before it is operational:
-// the answer should be readable without opening a row.
+// who still needs to prove one, and who still needs a stronger method. It is
+// diagnostic before it is operational: the answer should be readable without
+// opening a row.
+//
+// The anatomy is `docs/design/approved/mfa-readiness-v2.html` and is asserted
+// against it, both ways, in surfaces/readinessAnatomy.test.ts: an eyebrow and a
+// display heading, one supporting sentence, ONE integrated summary panel (a
+// dominant cell over the answer in a sentence, then the three counts as cells
+// of the same panel — not four cards), one callout under it, a search with the
+// filters as pills, the six-zone person table, and a footer note.
+//
+// What the pack does NOT own is what any of it means. The counts are the
+// groupings derive/mfaReadiness.ts partitions the active people into; the
+// callout is derive/stepMfaReadiness.ts's hold; every cell in the table is a
+// field the row already carries. Nothing here reads a method, a sign-in record
+// or a rung a second time, and the restoration changed none of them.
 //
 // What it is not: the old five-tile ladder page. The rung a person stands on is
 // still the truth and still shows, as the badge in their row and in the tooltip
@@ -44,7 +57,7 @@ import type { MethodGuideId, Remediation } from '../../content/methodGuides.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { groupWords, kindWord, ledgerParts, methodWord, nextStateWord, notActiveWord, readinessWord, rowEvidenceText, rungWords, showWord } from './readinessCells.ts'
+import { groupWords, ledgerParts, methodWord, nextStateWord, notActiveWord, readinessWord, roleWord, rowEvidenceText, rungWords, showWord } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
 import { readinessHref, showFromReadinessHash, stepFromReadinessHash } from '../shell/routes.ts'
@@ -57,9 +70,13 @@ import { W as CONNECT_WORDS } from '../scan/connectView.ts'
 
 type ReadinessCopy = {
   h1: string
+  eyebrow: string
   lead: string
+  summaryEyebrow: string
   summary: string
   summaryNone: string
+  summarySub: string
+  summarySubNone: string
   adminsOnly: string
   columns: string[]
   notAPerson: string
@@ -67,7 +84,7 @@ type ReadinessCopy = {
   unknownMethods: string
   inventory: string
   tip: string
-  planContext: { filtered: string; unknown: string; back: string }
+  planContext: { filtered: string; unknown: string; back: string; dependencyTitle: string; dependency: string; dependencyLink: string }
   remediation: { heading: string; choose: string; other: string; copy: string; copied: string; close: string; learn: string }
 }
 const T = pages.readiness as unknown as ReadinessCopy
@@ -99,6 +116,18 @@ function RungBadge({ rung }: { rung: Rung | null }) {
  */
 type PlanContext = { title: string; stepId: string; ids: string[] | null }
 
+/**
+ * The plan dependency the unfiltered page states (task 037): the first step on
+ * the plan whose own sign-in requirement is holding it, and how many of the
+ * people it reaches cannot meet that requirement yet.
+ *
+ * It is the same relationship the Plan step's own handoff draws
+ * (surfaces/MfaHandoff.tsx), read from this side. `stepMfaHold` is the one
+ * authority for both, so the number here and the number on the step are the
+ * same number; nothing is measured a second time.
+ */
+type PlanDependency = { title: string; stepId: string; n: number }
+
 export function MfaReadiness({ scan: lastScan, baseline }: {
   scan: { snapshot: TenantSnapshot; at: string } | null
   baseline: BaselineResult | null
@@ -109,32 +138,35 @@ export function MfaReadiness({ scan: lastScan, baseline }: {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
-  if (!lastScan) return <ReadinessPage snapshot={null} context={null} />
-  // One page implementation. The step context is the only thing the wrapper
-  // adds, and it computes the plan read-only (never touching the plan record)
-  // exactly as Connect's Plan tile does.
-  return stepId === null ? (
-    <ReadinessPage snapshot={lastScan.snapshot} context={null} />
-  ) : (
-    <ReadinessForStep scan={lastScan} baseline={baseline} stepId={stepId} />
-  )
-}
-
-function ReadinessForStep({ scan: lastScan, baseline, stepId }: {
-  scan: { snapshot: TenantSnapshot; at: string }
-  baseline: BaselineResult | null
-  stepId: string
-}) {
+  // The plan, computed read-only (never touching the plan record) exactly as
+  // Connect's Plan tile does. It is computed whether or not the page arrived
+  // scoped to a step, because the approved pack's callout is the Plan
+  // relationship and the unscoped page has to be able to state it.
   const data = usePlanData(lastScan, baseline, true)
-  const snapshot = lastScan.snapshot
-  const step = data.computed?.steps.find((s) => s.id === stepId) ?? null
+  const steps = data.computed?.steps ?? []
+  const scored = data.computed?.viability ?? []
+  const step = stepId === null ? null : (steps.find((s) => s.id === stepId) ?? null)
   // The plan's own scoring, the one the readiness percentage that holds the step
   // was taken over (planData.ts): the people it names cannot disagree with it.
-  const hold = step && data.computed ? stepMfaHold(step, data.computed.viability) : null
+  const hold = step && data.computed ? stepMfaHold(step, scored) : null
   // No callout where there is no relationship: a step that is not on this plan,
   // or one nothing about anybody's authentication method is holding.
   const context: PlanContext | null = step && hold ? { title: contentTitle(step), stepId: step.id, ids: hold.ids } : null
-  return <ReadinessPage snapshot={snapshot} context={context} />
+  // Unscoped: the first step in plan order that a person's authentication method
+  // is actually holding, and only where this scan settled who — an unknown reach
+  // is the Plan's sentence to make, not a number to state here.
+  let dependency: PlanDependency | null = null
+  if (stepId === null && data.computed) {
+    for (const s of steps) {
+      const h = stepMfaHold(s, scored)
+      if (h?.ids && h.ids.length > 0) {
+        dependency = { title: contentTitle(s), stepId: s.id, n: h.ids.length }
+        break
+      }
+    }
+  }
+  if (!lastScan) return <ReadinessPage snapshot={null} context={null} dependency={null} />
+  return <ReadinessPage snapshot={lastScan.snapshot} context={context} dependency={dependency} />
 }
 
 /**
@@ -239,7 +271,7 @@ function RemediationPanel({ row, guideId, onPick, onClose }: {
   )
 }
 
-function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null; context: PlanContext | null }) {
+function ReadinessPage({ snapshot, context, dependency }: { snapshot: TenantSnapshot | null; context: PlanContext | null; dependency: PlanDependency | null }) {
   // The population's mapping (the detected emergency and service accounts, and every saved decision): the Plan's and Connect's.
   const mapping = useAppliedMapping(snapshot)
   // Scan again, beside the heading (ui/actions.ts): the scan's line shows under the header, and it returns here with the filter kept.
@@ -287,6 +319,17 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, query, show, adminsOnly, context?.ids])
 
+  // The approved pack's six person zones, in its order (task 037): Person,
+  // Role, Strongest method, Proof, Readiness, Action. Two keep production's own
+  // words, because the pack owns the anatomy and not the copy — the identity
+  // column is "Account" on a table that also lists shared devices and service
+  // accounts, and the last column is a state before it is ever an action.
+  //
+  // Every cell consumes an authority already made: the name and the sign-in
+  // address are the directory's, the role is roles.ts's through `r.admin`, the
+  // method word is derive/ladder.ts's `methodWordOf`, the proof line is the
+  // row's own evidence, and the readiness word is the group derive/mfaReadiness
+  // .ts put the row in. Nothing here reads a method, a record or a rung again.
   const columns: Column<ReadinessRow>[] = [
     {
       key: 'account',
@@ -294,19 +337,40 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
       minWidth: '14rem',
       sortValue: (r) => (r.user.displayName ?? r.user.userPrincipalName ?? '').toLowerCase(),
       csv: (r) => r.user.displayName ?? r.user.userPrincipalName ?? '',
+      // The pack draws the name over the sign-in address. The address carries
+      // `.tenant-object`, so a long UPN breaks inside its column instead of
+      // pushing the page out (task 030).
       render: (r) => (
         <>
-          {r.user.displayName ?? r.user.userPrincipalName}
-          {r.admin && <span className="chip tag">{C.admin}</span>}
-          {r.guest && <span className="chip tag">{C.guest}</span>}
-          {r.kind !== 'person' && <span className="chip tag">{kindWord(r.kind)}</span>}
+          <strong className="person-name">{r.user.displayName ?? r.user.userPrincipalName}</strong>
+          {r.user.displayName && r.user.userPrincipalName && <span className="person-upn tenant-object">{r.user.userPrincipalName}</span>}
         </>
       ),
     },
     { key: 'upn', header: C.signInAddress, hidden: true, render: () => null, csv: (r) => r.user.userPrincipalName ?? '' },
     {
-      key: 'readiness',
+      key: 'role',
       header: T.columns[1],
+      minWidth: '7rem',
+      sortValue: (r) => roleWord(r),
+      csv: (r) => roleWord(r),
+      // The word is the role. `.role-admin` tints it the admin ink the pack
+      // draws, over the word and never instead of it; a guest keeps the tag it
+      // has always had, because where the methods live is a different fact from
+      // what the account is.
+      render: (r) => (
+        <>
+          <span className={`role${r.kind === 'person' && r.admin ? ' role-admin' : ''}`}>{roleWord(r)}</span>
+          {r.guest && <span className="chip tag">{C.guest}</span>}
+        </>
+      ),
+    },
+    { key: 'method', header: T.columns[2], minWidth: '9rem', sortValue: (r) => methodWord(r.method), csv: (r) => methodWord(r.method), render: (r) => methodWord(r.method) },
+    { key: 'proof', header: T.columns[3], minWidth: '8rem', csv: (r) => rowEvidenceText(r), render: (r) => rowEvidenceText(r) },
+    {
+      key: 'readiness',
+      header: T.columns[4],
+      minWidth: '11rem',
       // Passkey-ready first, then the people with the most to do: the group is
       // the page's order and the rung breaks the tie inside it.
       sortValue: (r) => (r.kind !== 'person' ? -1 : !r.active ? 0 : r.rung ?? 0),
@@ -322,11 +386,10 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
         </>
       ),
     },
-    { key: 'method', header: T.columns[2], sortValue: (r) => methodWord(r.method), csv: (r) => methodWord(r.method), render: (r) => methodWord(r.method) },
-    { key: 'proof', header: T.columns[3], csv: (r) => rowEvidenceText(r), render: (r) => rowEvidenceText(r) },
     {
       key: 'next',
-      header: T.columns[4],
+      header: T.columns[5],
+      minWidth: '9rem',
       csv: (r) => nextStateWord(r),
       // The state stays the words it always was; where there is remediation to
       // open, it is also the control that opens it. A person already
@@ -335,7 +398,10 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
       // "scan again" is the action there.
       render: (r) => {
         const kind = remediationFor(r.group, r).kind
-        if (kind === 'none' || kind === 'unknown') return nextStateWord(r)
+        // Nothing to do, and the pack draws that as an em rule rather than an
+        // empty cell. It is a mark, not a word: a screen reader hears the cell
+        // as empty, which is the fact.
+        if (kind === 'none' || kind === 'unknown') return nextStateWord(r) || <span className="no-action" aria-hidden="true">&mdash;</span>
         const on = open?.userId === r.user.id
         return (
           <Button
@@ -361,16 +427,21 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
   // standing over an account that is no longer there.
   const openRow = open === null ? null : (view?.rows.find((r) => r.user.id === open.userId) ?? null)
 
+  // The pack's page head: an eyebrow, the display heading, the page's own action
+  // beside it, then one supporting sentence.
   const heading = (
-    <div className="page-head">
-      <h1>{T.h1}</h1>
-      <span className="page-head-actions">
-        <Button variant="tertiary" onClick={() => again.run(scan(readinessHref(show)))}>
-          {CONNECT_WORDS.scan.complete.again}
-        </Button>
-        {again.error && <span className="quiet" role="status">{again.error}</span>}
-      </span>
-    </div>
+    <>
+      <div className="eyebrow">{T.eyebrow}</div>
+      <div className="page-head">
+        <h1 className="display">{T.h1}</h1>
+        <span className="page-head-actions">
+          <Button variant="tertiary" onClick={() => again.run(scan(readinessHref(show)))}>
+            {CONNECT_WORDS.scan.complete.again}
+          </Button>
+          {again.error && <span className="quiet" role="status">{again.error}</span>}
+        </span>
+      </div>
+    </>
   )
   if (!view) {
     return (
@@ -383,60 +454,84 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
   const { facts, groups } = view
   const ledger = ledgerParts(facts)
   const summary = facts.active > 0 ? fillText(T.summary, { ready: groups.ready, active: facts.active }) : T.summaryNone
+  // The second line of the summary's main cell: how many of the active people
+  // are still waiting on a method. It is the ladder's own partition read the
+  // other way — the active people who are not passkey-ready — and never a
+  // second count of anybody.
+  const needAction = facts.active - groups.ready
+  const summarySub = facts.active > 0 ? (needAction > 0 ? fillText(T.summarySub, { n: needAction }) : T.summarySubNone) : ''
+  // The Show list, as the pack's filter pills. A link that arrived filtered to a
+  // rung or to a separate population keeps its own pill on the end, so the
+  // control still says what is on screen.
+  const pills: ShowKey[] = SHOW_KEYS.includes(show) ? [...SHOW_KEYS] : [...SHOW_KEYS, show]
   return (
     <section className="surface readiness">
       {heading}
-      <p className="line">{T.lead}</p>
+      <p className="line intro">{T.lead}</p>
       <PageTip page="readiness" text={T.tip} />
-      {context && (
+      {/* The approved pack's integrated summary: one panel, a dominant cell that
+          says the answer in a sentence, and the three counts beside it divided
+          by the panel's own hairlines rather than boxed as separate cards. The
+          counts are the groups derive/mfaReadiness.ts partitions the active
+          people into; the panel states them and filters nothing — the pills
+          below are the controls. */}
+      <section className="readiness-summary panel">
+        <div className="summary-main">
+          <div className="eyebrow">{T.summaryEyebrow}</div>
+          <p className="headline display">{summary}</p>
+          {summarySub && <p className="sub">{summarySub}</p>}
+        </div>
+        {READINESS_GROUPS.map((g: ReadinessGroup) => {
+          const w = groupWords(g)
+          return (
+            <div key={g} className="summary-stat">
+              <div className={`stat-n stat-num group-${g}`}>{groups[g]}</div>
+              <div className="stat-k">
+                <span className="stat-title">{w.title}</span>
+                <InfoTip title={w.title} text={w.tip} />
+              </div>
+              <div className="stat-hint">{w.hint}</div>
+            </div>
+          )
+        })}
+      </section>
+      {/* One callout under the summary, in the pack's place, and only where a
+          relationship really exists: the step this page was opened from, or the
+          first step on the plan a person's authentication method is holding.
+          The pack's shape, never its sample sentence — nothing is drawn here to
+          fill the panel. */}
+      {context ? (
         <Callout kind="info">
           {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { n: context.ids.length, step: context.title })}{' '}
           <a href={`#/plan/${encodeURIComponent(context.stepId)}`}>{T.planContext.back}</a>
         </Callout>
+      ) : (
+        dependency && (
+          <Callout kind="warning" title={T.planContext.dependencyTitle}>
+            {fillText(T.planContext.dependency, { n: dependency.n, step: dependency.title })}{' '}
+            <a href={`#/plan/${encodeURIComponent(dependency.stepId)}`}>{T.planContext.dependencyLink}</a>
+          </Callout>
+        )
       )}
-      <p className="line summary">{summary}</p>
-      <div className="group-counts">
-        {READINESS_GROUPS.map((g: ReadinessGroup) => {
-          const on = show === g
-          const w = groupWords(g)
-          // The tip sits beside the control, not inside it: a button inside a
-          // button is not markup a browser or a screen reader can make sense of.
-          return (
-            <div key={g} className={`group-tile card${on ? ' on' : ''}`}>
-              {/* Pressed is `aria-pressed` for a screen reader and, in CSS, a
-                  check mark before the title as well as the accent border: the
-                  filter that is on must not be the accent alone (task 017). */}
-              <button type="button" className="group-count" aria-pressed={on} onClick={() => select(on ? 'all' : g)}>
-                <span className="group-title">{w.title}</span>
-                <b className={`group-n stat-num group-${g}`}>{groups[g]}</b>
-              </button>
-              <InfoTip title={w.title} text={w.tip} />
-            </div>
-          )
-        })}
-      </div>
       {/* Unknown stays a sentence, never a fourth count: the page will not put a
           number beside a state it could not establish. */}
       {groups.unknown > 0 && <p className="reason">{fillText(T.unknownMethods, { n: groups.unknown })}</p>}
+      {/* The pack's toolbar: the search, then the filters as pills. Each pill is
+          a real control over the same Show key the hash carries, so what the URL
+          says and what is pressed cannot part. Pressed is `aria-pressed` and a
+          check mark as well as the accent, never the colour alone (task 017). */}
       <div className="toolbar no-print">
         <input type="search" placeholder={C.search} aria-label={C.search} value={query} onChange={(e) => setQuery(e.currentTarget.value)} />
-        <label>
-          {C.showLabel}{' '}
-          <select value={show} onChange={(e) => select(e.currentTarget.value as ShowKey)}>
-            {/* A link arrived filtered to a rung or a separate population: the
-                option is there so the control says what is on screen. */}
-            {(SHOW_KEYS.includes(show) ? SHOW_KEYS : [...SHOW_KEYS, show]).map((k) => (
-              <option key={k} value={k}>
-                {showWord(k)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Button variant="tertiary" aria-pressed={adminsOnly} onClick={() => setAdminsOnly((v) => !v)}>
+        {pills.map((k) => (
+          <Button key={k} variant="tertiary" className="pill" aria-pressed={show === k} onClick={() => select(k)}>
+            {showWord(k)}
+          </Button>
+        ))}
+        <Button variant="tertiary" className="pill" aria-pressed={adminsOnly} onClick={() => setAdminsOnly((v) => !v)}>
           {T.adminsOnly}
         </Button>
       </div>
-      <DataTable rows={rows} columns={columns} rowKey={(r) => r.user.id} csvName={READINESS_CSV} empty={C.noMatch} />
+      <DataTable rows={rows} columns={columns} rowKey={(r) => r.user.id} csvName={READINESS_CSV} empty={C.noMatch} panel stacked />
       {openRow && open && (
         <RemediationPanel
           row={openRow}
@@ -445,30 +540,35 @@ function ReadinessPage({ snapshot, context }: { snapshot: TenantSnapshot | null;
           onClose={closeGuide}
         />
       )}
-      {/* Quiet, under the table: every account once, then the populations the
-          campaign does not count, each a link to itself. They stay reachable for
-          context and never appear as a failed employee passkey adoption. */}
-      <p className="line ledger">
-        {ledger.lead} {ledger.parts.filter((part) => part.show === null).map((part) => part.text).join(' · ')}
-        {ledger.parts.some((part) => part.show !== null) && (
-          <>
-            {' · '}
-            <span className="quiet">{T.separate}</span>{' '}
-            {ledger.parts
-              .filter((part) => part.show !== null)
-              .map((part, i) => (
-                <span key={part.key}>
-                  {i > 0 && ' · '}
-                  <a href={readinessHref(part.show as ShowKey)}>{part.text}</a>
-                </span>
-              ))}
-          </>
-        )}{' '}
-        <span className="quiet">{window_}</span>
-      </p>
-      <p className="footer-link">
-        <a href="#/inventory">{T.inventory}</a>
-      </p>
+      {/* The pack closes the table with a footer note: a quiet line about what
+          the counts above do not include, and one link out of the surface. The
+          line is the ledger production already had — every account once, then
+          the populations the campaign does not count, each a link to itself.
+          They stay reachable for context and never appear as a failed employee
+          passkey adoption. */}
+      <div className="footer-note">
+        <p className="line ledger">
+          {ledger.lead} {ledger.parts.filter((part) => part.show === null).map((part) => part.text).join(' · ')}
+          {ledger.parts.some((part) => part.show !== null) && (
+            <>
+              {' · '}
+              <span className="quiet">{T.separate}</span>{' '}
+              {ledger.parts
+                .filter((part) => part.show !== null)
+                .map((part, i) => (
+                  <span key={part.key}>
+                    {i > 0 && ' · '}
+                    <a href={readinessHref(part.show as ShowKey)}>{part.text}</a>
+                  </span>
+                ))}
+            </>
+          )}{' '}
+          <span className="quiet">{window_}</span>
+        </p>
+        <p className="footer-link">
+          <a href="#/inventory">{T.inventory}</a>
+        </p>
+      </div>
     </section>
   )
 }

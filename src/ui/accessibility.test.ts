@@ -550,7 +550,11 @@ test('every plan status is a word, not only a coloured dot', () => {
 
 test('an active filter says so in shape as well as colour', () => {
   assert.match(rule(css, ".surface .toolbar .btn[aria-pressed='true']::before") ?? '', /content:/)
-  assert.match(rule(css, '.group-tile.on .group-title::before') ?? '', /content:/)
+  // MFA Readiness's filters are the approved toolbar's pills (task 037), so the
+  // one pressed rule above governs them too; the boxed counts that carried a
+  // pressed treatment of their own are gone with the tiles.
+  assert.doesNotMatch(css, /\.group-tile|\.group-count/, 'a dead pressed rule for a control the page no longer draws')
+  assert.match(readiness, /aria-pressed=\{show === k\}/, 'a Show filter says whether it is pressed')
   assert.match(readiness, /aria-pressed=\{on\}/)
   assert.match(readiness, /aria-pressed=\{adminsOnly\}/)
 })
@@ -609,7 +613,12 @@ test('the wide regions scroll inside themselves, and JSON and PowerShell wrap ra
 
 test('the narrow layouts collapse rather than compress', () => {
   const narrow = (max: number): string => css.match(new RegExp(`@media \\(max-width: ${max}px\\) \\{[\\s\\S]*?\\n\\}`, 'g'))?.join('\n') ?? ''
-  assert.match(narrow(640), /\.group-counts[\s\S]*grid-template-columns:\s*1fr/, 'the readiness counts stack')
+  // MFA Readiness collapses at its own pack's two breakpoints (task 037): the
+  // integrated summary halves at 900 with the main cell spanning both tracks,
+  // and becomes one column at 620.
+  assert.match(narrow(900), /\.readiness-summary \{[\s\S]*grid-template-columns:\s*1fr 1fr/, 'the readiness summary does not halve')
+  assert.match(narrow(900), /\.readiness-summary \.summary-main \{[\s\S]*grid-column:\s*1 \/ -1/, 'and its main cell does not span the row')
+  assert.match(narrow(620), /\.readiness-summary \{[\s\S]*grid-template-columns:\s*1fr/, 'the readiness summary does not become one column')
   // The Plan row collapses at the pack's own breakpoint: four zones become two,
   // and who and when drop under the state and the title rather than being
   // squeezed into slivers of one line (task 033).
@@ -624,14 +633,36 @@ test('the narrow layouts collapse rather than compress', () => {
 // ------------------------------------------------ G. table semantics at any width
 
 test('a data table stays a table, and its labels are DOM structure rather than CSS content', () => {
-  assert.match(dataTable, /<table className="datatable">/)
+  assert.match(dataTable, /<table className=\{`datatable/, 'the element is still a table')
   assert.match(dataTable, /<th\n\s+key=\{c\.key\}\n\s+scope="col"/, 'a column header is a column header')
   assert.doesNotMatch(dataTable, /role=\{c\.sortValue \? 'button' : undefined\}/, 'the header role is not replaced by the sort control')
   assert.match(dataTable, /aria-sort=/)
   // Nothing turns a cell's label into pseudo-content, which no screen reader
-  // reads: there is one table at every width, and it scrolls if it must.
+  // reads. MFA Readiness stacks its rows below the approved pack's breakpoint
+  // (task 037), and the label it shows there is a real element with real text.
   assert.doesNotMatch(css, /td::before\s*\{[^}]*content:\s*attr\(/)
   assert.doesNotMatch(css, /data-label/)
+  assert.doesNotMatch(css, /\.cell-key::before\s*\{[^}]*content:/, "the stacked cell's key is text, not generated content")
+  assert.match(dataTable, /<span className="cell-key key-label" aria-hidden="true">\n\s+\{c\.header\}/, 'the stacked label is a real element carrying the column header')
+  // A CSS `display` that stops being `table` takes the table's semantics with
+  // it, so a stacked table restates them: the head/cell relationship a screen
+  // reader announces is what makes the visible key safe to hide from it.
+  for (const [el, role] of [
+    ['table className', 'table'],
+    ['thead', 'rowgroup'],
+    ['tbody', 'rowgroup'],
+    ['th', 'columnheader'],
+    ['td', 'cell'],
+  ] as const) {
+    void el
+    assert.match(dataTable, new RegExp(`role=\\{stacked \\? '${role}' : undefined\\}`), `a stacked table does not restate its ${role} role`)
+  }
+  // The head goes out of sight and stays in the accessibility tree: it is the
+  // element the stacked cell is still associated with.
+  const stacked = css.match(/@media \(max-width: 900px\) \{[\s\S]*?\n\}/g)?.join('\n') ?? ''
+  assert.match(stacked, /table\.datatable thead \{[\s\S]*clip-path:\s*inset\(50%\)/, 'the stacked head is hidden by display:none rather than clipped')
+  assert.doesNotMatch(stacked, /table\.datatable thead \{[\s\S]*display:\s*none/)
+  assert.match(stacked, /\.surface\.readiness \.cell-key \{[\s\S]*display:\s*block/, 'the stacked cell key never becomes visible')
 })
 
 // --------------------------------------------------------- H. Plan authority kept

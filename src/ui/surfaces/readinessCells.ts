@@ -27,8 +27,9 @@ import type { ShowKey } from '../../derive/mfaReadiness.ts'
 type ReadinessWords = {
   ledger: { lead: string } & Record<'active' | 'notActive' | Kind, string>
   show: Record<string, string>
-  groups: Record<ReadinessGroup, { title: string; tip: string; next: string }>
+  groups: Record<ReadinessGroup, { title: string; tip: string; hint: string; next: string }>
   kinds: Record<Kind, string>
+  roles: { admin: string; person: string }
   notAPerson: string
   methods: Record<MethodWord, string>
   evidence: { windowsHello: string; phones: string; phonesSome: string; noPhones: string; lastSignIn: string }
@@ -75,9 +76,22 @@ export function rungWords(rung: Rung): { title: string; tip: string; desc: strin
 /** The ladder's header words. */
 export const ladderWords = { header: L.header, of: (n: number): string => fillText(L.of, { n }), prioritise: L.prioritise }
 
-/** A group's words: the title the page and the table show, what it means, and the state that would clear it. */
-export function groupWords(g: ReadinessGroup): { title: string; tip: string; next: string } {
+/** A group's words: the title the page and the table show, what it means, the summary panel's one-line hint, and the state that would clear it. */
+export function groupWords(g: ReadinessGroup): { title: string; tip: string; hint: string; next: string } {
   return T.groups[g]
+}
+
+/**
+ * The Role cell (task 037): the account's own kind where it is not a person,
+ * Admin where the directory gives it a role, Person otherwise.
+ *
+ * `r.admin` is roles.ts's answer, already made in derive/mfaReadiness.ts — this
+ * chooses a word for it and reads nothing else. The word is the whole meaning:
+ * the approved pack tints an admin, and a tint is never what says so.
+ */
+export function roleWord(r: ReadinessRow): string {
+  if (r.kind !== 'person') return kindWord(r.kind)
+  return r.admin ? T.roles.admin : T.roles.person
 }
 
 /** The readiness cell's word: the group's title for an active person, Not active, or not a person. */

@@ -163,7 +163,7 @@ export function inventoryTables(snapshot: TenantSnapshot, groups: GroupMembers =
 // page's own Export CSV writes what is on screen, which is the filtered set).
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { pages } from '../../content/content.ts'
-import { methodWord, nextStateWord, readinessWord, rowEvidenceText } from './readinessCells.ts'
+import { methodWord, nextStateWord, readinessWord, roleWord, rowEvidenceText } from './readinessCells.ts'
 export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] } = { breakGlassUserIds: [], serviceAccountUserIds: [] }): InventoryTable {
   // The same cells the MFA Readiness table renders (readinessCells.ts): a row's CSV equals its screen.
   const view = readinessView(snapshot, snapshot.asOf, mapping)
@@ -172,7 +172,7 @@ export function readinessTable(snapshot: TenantSnapshot, mapping: { breakGlassUs
     label: 'MFA Readiness',
     csvName: READINESS_CSV,
     header: [...(pages.readiness as { columns: string[] }).columns],
-    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, readinessWord(r), methodWord(r.method), rowEvidenceText(r), nextStateWord(r)]),
+    rows: view.rows.map((r) => [r.user.displayName ?? r.user.userPrincipalName ?? r.user.id, roleWord(r), methodWord(r.method), rowEvidenceText(r), readinessWord(r), nextStateWord(r)]),
   }
 }
 
