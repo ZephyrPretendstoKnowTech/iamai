@@ -44,10 +44,10 @@ const SHELL = read('src/ui/shell/AppShell.tsx')
 
 /** The four owner-approved packs, by surface. */
 const PACKS = {
-  home: 'docs/design/approved/home-v2.html',
-  connect: 'docs/design/approved/connect-v3.html',
-  plan: 'docs/design/approved/plan-step-v1.html',
-  mfa: 'docs/design/approved/mfa-readiness-v2.html',
+  home: 'docs/design/approved/anatomy/home-v2.html',
+  connect: 'docs/design/approved/anatomy/connect-v3.html',
+  plan: 'docs/design/approved/anatomy/plan-step-v1.html',
+  mfa: 'docs/design/approved/anatomy/mfa-readiness-v2.html',
 } as const
 
 /** Every `max-width` a stylesheet turns at, in descending order. */

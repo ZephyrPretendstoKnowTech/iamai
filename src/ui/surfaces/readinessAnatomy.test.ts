@@ -4,7 +4,7 @@
 // different authorities.
 //
 //   Does production have the SHAPE the owner approved? Every structural
-//   assertion is two-sided: it reads `docs/design/approved/mfa-readiness-v2.html`
+//   assertion is two-sided: it reads `docs/design/approved/anatomy/mfa-readiness-v2.html`
 //   at test time and fails if the pack stops drawing the thing production claims
 //   to have restored, and it reads production and fails if production stops
 //   drawing it.
@@ -38,7 +38,7 @@ import { pages } from '../../content/content.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
-const PACK = 'docs/design/approved/mfa-readiness-v2.html'
+const PACK = 'docs/design/approved/anatomy/mfa-readiness-v2.html'
 const SURFACE = read('src/ui/surfaces/MfaReadiness.tsx')
 const CELLS = read('src/ui/surfaces/readinessCells.ts')
 const TABLE = read('src/ui/components/DataTable.tsx')

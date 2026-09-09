@@ -212,7 +212,7 @@ export function ContentStep({
 
   return (
     // The opened step, as the approved Plan pack draws it (task 034;
-    // docs/design/approved/plan-step-v1.html `.step`): one frame attached under
+    // docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached under
     // the roadmap row that opened it — the row is its top edge, so the frame
     // carries no top border of its own and rounds off only the bottom — with the
     // head above and the main column and its right rail below.
@@ -247,7 +247,7 @@ export function ContentStep({
       {conflictWords && (
         <section className="step-section">
           {/* The pack's attention panel at its danger weight
-              (`docs/design/approved/plan-step-v1.html` `.attention.danger`,
+              (`docs/design/approved/anatomy/plan-step-v1.html` `.attention.danger`,
               "Do not deploy this policy from the current baseline"), which is
               the shared `.callout` role task 031 built. It stays at the top of
               the step, above Why: the pack's own conflict variant has nothing
@@ -318,7 +318,7 @@ export function ContentStep({
               selectable and say what they are waiting on, because withholding
               the tab would hide the reason. */}
           {/* The pack's action strip over the instruction block it labels
-              (`docs/design/approved/plan-step-v1.html` `.action-tabs` over
+              (`docs/design/approved/anatomy/plan-step-v1.html` `.action-tabs` over
               `.instruction`): the three channels read as one control, and what
               they select sits in a panel of its own rather than loose on the
               page. It is the shared `TabList` wearing the Plan's own strip
@@ -628,7 +628,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
         ))}
       </StepSection>
       {/* The pack draws the disclosure as a two-column grid of small cards at
-          the wider widths (`docs/design/approved/plan-step-v1.html`
+          the wider widths (`docs/design/approved/anatomy/plan-step-v1.html`
           `.more-grid` / `.more-card`), and its own sample cards are these two:
           what could go wrong, and the way back. Production already writes both
           in that shape, so they take the grid. Nothing is invented to fill a

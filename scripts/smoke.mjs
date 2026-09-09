@@ -297,7 +297,7 @@ try {
   await go('connect')
   await sleep(600)
   t = await text()
-  // Connect as the approved staged flow and its Plan destination (docs/design/approved/connect-v3.html).
+  // Connect as the approved staged flow and its Plan destination (docs/design/approved/anatomy/connect-v3.html).
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+selected/.test(t) && /synthetic baseline/.test(t) && /1 polic(y|ies) · uploaded package/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
   // Tile 4 (task 016): the Plan is the destination — the counted state, one line of what was built, and one way on. No facts row, no readiness ladder, and nothing on the page routing to MFA Readiness ahead of the plan. The tile's own text, since the header tab is named MFA Readiness.

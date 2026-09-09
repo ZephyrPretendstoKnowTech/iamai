@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- IAMAI current approved comparison reference, 2026-09-09. Surface: mfa-readiness. Canonical HTML owns application anatomy; this reference applies the current approved visual skin only. Light theme remains Mineral Teal. Dark theme is Blue Slate. Typography is IBM Plex. Logo is Threshold. Copy shown here is anatomy-example copy, not copy authority; production copy authority is docs/design/content.json. -->
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IAMAI MFA Readiness Design Pack v2</title>
+<style>
+:root{
+  --canvas:#0D1117;
+  --surface:#151C25;
+  --secondary-surface:#111821;
+  --line:#2B3745;
+  --strong-line:#39495A;
+  --primary-text:#F2F5F7;
+  --secondary-text:#C7D0D8;
+  --muted-text:#8F9AA6;
+  --quiet-text:#8F9AA6;
+  --brand-primary:#58C8BC;
+  --brand-secondary:#78D9CE;
+  --brand-soft:#173A3D;
+  --brand-soft-text:#DFFFF9;
+  --success:#79D7A6;
+  --attention:#E3B35B;
+  --danger:#E88A8A;
+  --admin:#B9A7FF;
+  --code-surface:#0A0F15;
+  /* Derived aliases: no new brand hues. */
+  --raised-surface:#1A2430;
+  --focus-ring:#78D9CE;
+  --idle:#8F9AA6;
+  --brand-subtle:var(--brand-subtle);
+  --brand-border-soft:var(--brand-border-soft);
+  --brand-border:var(--brand-border);
+  --success-soft:#1A2928;
+  --attention-soft:#27241F;
+  --danger-soft:#272025;
+  --admin-soft:#222333;
+
+  /* Compatibility names used by the approved anatomy. */
+  --bg:var(--canvas);
+  --panel:var(--surface);
+  --panel2:var(--secondary-surface);
+  --line2:var(--strong-line);
+  --text:var(--primary-text);
+  --muted:var(--quiet-text);
+  --muted2:var(--muted-text);
+  --accent:var(--brand-primary);
+  --good:var(--success);
+  --warn:var(--attention);
+  
+  --chip:var(--secondary-surface);
+  --violet:var(--admin);
+  --shadow:0 18px 45px rgba(0,0,0,.32);
+
+  --font-display:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --font-interface:"IBM Plex Sans",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-technical:"IBM Plex Mono","Cascadia Code",Consolas,monospace;
+  --radius-compact:4px;
+  --radius-control:8px;
+  --radius-panel:12px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;color:var(--text);
+  background:var(--bg);
+  font:14px/1.5 var(--font-interface)
+}
+a{color:var(--accent);text-decoration:none}
+button,input{font:inherit}
+.page{width:min(1200px,calc(100% - 40px));margin:0 auto 70px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.mark{display:none}
+.nav{display:flex;gap:6px}
+.nav span{padding:6px 9px;border-radius:6px;color:var(--muted);font-size:12px}
+.nav .active{color:var(--text);background:var(--surface)}
+.meta{display:flex;gap:10px;color:var(--muted);font-size:12px}
+
+main{padding-top:38px}
+.eyebrow{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.11em;font-weight:700}
+h1{font:700 38px/1.08 var(--font-display);margin:7px 0 8px}
+.intro{color:var(--secondary-text);font-size:16px;margin:0;max-width:760px}
+
+.summary{
+  margin-top:28px;
+  display:grid;
+  grid-template-columns:minmax(0,1.8fr) repeat(3,minmax(120px,.65fr));
+  border:1px solid var(--line);
+  border-radius:12px;
+  overflow:hidden;
+  background:var(--panel)
+}
+.summary-main,.summary-stat{padding:18px 20px}
+.summary-stat{border-left:1px solid var(--line)}
+.summary-main .headline{font:700 24px/1.15 var(--font-display);margin:2px 0 5px}
+.summary-main .sub{color:var(--muted);font-size:13px}
+.summary-stat .n{font:700 28px/1 var(--font-display);margin-bottom:7px}
+.summary-stat .k{font-size:12px;color:var(--secondary-text)}
+.summary-stat .hint{font-size:11px;color:var(--muted);margin-top:3px}
+
+.callout{
+  margin-top:14px;
+  display:flex;justify-content:space-between;gap:16px;align-items:center;
+  padding:11px 13px;border:1px solid rgba(227,179,91,.28);
+  background:rgba(227,179,91,.045);border-radius:9px
+}
+.callout strong{font-size:13px;color:var(--attention)}
+.callout span{color:var(--secondary-text);font-size:12px}
+
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:24px}
+.search{
+  min-width:260px;flex:1;padding:10px 11px;border:1px solid var(--line2);
+  border-radius:8px;background:var(--code-surface);color:var(--text)
+}
+.filter{
+  padding:8px 10px;border:1px solid var(--line2);border-radius:999px;
+  background:var(--secondary-surface);color:var(--muted);font-size:12px
+}
+.filter.active{color:var(--text);border-color:rgba(89,199,183,.48);background:rgba(89,199,183,.06)}
+
+.table-wrap{margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.table-head,.row{
+  display:grid;
+  grid-template-columns:minmax(210px,1.5fr) 100px minmax(150px,1fr) minmax(130px,.9fr) 150px 135px;
+  gap:14px;align-items:center
+}
+.table-head{
+  padding:11px 16px;background:var(--panel2);color:var(--muted);
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:700
+}
+.row{padding:14px 16px;border-top:1px solid var(--line)}
+.person strong{display:block;margin-bottom:2px}
+.person span{display:block;color:var(--muted);font-size:12px}
+.role{font-size:12px;color:var(--secondary-text)}
+.admin{color:var(--violet)}
+.proof{font-size:12px;color:var(--secondary-text)}
+.status{
+  display:inline-flex;align-items:center;gap:7px;width:max-content;
+  padding:5px 8px;border:1px solid var(--line2);border-radius:999px;font-size:11px
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted2)}
+.ready .dot{background:var(--good)}
+.prove .dot{background:var(--warn)}
+.setup .dot{background:var(--danger)}
+.action{font-size:12px}
+.action a{white-space:nowrap}
+
+.footer-note{
+  display:flex;justify-content:space-between;gap:14px;align-items:center;
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:12px
+}
+
+@media(max-width:900px){
+  .summary{grid-template-columns:1fr 1fr}
+  .summary-main{grid-column:1/-1}
+  .summary-stat:nth-child(3){border-left:1px solid var(--line)}
+  .summary-stat{border-top:1px solid var(--line)}
+  .table-head{display:none}
+  .row{grid-template-columns:1fr;gap:8px}
+  .row>div::before{
+    display:block;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px
+  }
+  .row>div:nth-child(1)::before{content:"Person"}
+  .row>div:nth-child(2)::before{content:"Role"}
+  .row>div:nth-child(3)::before{content:"Strongest method"}
+  .row>div:nth-child(4)::before{content:"Proof"}
+  .row>div:nth-child(5)::before{content:"Readiness"}
+  .row>div:nth-child(6)::before{content:"Action"}
+}
+@media(max-width:620px){
+  .page{width:min(100% - 24px,1200px)}
+  .nav{display:none}.meta{display:none}
+  h1{font-size:31px}
+  .summary{grid-template-columns:1fr}
+  .summary-main{grid-column:auto}
+  .summary-stat{border-left:0;border-top:1px solid var(--line)}
+  .callout{align-items:flex-start;flex-direction:column}
+}
+
+
+/* Task-029/030 approved brand skin applied without changing page anatomy. */
+.brand{gap:6px;font-family:var(--font-interface);font-weight:700;letter-spacing:.005em}
+.brand-mark-svg{width:20px;height:20px;display:block;flex:0 0 auto;color:var(--brand-primary)}
+button,input,select,textarea{font-family:var(--font-interface)}
+.btn{border-radius:var(--radius-control)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+
+.summary,.table-wrap{border-radius:var(--radius-panel)}
+.callout,.search{border-radius:var(--radius-control)}
+
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <div class="brand"><svg class="brand-mark-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true" focusable="false">
+  <path d="M0 22 L31 30 L31 90 L0 100 Z"/>
+  <path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/>
+</svg>IAMAI</div>
+    <div class="nav">
+      <span>Connect</span>
+      <span>Plan</span>
+      <span class="active">MFA Readiness</span>
+      <span>Export</span>
+      <span>How</span>
+    </div>
+    <div class="meta"><span>Contoso</span><span>Scanned 8 min ago</span></div>
+  </header>
+
+  <main>
+    <div class="eyebrow">Tenant evidence</div>
+    <h1>MFA Readiness</h1>
+    <p class="intro">See who is ready for passkeys, who needs proof, and who still needs setup.</p>
+
+    <section class="summary">
+      <div class="summary-main">
+        <div class="eyebrow">Active people</div>
+        <div class="headline">11 of 18 are passkey-ready.</div>
+        <div class="sub">4 need action. 3 are on a weaker method but are not blocking the current Plan.</div>
+      </div>
+
+      <div class="summary-stat">
+        <div class="n">11</div>
+        <div class="k">Passkey-ready</div>
+        <div class="hint">Proven passkey or security key</div>
+      </div>
+
+      <div class="summary-stat">
+        <div class="n">2</div>
+        <div class="k">Need proof</div>
+        <div class="hint">Strong method is configured</div>
+      </div>
+
+      <div class="summary-stat">
+        <div class="n">2</div>
+        <div class="k">Need setup</div>
+        <div class="hint">No passkey-level method</div>
+      </div>
+    </section>
+
+    <div class="callout">
+      <div>
+        <strong>Current Plan dependency</strong>
+        <span>4 people need action before the next stronger-authentication step can advance.</span>
+      </div>
+      <a href="#">View related Plan step →</a>
+    </div>
+
+    <div class="toolbar">
+      <input class="search" aria-label="Search" placeholder="Search people or methods">
+      <button class="filter active">Needs action</button>
+      <button class="filter">Needs setup</button>
+      <button class="filter">Needs proof</button>
+      <button class="filter">Admins</button>
+      <button class="filter">Ready</button>
+      <button class="filter">Non-people</button>
+    </div>
+
+    <section class="table-wrap">
+      <div class="table-head">
+        <div>Person</div>
+        <div>Role</div>
+        <div>Strongest method</div>
+        <div>Proof</div>
+        <div>Readiness</div>
+        <div>Action</div>
+      </div>
+
+      <div class="row">
+        <div class="person"><strong>Alex Wilkins</strong><span>alex@contoso.com</span></div>
+        <div class="role admin">Admin</div>
+        <div>Passkey</div>
+        <div class="proof">Used today</div>
+        <div><span class="status ready"><span class="dot"></span>Ready</span></div>
+        <div class="action">—</div>
+      </div>
+
+      <div class="row">
+        <div class="person"><strong>Priya Shah</strong><span>priya@contoso.com</span></div>
+        <div class="role admin">Admin</div>
+        <div>Passkey</div>
+        <div class="proof">Not yet proven</div>
+        <div><span class="status prove"><span class="dot"></span>Needs proof</span></div>
+        <div class="action"><a href="#">Test passkey →</a></div>
+      </div>
+
+      <div class="row">
+        <div class="person"><strong>Morgan Reed</strong><span>morgan@contoso.com</span></div>
+        <div class="role">User</div>
+        <div>Authenticator</div>
+        <div class="proof">Used yesterday</div>
+        <div><span class="status setup"><span class="dot"></span>Needs passkey</span></div>
+        <div class="action"><a href="#">Set up passkey →</a></div>
+      </div>
+
+      <div class="row">
+        <div class="person"><strong>Jordan Lee</strong><span>jordan@contoso.com</span></div>
+        <div class="role">User</div>
+        <div>None</div>
+        <div class="proof">—</div>
+        <div><span class="status setup"><span class="dot"></span>Needs passkey</span></div>
+        <div class="action"><a href="#">Set up passkey →</a></div>
+      </div>
+    </section>
+
+    <div class="footer-note">
+      <span>Emergency-access and non-person accounts stay visible, but do not count toward active-person passkey readiness.</span>
+      <a href="#">Export filtered list →</a>
+    </div>
+  </main>
+</div>
+</body>
+</html>

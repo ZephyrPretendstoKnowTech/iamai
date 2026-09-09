@@ -19,7 +19,7 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
-import { MASTER, MARK_COLORS, RASTER, derived, geometry, tinted } from './brandDerive.ts'
+import { MASTER, MARK_COLORS, RASTER, derived, geometry, tinted, viewBox } from './brandDerive.ts'
 
 const root = resolve(import.meta.dirname, '..')
 const at = (p) => resolve(root, p)
@@ -142,8 +142,9 @@ if (wantEvidence) {
   // The sheet draws the committed master, so the evidence cannot show a mark
   // the repository does not hold.
   const inner = geometry(master)
+  const box = viewBox(master)
   const mark = (size, color) =>
-    `<svg width="${size}" height="${size}" viewBox="0 0 64 64" style="color:${color};display:block">${inner}</svg>`
+    `<svg width="${size}" height="${size}" viewBox="${box}" style="color:${color};display:block">${inner}</svg>`
   const icon = (size) =>
     `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:${(size * 0.22).toFixed(1)}px;background:#0C6A64">${mark(size * 0.86, '#FFFDF9')}</span>`
   const SIZES = [16, 24, 32, 64]
@@ -168,11 +169,11 @@ if (wantEvidence) {
   const lockRow = (color, fg) =>
     `<div class="row"><span class="cap">lockup 28px</span><span class="lock" style="color:${fg}">${mark(28, color)}<span>IAMAI</span></span></div>`
 
-  const light = scratch('evidence-light.html', shell('Guided Route — light canvas #F7F4EE', '#F7F4EE', '#1D2528',
+  const light = scratch('evidence-light.html', shell('Threshold — light canvas #F7F4EE', '#F7F4EE', '#1D2528',
     sizeRow('mark 16/24/32/64', '#0C6A64') + iconRow + lockRow('#0C6A64', '#1D2528') + sizeRow('monochrome ink', '#1D2528')))
-  const dark = scratch('evidence-dark.html', shell('Guided Route — dark canvas #0E1516', '#0E1516', '#F0F4F2',
-    sizeRow('mark 16/24/32/64', '#59C7B7') + iconRow + lockRow('#59C7B7', '#F0F4F2') + sizeRow('monochrome light', '#FFFDF9')))
-  const clear = scratch('evidence-transparent.html', shell('Guided Route — transparent background', 'transparent', '#1D2528',
+  const dark = scratch('evidence-dark.html', shell('Threshold — dark canvas #0D1117', '#0D1117', '#F2F5F7',
+    sizeRow('mark 16/24/32/64', '#58C8BC') + iconRow + lockRow('#58C8BC', '#F2F5F7') + sizeRow('monochrome light', '#FFFDF9')))
+  const clear = scratch('evidence-transparent.html', shell('Threshold — transparent background', 'transparent', '#1D2528',
     `<div class="check" style="padding:16px;display:inline-block">${sizeRow('mark 16/24/32/64', '#0C6A64')}${sizeRow('monochrome ink', '#1D2528')}</div>`))
 
   await shoot(light, 'docs/screens/29/mark-light.png', 560, 400)

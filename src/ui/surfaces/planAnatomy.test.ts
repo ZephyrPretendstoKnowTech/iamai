@@ -1,7 +1,7 @@
 // Task 033 — the approved Plan collapsed roadmap row; task 034 — the expanded frame.
 //
 // The same two-sided shape as src/ui/surfaces/connectAnatomy.test.ts (task
-// 032): every assertion reads `docs/design/approved/plan-step-v1.html` at test
+// 032): every assertion reads `docs/design/approved/anatomy/plan-step-v1.html` at test
 // time and fails if the pack stops drawing what production claims to have
 // restored, and reads production and fails if production stops drawing it. A
 // green unit test that only knows about production can pass while the two
@@ -39,7 +39,7 @@ import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
-const PACK = 'docs/design/approved/plan-step-v1.html'
+const PACK = 'docs/design/approved/anatomy/plan-step-v1.html'
 const SECTIONS = read('src/ui/surfaces/StepSections.tsx')
 const PLAN = read('src/ui/surfaces/Plan.tsx')
 const CSS = read('src/ui/app.css')

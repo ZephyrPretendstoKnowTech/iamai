@@ -3,7 +3,7 @@
 // approved composition restored by task 038).
 //
 // The composition below is the owner's approved Home design,
-// docs/design/approved/home-v2.html, recorded in
+// docs/design/approved/anatomy/home-v2.html, recorded in
 // docs/design/approved/manifest.json. That file owns the anatomy — the public
 // header, the hero and its meta row, the two-column product section with its
 // side rail, the Reads / Compares / Plans rows, the label-and-explanation
@@ -211,7 +211,7 @@ export function renderHomeHtml(): string {
     <meta property="og:url" content="https://getiamai.com/" />
     <meta property="og:image" content="https://getiamai.com/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <!-- The Guided Route app icon (task 029). One master, src/brand/logo/iamai-guided-route-master.svg,
+    <!-- The Threshold app icon (task 029). One master, src/brand/logo/iamai-threshold-master.svg,
          derived by scripts/gen-brand.mjs into public/brand/ and published at the site root by
          scripts/assemble-site.mjs. What was here before was a placeholder drawn inline. -->
     <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
@@ -226,7 +226,7 @@ export function renderHomeHtml(): string {
          planner's shell and carries no signed-in state — no tabs, no Account. -->
     <header class="app">
       <a class="wordmark" href="/">
-        <svg width="20" height="20" viewBox="${MARK_VIEWBOX}" aria-hidden="true" focusable="false">${MARK_GEOMETRY}</svg>
+        <svg width="20" height="20" viewBox="${MARK_VIEWBOX}" fill="currentColor" aria-hidden="true" focusable="false">${MARK_GEOMETRY}</svg>
         ${esc(h.brand)}
       </a>
       <div class="right">

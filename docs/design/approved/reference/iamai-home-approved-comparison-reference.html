@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- IAMAI current approved comparison reference, 2026-09-09. Surface: home. Canonical HTML owns application anatomy; this reference applies the current approved visual skin only. Light theme remains Mineral Teal. Dark theme is Blue Slate. Typography is IBM Plex. Logo is Threshold. Copy shown here is anatomy-example copy, not copy authority; production copy authority is docs/design/content.json. -->
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IAMAI Home Design Pack v2</title>
+<style>
+:root{
+  --canvas:#0D1117;
+  --surface:#151C25;
+  --secondary-surface:#111821;
+  --line:#2B3745;
+  --strong-line:#39495A;
+  --primary-text:#F2F5F7;
+  --secondary-text:#C7D0D8;
+  --muted-text:#8F9AA6;
+  --quiet-text:#8F9AA6;
+  --brand-primary:#58C8BC;
+  --brand-secondary:#78D9CE;
+  --brand-soft:#173A3D;
+  --brand-soft-text:#DFFFF9;
+  --success:#79D7A6;
+  --attention:#E3B35B;
+  --danger:#E88A8A;
+  --admin:#B9A7FF;
+  --code-surface:#0A0F15;
+  /* Derived aliases: no new brand hues. */
+  --raised-surface:#1A2430;
+  --focus-ring:#78D9CE;
+  --idle:#8F9AA6;
+  --brand-subtle:var(--brand-subtle);
+  --brand-border-soft:var(--brand-border-soft);
+  --brand-border:var(--brand-border);
+  --success-soft:#1A2928;
+  --attention-soft:#27241F;
+  --danger-soft:#272025;
+  --admin-soft:#222333;
+
+  /* Compatibility names used by the approved anatomy. */
+  --bg:var(--canvas);
+  --panel:var(--surface);
+  --panel2:var(--secondary-surface);
+  --line2:var(--strong-line);
+  --text:var(--primary-text);
+  --muted:var(--quiet-text);
+  --muted2:var(--muted-text);
+  --accent:var(--brand-primary);
+  --good:var(--success);
+  --warn:var(--attention);
+  
+  --chip:var(--secondary-surface);
+  --violet:var(--admin);
+  --shadow:0 18px 45px rgba(0,0,0,.32);
+
+  --font-display:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --font-interface:"IBM Plex Sans",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-technical:"IBM Plex Mono","Cascadia Code",Consolas,monospace;
+  --radius-compact:4px;
+  --radius-control:8px;
+  --radius-panel:12px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;color:var(--text);background:var(--bg);
+  font:14px/1.55 var(--font-interface)
+}
+a{color:var(--accent);text-decoration:none}
+.wrap{width:min(1040px,calc(100% - 40px));margin:0 auto}
+header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:17px 0;border-bottom:1px solid var(--line)
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.mark{display:none}
+.links{display:flex;gap:18px;font-size:12px}
+.links a{color:var(--muted)}
+.links a:last-child{color:var(--accent)}
+
+main{padding-bottom:54px}
+.hero{padding:76px 0 58px;max-width:900px}
+.eyebrow{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.11em;font-weight:700}
+h1{font:700 50px/1.05 var(--font-display);margin:9px 0 16px;max-width:900px}
+.hero p{font-size:18px;color:var(--secondary-text);max-width:790px;margin:0}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:10px 14px;border-radius:8px;border:1px solid var(--line);
+  color:var(--primary-text);background:transparent;font-size:13px
+}
+.btn.primary{border-color:var(--brand-primary);background:var(--brand-soft);color:var(--brand-soft-text)}
+.meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:15px;color:var(--muted);font-size:12px}
+
+.rule{border-top:1px solid var(--line)}
+.section{padding:42px 0}
+.section h2{font:700 29px/1.15 var(--font-display);margin:5px 0 18px}
+
+.product{
+  display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.8fr);
+  gap:36px;align-items:start
+}
+.product h3{font:700 25px/1.15 var(--font-display);margin:5px 0 10px}
+.product p{margin:0;color:var(--secondary-text);max-width:650px}
+.steps{display:grid;gap:13px;margin-top:22px}
+.step{display:grid;grid-template-columns:78px 1fr;gap:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.06)}
+.step:first-child{padding-top:0;border-top:0}
+.step strong{font-weight:600}
+.step span{color:var(--muted)}
+.side{
+  padding-left:24px;border-left:1px solid var(--line)
+}
+.side .label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.09em}
+.side strong{display:block;margin:6px 0 5px;font-size:15px}
+.side p{font-size:13px;color:var(--muted)}
+.side .small{margin-top:18px;font-size:12px;color:var(--muted)}
+
+.catches{display:grid;gap:12px;max-width:860px}
+.catch{display:grid;grid-template-columns:160px 1fr;gap:20px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+.catch:first-child{border-top:0;padding-top:0}
+.catch strong{font-weight:600}
+.catch span{color:var(--secondary-text)}
+
+.trust{
+  display:flex;gap:28px;flex-wrap:wrap;color:var(--muted);font-size:13px
+}
+.trust strong{color:var(--text);font-weight:600}
+.about{max-width:760px;color:var(--secondary-text)}
+.about p{margin:0}
+
+footer{
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  padding:22px 0 34px;border-top:1px solid var(--line);
+  color:var(--muted);font-size:11px
+}
+footer a{color:var(--muted)}
+
+@media(max-width:760px){
+  h1{font-size:39px}
+  .product{grid-template-columns:1fr}
+  .side{padding-left:0;padding-top:18px;border-left:0;border-top:1px solid var(--line)}
+  .catch{grid-template-columns:1fr;gap:5px}
+}
+@media(max-width:560px){
+  .wrap{width:min(100% - 24px,1040px)}
+  .links a:first-child{display:none}
+  .hero{padding:54px 0 44px}
+  h1{font-size:34px}
+  .hero p{font-size:16px}
+}
+
+
+/* Task-029/030 approved brand skin applied without changing page anatomy. */
+.brand{gap:6px;font-family:var(--font-interface);font-weight:700;letter-spacing:.005em}
+.brand-mark-svg{width:20px;height:20px;display:block;flex:0 0 auto;color:var(--brand-primary)}
+button,input,select,textarea{font-family:var(--font-interface)}
+.btn{border-radius:var(--radius-control)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+
+.btn{border-radius:var(--radius-control)}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><svg class="brand-mark-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true" focusable="false">
+  <path d="M0 22 L31 30 L31 90 L0 100 Z"/>
+  <path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/>
+</svg>IAMAI</div>
+    <div class="links">
+      <a href="#">How it works</a>
+      <a href="#">GitHub</a>
+      <a href="#">Open IAMAI →</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">Microsoft identity security</div>
+      <h1>Strengthen identity security without guessing what will break.</h1>
+      <p>IAMAI reads your Microsoft Entra tenant, compares it with a proven security baseline, and builds a safe, ordered plan to close the gaps.</p>
+      <div class="actions">
+        <a class="btn primary" href="#">Open IAMAI →</a>
+        <a class="btn" href="#">Try sample data</a>
+      </div>
+      <div class="meta">
+        <span>Read-only</span>
+        <span>Runs in your browser</span>
+        <span>Source is public</span>
+      </div>
+    </section>
+
+    <section class="section rule">
+      <div class="product">
+        <div>
+          <div class="eyebrow">IAMAI Planner</div>
+          <h3>From tenant scan to a plan you can execute.</h3>
+          <p>See what is already protected, what still needs work, who a change affects, and what to do before enforcement.</p>
+
+          <div class="steps">
+            <div class="step">
+              <strong>Reads</strong>
+              <span>Policies, people, sign-ins, roles, licences, and authentication methods.</span>
+            </div>
+            <div class="step">
+              <strong>Compares</strong>
+              <span>Your tenant with a reviewed identity-security baseline.</span>
+            </div>
+            <div class="step">
+              <strong>Plans</strong>
+              <span>The safest order to close the gaps.</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="side">
+          <div class="label">Default baseline</div>
+          <strong>Defense in Depth</strong>
+          <p>Built by Jon Hope, Microsoft MVP. A layered identity-security baseline for Microsoft Entra.</p>
+          <div class="small"><a href="#">Open IAMAI →</a></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section rule">
+      <div class="eyebrow">What it catches</div>
+      <h2>Problems worth finding before enforcement.</h2>
+      <div class="catches">
+        <div class="catch">
+          <strong>Authentication</strong>
+          <span>An admin who cannot satisfy the stronger sign-in method a policy will require.</span>
+        </div>
+        <div class="catch">
+          <strong>Emergency access</strong>
+          <span>A break-glass account included in a policy it must survive.</span>
+        </div>
+        <div class="catch">
+          <strong>Operational impact</strong>
+          <span>A service account, device, exclusion, or sign-in pattern that changes the safe rollout.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section rule">
+      <div class="eyebrow">Trust</div>
+      <h2>Inspect it before you connect a tenant.</h2>
+      <div class="trust">
+        <span><strong>Read-only.</strong> IAMAI cannot change tenant objects.</span>
+        <span><strong>Browser-only.</strong> Tenant data stays in your browser unless you export it.</span>
+        <span><strong>Public source.</strong> Review the code, permissions, checks, and limits.</span>
+      </div>
+    </section>
+
+    <section class="section rule">
+      <div class="eyebrow">About</div>
+      <h2>Built from Microsoft identity work.</h2>
+      <div class="about">
+        <p>IAMAI is built by Lachlan Robinette from hands-on work designing and deploying Microsoft Entra security baselines across MSP-managed tenants.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>IAMAI</span>
+    <span><a href="#">LinkedIn</a> · <a href="#">GitHub</a> · <a href="#">Feedback</a></span>
+  </footer>
+</div>
+</body>
+</html>

@@ -17,14 +17,15 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { APP_ICON, MARK_COLORS, MASTER, RASTER, derived, normalise } from '../../scripts/brandDerive.ts'
+import { APP_ICON, MARK_COLORS, MASTER, RASTER, derived, geometry, normalise } from '../../scripts/brandDerive.ts'
 import { BRAND_ROLES, DARK as TOKENS_DARK, LIGHT as TOKENS_LIGHT } from '../ui/tokens.ts'
 
 const MANIFEST = 'docs/brand/brand-manifest.json'
 const CONTRACT = 'docs/brand/iamai-brand-contract.md'
 const SYSTEM = 'docs/brand/iamai-brand-system.html'
 const PROVENANCE = 'docs/brand/font-provenance.md'
-const DECISIONS = 'docs/design/brand-decisions.md'
+/** The owner-approved geometry the production master is a copy of. */
+const APPROVED_MASTER = 'docs/design/approved/reference/iamai-threshold-master.svg'
 
 const read = (p: string) => normalise(readFileSync(p, 'utf8'))
 const manifest = () => JSON.parse(readFileSync(MANIFEST, 'utf8')) as Manifest
@@ -45,6 +46,17 @@ type Manifest = {
     wordmark: { text: string; family: string; weight: number; minimumMarkPx: number; descriptorUnderWordmark: boolean }
     assets: Record<string, string>
     assetColors: Record<string, string>
+    approvedReferenceMasterSha256: string
+    geometry: {
+      viewBox: string
+      leftPanelPath: string
+      rightPanelPath: string
+      columnWidth: number
+      doorwayInnerLeftX: number
+      doorwayInnerRightX: number
+      doorwayWidth: number
+      lintelTipX: number
+    }
   }
   palette: { light: Hexes; dark: Hexes }
   semantics: { brandPrimaryIsSuccess: boolean }
@@ -59,8 +71,9 @@ type Manifest = {
 /**
  * The owner's palette, written out here rather than read from the manifest: a
  * guard that took its expectations from the file it guards would pass on any
- * self-consistent rewrite. These are the values in the task 029 contract and in
- * docs/design/brand-decisions.md (task 028).
+ * self-consistent rewrite. Light is Mineral Teal, unchanged since task 029.
+ * Dark is Blue Slate, which replaced Deep Mineral; the current approved
+ * appearance is docs/design/approved/reference/.
  */
 const LIGHT: Hexes = {
   canvas: '#F7F4EE',
@@ -82,31 +95,31 @@ const LIGHT: Hexes = {
   codeSurface: '#EEEAE3',
 }
 const DARK: Hexes = {
-  canvas: '#0E1516',
-  surface: '#151F20',
-  secondarySurface: '#111A1B',
-  line: '#2A3737',
-  strongLine: '#3B4B4A',
-  primaryText: '#F0F4F2',
-  secondaryText: '#C4CECA',
-  mutedText: '#879693',
-  brandPrimary: '#59C7B7',
-  brandSecondary: '#7AD9CB',
-  brandSoft: '#173B37',
-  brandSoftText: '#D9FFF8',
+  canvas: '#0D1117',
+  surface: '#151C25',
+  secondarySurface: '#111821',
+  line: '#2B3745',
+  strongLine: '#39495A',
+  primaryText: '#F2F5F7',
+  secondaryText: '#C7D0D8',
+  mutedText: '#8F9AA6',
+  brandPrimary: '#58C8BC',
+  brandSecondary: '#78D9CE',
+  brandSoft: '#173A3D',
+  brandSoftText: '#DFFFF9',
   success: '#79D7A6',
   attention: '#E3B35B',
   danger: '#E88A8A',
   admin: '#B9A7FF',
-  codeSurface: '#0A1112',
+  codeSurface: '#0A0F15',
 }
 
 /** Task 028's four approved application authorities, by name and by bytes. */
 const APPROVED = [
-  { surface: 'home', path: 'docs/design/approved/home-v2.html', sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50' },
-  { surface: 'connect', path: 'docs/design/approved/connect-v3.html', sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b' },
-  { surface: 'plan', path: 'docs/design/approved/plan-step-v1.html', sha256: '1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec' },
-  { surface: 'mfa-readiness', path: 'docs/design/approved/mfa-readiness-v2.html', sha256: '12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512' },
+  { surface: 'home', path: 'docs/design/approved/anatomy/home-v2.html', sha256: '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50' },
+  { surface: 'connect', path: 'docs/design/approved/anatomy/connect-v3.html', sha256: '903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b' },
+  { surface: 'plan', path: 'docs/design/approved/anatomy/plan-step-v1.html', sha256: '1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec' },
+  { surface: 'mfa-readiness', path: 'docs/design/approved/anatomy/mfa-readiness-v2.html', sha256: '12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512' },
 ] as const
 
 /** Lines generated while exploring the brand. None of them is IAMAI's. */
@@ -121,10 +134,16 @@ const NOT_TAGLINES = [
 
 // ---------------------------------------------------------------- the master
 
-test('brand: the master mark is where the manifest says, on the 64 grid', () => {
+test('brand: the master mark is where the manifest says, on the 100 grid, and is the approved bytes', () => {
   assert.ok(existsSync(MASTER), `${MASTER} is missing: the brand has no master`)
   assert.equal(manifest().logo.master, MASTER)
-  assert.match(master(), /viewBox="0 0 64 64"/, 'the master is drawn on a 0 0 64 64 grid')
+  assert.match(master(), /viewBox="0 0 100 100"/, 'the master is drawn on a 0 0 100 100 grid')
+  // The mark is INSTALLED from the owner's approved reference, never redrawn:
+  // an approximation drawn by eye is the one failure this whole file exists to
+  // stop, and it is exactly what a prose description of a logo invites.
+  assert.equal(read(MASTER), read(APPROVED_MASTER), `${MASTER} is not byte-for-byte ${APPROVED_MASTER}`)
+  const sha = createHash('sha256').update(readFileSync(APPROVED_MASTER)).digest('hex')
+  assert.equal(manifest().logo.approvedReferenceMasterSha256, sha, 'the manifest records a different hash for the approved master')
 })
 
 test('brand: the master carries nothing but vector geometry', () => {
@@ -153,11 +172,15 @@ test('brand: the master carries nothing but vector geometry', () => {
 
 test('brand: the master carries no wordmark and no tagline', () => {
   const svg = master()
-  for (const re of [/<text\b/i, /<tspan\b/i, /<title\b/i, /<desc\b/i]) {
+  for (const re of [/<text\b/i, /<tspan\b/i]) {
     assert.doesNotMatch(svg, re, 'the mark is geometry; the wordmark is live text set beside it')
   }
-  // Nothing between the tags but tags: no stray text node.
-  assert.equal(svg.replace(/<[^>]*>/g, '').trim(), '', 'the master renders no text')
+  // <title> and <desc> name the file for anyone who opens it on its own. They
+  // are not a wordmark and not a tagline, and they never reach the interface:
+  // scripts/brandDerive.ts strips them from the geometry the shell draws.
+  assert.doesNotMatch(geometry(svg), /<title\b|<desc\b/i, 'the drawn geometry carries no metadata element')
+  const words = svg.replace(/<(title|desc)\b[\s\S]*?<\/\1>/g, '').replace(/<[^>]*>/g, '').trim()
+  assert.equal(words, '', 'the master renders no text of its own')
 })
 
 test('brand: the master is one colour source, and that source is themeable', () => {
@@ -167,19 +190,39 @@ test('brand: the master is one colour source, and that source is themeable', () 
   assert.deepEqual(literals, [], 'the master hard-codes no colour; the derivatives carry the values')
 })
 
-test('brand: the mark still has its topology — frame, route, arrow, origin, waypoint', () => {
+test('brand: the mark still has its topology — two equal panels and the lintel overhang', () => {
   // Optical refinement is expected and allowed; a redesign is not. If this
   // fails because the mark genuinely changed family or shape, the manifest's
   // logo.version has to move with it.
   const svg = master()
-  assert.equal([...svg.matchAll(/<path\b/g)].length, 3, 'frame, route, arrow: three paths')
-  assert.equal([...svg.matchAll(/<circle\b/g)].length, 2, 'origin and waypoint: two nodes')
-  assert.equal([...svg.matchAll(/stroke-width="/g)].length, 1, 'one stroke weight across the mark')
+  assert.equal([...svg.matchAll(/<path\b/g)].length, 2, 'two doorway panels: two paths')
+  assert.equal([...svg.matchAll(/<circle\b|<rect\b|<line\b|<polygon\b/g)].length, 0, 'no dot, no route line, no frame')
+  assert.doesNotMatch(svg, /stroke/i, 'two flat filled shapes; nothing is stroked')
+
   const { logo } = manifest()
-  assert.equal(logo.family, 'Guided Route')
-  assert.equal(logo.variant, 2)
-  assert.equal(logo.version, 1)
+  assert.equal(logo.family, 'Threshold')
+  assert.equal(logo.variant, 1)
+  assert.equal(logo.version, 2, 'the mark changed family, so the version moved with it')
   assert.equal(logo.topology.length, 6, 'the six-part topology the contract names')
+
+  // The exact geometry. The right panel's five points ARE the mark: dropping
+  // the x35,y30 lintel tip, or starting that polygon at x69,y30, is a different
+  // logo that would still pass every softer check above.
+  const g = logo.geometry
+  const paths = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1])
+  assert.deepEqual(paths, [g.leftPanelPath, g.rightPanelPath], 'the master draws the recorded paths, in order')
+  assert.equal(g.leftPanelPath, 'M0 22 L31 30 L31 90 L0 100 Z')
+  assert.equal(g.rightPanelPath, 'M35 30 L100 0 L100 100 L69 90 L69 30 Z')
+  assert.equal(g.viewBox, '0 0 100 100')
+  const points = (d: string) => (d.match(/[ML]\s*-?[\d.]+\s+-?[\d.]+/g) ?? []).length
+  assert.equal(points(g.rightPanelPath), 5, 'the right panel is five points, and the fifth is the lintel')
+  assert.equal(points(g.leftPanelPath), 4)
+  // Both columns are the same width, and the opening between them is the rest.
+  assert.equal(g.doorwayInnerLeftX, g.columnWidth, 'the left column is columnWidth wide')
+  assert.equal(100 - g.doorwayInnerRightX, g.columnWidth, 'the right column is the same width')
+  assert.equal(g.doorwayWidth, g.doorwayInnerRightX - g.doorwayInnerLeftX)
+  assert.ok(g.lintelTipX < g.doorwayInnerRightX, 'the lintel tip overhangs leftward, into the opening')
+  assert.equal(g.lintelTipX, 35)
 })
 
 // ------------------------------------------------------------- the derivatives
@@ -220,9 +263,9 @@ test('brand: the light, dark and monochrome marks carry the right values', () =>
 
 test('brand: the favicon is the same logo on a brand field, with no text', () => {
   const svg = read('public/brand/favicon.svg')
-  assert.match(svg, /viewBox="0 0 64 64"/)
+  assert.match(svg, /viewBox="0 0 100 100"/)
   assert.match(svg, new RegExp(`fill="${APP_ICON.field}"`), 'the app-icon field is the brand teal')
-  assert.match(svg, new RegExp(`stroke="${APP_ICON.mark}"`), 'the mark is drawn light on the field')
+  assert.match(svg, new RegExp(`fill="${APP_ICON.mark}"`), 'the mark is drawn light on the field')
   assert.doesNotMatch(svg, /<text\b|<tspan\b/i, 'no text on the icon')
   assert.doesNotMatch(svg, /Gradient\b/i, 'no gradient on the icon')
   // Same geometry as the master: the app icon is a treatment, not a second logo.
@@ -270,15 +313,23 @@ test('brand: the manifest carries the owner palette exactly, in both themes', ()
     )
   }
   assert.equal(palette.light.name, 'Mineral Teal')
-  assert.equal(palette.dark.name, 'Deep Mineral')
+  assert.equal(palette.dark.name, 'Blue Slate')
 })
 
-test('brand: the palette agrees with task 028s brand decisions', () => {
+test('brand: the palette agrees with the current approved visual reference', () => {
   // Two records of one decision; if they can disagree, one of them is wrong.
-  const decisions = read(DECISIONS)
-  for (const hex of [...Object.values(LIGHT), ...Object.values(DARK)]) {
-    assert.ok(decisions.includes(hex), `${hex} is not in ${DECISIONS}`)
+  // docs/design/brand-decisions.md was the second record until the design
+  // folder was cleaned. The current approved appearance is the comparison
+  // reference pack, which declares the dark roles as CSS values.
+  const ref = read('docs/design/approved/reference/iamai-home-approved-comparison-reference.html').toUpperCase()
+  for (const [role, hex] of Object.entries(DARK)) {
+    assert.ok(ref.includes(hex.toUpperCase()), `dark ${role} ${hex} is not in the approved visual reference`)
   }
+  const refManifest = JSON.parse(read('docs/design/approved/reference/REFERENCE-MANIFEST.json')) as {
+    authority: { lightTheme: string; darkTheme: string }
+  }
+  assert.equal(refManifest.authority.lightTheme, 'Mineral Teal', 'the light theme is unchanged')
+  assert.equal(refManifest.authority.darkTheme, 'Blue Slate')
 })
 
 test('brand: production paints the owner palette, value for value', () => {

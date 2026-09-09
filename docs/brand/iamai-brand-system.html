@@ -14,7 +14,7 @@
   that, and they are linked rather than reproduced, because a copy is a second authority.
 
   Fonts are the repository's own self-hosted faces, by relative path. No CDN.
-  The mark below is the exact geometry of src/brand/logo/iamai-guided-route-master.svg;
+  The mark below is the exact geometry of src/brand/logo/iamai-threshold-master.svg;
   src/brand/brand.test.ts fails if the two ever differ.
 -->
 <style>
@@ -36,11 +36,11 @@
     --on-brand:#FFFDF9;
   }
   .theme-dark {
-    --canvas:#0E1516; --surface:#151F20; --surface-2:#111A1B; --line:#2A3737; --line-strong:#3B4B4A;
-    --text:#F0F4F2; --text-2:#C4CECA; --text-muted:#879693;
-    --brand:#59C7B7; --brand-2:#7AD9CB; --brand-soft:#173B37; --brand-soft-text:#D9FFF8;
-    --success:#79D7A6; --attention:#E3B35B; --danger:#E88A8A; --admin:#B9A7FF; --code:#0A1112;
-    --on-brand:#0E1516;
+    --canvas:#0D1117; --surface:#151C25; --surface-2:#111821; --line:#2B3745; --line-strong:#39495A;
+    --text:#F2F5F7; --text-2:#C7D0D8; --text-muted:#8F9AA6;
+    --brand:#58C8BC; --brand-2:#78D9CE; --brand-soft:#173A3D; --brand-soft-text:#DFFFF9;
+    --success:#79D7A6; --attention:#E3B35B; --danger:#E88A8A; --admin:#B9A7FF; --code:#0A0F15;
+    --on-brand:#0D1117;
   }
 
   * { box-sizing: border-box; }
@@ -112,18 +112,13 @@
 <div class="wrap">
 
   <div class="row" style="margin-bottom:22px">
-    <svg class="mark" width="52" height="52" viewBox="0 0 64 64" aria-label="IAMAI" role="img">
-      <g fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M36 10H21c-6.1 0-11 4.9-11 11v22c0 6.1 4.9 11 11 11h22c6.1 0 11-4.9 11-11V29"/>
-        <path d="M21 43C27.5 43.5 31 40 34 35C37 30 43 21 50 15"/>
-        <path d="M42.5 15H50V22.5"/>
-      </g>
-      <circle cx="21" cy="43" r="5" fill="currentColor"/>
-      <circle cx="34" cy="35" r="4.1" fill="currentColor"/>
+    <svg class="mark" width="52" height="52" viewBox="0 0 100 100" fill="currentColor" aria-label="IAMAI" role="img">
+      <path d="M0 22 L31 30 L31 90 L0 100 Z"/>
+      <path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/>
     </svg>
     <div>
       <h1>IAMAI brand system</h1>
-      <p class="lead">Guided Route, version 1 &middot; Mineral Teal and Deep Mineral &middot; IBM Plex</p>
+      <p class="lead">Threshold, version 2 &middot; Mineral Teal and Blue Slate &middot; IBM Plex</p>
     </div>
   </div>
 
@@ -143,10 +138,14 @@
 
   <!-- 1 / 2 / 3 mark, lockup, icon -->
   <h2>The mark</h2>
-  <p>Origin &rarr; guided rising route &rarr; waypoint &rarr; upper-right destination, travelling
-  through an open rounded window. An A-to-Z journey that draws neither letter. The master is
-  <code>src/brand/logo/iamai-guided-route-master.svg</code>: one path group, two nodes,
-  <code>currentColor</code>, no text.</p>
+  <p>Two equal-width doorway panels, 31 units each on a 100 grid, standing either side of a
+  38-unit opening. The left panel slopes toward the opening; the right panel carries a leftward
+  lintel overhang at <code>x35,y30</code>, a tall outer rise and a matching outward-descending
+  lower edge. The master is <code>src/brand/logo/iamai-threshold-master.svg</code>, a
+  byte-for-byte copy of the owner-approved
+  <code>docs/design/approved/reference/iamai-threshold-master.svg</code>: two flat filled paths,
+  <code>currentColor</code>, no stroke, no dot, no frame, no text. The right panel is five points
+  and the lintel tip is one of them &mdash; removing it is a different mark.</p>
 
   <h3>Primary mark &middot; 16 / 24 / 32 / 64 / 96</h3>
   <div class="row" id="mark-sizes-light"></div>
@@ -229,7 +228,7 @@
     <button class="btn btn-primary">Brand action &mdash; teal</button>
     <span class="chip" style="background:#DDEFEA;color:#07534F"><i class="dot" style="background:#2C7A5A"></i>Proven &mdash; success green</span>
   </div>
-  <p class="cap">Light <code>#0C6A64</code> against <code>#2C7A5A</code>; dark <code>#59C7B7</code>
+  <p class="cap">Light <code>#0C6A64</code> against <code>#2C7A5A</code>; dark <code>#58C8BC</code>
   against <code>#79D7A6</code>. Two families, never one.</p>
 
   <hr class="rule" />
@@ -313,7 +312,7 @@
 <!-- ============================ DARK ============================ -->
 <div class="band theme-dark" id="dark">
 <div class="wrap">
-  <h2 style="margin-top:0">Deep Mineral &mdash; dark</h2>
+  <h2 style="margin-top:0">Blue Slate &mdash; dark</h2>
   <p>Every part of the identity holds on the dark canvas: the mark takes the dark brand teal, the
   app icon keeps its field, and brand teal still is not success green.</p>
 
@@ -329,14 +328,14 @@
   <h3>Monochrome on dark</h3>
   <div class="row" id="mono-dark"></div>
 
-  <h3>Colour &mdash; Deep Mineral</h3>
+  <h3>Colour &mdash; Blue Slate</h3>
   <div class="grid swatches" id="sw-dark"></div>
 
   <h3>Status against brand</h3>
   <div class="row" id="status-dark"></div>
   <div class="row">
     <button class="btn btn-primary">Brand action &mdash; teal</button>
-    <span class="chip" style="background:#173B37;color:#D9FFF8"><i class="dot" style="background:#79D7A6"></i>Proven &mdash; success green</span>
+    <span class="chip" style="background:#173A3D;color:#DFFFF9"><i class="dot" style="background:#79D7A6"></i>Proven &mdash; success green</span>
     <button class="btn btn-secondary">Secondary</button>
     <button class="btn btn-selected">Selected</button>
   </div>
@@ -361,16 +360,16 @@
     <thead><tr><th>Surface</th><th>Approved pack</th><th>SHA-256</th></tr></thead>
     <tbody>
       <tr><td>Home</td>
-        <td><a href="../design/approved/home-v2.html"><code>docs/design/approved/home-v2.html</code></a></td>
+        <td><a href="../design/approved/anatomy/home-v2.html"><code>docs/design/approved/anatomy/home-v2.html</code></a></td>
         <td class="mono" style="word-break:break-all">88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50</td></tr>
       <tr><td>Connect</td>
-        <td><a href="../design/approved/connect-v3.html"><code>docs/design/approved/connect-v3.html</code></a></td>
+        <td><a href="../design/approved/anatomy/connect-v3.html"><code>docs/design/approved/anatomy/connect-v3.html</code></a></td>
         <td class="mono" style="word-break:break-all">903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b</td></tr>
       <tr><td>Plan + step</td>
-        <td><a href="../design/approved/plan-step-v1.html"><code>docs/design/approved/plan-step-v1.html</code></a></td>
+        <td><a href="../design/approved/anatomy/plan-step-v1.html"><code>docs/design/approved/anatomy/plan-step-v1.html</code></a></td>
         <td class="mono" style="word-break:break-all">1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec</td></tr>
       <tr><td>MFA Readiness</td>
-        <td><a href="../design/approved/mfa-readiness-v2.html"><code>docs/design/approved/mfa-readiness-v2.html</code></a></td>
+        <td><a href="../design/approved/anatomy/mfa-readiness-v2.html"><code>docs/design/approved/anatomy/mfa-readiness-v2.html</code></a></td>
         <td class="mono" style="word-break:break-all">12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512</td></tr>
     </tbody>
   </table>
@@ -391,14 +390,9 @@
 <script>
 // The mark, once, from the master's geometry. Every specimen on this page is drawn from
 // this string, so the page cannot show two different marks.
-const GEO = `<g fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M36 10H21c-6.1 0-11 4.9-11 11v22c0 6.1 4.9 11 11 11h22c6.1 0 11-4.9 11-11V29"/>
-    <path d="M21 43C27.5 43.5 31 40 34 35C37 30 43 21 50 15"/>
-    <path d="M42.5 15H50V22.5"/>
-  </g>
-  <circle cx="21" cy="43" r="5" fill="currentColor"/>
-  <circle cx="34" cy="35" r="4.1" fill="currentColor"/>`
-const mark = (size, style = '') => `<svg class="mark" width="${size}" height="${size}" viewBox="0 0 64 64" style="${style}" aria-hidden="true">${GEO}</svg>`
+const GEO = `    <path d="M0 22 L31 30 L31 90 L0 100 Z"/>
+    <path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/>`
+const mark = (size, style = '') => `<svg class="mark" width="${size}" height="${size}" viewBox="0 0 100 100" fill="currentColor" style="${style}" aria-hidden="true">${GEO}</svg>`
 const cell = (inner, cap) => `<span class="cell">${inner}<span class="cap">${cap}</span></span>`
 const SIZES = [16, 24, 32, 64, 96]
 
@@ -427,10 +421,10 @@ const PALETTE = {
     ['strong line', '#C1BCB3'], ['primary text', '#1D2528'], ['secondary text', '#4E5B5D'], ['muted text', '#7B8584'],
     ['brand teal', '#0C6A64'], ['secondary teal', '#18847A'], ['soft teal', '#DDEFEA'], ['teal on soft', '#07534F'],
     ['success', '#2C7A5A'], ['attention', '#B7791F'], ['danger', '#B04A4A'], ['admin', '#6658A4'], ['code surface', '#EEEAE3']],
-  dark: [['canvas', '#0E1516'], ['surface', '#151F20'], ['secondary surface', '#111A1B'], ['line', '#2A3737'],
-    ['strong line', '#3B4B4A'], ['primary text', '#F0F4F2'], ['secondary text', '#C4CECA'], ['muted text', '#879693'],
-    ['brand teal', '#59C7B7'], ['secondary teal', '#7AD9CB'], ['soft teal', '#173B37'], ['teal on soft', '#D9FFF8'],
-    ['success', '#79D7A6'], ['attention', '#E3B35B'], ['danger', '#E88A8A'], ['admin', '#B9A7FF'], ['code surface', '#0A1112']],
+  dark: [['canvas', '#0D1117'], ['surface', '#151C25'], ['secondary surface', '#111821'], ['line', '#2B3745'],
+    ['strong line', '#39495A'], ['primary text', '#F2F5F7'], ['secondary text', '#C7D0D8'], ['muted text', '#8F9AA6'],
+    ['brand teal', '#58C8BC'], ['secondary teal', '#78D9CE'], ['soft teal', '#173A3D'], ['teal on soft', '#DFFFF9'],
+    ['success', '#79D7A6'], ['attention', '#E3B35B'], ['danger', '#E88A8A'], ['admin', '#B9A7FF'], ['code surface', '#0A0F15']],
 }
 const swatches = (rows) => rows.map(([role, hex]) =>
   `<div class="sw"><i style="background:${hex}"></i><b>${role}</b><span class="cap mono">${hex}</span></div>`).join('')
@@ -439,7 +433,7 @@ document.getElementById('sw-dark').innerHTML = swatches(PALETTE.dark)
 
 const STATUS = {
   light: [['brand / selected', '#0C6A64'], ['success', '#2C7A5A'], ['attention', '#B7791F'], ['danger', '#B04A4A'], ['admin', '#6658A4']],
-  dark: [['brand / selected', '#59C7B7'], ['success', '#79D7A6'], ['attention', '#E3B35B'], ['danger', '#E88A8A'], ['admin', '#B9A7FF']],
+  dark: [['brand / selected', '#58C8BC'], ['success', '#79D7A6'], ['attention', '#E3B35B'], ['danger', '#E88A8A'], ['admin', '#B9A7FF']],
 }
 const statusRow = (rows) => rows.map(([role, hex]) =>
   cell(`<span style="display:inline-flex;align-items:center;gap:8px"><i class="dot" style="background:${hex}"></i><span class="mono">${hex}</span></span>`, role)).join('')

@@ -114,15 +114,15 @@ test('the reading measure is separate from the page, so a wide page is not a wid
 
 // ----------------------------------------------------------------------- shell
 
-test('the shell wears the brand lockup: the Guided Route mark and the wordmark, with no tagline', () => {
+test('the shell wears the brand lockup: the Threshold mark and the wordmark, with no tagline', () => {
   assert.match(shell, /<BrandMark size=\{20\} \/>\s*\n\s*\{planner\.wordmark\}/, 'the lockup is the mark beside the wordmark')
   assert.equal(content.pages.app.shell.product.wordmark, 'IAMAI')
   assert.equal(brand.brand.tagline, null, 'there is no tagline')
   assert.equal(brand.logo.wordmark.descriptorUnderWordmark, false)
-  assert.equal(brand.logo.family, 'Guided Route')
+  assert.equal(brand.logo.family, 'Threshold')
   // The mark is the master's geometry, not a second drawing of it.
-  assert.equal(MARK_VIEWBOX, '0 0 64 64')
-  const master = read('src/brand/logo/iamai-guided-route-master.svg')
+  assert.equal(MARK_VIEWBOX, '0 0 100 100')
+  const master = read('src/brand/logo/iamai-threshold-master.svg')
   for (const path of [...MARK_GEOMETRY.matchAll(/d="([^"]+)"/g)].map((m) => m[1])) {
     assert.ok(master.includes(path), 'the shell mark carries geometry the master does not')
   }
@@ -251,11 +251,16 @@ test('the task 030 report exists and names its evidence', () => {
   const report = 'docs/design/reports/030-theme-typography-shell-foundation.md'
   assert.ok(existsSync(report), `${report} is the task's handoff artifact and is not optional`)
   const text = read(report)
+  // By file NAME, not by directory. The four packs moved into
+  // docs/design/approved/anatomy/ when the design folder was cleaned, and a
+  // report written in the past is a record of what a past task did: it is not
+  // edited to keep a later directory layout true. What must stay true is that
+  // the report names the four authorities it worked against, and the hash.
   for (const needed of [
-    'docs/design/approved/home-v2.html',
-    'docs/design/approved/connect-v3.html',
-    'docs/design/approved/plan-step-v1.html',
-    'docs/design/approved/mfa-readiness-v2.html',
+    'home-v2.html',
+    'connect-v3.html',
+    'plan-step-v1.html',
+    'mfa-readiness-v2.html',
     '88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50',
     'scripts/render-design.mjs',
     'src/ui/tokens.ts',
