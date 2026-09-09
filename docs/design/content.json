@@ -804,71 +804,88 @@
       "metaTitle": "IAMAI: tools for Microsoft Entra identity work",
       "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
       "brand": "IAMAI",
-      "h1": "Strengthen your Microsoft identity security.",
+      "navHow": "How it works",
+      "navSource": {
+        "text": "GitHub",
+        "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
+      },
+      "eyebrow": "Microsoft identity security",
+      "h1": "Strengthen identity security without guessing what will break.",
       "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. The plan is ordered so nobody is locked out on the way.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
-      "heroNote": "Read-only. The first connection needs an administrator to grant consent once; after that, Global Reader is enough.",
+      "heroMeta": [
+        "Read-only",
+        "Runs in your browser",
+        "Source is public"
+      ],
       "workLabel": "What it does",
+      "workHeading": "From a tenant scan to a dated plan you can carry out.",
+      "workLead": "See what the tenant already protects, what it does not, who each change touches, and what to do before enforcement.",
       "work": [
         {
           "verb": "Reads",
-          "text": "a tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records."
+          "text": "A tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records."
         },
         {
           "verb": "Compares",
-          "text": "what each baseline policy is for with what the tenant already has, so a control you built yourself counts as done."
+          "text": "What each baseline policy is for with what the tenant already has, so a control you built yourself counts as done."
         },
         {
           "verb": "Plans",
-          "text": "the difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send."
+          "text": "The difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send."
         }
       ],
-      "baselineLabel": "The standard it plans towards",
-      "baseline": "A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies. The default is Defense in Depth, built by Jon Hope, a Microsoft MVP.",
+      "baselineLabel": "Default baseline",
+      "baselineName": "Defense in Depth",
+      "baseline": "A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
       "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
       "baselineNote": "IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.",
-      "catchesLabel": "What it catches before a change goes live",
+      "catchesLabel": "What it catches",
+      "catchesHeading": "Problems worth finding before enforcement.",
       "catches": [
-        "An admin whose only sign-in method is a text message, about to be required to use a passkey.",
-        "An emergency access account inside the policy it exists to survive.",
-        "A country rule that blocks the person who wrote it.",
-        "A service account that a legacy-authentication block stops at 2 a.m.",
-        "A meeting-room device that a session rule signs out every hour."
+        {
+          "label": "Authentication",
+          "text": "An admin whose only sign-in method is a text message, about to be required to use a passkey."
+        },
+        {
+          "label": "Emergency access",
+          "text": "An emergency access account inside the policy it exists to survive."
+        },
+        {
+          "label": "Location",
+          "text": "A country rule that blocks the person who wrote it."
+        },
+        {
+          "label": "Service accounts",
+          "text": "A service account that a legacy-authentication block stops at 2 a.m."
+        },
+        {
+          "label": "Devices",
+          "text": "A meeting-room device that a session rule signs out every hour."
+        }
       ],
       "trustLabel": "What it does with your tenant",
+      "trustHeading": "Inspect it before you connect a tenant.",
       "trust": [
         {
           "title": "Read-only",
-          "body": "IAMAI holds no permission that can create, change or delete anything in your tenant. It lists every permission it asks for, and what each is spent on, before you sign in."
+          "body": "IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in."
         },
         {
           "title": "Nothing leaves the browser",
-          "body": "The scan reads Microsoft Graph from this browser and keeps the result here. There is no IAMAI server, no analytics and no upload; an export is a file you save yourself."
+          "body": "The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no analytics, no upload; an export is a file you save yourself."
         },
         {
           "title": "Source is public",
-          "body": "Read the code, then decide whether to connect.",
+          "body": "Read the code, the permissions and the limits, then decide whether to connect.",
           "link": "github.com/ZephyrPretendstoKnowTech/iamai",
           "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
         }
       ],
       "aboutLabel": "About",
-      "about": "Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.",
-      "aboutLinks": [
-        {
-          "text": "Follow me on LinkedIn",
-          "href": "https://www.linkedin.com/in/lachlanrobinette/"
-        },
-        {
-          "text": "GitHub",
-          "href": "https://github.com/ZephyrPretendstoKnowTech"
-        },
-        {
-          "text": "feedback@getiamai.com",
-          "href": "mailto:feedback@getiamai.com"
-        }
-      ]
+      "aboutHeading": "Built from Microsoft identity work.",
+      "about": "Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not."
     },
     "app": {
       "$comment": "Words the app chrome and the surfaces show that no step or review page renders: the header, the scan progress, the print cover, the export alerts. Read by src/content/content.ts `app`; the review page never renders them.",

@@ -1,21 +1,21 @@
-/* The home page on the planner's tokens (prompt 47.1 Part 3; rebuilt by task 016).
+/* The home page on the planner's tokens (prompt 47.1 Part 3; rebuilt by task 016;
+   the approved composition restored by task 038).
    Every value is a variable from home/theme.css, which scripts/build-home.ts writes
    from src/ui/tokens.ts; the design lint reads this file.
 
-   What this file describes is the page as built, not the owner's design target. The
-   Home authority is docs/design/approved/home-v2.html
-   (docs/design/approved/manifest.json), which this page does not yet implement —
-   the pack is a 1040px page with a two-column product section and a side rail, and
-   this page is still one column. Task 028 established the authority, task 030 gave
-   the page the brand tokens, the Guided Route mark and the 1040px column the pack
-   asks for, and pack 038 owns the composition itself.
-   See docs/design/authority-reconciliation.md.
+   What this file describes is the owner's approved Home,
+   docs/design/approved/home-v2.html (docs/design/approved/manifest.json): the
+   1040px column, the public header, the hero with its meta row, the
+   1.5fr/.8fr product section with its bordered side rail, the 78px steps, the
+   160px catches, the trust row, About, the footer, and the 760 and 560
+   breakpoints. The pack owns the anatomy; the tokens own the skin, and
+   docs/design/content.json owns the words.
 
-   As built, one column: the hero with the only pair of actions, then five sections
-   separated by a rule — what it does, the standard it plans towards, what it catches,
-   what it does with your tenant, About — and the app's footer. No cards, no grid of
-   tiles, no pill: the hierarchy is type, space and a hairline. The header's text
-   control, the three button weights and the footer are the app's rules
+   One column of sections separated by a hairline: the hero with the only pair of
+   actions, then what it does (with the baseline in its rail), what it catches,
+   what it does with your tenant, and About. No cards, no grid of tiles, no pill:
+   the hierarchy is type, space and a hairline. The header's text control, the
+   three button weights and the footer link colour are the app's rules
    (src/ui/app.css) on the same tokens; home.test.ts holds them equal. */
 
 * {
@@ -84,11 +84,37 @@ a {
   }
 }
 
-/* The header the planner uses: wordmark left, the theme control right. */
+/* The small uppercase label the pack sets over every heading, hero included. */
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  max-width: none;
+}
+
+/* The way into the product, where the pack puts it outside the hero: the header
+   and the side rail. The arrow is the pack's affordance and is drawn, not
+   written — the words on the page are content.json's. */
+.enter::after {
+  content: ' \2192';
+}
+
+/* ------------------------------------------------------------------ header
+   The public header: the lockup left, the public links right. It is lighter
+   than the planner's shell — no tabs, no Account, no signed-in state — and it
+   sits in the same 1040px column as the page, so its hairline ends where the
+   content does (docs/design/approved/home-v2.html `header`). */
 header.app {
-  height: var(--header);
+  width: 100%;
+  max-width: calc(var(--w-home) + 2 * var(--pad));
+  margin: 0 auto;
+  min-height: var(--header);
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 24px;
   padding: 0 var(--pad);
   border-bottom: 1px solid var(--rule);
@@ -115,8 +141,28 @@ header.app .right {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+/* The public links: quiet text, the product entry in the accent. */
+header.app .links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: var(--t-1);
+  flex-wrap: wrap;
+}
+header.app .links a {
+  color: var(--ink-2);
+  text-decoration: none;
   white-space: nowrap;
+}
+header.app .links a:hover,
+header.app .links a:focus-visible {
+  text-decoration: underline;
+}
+header.app .links a.enter {
+  color: var(--accent);
 }
 /* The theme and Account controls: text in the header's colour, no button face. */
 header.app .right .text-control {
@@ -136,14 +182,13 @@ header.app .right .text-control:focus-visible {
 
 /* The column the approved Home pack sets: min(1040px, 100% - 40px)
    (docs/design/approved/home-v2.html, src/ui/tokens.ts ROUTE_WIDTHS.home). The
-   page is still one column of prose, which reads at --measure inside it; pack
-   038 composes the two-column product section and the side rail that use the
-   rest of the width. */
+   header, the page and the footer share it, so every hairline on the page ends
+   at the same edge. */
 main.page {
   flex: 1;
   width: 100%;
   max-width: calc(var(--w-home) + 2 * var(--pad));
-  padding: var(--pad);
+  padding: 0 var(--pad) 54px;
   margin: 0 auto;
   min-width: 0;
   /* `break-word`, not `anywhere`: a long URL still breaks rather than widening
@@ -154,112 +199,209 @@ main.page a[href] {
   overflow-wrap: anywhere;
 }
 
-/* The hero: the outcome, the line under it, the two ways in, and the one note. */
+/* ------------------------------------------------------------------- hero
+   The pack's hero: the label, the display line, the lead, the two ways in, and
+   a meta row of three claims short enough to be exactly true on their own. No
+   box around any of it. */
 .hero {
-  padding: 8px 0 32px;
+  padding: 76px 0 58px;
+  max-width: 900px;
 }
 .hero h1 {
-  font-size: var(--t-6);
-  margin: 0 0 12px;
-  max-width: var(--measure);
+  font-size: var(--d-1);
+  line-height: var(--lh-display);
+  margin: 0 0 16px;
 }
 .hero .site-line {
-  font-size: var(--t-4);
+  font-size: var(--t-lead-lg);
   color: var(--ink-2);
-  margin: 0 0 24px;
-}
-.hero .actions {
-  margin: 0 0 14px;
-}
-.hero .note {
-  font-size: var(--t-2);
-  color: var(--ink-3);
+  max-width: var(--measure-lead);
   margin: 0;
 }
+.hero .actions {
+  margin: 24px 0 0;
+}
+.hero .meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 15px 0 0;
+  max-width: none;
+  color: var(--ink-3);
+  font-size: var(--t-1);
+}
 
-/* A section: a hairline above it, its heading, then its body. Six of these are
-   the page; nothing here is a box. */
+/* ---------------------------------------------------------------- sections
+   A section: a hairline above it, its label, its heading, then its body. Four
+   of these are the page; nothing here is a box. */
 .band {
   border-top: 1px solid var(--rule);
-  padding: 26px 0;
+  padding: 42px 0;
 }
 .band h2 {
-  font-family: var(--font-sans);
-  font-size: var(--t-2);
+  font-size: var(--d-10);
+  margin: 0 0 18px;
+}
+/* The product section's heading is a size down in the pack, and it sits inside
+   the wider column rather than above both, so the rail's label starts level
+   with it. */
+.band-lead h2 {
+  font-size: var(--d-13);
+  margin: 0 0 10px;
+}
+
+/* -------------------------------------------------- what it does + the rail
+   The pack's two-column relationship: the explanation, then a narrower rail
+   holding the standard the plan is measured against. */
+.product {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+  gap: 36px;
+  align-items: start;
+}
+/* The section's own lead paragraph, named rather than reached by position: the
+   eyebrow above it and the rail beside it read at their own level. */
+.product .lead {
+  color: var(--ink-2);
+  margin: 0 0 10px;
+  max-width: var(--measure);
+}
+
+/* Reads / Compares / Plans: the verb in its own column, the rest beside it. */
+.steps {
+  display: grid;
+  gap: 13px;
+  margin-top: 22px;
+}
+.step {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--rule);
+}
+.step:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.step b {
+  color: var(--ink);
   font-weight: 500;
-  letter-spacing: 0.06em;
+}
+.step span {
+  color: var(--ink-2);
+}
+
+/* The rail: subordinate to the column beside it, separated by a border that
+   moves from the left to the top when the two stack. */
+.side {
+  padding-left: 24px;
+  border-left: 1px solid var(--rule);
+}
+.side .label {
+  margin: 0;
+  font-size: var(--t-0);
+  letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--ink-3);
-  margin: 0 0 14px;
 }
-.band p {
+.side strong {
+  display: block;
+  margin: 6px 0 5px;
+  font-size: var(--t-4);
+  font-weight: 500;
+  color: var(--ink);
+}
+.side p {
+  font-size: var(--t-2);
   color: var(--ink-2);
   margin: 0 0 10px;
 }
-.band p.note {
-  font-size: var(--t-2);
+.side p.small {
+  margin-top: 18px;
+  font-size: var(--t-1);
   color: var(--ink-3);
 }
-
-/* Reads / Compares / Plans: the verb in the ink, the rest beside it. */
-.beats {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-width: var(--measure);
+.side p.small a {
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
 }
-.beats li {
-  margin: 0;
-  padding: 6px 0;
-  color: var(--ink-2);
-}
-.beats b {
-  color: var(--ink);
-  font-weight: 500;
-  display: inline-block;
-  width: 76px;
+.side p.small a:hover,
+.side p.small a:focus-visible {
+  text-decoration: underline;
 }
 
-/* What it catches: a plain list, the examples doing the work. */
+/* ------------------------------------------------------------- the catches
+   What kind of problem it is, then the example: two columns on a wide screen,
+   stacked under 760. A hairline between rows, never a card. */
+.catches {
+  display: grid;
+  gap: 12px;
+  max-width: 860px;
+}
 .catch {
-  margin: 0;
-  padding-left: 18px;
-  color: var(--ink-2);
-  max-width: var(--measure);
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
 }
-.catch li {
-  margin: 0;
-  padding: 3px 0;
+.catch:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
-
-/* What it does with your tenant: the claim, then what it means. */
-.trust {
-  margin: 0;
-  max-width: var(--measure);
-}
-.trust dt {
+.catch b {
   color: var(--ink);
   font-weight: 500;
-  margin: 0 0 2px;
 }
-.trust dd {
+.catch span {
   color: var(--ink-2);
-  margin: 0 0 14px;
 }
-.trust dd:last-child {
-  margin-bottom: 0;
+
+/* --------------------------------------------------------------- the trust
+   One row of three claims, each led by its own name. Specific enough to check:
+   the third carries the source to read. */
+.trust {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  color: var(--ink-2);
+  font-size: var(--t-2);
 }
+.trust span {
+  flex: 1 1 280px;
+}
+.trust strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+/* The full stop that closes the claim's name is punctuation, not a word: the
+   words on the page are content.json's, so it is drawn here (the pack's
+   `<strong>Read-only.</strong>`). */
+.trust strong::after {
+  content: '.';
+}
+.lnk {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* --------------------------------------------------------------- the about */
+.about p {
+  color: var(--ink-2);
+  max-width: var(--measure-lead);
+  margin: 0;
+}
+
 .actions {
   margin: 16px 0 0;
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-}
-.lnk {
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  max-width: none;
 }
 
 /* The three button weights the app uses (src/ui/app.css): primary filled accent, secondary outlined accent, tertiary muted. */
@@ -313,16 +455,19 @@ main.page a[href] {
   color: var(--ink);
 }
 
-/* The footer the planner uses (AppShell's Footer). */
+/* The footer the pack draws: the product's name on the left, the public links
+   on the right, in the same column as the page above it. The link colour is the
+   app's rule (src/ui/app.css). */
 footer.app {
   width: 100%;
-  max-width: calc(var(--table) + 2 * var(--pad));
+  max-width: calc(var(--w-home) + 2 * var(--pad));
   margin: 0 auto;
-  padding: 16px var(--pad) 32px;
+  padding: 22px var(--pad) 34px;
+  border-top: 1px solid var(--rule);
   color: var(--ink-2);
-  font-size: var(--t-2);
+  font-size: var(--t-1);
   display: flex;
-  gap: 16px;
+  gap: 20px;
   flex-wrap: wrap;
   justify-content: space-between;
 }
@@ -330,15 +475,56 @@ footer.app a {
   color: var(--ink-2);
 }
 
-@media (max-width: 700px) {
+/* ---------------------------------------------------------------- narrower
+   The pack's own breakpoints. At 760 the product and its rail become one
+   column, the rail's border moves to the top, and a catch stacks its label over
+   its example. At 560 the gutters tighten, the hero gives back some of its
+   space, and the first public link stands down — never the product entry. */
+@media (max-width: 760px) {
+  .hero h1 {
+    font-size: var(--d-4);
+  }
+  .product {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    padding-left: 0;
+    padding-top: 18px;
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+  .catch {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+}
+@media (max-width: 560px) {
+  header.app,
+  main.page,
+  footer.app {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
   header.app {
-    height: auto;
-    flex-wrap: wrap;
-    gap: 8px 16px;
-    padding: 8px var(--pad);
+    gap: 12px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  header.app .right,
+  header.app .links {
+    gap: 14px;
+  }
+  header.app .links a:first-child {
+    display: none;
+  }
+  .hero {
+    padding: 54px 0 44px;
   }
   .hero h1 {
-    font-size: var(--t-5);
+    font-size: var(--d-6);
+  }
+  .hero .site-line {
+    font-size: var(--t-4);
   }
 }
 @media (prefers-reduced-motion: reduce) {

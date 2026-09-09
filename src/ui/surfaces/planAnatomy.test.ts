@@ -440,17 +440,21 @@ test('no generated attribution or tagline came in with the design work', () => {
   for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/StepSections.tsx', 'src/ui/surfaces/PlanFooter.tsx', 'src/ui/app.css']) {
     assert.equal(/jon hope|built by/i.test(read(file)), false, `${file} carries a generated attribution`)
   }
-  // The one place the name appears is the glossary's sentence about who wrote
+  // The one place the name appears is the home page's sentence about who wrote
   // the BASELINE, which is a fact about the package and predates the design
   // work (task 016). It is not an IAMAI byline, and nothing in the restoration
-  // turned it into one.
+  // turned it into one: task 038 moved the sentence into the approved Home's
+  // side rail, where the rail's own heading names the package, and there is
+  // still exactly one mention.
   const content = read('docs/design/content.json')
   const mentions = [...content.matchAll(/[^"]*built by Jon Hope[^"]*/gi)].map((m) => m[0].trim())
-  assert.deepEqual(
-    mentions.map((s) => s.includes('Defense in Depth, built by Jon Hope, a Microsoft MVP')),
-    [true],
-    'the baseline author sentence changed, or a second attribution was added',
-  )
+  assert.equal(mentions.length, 1, 'a second attribution was added')
+  assert.match(mentions[0], /Conditional Access policies, built by Jon Hope, a Microsoft MVP\.$/, 'the baseline author sentence changed')
+  // It attributes the baseline, never the product. IAMAI's own About is the
+  // owner's, and no byline sits under the wordmark.
+  const home = JSON.parse(content).pages.home as { about: string; baseline: string; brand: string }
+  assert.match(home.about, /^Built by Lachlan Robinette\./)
+  assert.ok(!home.brand.includes('Jon Hope'), 'the wordmark carries an attribution')
 })
 
 // ------------------------------------------------ pack 035: the content anatomy

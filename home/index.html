@@ -25,6 +25,9 @@
     <link rel="stylesheet" href="/home.css" />
   </head>
   <body>
+    <!-- The public header the pack draws: the lockup on the left, the public
+         links on the right, the product entry last. It is lighter than the
+         planner's shell and carries no signed-in state — no tabs, no Account. -->
     <header class="app">
       <a class="wordmark" href="/">
         <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden="true" focusable="false">  <g fill="none" stroke="currentColor" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round">
@@ -37,76 +40,92 @@
         IAMAI
       </a>
       <div class="right">
+        <nav class="links">
+          <a href="/{{TOOL_PATH}}/#/how">How it works</a>
+          <a href="https://github.com/ZephyrPretendstoKnowTech/iamai" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="enter" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a>
+        </nav>
         <!-- The theme control is text, not a button face, the way the app's is (AppShell). -->
         <button class="text-control" id="theme" type="button" title="Switch between dark and light themes">Dark theme</button>
       </div>
     </header>
 
     <main class="page">
-      <!-- The outcome, what IAMAI does about it, and the two ways in. The only
-           actions on the page: no section below repeats them. -->
+      <!-- The outcome, what IAMAI does about it, the two ways in, and the three
+           claims the trust section below spends the rest of the page proving. -->
       <div class="hero">
-        <h1>Strengthen your Microsoft identity security.</h1>
+        <p class="eyebrow">Microsoft identity security</p>
+        <h1>Strengthen identity security without guessing what will break.</h1>
         <p class="site-line">IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. The plan is ordered so nobody is locked out on the way.</p>
         <p class="actions">
           <a class="btn btn-primary" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a>
           <a class="btn btn-secondary" href="/{{TOOL_PATH}}/?demo=1#/plan">Try it with sample data</a>
         </p>
-        <p class="note">Read-only. The first connection needs an administrator to grant consent once; after that, Global Reader is enough.</p>
+        <p class="meta">
+          <span>Read-only</span>
+          <span>Runs in your browser</span>
+          <span>Source is public</span>
+        </p>
       </div>
 
-      <section class="band" aria-labelledby="work-heading">
-        <h2 id="work-heading">What it does</h2>
-        <ul class="beats">
-          <li><b>Reads</b> a tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records.</li>
-          <li><b>Compares</b> what each baseline policy is for with what the tenant already has, so a control you built yourself counts as done.</li>
-          <li><b>Plans</b> the difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send.</li>
-        </ul>
-      </section>
-
-      <section class="band" aria-labelledby="baseline-heading">
-        <h2 id="baseline-heading">The standard it plans towards</h2>
-        <p>A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies. The default is Defense in Depth, built by Jon Hope, a Microsoft MVP.</p>
-        <p>Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.</p>
-        <p class="note">IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.</p>
+      <!-- What IAMAI does, and beside it the standard it is doing it against.
+           The heading sits inside the wider column, not above both, so the
+           rail's own label starts level with it (the pack's product grid). -->
+      <section class="band band-lead" aria-labelledby="work-heading">
+        <div class="product">
+          <div>
+            <p class="eyebrow">What it does</p>
+        <h2 id="work-heading">From a tenant scan to a dated plan you can carry out.</h2>
+            <p class="lead">See what the tenant already protects, what it does not, who each change touches, and what to do before enforcement.</p>
+            <div class="steps">
+              <div class="step"><b>Reads</b><span>A tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records.</span></div>
+              <div class="step"><b>Compares</b><span>What each baseline policy is for with what the tenant already has, so a control you built yourself counts as done.</span></div>
+              <div class="step"><b>Plans</b><span>The difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send.</span></div>
+            </div>
+          </div>
+          <aside class="side">
+            <p class="label">Default baseline</p>
+            <strong>Defense in Depth</strong>
+            <p>A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.</p>
+            <p>Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.</p>
+            <p class="small">IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.</p>
+            <p class="small"><a class="enter" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a></p>
+          </aside>
+        </div>
       </section>
 
       <section class="band" aria-labelledby="catches-heading">
-        <h2 id="catches-heading">What it catches before a change goes live</h2>
-        <ul class="catch">
-          <li>An admin whose only sign-in method is a text message, about to be required to use a passkey.</li>
-          <li>An emergency access account inside the policy it exists to survive.</li>
-          <li>A country rule that blocks the person who wrote it.</li>
-          <li>A service account that a legacy-authentication block stops at 2 a.m.</li>
-          <li>A meeting-room device that a session rule signs out every hour.</li>
-        </ul>
+        <p class="eyebrow">What it catches</p>
+        <h2 id="catches-heading">Problems worth finding before enforcement.</h2>
+        <div class="catches">
+          <div class="catch"><b>Authentication</b><span>An admin whose only sign-in method is a text message, about to be required to use a passkey.</span></div>
+          <div class="catch"><b>Emergency access</b><span>An emergency access account inside the policy it exists to survive.</span></div>
+          <div class="catch"><b>Location</b><span>A country rule that blocks the person who wrote it.</span></div>
+          <div class="catch"><b>Service accounts</b><span>A service account that a legacy-authentication block stops at 2 a.m.</span></div>
+          <div class="catch"><b>Devices</b><span>A meeting-room device that a session rule signs out every hour.</span></div>
+        </div>
       </section>
 
       <section class="band" aria-labelledby="trust-heading">
-        <h2 id="trust-heading">What it does with your tenant</h2>
-        <dl class="trust">
-          <dt>Read-only</dt>
-          <dd>IAMAI holds no permission that can create, change or delete anything in your tenant. It lists every permission it asks for, and what each is spent on, before you sign in.</dd>
-          <dt>Nothing leaves the browser</dt>
-          <dd>The scan reads Microsoft Graph from this browser and keeps the result here. There is no IAMAI server, no analytics and no upload; an export is a file you save yourself.</dd>
-          <dt>Source is public</dt>
-          <dd>Read the code, then decide whether to connect. <a class="lnk" href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a></dd>
-        </dl>
+        <p class="eyebrow">What it does with your tenant</p>
+        <h2 id="trust-heading">Inspect it before you connect a tenant.</h2>
+        <div class="trust">
+          <span><strong>Read-only</strong> IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in.</span>
+          <span><strong>Nothing leaves the browser</strong> The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no analytics, no upload; an export is a file you save yourself.</span>
+          <span><strong>Source is public</strong> Read the code, the permissions and the limits, then decide whether to connect. <a class="lnk" href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a></span>
+        </div>
       </section>
 
       <section class="band" aria-labelledby="about-heading">
-        <h2 id="about-heading">About</h2>
-        <p>Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.</p>
-        <p class="actions">
-          <a class="btn btn-secondary" href="https://www.linkedin.com/in/lachlanrobinette/">Follow me on LinkedIn</a>
-          <a class="btn btn-tertiary" href="https://github.com/ZephyrPretendstoKnowTech">GitHub</a>
-          <a class="btn btn-tertiary" href="mailto:feedback@getiamai.com">feedback@getiamai.com</a>
-        </p>
+        <p class="eyebrow">About</p>
+        <h2 id="about-heading">Built from Microsoft identity work.</h2>
+        <div class="about"><p>Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.</p></div>
       </section>
     </main>
 
     <footer class="app">
-      <span class="footer-links"><a href="https://getiamai.com/">IAMAI Home</a> | <a href="https://www.linkedin.com/in/lachlanrobinette/" target="_blank" rel="noopener noreferrer">Follow me on LinkedIn</a> | <a href="https://github.com/ZephyrPretendstoKnowTech/iamai" target="_blank" rel="noopener noreferrer">GitHub</a> | <a href="mailto:feedback@getiamai.com">feedback@getiamai.com</a></span>
+      <span>IAMAI</span>
+      <span class="footer-links"><a href="https://www.linkedin.com/in/lachlanrobinette/" target="_blank" rel="noopener noreferrer">Follow me on LinkedIn</a> · <a href="https://github.com/ZephyrPretendstoKnowTech/iamai" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="mailto:feedback@getiamai.com">feedback@getiamai.com</a></span>
     </footer>
 
     <!-- The theme control shares the planner's key and labels (prompt 47.1 item 12): a choice made on either side
