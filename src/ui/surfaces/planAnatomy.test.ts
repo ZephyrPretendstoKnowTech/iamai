@@ -26,8 +26,9 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { statusOf } from './statusWord.ts'
-import { stepTrack as trackFor } from './stepContract.ts'
+import { stageClass, stepTrack as trackFor } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
+import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
@@ -61,6 +62,9 @@ const rule = (selector: string): string => {
   }
   assert.fail(`app.css no longer declares ${selector} as a rule of its own`)
 }
+
+/** A step with the fields these tests read, over the ordinary starting state. */
+const step = (over: Record<string, unknown>): Step => ({ status: 'ready', state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' }, ...over }) as unknown as Step
 
 /** The @media block at a breakpoint, flattened. */
 const atWidth = (px: number): string => CSS.match(new RegExp(`@media \\(max-width: ${px}px\\) \\{[\\s\\S]*?\\n\\}`))?.[0] ?? ''
@@ -294,6 +298,52 @@ test('the lifecycle track draws the four stages and reads them off Foundation B'
   assert.match(rule('.step .track .stage.current .stage-label'), /color: var\(--ink\);/, 'the current stage is marked by colour alone')
 })
 
+test('each lifecycle is drawn as itself, and no step is painted mid-rollout that is not', () => {
+  const pack = read(PACK)
+  // The pack does not have one "current" treatment. It draws a policy that is
+  // not deployed with four unfilled bars, gives Report-only and Ready to
+  // enforce their own two partial treatments, and fills a passed stage.
+  assert.match(pack, /\.stage\{[^}]*background:#263039\}/, 'the pack no longer draws an unfilled stage')
+  assert.match(pack, /\.stage\.done\{background:rgba\(121,215,166/, 'the pack no longer fills a passed stage')
+  assert.match(pack, /\.stage\.current\{background:linear-gradient\(90deg,rgba\(230,188,98,\.85\) 62%/, "the pack's current treatment moved")
+  assert.match(pack, /\.stage\.ready\{background:linear-gradient\(90deg,rgba\(79,209,197,\.85\) 84%/, "the pack's ready treatment moved")
+  assert.match(pack, /<div class="track"><div class="stage"><\/div><div class="stage"><\/div><div class="stage"><\/div><div class="stage"><\/div><\/div>/, 'the pack no longer draws Not deployed as four unfilled bars')
+
+  // Production draws the same four apart, on the stage name the contract
+  // already projected. The default fill is empty, so a stage with no treatment
+  // of its own claims nothing.
+  assert.match(rule('.step .track .stage-fill'), /width: 0;/, 'an unmarked stage claims progress')
+  assert.match(rule('.step .track .stage.reached .stage-fill'), /width: 100%;\n\s*background: var\(--success\);/, 'a passed stage is no longer complete')
+  assert.match(rule('.step .track .stage.current.stage-report-only .stage-fill'), /width: 62%;\n\s*background: var\(--attention\);/, "Report-only lost the pack's current treatment")
+  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--accent\);/, 'Ready to enforce lost its own treatment')
+  // The blanket rule the four replaced: a `.current` fill that names no stage
+  // paints Not deployed and Enforced with Report-only's bar.
+  assert.equal(/\.step \.track \.stage\.current \.stage-fill \{/.test(CSS), false, 'one treatment is applied to every current stage again')
+
+  // End to end, per lifecycle: the classes production actually renders, from
+  // the contract's own projection through the component's one class list.
+  const cls = (lifecycle: Lifecycle): string[] => trackFor(step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle, condition: 'healthy' } })).map(stageClass)
+  assert.match(SECTIONS, /className=\{stageClass\(s\)\}/, 'the track builds its own class list beside the contract’s')
+  const treated = (c: string): 'empty' | 'report-only' | 'ready' | 'complete' => {
+    if (/\breached\b/.test(c)) return 'complete'
+    if (/\bcurrent\b/.test(c) && c.includes('stage-report-only')) return 'report-only'
+    if (/\bcurrent\b/.test(c) && c.includes('stage-ready-to-enforce')) return 'ready'
+    return 'empty'
+  }
+  // Not deployed: nothing has been deployed, so nothing is filled and nothing
+  // is part-filled. The step is still marked — by aria-current and the label.
+  assert.deepEqual(cls('not-deployed').map(treated), ['empty', 'empty', 'empty', 'empty'])
+  assert.deepEqual(cls('report-only').map(treated), ['complete', 'report-only', 'empty', 'empty'])
+  assert.deepEqual(cls('ready-to-enforce').map(treated), ['complete', 'complete', 'ready', 'empty'])
+  // Enforced reads as finished: the last stage is reached as well as current,
+  // and `.reached` is the only fill rule that matches it.
+  assert.deepEqual(cls('enforced').map(treated), ['complete', 'complete', 'complete', 'complete'])
+  assert.match(cls('enforced')[3], /\bcurrent\b/, 'the finished step is no longer marked as being at Enforced')
+  // And the condition never changes a treatment: it is not on this axis.
+  const held = trackFor(step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'report-only', condition: 'review-required' } })).map(stageClass)
+  assert.deepEqual(held, cls('report-only'), 'a condition repainted the lifecycle bar')
+})
+
 test('the frame has a main column and the step’s own rail, and the rail survives the collapse', () => {
   const pack = read(PACK)
   assert.match(pack, /\.step-body\{display:grid;grid-template-columns:minmax\(0,1fr\) 290px\}/, 'the pack no longer draws a main column and a rail')
@@ -344,7 +394,6 @@ test('the frame is production’s composition, not a second reading of the engin
 })
 
 test('the track projects the recorded lifecycle and nothing else', () => {
-  const step = (over: Record<string, unknown>): Step => ({ status: 'ready', state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' }, ...over }) as unknown as Step
   const at = (s: Step): { labels: string[]; reached: boolean[]; current: number } => {
     const t = trackFor(s)
     return { labels: t.map((x) => x.label), reached: t.map((x) => x.reached), current: t.findIndex((x) => x.current) }

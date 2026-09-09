@@ -14,7 +14,7 @@ import { Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
-import { CONTRACT } from './stepContract.ts'
+import { CONTRACT, stageClass } from './stepContract.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -183,7 +183,7 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
     <div className="track-wrap">
       <ol className="track" aria-label={CONTRACT.trackLabel}>
         {track.map((s) => (
-          <li key={s.key} className={`stage${s.reached ? ' reached' : ''}${s.current ? ' current' : ''}`} aria-current={s.current ? 'step' : undefined}>
+          <li key={s.key} className={stageClass(s)} aria-current={s.current ? 'step' : undefined}>
             <span className="stage-bar" aria-hidden="true">
               <span className="stage-fill" />
             </span>
