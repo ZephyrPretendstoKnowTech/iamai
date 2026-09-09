@@ -225,15 +225,24 @@ test('the renderer takes the canonical HTML at all three widths, and writes deri
   }
 })
 
-test('the brand manifest says what task 030 actually switched on, and no more', () => {
+test('the brand manifest says what production actually switched on, and no more', () => {
   assert.equal(brand.production.paletteApplied, true)
   assert.equal(brand.production.typographyApplied, true)
   assert.equal(brand.production.shellLogoApplied, true)
-  // The honest half: the four surfaces still do not wear their approved anatomy.
-  assert.equal(brand.production.pageCompositionRestored, false)
+  // Task 030 applied the skin and said so; it explicitly had NOT restored the
+  // anatomy, and this flag was false to say it. Packs 031-040 then restored all
+  // four surfaces onto their packs and converged the three no pack governs, so
+  // task 041 set it true: a flag reading false here now would be the brand
+  // authority stating something false about its own repository.
+  assert.equal(brand.production.pageCompositionRestored, true)
+  assert.equal(brand.production.pageCompositionRestoredBy, '031-040')
   const designManifest = JSON.parse(read('docs/design/approved/manifest.json')) as { surfaces: { implementationState: string; productionAssumedConformant: boolean }[] }
   for (const s of designManifest.surfaces) {
-    assert.equal(s.implementationState, 'restoration-pending')
+    assert.equal(s.implementationState, 'restored')
+    // Restored is not the same as certified. `productionAssumedConformant`
+    // stays false on every surface for good: what a flag records is what
+    // landed, and conformance is re-earned by the two-sided anatomy tests and
+    // the rendered comparison every time the surface changes.
     assert.equal(s.productionAssumedConformant, false)
   }
 })

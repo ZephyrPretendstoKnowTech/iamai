@@ -442,10 +442,23 @@ staged, declared face, so the runtime and the authority cannot part again.
 
 ### 9.4 What task 030 did not do
 
-No page composition. Home, Connect, Plan and MFA Readiness do not wear the anatomy of their
-packs, and every record still says `restoration-pending` and
-`productionAssumedConformant: false`. No baseline, no tenant evidence, no lifecycle or
-condition semantics, no MFA proof or rung truth, no emergency-access semantics, no canonical
-operation, no Graph permission or collection, no session behaviour, no demo truth, and no
-change to accurate production copy other than adding the brand wordmark string beside the
-product name it was standing in for.
+No page composition. At task 030 Home, Connect, Plan and MFA Readiness did not wear the
+anatomy of their packs, and every record said `restoration-pending`. No baseline, no tenant
+evidence, no lifecycle or condition semantics, no MFA proof or rung truth, no
+emergency-access semantics, no canonical operation, no Graph permission or collection, no
+session behaviour, no demo truth, and no change to accurate production copy other than
+adding the brand wordmark string beside the product name it was standing in for.
+
+> **Superseded as a statement of current state, 2026-09-09 (task 041).** The first sentence
+> is history, not today: packs 032 (Connect), 033-036 (Plan), 037 (MFA Readiness) and 038
+> (Home) restored the anatomy, pack 040 converged the three surfaces no pack governs, and
+> `docs/design/approved/manifest.json` now records every surface as `restored` under the
+> pack that did it. This section is kept as the task-030 record. The current value lives in
+> the manifest and nowhere else; nothing below restates it.
+>
+> `productionAssumedConformant` is still `false` on every surface, and that is deliberate
+> rather than left over. It does not mean "not restored yet" — it means conformance is
+> *evidenced*, never assumed: the two-sided anatomy tests read the canonical bytes at test
+> time, `scripts/render-design.mjs` shoots the comparison, and the commit after this one
+> could regress a surface without touching the manifest. See
+> `docs/design/reports/041-final-approved-design-brand-verification.md`.
