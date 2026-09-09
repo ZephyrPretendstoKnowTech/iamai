@@ -106,6 +106,35 @@ test('one callout under the summary, in the pack’s place, and it is not drawn 
   assert.match(SURFACE, /h\?\.ids && h\.ids\.length > 0/, 'an unknown reach must not become a number in the callout')
 })
 
+test('the callout divides what is true from the way to the Plan step, and stacks them at the pack’s narrow width', () => {
+  const pack = read(PACK)
+  // The pack: a space-between row holding an explanation block and an action,
+  // which becomes a column at 620.
+  assert.match(pack, /\.callout\s*\{[^}]*justify-content:space-between/, 'the pack no longer holds its action apart from its explanation')
+  assert.match(pack, /<div class="callout">\s*<div>[\s\S]{0,300}<\/div>\s*<a href="[^"]*">[^<]*<\/a>\s*<\/div>/, 'the pack no longer draws an explanation block beside an action')
+  const narrow = pack.match(/@media\(max-width:620px\)\{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(narrow, /\.callout\{align-items:flex-start;flex-direction:column\}/, 'the pack no longer stacks the callout at 620')
+
+  // Production: BOTH branches of the one callout name their two parts, so the
+  // Plan link is the action of the notice and not a word inside its sentence.
+  const parts = [...SURFACE.matchAll(/<Callout[\s\S]{0,900}?<\/Callout>/g)].map((m) => m[0])
+  assert.equal(parts.length, 2, 'the two branches of the one callout')
+  for (const part of parts) {
+    assert.match(part, /<span className="callout-explain">/, 'a callout branch states its sentence outside an explanation block')
+    assert.match(part, /<a className="callout-action" href=\{`#\/plan\//, 'a callout branch does not hold its Plan step as the action')
+  }
+  // And the layout is the pack's: the body divides, and the division becomes a
+  // stack at the pack's own breakpoint.
+  const body = CSS.match(/\.surface\.readiness \.callout \.callout-body \{[^}]*\}/)?.[0] ?? ''
+  assert.match(body, /justify-content: space-between/, 'the callout does not hold its action apart from its explanation')
+  assert.match(body, /align-items: center/, 'the action does not sit with the explanation it belongs to')
+  const at620 = CSS.match(/@media \(max-width: 620px\) \{[\s\S]*?\n\}/)?.[0] ?? ''
+  assert.match(at620, /\.surface\.readiness \.callout \.callout-body \{[^}]*flex-direction: column/, 'the callout never stacks its action under its explanation')
+  // The shared attention panel keeps its own job: the tone, the tint and the
+  // icon. It must not grow one surface's two-part arrangement (task 031).
+  assert.doesNotMatch(CSS.match(/\n\.callout \{[^}]*\}/)?.[0] ?? '', /space-between/, 'the readiness arrangement became the shared callout role')
+})
+
 test('the toolbar is a search and the filters as pills, and every pill is a real control over the one Show key', () => {
   const pack = read(PACK)
   assert.match(pack, /\.toolbar\s*\{display:flex[^}]*flex-wrap:wrap/, 'the pack no longer wraps its toolbar')
@@ -152,6 +181,37 @@ test('the person table has the pack’s six zones, in the pack’s order, on bot
   const t = readinessTable(fixture('demo').snapshot, fixture('demo').mapping)
   assert.deepEqual(t.header, COLUMNS)
   for (const row of t.rows) assert.equal(row.length, COLUMNS.length)
+})
+
+test('the readiness cell is one bounded status object, and the rung and the word are what is inside it', () => {
+  const pack = read(PACK)
+  // The pack: the state is a marker and a word inside ONE full-round outline,
+  // never a loose mark beside loose text.
+  const status = pack.match(/\.status\s*\{[^}]*\}/)?.[0] ?? ''
+  assert.match(status, /display:inline-flex/, 'the pack no longer bounds its state as one object')
+  assert.match(status, /border:1px solid/, 'the pack’s state object lost its outline')
+  assert.match(status, /border-radius:999px/, 'the pack’s state object is no longer a full round')
+  assert.match(pack, /<span class="status [a-z]+"><span class="dot"><\/span>[A-Za-z][^<]*<\/span>/, 'the pack no longer puts a marker and a word inside the outline')
+
+  // Production: the same bounded object, composing the shared `.pill` geometry
+  // rather than declaring a second one, with the rung's own badge as the marker
+  // and the group's word beside it. Neither is removed and neither is hidden:
+  // the word is what says the state and the badge still carries the rung.
+  const cell = SURFACE.match(/<span className="readiness-status pill">[\s\S]{0,600}/)?.[0] ?? ''
+  assert.ok(cell, 'the readiness cell is not one bounded status object')
+  assert.match(cell, /<RungBadge rung=\{r\.rung\} \/>/, 'the rung’s badge left the status object')
+  assert.match(cell, /<span className="group-word">\{readinessWord\(r\)\}<\/span>/, 'the readiness word left the status object')
+  assert.match(cell, /<span className="not-person">/, 'an account the campaign does not count lost its word')
+  const role = CSS.match(/\n\.pill \{[^}]*\}/)?.[0] ?? ''
+  assert.match(role, /border: 1px solid/, 'the shared pill lost the outline the cell composes')
+  assert.match(role, /border-radius: 999px/, 'the shared pill is no longer a full round')
+  // The outline is geometry. The state stays in the word and in the rung's own
+  // badge — the readiness cell's own rule chooses no colour of its own, which
+  // is what keeps a readiness group and a Plan lifecycle out of one enum.
+  const own = CSS.match(/\.surface\.readiness td \.readiness-status \{[^}]*\}/)?.[0] ?? ''
+  assert.ok(own, 'the readiness status object has no rule')
+  assert.doesNotMatch(own, /background|border-color|(?<!vertical-)color:/, 'the readiness status outline chose a state colour')
+  assert.doesNotMatch(CSS, /\.readiness-status \{[^}]*display: none|\.group-word \{[^}]*display: none/, 'the word inside the status object was hidden')
 })
 
 test('the table stays an accessible table through the stacked breakpoint, and its labels are DOM', () => {

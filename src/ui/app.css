@@ -2573,8 +2573,10 @@ td .rung-badge {
   height: 20px;
   line-height: 20px;
 }
+/* The word for an account the campaign does not count, inside the readiness
+   cell's status outline. The gap beside the badge is the pill's, so this sets
+   no margin of its own. */
 td .not-person {
-  margin-left: 6px;
   font-size: var(--t-2);
   color: var(--ink-3);
 }
@@ -2668,6 +2670,28 @@ td .not-person {
   color: var(--rung-5);
 }
 
+/* The callout under the summary. The shared `.callout` role owns the panel —
+   the tone border, the tint and the icon (task 031) — and the pack owns what
+   the panel is arranged as: the explanation on one side, the way to the Plan
+   step held apart on the other, and the two stacked at the narrow width below.
+   Production leads the notice with the tone icon, which the pack has no
+   equivalent for, so the division is inside the body: the body takes the rest
+   of the row and divides it, and the icon stays beside the whole thing.
+
+   This belongs to MFA Readiness and not to the shared role: the Plan's
+   attention panel draws no action of its own, and one pack is not evidence of
+   sharing (src/ui/primitives.test.ts). */
+.surface.readiness .callout .callout-body {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.surface.readiness .callout .callout-action {
+  white-space: nowrap;
+}
+
 /* The pack's toolbar: the search, then the filters as pills. `.pill` is the
    shared geometry (task 031); the pressed treatment is the toolbar rule above,
    which is a check mark as well as the accent. */
@@ -2719,14 +2743,17 @@ td .not-person {
   font-size: var(--t-2);
   color: var(--ink-3);
 }
-/* The group's word beside the rung badge in a row. */
-.surface.readiness td .group-word {
-  margin-left: 6px;
+/* The Readiness cell: the pack's bounded status object, which production had
+   left as a badge and some text sitting loose in the column. The outline and
+   the spacing are the shared `.pill` role (task 031) — the same geometry the
+   Plan's state badge takes, and no colour of its own — so what is inside it is
+   the only thing that says the state: the rung's own badge as the marker, and
+   the group's word beside it. Production's word is longer than the pack's
+   sample, so the column is given the width the pair needs rather than the word
+   breaking across two lines inside the outline. */
+.surface.readiness td .readiness-status {
+  vertical-align: middle;
 }
-/* The Readiness cell: the rung's badge and the group's word on one line. The
-   pack draws the state as a pill, which does not break; production's word is
-   longer and carries the rung beside it, so the column is given the width the
-   pair needs rather than the word being broken across two lines. */
 .surface.readiness td .group-word,
 .surface.readiness td .not-person {
   white-space: nowrap;
@@ -2950,6 +2977,14 @@ td .not-person {
   .readiness-summary .summary-stat {
     border-left: 0;
     border-top: 1px solid var(--rule);
+  }
+  /* The pack's `.callout{align-items:flex-start;flex-direction:column}`: too
+     narrow to hold the sentence and the way out side by side, so the action
+     goes under the explanation rather than either of them being squeezed. */
+  .surface.readiness .callout .callout-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
   .surface.readiness .footer-note {
     flex-direction: column;
