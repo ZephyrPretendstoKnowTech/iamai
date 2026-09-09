@@ -349,11 +349,25 @@ const STATE_WORD: Record<ObservedState, string> = {
   unknown: OBS.states.unknown,
 }
 
-function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string): string {
+/**
+ * `priorNamed` is whether the earlier record named an object at all, and it is
+ * the difference between the two ways continuity can be unknown.
+ *
+ * A record that names none cannot say what it watched, and that is what
+ * `continuityUnknown` says. A record that names one, against a scan that found
+ * no policy for this member, is the opposite case: the record says exactly what
+ * it watched, and what cannot be shown is that the object is still there. Saying
+ * "this plan does not record which policy it watched" of a plan that does is a
+ * sentence about IAMAI's own bookkeeping standing in for the news, which is that
+ * the policy is not deployed — so that case falls through to the state it moved
+ * to. The continuity itself is unchanged: unknown either way, and the window
+ * starts again either way.
+ */
+function noteFor(continuity: ObservationContinuity, changed: ObservationChanged, expected: boolean, state: ObservedState, date: string, priorNamed: boolean): string {
   // What happened to the object comes first: a different policy delivering this
   // now, or a record that cannot say which one it watched, is the fact about the
   // history, whatever else moved with it.
-  if (continuity === 'unknown') return fillText(OBS.continuityUnknown, { date })
+  if (continuity === 'unknown' && !priorNamed) return fillText(OBS.continuityUnknown, { date })
   if (changed === 'artifact') return fillText(OBS.artifactReplaced, { date })
   if (changed === 'none') return fillText(OBS.unchanged, { state: STATE_WORD[state], date })
   if (changed === 'state') return fillText(expected ? OBS.stateChangedExpected : OBS.stateChanged, { state: STATE_WORD[state], date })
@@ -479,7 +493,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     expected,
     continuity,
     reviewRequired,
-    note: noteFor(continuity, changed, expected, state, date),
+    note: noteFor(continuity, changed, expected, state, date, prior.artifact !== null),
   }
 }
 
