@@ -12,8 +12,11 @@
 // A test that names five historical cases cannot make that claim. So this file
 // starts from a sweep of every fixture — each on its own baseline and on the
 // curated one, with the exclusions question unanswered, with a step set aside,
-// and with a deployed policy edited between two scans — takes the Step Contract
-// for every step of every plan, and reduces each to the shape it renders at:
+// with a deployed policy edited between two scans, and with none of the
+// tenant's own Conditional Access, which is the one reading that brings a goal
+// the baseline implements with two policies to the Plan as two members — takes
+// the Step Contract for every step of every plan, and reduces each to the shape
+// it renders at:
 //
 //   kind · lifecycle · condition · outcome · action · track · implementation ·
 //   rail · found · fix · members · who
@@ -46,7 +49,7 @@ import {
 } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { observationsOf } from '../../roadmap/tracking.ts'
+import { observationsOf, requiredMembers } from '../../roadmap/tracking.ts'
 import { scannedAt } from '../../roadmap/fixtures/records.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Condition, Lifecycle } from '../../roadmap/lifecycle.ts'
@@ -150,6 +153,71 @@ function rescanned(f: Fixture): Variant[] {
   return planOf(`${f.name}+rescan`, { ...f, snapshot }, { snapshot, record: observationsOf(first.steps) })
 }
 
+/** The fixture's tenant with the Conditional Access policies its scan read replaced by `rows`, `after` ms later. */
+function withRows(f: Fixture, rows: Record<string, unknown>[], after = 0): TenantSnapshot | null {
+  const ca = f.snapshot.config.caPolicies
+  if (!ca) return null
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as TenantSnapshot
+  return after === 0 ? snapshot : scannedAt(snapshot, new Date(Date.parse(f.snapshot.asOf) + after).toISOString())
+}
+
+/** The id the planted half of a pair is read back under, so the second scan sees the same object. */
+const PAIRED_POLICY_ID = '0a11a11a-0000-4000-8000-00000000000a'
+
+/**
+ * A goal the pinned baseline implements with TWO policies, in the three states
+ * the pair can be read in.
+ *
+ * Every fixture as it stands already delivers `guests-mfa` with a policy of its
+ * own, so on all of them that goal is preserved and its pair is never rendered
+ * apart — which is why nothing in the sweep reached `multiPolicy` and the
+ * members path went unproved by this file. A tenant with no Conditional Access
+ * at all is the ordinary greenfield shape, and on it the goal arrives as what
+ * the baseline says it is: two required members, each with its own name, stage
+ * and history (Foundation B, `roadmap/tracking.ts` `requiredMembers`).
+ *
+ * The three plans are the three readings of one pair:
+ *
+ *  - neither half deployed, so both members are at the same stage;
+ *  - one half deployed in report-only and the other not built at all, so the
+ *    members carry two different stages and two different histories and the
+ *    step is neither of them;
+ *  - the deployed half edited by hand between two scans, so ONE member is held
+ *    for review while the other is not.
+ *
+ * Nothing here writes an observation: the third run's record is the second
+ * run's own, exactly as `rescanned` does it for a single-member step.
+ */
+function paired(f: Fixture): Variant[] {
+  const none = withRows(f, [])
+  if (!none) return []
+  const empty: Fixture = { ...f, snapshot: none }
+  const first = runFixture(empty)
+  const pair = first.steps.find((s) => (s.action.resolution?.policies ?? []).length > 1)
+  if (!pair) return []
+  const out = planOf(`${f.name}+no-ca`, empty)
+  const at = (days: number): string => new Date(Date.parse(f.snapshot.asOf) + days * DAY).toISOString()
+  const body = structuredClone(pair.action.resolution!.policies[0].body) as Record<string, unknown>
+  const half: Record<string, unknown> = { ...body, id: PAIRED_POLICY_ID, state: 'enabledForReportingButNotEnforced', createdDateTime: at(-30), modifiedDateTime: at(-30) }
+  const halfSnapshot = withRows(f, [half])
+  if (!halfSnapshot) return out
+  const halfF: Fixture = { ...f, snapshot: halfSnapshot }
+  out.push(...planOf(`${f.name}+half-pair`, halfF))
+  // The same hand edit `rescanned` makes, on the planted half: an exclusion
+  // nobody planned is a material change, and here it lands on one member of a
+  // pair rather than on a step that is only ever one policy.
+  const users = ((half.conditions as Record<string, Record<string, unknown>>).users ?? {}) as Record<string, unknown>
+  const edited = {
+    ...half,
+    conditions: { ...(half.conditions as Record<string, unknown>), users: { ...users, excludeUsers: [...((users.excludeUsers as string[]) ?? []), f.operatorId] } },
+    modifiedDateTime: at(3),
+  }
+  const snapshot = withRows(f, [edited], 3 * DAY)
+  if (!snapshot) return out
+  out.push(...planOf(`${f.name}+half-pair+rescan`, { ...f, snapshot }, { snapshot, record: observationsOf(runFixture(halfF).steps) }))
+  return out
+}
+
 /** The first step of a plan put aside by the operator, which is how a step leaves the lifecycle. */
 function setAside(f: Fixture): Variant[] {
   const first = runFixture(f)
@@ -168,7 +236,10 @@ function setAside(f: Fixture): Variant[] {
  * tenant is in before anybody answers it, and it is the only route to
  * `needs-decision`. A step is put aside on every fixture, and one deployed
  * policy is edited between two scans, because neither state exists in a single
- * scan of anything.
+ * scan of anything. And every fixture is read once with no Conditional Access
+ * of its own, because that is the only way a goal the baseline implements with
+ * two policies reaches the Plan as two members rather than as a goal the tenant
+ * already delivers.
  */
 let SWEEP: Variant[] | null = null
 function sweep(): Variant[] {
@@ -183,6 +254,7 @@ function sweep(): Variant[] {
     out.push(...planOf(`${f.name}+unanswered`, noExclusionsAnswer(f)))
     out.push(...setAside(f))
     out.push(...rescanned(f))
+    out.push(...paired(f))
   }
   for (const f of named(allCuratedFixtures())) {
     out.push(...planOf(`${f.name}+curated`, f))
@@ -239,6 +311,12 @@ const CASES: Record<string, (v: Variant) => boolean> = {
   'supporting-check': (v) => v.kind === 'check',
   'supporting-campaign': (v) => v.kind === 'campaign',
   'supporting-ladder': (v) => v.kind === 'ladder',
+  // A goal the pinned baseline implements with TWO policies, which is one step
+  // delivering two objects: the pair together, the pair at two different
+  // stages, and the pair with one half held for review.
+  'multi-policy': (v) => v.c.multiPolicy,
+  'multi-policy-split': (v) => v.c.multiPolicy && new Set(v.c.members.map((m) => m.lifecycle)).size > 1,
+  'multi-policy-review': (v) => v.c.multiPolicy && v.c.members.some((m) => m.reviewRequired),
   // The sparse end and the dense end of the same grammar.
   'sparse': (v) => v.c.found.length === 0 && v.c.fix.length === 0 && !hasRail(v.c),
   'dense': (v) => v.c.found.length > 0 && v.c.fix.length > 0 && hasRail(v.c),
@@ -282,6 +360,9 @@ const INVENTORY: string[] = [
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · rail · found · fix · one-policy · who-unknown', // large+unanswered/s-goal-require-managed-device
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · rail · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
+  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · rail · no-found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · rail · no-found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · rail · found · fix · members · who-unknown', // demo+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · rail · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
@@ -290,6 +371,10 @@ const INVENTORY: string[] = [
   'policy · adjust · ready-to-enforce · blocked · open · do:resolve · track · no-implementation · rail · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-token-protection
   'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · rail · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
+  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · rail · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
+  'policy · adjust · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · members · who-unknown', // demo-week2+half-pair/s-goal-guests-mfa
+  'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · rail · found · no-fix · members · who-unknown', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · rail · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
@@ -591,4 +676,91 @@ test('§6c the demo renders through the same Plan, with no variant renderer of i
   // every invariant in this file is asserted over them too.
   assert.ok(sweep().some((v) => v.where.startsWith('demo/')), 'the demo tenant left the variant sweep')
   assert.ok(sweep().some((v) => v.where.startsWith('demo-week2/')), 'the demo follow-up snapshot left the variant sweep')
+})
+
+// ---------------------------------------------------------- §7 policy members
+
+/**
+ * A goal the pinned baseline implements with TWO policies is one step
+ * delivering two objects, each with its own name, its own stage and its own
+ * history (Foundation B members, `roadmap/tracking.ts` `requiredMembers`).
+ *
+ * The pack draws ONE grammar for every step, so the members list is the only
+ * place a pair's two identities survive the row — and the failure a visual
+ * migration makes here is to let the step's own aggregate stand for both
+ * halves, or to let the deployed half stand for the pair. Both would still
+ * render a perfectly ordinary step.
+ */
+const pairs = (): Variant[] => sweep().filter((v) => v.c.multiPolicy)
+
+test('§7 a step the baseline implements with two policies keeps both, and neither stands for the pair', () => {
+  const all = pairs()
+  assert.ok(all.length > 0, 'no step in the sweep renders more than one policy member, so nothing here proves the members path')
+  for (const v of all) {
+    const required = requiredMembers(v.step)
+    const tracked = new Map((v.step.tracking?.members ?? []).map((m) => [m.key, m]))
+    const observed = new Map(v.step.state.members.map((m) => [m.key, m]))
+    // Identity: one member per required member, in the baseline's own order,
+    // each with its own key and its own label.
+    assert.deepEqual(v.c.members.map((m) => m.key), required.map((m) => m.key), `${v.where}: the members are not the step's required members`)
+    assert.equal(new Set(v.c.members.map((m) => m.key)).size, v.c.members.length, `${v.where}: two members share one identity`)
+    assert.equal(v.c.members.every((m) => m.label !== null), true, `${v.where}: a member of a pair is drawn with no label`)
+    assert.equal(new Set(v.c.members.map((m) => m.label)).size, v.c.members.length, `${v.where}: two members carry the same label`)
+    for (const m of v.c.members) {
+      assert.ok(m.name.trim().length > 0, `${v.where}/${m.key}: a member renders with no name`)
+      // Stage, review state and provenance are each the authority's own answer
+      // FOR THAT MEMBER: the tracking record for its key, and the observation
+      // record for its key. Never the step's aggregate lifecycle, and never the
+      // other half's.
+      assert.equal(m.lifecycle, tracked.get(m.key)?.lifecycle ?? null, `${v.where}/${m.key}: the member's stage is not the one Foundation B tracked for it`)
+      assert.equal(m.reviewRequired, tracked.get(m.key)?.reviewRequired === true, `${v.where}/${m.key}: the member's review state is not its own`)
+      assert.equal(m.since, observed.get(m.key)?.change.latest.firstSeenAt ?? null, `${v.where}/${m.key}: the member's history is not the observation recorded for it`)
+      assert.ok(m.line.includes(m.name), `${v.where}/${m.key}: the member's line does not name the member`)
+    }
+    // And the two lines are two: a pair whose halves read identically has let
+    // one of them stand for the step.
+    assert.equal(new Set(v.c.members.map((m) => m.name)).size, v.c.members.length, `${v.where}: one member's name stands for the other`)
+    assert.equal(new Set(v.c.members.map((m) => m.line)).size, v.c.members.length, `${v.where}: one member's line stands for the other`)
+  }
+  // The two readings that make the aggregate visible as an aggregate, both
+  // reached by the sweep rather than asserted about in the abstract: a pair with
+  // its halves at two different stages, and a pair with ONE half held for
+  // review while the other is not.
+  assert.ok(
+    all.some((v) => new Set(v.c.members.map((m) => m.lifecycle)).size > 1),
+    'no pair in the sweep has its two halves at different stages, so nothing proves the step is not one of them',
+  )
+  assert.ok(
+    all.some((v) => v.c.members.some((m) => m.reviewRequired) && v.c.members.some((m) => !m.reviewRequired)),
+    'no pair in the sweep has exactly one half held for review, so nothing proves the review stays on the member that moved',
+  )
+  // A member that needs a look never leaves its step reading all-clear. Which
+  // badge the step ends up wearing is the condition precedence's answer and not
+  // this file's — a blocked step outranks a held one and says `blocked` — but
+  // `healthy` is the one answer that would have swallowed what one half did.
+  every(
+    'member-review',
+    (v) => !v.c.members.some((m) => m.reviewRequired) || v.c.state.condition !== 'healthy',
+    'a member needs a look and the step it belongs to reads healthy',
+  )
+  // And the members block is a PAIR's block. A step with one policy renders no
+  // member list and labels nothing "Policy A", on every variant in the sweep.
+  every(
+    'one-policy',
+    (v) => v.c.multiPolicy || (v.c.members.length <= 1 && (v.c.members[0]?.label ?? null) === null),
+    'a step with one policy is drawn as a pair',
+  )
+})
+
+test('§7b the members list is the renderer’s one source for a pair, composed nowhere else', () => {
+  const sections = read('src/ui/surfaces/StepSections.tsx')
+  const step = read('src/ui/surfaces/ContentStep.tsx')
+  // One list, over the contract's members, drawing each member's own line and
+  // its own label — and nothing at all below two, so a one-policy step keeps
+  // the light row it has.
+  assert.match(sections, /members\.length < 2/, 'the members block no longer stops at a single policy')
+  assert.match(sections, /members\.map\(/, 'the members block no longer draws one row per member')
+  assert.match(sections, /\{m\.line\}/, 'the members block composes a member’s line somewhere other than the contract')
+  assert.match(step, /<PolicyMembers members=\{contract\.members\} \/>/, 'the step no longer draws the members from the contract')
+  assert.equal(step.split('<PolicyMembers').length - 1, 1, 'the step draws a second members block')
 })

@@ -116,27 +116,78 @@ const PRODUCTION_SHOTS = [
     after: `(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (const r of document.querySelectorAll('main.page .plan-row')) { r.click(); await wait(180); const step = document.querySelector('main.page .step'); if (step && step.querySelector('.findings')) { const more = step.querySelector('details.more'); if (more) more.open = true; await wait(120); return true } r.click(); await wait(60) } return false })()`,
   },
   // The remaining canonical variants, end to end (task 036). A restoration pack
-  // cannot claim "all variants" from one polished implement plate, and the four
+  // cannot claim "all variants" from one polished implement plate, and the five
   // below are the cases the approved pack draws that the shots above do not
   // reach: the In-place step and its existing-implementation rail, the blocked
-  // step and its attention panel, the baseline conflict, and a step whose
-  // action is a decision only a person can make.
+  // step and its attention panel, the baseline conflict, a step whose action is
+  // a decision only a person can make, and a deployed policy that no longer
+  // means what the plan asked for.
   //
   // Each is FOUND rather than named: the driver opens roadmap rows until the
   // opened step satisfies a predicate about what it contains, so the evidence
   // survives a change to the demo fixture and cannot silently shoot the wrong
   // step. The In-place rows live behind the footer's own disclosure, so that is
   // opened first.
+  //
+  // The predicates MUTUALLY EXCLUDE each other, and that is the point (task 036
+  // correction 1). A step waiting on a person also lists what is outstanding,
+  // so a blocked predicate that asks only for the attention panel and its list
+  // matches the decision step too — and the first row satisfying both then
+  // produced two plates of one step, byte for byte, under two names each
+  // claiming to be evidence for a different variant. The ordinary blocker is
+  // now the one that is NOT a decision, so the pair proves what it says.
+  //
+  // `pre` is what the driver does before it starts opening rows.
   ...[
     ['plan-step-inplace', `!!s.querySelector('.step-side .metric-name')`],
-    ['plan-step-blocked', `!!s.querySelector('.callout') && !!s.querySelector('.blocking')`],
+    ['plan-step-blocked', `!!s.querySelector('.callout') && !!s.querySelector('.blocking') && !s.querySelector('.decision .dlabel')`],
     ['plan-step-conflict', `!!s.querySelector('.callout-danger, .callout.danger') && !s.querySelector('.blocking')`],
     ['plan-step-decision', `!!s.querySelector('.decision .dlabel')`],
-  ].map(([name, test]) => ({
+    // The review-required variant (the approved pack's V3), which is the one
+    // state no single scan produces: a policy is held for review because what
+    // it MEANS is no longer what the plan asked for, and that is a comparison
+    // between two scans of one tenant.
+    //
+    // The demo is exactly that — two snapshots of one sample org — and
+    // selecting the follow-up scan carries day one's record into it
+    // (ui/demo.ts `nextDemoRecord`), observations and all, so the sample's own
+    // progression renders the variant. Nothing about the sample tenant is
+    // changed to obtain it: the driver waits for day one's plan to record what
+    // it saw, puts the demo's snapshot bookkeeping back to what a visitor who
+    // has not opened week two yet has (the follow-up scan holds no record of
+    // its own), and presses the selector a visitor presses. Every id it writes
+    // is the sample tenant's (ui/demoMode.ts); no real tenant has a row here.
+    //
+    // Without that one line the shot is order-dependent: the first pass writes
+    // a record for the follow-up scan, and every pass after it reads week two
+    // against week two's own observations, which is a tenant nothing changed in.
+    [
+      'plan-step-review',
+      `!!s.querySelector('.condition-review-required')`,
+      `await wait(2500)
+       await new Promise((done) => {
+         const open = indexedDB.open('iamai')
+         open.onsuccess = () => {
+           const d = open.result
+           if (!d.objectStoreNames.contains('plan')) { d.close(); return done() }
+           const t = d.transaction('plan', 'readwrite')
+           t.objectStore('plan').put({ tenantId: 'demo-sample-tenant#snapshots', current: 'initial', records: {} })
+           t.oncomplete = () => { d.close(); done() }
+           t.onerror = () => { d.close(); done() }
+         }
+         open.onerror = () => done()
+       })
+       const pick = document.querySelector('.demo-snapshots button[aria-pressed="false"]')
+       if (!pick) return false
+       pick.click()
+       await wait(3000)`,
+    ],
+  ].map(([name, test, pre = '']) => ({
     name,
     hash: '#/plan',
     after: `(async () => {
       const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+      ${pre}
       for (const d of document.querySelectorAll('main.page .plan-footer details')) d.open = true
       await wait(200)
       for (const r of document.querySelectorAll('main.page .plan-row')) {
