@@ -12,7 +12,8 @@
 import type { ReactNode } from 'react'
 import { Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import type { ContractFix, ContractFound, ContractMember, StepContract } from './stepContract.ts'
+import { absoluteDate } from '../../copy/dates.ts'
+import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
 
 /**
@@ -123,6 +124,123 @@ export function StepState({ contract }: { contract: StepContract }) {
 }
 
 /**
+ * The opened step's head, as the approved Plan pack draws it
+ * (`docs/design/approved/plan-step-v1.html` `.step-head`): an eyebrow naming
+ * what kind of step this is, the title, the supporting line under it, and the
+ * state badge held to the right of all three. Below them the lifecycle track.
+ *
+ * The head is the first thing under the row it attaches to, and it repeats the
+ * row's title on purpose: the row is the board and the head is the step, and the
+ * pack draws the title in both.
+ *
+ * Everything here is handed to it. Nothing in the head reads a step, a lifecycle
+ * or a date.
+ */
+export function StepHead({ eyebrow = null, title, sub = null, word, tone, track = [], children }: {
+  /** What kind of step this is (pages.app.plan.stepContract.kind); null where the kind has no label. */
+  eyebrow?: string | null
+  title: string
+  /** The one supporting line under the title; null where the step has none. */
+  sub?: ReactNode
+  word: string
+  tone: StatusTone
+  track?: ContractStage[]
+  /** Where the step is and what happens next — the pack's track caption, above the track it captions. */
+  children?: ReactNode
+}) {
+  return (
+    <header className="step-head">
+      <div className="step-head-top">
+        <div className="step-head-lead">
+          {eyebrow && <div className="eyebrow">{eyebrow}</div>}
+          <h3 className="step-title">{title}</h3>
+          {sub}
+        </div>
+        <Status tone={tone} pill>
+          {word}
+        </Status>
+      </div>
+      {children}
+      <LifecycleTrack track={track} />
+    </header>
+  )
+}
+
+/**
+ * The four rollout stages, drawn as the pack draws them: a bar per stage with
+ * the stage it is at marked and its label under it, captioned by where the step
+ * is and what happens next (`StepState`, immediately above it in the head).
+ *
+ * It renders `contract.track` and decides nothing. The stages are a list, not
+ * four decorative bars: each label is real text a screen reader reads in order,
+ * and the one the step is at carries `aria-current="step"`, so where the step is
+ * never depends on telling two colours apart. The bar itself is the picture of
+ * that same fact and is hidden from assistive technology.
+ */
+export function LifecycleTrack({ track }: { track: ContractStage[] }) {
+  if (track.length === 0) return null
+  return (
+    <div className="track-wrap">
+      <ol className="track" aria-label={CONTRACT.trackLabel}>
+        {track.map((s) => (
+          <li key={s.key} className={`stage${s.reached ? ' reached' : ''}${s.current ? ' current' : ''}`} aria-current={s.current ? 'step' : undefined}>
+            <span className="stage-bar" aria-hidden="true">
+              <span className="stage-fill" />
+            </span>
+            <span className="stage-label">{s.label}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+/**
+ * The opened step's right rail (`.step-side` in the pack): the supporting facts
+ * that summarise the step, beside the main column rather than in it.
+ *
+ * Every block is a fact the contract already holds, shown only where it has one.
+ * Nothing is filled in to make the rail look populated — a step with no dated
+ * milestone shows no milestone block, and where the whole rail is empty there is
+ * no rail and the body is one column. Pack 035 owns the rest of the pack's side
+ * blocks; this is the frame they will sit in, carrying what production can say
+ * truthfully today.
+ */
+export function hasRail(contract: StepContract): boolean {
+  return railMilestone(contract) || railImplementation(contract)
+}
+
+const railMilestone = (c: StepContract): boolean => c.milestone.at !== null || c.milestone.gatedBy !== null
+const railImplementation = (c: StepContract): boolean => c.members.length > 0
+
+export function StepRail({ contract }: { contract: StepContract }) {
+  const m = contract.milestone
+  const showMilestone = railMilestone(contract)
+  const showImplementation = railImplementation(contract)
+  if (!showMilestone && !showImplementation) return null
+  return (
+    <aside className="step-side surface-inset">
+      {showMilestone && (
+        <div className="side-block">
+          <div className="key-label">{CONTRACT.railMilestone}</div>
+          {m.at !== null && <p className="metric">{absoluteDate(m.at)}</p>}
+          <p className="metric-sub">{m.gatedBy ?? m.label}</p>
+        </div>
+      )}
+      {showImplementation && (
+        <div className="side-block">
+          <div className="key-label">{CONTRACT.railImplementation}</div>
+          {/* Foundation A's one answer, said as availability rather than as a
+              second reason: why an implementation is withheld is the step's
+              What to do and is stated once, in the main column. */}
+          <p className="metric-sub">{contract.implementation.offered ? CONTRACT.implementationReady : CONTRACT.implementationNone}</p>
+        </div>
+      )}
+    </aside>
+  )
+}
+
+/**
  * The step's required policy members, where there is more than one.
  *
  * A goal the baseline implements with two policies is one step delivering two
@@ -149,7 +267,7 @@ export function StepSection({ heading, when = true, children }: { heading: strin
   if (!when) return null
   return (
     <>
-      <h3>{heading}</h3>
+      <h4>{heading}</h4>
       {children}
     </>
   )

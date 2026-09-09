@@ -1003,6 +1003,20 @@
             "in-place": "In place",
             "set-aside": "Set aside"
           },
+          "kind": {
+            "$comment": "The opened step's eyebrow (task 034; docs/design/approved/plan-step-v1.html draws `Policy step` and `Resolution step` above the title). One label per steps[].kind, so the label names what production already calls the step rather than a second taxonomy. A kind with no entry here shows no eyebrow.",
+            "policy": "Policy step",
+            "object": "Preparation step",
+            "blocker": "Preparation step",
+            "check": "Check step",
+            "campaign": "Campaign step",
+            "ladder": "Hardening step"
+          },
+          "trackLabel": "Rollout lifecycle",
+          "railMilestone": "Next milestone",
+          "railImplementation": "Implementation",
+          "implementationReady": "Portal steps, JSON and PowerShell",
+          "implementationNone": "Nothing to submit yet",
           "condition": {
             "healthy": "Healthy",
             "review-required": "Review required",

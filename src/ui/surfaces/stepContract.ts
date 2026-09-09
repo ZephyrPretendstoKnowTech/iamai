@@ -46,6 +46,13 @@ import type { StepVarContext } from './stepVars.ts'
 type ContractWords = {
   lifecycle: Record<string, string>
   condition: Record<string, string>
+  /** The opened step's eyebrow, one label per steps[].kind (task 034). */
+  kind: Record<string, string>
+  trackLabel: string
+  railMilestone: string
+  railImplementation: string
+  implementationReady: string
+  implementationNone: string
   next: string
   nextOn: string
   foundHeading: string
@@ -136,6 +143,35 @@ export type ContractAction = {
 /** Something the operator must go and do before this step can move. Never a passed check. */
 export type ContractFix = { key: string; text: string }
 
+/**
+ * The four rollout stages, as the approved Plan pack draws them
+ * (`docs/design/approved/plan-step-v1.html` `.track`): Not deployed →
+ * Report-only → Ready to enforce → Enforced, with the one the step is at marked.
+ *
+ * A projection of `Step.state.lifecycle` and nothing else. It computes no
+ * lifecycle, advances nothing, invents no history and holds no percentage: a
+ * stage is `reached` only because the ordered lifecycle Foundation B recorded is
+ * past it, which is a restatement of that one fact rather than a second reading
+ * of it. `current` is where Foundation B says the step is.
+ *
+ * Empty where there is no rollout to draw. A goal the tenant already satisfies
+ * (`inPlace`) was never on this plan's lifecycle, and marking its stages reached
+ * would claim a rollout that did not happen; a set-aside step has left the
+ * lifecycle; a step with no policy has none.
+ */
+export type ContractStage = { key: Lifecycle; label: string; reached: boolean; current: boolean }
+
+/** The lifecycle in order. The one place the stages are sequenced. */
+const LIFECYCLE_ORDER: Lifecycle[] = ['not-deployed', 'report-only', 'ready-to-enforce', 'enforced']
+
+export function stepTrack(step: Step): ContractStage[] {
+  const s = step.state
+  if (s.lifecycle === null || s.setAside || s.inPlace) return []
+  const at = LIFECYCLE_ORDER.indexOf(s.lifecycle)
+  if (at < 0) return []
+  return LIFECYCLE_ORDER.map((key, i) => ({ key, label: CONTRACT.lifecycle[key], reached: i < at || s.lifecycle === 'enforced', current: i === at }))
+}
+
 /** One required policy member of the step (Foundation B), with its own name and its own stage. */
 export type ContractMember = {
   key: string
@@ -169,6 +205,8 @@ export type StepContract = {
   title: string
   state: ContractState
   milestone: ContractMilestone
+  /** The four rollout stages with the step's own marked, or empty where there is no rollout to draw. */
+  track: ContractStage[]
   why: string
   found: ContractFound[]
   who: ContractWho | null
@@ -527,6 +565,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       tone: word.tone,
     },
     milestone,
+    track: stepTrack(step),
     why,
     found,
     who: whoOf(step),

@@ -458,7 +458,7 @@
       "reach": {
         "route": "/plan",
         "state": "scanned",
-        "exclude": ".step-body, details > *:not(summary)"
+        "exclude": ".step, details > *:not(summary)"
       },
       "allow": {
         "headings": [
@@ -477,6 +477,8 @@
           "Blocked",
           "Scheduled",
           "Report-only",
+          "Ready to enforce",
+          "Needs decision",
           "Enforced",
           "Skipped",
           "Doesn't apply"
@@ -654,7 +656,7 @@
             "nth": 1
           }
         ],
-        "root": ".step-body",
+        "root": ".step",
         "exclude": "details > *:not(summary)"
       },
       "allow": {
@@ -680,6 +682,8 @@
           "Blocked",
           "Scheduled",
           "Report-only",
+          "Ready to enforce",
+          "Needs decision",
           "Enforced",
           "Skipped",
           "Doesn't apply",

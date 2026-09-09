@@ -476,13 +476,24 @@ try {
   check('Plan: phases render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .phase').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
   check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
+  // The opened step is one frame attached under the row that opened it, with a
+  // head and a main column, and the frame is the row's next element (task 034).
+  const framed = await evaluate(
+    `(() => { const s = document.querySelector('main.page .step'); if (!s) return null; const row = s.previousElementSibling; return { tag: s.tagName, head: !!s.querySelector(':scope > .step-head'), main: !!s.querySelector('.step-body > .step-main'), row: row ? row.className + '|' + row.getAttribute('aria-expanded') : null } })()`,
+  )
+  check('Plan: the opened step is a frame attached under the row that opened it', !!framed && framed.tag === 'ARTICLE' && framed.head && framed.main && framed.row === 'plan-row|true', JSON.stringify(framed))
+  // The approved Plan pack's topbar is sticky, and it is the one app header.
+  const stickyHeader = await evaluate(
+    `(async () => { window.scrollTo(0, 800); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const hs = document.querySelectorAll('header.app'); const t = hs[0].getBoundingClientRect().top; window.scrollTo(0, 0); return { n: hs.length, top: Math.round(t), sticky: getComputedStyle(hs[0]).position } })()`,
+  )
+  check('Plan: the one app header stays put when the plan scrolls', !!stickyHeader && stickyHeader.n === 1 && stickyHeader.sticky === 'sticky' && stickyHeader.top === 0, JSON.stringify(stickyHeader))
   // A policy step's What-to-do tabs (Portal steps, JSON, PowerShell) and the
   // Download JSON artifact never carry a forbidEverywhere string. Open the row of
   // a policy step until the tabs render.
   await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page .step-body .tabs .tab')) return true; r.click(); await wait(40); } return false })()`)
   if (await evaluate(`!!document.querySelector('main.page .step-body .tabs .tab')`)) {
     for (const tabLabel of ['JSON', 'PowerShell', 'Portal steps']) { await clickText(`/^${tabLabel}$/`); await sleep(120) }
-    const stepText = await evaluate(`(document.querySelector('main.page .step-body') || {}).textContent || ''`)
+    const stepText = await evaluate(`(document.querySelector('main.page .step') || {}).textContent || ''`)
     const stepHits = FORBID_EVERYWHERE.filter((f) => stepText.includes(f))
     check('Step: the What-to-do tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
     await clickText('/^Download JSON$/'); await sleep(200)

@@ -1422,13 +1422,23 @@ footer.app a {
 .plan-row:hover {
   background: var(--bg-inset);
 }
-/* The open row is the head of the step under it, so it keeps its surface and
-   squares off the edge the step attaches to. The attached frame itself is pack
-   034's; this is the join it attaches to. */
+/* The open row is the head of the step under it (task 033), and task 034
+   attached the step to it: the row takes the frame's own border and rounds only
+   the two corners the step does not share, so the two read as one unit whose top
+   edge is the row.
+
+   The pack draws the pair standing on the page. Production draws its rows on a
+   group panel, so the opened unit is inset from that panel's edges by 8px —
+   without the inset the frame's side borders would sit against the panel's own
+   and read as a doubled hairline. The row's inset is reduced by the same 8px, so
+   the title, the state and the timing stay on the line the collapsed rows above
+   and below set. */
 .plan-row[aria-expanded='true'] {
   background: var(--bg-inset);
-  border-radius: var(--radius) var(--radius) 0 0;
-  border-bottom: 1px solid var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+  margin: 0 8px;
+  padding: 0 9px;
 }
 .plan-row-title {
   min-width: 0;
@@ -1457,14 +1467,157 @@ footer.app a {
 .plan-row .when.when-reason {
   white-space: normal;
 }
-/* The open step keeps a raised treatment inside the wave panel (item 12). */
-.step-body {
-  padding: 12px 0 20px 16px;
-  border-left: 2px solid var(--rule);
-  margin: 0 0 8px;
+/* ---- the approved expanded step (task 034) ----
+   docs/design/approved/plan-step-v1.html: the row opens into ONE frame attached
+   under it — `.step{border:1px solid var(--line);border-top:0;border-radius:0 0
+   12px 12px;box-shadow:var(--shadow)}` — with `.step-head` above and
+   `.step-body{grid-template-columns:minmax(0,1fr) 290px}` below it. The frame
+   takes the two shared roles task 031 proved (`.panel`, `.panel-key`), so the
+   surface, the border and the one key-panel shadow are not declared a second
+   time here; what is declared here is the anatomy, which is this pack's alone.
+
+   The 8px inset and the matching 9px row padding are production's, not the
+   pack's: the pack's row stands on the page and production's stands on a group
+   panel. See `.plan-row[aria-expanded='true']` above. */
+.step {
+  border-top: 0;
+  border-radius: 0 0 var(--radius-control) var(--radius-control);
+  margin: 0 8px 8px;
   line-height: 1.55;
+  overflow: hidden;
 }
-.step-body h3 {
+/* The head: the eyebrow, the title and its supporting line on the left, the
+   state badge held to the top right of all three, and the lifecycle track under
+   them. `23px 27px 20px` in the pack, less the 8px the frame is already inset. */
+.step-head {
+  padding: 23px 19px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+.step-head-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+/* min-width: 0 so a long policy title wraps inside the head instead of pushing
+   the badge off the frame. */
+.step-head-lead {
+  min-width: 0;
+}
+.step-head .step-title {
+  display: block;
+  font-size: var(--t-5);
+  font-weight: var(--weight-strong);
+  margin: 5px 0 4px;
+}
+.step-head .step-sub {
+  margin: 0;
+  max-width: var(--measure);
+  color: var(--ink-2);
+}
+/* ---- the lifecycle track ----
+   The pack's four stages: `.track{grid-template-columns:repeat(4,1fr);gap:8px}`
+   over `.track-labels` at the same four tracks. Production draws them as one
+   list of four items — a bar over its own label — because a label that belongs
+   to a stage should be that stage's child rather than the fourth item of a
+   second parallel grid a screen reader reads separately.
+
+   It renders `contract.track` (stepContract.ts), which is a projection of
+   Foundation B's lifecycle. Nothing here decides a stage, and the current
+   stage's partial bar is the pack's static treatment, not a measured
+   percentage. */
+.step .track-wrap {
+  margin-top: 17px;
+}
+.step .track {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.step .track .stage {
+  display: grid;
+  gap: 6px;
+}
+.step .track .stage-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius);
+  background: var(--rule);
+  overflow: hidden;
+}
+.step .track .stage-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: var(--radius);
+}
+.step .track .stage.reached .stage-fill {
+  width: 100%;
+  background: var(--success);
+}
+.step .track .stage.current .stage-fill {
+  width: 62%;
+  background: var(--attention);
+}
+.step .track .stage-label {
+  font-family: var(--font-sans);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+}
+/* The stage the step is at is named as well as coloured: `aria-current` carries
+   it to a screen reader and the label takes the body ink for the eye, so the
+   position never depends on telling two bar colours apart. */
+.step .track .stage.current .stage-label {
+  color: var(--ink);
+  font-weight: 500;
+}
+/* ---- the body: the main column and the step's own right rail ----
+   The pack's `minmax(0, 1fr) 290px`. `has-rail` is set by the step, because a
+   step whose contract has nothing for the rail must not leave a 290px column
+   standing empty beside the main body. */
+.step-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.step-body.has-rail {
+  grid-template-columns: minmax(0, 1fr) 290px;
+}
+.step-main {
+  min-width: 0;
+  padding: 4px 19px 26px;
+}
+/* The rail belongs to this step: it is inside the frame, on the quieter of the
+   two surfaces task 031 named, divided from the main column by the frame's own
+   hairline. */
+.step-side {
+  min-width: 0;
+  padding: 20px 18px;
+  border-left: 1px solid var(--rule);
+}
+.side-block {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--rule);
+}
+.side-block:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
+}
+.side-block .metric {
+  margin: 6px 0 0;
+  font-size: var(--t-lead-lg);
+  font-weight: var(--weight-strong);
+}
+.side-block .metric-sub {
+  margin: 2px 0 0;
+  font-size: var(--t-1);
+  color: var(--ink-2);
+}
+.step-body h4 {
   margin: 18px 0 6px;
 }
 /* ================= the Step Contract (Foundation D) =================
@@ -1474,15 +1627,16 @@ footer.app a {
    recede, and nothing is boxed inside the step's own box. */
 
 /* Where the step is, on both axes (roadmap/lifecycle.ts): the stage, then the
-   condition. Small caps-free, no pill: two words that read as a state, not as a
-   badge, so a step that also carries the row's status word does not read as
-   three labels for one fact. */
-.step-body .step-state {
+   condition. It is the pack's track caption and sits directly over the track it
+   captions. It stays two plain words rather than a second badge: the head
+   already carries one, and the two say different things — the badge is the row's
+   single projected word, this is the lifecycle and the condition apart. */
+.step .step-state {
   margin: 2px 0 0;
   font-size: var(--t-2);
   color: var(--ink-2);
 }
-.step-body .step-state .stage {
+.step .step-state .stage {
   font-weight: 500;
   color: var(--ink);
 }
@@ -1490,22 +1644,22 @@ footer.app a {
    state colours live in .status and nowhere else (design lint 5), and they would
    be redundant here anyway: the word is the signal, and the row above already
    carries the tone. */
-.step-body .step-state .condition-blocked,
-.step-body .step-state .condition-baseline-conflict,
-.step-body .step-state .condition-needs-decision,
-.step-body .step-state .condition-review-required {
+.step .step-state .condition-blocked,
+.step .step-state .condition-baseline-conflict,
+.step .step-state .condition-needs-decision,
+.step .step-state .condition-review-required {
   color: var(--ink);
   font-weight: 500;
 }
 /* The next milestone, and only where Foundation B has a date for it. */
-.step-body .step-next {
+.step .step-next {
   margin: 2px 0 0;
   font-size: var(--t-2);
   color: var(--ink-2);
 }
 /* A goal the baseline implements with two policies: each member on its own row,
    with its own name and its own stage. Absent on a step with one policy. */
-.step-body .step-members {
+.step .step-members {
   list-style: none;
   margin: 8px 0 0;
   padding: 0 0 0 12px;
@@ -1513,10 +1667,10 @@ footer.app a {
   font-size: var(--t-2);
   color: var(--ink-2);
 }
-.step-body .step-members > li {
+.step .step-members > li {
   margin: 2px 0;
 }
-.step-body .step-members .member-label {
+.step .step-members .member-label {
   font-weight: 500;
   color: var(--ink);
 }
@@ -1631,8 +1785,19 @@ footer.app a {
   .print-page { break-before: page; }
   .print-page h2 { font-size: var(--t-5); margin: 0 0 4mm; border-bottom: 2px solid var(--accent); padding-bottom: 2mm; }
   .print-page h3 { font-size: var(--t-4); margin: 6mm 0 2mm; }
-  .print-page h4 { font-size: var(--t-2); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2); margin: 3mm 0 1mm; }
+  .print-page h4 { font-size: var(--t-3); margin: 4mm 0 1mm; }
   .print-step { break-inside: avoid-page; border-top: 1px solid var(--rule); padding-top: 3mm; margin-top: 4mm; }
+  /* The screen's attached frame is a screen idea: on paper a step is a section
+     under a heading, in one column, with no card, no shadow and no rail beside
+     it. The rail's own blocks still print, under the main column, because they
+     carry the milestone and the implementation state (task 034). */
+  .print-plan .step { border: 0; box-shadow: none; margin: 0; overflow: visible; }
+  .print-plan .step-head { padding: 0; border-bottom: 0; }
+  .print-plan .step-head .step-title { font-size: var(--t-4); margin: 0 0 1mm; }
+  .print-plan .step-body, .print-plan .step-body.has-rail { display: block; }
+  .print-plan .step-main { padding: 0; }
+  .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--rule); background: none; }
+  .print-plan .track { display: none; }
   .print-json { break-inside: auto; }
   .print-plan .datatable, .print-plan table { width: 100%; border-collapse: collapse; }
   .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--rule); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-2); }
@@ -2316,6 +2481,45 @@ td .group-word {
   /* A long state word owns its column rather than being clipped by it (task 017). */
   .plan-row .status {
     white-space: normal;
+  }
+  /* The pack collapses the opened body at the same width: `.step-body{
+     grid-template-columns:1fr}` and `.step-side{border-left:0;border-top:1px
+     solid var(--line)}`. The rail moves BELOW the main column and keeps every
+     word it had — it is one element in one place in the DOM, so what a screen
+     reader reads and what the page shows stay the same order at both widths. */
+  .step-body.has-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .step-side {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+}
+/* The pack's second breakpoint. `.step-head,.step-main{padding-left:18px;
+   padding-right:18px}`, `.step-head-top{display:block}` with the badge dropping
+   under the title, and the stage labels one step smaller so four of them still
+   read across a phone. Nothing is hidden. */
+@media (max-width: 650px) {
+  .step-head,
+  .step-main {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .step-head-top {
+    display: block;
+  }
+  .step-head-top > .status {
+    margin-top: 12px;
+  }
+  /* The pack drops the labels to 8px here. Production keeps them at the
+     smallest size the type scale has and lets a long stage name wrap onto a
+     second line instead: four legible labels over four bars, rather than four
+     labels too small to be one. */
+  .step .track {
+    gap: 4px;
+  }
+  .step .track .stage-label {
+    line-height: var(--lh-body);
   }
 }
 @media (max-width: 640px) {

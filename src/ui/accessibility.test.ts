@@ -251,10 +251,22 @@ test('the current page is marked programmatically and by shape, and a tab with n
 })
 
 test('no surface builds an application header of its own', () => {
+  // `<header>` is a sectioning element as well as the page's banner: an
+  // `<article>` may head itself, and the approved Plan pack's opened step does
+  // exactly that (`.step-head`, task 034). What must stay singular is the
+  // APPLICATION header — `header.app`, the one the shell renders with the
+  // wordmark, the destinations and the account menu. So the rule is about that
+  // one, and a sectioning header inside a surface has to name the section it
+  // heads rather than claiming the page.
   for (const f of uiFiles()) {
     if (f === 'src/ui/shell/AppShell.tsx') continue
-    assert.doesNotMatch(read(f), /<header\b/, `${f} draws a header; the shell owns the one header`)
+    for (const m of read(f).matchAll(/<header\b[^>]*>/g)) {
+      assert.doesNotMatch(m[0], /className="app"|className={`app/, `${f} draws an application header; the shell owns the one header`)
+      assert.match(m[0], /className="[a-z-]+-head"/, `${f} draws a header that does not say which section it heads`)
+    }
   }
+  // And the application header itself is written once, in the shell.
+  assert.equal(uiFiles().filter((f) => /className="app"/.test(read(f))).join(), 'src/ui/shell/AppShell.tsx')
 })
 
 test('the shell page contract lists exactly the header the shell renders', () => {

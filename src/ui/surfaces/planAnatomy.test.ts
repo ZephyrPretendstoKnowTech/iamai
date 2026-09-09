@@ -1,4 +1,4 @@
-// Task 033 — the approved Plan collapsed roadmap row, restored.
+// Task 033 — the approved Plan collapsed roadmap row; task 034 — the expanded frame.
 //
 // The same two-sided shape as src/ui/surfaces/connectAnatomy.test.ts (task
 // 032): every assertion reads `docs/design/approved/plan-step-v1.html` at test
@@ -7,10 +7,11 @@
 // green unit test that only knows about production can pass while the two
 // drift apart, which is the failure this file exists to catch.
 //
-// This file owns the ROW. It does not own the expanded step: the frame,
-// lifecycle track, head layout and right rail the pack draws under the row
-// belong to packs 034 and 035, and §"nothing here is pack 034" below is the
-// guard that they have not been quietly half-built here instead.
+// It owns the ROW (task 033) and the EXPANDED FRAME under it (task 034): the
+// join between them, the head, the lifecycle track, the main/rail body and its
+// responsive collapse, and the sticky shell the pack asks the Plan for. The
+// detailed content of the opened step — the findings grid, the action strip,
+// the attention blocks, the rail's remaining side blocks — is pack 035's.
 //
 // What this file does not re-prove, because one authority already owns it: the
 // canonical hashes and bytes (src/ui/design-authority.test.ts); the row's
@@ -25,6 +26,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { statusOf } from './statusWord.ts'
+import { stepTrack as trackFor } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
@@ -33,6 +35,10 @@ const PACK = 'docs/design/approved/plan-step-v1.html'
 const SECTIONS = read('src/ui/surfaces/StepSections.tsx')
 const PLAN = read('src/ui/surfaces/Plan.tsx')
 const CSS = read('src/ui/app.css')
+const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx')
+const CLEANUP_STEP = read('src/ui/surfaces/CleanupStep.tsx')
+const SHELL = read('src/ui/shell/AppShell.tsx')
+const CONTRACT_SRC = read('src/ui/surfaces/stepContract.ts')
 
 /** The PlanRow function body, which is all of the row's markup. */
 const ROW = ((): string => {
@@ -219,24 +225,150 @@ test('the open row is the head of the step under it, driven by the real expanded
   assert.match(pack, /\.step\{[\s\S]{0,120}border-top:0/, 'the pack no longer attaches the step to the row above it')
   // Production makes the same join, and it is keyed off `aria-expanded` — the
   // accessibility state itself — so the affordance cannot say one thing while
-  // the row says another.
-  assert.match(CSS, /\.plan-row\[aria-expanded='true'\] \{[\s\S]*?border-radius: var\(--radius\) var\(--radius\) 0 0;/, 'the open row does not square off the edge the step attaches to')
+  // the row says another. The corner value is one of the brand's three shape
+  // tokens (task 030); what is asserted is the SHAPE — the two corners the step
+  // does not share are rounded, the two it does are square — and that the row
+  // carries the frame's own border, which is what makes the pair one unit.
+  const openRow = rule(".plan-row[aria-expanded='true']")
+  assert.match(openRow, /border-radius: var\(--radius[a-z-]*\) var\(--radius[a-z-]*\) 0 0;/, 'the open row does not square off the edge the step attaches to')
+  assert.match(openRow, /border: 1px solid var\(--rule\);/, 'the open row does not carry the frame it heads')
   assert.match(ROW, /aria-expanded=\{open\}/, 'the row no longer publishes its expanded state')
 })
 
-test('nothing here is pack 034: no expanded frame, lifecycle track, or right rail', () => {
-  // The pack draws all of these under the row. Task 033 restored the row only,
-  // and a half-built version of the next pack's anatomy is worse than none:
-  // it would have to be unpicked before 034 could attach the real one.
+// ------------------------------------------------ pack 034: the expanded frame
+
+test('the step is one frame attached under the row, not a second card beside it', () => {
   const pack = read(PACK)
-  for (const owned of ['.track{', '.stage{', '.track-labels{', '.step-side{', '.step-head-top{', '.finding{']) {
-    assert.ok(pack.includes(owned), `the pack no longer draws ${owned}; the deferral below is stale`)
+  // The pack: a bordered panel with no top border, only its lower corners
+  // rounded, lifted off the page by the one shadow.
+  assert.match(pack, /\.step\{[\s\S]{0,200}border-radius:0 0 12px 12px/, 'the pack no longer rounds only the step’s lower corners')
+  assert.match(pack, /\.step\{[\s\S]{0,200}box-shadow:var\(--shadow\)/, 'the pack no longer lifts the opened step')
+  // Production: the same shape, composed from the two shared roles task 031
+  // proved (.panel, .panel-key) rather than declaring surface and shadow again.
+  const step = rule('.step')
+  assert.match(step, /border-top: 0;/, 'the step does not attach to the row above it')
+  assert.match(step, /border-radius: 0 0 var\(--radius[a-z-]*\) var\(--radius[a-z-]*\);/, 'the step rounds corners the row above it already rounded')
+  for (const file of [CONTENT_STEP, CLEANUP_STEP]) {
+    assert.match(file, /className="step panel panel-key"/, 'a step body is not the one lifted frame')
   }
-  const stripped = CSS.replace(/\/\*[\s\S]*?\*\//g, '')
-  for (const deferred of ['.track-wrap', '.track-labels', '.step-side', '.step-head-top', '.stage.done', '.stage.current']) {
-    assert.equal(stripped.includes(deferred), false, `${deferred} belongs to pack 034/035 and was implemented early`)
+})
+
+test('the head is the pack’s four zones, and the step title is a heading', () => {
+  const pack = read(PACK)
+  assert.match(pack, /\.step-head-top\{display:flex;justify-content:space-between/, 'the pack no longer holds the badge beside the heading')
+  assert.match(pack, /\.step-head h3\{/, 'the pack no longer draws the title as a heading')
+  assert.match(pack, /\.step-sub\{/, 'the pack no longer draws a supporting line under the title')
+  // Production draws the same four zones: eyebrow, title, supporting line, badge.
+  const head = SECTIONS.slice(SECTIONS.indexOf('export function StepHead('), SECTIONS.indexOf('export function LifecycleTrack('))
+  assert.match(head, /className="eyebrow"/, 'the head lost the shared eyebrow role')
+  assert.match(head, /<h3 className="step-title">\{title\}<\/h3>/, 'the opened step’s title is not a heading')
+  assert.match(head, /<Status tone=\{tone\} pill>/, 'the state badge is not the shared pill over the one status role')
+  assert.match(rule('.step-head-top'), /justify-content: space-between;/)
+  assert.match(rule('.step-head-top'), /align-items: flex-start;/)
+  // And the contract's sections nest UNDER that title rather than beside it.
+  assert.equal(/<h3>/.test(CONTENT_STEP), false, 'a section heading still sits at the step title’s level')
+  assert.match(SECTIONS, /<h4>\{heading\}<\/h4>/, 'the contract’s sections are no longer nested under the step title')
+})
+
+test('the lifecycle track draws the four stages and reads them off Foundation B', () => {
+  const pack = read(PACK)
+  assert.match(pack, /\.track\{display:grid;grid-template-columns:repeat\(4,1fr\)/, 'the pack no longer draws four stages')
+  for (const label of ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced']) {
+    assert.ok(pack.includes(`<span>${label}</span>`), `the pack no longer labels the ${label} stage`)
   }
-  assert.equal(SECTIONS.includes('track-wrap'), false, 'the lifecycle track was built before the pack that owns it')
+  assert.match(rule('.step .track'), /grid-template-columns: repeat\(4, 1fr\);/, 'production does not draw four stages')
+  const track = SECTIONS.slice(SECTIONS.indexOf('export function LifecycleTrack('), SECTIONS.indexOf('export function StepRail('))
+  // The labels are the contract's own lifecycle words, not four literals here.
+  assert.match(track, /\{s\.label\}/, 'a stage label is written into the component instead of coming from the contract')
+  for (const label of ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced']) {
+    assert.equal(track.includes(label), false, `the track writes "${label}" out instead of reading the contract's lifecycle words`)
+  }
+  // Nothing in the component decides where the step is.
+  for (const forbidden of ['step.', 'state.lifecycle', 'state.condition', 'Date.', 'indexOf']) {
+    assert.equal(track.includes(forbidden), false, `the track derives ${forbidden} instead of rendering contract.track`)
+  }
+  // The stage is a word and a position assistive technology can read, never a
+  // colour: the label is real text and the current one is marked twice over.
+  assert.match(track, /aria-current=\{s\.current \? 'step' : undefined\}/, 'the current stage is not marked programmatically')
+  assert.match(track, /<span className="stage-label">\{s\.label\}<\/span>/, 'the stage labels are not real text')
+  assert.match(rule('.step .track .stage.current .stage-label'), /color: var\(--ink\);/, 'the current stage is marked by colour alone')
+})
+
+test('the frame has a main column and the step’s own rail, and the rail survives the collapse', () => {
+  const pack = read(PACK)
+  assert.match(pack, /\.step-body\{display:grid;grid-template-columns:minmax\(0,1fr\) 290px\}/, 'the pack no longer draws a main column and a rail')
+  assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.step-body\{grid-template-columns:1fr\}/, 'the pack no longer collapses the body to one column')
+  assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.step-side\{border-left:0;border-top:1px solid var\(--line\)\}/, 'the pack no longer moves the rail below the main column')
+  // Production: the same two tracks, and the rail belongs to the step's frame
+  // rather than to the page.
+  assert.match(rule('.step-body.has-rail'), /grid-template-columns: minmax\(0, 1fr\) 290px;/, 'the desktop body is not main + rail')
+  assert.match(rule('.step-side'), /border-left: 1px solid var\(--rule\);/, 'the rail is not divided from the main column')
+  const narrow = atWidth(940)
+  assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/, 'the body does not collapse to one column')
+  assert.match(narrow, /\.step-side \{[\s\S]*border-top: 1px solid var\(--rule\);/, 'the rail does not move below the main column')
+  assert.equal(/\.step-side \{[^}]*display:\s*none/.test(narrow), false, 'the rail is hidden rather than moved')
+  // One rail, in one place in the DOM, at every width: no second copy for a
+  // second layout, so reading order and rendered order cannot diverge.
+  assert.equal(CONTENT_STEP.split('<StepRail').length - 1, 1, 'the step draws more than one rail')
+  assert.match(CONTENT_STEP, /\{rail && <StepRail contract=\{contract\} \/>\}/, 'the rail is not gated on the contract having something for it')
+})
+
+test('the Plan’s topbar sticks, through the one shell the product already has', () => {
+  const pack = read(PACK)
+  assert.match(pack, /\.topbar\{[\s\S]{0,60}position:sticky;top:0/, 'the pack no longer defines a sticky topbar')
+  assert.match(SHELL, /const sticky = planActive/, 'the Plan does not turn on the sticky shell its pack asks for')
+  assert.match(SHELL, /className=\{`shell\$\{sticky \? ' shell-sticky' : ''\}`\}/, 'the sticky state is not set on the one shell')
+  // The capability stays task 030's one rule, with the anchor offset it needs;
+  // no second navigation shell was built for the Plan.
+  assert.match(CSS, /\.shell\.shell-sticky header\.app \{[\s\S]*?position: sticky;/, 'the sticky rule left the shell')
+  assert.match(CSS, /\.shell\.shell-sticky \[id\] \{\s*\n\s*scroll-margin-top:/, 'a sticky header without an anchor offset lands every in-page link under itself')
+  assert.equal(SHELL.match(/<header className="app">/g)?.length, 1, 'the shell renders more than one application header')
+})
+
+test('the frame is production’s composition, not a second reading of the engine', () => {
+  // The frame moved markup. It must not have moved a DECISION into the markup:
+  // the head, the track and the rail render `stepContract` and nothing else.
+  const parts = SECTIONS.slice(SECTIONS.indexOf('export function StepHead('), SECTIONS.indexOf('export function PolicyMembers('))
+  for (const forbidden of ['implementationOffered', 'unavailableReason', 'policyHold', 'nextMilestone', 'statusOf', 'projectStatus', 'heldForReview']) {
+    assert.equal(parts.includes(forbidden), false, `the frame calls ${forbidden}; the contract already answered it`)
+  }
+  // The projection itself reads Foundation B's lifecycle and never rebuilds one:
+  // a stage is reached because the recorded lifecycle is past it, and a goal the
+  // tenant already satisfies draws no rollout it never had.
+  assert.match(CONTRACT_SRC, /const LIFECYCLE_ORDER: Lifecycle\[\] = \['not-deployed', 'report-only', 'ready-to-enforce', 'enforced'\]/, 'the lifecycle order left the contract')
+  const trackOf = CONTRACT_SRC.slice(CONTRACT_SRC.indexOf('function stepTrack'), CONTRACT_SRC.indexOf('function stepTrack') + 700)
+  assert.match(trackOf, /if \(s\.lifecycle === null \|\| s\.setAside \|\| s\.inPlace\) return \[\]/, 'a rollout is drawn for a step that never had one')
+  for (const forbidden of ['advanceState', 'setState', 'Date.', 'percent']) {
+    assert.equal(trackOf.includes(forbidden), false, `the track projection ${forbidden}: it may only restate the recorded lifecycle`)
+  }
+})
+
+test('the track projects the recorded lifecycle and nothing else', () => {
+  const step = (over: Record<string, unknown>): Step => ({ status: 'ready', state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' }, ...over }) as unknown as Step
+  const at = (s: Step): { labels: string[]; reached: boolean[]; current: number } => {
+    const t = trackFor(s)
+    return { labels: t.map((x) => x.label), reached: t.map((x) => x.reached), current: t.findIndex((x) => x.current) }
+  }
+  // Not deployed: four stages, none reached, the first current.
+  assert.deepEqual(at(step({})).labels, ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced'])
+  assert.deepEqual(at(step({})).reached, [false, false, false, false])
+  assert.equal(at(step({})).current, 0)
+  // Report-only: the stage before it is behind the policy, because a policy in
+  // report-only has been deployed. Nothing beyond it is claimed.
+  const ro = step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'report-only', condition: 'healthy' } })
+  assert.deepEqual(at(ro).reached, [true, false, false, false])
+  assert.equal(at(ro).current, 1)
+  // The condition moves on its own axis and moves no stage: a held report-only
+  // policy is at exactly the stage a healthy one is at.
+  const held = step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'report-only', condition: 'review-required' } })
+  assert.deepEqual(at(held), at(ro), 'a condition advanced or retreated the lifecycle')
+  const blocked = step({ status: 'blocked', state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'blocked' } })
+  assert.deepEqual(at(blocked).reached, [false, false, false, false], 'a blocked step claims progress it has not made')
+  // A goal the tenant already satisfies was never on this plan's lifecycle, and
+  // a set-aside step has left it: neither gets a rollout drawn for it.
+  assert.deepEqual(trackFor(step({ status: 'done', state: { inPlace: true, setAside: false, satisfied: true, lifecycle: 'enforced', condition: 'healthy' } })), [])
+  assert.deepEqual(trackFor(step({ state: { inPlace: false, setAside: true, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' } })), [])
+  assert.deepEqual(trackFor(step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: null, condition: 'healthy' } })), [])
 })
 
 test('no generated attribution or tagline came in with the design work', () => {
