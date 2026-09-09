@@ -28,9 +28,11 @@ import type { DemoFacts } from '../demoFacts.ts'
 import type { ChangeKind, PolicyChange, SemanticDelta } from '../../derive/baselineDiff.ts'
 
 type Words = {
+  eyebrow: string
   h1: string
   intro: string
   next: string
+  status: { ready: string; readyText: string; next: string }
   signIn: {
     title: string
     state: string
@@ -48,13 +50,14 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
-  baseline: { title: string; state: string; loading: string; none: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
+  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
     limitsSummary: string
     limits: string[]
     limitsMore: string
     limitsLink: string
+    meta: { people: string; policies: string; steps: string }
     complete: { state: string; again: string }
     gaps: { state: string; lead: string; leadFirst: string; notRead: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
@@ -87,6 +90,26 @@ export type Stage = 'settled' | 'current' | 'ahead'
 export function stages(done: readonly boolean[]): Stage[] {
   const current = done.indexOf(false)
   return done.map((_, i) => (current === -1 ? 'settled' : i < current ? 'settled' : i === current ? 'current' : 'ahead'))
+}
+
+/**
+ * The status strip the approved pack sets above the staged flow
+ * (docs/design/approved/connect-v3.html): a state indicator, a state title and
+ * a quiet line.
+ *
+ * It is a PROJECTION of the progression, not a second reading of it. It takes
+ * the same `done` array stages() takes and the stages' own title, state and
+ * tone, and says one of two things: nothing is left to do, or this is the stage
+ * with the next action and here is that stage's own state line. So the strip
+ * cannot disagree with the step it points at, and no readiness is calculated
+ * here that is not already calculated by the tiles.
+ */
+export type ConnectStatus = { tone: Tone; title: string; text: string }
+export function connectStatus(done: readonly boolean[], stagesOf: readonly { title: string; state: string; tone: Tone }[]): ConnectStatus {
+  const current = done.indexOf(false)
+  if (current === -1) return { tone: 'done', title: W.status.ready, text: W.status.readyText }
+  const s = stagesOf[current]
+  return { tone: s?.tone ?? null, title: fillText(W.status.next, { stage: s?.title ?? '' }), text: s?.state ?? '' }
 }
 
 export type Weight = 'primary' | 'secondary' | 'tertiary'
@@ -179,7 +202,32 @@ export function sampleTile({ tenant, upn }: { tenant: string; upn: string }): Ac
 export type BaselineUpdate = { date: string; changes: PolicyChange[]; incomplete?: boolean }
 /** A review row: the change word, the policy as a person reads it, what it was called, what materially changed, and the plan steps under it. */
 export type BaselineReviewRow = { tag: string; policy: string; was: string | null; deltas: string[]; steps: string[] }
-export type BaselineTile = { n: 2; title: string; state: string; tone: Tone; paragraphs: string[]; update: { summary: string; note: string | null; rows: BaselineReviewRow[] } | null; actions: Action[] }
+/**
+ * The baseline's own card, nested inside step 2 by the approved pack
+ * (docs/design/approved/connect-v3.html): the package's name, a quiet source
+ * line, and the copy that explains what a baseline is and what this one aims
+ * at. Every value is the loaded package's — the name it carries, how many
+ * policies it holds, and whether it is the pinned version or one someone
+ * uploaded. The pack also draws a credential pill beside the name; production
+ * does not fill it, because a credential badge is a claim and the one
+ * credential IAMAI states belongs to the author of ONE package, not to the
+ * region. It stays where production already says it, inside `what`.
+ */
+export type BaselineCard = { name: string; source: string; paragraphs: string[] }
+export type BaselineTile = {
+  n: 2
+  title: string
+  state: string
+  tone: Tone
+  /** The nested card, once a package is loaded. */
+  card: BaselineCard | null
+  /** The pack's source-and-version disclosure under the card. */
+  source: { summary: string; text: string } | null
+  /** The explaining copy when there is no card to nest it in (nothing loaded yet, or a load that failed). */
+  paragraphs: string[]
+  update: { summary: string; note: string | null; rows: BaselineReviewRow[] } | null
+  actions: Action[]
+}
 
 /** One material difference in the words the product uses; the field's own name comes from diffFields, or the path itself when the model does not cover it. */
 function deltaLine(d: SemanticDelta): string {
@@ -196,19 +244,25 @@ function deltaLine(d: SemanticDelta): string {
 export function baselineTile({
   name,
   policyCount,
+  version,
   loading,
   update,
   stepsFor,
 }: {
   name: string | null
   policyCount: number
+  /** Where the loaded package came from (ui/baseline.ts BaselineResult.origin): the pinned index, or files someone uploaded. */
+  version?: 'pinned' | 'uploaded'
   loading: string | null
   update: BaselineUpdate | null
   /** The plan steps that policy stands behind, from the goal map by stable identity (derive/baselineDiff.ts stepsForChange). */
   stepsFor: (change: PolicyChange) => string[]
 }): BaselineTile {
   const B = W.baseline
-  const state = loading ? fillText(B.loading, { source: loading }) : name ? fillText(B.state, { baselineName: name, policyCount }) : B.none
+  // The step's state word is the STEP's state; the package's name and size are
+  // the card's, where the approved pack puts them.
+  const state = loading ? fillText(B.loading, { source: loading }) : name ? B.selected : B.none
+  const card: BaselineCard | null = name === null || loading !== null ? null : { name, source: [fillText(B.count, { policyCount }), version === 'uploaded' ? B.versionUploaded : B.versionPinned].join(' · '), paragraphs: [B.what, B.goal] }
   const rows: BaselineReviewRow[] = (update?.changes ?? []).map((c) => {
     const steps = stepsFor(c)
     const deltas = c.deltas.map(deltaLine)
@@ -228,7 +282,9 @@ export function baselineTile({
     title: B.title,
     state,
     tone: name ? 'done' : null,
-    paragraphs: [B.what, B.goal, B.pinned],
+    card,
+    source: card ? { summary: B.sourceSummary, text: B.pinned } : null,
+    paragraphs: card ? [] : [B.what, B.goal, B.pinned],
     update:
       update && (rows.length > 0 || incomplete)
         ? {
@@ -242,8 +298,17 @@ export function baselineTile({
 }
 
 // ---- 3 Scan: the limitations, then exactly one of its states ----
+/**
+ * What a complete scan produced, for the meta row the approved pack draws in
+ * the scan step. Every number is read from the authority that already owns it —
+ * `people` from derive/facts.ts (the one denominator), `policies` from the
+ * loaded package, `steps` from derive/facts.ts stepFacts (the count the Plan
+ * header and the Plan destination already show). Absent until the plan has
+ * computed: the row is never drawn from a placeholder.
+ */
+export type ScanCounts = { people: number; policies: number; steps: number }
 export type ScanInput =
-  | { kind: 'complete'; at: string; now?: number }
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null }
   | { kind: 'gaps'; unread: string[]; lastScan: { at: string } | null }
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
@@ -257,6 +322,8 @@ export type ScanTile = {
   state: string
   tone: Tone
   limits: { summary: string; lines: string[]; more: string; link: { label: string; href: string } }
+  /** The complete scan's compact counts, once the plan has computed. */
+  meta?: { value: string; label: string }[]
   lead?: string
   rows?: { name: string; value: string }[]
   ask?: string
@@ -278,8 +345,17 @@ export function scanTile(input: ScanInput): ScanTile {
   const signInAnother: Action = { label: W.account.signInAnother, weight: 'primary' }
   const again: Action = { label: S.complete.again, weight: 'secondary' }
   switch (input.kind) {
-    case 'complete':
-      return { ...base, kind: 'complete', state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }), tone: 'done', actions: [again] }
+    case 'complete': {
+      const c = input.counts
+      return {
+        ...base,
+        kind: 'complete',
+        state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }),
+        tone: 'done',
+        meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
+        actions: [again],
+      }
+    }
     case 'gaps': {
       const G = S.gaps
       return {
@@ -391,10 +467,13 @@ export function tileStrings(tile: SignInTile | AccountTile | BaselineTile | Scan
   if ('note' in tile && tile.note) out.push(tile.note)
   if ('paragraphs' in tile) {
     out.push(...tile.paragraphs)
+    if (tile.card) out.push(tile.card.name, tile.card.source, ...tile.card.paragraphs)
+    if (tile.source) out.push(tile.source.summary, tile.source.text)
     if (tile.update) out.push(tile.update.summary, ...tile.update.rows.flatMap((r) => [r.tag, r.policy, ...r.steps]))
   }
   if ('limits' in tile) {
     out.push(tile.limits.summary, ...tile.limits.lines, tile.limits.more, tile.limits.link.label)
+    for (const m of tile.meta ?? []) out.push(m.value, m.label)
     for (const r of tile.rows ?? []) out.push(r.name, r.value)
     if (tile.ask) out.push(tile.ask)
     if (tile.learn) out.push(tile.learn.label)

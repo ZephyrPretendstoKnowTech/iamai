@@ -295,8 +295,15 @@
   },
   "pages": {
     "connect": {
+      "eyebrow": "Setup",
       "h1": "Strengthen identity security without guessing what will break.",
       "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.",
+      "status": {
+        "$comment": "Task 032: the approved pack's status strip above the staged flow (docs/design/approved/connect-v3.html). It is a projection of the same progression the stages already carry — the stage with the next action, or nothing left to do — never a second reading of readiness. The quiet half is the current stage's own state line, so the strip and the step cannot disagree.",
+        "ready": "Ready to plan",
+        "readyText": "Tenant, baseline and scan are ready.",
+        "next": "Next: {stage}"
+      },
       "signIn": {
         "title": "Sign in",
         "state": "no tenant connected",
@@ -337,7 +344,6 @@
       },
       "baseline": {
         "title": "Baseline",
-        "state": "{baselineName} · {policyCount} policies",
         "loading": "loading {source}…",
         "none": "none loaded",
         "what": "A baseline is the identity-security standard IAMAI plans your tenant towards: a published set of Conditional Access policies to measure it against. The default is Defense in Depth, built and maintained by Jon Hope, a Microsoft MVP, at ConditionalAccess.Tech.",
@@ -402,7 +408,13 @@
         "diffNoStep": "no step changes",
         "change": "Change baseline",
         "howToMakeOne": "How to make one →",
-        "pinned": "IAMAI pins a reviewed version of it and tells you when he updates it."
+        "pinned": "IAMAI pins a reviewed version of it and tells you when he updates it.",
+        "$comment": "Task 032: the approved pack nests the baseline's own card inside the step (docs/design/approved/connect-v3.html), so the step's state word is the step's state and the package's name and size move into the card. `selected` is that word; `count` and the two version words are the card's quiet source line, from the loaded package and its origin — never a claim about the author.",
+        "selected": "selected",
+        "count": "{policyCount} policies",
+        "versionPinned": "pinned version",
+        "versionUploaded": "uploaded package",
+        "sourceSummary": "Source and version"
       },
       "scan": {
         "title": "Scan",
@@ -416,6 +428,12 @@
         ],
         "limitsMore": "Permissions, every check it runs, and its limits in full:",
         "limitsLink": "How IAMAI works →",
+        "$comment": "Task 032: the approved pack carries a compact meta row of what the scan produced (docs/design/approved/connect-v3.html). Every number comes from the one authority that already owns it — derive/facts.ts for the active people, the loaded package for the policies, derive/facts.ts stepFacts for the steps — so the row is a second RENDERING of a count, never a second count. It renders only when a complete scan has produced a computed plan.",
+        "meta": {
+          "people": "active people",
+          "policies": "baseline policies",
+          "steps": "plan steps"
+        },
         "complete": {
           "state": "complete · {age}",
           "again": "Scan again"

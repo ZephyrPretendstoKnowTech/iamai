@@ -243,14 +243,14 @@ try {
   // The demo chunk loads in demo mode and nowhere else: the signed-out page reads
   // the sample facts from the build-time module and never fetches src/ui/demo.ts.
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
-  await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`)
+  await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3 && document.querySelectorAll('main.page .connect-destination').length === 1`)
   check('Connect (signed out): the demo chunk is not loaded outside demo mode', !(await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts|\\/src\\/ui\\/demoFacts\\.ts/.test(e.name))`)))
   t = await text()
   check('Connect (signed out): the sample facts are on the page without it', /\d+\s*steps/.test(t) && /already in place/.test(t))
   // A chunk that fails to load reloads the page once per session, then leaves the error page to the person.
   await evaluate(`sessionStorage.removeItem('iamai.preloadReloaded'); window.__stillHere = 1; window.dispatchEvent(new Event('vite:preloadError', { cancelable: true }))`)
   check('Preload failure: the page reloads once', await waitFor(`(performance.getEntriesByType('navigation')[0] || {}).type === 'reload' && window.__stillHere === undefined`, 8000))
-  await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`)
+  await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3 && document.querySelectorAll('main.page .connect-destination').length === 1`)
   const preloadAgain = await evaluate(`(() => { const e = new Event('vite:preloadError', { cancelable: true }); window.__stillHere = 2; window.dispatchEvent(e); return e.defaultPrevented })()`)
   await sleep(1500)
   check('Preload failure: a second failure in the session does not reload again', !preloadAgain && (await evaluate(`window.__stillHere === 2`)))
@@ -275,7 +275,7 @@ try {
   // has a collector behind it and the "requested, not yet used" group is absent.
   check('Connect: no requested scope sits unused', !/Requested, not yet used/.test(t) && !/Application\.Read\.All/.test(t) && !/Used for/.test(t))
   // Walk fixes (prompt 47.1 Part 2): the permission name on one line, the prose at the page column.
-  check('Connect: the tiles read at the page column, not the measure', (await evaluate(`Math.round(document.querySelector('main.page section.step-tile').getBoundingClientRect().width)`)) >= 700, String(await evaluate(`Math.round(document.querySelector('main.page section.step-tile').getBoundingClientRect().width)`)))
+  check('Connect: the tiles read at the page column, not the measure', (await evaluate(`Math.round(document.querySelector('main.page .connect-flow').getBoundingClientRect().width)`)) >= 700, String(await evaluate(`Math.round(document.querySelector('main.page .connect-flow').getBoundingClientRect().width)`)))
 
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
@@ -291,31 +291,31 @@ try {
   await go('connect')
   await sleep(600)
   t = await text()
-  // Connect as four tiles (docs/design/connect-mockup.html).
+  // Connect as the approved staged flow and its Plan destination (docs/design/approved/connect-v3.html).
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
-  check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+synthetic baseline · 1 polic(y|ies)/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
+  check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+selected/.test(t) && /synthetic baseline/.test(t) && /1 polic(y|ies) · uploaded package/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
   // Tile 4 (task 016): the Plan is the destination — the counted state, one line of what was built, and one way on. No facts row, no readiness ladder, and nothing on the page routing to MFA Readiness ahead of the plan. The tile's own text, since the header tab is named MFA Readiness.
   const planReady = await waitFor(`/Plan\\s+ready/.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
-  const planTileText = await evaluate(`(((document.querySelectorAll('main.page section.step-tile')[3] || {}).innerText) || '').replace(/\\s+/g, ' ')`)
+  const planTileText = await evaluate(`(((document.querySelector('main.page .connect-destination') || {}).innerText) || '').replace(/\\s+/g, ' ')`)
   check(
     'Connect (scanned): the Plan stage is the destination, one way on, no readiness diagnostic in front of it',
     planReady &&
       /Open the plan →/.test(planTileText) &&
       /Built from this scan/.test(planTileText) &&
       !/MFA Readiness/i.test(planTileText) &&
-      (await evaluate(`document.querySelectorAll('main.page section.step-tile .facts, main.page section.step-tile .rung-tile').length`)) === 0 &&
-      (await evaluate(`document.querySelectorAll('main.page section.step-tile a[href*="#/readiness"]').length`)) === 0,
+      (await evaluate(`document.querySelectorAll('main.page .connect-destination .facts, main.page .connect-destination .rung-tile').length`)) === 0 &&
+      (await evaluate(`document.querySelectorAll('main.page a[href*="#/readiness"]').length`)) === 0,
     planTileText.slice(0, 140),
   )
   // The progression: at most one stage current, the ones before it settled, and
   // the current one marked with a word rather than a colour alone.
-  const stageClasses = await evaluate(`[...document.querySelectorAll('main.page section.step-tile')].map((s) => (/\\bcurrent\\b/.test(s.className) ? 'current' : /\\bsettled\\b/.test(s.className) ? 'settled' : 'ahead'))`)
+  const stageClasses = await evaluate(`[...document.querySelectorAll('main.page .connect-step')].map((s) => (/\\bcurrent\\b/.test(s.className) ? 'current' : /\\bsettled\\b/.test(s.className) ? 'settled' : 'ahead'))`)
   check(
     'Connect (scanned): the finished stages settle, at most one is current, and a current one carries the Next marker',
     stageClasses.filter((x) => x === 'current').length <= 1 &&
       stageClasses.filter((x) => x === 'settled').length >= 1 &&
       stageClasses.lastIndexOf('settled') < (stageClasses.indexOf('current') === -1 ? Infinity : stageClasses.indexOf('current')) &&
-      (await evaluate(`[...document.querySelectorAll('main.page section.step-tile.current')].every((s) => ((s.querySelector('.next') || {}).textContent || '').trim().length > 0)`)),
+      (await evaluate(`[...document.querySelectorAll('main.page .connect-step.current')].every((s) => ((s.querySelector('.next') || {}).textContent || '').trim().length > 0)`)),
     stageClasses.join(' · '),
   )
   // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
@@ -715,9 +715,9 @@ try {
   const signInPass = async () => {
     await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
     // Click as soon as the button exists — during the warm — not after it settles.
-    await waitFor(`!!document.querySelector('.connect .actions button')`)
+    await waitFor(`!!document.querySelector('.connect .connect-step-actions button')`)
     // The warming button carries a spinner but is not disabled, so an early click lands.
-    const canClick = await evaluate(`(() => { const b = document.querySelector('.connect .actions button'); return !!b && !b.disabled })()`)
+    const canClick = await evaluate(`(() => { const b = document.querySelector('.connect .connect-step-actions button'); return !!b && !b.disabled })()`)
     const clicked = await clickText('/Sign in with Microsoft/')
     await sleep(2800)
     // The queued click navigated away once ready; come back to the app's origin and
@@ -962,13 +962,13 @@ try {
   // Scan tile, and a hash change keeps the page (and the snapshot) alive.
   const demoScanAgain = async () => {
     await demoGo('connect')
-    await waitFor(`[...document.querySelectorAll('main.page section.step-tile button')].some((b) => /^Scan again$/.test((b.textContent || '').trim()))`)
+    await waitFor(`[...document.querySelectorAll('main.page .connect-step button')].some((b) => /^Scan again$/.test((b.textContent || '').trim()))`)
     return clickText('/^Scan again$/', 'main.page')
   }
   // Connect in the demo: nobody is signed in, so tile 1 is sample context and
   // neither Microsoft action is on the page or in the header (task 026).
   await demoGo('connect')
-  await waitFor(`document.querySelectorAll('main.page section.step-tile').length > 0`)
+  await waitFor(`document.querySelectorAll('main.page .connect-step').length > 0`)
   const demoConnectText = await mainText()
   check(
     'Demo: Connect tile 1 is the sample tenant, not a Microsoft sign-in, and offers no Microsoft action',
@@ -1130,7 +1130,7 @@ try {
   check('Forget this tenant: the operator is still signed in, which is what holds it apart from Sign out', await signedIn())
   check(
     'Forget this tenant: Connect shows the tenant not scanned, and no plan is drawn from the forgotten scan',
-    (await waitFor(`document.querySelectorAll('main.page section.step-tile').length > 0`)) &&
+    (await waitFor(`document.querySelectorAll('main.page .connect-step').length > 0`)) &&
       !/Open the plan/.test(await evaluate(`(document.querySelector('main.page') || document.body).innerText`)),
   )
 

@@ -77,7 +77,7 @@
     },
     {
       "id": "connect.signedOut",
-      "name": "Connect (signed out): the four tiles",
+      "name": "Connect (signed out): the staged flow and the Plan destination",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -110,15 +110,16 @@
         "summaries": [
           "What IAMAI asks for, and how to remove it",
           "re:^Updated by its author on .+ · \\d+ polic(y|ies) changed · review$",
-          "IAMAI limitations"
+          "IAMAI limitations",
+          "Source and version"
         ],
         "links": [
           "How IAMAI works →"
         ]
       },
       "budget": {
-        "sentences": 18,
-        "words": 260
+        "sentences": 22,
+        "words": 290
       },
       "forbid": [
         "Connect a tenant",
@@ -181,7 +182,7 @@
     },
     {
       "id": "connect.signedIn",
-      "name": "Connect (signed in): the four tiles",
+      "name": "Connect (signed in): the staged flow and the Plan destination",
       "status": "built",
       "reach": {
         "route": "/connect",
@@ -217,7 +218,8 @@
         ],
         "summaries": [
           "re:^Updated by its author on .+ · \\d+ polic(y|ies) changed · review$",
-          "IAMAI limitations"
+          "IAMAI limitations",
+          "Source and version"
         ],
         "links": [
           "How IAMAI works →",
@@ -225,8 +227,8 @@
         ]
       },
       "budget": {
-        "sentences": 21,
-        "words": 300
+        "sentences": 28,
+        "words": 345
       },
       "forbid": [
         "Connect a tenant",

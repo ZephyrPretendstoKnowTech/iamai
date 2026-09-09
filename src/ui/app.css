@@ -1653,90 +1653,174 @@ footer.app a {
   gap: 8px;
 }
 
-/* ================= Connect: four numbered tiles (docs/design/connect-mockup.html) ================= */
+/* ================= Connect: the approved staged flow (docs/design/approved/connect-v3.html) =================
 
-.step-tile {
-  position: relative;
-  background: var(--bg-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
-  padding: 16px 20px 16px 56px;
-  margin: 0 0 10px;
+   Task 032. The pack's anatomy, restored: an eyebrow and the display heading,
+   ONE status strip, ONE contiguous flow panel holding the three setup steps,
+   and the Plan as a separate destination panel below it. What was here before
+   was four independently bordered cards on a legacy step-tile class with their actions stacked
+   under their copy — the composition the pack replaces.
+
+   The pack is a dark Inter mockup: it owns the anatomy, not the typeface or the
+   colour (task 030's rule). Its geometry is taken as written — the 46/1fr/auto
+   step, the 32px numbered circle, the 14px panel radius, the 760px breakpoint —
+   and its ink and weights arrive as the brand's named roles. The separator
+   between steps is the shared `.row-group` role (task 031), not a rule of its
+   own. */
+
+/* Connect's heading is the pack's own size, on the approved display ramp
+   (--d-3 is 40px, --d-7 its 33px at ≤760). Task 031 landed the mechanism and
+   left every surface's size to its restoration pack; this is Connect taking
+   its. */
+.surface.connect h1 {
+  --display-size: var(--d-3);
+  max-width: 800px;
 }
-.step-tile .n {
-  position: absolute;
-  left: 18px;
-  top: 15px;
-  width: 24px;
-  height: 24px;
+.surface.connect .eyebrow {
+  margin: 0 0 8px;
+}
+.surface.connect .lede {
+  max-width: var(--measure-lead);
+}
+
+/* The status strip: where setup stands, above the flow. The dot is decoration
+   (aria-hidden) — the strip's title is the state in words, so it reads with no
+   colour at all. The pack also carries a two-button state switch here; that is
+   mockup scaffolding for demonstrating states and production has no such
+   control, so the region stays copy only. */
+.connect-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--bg-inset);
+}
+.connect-status .dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  border: 1px solid var(--rule-strong);
-  color: var(--ink-2);
-  font-family: var(--font-mono);
+  background: var(--ink-3);
+}
+.connect-status .dot.done {
+  background: var(--accent);
+}
+.connect-status .dot.wait {
+  background: var(--wait);
+}
+.connect-status .dot.stop {
+  background: var(--stop);
+}
+.connect-status-copy {
+  margin: 0;
+  min-width: 0;
+  max-width: none;
   font-size: var(--t-2);
+}
+.connect-status-copy strong {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}
+.connect-status-copy .quiet {
+  color: var(--ink-3);
+}
+
+/* One contiguous flow, not a stack of cards: a single panel, the steps
+   separated by the shared hairline. */
+.connect-flow {
+  margin-top: 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-panel);
+}
+/* The step's three zones: number, content, action. `minmax(0, 1fr)` is what
+   lets a long tenant object wrap inside the content column instead of widening
+   the row. */
+.connect-step {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  padding: 18px 20px;
+}
+.connect-step .n {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--rule-strong);
+  background: var(--bg);
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: var(--t-1);
   /* IBM Plex Mono ships one staged face; a 500 here is a substituted 400 or a
      synthesised fake medium (src/ui/tokens.test.ts). */
   font-weight: 400;
-  line-height: 22px;
-  text-align: center;
 }
-.step-tile.done .n {
+.connect-step.done .n {
   background: var(--accent-tint);
   border-color: var(--accent);
   color: var(--accent);
 }
-.step-tile.stop .n {
+.connect-step.stop .n {
   border-color: var(--stop);
   color: var(--stop);
 }
-.step-tile.wait .n {
+.connect-step.wait .n {
   border-color: var(--wait);
   color: var(--wait);
 }
-.step-tile h2 {
+.connect-step-body {
+  min-width: 0;
+}
+.connect-step h2 {
   font-family: var(--font-sans);
   font-size: var(--t-4);
-  font-weight: 500;
-  line-height: 1.25;
-  margin: 0 0 4px;
+  font-weight: var(--weight-strong);
+  line-height: var(--lh-heading);
+  margin: 4px 0 0;
   display: flex;
   align-items: baseline;
   gap: 10px;
   flex-wrap: wrap;
 }
-.step-tile h2 .state {
+.connect-step h2 .state {
   font-size: var(--t-2);
-  font-weight: 400;
+  font-weight: var(--weight-body);
   color: var(--ink-2);
 }
-.step-tile h2 .state.ok {
+.connect-step h2 .state.ok {
   color: var(--ok);
 }
-.step-tile h2 .state.stop {
+.connect-step h2 .state.stop {
   color: var(--stop);
 }
-.step-tile h2 .state.wait {
+.connect-step h2 .state.wait {
   color: var(--wait);
 }
-/* The progression (task 016): the stage with the next action is the loud one,
-   the stages behind it step back, and the ones ahead sit between the two. The
-   marker beside the heading is the word Next, so the current stage reads
-   without the accent. */
-.step-tile.current {
+/* The progression (task 016): the step with the next action is the loud one and
+   the finished ones step back. The marker beside the heading is the word Next,
+   so the current step reads without the accent.
+   The pack dims a step it draws as locked to 55% opacity. Production's steps
+   ahead of the current one are NOT locked — the baseline can be changed before
+   a tenant is connected — and dimming a live control is a contrast regression,
+   so `ahead` steps take the quiet number and keep their copy at full ink. */
+.connect-step.current .n {
   border-color: var(--accent);
+  color: var(--accent);
 }
-.step-tile.settled {
-  background: var(--bg);
-}
-.step-tile.settled h2 {
+.connect-step.settled h2 {
   color: var(--ink-2);
 }
-.step-tile .next {
-  position: absolute;
-  left: 14px;
-  top: 44px;
-  font-size: var(--t-1);
-  font-weight: 500;
+.connect-step .next {
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
   line-height: 1.6;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1745,70 +1829,101 @@ footer.app a {
   border-radius: var(--radius);
   padding: 0 5px;
 }
-.step-tile p {
+/* The action zone: the third track, right-aligned, in the step's own row. A
+   step with nothing to press (the scan before sign-in) has no zone at all,
+   rather than an empty one holding the row open. */
+.connect-step-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.connect-step-actions:empty {
+  display: none;
+}
+.connect-step p {
   margin: 6px 0 0;
   color: var(--ink-2);
   max-width: none;
 }
-.step-tile p strong {
+.connect-step p strong {
   color: var(--ink);
-  font-weight: 500;
+  font-weight: var(--weight-strong);
 }
-.step-tile .quiet {
+.connect-step .quiet {
   color: var(--ink-3);
   font-size: var(--t-2);
 }
-.step-tile .beats {
+
+/* The baseline's own card, nested inside step 2. */
+.baseline-card {
+  margin-top: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-control);
+  background: var(--bg-inset);
+}
+.baseline-card .baseline-name {
+  display: block;
+  font-size: var(--t-3);
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}
+.baseline-card .baseline-source {
+  margin: 3px 0 0;
+  color: var(--ink-3);
+  font-size: var(--t-0);
+}
+.baseline-card p + p {
+  margin-top: 8px;
+}
+
+/* The compact counts the pack draws under a complete scan. The number leads in
+   the body ink and the name follows it quietly; both are real text, so the row
+   is read by a screen reader in the order it is seen. */
+.connect-step .meta-counts {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
   max-width: none;
 }
-.step-tile .beats li {
+.connect-step .meta-counts li {
+  font-size: var(--t-1);
+  color: var(--ink-3);
+}
+.connect-step .meta-counts b {
+  color: var(--ink);
+  font-weight: var(--weight-strong);
+}
+
+.connect-step .beats {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  max-width: none;
+}
+.connect-step .beats li {
   padding: 4px 0;
   color: var(--ink-2);
 }
-.step-tile .beats b {
+.connect-step .beats b {
   color: var(--ink);
-  font-weight: 500;
+  font-weight: var(--weight-strong);
   display: inline-block;
   width: 76px;
 }
-.step-tile .facts {
-  display: flex;
-  gap: 32px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-  flex-wrap: wrap;
-}
-.step-tile .facts li {
-  font-size: var(--t-2);
-  color: var(--ink-2);
-}
-.step-tile .facts b {
-  display: block;
-  font-family: var(--font-serif);
-  font-size: var(--t-5);
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--ink);
-}
-.step-tile .actions {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  margin-top: 14px;
-  flex-wrap: wrap;
-}
-.step-tile .tile-rows {
+.connect-step .tile-rows {
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
   border-top: 1px solid var(--rule);
   max-width: none;
 }
-.step-tile .tile-rows li {
+.connect-step .tile-rows li {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -1816,74 +1931,179 @@ footer.app a {
   border-bottom: 1px solid var(--rule);
   font-size: var(--t-2);
 }
-.step-tile .tile-rows li span:last-child {
+.connect-step .tile-rows li span:last-child {
   color: var(--ink-2);
 }
-.step-tile .role {
+.connect-step .role {
   color: var(--ink);
-  font-weight: 500;
+  font-weight: var(--weight-strong);
 }
-.step-tile .diff {
+.connect-step .diff {
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
   max-width: none;
 }
 /* A review row: the change word and the policy on one line, the steps that change under it, one each. */
-.step-tile .diff li {
+.connect-step .diff li {
   padding: 5px 0;
   font-size: var(--t-2);
   border-bottom: 1px solid var(--rule);
 }
-.step-tile .diff .change {
+.connect-step .diff .change {
   display: flex;
   gap: 10px;
 }
-.step-tile .diff .tag {
+.connect-step .diff .tag {
   width: 124px;
   flex: none;
   color: var(--ink-3);
 }
 /* Under the row: what it used to be called, what materially changed, then the steps. */
-.step-tile .diff .was,
-.step-tile .diff .deltas,
-.step-tile .diff .steps {
+.connect-step .diff .was,
+.connect-step .diff .deltas,
+.connect-step .diff .steps {
   margin: 2px 0 0 134px;
   padding: 0;
   list-style: none;
   color: var(--ink-3);
 }
-.step-tile .diff .deltas li,
-.step-tile .diff .steps li {
+.connect-step .diff .deltas li,
+.connect-step .diff .steps li {
   padding: 0;
   border-bottom: none;
   font-size: inherit;
 }
-.step-tile .diff .deltas {
+.connect-step .diff .deltas {
   color: var(--ink-2);
 }
-.step-tile details summary {
+.connect-step details summary {
   cursor: pointer;
   color: var(--accent);
   font-size: var(--t-2);
   list-style: none;
   margin-top: 8px;
 }
-.step-tile details summary::-webkit-details-marker {
+.connect-step details summary::-webkit-details-marker {
   display: none;
 }
-.step-tile .lnk {
+.connect-step .lnk {
   color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.step-tile .progress {
+.connect-step .progress {
   margin: 10px 0 6px;
 }
-.step-tile .picker {
+.connect-step .picker {
   margin-top: 12px;
 }
 
+/* The Plan-ready destination: the pack's own panel below the flow, copy left
+   and the one way on right. The pack draws only the ready state; production
+   also has the last full plan, waiting for the scan, and the sample before
+   sign-in, so the brand tint is a modifier and not the panel. A destination
+   that always looked ready would be a readiness claim made in CSS. */
+.connect-destination {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  padding: 22px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-panel);
+  background: var(--bg-raised);
+}
+.connect-destination.ready {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.connect-destination h2 {
+  --display-size: var(--d-13);
+  margin: 0 0 7px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.connect-destination h2 .state {
+  font-family: var(--font-sans);
+  font-size: var(--t-2);
+  font-weight: var(--weight-body);
+  color: var(--ink-2);
+}
+.connect-destination h2 .state.ok {
+  color: var(--ok);
+}
+.connect-destination p {
+  margin: 0;
+  color: var(--ink-2);
+  max-width: none;
+}
+.connect-destination .facts {
+  display: flex;
+  gap: 32px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  flex-wrap: wrap;
+  max-width: none;
+}
+.connect-destination .facts li {
+  font-size: var(--t-2);
+  color: var(--ink-2);
+}
+.connect-destination .facts b {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: var(--t-5);
+  font-weight: var(--weight-display);
+  line-height: 1.2;
+  color: var(--ink);
+}
+.connect-destination-action {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* The pack's one breakpoint, 760: the heading drops a step on the display ramp,
+   the strip stacks, the step's three zones become two with the action under the
+   copy in the content column (never detached from its step), and the
+   destination becomes one column. The header's own collapse is the shared
+   shell's at 700 and stays shared — Connect adds no navigation of its own. */
+@media (max-width: 760px) {
+  .surface.connect h1 {
+    --display-size: var(--d-7);
+  }
+  .connect-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .connect-step {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .connect-step .n {
+    width: 26px;
+    height: 26px;
+  }
+  .connect-step-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+    margin-top: 12px;
+  }
+  .connect-destination {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .connect-destination-action {
+    justify-content: flex-start;
+  }
+}
 /* ================= the MFA readiness ladder (docs/design/mockups/plan-top-v2.html, connect-v2.html) =================
    The five rung tiles, on Connect's Plan tile: each links to MFA Readiness
    filtered to its rung. MFA Readiness itself counts the three groupings
@@ -1913,7 +2133,7 @@ footer.app a {
   line-height: 24px;
   font-family: var(--font-mono);
   font-size: var(--t-1);
-  /* one staged Mono face; see .step-tile .n */
+  /* one staged Mono face; see .connect-step .n */
   font-weight: 400;
   color: var(--on-accent);
   background: var(--rung-0);

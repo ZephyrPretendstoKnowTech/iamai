@@ -73,6 +73,12 @@ export function expectedOutputs() {
 /** The routes and themes the built application is shot in (task 030 Part Q). */
 const PRODUCTION_SHOTS = [
   { name: 'connect', hash: '#/connect' },
+  // Connect signed out, which is the state a first visitor lands in and the one
+  // the approved pack's second flow draws. Every other shot runs the demo, so
+  // without this one a restoration pack can only compare its Demo rendering
+  // with the canonical (task 032). No tenant is read: the app is simply not
+  // signed in.
+  { name: 'connect-signedout', hash: '#/connect', noDemo: true },
   { name: 'plan', hash: '#/plan' },
   { name: 'readiness', hash: '#/readiness' },
   // Export is governed by no pack, and it is the one surface that renders an
@@ -220,7 +226,7 @@ if (wantProduction) {
     // are live. No real tenant is ever read by this script.
     for (const theme of THEMES) {
       for (const shot of PRODUCTION_SHOTS) {
-        const url = `http://127.0.0.1:${port}/planner/?demo=1${shot.hash}`
+        const url = `http://127.0.0.1:${port}/planner/${shot.noDemo ? '' : '?demo=1'}${shot.hash}`
         for (const width of WIDTHS) {
           await shoot(url, `${OUT_PRODUCTION}/${shot.name}-${theme}-${width}.png`, width, {
             before: `document.documentElement.dataset.theme = ${JSON.stringify(theme)}; localStorage.setItem('iamai-theme', ${JSON.stringify(theme)})`,

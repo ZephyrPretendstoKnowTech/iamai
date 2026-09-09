@@ -53,17 +53,32 @@ test('tile 1, Signed in: the tenant as the state, account · role, the Global Re
 // Task 016: someone new to identity work should be able to read this stage and
 // know what a baseline is, whose it is, why the source is credible, and what it
 // aims at — without Microsoft being made to endorse any of it.
-test('tile 2, Baseline: name · count as the state, what a baseline is, whose it is and its aim, the author-update rows, Change baseline (secondary)', () => {
+// Task 032: the approved pack nests the package's own card inside the step, so
+// the step's state is the STEP's state word and the name, the size and which
+// version this is are the card's. `pinned` moves into the source-and-version
+// disclosure the pack draws under the card.
+test('tile 2, Baseline: the nested card carries name, size and version; the step state is a word; what a baseline is, whose it is and its aim; the author-update rows; Change baseline (secondary)', () => {
   const t = baselineTile({ name: 'Jon Hope — Defense in Depth', policyCount: 46, loading: null, update: null, stepsFor })
   assert.equal(t.n, 2)
   assert.equal(t.title, 'Baseline')
-  assert.equal(t.state, 'Jon Hope — Defense in Depth · 46 policies')
-  assert.equal(t.paragraphs.length, 3)
-  const said = t.paragraphs.join(' ')
-  assert.match(t.paragraphs[0], /^A baseline is the identity-security standard IAMAI plans your tenant towards/, 'the term is explained before it is used')
+  assert.equal(t.state, 'selected')
+  assert.ok(t.card, 'a loaded package nests a card')
+  assert.equal(t.card.name, 'Jon Hope — Defense in Depth', 'the card carries the package’s own name')
+  assert.equal(t.card.source, '46 policies · pinned version')
+  assert.deepEqual(t.paragraphs, [], 'the explaining copy is inside the card, not loose in the step')
+  assert.deepEqual(baselineTile({ name: 'Uploaded package', policyCount: 3, version: 'uploaded', loading: null, update: null, stepsFor }).card?.source, '3 policies · uploaded package')
+  // Nothing loaded: no card, and the explaining copy still renders in the step.
+  const none = baselineTile({ name: null, policyCount: 0, loading: null, update: null, stepsFor })
+  assert.equal(none.card, null)
+  assert.equal(none.source, null)
+  assert.equal(none.state, 'none loaded')
+  assert.equal(none.paragraphs.length, 3)
+  const said = [...t.card.paragraphs, t.source?.text ?? ''].join(' ')
+  assert.match(t.card.paragraphs[0], /^A baseline is the identity-security standard IAMAI plans your tenant towards/, 'the term is explained before it is used')
   for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP', 'ConditionalAccess.Tech']) assert.ok(said.includes(fact), `the baseline stage names ${fact}`)
-  assert.match(t.paragraphs[1], /^Its aim is layered protection for a small organisation: /)
-  assert.match(t.paragraphs[2], /^IAMAI pins a reviewed version of it/)
+  assert.match(t.card.paragraphs[1], /^Its aim is layered protection for a small organisation: /)
+  assert.equal(t.source?.summary, 'Source and version')
+  assert.match(t.source?.text ?? '', /^IAMAI pins a reviewed version of it/)
   // An MVP is a person's credential. Nothing here may read as Microsoft
   // endorsing, certifying, approving or supporting IAMAI or this baseline.
   assert.doesNotMatch(said, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft/i, said)
@@ -114,7 +129,12 @@ test('tile 2, Baseline: name · count as the state, what a baseline is, whose it
   assert.match(partial.update.summary, /IAMAI could not read every change · review$/)
   assert.doesNotMatch(partial.update.summary, /0 polic/)
   assert.match(partial.update.note ?? '', /^IAMAI could not read every changed file/)
-  assert.equal(baselineTile({ name: 'synthetic baseline', policyCount: 1, loading: null, update: null, stepsFor }).state, 'synthetic baseline · 1 policy')
+  // The card's size line bends to the count (src/content/render.ts pluralise).
+  assert.equal(baselineTile({ name: 'synthetic baseline', policyCount: 1, loading: null, update: null, stepsFor }).card?.source, '1 policy · pinned version')
+  // A load in flight is the step's state and nests no card: a card is a package that arrived.
+  const loading = baselineTile({ name: null, policyCount: 0, loading: 'Jon Hope — Defense in Depth', update: null, stepsFor })
+  assert.match(loading.state, /^loading Jon Hope — Defense in Depth/)
+  assert.equal(loading.card, null)
   noOtherRole(tileStrings(u))
 })
 

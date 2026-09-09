@@ -1,20 +1,29 @@
 // Connect answers one question: where am I in setup, and what do I do next?
 //
-// One heading above four numbered stages, in both states, drawn from
-// connectView.ts. Signed out: Sign in (with the consent rows and, after a
-// sign-in that did not succeed, one of three error states from the MSAL error
-// code), Baseline, Scan (after sign-in) and Plan with what the sample tenant
-// produced. Signed in: Signed in, Baseline, Scan (the limitations, then the scan
-// in exactly one of its states: complete, finished with gaps, not started for
-// want of a role, scanning, or ready for the first scan) and Plan (ready, the
-// last full plan after a scan with gaps, or waiting for the scan).
+// The anatomy is the approved pack's (docs/design/approved/connect-v3.html,
+// restored by task 032): an eyebrow, the heading and its lead; one status strip
+// saying where setup stands; ONE contiguous staged flow holding the three setup
+// steps — never three or four unrelated cards; and the Plan as a separate
+// destination panel below the flow. Each step is the pack's three-zone row —
+// number, content, action — so a step's action belongs to the step instead of
+// floating under it.
+//
+// The steps, in both states, are drawn from connectView.ts. Signed out: Sign in
+// (with the consent rows and, after a sign-in that did not succeed, one of three
+// error states from the MSAL error code), Baseline, Scan (after sign-in), and
+// the destination with what the sample tenant produced. Signed in: Signed in,
+// Baseline, Scan (the limitations, then the scan in exactly one of its states:
+// complete, finished with gaps, not started for want of a role, scanning, or
+// ready for the first scan) and the destination (ready, the last full plan after
+// a scan with gaps, or waiting for the scan).
 //
 // The progression is Microsoft tenant → Baseline → Tenant scan → Plan, and the
 // four stages are not four equally loud tiles (task 016): stages() reads which
 // of them are finished, the finished ones step back, and the one with the next
-// action is drawn forward and marked with a word. Plan is the destination — one
-// way on and no readiness diagnostic in front of it, because MFA Readiness comes
-// after the plan.
+// action is drawn forward and marked with a word. connectStatus() projects that
+// same reading into the strip — the strip has no state of its own. Plan is the
+// destination — one way on and no readiness diagnostic in front of it, because
+// MFA Readiness comes after the plan.
 //
 // The tenant's name and the scan's age render here and nowhere else, from the
 // one stored scan timestamp. Every action is a button in one of three weights,
@@ -22,7 +31,7 @@
 // (ui/session.ts), so a scan started anywhere shows here as stage 3's progress;
 // an action that fails renders its error in the stage that pressed it. Global
 // Reader is the only role IAMAI names.
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import { authReady, getGraphToken } from '../../graph/auth.ts'
@@ -52,9 +61,9 @@ import { ScanBar, ScanDevTools, laneOf } from '../scan/ScanProgress.tsx'
 import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopScan } from '../actions.ts'
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
-import { W, accountTile, baselineTile, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
-import type { Action, BaselineUpdate, PlanInput, PlanTile, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
-import { stepFacts } from '../../derive/facts.ts'
+import { W, accountTile, baselineTile, connectStatus, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
+import type { Action, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
+import { facts, stepFacts } from '../../derive/facts.ts'
 import { usePlanData } from './planData.ts'
 
 const C = app.connect
@@ -81,7 +90,8 @@ export function Connect(
   const { account } = props
   return (
     <section className="surface connect">
-      <h1>{W.h1}</h1>
+      <p className="eyebrow">{W.eyebrow}</p>
+      <h1 className="display">{W.h1}</h1>
       <p className="lede">{W.intro}</p>
       {account ? <SignedIn {...props} account={account} /> : <SignedOut error={props.authError} baseline={props.baseline} baselineRestoreError={props.baselineRestoreError} authorUpdate={props.authorUpdate} />}
     </section>
@@ -89,27 +99,56 @@ export function Connect(
 }
 
 /**
- * One numbered stage; the badge carries the state colour (accent done, amber
- * gaps or approval, red no role or a personal account), and the stage carries
- * its place in the progression (task 016): the stage with the next action is
- * marked Next and drawn forward, the ones behind it step back. The marker is a
- * word, not a colour, so the progression reads without seeing the accent.
+ * The pack's status strip above the flow: an indicator, the state title and a
+ * quiet line. The dot is decoration — the title is the state in words, so the
+ * strip never depends on telling two colours apart.
  */
-function Tile({ n, title, state, tone, stateTone, stage, children }: { n: number; title: string; state?: string; tone: Tone; stateTone?: 'ok' | 'wait' | 'stop'; stage?: Stage; children: ReactNode }) {
+function StatusStrip({ status }: { status: ConnectStatus }) {
   return (
-    <section className={`step-tile${tone ? ` ${tone}` : ''}${stage ? ` ${stage}` : ''}`}>
+    <div className="connect-status">
+      <span className={`dot${status.tone ? ` ${status.tone}` : ''}`} aria-hidden="true" />
+      <p className="connect-status-copy">
+        <strong>{status.title}</strong> <span className="quiet">{status.text}</span>
+      </p>
+    </div>
+  )
+}
+
+/** The staged flow: one panel, the steps separated by a hairline, never a stack of cards. */
+function Flow({ children }: { children: ReactNode }) {
+  return <div className="connect-flow row-group">{children}</div>
+}
+
+/**
+ * One numbered step of the flow, in the pack's three zones — number, content,
+ * action. The badge carries the state colour (accent done, amber gaps or
+ * approval, red no role or a personal account), and the step carries its place
+ * in the progression (task 016): the stage with the next action is marked Next
+ * and drawn forward, the ones behind it step back. The marker is a word, not a
+ * colour, so the progression reads without seeing the accent.
+ *
+ * The action zone is the third grid track and holds the step's own buttons. A
+ * message an action produced stays in the content zone: it is a sentence, and a
+ * sentence in an `auto` track is a column one word wide.
+ */
+function Step({ n, title, state, tone, stateTone, stage, actions, children }: { n: number; title: string; state?: string; tone: Tone; stateTone?: 'ok' | 'wait' | 'stop'; stage?: Stage; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <section className={`connect-step${tone ? ` ${tone}` : ''}${stage ? ` ${stage}` : ''}`}>
       <span className="n">{n}</span>
-      {stage === 'current' && <span className="next">{W.next}</span>}
-      <h2>
-        {title}
-        {state && (
-          <>
-            {' '}
-            <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>
-          </>
-        )}
-      </h2>
-      {children}
+      <div className="connect-step-body">
+        <h2>
+          {title}
+          {state && (
+            <>
+              {' '}
+              <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>
+            </>
+          )}
+          {stage === 'current' && <span className="next">{W.next}</span>}
+        </h2>
+        {children}
+      </div>
+      <div className="connect-step-actions">{actions}</div>
     </section>
   )
 }
@@ -171,9 +210,18 @@ function accountRole(roleIds: string[] | null): string | null {
  * the account and the unread rows, the one ask for Global Reader) and its
  * buttons.
  */
-function ScanTileView({ tile, upn, bar, actions, stage }: { tile: ScanTile; upn: string | null; bar?: ReactNode; actions: ReactNode; stage: Stage }) {
+function ScanTileView({ tile, upn, bar, actions, note, stage }: { tile: ScanTile; upn: string | null; bar?: ReactNode; actions: ReactNode; note?: ReactNode; stage: Stage }) {
   return (
-    <Tile n={3} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)} stage={stage}>
+    <Step n={3} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)} stage={stage} actions={actions}>
+      {tile.meta && (
+        <ul className="meta-counts">
+          {tile.meta.map((m) => (
+            <li key={m.label}>
+              <b>{m.value}</b> {m.label}
+            </li>
+          ))}
+        </ul>
+      )}
       <details>
         <summary>{tile.limits.summary}</summary>
         <ul className="beats">
@@ -210,33 +258,54 @@ function ScanTileView({ tile, upn, bar, actions, stage }: { tile: ScanTile; upn:
         </p>
       )}
       {tile.note && <p className="quiet">{tile.note}</p>}
-      {actions}
-    </Tile>
+      {note}
+    </Step>
   )
 }
 
 /**
- * Tile 4, Plan: the destination. The state in the heading, one line saying what
- * the scan produced (the sample tenant's four facts before sign-in), and one
- * button into the plan. No readiness diagnostic: MFA Readiness comes after the
- * plan, and Connect never routes to it first (task 016).
+ * The Plan: the destination, and the approved pack's own separate panel below
+ * the flow rather than a fourth card inside it. The state in the heading, one
+ * line saying what the scan produced (the sample tenant's four facts before
+ * sign-in), and one way on in the panel's action zone. No readiness diagnostic:
+ * MFA Readiness comes after the plan, and Connect never routes to it first
+ * (task 016).
+ *
+ * The pack draws only the ready state. Production has three more that are real
+ * — the last full plan after a scan with gaps, waiting for the scan, and the
+ * sample before sign-in — so the panel takes the pack's brand-tinted treatment
+ * ONLY when the plan is actually ready, and stays an ordinary panel otherwise.
+ * A destination that always looks ready would be a readiness claim drawn in
+ * CSS.
  */
-function PlanTileView({ tile, actions, stage }: { tile: PlanTile; actions: ReactNode; stage: Stage }) {
+function Destination({ tile, actions }: { tile: PlanTile; actions: ReactNode }) {
+  const ready = tile.kind === 'ready'
   return (
-    <Tile n={4} title={tile.title} state={tile.state} tone={tile.tone} stateTone={stateToneOf(tile.tone)} stage={stage}>
-      {tile.lead && <p className="quiet">{tile.lead}</p>}
-      {tile.facts && (
-        <ul className="facts">
-          {tile.facts.map((f) => (
-            <li key={f.label}>
-              <b>{f.value}</b>
-              {f.label}
-            </li>
-          ))}
-        </ul>
-      )}
-      {actions}
-    </Tile>
+    <section className={`connect-destination${ready ? ' ready' : ''}`}>
+      <div className="connect-destination-copy">
+        <h2 className="display">
+          {tile.title}
+          {tile.state && (
+            <>
+              {' '}
+              <span className={`state${stateToneOf(tile.tone) ? ` ${stateToneOf(tile.tone)}` : ''}`}>{tile.state}</span>
+            </>
+          )}
+        </h2>
+        {tile.lead && <p className="quiet">{tile.lead}</p>}
+        {tile.facts && (
+          <ul className="facts">
+            {tile.facts.map((f) => (
+              <li key={f.label}>
+                <b>{f.value}</b>
+                {f.label}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="connect-destination-action">{actions}</div>
+    </section>
   )
 }
 
@@ -284,43 +353,60 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
   // Nothing is connected yet, so the first stage is the one to act on and the
   // three after it are ahead. The baseline loads itself, and is still not a
   // stage anyone has finished until a tenant is behind it.
-  const [s1, s2, s3, s4] = stages([false, false, false, false])
+  const done = [false, false, false, false]
+  const [s1, s2, s3] = stages(done)
+  const t2 = baselineStrings(baseline)
   return (
     <>
-      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone={stateToneOf(t1.tone)} stage={s1}>
-        {t1.lead && <p>{lead(error?.kind === 'personal' ? (error.account ?? null) : null, t1.lead)}</p>}
-        {t1.note && <p className="quiet">{t1.note}</p>}
-        <div className="actions">
-          <Act action={t1.actions[0]} loading={opening} busy={!signInReady} onClick={() => setOpening(true)} />
-          <Act action={t1.actions[1]} href={demoUrl()} />
-        </div>
-        {actionError && <p className="quiet" role="status">{actionError}</p>}
-        <details className="permissions">
-          <summary>{t1.permissions.summary}</summary>
-          <p className="quiet">{t1.permissions.lead}</p>
-          <ul className="tile-rows">
-            {t1.permissions.rows.map((r) => (
-              <li key={r.scope}>
-                <span>{r.name}</span> <span>{r.reads}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="quiet">{t1.permissions.removal}</p>
-        </details>
-      </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} />
-      <ScanTileView tile={t3} upn={null} actions={null} stage={s3} />
-      <PlanTileView
-        tile={t4}
-        stage={s4}
-        actions={
-          <div className="actions">
-            <Act action={t4.actions[0]} href={demoUrl()} />
-          </div>
-        }
-      />
+      <StatusStrip status={connectStatus(done, [t1, t2, t3, t4])} />
+      <Flow>
+        <Step
+          n={1}
+          title={t1.title}
+          state={t1.state}
+          tone={t1.tone}
+          stateTone={stateToneOf(t1.tone)}
+          stage={s1}
+          actions={
+            <>
+              <Act action={t1.actions[0]} loading={opening} busy={!signInReady} onClick={() => setOpening(true)} />
+              <Act action={t1.actions[1]} href={demoUrl()} />
+            </>
+          }
+        >
+          {t1.lead && <p>{lead(error?.kind === 'personal' ? (error.account ?? null) : null, t1.lead)}</p>}
+          {t1.note && <p className="quiet">{t1.note}</p>}
+          {actionError && <p className="quiet" role="status">{actionError}</p>}
+          <details className="permissions">
+            <summary>{t1.permissions.summary}</summary>
+            <p className="quiet">{t1.permissions.lead}</p>
+            <ul className="tile-rows">
+              {t1.permissions.rows.map((r) => (
+                <li key={r.scope}>
+                  <span>{r.name}</span> <span>{r.reads}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="quiet">{t1.permissions.removal}</p>
+          </details>
+        </Step>
+        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={false} authorUpdate={authorUpdate} stage={s2} />
+        <ScanTileView tile={t3} upn={null} actions={null} stage={s3} />
+      </Flow>
+      <Destination tile={t4} actions={<Act action={t4.actions[0]} href={demoUrl()} />} />
     </>
   )
+}
+
+/**
+ * The baseline stage's title and state for the status strip, from the same
+ * baselineTile() the stage itself renders. The strip is drawn beside the flow
+ * and cannot reach into the stage's own component, so this asks the view model
+ * the one question the strip needs — never a second reading of the baseline.
+ */
+function baselineStrings(baseline: BaselineResult | null): { title: string; state: string; tone: Tone } {
+  const t = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading: null, update: null, stepsFor: () => [] })
+  return { title: t.title, state: t.state, tone: t.tone }
 }
 
 function SignedIn({
@@ -379,17 +465,29 @@ function SignedIn({
         : lastScan
           ? { kind: 'complete', at: lastScan.at }
           : { kind: 'ready' }
-  const t3 = scanTile(scanInput)
-  // Tile 4 follows: the plan is ready after a complete scan (its step counts
-  // the way the Plan header counts them, once the plan has computed; read-only,
-  // so opening Connect never creates or touches the plan record), the last
-  // full plan stays after a scan with gaps, and otherwise it waits for the scan.
+  // The plan follows: it is ready after a complete scan (its step counts the way
+  // the Plan header counts them, once the plan has computed; read-only, so
+  // opening Connect never creates or touches the plan record), the last full
+  // plan stays after a scan with gaps, and otherwise it waits for the scan.
   const planScan = scanInput.kind === 'complete' ? lastScan : null
   const plan = usePlanData(planScan, baseline, true)
   const computed = plan.computed
+  const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null) : null
+  // What the complete scan produced, for the step's meta row. Each number comes
+  // from the authority that already owns it: derive/facts.ts for the people (the
+  // one denominator the Plan and MFA Readiness count against), the loaded
+  // package for the policies, and the same stepFacts the destination shows. A
+  // count is rendered twice here; it is never computed twice.
+  const snapshot = planScan?.snapshot ?? null
+  const mapping = plan.mapping
+  const scanCounts: ScanCounts | null = useMemo(() => {
+    if (!snapshot || !mapping || !steps || !baseline) return null
+    return { people: facts(snapshot, mapping).active, policies: baseline.pkg.policies.length, steps: steps.steps }
+  }, [snapshot, mapping, steps?.steps, baseline])
+  const t3 = scanTile(scanInput.kind === 'complete' ? { ...scanInput, counts: scanCounts } : scanInput)
   const planInput: PlanInput =
     scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', at: lastScan.at, counts: computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null) : null }
+      ? { kind: 'ready', at: lastScan.at, counts: steps }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }
@@ -397,7 +495,8 @@ function SignedIn({
   // The progression, from the tiles themselves: a tenant is connected, a
   // baseline is loaded, the scan is complete, and the plan is ready. The first
   // one that is not finished is the one with the next action.
-  const [s1, s2, s3, s4] = stages([true, baseline !== null, scanInput.kind === 'complete', planInput.kind === 'ready'])
+  const done = [true, baseline !== null, scanInput.kind === 'complete', planInput.kind === 'ready']
+  const [s1, s2, s3] = stages(done)
   const scanActions = (): ReactNode => {
     switch (t3.kind) {
       case 'complete':
@@ -419,36 +518,46 @@ function SignedIn({
   }
   return (
     <>
-      <Tile n={1} title={t1.title} state={t1.state} tone={t1.tone} stateTone="ok" stage={s1}>
-        <p>{lead(upn, t1.line)}</p>
-        <p className="quiet">{t1.note}</p>
-        <div className="actions">
-          {isDemo() ? (
-            <Act action={t1.actions[0]} href={exitDemoUrl()} />
-          ) : (
+      <StatusStrip status={connectStatus(done, [t1, baselineStrings(baseline), t3, t4])} />
+      <Flow>
+        <Step
+          n={1}
+          title={t1.title}
+          state={t1.state}
+          tone={t1.tone}
+          stateTone="ok"
+          stage={s1}
+          actions={
+            isDemo() ? (
+              <Act action={t1.actions[0]} href={exitDemoUrl()} />
+            ) : (
+              <>
+                <Act action={t1.actions[0]} onClick={() => tile1.run(signInAnother())} />
+                <Act action={t1.actions[1]} onClick={() => tile1.run(signOut())} />
+              </>
+            )
+          }
+        >
+          <p>{lead(upn, t1.line)}</p>
+          <p className="quiet">{t1.note}</p>
+          {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
+        </Step>
+        <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} />
+        <ScanTileView
+          tile={t3}
+          upn={upn}
+          stage={s3}
+          bar={t3.kind === 'scanning' ? <ScanBar scan={runner} /> : null}
+          note={
             <>
-              <Act action={t1.actions[0]} onClick={() => tile1.run(signInAnother())} />
-              <Act action={t1.actions[1]} onClick={() => tile1.run(signOut())} />
+              {!scanning && runner.state === 'failed' && runner.error && <p className="quiet" role="status">{fillText(C.failed, { why: runner.error })}</p>}
+              {tile3.error && <p className="quiet" role="status">{tile3.error}</p>}
             </>
-          )}
-        </div>
-        {tile1.error && <p className="quiet" role="status">{tile1.error}</p>}
-      </Tile>
-      <BaselineTile baseline={baseline} restoreError={baselineRestoreError} locked={scanning} authorUpdate={authorUpdate} stage={s2} />
-      <ScanTileView
-        tile={t3}
-        upn={upn}
-        stage={s3}
-        bar={t3.kind === 'scanning' ? <ScanBar scan={runner} /> : null}
-        actions={
-          <>
-            {!scanning && runner.state === 'failed' && runner.error && <p className="quiet" role="status">{fillText(C.failed, { why: runner.error })}</p>}
-            {tile3.error && <p className="quiet" role="status">{tile3.error}</p>}
-            <div className="actions">{scanActions()}</div>
-          </>
-        }
-      />
-      <PlanTileView tile={t4} stage={s4} actions={t4.actions.length > 0 ? <div className="actions">{t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)}</div> : null} />
+          }
+          actions={scanActions()}
+        />
+      </Flow>
+      <Destination tile={t4} actions={t4.actions.map((a) => <Act key={a.label} action={a} href={PLAN_HREF} />)} />
       <ScanDevTools tenantId={account.tenantId} scan={runner} snapshot={lastScan?.snapshot ?? null} />
     </>
   )
@@ -544,9 +653,40 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
   const policies = baseline?.pkg.policies ?? []
   const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
   const stepsFor = (change: PolicyChange): string[] => stepsForChange(change, goalMap)
-  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, loading: busy, update, stepsFor })
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading: busy, update, stepsFor })
   return (
-    <Tile n={2} title={t2.title} state={t2.state} tone={t2.tone} stage={stage}>
+    <Step
+      n={2}
+      title={t2.title}
+      state={t2.state}
+      tone={t2.tone}
+      stage={stage}
+      actions={
+        !busy && (
+          /* Held while a scan runs: the baseline it reads against must not change under it. */
+          <Button variant="secondary" aria-expanded={open} aria-controls={BASELINE_CHOICES_ID} disabled={locked} onClick={() => setOpen((o) => !o)}>
+            {t2.actions[0].label}
+          </Button>
+        )
+      }
+    >
+      {/* The pack nests the package's own card inside the step: its name, a
+          quiet source line, and the copy that says what a baseline is. */}
+      {t2.card && (
+        <div className="baseline-card">
+          <strong className="baseline-name">{t2.card.name}</strong>
+          <p className="baseline-source">{t2.card.source}</p>
+          {t2.card.paragraphs.map((text) => (
+            <p key={text}>{text}</p>
+          ))}
+        </div>
+      )}
+      {t2.source && (
+        <details>
+          <summary>{t2.source.summary}</summary>
+          <p className="quiet">{t2.source.text}</p>
+        </details>
+      )}
       {t2.paragraphs.map((text) => (
         <p key={text}>{text}</p>
       ))}
@@ -581,14 +721,6 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
           </ul>
         </details>
       )}
-      {!busy && (
-        <div className="actions">
-          {/* Held while a scan runs: the baseline it reads against must not change under it. */}
-          <Button variant="secondary" aria-expanded={open} aria-controls={BASELINE_CHOICES_ID} disabled={locked} onClick={() => setOpen((o) => !o)}>
-            {t2.actions[0].label}
-          </Button>
-        </div>
-      )}
       {open && !locked && (
         <div className="picker" id={BASELINE_CHOICES_ID} role="group" aria-label={C.pickerLabel}>
           <Button
@@ -609,6 +741,6 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
           </LinkButton>
         </div>
       )}
-    </Tile>
+    </Step>
   )
 }

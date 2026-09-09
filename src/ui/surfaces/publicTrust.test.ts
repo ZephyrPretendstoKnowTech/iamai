@@ -66,18 +66,24 @@ test('Connect renders tenant → baseline → scan → Plan and routes on to the
     'signed out': CONNECT.slice(signedOutAt, signedInAt),
     'signed in': CONNECT.slice(signedInAt, authorUpdateAt),
   }
+  // Task 032 restored the approved anatomy: the first three stages are steps in
+  // one contiguous flow and the Plan is the destination panel below it. The
+  // order and the routing are the same four things in the same sequence.
   for (const [state, body] of Object.entries(bodies)) {
-    const rendered = [...body.matchAll(/<(Tile n=\{1\}|BaselineTile|ScanTileView|PlanTileView)[ \n]/g)].map((m) => m[1])
-    assert.deepEqual(rendered, ['Tile n={1}', 'BaselineTile', 'ScanTileView', 'PlanTileView'], `${state}: tenant → baseline → scan → Plan`)
+    const rendered = [...body.matchAll(/<(Step\n?\s*n=\{1\}|BaselineTile|ScanTileView|Destination)[ \n]/g)].map((m) => m[1].replace(/\s+/g, ' '))
+    assert.deepEqual(rendered, ['Step n={1}', 'BaselineTile', 'ScanTileView', 'Destination'], `${state}: tenant → baseline → scan → Plan`)
+    // Exactly one flow, and the Plan destination is outside it.
+    assert.equal((body.match(/<Flow>/g) ?? []).length, 1, `${state}: the three setup steps share one flow container`)
+    assert.ok(body.indexOf('</Flow>') < body.indexOf('<Destination'), `${state}: the Plan destination sits below the flow, not inside it`)
   }
-  assert.match(CONNECT, /<PlanTileView tile=\{t4\}/, 'the fourth stage is the Plan')
+  assert.match(CONNECT, /<Destination tile=\{t4\}/, 'the fourth stage is the Plan')
   assert.match(CONNECT, /href=\{PLAN_HREF\}/, 'and it opens the plan')
   // Nothing on Connect sends the operator to MFA Readiness first.
   assert.doesNotMatch(CONNECT, /readinessHref|#\/readiness|LadderTiles/, 'Connect does not route to MFA Readiness')
   assert.ok(!JSON.stringify(pages.connect).includes('#/readiness'), 'and its words carry no readiness link')
   // The current stage says so in a word, so the progression is not colour alone.
   assert.match(CONNECT, /stage === 'current' && <span className="next">/, 'the current stage carries a word marker')
-  assert.match(read('src/ui/app.css'), /\.step-tile\.settled \{/, 'and a settled stage steps back')
+  assert.match(read('src/ui/app.css'), /\.connect-step\.settled h2 \{/, 'and a settled stage steps back')
 })
 
 // ---- B. the mechanics are task 015's ----

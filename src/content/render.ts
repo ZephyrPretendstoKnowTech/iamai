@@ -638,22 +638,31 @@ export function renderPages(): string {
     )
   }
   const cx = P.connect
-  const tileHtml = (n: number, title: string, state: string, body: string): string => `<section class="step-tile"><span class="n">${n}</span><h2>${esc(title)} <span class="state">${esc(state)}</span> <span class="chip">${esc(cx.next)}</span></h2>${body}</section>`
+  const tileHtml = (n: number, title: string, state: string, body: string): string => `<section class="connect-step"><span class="n">${n}</span><h2>${esc(title)} <span class="state">${esc(state)}</span> <span class="chip">${esc(cx.next)}</span></h2>${body}</section>`
+  // The status strip above the flow (task 032): the two things it can say.
+  const statusHtml = (): string => `<p class="sub"><b>${esc(cx.status.ready)}</b> ${esc(cx.status.readyText)} · <b>${fill(cx.status.next, { stage: cx.scan.title })}</b> ${esc(cx.scan.ready.state)}</p>`
   const acts = (...labels: string[]): string => `<p class="actions">${labels.map((l) => btn(l)).join(' ')}</p>`
   const li = (...html: string[]): string => `<ul>${html.map((h) => `<li>${h}</li>`).join('')}</ul>`
   const sub = (...html: string[]): string => `<p class="sub">${html.join(' ')}</p>`
   sec(
     'Connect (signed in): the four tiles',
-    `<h2 class="h1">${esc(cx.h1)}</h2>` +
+    `<p class="sub">${esc(cx.eyebrow)}</p><h2 class="h1">${esc(cx.h1)}</h2>` +
       p(cx.intro, {}) +
+      statusHtml() +
       tileHtml(1, cx.account.title, exT.tenant, p(cx.account.line, { upn: exT.upn, role: 'Global Administrator' }) + p(cx.account.note, {}, 'sub') + acts(cx.account.signInAnother, cx.account.signOut)) +
       tileHtml(
         2,
         cx.baseline.title,
-        fill(cx.baseline.state, exT),
-        p(cx.baseline.what, {}) +
+        cx.baseline.selected,
+        // The baseline's own card, nested in the step (task 032): the package's
+        // name, a quiet source line, and the copy that says what a baseline is.
+        `<div class="baseline-card"><b>${esc(exT.baselineName)}</b> <span class="sub">${fill(cx.baseline.count, exT)} · ${esc(cx.baseline.versionPinned)} · ${esc(cx.baseline.versionUploaded)}</span>` +
+          p(cx.baseline.what, {}) +
           p(cx.baseline.goal, {}) +
+          '</div>' +
+          `<details open><summary>${esc(cx.baseline.sourceSummary)}</summary>` +
           p(cx.baseline.pinned, {}) +
+          '</details>' +
           // The author's update, one row per evolving source policy (task 021):
           // the change word, the policy, what it was called, what materially
           // changed, and the steps under it.
@@ -678,7 +687,10 @@ export function renderPages(): string {
         3,
         cx.scan.title,
         fill(cx.scan.complete.state, { age: '57 minutes ago' }),
-        `<details open><summary>${esc(cx.scan.limitsSummary)}</summary>` +
+        // The compact counts the complete scan produced (task 032), each from the
+        // authority that already owns it.
+        li(`<b>18</b> ${esc(cx.scan.meta.people)}`, `<b>38</b> ${esc(cx.scan.meta.policies)}`, `<b>27</b> ${esc(cx.scan.meta.steps)}`) +
+          `<details open><summary>${esc(cx.scan.limitsSummary)}</summary>` +
           ul(cx.scan.limits, {}) +
           sub(esc(cx.scan.limitsMore), `<a>${esc(cx.scan.limitsLink)}</a>`) +
           '</details>' +
@@ -713,7 +725,7 @@ export function renderPages(): string {
   const si = cx.signIn
   sec(
     'Connect (signed out): the same four tiles',
-    `<h2 class="h1">${esc(cx.h1)}</h2>` +
+    `<p class="sub">${esc(cx.eyebrow)}</p><h2 class="h1">${esc(cx.h1)}</h2>` +
       p(cx.intro, {}) +
       tileHtml(
         1,
