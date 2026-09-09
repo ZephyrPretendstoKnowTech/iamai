@@ -2,12 +2,15 @@
 // progress, every other page one line under the header, outside header.app,
 // so the header keeps no scan control and no scan age.
 //
-// The page's width is route-aware (task 030): the shell puts `data-route` on
-// main.page and src/ui/app.css gives each approved surface the column its pack
-// sets — Connect 1040, Plan 1240, MFA Readiness 1200, everything else the prose
-// page. It replaced a boolean `page-wide` class that could only say "the wide
-// one". MFA Readiness's ladder and counts keep their own, narrower measure and
-// sit above the wider table.
+// The page's width is route-aware (task 030): the shell carries `data-route`
+// and src/ui/app.css gives each approved surface the column its pack sets —
+// Connect 1040, Plan 1240, MFA Readiness 1200. Task 040 gave the three surfaces
+// no pack governs a column from their content role too — Export 1040, How 1040,
+// Inventory 1240 — and made the page and the footer read one `--route-width`
+// declared on the shell, so the frame and the content cannot end up on two
+// different columns. It replaced a boolean `page-wide` class that could only
+// say "the wide one". MFA Readiness's ladder and counts keep their own,
+// narrower measure and sit above the wider table.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -43,10 +46,19 @@ const specificity = (selector: string): number => {
 test('each surface reads at its approved width; the diagnostic above the table keeps the page column instead of stretching to it', () => {
   assert.match(shell, /<main className="page" data-route=\{route\}>/, 'the width is decided by the route, in CSS')
   const widths = readFileSync('src/ui/app.css', 'utf8')
+  // Task 040 moved the width from the page element to the shell, so the page
+  // and the footer read one value per route (`--route-width`). The routes and
+  // the columns they resolve to are the fact; where the variable is declared is
+  // not.
   for (const [route, token] of [['connect', 'w-connect'], ['plan', 'w-plan'], ['readiness', 'w-readiness']]) {
-    assert.match(widths, new RegExp(`main\\.page\\[data-route='${route}'\\] \\{\\s*max-width: calc\\(var\\(--${token}\\)`), `${route} has no approved column`)
+    assert.match(widths, new RegExp(`\\.shell\\[data-route='${route}'\\] \\{\\s*\\n\\s*--route-width: var\\(--${token}\\);`), `${route} has no approved column`)
   }
-  assert.match(widths, /main\.page\[data-route='inventory'\],\s*\n\s*main\.page\[data-route='how'\] \{\s*\n\s*max-width: calc\(var\(--table\)/, 'Inventory and How keep the wide table cap')
+  // Inventory, How and Export left the shared table cap for a column chosen by
+  // their own content role (task 040): these are engineering widths, not
+  // approved ones, and each is named once in src/ui/tokens.ts ROUTE_WIDTHS.
+  for (const [route, token] of [['inventory', 'w-inventory'], ['how', 'w-how'], ['export', 'w-export']]) {
+    assert.match(widths, new RegExp(`\\.shell\\[data-route='${route}'\\] \\{\\s*\\n\\s*--route-width: var\\(--${token}\\);`), `${route} has no column of its own`)
+  }
   const today = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
   assert.match(today, /<div className="page-head">[\s\S]*<h1 className="display">\{T\.h1\}<\/h1>[\s\S]*CONNECT_WORDS\.scan\.complete\.again/, 'Scan again sits beside the heading')
   // The three counts are the approved integrated summary's stats (task 037), not

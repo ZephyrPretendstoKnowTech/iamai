@@ -237,6 +237,7 @@ function PoliciesTab({ facts, names }: { facts: { raw: Raw; facts: PolicyFacts }
     <div>
       <Heading text={C.tabs.policies} source="policies" />
       <DataTable
+        panel
         rows={rows}
         columns={columns}
         rowKey={(r) => r.id || r.name}
@@ -275,6 +276,7 @@ function LocationsTab({ snapshot, facts }: { snapshot: TenantSnapshot; facts: { 
     <div>
       <Heading text={C.tabs.locations} source="locations" />
       <DataTable
+        panel
         rows={rows}
         rowKey={(r) => r.id}
         csvName="iamai-named-locations.csv"
@@ -332,6 +334,7 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
       {policy ? (
         <>
           <DataTable
+            panel
             caption={A.methods}
             rows={methodRows}
             rowKey={(r) => r.id}
@@ -352,6 +355,7 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
       )}
 
       <DataTable
+        panel
         caption={A.strengths}
         rows={strengthRows}
         rowKey={(r) => r.id}
@@ -364,6 +368,7 @@ function AuthenticationTab({ snapshot, names }: { snapshot: TenantSnapshot; name
       />
 
       <DataTable
+        panel
         caption={
           <>
             {A.registration}
@@ -423,6 +428,7 @@ function PeopleTab({
     <div>
       <Heading text={C.tabs.people} source="people" />
       <DataTable
+        panel
         rows={rows}
         rowKey={(r) => r.id}
         csvName="iamai-people.csv"
@@ -468,6 +474,7 @@ function PeopleTab({
       <Heading text={C.tabs.groups} source="groups" />
       {groups === null && <p className="reason">{G.loading}</p>}
       <DataTable
+        panel
         rows={groupRows}
         rowKey={(r) => r.id}
         csvName="iamai-groups.csv"
@@ -514,6 +521,7 @@ function DevicesTab({ snapshot, userById }: { snapshot: TenantSnapshot; userById
     <div>
       <Heading text={C.tabs.devices} source="devices" />
       <DataTable
+        panel
         rows={snapshot.devices}
         rowKey={(r) => r.id}
         csvName="iamai-devices.csv"
@@ -626,6 +634,7 @@ function RolesTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Return
         </Button>
       </p>
       <DataTable
+        panel
         rows={rows}
         rowKey={(r) => r.id}
         csvName="iamai-roles.csv"
@@ -676,6 +685,7 @@ function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
     <div>
       <Heading text={C.tabs.licensing} source="licensing" />
       <DataTable
+        panel
         rows={rows}
         rowKey={(r) => r.id}
         csvName="iamai-licences.csv"
@@ -704,6 +714,7 @@ function LicensingTab({ snapshot }: { snapshot: TenantSnapshot }) {
         ]}
       />
       <DataTable
+        panel
         caption={L.summary}
         rows={CAPABILITIES.map((c) => ({ id: c, name: LICENSING.caps[c] ?? c, enabled: snapshot.capabilities[c].enabled, seats: snapshot.capabilities[c].seats, consumed: snapshot.capabilities[c].consumed }))}
         rowKey={(r) => r.id}
@@ -747,6 +758,7 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnT
     <div>
       <Heading text={C.tabs.apps} source="apps" />
       <DataTable
+        panel
         rows={[...byApp.values()]}
         rowKey={(r) => r.id}
         csvName="iamai-apps.csv"
@@ -759,6 +771,7 @@ function AppsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: ReturnT
         ]}
       />
       <DataTable
+        panel
         caption={A.facets}
         rows={Object.entries(facets).map(([facet, f]) => ({ facet, name: app.inventory.workloadNames[facet] ?? facet, on: f.on, reason: f.reason }))}
         rowKey={(r) => r.facet}
@@ -791,6 +804,7 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
   const table = (title: string, data: Record<string, number>, header: string, csv: string) => (
     <>
       <DataTable
+        panel
         caption={title}
         rows={Object.entries(data).map(([key, count]) => ({ key, count }))}
         rowKey={(r) => r.key}
@@ -820,6 +834,7 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
           {table(S.byCountry, agg.byCountry, S.columns.users, 'iamai-signins-by-country.csv')}
           {usage && (
             <DataTable
+              panel
               caption={S.olderMethods}
               rows={[
                 { method: S.legacy, ids: usage.legacyAuth.userIds },
@@ -835,6 +850,7 @@ function SignInsTab({ snapshot, names }: { snapshot: TenantSnapshot; names: Retu
             />
           )}
           <DataTable
+            panel
             caption={S.blockedToday}
             rows={snapshot.blockedToday}
             rowKey={(r) => r.policyId}

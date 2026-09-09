@@ -116,6 +116,9 @@
   --w-connect: 1040px;
   --w-plan: 1240px;
   --w-readiness: 1200px;
+  --w-export: 1040px;
+  --w-how: 1040px;
+  --w-inventory: 1240px;
 
   --pad: 24px;
   --header: 48px;
@@ -264,64 +267,11 @@
   }
 }
 
-/* The names the pages already read. Each resolves to a canonical or a derived
-   value above; none of them carries a colour of its own. Pack 040 migrates the
-   pages and deletes this block. */
+/* The soft tint of each semantic role: one formula, four roles. Composed from
+   the theme's own values, so it follows light, dark and print with them. */
 :root {
-  --bg: var(--canvas);
-  --bg-raised: var(--surface);
-  --bg-inset: var(--secondary-surface);
-  --ink: var(--primary-text);
-  --ink-2: var(--secondary-text);
-  --ink-3: var(--quiet-text);
-  --rule: var(--line);
-  --rule-strong: var(--strong-line);
-  --accent: var(--brand-primary);
-  --accent-tint: var(--brand-soft);
-  --on-accent: var(--on-brand);
-  --ok: var(--success-text);
-  --wait: var(--attention-text);
-  --stop: var(--danger-text);
-  --font-display: var(--font-serif);
-  --text-xl: var(--t-6);
-  --text-lg: var(--t-5);
-  --text-md: var(--t-4);
-  --text-base: var(--t-3);
-  --text-sm: var(--t-2);
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --radius-card: 0;
-  --radius-input: var(--radius);
-  --radius-chip: var(--radius);
-  --max-content: var(--table);
-  --max-content-wide: var(--table);
-  --gutter: var(--pad);
-  --shadow-1: none;
-  --motion-rise: var(--motion);
-  --raised: var(--secondary-surface);
-  --border: var(--strong-line);
-  --border-control: var(--strong-line);
-  --text: var(--primary-text);
-  --muted: var(--secondary-text);
-  --accent-hover: var(--brand-secondary);
-  --accent-ink: var(--on-brand);
-  --info: var(--brand-primary);
-  --focus: var(--brand-primary);
-  --accent-soft: color-mix(in srgb, var(--brand-primary) 12%, var(--canvas));
-  --success-soft: color-mix(in srgb, var(--success) 12%, var(--canvas));
-  --warning-soft: color-mix(in srgb, var(--attention) 12%, var(--canvas));
-  --danger-soft: color-mix(in srgb, var(--danger) 12%, var(--canvas));
-  --info-soft: color-mix(in srgb, var(--brand-primary) 12%, var(--canvas));
-  --warning: var(--attention-text);
-  --past: var(--secondary-text);
-  --past-soft: color-mix(in srgb, var(--secondary-text) 12%, var(--canvas));
-  --present: var(--brand-primary);
-  --present-soft: var(--accent-soft);
-  --future: var(--brand-primary);
-  --future-soft: var(--accent-soft);
+  --brand-tint: color-mix(in srgb, var(--brand-primary) 12%, var(--canvas));
+  --success-tint: color-mix(in srgb, var(--success) 12%, var(--canvas));
+  --attention-tint: color-mix(in srgb, var(--attention) 12%, var(--canvas));
+  --danger-tint: color-mix(in srgb, var(--danger) 12%, var(--canvas));
 }

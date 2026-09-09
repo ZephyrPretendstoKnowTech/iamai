@@ -35,8 +35,8 @@
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--canvas);
+  color: var(--primary-text);
   font-family: var(--font-sans);
   font-size: var(--t-3);
   line-height: var(--lh-body);
@@ -52,7 +52,7 @@ h3 {
   font-family: var(--font-serif);
   font-weight: var(--weight-display);
   line-height: var(--lh-heading);
-  color: var(--ink);
+  color: var(--primary-text);
 }
 p,
 ul {
@@ -66,7 +66,7 @@ li {
   margin: 0 0 6px;
 }
 a {
-  color: var(--accent);
+  color: var(--brand-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -91,7 +91,7 @@ a {
   font-weight: var(--weight-strong);
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   max-width: none;
 }
 
@@ -117,8 +117,8 @@ header.app {
   flex-wrap: wrap;
   gap: 24px;
   padding: 0 var(--pad);
-  border-bottom: 1px solid var(--rule);
-  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
 }
 /* The lockup, the same one the planner's shell composes: the Guided Route mark
    beside the live text IAMAI in IBM Plex Sans at the wordmark weight, with the
@@ -127,7 +127,7 @@ header.app .wordmark {
   font-family: var(--font-sans);
   font-size: var(--t-4);
   font-weight: var(--weight-wordmark);
-  color: var(--ink);
+  color: var(--primary-text);
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -153,7 +153,7 @@ header.app .links {
   flex-wrap: wrap;
 }
 header.app .links a {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -162,12 +162,12 @@ header.app .links a:focus-visible {
   text-decoration: underline;
 }
 header.app .links a.enter {
-  color: var(--accent);
+  color: var(--brand-primary);
 }
 /* The theme and Account controls: text in the header's colour, no button face. */
 header.app .right .text-control {
   font: inherit;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   background: none;
   border: 0;
   border-radius: 0;
@@ -177,7 +177,7 @@ header.app .right .text-control {
 }
 header.app .right .text-control:hover,
 header.app .right .text-control:focus-visible {
-  color: var(--ink);
+  color: var(--primary-text);
 }
 
 /* The column the approved Home pack sets: min(1040px, 100% - 40px)
@@ -214,7 +214,7 @@ main.page a[href] {
 }
 .hero .site-line {
   font-size: var(--t-lead-lg);
-  color: var(--ink-2);
+  color: var(--secondary-text);
   max-width: var(--measure-lead);
   margin: 0;
 }
@@ -227,7 +227,7 @@ main.page a[href] {
   flex-wrap: wrap;
   margin: 15px 0 0;
   max-width: none;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-size: var(--t-1);
 }
 
@@ -235,7 +235,7 @@ main.page a[href] {
    A section: a hairline above it, its label, its heading, then its body. Four
    of these are the page; nothing here is a box. */
 .band {
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   padding: 42px 0;
 }
 .band h2 {
@@ -262,7 +262,7 @@ main.page a[href] {
 /* The section's own lead paragraph, named rather than reached by position: the
    eyebrow above it and the rail beside it read at their own level. */
 .product .lead {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   margin: 0 0 10px;
   max-width: var(--measure);
 }
@@ -278,52 +278,52 @@ main.page a[href] {
   grid-template-columns: 78px 1fr;
   gap: 14px;
   padding-top: 13px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 .step:first-child {
   padding-top: 0;
   border-top: 0;
 }
 .step b {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
 }
 .step span {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 
 /* The rail: subordinate to the column beside it, separated by a border that
    moves from the left to the top when the two stack. */
 .side {
   padding-left: 24px;
-  border-left: 1px solid var(--rule);
+  border-left: 1px solid var(--line);
 }
 .side .label {
   margin: 0;
   font-size: var(--t-0);
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 .side strong {
   display: block;
   margin: 6px 0 5px;
   font-size: var(--t-4);
   font-weight: 500;
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .side p {
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
   margin: 0 0 10px;
 }
 .side p.small {
   margin-top: 18px;
   font-size: var(--t-1);
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 .side p.small a {
-  color: var(--accent);
+  color: var(--brand-primary);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -345,18 +345,18 @@ main.page a[href] {
   grid-template-columns: 160px 1fr;
   gap: 20px;
   padding-top: 12px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 .catch:first-child {
   padding-top: 0;
   border-top: 0;
 }
 .catch b {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
 }
 .catch span {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 
 /* --------------------------------------------------------------- the trust
@@ -366,14 +366,14 @@ main.page a[href] {
   display: flex;
   gap: 28px;
   flex-wrap: wrap;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 .trust span {
   flex: 1 1 280px;
 }
 .trust strong {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
 }
 /* The full stop that closes the claim's name is punctuation, not a word: the
@@ -383,14 +383,14 @@ main.page a[href] {
   content: '.';
 }
 .lnk {
-  color: var(--accent);
+  color: var(--brand-primary);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 /* --------------------------------------------------------------- the about */
 .about p {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   max-width: var(--measure-lead);
   margin: 0;
 }
@@ -416,7 +416,7 @@ main.page a[href] {
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -425,34 +425,34 @@ main.page a[href] {
   white-space: nowrap;
 }
 .btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
+  background: var(--brand-primary);
+  color: var(--on-brand);
+  border-color: var(--brand-primary);
 }
 .btn-primary:hover,
 .btn-primary:active,
 .btn-primary:focus-visible {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--brand-primary);
+  color: var(--on-brand);
 }
 .btn-secondary {
-  color: var(--accent);
+  color: var(--brand-primary);
   background: transparent;
-  border-color: var(--accent);
+  border-color: var(--brand-primary);
 }
 .btn-secondary:hover,
 .btn-secondary:active {
-  color: var(--accent);
-  background: var(--accent-tint);
+  color: var(--brand-primary);
+  background: var(--brand-soft);
 }
 .btn-tertiary {
-  color: var(--ink-2);
-  background: var(--bg-inset);
-  border-color: var(--rule-strong);
+  color: var(--secondary-text);
+  background: var(--secondary-surface);
+  border-color: var(--strong-line);
 }
 .btn-tertiary:hover,
 .btn-tertiary:active {
-  color: var(--ink);
+  color: var(--primary-text);
 }
 
 /* The footer the pack draws: the product's name on the left, the public links
@@ -463,8 +463,8 @@ footer.app {
   max-width: calc(var(--w-home) + 2 * var(--pad));
   margin: 0 auto;
   padding: 22px var(--pad) 34px;
-  border-top: 1px solid var(--rule);
-  color: var(--ink-2);
+  border-top: 1px solid var(--line);
+  color: var(--secondary-text);
   font-size: var(--t-1);
   display: flex;
   gap: 20px;
@@ -472,7 +472,7 @@ footer.app {
   justify-content: space-between;
 }
 footer.app a {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 
 /* ---------------------------------------------------------------- narrower
@@ -491,7 +491,7 @@ footer.app a {
     padding-left: 0;
     padding-top: 18px;
     border-left: 0;
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
   }
   .catch {
     grid-template-columns: 1fr;

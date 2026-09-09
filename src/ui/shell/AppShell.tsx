@@ -33,9 +33,12 @@ export type { Route } from './routes.ts'
 /**
  * The width a route reads at is CSS, keyed off `data-route` on the page element
  * (src/ui/app.css, `main.page[data-route=…]`). The values are one authority,
- * src/ui/tokens.ts ROUTE_WIDTHS, and each of them was read out of that
- * surface's approved pack in docs/design/approved/: Connect 1040, Plan 1240,
- * MFA Readiness 1200. Every other route keeps the prose page.
+ * src/ui/tokens.ts ROUTE_WIDTHS, and the four approved ones were read out of
+ * that surface's approved pack in docs/design/approved/: Connect 1040, Plan
+ * 1240, MFA Readiness 1200. Task 040 gave the three surfaces no pack governs a
+ * width chosen from their content role rather than a shared default — Export
+ * 1040, How 1040, Inventory 1240 — which are engineering choices, not approved
+ * values. Any other route keeps the prose page.
  *
  * A wide page is not a wide paragraph: prose stays at the reading measure
  * (`--measure`) and a lead at `--measure-lead`, so widening Plan gave the plan
@@ -234,12 +237,16 @@ export function AppShell({
   // is still exactly one `header.app` in the product.
   const sticky = planActive
   return (
-    // The route is carried on the shell as well as on `main.page`, because two
-    // packs tighten the page gutter at their own narrow breakpoint (Plan at
-    // 650, MFA Readiness at 620) and the header and footer have to tighten with
-    // it — a page inset 12px under a header inset 24px puts the wordmark out of
-    // line with the content it sits above. `main.page` keeps its own attribute:
-    // the route WIDTH is a property of the page element and is read there.
+    // The route is carried on the shell, and the shell is where the route's
+    // width is declared (`--route-width` in app.css). Two things read it: the
+    // page and the footer. That is deliberate — two packs tighten the page
+    // gutter at their own narrow breakpoint (Plan at 650, MFA Readiness at 620)
+    // and the header and footer have to tighten with it, because a page inset
+    // 12px under a header inset 24px puts the wordmark out of line with the
+    // content it sits above; and a footer on a fixed column of its own was
+    // wider than one route's page and narrower than another's (task 040).
+    // `main.page` keeps its own attribute for the rules that address the page
+    // itself.
     <div className={`shell${sticky ? ' shell-sticky' : ''}`} data-route={route}>
       <header className="app">
         {/* The brand lockup: the Guided Route mark beside the wordmark IAMAI,

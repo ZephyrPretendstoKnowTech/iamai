@@ -11,24 +11,29 @@
 // carry the manifest's values byte for byte; brand.test.ts fails when a value
 // here and a value there disagree.
 //
-// Three groups of names live in this file, and the difference matters:
+// Two groups of names live in this file, and the difference matters:
 //
 //   1. CANONICAL. The seventeen roles the owner approved (canvas … codeSurface).
 //      A value here is the manifest's value. Nothing may edit one without an
 //      owner brand decision.
 //   2. DERIVED. A small, bounded set production needs and the brand manifest
 //      deliberately does not carry: the ink that sits ON the brand colour, the
-//      two production-only ladder states, and the AA-safe text variant of the
-//      muted ink and of each state colour. The canonical value is the fill, the
-//      dot, the border and the badge; the derived value is the same colour as
-//      small text, darkened in light mode only as far as WCAG AA requires.
-//      tokens.test.ts measures every one of them against every surface, and
-//      against every `color:` the two stylesheets actually declare, so a
-//      derived value cannot quietly stop being legible.
-//   3. LEGACY. The names the pages already read (--bg, --ink, --accent, --ok …)
-//      resolve to a canonical or derived value with `var()`. They are one token
-//      system with two names, not two systems: no legacy name carries a value
-//      of its own. Pack 040 migrates the pages and deletes them.
+//      two production-only ladder states, the AA-safe text variant of the
+//      muted ink and of each state colour, and the soft tint of each state
+//      (SOFT_TINTS). The canonical value is the fill, the dot, the border and
+//      the badge; the derived value is the same colour as small text, darkened
+//      in light mode only as far as WCAG AA requires. tokens.test.ts measures
+//      every one of them against every surface, and against every `color:` the
+//      two stylesheets actually declare, so a derived value cannot quietly stop
+//      being legible.
+//
+// There used to be a third group. Task 030 kept the names the pages already
+// read (--bg, --ink, --accent, --ok …) as `var()` references to a canonical or
+// derived value, so the brand palette could land without rewriting every
+// stylesheet in the same commit; each alias carried no colour of its own. Task
+// 040 migrated all 329 of those references onto the canonical names and deleted
+// the block, which is what it was always for. `src/ui/convergence.test.ts`
+// fails if one comes back, so the product now has one name per colour.
 //
 // The type scale is likewise two things. `t-*` is the interface scale
 // production is built on. `d-*` is the display ramp read out of the four
@@ -328,7 +333,30 @@ export const ROUTE_WIDTHS = {
   plan: 1240,
   /** docs/design/approved/mfa-readiness-v2.html — min(1200px, 100% - 40px). */
   readiness: 1200,
-  /** Export, How, Inventory and anything else: the prose page, unchanged. */
+  // The three surfaces no approved pack governs. Task 030 left them on the
+  // generic prose page and the generic table cap; task 040 gives each one a
+  // route width chosen from its CONTENT ROLE, which is what this record is for.
+  // These three are ENGINEERING choices, not owner decisions, and no authority
+  // fixes them — but each reuses a width the product already resolves rather
+  // than introducing a new number, so the surfaces converge on the system
+  // instead of on four more measurements.
+  /**
+   * Export: prose plus wide artifact rows whose actions sit beside the words.
+   * The product's existing "wider than a sentence" column, which is also what
+   * Home and Connect resolve to, so Export reads as their sibling. Prose on it
+   * stays capped at `--measure` / `--measure-lead`.
+   */
+  export: 1040,
+  /** How: reference prose over six-column generated tables. The same column, for the same reason. */
+  how: 1040,
+  /**
+   * Inventory: the densest table in the product (ten columns of tenant objects
+   * on the People tab). It takes the widest column the product already uses —
+   * the Plan pack's 1240 — because at 1040 half the cells wrap to two lines,
+   * and an operational table is the one place the extra column is the point.
+   */
+  inventory: 1240,
+  /** Anything else: the prose page, unchanged. */
   default: 760,
 } as const
 
@@ -422,32 +450,27 @@ const VAR_NAMES: Record<keyof Palette, string> = {
 }
 
 /**
- * The names the pages already read, each resolving to a canonical or derived
- * value. Nothing here carries a colour of its own: one system, two names, until
- * pack 040 migrates the pages.
+ * The soft tint of a semantic role: the fill behind a notice whose meaning is
+ * carried by its border, its icon and its words. One formula, four roles, so a
+ * tinted panel cannot end up mixing a different amount of a different colour on
+ * each surface that draws one.
  *
- * The state names resolve to the AA-safe text variants, because production
- * paints a status WORD with them (`design 5` in design-lint.test.ts), not only
- * a dot.
+ * The value is composed rather than named, which is why it is not in `Palette`:
+ * the brand manifest approves `brandSoft` as a FILL a person reads text on, and
+ * these are 12% washes of the state colours behind body ink. The text on top
+ * stays `--primary-text` in every one of them (`.callout` in app.css), so the
+ * tint never has to carry contrast.
+ *
+ * Until task 040 these four lived in the legacy compatibility block as
+ * `--accent-soft`, `--success-soft`, `--warning-soft` and `--danger-soft` —
+ * real values hiding among the aliases. The values did not change; only the
+ * layer and the names did, so each is now named for the role it tints.
  */
-export const LEGACY_COLOUR_ALIASES: Record<string, string> = {
-  '--bg': '--canvas',
-  '--bg-raised': '--surface',
-  '--bg-inset': '--secondary-surface',
-  '--ink': '--primary-text',
-  '--ink-2': '--secondary-text',
-  // The pages set small text in --ink-3 (a Plan row's reason, the who and when
-  // lines, a tile's quiet note, a home section label), so it resolves to the
-  // AA text level, not to the component colour.
-  '--ink-3': '--quiet-text',
-  '--rule': '--line',
-  '--rule-strong': '--strong-line',
-  '--accent': '--brand-primary',
-  '--accent-tint': '--brand-soft',
-  '--on-accent': '--on-brand',
-  '--ok': '--success-text',
-  '--wait': '--attention-text',
-  '--stop': '--danger-text',
+export const SOFT_TINTS: Record<string, string> = {
+  '--brand-tint': '--brand-primary',
+  '--success-tint': '--success',
+  '--attention-tint': '--attention',
+  '--danger-tint': '--danger',
 }
 
 /** The MFA readiness ladder's colour per rung (derive/ladder.ts), each an alias of a palette colour so it follows the theme. */
@@ -461,14 +484,16 @@ export const RUNG_COLOURS: Record<string, string> = {
 }
 
 /**
- * The palette role a CSS custom property resolves to, following the legacy
- * aliases and the ladder's rung names to the value a browser would compute.
- * Returns null for a name that is not a colour at all (`--pad`, `--t-3`) or
- * that is composed rather than named (a `color-mix()` soft tint).
+ * The palette role a CSS custom property resolves to, following the ladder's
+ * rung names to the value a browser would compute. Returns null for a name that
+ * is not a colour at all (`--pad`, `--t-3`) or that is composed rather than
+ * named (a `color-mix()` soft tint).
  *
  * It exists so a test can read a `color:` out of a stylesheet and measure the
  * contrast of what the browser actually paints, instead of trusting that the
- * alias chain still points somewhere legible.
+ * name it found points somewhere legible. Task 040 deleted the legacy alias
+ * layer this also used to follow; the rung names remain because a rung is a
+ * product meaning that maps to a palette role, not a second name for one.
  */
 export function resolveColourVar(name: string): keyof Palette | null {
   const seen = new Set<string>()
@@ -478,7 +503,7 @@ export function resolveColourVar(name: string): keyof Palette | null {
     seen.add(at)
     const role = (Object.keys(VAR_NAMES) as (keyof Palette)[]).find((k) => VAR_NAMES[k] === at)
     if (role) return role
-    const next = LEGACY_COLOUR_ALIASES[at] ?? RUNG_COLOURS[at]
+    const next = RUNG_COLOURS[at]
     if (!next) return null
     at = next
   }
@@ -517,8 +542,8 @@ export function renderTokensCss(): string {
     .filter(([k]) => k !== 'default')
     .map(([k, v]) => `  --w-${k}: ${v}px;`)
     .join('\n')
-  const aliases = Object.entries(LEGACY_COLOUR_ALIASES)
-    .map(([from, to]) => `  ${from}: var(${to});`)
+  const tints = Object.entries(SOFT_TINTS)
+    .map(([name, role]) => `  ${name}: color-mix(in srgb, var(${role}) 12%, var(--canvas));`)
     .join('\n')
   return `/* GENERATED from src/ui/tokens.ts by scripts/gen-tokens.mjs. Do not edit by hand:
    tokens.test.ts fails when this file and tokens.ts disagree. */
@@ -587,53 +612,10 @@ ${themeBlock(LIGHT, 'light', '    ')}
   }
 }
 
-/* The names the pages already read. Each resolves to a canonical or a derived
-   value above; none of them carries a colour of its own. Pack 040 migrates the
-   pages and deletes this block. */
+/* The soft tint of each semantic role: one formula, four roles. Composed from
+   the theme's own values, so it follows light, dark and print with them. */
 :root {
-${aliases}
-  --font-display: var(--font-serif);
-  --text-xl: var(--t-6);
-  --text-lg: var(--t-5);
-  --text-md: var(--t-4);
-  --text-base: var(--t-3);
-  --text-sm: var(--t-2);
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --space-6: 32px;
-  --space-7: 48px;
-  --radius-card: 0;
-  --radius-input: var(--radius);
-  --radius-chip: var(--radius);
-  --max-content: var(--table);
-  --max-content-wide: var(--table);
-  --gutter: var(--pad);
-  --shadow-1: none;
-  --motion-rise: var(--motion);
-  --raised: var(--secondary-surface);
-  --border: var(--strong-line);
-  --border-control: var(--strong-line);
-  --text: var(--primary-text);
-  --muted: var(--secondary-text);
-  --accent-hover: var(--brand-secondary);
-  --accent-ink: var(--on-brand);
-  --info: var(--brand-primary);
-  --focus: var(--brand-primary);
-  --accent-soft: color-mix(in srgb, var(--brand-primary) 12%, var(--canvas));
-  --success-soft: color-mix(in srgb, var(--success) 12%, var(--canvas));
-  --warning-soft: color-mix(in srgb, var(--attention) 12%, var(--canvas));
-  --danger-soft: color-mix(in srgb, var(--danger) 12%, var(--canvas));
-  --info-soft: color-mix(in srgb, var(--brand-primary) 12%, var(--canvas));
-  --warning: var(--attention-text);
-  --past: var(--secondary-text);
-  --past-soft: color-mix(in srgb, var(--secondary-text) 12%, var(--canvas));
-  --present: var(--brand-primary);
-  --present-soft: var(--accent-soft);
-  --future: var(--brand-primary);
-  --future-soft: var(--accent-soft);
+${tints}
 }
 `
 }

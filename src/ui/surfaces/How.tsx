@@ -46,15 +46,21 @@ export function How() {
   const subjects = [...new Set(REGISTRY.map((r) => r.subject))] as RuleSubject[]
 
   return (
-    <section className="surface page-wide how">
+    <section className="surface how">
       <h1>{C.h1}</h1>
 
       <h2>{C.permissions}</h2>
       <DataTable
+        panel
         rows={permissions}
         rowKey={(r) => r.scope}
         columns={[
-          { key: 'scope', header: PERMISSIONS.columns.permission, render: (r) => <code>{r.scope}</code> },
+          // A Graph permission is ONE identifier and does not break mid-word —
+          // the fact prompt 47.1 established for the consent disclosure, and the
+          // same fact here. `.permission-name` is that rule; the column then
+          // takes the width the name needs, and the panel scrolls if the screen
+          // cannot give it.
+          { key: 'scope', header: PERMISSIONS.columns.permission, render: (r) => <code className="permission-name">{r.scope}</code> },
           { key: 'reads', header: PERMISSIONS.columns.reads, render: (r) => r.reads },
           { key: 'without', header: PERMISSIONS.columns.without, render: (r) => r.without },
         ]}
@@ -63,13 +69,18 @@ export function How() {
       <h2>{C.reads}</h2>
       {lanes.map((lane) => (
         <DataTable
+            panel
             key={lane}
             caption={READS.lanes[lane]}
             rows={COLLECTOR_REGISTRY.filter((s) => s.lane === lane)}
             rowKey={(s) => s.name}
             columns={[
               { key: 'name', header: READS.columns.data, render: (s) => s.name },
-              { key: 'endpoint', header: READS.columns.endpoint, render: (s) => <code>{s.endpoint}</code> },
+              // A Graph path DOES break — it is long enough that refusing to
+              // would push a six-column table past any screen — but not into
+              // slivers: the floor keeps a short path on one or two lines and
+              // lets the panel's own scroll handle the long ones.
+              { key: 'endpoint', header: READS.columns.endpoint, minWidth: '15rem', render: (s) => <code>{s.endpoint}</code> },
               { key: 'version', header: READS.columns.api, render: (s) => <Chip status="neutral">{s.version}</Chip> },
               { key: 'scopes', header: READS.columns.permissions, render: (s) => s.scopes.join(', ') },
               { key: 'gate', header: READS.columns.gate, render: (s) => s.gate },
@@ -82,6 +93,7 @@ export function How() {
       <p className="reason">{C.checksIntro}</p>
       {subjects.map((subject) => (
         <DataTable
+            panel
             key={subject}
             caption={SUBJECT[subject] ?? subject}
             rows={REGISTRY.filter((r) => r.subject === subject)}
@@ -94,6 +106,11 @@ export function How() {
               {
                 key: 'source',
                 header: CITATION.source,
+                // The citation's label is a sentence of ordinary words, not a
+                // tenant object: with no floor the column collapsed to one word
+                // per line. `main.page a[href]` breaks anywhere for a long URL
+                // or a Graph path, which is right for those and wrong for this.
+                minWidth: '12rem',
                 render: (r) => {
                   const c = citationFor(r.id)
                   if (!c || c === FIELD_PRACTICE) return CITATION.fieldPracticeShort

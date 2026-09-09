@@ -247,7 +247,7 @@ test('the current page is marked programmatically and by shape, and a tab with n
   // Unavailable is aria-disabled and the app's disabled ink, never an item that
   // looks live and does nothing.
   assert.match(appShell, /aria-disabled="true"/)
-  assert.match(rule(css, "header.app nav a[aria-disabled='true']") ?? '', /color:\s*var\(--ink-3\)/)
+  assert.match(rule(css, "header.app nav a[aria-disabled='true']") ?? '', /color:\s*var\(--quiet-text\)/)
 })
 
 test('no surface builds an application header of its own', () => {
@@ -589,8 +589,13 @@ test('ordinary content cannot widen the page, and ordinary prose is not broken t
   assert.match(rule(css, 'main.page img,\nmain.page svg,\nmain.page table,\nmain.page pre') ?? rule(css, 'main.page pre') ?? '', /max-width:\s*100%/)
   // Five destinations wrap onto a second line rather than scrolling the page.
   assert.match(rule(css, 'header.app nav') ?? '', /flex-wrap:\s*wrap/)
-  // A grid track with a fixed minimum wider than a phone is a page-wide overflow.
-  assert.match(rule(css, '.export-grid') ?? '', /minmax\(min\(20rem, 100%\), 1fr\)/)
+  // A grid track with a fixed minimum wider than a phone is a page-wide
+  // overflow, which is what Export's auto-filling grid had to guard against
+  // with `minmax(min(20rem, 100%), 1fr)`. Task 040 made the group one panel of
+  // rows, and a single `1fr` track cannot exceed its parent at any width — the
+  // guarantee is now structural rather than a minimum that has to be capped.
+  assert.match(rule(css, '.export-grid') ?? '', /grid-template-columns: 1fr;/)
+  assert.doesNotMatch(rule(css, '.export-grid') ?? '', /minmax\(\s*\d/, 'a fixed track minimum is a phone-width overflow')
   // Control rows wrap; nothing that holds several controls is nowrap.
   for (const sel of ['.plan-start label.rows', '.plan-settings label.rows', '.datatable-footer', '.surface .toolbar', '.surface .actions', '.export-card .actions', '.picker-chips']) {
     assert.match(rule(css, sel) ?? '', /flex-wrap:\s*wrap/, `${sel} does not wrap`)

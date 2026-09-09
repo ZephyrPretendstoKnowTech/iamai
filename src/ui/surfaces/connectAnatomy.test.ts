@@ -120,7 +120,7 @@ test('the Plan destination is tinted only when the plan is really ready, and off
   assert.match(CONNECT, /`connect-destination\$\{ready \? ' ready' : ''\}`/, 'the ready treatment is not gated on the ready state')
   assert.match(CSS, /\.connect-destination\.ready \{/, 'the ready treatment is not a modifier')
   const base = CSS.slice(CSS.indexOf('.connect-destination {'), CSS.indexOf('.connect-destination.ready {'))
-  assert.doesNotMatch(base, /--accent-soft|var\(--accent\)/, 'the plain destination already carries the ready panel’s brand tint')
+  assert.doesNotMatch(base, /--brand-tint|var\(--brand-primary\)/, 'the plain destination already carries the ready panel’s brand tint')
 
   // And the gate itself is the plan's, unchanged: only the ready state offers a
   // way into the plan, and the waiting state offers nothing at all.

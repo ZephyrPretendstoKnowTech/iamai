@@ -131,7 +131,7 @@ test('the title carries a quiet reason under it rather than a line under the who
   // One quiet level for the three secondary zones, as the pack sets it.
   assert.match(rule('.plan-row-reason'), /font-size: var\(--t-1\);/)
   assert.match(rule('.plan-row .who,\n.plan-row .when'), /font-size: var\(--t-1\);/)
-  assert.match(rule('.plan-row .who,\n.plan-row .when'), /color: var\(--ink-3\);/)
+  assert.match(rule('.plan-row .who,\n.plan-row .when'), /color: var\(--quiet-text\);/)
 })
 
 test('the metadata and date zones are right-aligned tracks of their own', () => {
@@ -245,7 +245,7 @@ test('the open row is the head of the step under it, driven by the real expanded
   // carries the frame's own border, which is what makes the pair one unit.
   const openRow = rule(".plan-row[aria-expanded='true']")
   assert.match(openRow, /border-radius: var\(--radius[a-z-]*\) var\(--radius[a-z-]*\) 0 0;/, 'the open row does not square off the edge the step attaches to')
-  assert.match(openRow, /border: 1px solid var\(--rule\);/, 'the open row does not carry the frame it heads')
+  assert.match(openRow, /border: 1px solid var\(--line\);/, 'the open row does not carry the frame it heads')
   assert.match(ROW, /aria-expanded=\{open\}/, 'the row no longer publishes its expanded state')
 })
 
@@ -305,7 +305,7 @@ test('the lifecycle track draws the four stages and reads them off Foundation B'
   // colour: the label is real text and the current one is marked twice over.
   assert.match(track, /aria-current=\{s\.current \? 'step' : undefined\}/, 'the current stage is not marked programmatically')
   assert.match(track, /<span className="stage-label">\{s\.label\}<\/span>/, 'the stage labels are not real text')
-  assert.match(rule('.step .track .stage.current .stage-label'), /color: var\(--ink\);/, 'the current stage is marked by colour alone')
+  assert.match(rule('.step .track .stage.current .stage-label'), /color: var\(--primary-text\);/, 'the current stage is marked by colour alone')
 })
 
 test('each lifecycle is drawn as itself, and no step is painted mid-rollout that is not', () => {
@@ -325,7 +325,7 @@ test('each lifecycle is drawn as itself, and no step is painted mid-rollout that
   assert.match(rule('.step .track .stage-fill'), /width: 0;/, 'an unmarked stage claims progress')
   assert.match(rule('.step .track .stage.reached .stage-fill'), /width: 100%;\n\s*background: var\(--success\);/, 'a passed stage is no longer complete')
   assert.match(rule('.step .track .stage.current.stage-report-only .stage-fill'), /width: 62%;\n\s*background: var\(--attention\);/, "Report-only lost the pack's current treatment")
-  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--accent\);/, 'Ready to enforce lost its own treatment')
+  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--brand-primary\);/, 'Ready to enforce lost its own treatment')
   // The blanket rule the four replaced: a `.current` fill that names no stage
   // paints Not deployed and Enforced with Report-only's bar.
   assert.equal(/\.step \.track \.stage\.current \.stage-fill \{/.test(CSS), false, 'one treatment is applied to every current stage again')
@@ -362,10 +362,10 @@ test('the frame has a main column and the step’s own rail, and the rail surviv
   // Production: the same two tracks, and the rail belongs to the step's frame
   // rather than to the page.
   assert.match(rule('.step-body.has-rail'), /grid-template-columns: minmax\(0, 1fr\) 290px;/, 'the desktop body is not main + rail')
-  assert.match(rule('.step-side'), /border-left: 1px solid var\(--rule\);/, 'the rail is not divided from the main column')
+  assert.match(rule('.step-side'), /border-left: 1px solid var\(--line\);/, 'the rail is not divided from the main column')
   const narrow = atWidth(940)
   assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/, 'the body does not collapse to one column')
-  assert.match(narrow, /\.step-side \{[\s\S]*border-top: 1px solid var\(--rule\);/, 'the rail does not move below the main column')
+  assert.match(narrow, /\.step-side \{[\s\S]*border-top: 1px solid var\(--line\);/, 'the rail does not move below the main column')
   assert.equal(/\.step-side \{[^}]*display:\s*none/.test(narrow), false, 'the rail is hidden rather than moved')
   // One rail, in one place in the DOM, at every width: no second copy for a
   // second layout, so reading order and rendered order cannot diverge.
@@ -531,7 +531,7 @@ test('the opened step runs the pack’s section order, and each section is a sec
   // And each of them is the pack's ruled section, in production and in the pack.
   assert.match(pack, /\.step-section\{padding:19px 0;border-bottom:1px solid var\(--line\)\}/, 'the pack no longer rules its sections')
   assert.match(pack, /\.step-section:last-child\{border-bottom:0\}/, 'the pack no longer drops the last rule')
-  assert.match(rule('.step-section'), /border-bottom: 1px solid var\(--rule\);/, 'production’s sections are not divided')
+  assert.match(rule('.step-section'), /border-bottom: 1px solid var\(--line\);/, 'production’s sections are not divided')
   assert.match(rule('.step-section:last-child'), /border-bottom: 0;/, 'the last section keeps a rule under it')
   // Real elements, so the division a reader sees is the structure a screen
   // reader walks — not a border drawn between two loose headings.
@@ -544,7 +544,7 @@ test('What IAMAI found draws the pack’s cards, over facts the contract already
   assert.match(pack, /\.finding\{border:1px solid var\(--line\)/, 'the pack’s finding card lost its edge')
   assert.match(pack, /\.finding \.k\{[^}]*text-transform:uppercase/, 'the pack’s finding no longer carries a key over it')
   // Production draws the same card with the shared key-label role.
-  assert.match(rule('.step .finding'), /border: 1px solid var\(--rule\);/)
+  assert.match(rule('.step .finding'), /border: 1px solid var\(--line\);/)
   assert.match(SECTIONS, /<li key=\{f\.key\} className="finding">/, 'the findings are not cards')
   assert.match(SECTIONS, /<span className="key-label">\{f\.label\}<\/span>/, 'a finding no longer carries its key')
 
@@ -613,8 +613,8 @@ test('the three channels are the pack’s strip over its instruction block, and 
   // with the pack's edge. The strip is not a second tab implementation.
   assert.match(MAIN, /className="tabs action-tabs no-print"/, 'the action strip is not the Plan’s treatment of the shared tab role')
   assert.equal(MAIN.includes('role="tablist"'), false, 'the step hand-rolled a tab strip')
-  assert.match(rule('.step .instruction'), /border: 1px solid var\(--rule\);/, 'the instruction block has no edge')
-  assert.match(rule('.step .tabs.action-tabs .tab'), /border: 1px solid var\(--rule\);/, 'the action tabs are not the pack’s chips')
+  assert.match(rule('.step .instruction'), /border: 1px solid var\(--line\);/, 'the instruction block has no edge')
+  assert.match(rule('.step .tabs.action-tabs .tab'), /border: 1px solid var\(--line\);/, 'the action tabs are not the pack’s chips')
   // The selected tab is not a colour alone: aria-selected drives it, and the
   // treatment is a border, a fill and the ink together.
   const active = rule(".step .tabs.action-tabs .tab.active,\n.step .tabs.action-tabs .tab[aria-selected='true']")
@@ -657,7 +657,7 @@ test('Done when and More are the contract’s, and More is a real disclosure', (
   assert.match(CONTENT_STEP, /<div className="more-grid">/, 'the disclosure lost the pack’s card grid')
   assert.equal(CONTENT_STEP.match(/<div className="more-card">/g)?.length, 2, 'the disclosure gained or lost a card')
   assert.match(rule('.step .more-grid'), /grid-template-columns: repeat\(auto-fit/, 'a lone card is held to half a row with a gap beside it')
-  assert.match(rule('.step .more-card'), /border: 1px solid var\(--rule\);/, 'the cards have no edge')
+  assert.match(rule('.step .more-card'), /border: 1px solid var\(--line\);/, 'the cards have no edge')
 })
 
 test('the rail says what the main column says, from the same contract', () => {
@@ -677,7 +677,7 @@ test('the rail says what the main column says, from the same contract', () => {
   // The list marker is a bullet, not a state: the meaning is in the words, and
   // the marker is hidden from assistive technology.
   assert.match(railSrc, /<span className="tiny" aria-hidden="true" \/>/, 'the rail’s bullet is exposed as content')
-  assert.match(rule('.step .side-list .tiny'), /background: var\(--ink-3\);/, 'the rail’s bullet carries a state colour')
+  assert.match(rule('.step .side-list .tiny'), /background: var\(--quiet-text\);/, 'the rail’s bullet carries a state colour')
   // And every value it shows is a value the contract holds: a step with no
   // dated milestone gets no invented date, and one with nothing to submit gets
   // no invented channel.
