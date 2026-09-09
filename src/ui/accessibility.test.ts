@@ -401,17 +401,25 @@ test('a tablist keeps the keyboard behaviour its role promises, and its panels a
 })
 
 test("the Plan step's three implementation channels are one tab set, and all three stay offered", () => {
-  assert.match(contentStep, /import \{ Picker, TabList, onePanelProps \}/)
+  assert.match(contentStep, /import \{ Callout, Picker, TabList, onePanelProps \}/)
   assert.doesNotMatch(contentStep, /role="tablist"/, 'the step reuses the shared strip rather than hand-rolling one')
   const ids = [...(contentStep.match(/const DO_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
   assert.deepEqual(ids, ['portal', 'json', 'ps'])
   assert.match(contentStep, /<TabList base=\{doBase\}[\s\S]*?panelId=\{\(\) => `\$\{doBase\}-panel`\}/)
-  assert.match(contentStep, /<div \{\.\.\.onePanelProps\(doBase, tab\)\}>/)
-  // Availability is unchanged: the machine channels still render only where
-  // every object the body names exists, and Download JSON is still gated on it.
-  assert.match(contentStep, /tab === 'json' && jsonOffered\(step\) && <pre className="mono">/)
-  assert.match(contentStep, /tab === 'ps' && jsonOffered\(step\) && <pre className="mono">/)
-  assert.match(contentStep, /\{jsonOffered\(step\) && \(/)
+  // Task 035 gave the panel the approved pack's instruction-block edge. It is
+  // still one panel, still labelled by whichever tab is selected, and still
+  // reachable: a panel of prose or a scrolling code block holds nothing else a
+  // keyboard can land on.
+  assert.match(contentStep, /<div className="instruction" \{\.\.\.onePanelProps\(doBase, tab\)\}>/)
+  // Availability is unchanged in meaning and is read from ONE authority: the
+  // machine channels render only where Foundation A offers an implementation,
+  // and Download JSON is gated on the same answer. The surface asks the Step
+  // Contract, which asked `implementationOffered` once, rather than asking the
+  // engine again itself (task 035).
+  assert.match(contentStep, /tab === 'json' && contract\.implementation\.offered && <pre className="mono">/)
+  assert.match(contentStep, /tab === 'ps' && contract\.implementation\.offered && <pre className="mono">/)
+  assert.match(contentStep, /\{contract\.implementation\.offered && \(/)
+  assert.doesNotMatch(contentStep, /jsonOffered\(/, 'the surface re-reads the implementation gate instead of the contract it was handed')
 })
 
 test('the picker is one coherent combobox: the input keeps focus and names the option it is on', () => {

@@ -10,7 +10,7 @@
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
 import type { ReactNode } from 'react'
-import { Status } from '../components/index.ts'
+import { Callout, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
@@ -206,6 +206,9 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * blocks; this is the frame they will sit in, carrying what production can say
  * truthfully today.
  */
+/** The three implementation channels, in the order What to do offers them. */
+const CHANNELS = ['portal', 'json', 'powershell']
+
 export function hasRail(contract: StepContract): boolean {
   return railMilestone(contract) || railImplementation(contract)
 }
@@ -232,8 +235,28 @@ export function StepRail({ contract }: { contract: StepContract }) {
           <div className="key-label">{CONTRACT.railImplementation}</div>
           {/* Foundation A's one answer, said as availability rather than as a
               second reason: why an implementation is withheld is the step's
-              What to do and is stated once, in the main column. */}
-          <p className="metric-sub">{contract.implementation.offered ? CONTRACT.implementationReady : CONTRACT.implementationNone}</p>
+              What to do and is stated once, in the main column.
+
+              Task 035 put it in the pack's side-list grammar
+              (`docs/design/approved/plan-step-v1.html` `.side-list`): one item
+              per channel where the step offers them. That is the same one
+              answer, listed rather than said in a sentence — the three channels
+              stand or fall together on `implementationOffered`
+              (roadmap/operations.ts, which is also `stepJson.jsonOffered`), so
+              the rail cannot name a channel the main column withholds. A step
+              that offers none shows the one line saying so and no list. */}
+          {contract.implementation.offered ? (
+            <ul className="side-list">
+              {CHANNELS.map((c) => (
+                <li key={c}>
+                  <span className="tiny" aria-hidden="true" />
+                  <span>{CONTRACT.railChannels[c]}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="metric-sub">{CONTRACT.implementationNone}</p>
+          )}
         </div>
       )}
     </aside>
@@ -262,25 +285,64 @@ export function PolicyMembers({ members }: { members: ContractMember[] }) {
   )
 }
 
-/** A contract section: its heading and its content, or nothing at all. §8.7: a heading with nothing under it is not rendered. */
-export function StepSection({ heading, when = true, children }: { heading: string; when?: boolean; children: ReactNode }) {
+/**
+ * A contract section: its heading and its content, or nothing at all. §8.7: a
+ * heading with nothing under it is not rendered.
+ *
+ * Task 035 gave it the frame the approved pack draws around every section of an
+ * opened step (`docs/design/approved/plan-step-v1.html` `.step-section`): a
+ * `<section>` of its own, divided from the next by the frame's hairline. The
+ * division is what makes the canonical order legible as an order rather than as
+ * a column of headings — and it is a real element, so the sections a step
+ * renders are also the sections a screen reader walks.
+ *
+ * `frame` is false where a section is nested inside another disclosure (More's
+ * own blocks), which the pack draws as cards and not as ruled sections.
+ */
+export function StepSection({ heading, when = true, frame = true, children }: { heading: string; when?: boolean; frame?: boolean; children: ReactNode }) {
   if (!when) return null
+  if (!frame)
+    return (
+      <>
+        <h4>{heading}</h4>
+        {children}
+      </>
+    )
   return (
-    <>
+    <section className="step-section">
       <h4>{heading}</h4>
       {children}
-    </>
+    </section>
   )
 }
 
-/** What this scan observed that bears on the decision. Conditional: nothing is invented to fill it. */
+/**
+ * What this scan observed that bears on the decision, in the approved pack's
+ * finding-card grammar (`docs/design/approved/plan-step-v1.html` `.findings`):
+ * a key naming what kind of finding this is, over the finding itself.
+ *
+ * Conditional, and never padded. The pack's sample draws three cards because
+ * its sample step had three things to say; production renders exactly the
+ * findings `stepContract.foundOf` built and no placeholder card stands in for
+ * one it did not. The grid takes its column count from that number, so one
+ * finding is one full-width card rather than a third of a row with two gaps
+ * beside it.
+ *
+ * The card carries no bold headline over its sentence. The pack's sample splits
+ * a finding into a value and an explanation because its samples were written
+ * that way; production writes one sentence per finding, and cutting it in two
+ * here would be this component deciding which half matters.
+ */
 export function WhatIamaiFound({ found }: { found: ContractFound[] }) {
   if (found.length === 0) return null
   return (
     <StepSection heading={CONTRACT.foundHeading}>
-      <ul className="sections">
+      <ul className="findings">
         {found.map((f) => (
-          <li key={f.key}>{f.text}</li>
+          <li key={f.key} className="finding">
+            <span className="key-label">{f.label}</span>
+            <span className="finding-text">{f.text}</span>
+          </li>
         ))}
       </ul>
     </StepSection>
@@ -296,16 +358,29 @@ export function WhatIamaiFound({ found }: { found: ContractFound[] }) {
  * not advice inside another one, because a blocker that reads as optional is a
  * blocker somebody skips.
  */
-export function FixBeforeContinuing({ fix }: { fix: ContractFix[] }) {
+export function FixBeforeContinuing({ fix, tone = 'warning' }: { fix: ContractFix[]; tone?: 'warning' | 'danger' }) {
   if (fix.length === 0) return null
   return (
-    <StepSection heading={CONTRACT.fixHeading}>
-      <ol className="sections blocking">
-        {fix.map((f) => (
-          <li key={f.key}>{f.text}</li>
-        ))}
-      </ol>
-    </StepSection>
+    <section className="step-section">
+      {/* The pack's attention panel (`.attention` / `.attention.danger`), which
+          is the shared `.callout` role task 031 built: one object, drawn once,
+          used by the Plan and by MFA Readiness. A blocker rendered as ordinary
+          body text is a blocker that reads as background, which is what this
+          section looked like before.
+
+          The severity is production's, never the panel's: `tone` is handed down
+          from the step's own condition (Foundation B), and the heading and the
+          list stay full-contrast text inside it so the meaning is in the words
+          and not in the tint. */}
+      <Callout kind={tone}>
+        <h4>{CONTRACT.fixHeading}</h4>
+        <ol className="sections blocking">
+          {fix.map((f) => (
+            <li key={f.key}>{f.text}</li>
+          ))}
+        </ol>
+      </Callout>
+    </section>
   )
 }
 

@@ -37,12 +37,18 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
   const n = hold.ids === null ? null : hold.ids.length
   // Nobody to hand off: the hold is on a number, and this line is about people.
   if (n === 0) return null
+  // Its own ruled section of the opened step (task 035): the pack divides an
+  // opened step into sections, and a line that renders on some steps and not
+  // others has to carry its own division or it reads as a loose sentence
+  // trailing the section above it.
   return (
-    <p className="line mfa-handoff">
-      {n === null ? P.mfaReadinessHoldUnknown : fillText(P.mfaReadinessHold, { n })}{' '}
-      <a className="no-print" href={readinessStepHref(step.id)}>
-        {n === null ? P.mfaReadinessLinkUnknown : P.mfaReadinessLink}
-      </a>
-    </p>
+    <section className="step-section">
+      <p className="line mfa-handoff">
+        {n === null ? P.mfaReadinessHoldUnknown : fillText(P.mfaReadinessHold, { n })}{' '}
+        <a className="no-print" href={readinessStepHref(step.id)}>
+          {n === null ? P.mfaReadinessLinkUnknown : P.mfaReadinessLink}
+        </a>
+      </p>
+    </section>
   )
 }
