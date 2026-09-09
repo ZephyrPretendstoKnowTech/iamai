@@ -215,12 +215,14 @@
     "visualEvidence": "docs/screens/29"
   },
   "production": {
-    "$comment": "What is switched on in production. Task 029 wired the favicon; task 030 applied the palette, the type system and the shell lockup. Page-specific composition for Home, Connect, Plan and MFA Readiness is still pending, and belongs to packs 031-038.",
+    "$comment": "What is switched on in production. Task 029 wired the favicon; task 030 applied the palette, the type system and the shell lockup; packs 031-040 restored page-specific composition for Home, Connect, Plan and MFA Readiness onto their approved packs and converged Export, How and Inventory onto the same grammar. These flags say what LANDED. They are not a conformance certificate: docs/design/approved/manifest.json keeps `productionAssumedConformant` false for every surface, because conformance is proven per change by the two-sided anatomy tests and the rendered comparison, never assumed from a flag.",
     "faviconWired": true,
     "paletteApplied": true,
     "typographyApplied": true,
     "shellLogoApplied": true,
     "appliedBy": "030-theme-typography-shell-foundation",
-    "pageCompositionRestored": false
+    "pageCompositionRestored": true,
+    "pageCompositionRestoredBy": "031-040",
+    "pageCompositionVerifiedBy": "041-final-approved-design-brand-verification"
   }
 }

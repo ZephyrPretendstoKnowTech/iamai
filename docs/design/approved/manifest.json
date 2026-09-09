@@ -1,10 +1,13 @@
 {
-  "$comment": "The design-authority manifest (task 028, corrected by task 030). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Current production is NOT assumed to match: task 028 established the authority, task 030 built the theme/typography/shell foundation, and packs 031+ do the surface restoration. The brand skin is recorded in docs/brand/brand-manifest.json and docs/design/brand-decisions.md; the forensic record is docs/design/authority-reconciliation.md.",
+  "$comment": "The design-authority manifest (task 028, corrected by task 030). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Packs 031-040 restored the four surfaces onto their packs and task 041 verified them, so every `implementationState` below now reads `restored` and names the pack that did it. `productionAssumedConformant` stays false on purpose and is not a leftover: conformance is EVIDENCED, never assumed. A surface earns it again on every change, by the two-sided anatomy test that reads the canonical bytes at test time (src/ui/surfaces/{connectAnatomy,planAnatomy,readinessAnatomy}.test.ts, src/home.test.ts) and by the rendered comparison scripts/render-design.mjs writes. A commit after this one can regress a surface without touching this file, which is exactly why nothing here may assume. The brand skin is recorded in docs/brand/brand-manifest.json and docs/design/brand-decisions.md; the forensic record is docs/design/authority-reconciliation.md.",
   "version": 2,
   "establishedBy": "028-design-brand-authority-reconciliation",
   "establishedOn": "2026-09-08",
   "correctedBy": "030-theme-typography-shell-foundation",
   "correctedOn": "2026-09-08",
+  "restorationVerifiedBy": "041-final-approved-design-brand-verification",
+  "restorationVerifiedOn": "2026-09-09",
+  "restorationReport": "docs/design/reports/041-final-approved-design-brand-verification.md",
   "correctionNote": "Version 1 recorded each surface under the owner's upload file name (iamai-home-design-pack-v2.html and so on). The canonical repository file names are the short forms below, and task 030 deleted the byte-identical long-named copies so a surface cannot have two current files. The bytes and the hashes did not change; only the paths did. The original upload names are kept as `ownerApprovedSourceName` provenance.",
   "authority": {
     "$comment": "The three sentences a later pack must be able to read as values rather than infer from prose.",
@@ -41,7 +44,7 @@
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
-      "implementationState": "restoration-pending",
+      "implementationState": "restored",
       "productionAssumedConformant": false,
       "restorationPack": "038"
     },
@@ -65,7 +68,7 @@
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
-      "implementationState": "restoration-pending",
+      "implementationState": "restored",
       "productionAssumedConformant": false,
       "restorationPack": "032"
     },
@@ -91,7 +94,7 @@
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
-      "implementationState": "restoration-pending",
+      "implementationState": "restored",
       "productionAssumedConformant": false,
       "restorationPack": "033-036"
     },
@@ -114,7 +117,7 @@
       "copyAuthority": false,
       "technicalTruthAuthority": false,
       "approvalState": "current",
-      "implementationState": "restoration-pending",
+      "implementationState": "restored",
       "productionAssumedConformant": false,
       "restorationPack": "037"
     }

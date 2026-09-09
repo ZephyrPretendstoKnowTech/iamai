@@ -150,9 +150,10 @@ rather than a synthesised one. Every weight production requests has a staged fac
 `src/ui/tokens.test.ts` fails if one does not. IBM Plex Mono ships its 400 only, so production
 sets the technical role at 400; a pack that restores a technical surface may add Medium.
 
-What typography still does **not** do is compose a page: the sizes production sets are the
-interface scale, and the display ramp is applied surface by surface as the restoration packs
-031–038 land. §12 records what is switched on.
+Typography does not compose a page; it supplies the roles a page composes with. Task 030 set
+the interface scale and the display ramp, and packs 031–040 applied the ramp surface by
+surface — each surface takes the rung its approved pack sets, and the three surfaces no pack
+governs take the smallest page rung (task 040). §12 records what is switched on.
 
 ---
 
@@ -391,7 +392,7 @@ machine-readable form, and `src/brand/brand.test.ts` fails when the two disagree
 | palette applied to production | yes — `src/ui/tokens.ts` holds Mineral Teal and Deep Mineral, §2's values byte for byte | 030 |
 | typography applied to production | yes — three families, the interface scale, the display ramp, and every role weight in a real staged face | 030 |
 | shell header logo | yes — the mark asset beside the live text `IAMAI` in `src/ui/shell/AppShell.tsx` | 030 |
-| page composition restored | no — Home, Connect, Plan and MFA Readiness are still the pre-brand anatomy; packs 031–038 | — |
+| page composition restored | yes — Connect (032), Plan (033–036), MFA Readiness (037) and Home (038) wear their approved anatomy, and Export, How and Inventory were converged onto the same grammar (040) | 031–040 |
 
 **Historical, for a reader of the task-029 record:** at the end of 029 none of the last four
 rows was true. `src/ui/tokens.ts` still held the paper/ink palette that shipped, the two

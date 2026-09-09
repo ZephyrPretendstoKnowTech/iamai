@@ -82,6 +82,7 @@ type Record = {
   technicalTruthAuthority: boolean
   productionAssumedConformant: boolean
   implementationState: string
+  restorationPack: string
 }
 type Manifest = {
   surfaces: Record[]
@@ -185,9 +186,19 @@ test('the manifest keeps visual authority apart from copy and technical truth', 
   for (const record of manifest().surfaces) {
     assert.equal(record.copyAuthority, false, `${record.surface}: a pack is not a copy authority`)
     assert.equal(record.technicalTruthAuthority, false, `${record.surface}: a pack is not a technical-truth authority`)
-    // Task 028 established the authority; it did not restore the pages.
+    // `productionAssumedConformant` is false forever, and task 041 deliberately
+    // left it false after the restoration landed. It does not mean "not restored
+    // yet" — it means conformance is EVIDENCED rather than assumed. The two-sided
+    // anatomy tests read the canonical bytes at test time and the rendered
+    // comparison is shot per task; the commit after this one can regress a
+    // surface without touching this file, so nothing here may assume.
     assert.equal(record.productionAssumedConformant, false, `${record.surface}: production must not be assumed conformant`)
-    assert.equal(record.implementationState, 'restoration-pending', `${record.surface}: restoration state`)
+    // What DID change is the landed state. Packs 031-040 restored all four
+    // surfaces (the pack that did it is `restorationPack`), so a record still
+    // reading `restoration-pending` would be the authority file stating
+    // something false about its own repository (task 041).
+    assert.equal(record.implementationState, 'restored', `${record.surface}: restoration state`)
+    assert.match(record.restorationPack, /^\d{3}(-\d{3})?$/, `${record.surface}: a restored surface names the pack that restored it`)
   }
   assert.deepEqual(manifest().precedence.order, [
     'production technical/content truth',

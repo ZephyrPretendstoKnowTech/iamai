@@ -14,11 +14,13 @@ families, the shape hierarchy and the shell lockup, and `src/ui/tokens.ts` now c
 seventeen roles below with the values in `docs/brand/brand-manifest.json`
 (`src/brand/brand.test.ts` fails when the two disagree).
 
-What task 030 did **not** do is the anatomy: Home, Connect, Plan and MFA Readiness still do
-not wear the composition of their approved packs, and
-`docs/design/approved/manifest.json` still records every one of them as
-`restoration-pending`. Packs 031-038 own that
-(`docs/design/reports/030-theme-typography-shell-foundation.md`).
+What task 030 did **not** do is the anatomy. **Packs 031-040 did** (task 041 verified them,
+2026-09-09): Connect by 032, Plan by 033-036, MFA Readiness by 037, Home by 038, and the
+three surfaces no pack governs converged by 040. `docs/design/approved/manifest.json` is the
+current record and reads `restored` for every surface — this page does not restate it, so the
+two cannot part. `productionAssumedConformant` stays `false` there by design: conformance is
+evidenced by the two-sided anatomy tests and the rendered comparison, never assumed
+(`docs/design/reports/041-final-approved-design-brand-verification.md`).
 
 ---
 
