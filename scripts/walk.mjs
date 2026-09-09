@@ -27,7 +27,7 @@ import { isFloorGoal } from '../src/roadmap/floor.ts'
 import { pages, steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
-import { RE, beforeLines, headerTabsLine, readinessGroupTitles, rungTitles, staticFindings } from '../src/content/contentChecks.ts'
+import { RE, beforeLines, headerTabsLine, readinessAllWord, readinessGroupTitles, rungTitles, staticFindings } from '../src/content/contentChecks.ts'
 import { RETIRED_OPENER } from './build-home.ts'
 import { TOOL_PATH } from './toolPath.ts'
 
@@ -39,6 +39,8 @@ import { TOOL_PATH } from './toolPath.ts'
 // in task 012 and the walk cannot hold a name the header has stopped using.
 const RUNG_TITLES = rungTitles()
 const HEADER_TABS = headerTabsLine()
+/** The unfiltered filter's word, so a pressed count can be cleared by the control that set it. */
+const ALL_ACCOUNTS = readinessAllWord()
 
 const PORT = Number(process.env.WALK_PORT ?? 5203)
 const CDP_PORT = Number(process.env.WALK_CDP_PORT ?? 9448)
@@ -535,7 +537,7 @@ async function walkFixture(fx) {
       // display only): with its directory sign-in 200 days stale it reads not
       // active on Today, like anyone else's would, and never "signed in now".
       if (fx.mock === 'operator' && route === 'readiness') {
-        const row = await evaluate(`(() => { const tr = [...document.querySelectorAll('main.page table.datatable tbody tr')].find((r) => /Alex Morgan/.test(r.innerText)); if (!tr) return null; const tds = [...tr.querySelectorAll('td')].map((td) => (td.innerText || '').replace(/\\s+/g, ' ').trim()); return { state: tds[1] || '', evidence: tds[3] || '', text: tr.innerText.replace(/\\s+/g, ' ') } })()`)
+        const row = await evaluate(`(() => { const tr = [...document.querySelectorAll('main.page table.datatable tbody tr')].find((r) => /Alex Morgan/.test(r.innerText)); if (!tr) return null; const tds = [...tr.querySelectorAll('td')].map((td) => (td.innerText || '').replace(/\\s+/g, ' ').trim()); return { state: tds[4] || '', evidence: tds[3] || '', text: tr.innerText.replace(/\\s+/g, ' ') } })()`)
         if (!row) add('P0', `${label}: MFA Readiness has no row for the signed-in account`)
         else {
           if (!/not active/i.test(row.state)) add('P0', `${label}: MFA Readiness reads the signed-in account's stale directory sign-in as "${row.state}"; not active, like anyone else's`)
@@ -565,7 +567,10 @@ async function walkFixture(fx) {
         // of the rungs, so they share the ladder's denominator, and each one filters
         // the table to exactly the rows it counts.
         const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1] ?? NaN)
-        const groups = await evaluate(`[...document.querySelectorAll('main.page .group-count')].map((b) => ({ title: ((b.querySelector('.group-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.group-n') || {}).textContent || '').trim()) }))`)
+        // The counts moved into the approved integrated summary panel (task
+        // 037): each stat is `.summary-stat` with its number and its name, and
+        // the filter that selects it is the toolbar pill of the same name.
+        const groups = await evaluate(`[...document.querySelectorAll('main.page .readiness-summary .summary-stat')].map((b) => ({ title: ((b.querySelector('.stat-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.stat-n') || {}).textContent || '').trim()) }))`)
         const GROUP_TITLES = readinessGroupTitles()
         if (groups.length !== 3 || groups.some((g, k) => g.title !== GROUP_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(groups.map((g) => g.title))}; ${JSON.stringify(GROUP_TITLES)}`)
         else {
@@ -582,14 +587,20 @@ async function walkFixture(fx) {
             const notKnown = Number((text.match(RE.readinessUnknown) || [])[1] ?? 0)
             if (total + notKnown !== Number(summary[2])) add('P0', `${label}: the groups sum to ${total + notKnown} and the summary counts ${summary[2]} active people`)
           }
-          // Each count filters the table to its own rows; pressing it again clears it.
+          // Each count has a filter of the same name in the approved toolbar, and
+          // pressing it narrows the table to exactly the rows the count counts
+          // (task 037 moved the control from the count to the pill).
           const rowsShown = () => evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+          const pill = (title) => `(() => { const b = [...document.querySelectorAll('main.page .toolbar .btn')].find((x) => (x.textContent || '').trim() === ${JSON.stringify(title)}); if (!b) return false; b.scrollIntoView({ block: 'center' }); b.click(); return true })()`
           for (let k = 0; k < groups.length; k++) {
-            await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .group-count')][${k}]; b.scrollIntoView({ block: 'center' }); b.click() })()`)
+            if (!(await evaluate(pill(groups[k].title)))) {
+              add('P0', `${label}: the toolbar has no "${groups[k].title}" filter beside the count of the same name`)
+              continue
+            }
             await sleep(200)
             const shown = await rowsShown()
             if (shown !== groups[k].n) add('P0', `${label}: "${groups[k].title}" counts ${groups[k].n} and the table filtered to it shows ${shown} rows`)
-            await evaluate(`(() => { [...document.querySelectorAll('main.page .group-count')][${k}].click() })()`)
+            if (!(await evaluate(pill(ALL_ACCOUNTS)))) add('P0', `${label}: the toolbar has no "${ALL_ACCOUNTS}" filter to clear a narrowed table`)
             await sleep(150)
           }
         }

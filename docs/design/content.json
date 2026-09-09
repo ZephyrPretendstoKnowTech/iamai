@@ -613,11 +613,17 @@
       "adminsOnly": "Admins only",
       "columns": [
         "Account",
-        "Readiness",
+        "Role",
         "Strongest method",
         "Proof",
+        "Readiness",
         "Next step"
       ],
+      "roles": {
+        "$comment": "The Role cell (task 037). An account that is not a person reads its kind; everybody else is Admin or Person, from roles.ts and nothing else. The word is the meaning: the admin ink is a second signal, never the only one.",
+        "admin": "Admin",
+        "person": "Person"
+      },
       "kinds": {
         "emergency": "Emergency access",
         "service": "Service account",
@@ -647,38 +653,49 @@
       "tip": "Every number here is a share of active people: those who signed in during the last 90 days.",
       "$comment": "MFA Readiness (task 012), the surface that replaced Today: the readiness summary over active people, the three groupings (derive/mfaReadiness.ts), the table, and the quiet line for the populations the campaign does not count.",
       "lead": "Who can already sign in with a passkey or security key, who still needs to prove one works, and who has none.",
+      "eyebrow": "Tenant evidence",
+      "summaryEyebrow": "Active people",
       "summary": "{ready} of {active} active people have proven a passkey or security key.",
       "summaryNone": "No active people to count.",
+      "summarySub": "{n} people still need action.",
+      "summarySubNone": "Nobody is waiting on a method.",
       "groups": {
         "$comment": "The three groupings the page shows over the ladder's rungs (derive/mfaReadiness.ts): views of the same evidence, never a second reading of it.",
         "ready": {
           "title": "Passkey-ready",
           "tip": "Holds a passkey or security key and has passed MFA with it. It cannot be phished, and it works from any device.",
+          "hint": "Proven, in a sign-in record",
           "next": ""
         },
         "needsProof": {
           "title": "Needs proof",
           "tip": "A passkey or security key is registered, and no sign-in record names it yet, so IAMAI cannot say it works.",
+          "hint": "Registered; no record names it",
           "next": "Sign in once with it"
         },
         "needsPasskey": {
           "title": "Needs a passkey",
           "tip": "No passkey or security key registered. Whatever else they hold can be phished, or works on one PC only.",
+          "hint": "Nothing at passkey strength",
           "next": "Register a passkey or security key"
         },
         "unknown": {
           "title": "Not known",
           "tip": "The scan could not read this account's registered methods, so IAMAI will not say whether a passkey is there.",
+          "hint": "Registered methods not read",
           "next": "Not known"
         }
       },
       "unknownMethods": "Registered methods could not be read for {n} active people, so their passkey state is not known.",
       "separate": "Not counted here:",
       "planContext": {
-        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it.",
+        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it. `dependency` is the same relationship read the other way (task 037): arriving at the page unfiltered, the first step on the plan whose own sign-in requirement is holding it, named with the people it is waiting on. Both are derive/stepMfaReadiness.ts's answer; neither is a second reading of it.",
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
-        "back": "← Back to the step"
+        "back": "← Back to the step",
+        "dependencyTitle": "Current Plan dependency",
+        "dependency": "{n} people cannot meet the sign-in requirement for {step} yet.",
+        "dependencyLink": "Open the Plan step →"
       },
       "remediation": {
         "$comment": "The panel a row's Next step opens (task 014). It holds no guidance of its own: every instruction comes from shared.methodGuides, which the help-desk copy and the campaign step read too. Closed until the operator opens it, so the page stays diagnostic.",

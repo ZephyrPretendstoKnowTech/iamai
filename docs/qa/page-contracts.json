@@ -305,9 +305,10 @@
         ],
         "columns": [
           "Account",
-          "Readiness",
+          "Role",
           "Strongest method",
           "Proof",
+          "Readiness",
           "Next step"
         ],
         "chips": [
@@ -321,6 +322,8 @@
         "buttons": [
           "Scan again",
           "Admins only",
+          "All accounts",
+          "Needs action",
           "Export CSV",
           "Previous",
           "Next",
@@ -341,6 +344,7 @@
         "links": [
           "Every account and policy the scan read →",
           "Microsoft's steps →",
+          "Open the Plan step →",
           "re:^\\d+ not active$",
           "re:^\\d+ emergency access$",
           "re:^\\d+ service accounts?$",
@@ -350,8 +354,8 @@
         ]
       },
       "budget": {
-        "sentences": 8,
-        "words": 150
+        "sentences": 10,
+        "words": 180
       },
       "forbid": [
         "Legend",

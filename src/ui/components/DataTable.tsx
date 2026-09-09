@@ -33,6 +33,8 @@ export function DataTable<T>({
   caption,
   empty = T.empty,
   initialSort,
+  stacked = false,
+  panel = false,
 }: {
   rows: T[]
   columns: Column<T>[]
@@ -43,6 +45,23 @@ export function DataTable<T>({
   caption?: ReactNode
   empty?: string
   initialSort?: { key: string; dir: 1 | -1 }
+  /**
+   * The approved stacked row (task 037): below its pack's breakpoint the head
+   * hides and each row becomes one column, every cell under its own key.
+   *
+   * Two things follow, and both are the reason this is a prop rather than a
+   * stylesheet rule on every table. A cell's key is a real element carrying
+   * real text — `::before` pseudo-content is not read by a screen reader
+   * (src/ui/accessibility.test.ts), so the pack's own mechanism is not the one
+   * production uses. And a CSS `display` that stops being `table` takes the
+   * table's semantics with it, so the roles are restated explicitly: the head/
+   * cell relationship a screen reader announces survives the layout change,
+   * which is why the visible key is `aria-hidden` — the column header is
+   * already saying it.
+   */
+  stacked?: boolean
+  /** The table sits in a panel of its own, as the approved MFA pack draws it: the shared `.panel` role supplies the surface, the border and the radius. */
+  panel?: boolean
 }) {
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(initialSort ?? null)
   const [page, setPage] = useState(0)
@@ -109,11 +128,11 @@ export function DataTable<T>({
 
   return (
     <div>
-      <div className="datatable-wrap" ref={wrap} tabIndex={scrolls ? 0 : undefined}>
-        <table className="datatable">
+      <div className={`datatable-wrap${panel ? ' panel' : ''}`} ref={wrap} tabIndex={scrolls ? 0 : undefined}>
+        <table className={`datatable${stacked ? ' datatable-stacked' : ''}`} role={stacked ? 'table' : undefined}>
           {caption && <caption>{caption}</caption>}
-          <thead>
-            <tr>
+          <thead role={stacked ? 'rowgroup' : undefined}>
+            <tr role={stacked ? 'row' : undefined}>
               {shown.map((c) => (
                 // A sortable column keeps being a column header: the control
                 // goes *inside* the th (task 017), where before `role="button"`
@@ -123,6 +142,7 @@ export function DataTable<T>({
                 <th
                   key={c.key}
                   scope="col"
+                  role={stacked ? 'columnheader' : undefined}
                   style={c.minWidth ? { minWidth: c.minWidth } : undefined}
                   className={c.sortValue ? 'sortable' : ''}
                   aria-sort={sort?.key === c.key ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
@@ -143,12 +163,13 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody role={stacked ? 'rowgroup' : undefined}>
             {slice.map((r) => {
               const k = rowKey(r)
               return (
                 <RowGroup key={k}>
                   <tr
+                    role={stacked ? 'row' : undefined}
                     onClick={expand ? () => setOpenRow((o) => (o === k ? null : k)) : undefined}
                     onKeyDown={
                       expand
@@ -165,12 +186,21 @@ export function DataTable<T>({
                     style={expand ? { cursor: 'pointer' } : undefined}
                   >
                     {shown.map((c) => (
-                      <td key={c.key}>{c.render(r)}</td>
+                      <td key={c.key} role={stacked ? 'cell' : undefined}>
+                        {stacked && (
+                          <span className="cell-key key-label" aria-hidden="true">
+                            {c.header}
+                          </span>
+                        )}
+                        {c.render(r)}
+                      </td>
                     ))}
                   </tr>
                   {expand && openRow === k && (
-                    <tr>
-                      <td colSpan={shown.length}>{expand(r)}</td>
+                    <tr role={stacked ? 'row' : undefined}>
+                      <td colSpan={shown.length} role={stacked ? 'cell' : undefined}>
+                        {expand(r)}
+                      </td>
                     </tr>
                   )}
                 </RowGroup>

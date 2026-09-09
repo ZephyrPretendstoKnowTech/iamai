@@ -119,6 +119,11 @@ export function readinessGroupTitles(): string[] {
   return ['ready', 'needsProof', 'needsPasskey'].map((k) => textAt(`pages.readiness.groups.${k}.title`))
 }
 
+/** The word on MFA Readiness's unfiltered filter, so the walk can clear one it pressed. */
+export function readinessAllWord(): string {
+  return textAt('pages.readiness.show.all')
+}
+
 // The policy steps whose content carries a "before" line (a setting to change
 // before the policy exists) that the step keeps above the translator's portal
 // lines: the device-settings toggle, the Intune compliance settings, password
