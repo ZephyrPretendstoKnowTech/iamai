@@ -68,6 +68,7 @@
     "mfa-readiness": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512"
   },
   "files": {
+    "iamai-plan-organization-final.html": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
     "iamai-approved-visual-system-comparison-reference.html": "9ee6c601e7091fee1193203dedf9b9fffa83ec020035fa9b08c398d9bbc305a1",
     "iamai-connect-approved-comparison-reference.html": "5c910dc89787a02779a6473951c82423665c1ad6610dc6217eed61dff46d852f",
     "iamai-home-approved-comparison-reference.html": "ff4413a4c14de2d720bbc9f87889e9532d1201f0d7af3630be42f58369cc5594",
@@ -75,6 +76,39 @@
     "iamai-plan-approved-comparison-reference.html": "293e26093cd5bd1b4e0681015c92678ff07a9accf3d3d3cba5ff1df44dfa43f1",
     "iamai-threshold-logo-authority.html": "f614e5dfb7487e8af5101d8e9325c768a623dd34cad056bc96d31f786ffee7aa",
     "iamai-threshold-master.svg": "0bd2591af69fbe39138134a5af12f979ba91be2735afa59b6e190e8a51551775"
+  },
+  "planOrganization": {
+    "$comment": "The final Plan BOARD organisation authority. It is recorded separately from the `files` hash because its authority is narrow and the boundary is the point: two Plan references are current at once and a later task must be able to read which owns what, as a value rather than by opening both.",
+    "file": "iamai-plan-organization-final.html",
+    "sha256": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
+    "owns": [
+      "Plan header and board controls",
+      "group framing and group headers",
+      "collapsed roadmap rows and the column head",
+      "Roadmap / Status / Work type grouping",
+      "Needs attention / Up next focus controls",
+      "search",
+      "completed visibility",
+      "responsive board behaviour"
+    ],
+    "doesNotOwn": [
+      "expanded-step content",
+      "expanded-step anatomy or section order",
+      "step semantics",
+      "implementation channels",
+      "product copy",
+      "technical truth"
+    ],
+    "expandedStepAuthority": "iamai-plan-approved-comparison-reference.html",
+    "expandedStepAuthorityNote": "The existing Plan reference remains current for expanded-step presentation until the later Plan-step implementation pass. Neither file supersedes the other; they own different halves of the Plan.",
+    "anatomyAuthority": "docs/design/approved/anatomy/plan-step-v1.html",
+    "exampleDataNote": "The file carries design-example counts, dates, phase names and tenant facts. None of them is production data and none may be copied into production: docs/design/content.json remains the copy authority and the engine remains the fact authority.",
+    "implementedBy": "plan board organization pass",
+    "notYetAuthoritative": {
+      "$comment": "Present in this directory and deliberately NOT recorded as authority yet: it is the later step-family variants pass's input, and recording it now would make it look like something this pass implemented.",
+      "file": "iamai-plan-step-variants-final.html",
+      "sha256": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03"
+    }
   },
   "logo": {
     "name": "Threshold",

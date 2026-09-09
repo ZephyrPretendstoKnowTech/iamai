@@ -62,11 +62,27 @@ import type { WhoBlock } from './whoBlocks.ts'
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
 
-/** The three implementation channels, in the order the step offers them. */
+/**
+ * The three implementation channels, in the approved order — Entra, then
+ * PowerShell, then JSON — and under the labels an operator reads on the page.
+ *
+ * The words come from `CONTRACT.railChannels`
+ * (pages.app.plan.stepContract.railChannels), which is where the rail already
+ * reads them: the strip in What to do and the Implementation block in the rail
+ * name the same three channels, so they name them with the same three words
+ * from one entry. Before this they were two lists, and the strip's were written
+ * into this file.
+ *
+ * The ids are the internal ones and do not move: `portal` is the channel that
+ * renders the portal translator's lines (stepPortal.ts), whatever the operator-
+ * facing label for the Microsoft console is this year. Renaming it would churn
+ * `stepPortal.ts`, `stepInstructions.ts` and every test that reads the id, for
+ * no one's benefit.
+ */
 const DO_TABS: TabItem[] = [
-  { id: 'portal', label: 'Portal steps' },
-  { id: 'json', label: 'JSON' },
-  { id: 'ps', label: 'PowerShell' },
+  { id: 'portal', label: CONTRACT.railChannels.portal },
+  { id: 'ps', label: CONTRACT.railChannels.powershell },
+  { id: 'json', label: CONTRACT.railChannels.json },
 ]
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))

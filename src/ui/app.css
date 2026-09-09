@@ -1572,24 +1572,213 @@ footer.app a {
   --display-size: var(--d-2);
   line-height: var(--lh-display);
 }
-/* A wave is a raised panel, so a section reads as a unit (prompt 49.1 item 12):
-   --bg-raised, a hairline border, an 8px radius, the header inside, its rows
-   separated by hairlines within it. Nothing else outside .export-card gets a box. */
-.phase {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
-  padding: 4px 0 8px;
-  margin: 20px 0;
-}
-/* The panel's own inset is the row's inset, so a group heading and the titles
-   under it start on one line and a row's hover surface reaches the panel edge
-   instead of leaving a gutter beside it (task 033). */
-.phase h2 {
-  font-size: var(--t-4);
-  margin: 14px 0 2px;
-  padding: 0 17px 8px;
+/* A phase is a GROUP, not a card. It was a raised panel — surface, border, 8px
+   radius — with the rows inside it, and at ~38 baseline policies that read as a
+   stack of oversized boxes each holding a few thin table rows, with the one row
+   that actually matters (the open one) no more prominent than the box around
+   it.
+
+   The approved reference rules the group the other way round
+   (docs/design/approved/reference/REFERENCE-MANIFEST.json globalRulings
+   `planCollapsedRows`, and its `.roadmap-row.is-collapsed`): transparent
+   hairline-separated rows inside a phase grouping, and only the opened row
+   becomes the attached surface-backed header of its step. So the group is made
+   clear by its heading and the rules between its rows, and the only surface on
+   the board is the step being worked on.
+
+   The rows keep the pack's 17px inset, so the heading stays on the line the
+   titles under it set. */
+/* ---- the board (docs/design/approved/reference/iamai-plan-organization-final.html) ----
+   The controls, then the groups. The strip is NOT sticky: the shell's header
+   already is on the Plan, and a second fixed bar under it would take another
+   ~60px from every opened step, which is the surface that needs the height. */
+.plan-controls {
+  display: grid;
+  grid-template-columns: auto minmax(240px, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+  margin-top: 18px;
+}
+.plan-controls .view-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plan-controls .control-label {
+  font-size: var(--t-1);
+  color: var(--quiet-text);
+  white-space: nowrap;
+}
+/* The lens strip is the shared tab role wearing a segmented face: one bordered
+   group rather than three loose chips, because the three are one choice. */
+.plan-controls .tabs.view-tabs {
+  display: flex;
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  background: var(--secondary-surface);
+}
+.plan-controls .tabs.view-tabs .tab {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--quiet-text);
+  padding: 8px 13px;
+}
+.plan-controls .tabs.view-tabs .tab:last-child {
+  border-right: 0;
+}
+.plan-controls .tabs.view-tabs .tab[aria-selected='true'] {
+  background: var(--brand-soft);
+  color: var(--brand-soft-text);
+}
+.plan-search {
+  min-width: 0;
+  display: block;
+}
+.plan-search input {
+  width: 100%;
+  height: var(--control);
+  background: var(--secondary-surface);
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-control);
+  color: var(--primary-text);
+  padding: 0 12px;
+}
+.plan-controls .focuses {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+/* A focus control is a toggle, and says so: `aria-pressed` carries the state and
+   the fill follows it, so the pressed one is never signalled by colour alone. */
+.plan-controls .focus {
+  border: 1px solid var(--strong-line);
+  background: transparent;
+  color: var(--secondary-text);
+  border-radius: var(--radius-control);
+  height: var(--control);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: var(--t-2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.plan-controls .focus[aria-pressed='true'] {
+  border-color: var(--brand-primary);
+  background: var(--brand-soft);
+  color: var(--brand-soft-text);
+}
+.plan-controls .count {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--secondary-surface);
+  color: var(--quiet-text);
+  font-size: var(--t-micro);
+  display: grid;
+  place-items: center;
+}
+.plan-controls .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.plan-controls .dot-attention {
+  background: var(--danger);
+}
+.plan-controls .dot-upnext {
+  background: var(--attention);
+}
+.plan-board {
+  padding-top: 4px;
+}
+.plan-board-empty {
+  padding: 40px 0;
+  text-align: center;
+}
+/* A group is a GROUP, not a card: a rule along its top, its heading, and the
+   rows under it. It was a raised panel with the rows inside, and at ~38 baseline
+   policies that read as a stack of boxes each holding a few thin table rows. */
+.plan-group {
+  margin-top: 24px;
+  border-top: 1px solid var(--strong-line);
+}
+.plan-group:first-child {
+  margin-top: 0;
+}
+.plan-group-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 15px 0 10px;
+}
+.plan-group-head h2 {
+  font-size: var(--d-15);
+  font-family: var(--font-serif);
+  font-weight: var(--weight-display);
+  line-height: var(--lh-heading);
+  margin: 0;
+}
+/* The heading carries the group's identity by itself. This is the one
+   supporting line: how many rows, and how many of them need the operator. */
+.plan-group-meta {
+  font-size: var(--t-1);
+  color: var(--quiet-text);
+  margin-top: 4px;
+}
+/* Only where production owns real scheduling. A group with no schedule of its
+   own renders no element at all rather than an empty slot. */
+.plan-group-date {
+  font-size: var(--t-1);
+  color: var(--secondary-text);
+  text-align: right;
+  white-space: nowrap;
+}
+.plan-group-toggle {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--quiet-text);
+  border-radius: var(--radius-control);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+/* The four zones, named. Impact is a population and When is a date; before this
+   they were two unlabelled columns of grey text on the right. The floor for a
+   compact label on this board is --t-micro (10px); nothing goes below it. */
+.plan-column-head {
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr) 240px 125px;
+  gap: 14px;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 17px;
+  border-top: 1px solid var(--line);
+  color: var(--quiet-text);
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.plan-column-head > span:nth-child(n + 3) {
+  text-align: right;
+}
+.plan-group-rows {
+  border-bottom: 1px solid var(--strong-line);
 }
 /* ---- the approved roadmap row (task 033) ----
    docs/design/approved/anatomy/plan-step-v1.html `.roadmap-row`: four zones on one
@@ -1600,23 +1789,31 @@ footer.app a {
    the grid.
 
    The pack draws the row only in its open form, attached to the step beneath
-   it, so its `10px 10px 0 0` radius and its border are the OPEN row's rule and
-   are applied as such below. A list of collapsed rows is not a stack of cards:
-   the rows sit on the group panel and are told apart by the hairline separator
-   task 031 proved shared. */
+   it, so its radius and its border are the OPEN row's rule and are applied as
+   such below. A collapsed row carries neither: the approved reference's
+   `.roadmap-row.is-collapsed` is transparent with no side edges, no radius and
+   one hairline along its top, which is what makes a phase read as a list of
+   rows rather than a stack of cards. */
 .plan-row {
   display: grid;
   grid-template-columns: 126px minmax(0, 1fr) 240px 125px;
-  gap: 18px;
+  gap: 14px;
   align-items: center;
   min-height: 64px;
   padding: 0 17px;
-  border-bottom: 1px solid var(--line);
-  border-radius: var(--radius);
+  /* The reference separates rows along the TOP edge, so the first row's rule
+     also divides the group heading from the rows under it and no row needs a
+     last-child exception. */
+  border-top: 1px solid var(--line);
   cursor: pointer;
 }
-.plan-row:last-child {
-  border-bottom: 0;
+/* The state word in the row is body ink; the dot beside it carries the state
+   (the reference's `.row-status{color:var(--primary-text)}`, which is its
+   status ruling: words in primary text, semantic colour on the indicator). The
+   shared `.status` role sets the quieter reading level every other surface
+   wants, so this is the Plan's row alone. */
+.plan-row .status {
+  color: var(--primary-text);
 }
 /* A hover surface on the row (item 13). */
 .plan-row:hover {
@@ -1627,18 +1824,16 @@ footer.app a {
    the two corners the step does not share, so the two read as one unit whose top
    edge is the row.
 
-   The pack draws the pair standing on the page. Production draws its rows on a
-   group panel, so the opened unit is inset from that panel's edges by 8px —
-   without the inset the frame's side borders would sit against the panel's own
-   and read as a doubled hairline. The row's inset is reduced by the same 8px, so
-   the title, the state and the timing stay on the line the collapsed rows above
-   and below set. */
+   It is the ONE surface-backed object on the board, which is what the approved
+   reference's collapsed ruling buys: against transparent rows the opened unit
+   is the thing the eye lands on. The 8px inset the group panel used to force is
+   gone with the panel, so the pair now stands on the page exactly as the pack
+   draws it — and the open row's words stay on the line its collapsed siblings
+   set, because it keeps their 17px inset instead of trading it for a margin. */
 .plan-row[aria-expanded='true'] {
-  background: var(--secondary-surface);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: var(--radius-control) var(--radius-control) 0 0;
-  margin: 0 8px;
-  padding: 0 9px;
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 }
 .plan-row-title {
   min-width: 0;
@@ -1676,21 +1871,22 @@ footer.app a {
    surface, the border and the one key-panel shadow are not declared a second
    time here; what is declared here is the anatomy, which is this pack's alone.
 
-   The 8px inset and the matching 9px row padding are production's, not the
-   pack's: the pack's row stands on the page and production's stands on a group
-   panel. See `.plan-row[aria-expanded='true']` above. */
+   The frame stands on the page, at the pack's own measurements: the group panel
+   that used to force an 8px inset is gone (see `.phase` above), so the step's
+   edges line up with the row's and the insets below are the pack's literal
+   numbers rather than the pack's numbers less an inset. */
 .step {
   border-top: 0;
-  border-radius: 0 0 var(--radius-control) var(--radius-control);
-  margin: 0 8px 8px;
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  margin: 0 0 8px;
   line-height: 1.55;
   overflow: hidden;
 }
 /* The head: the eyebrow, the title and its supporting line on the left, the
    state badge held to the top right of all three, and the lifecycle track under
-   them. `23px 27px 20px` in the pack, less the 8px the frame is already inset. */
+   them. `23px 27px 20px`, the pack's own inset. */
 .step-head {
-  padding: 23px 19px 20px;
+  padding: 23px 27px 20px;
   border-bottom: 1px solid var(--line);
 }
 .step-head-top {
@@ -1807,7 +2003,7 @@ footer.app a {
 }
 .step-main {
   min-width: 0;
-  padding: 4px 19px 26px;
+  padding: 4px 27px 26px;
 }
 /* The rail belongs to this step: it is inside the frame, on the quieter of the
    two surfaces task 031 named, divided from the main column by the frame's own
@@ -1904,14 +2100,16 @@ footer.app a {
 /* ---- What IAMAI found: the pack's finding cards ----
    `.finding{border:1px solid var(--line);border-radius:8px;padding:11px 12px}`
    under `.findings{display:grid;gap:10px}`, each with its key over it. The
-   pack's grid is three fixed columns because its sample step had three findings;
-   production renders however many the contract built, so the track sizing takes
-   the count from the content — one finding is one full-width card, not a third
-   of a row with two gaps beside it — and collapses to a single column on its own
-   at the width the pack collapses at. */
+   grid is `repeat(3,1fr)` in both the pack and the approved reference, and it is
+   three fixed tracks rather than auto-fit on purpose: auto-fit stretched a lone
+   finding across the whole column, which turned one observation into a
+   billboard. Three tracks hold a single finding at a third of the row and let
+   the contract report one, two or three without the layout implying a count.
+   Nothing pads the grid — an empty track stays empty. It collapses to a single
+   column at the width the pack collapses at. */
 .step .findings {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   list-style: none;
   margin: 0;
@@ -3059,6 +3257,22 @@ td .not-person {
     grid-template-columns: 110px minmax(0, 1fr);
     padding: 12px 17px;
   }
+  /* The controls stack, and the lens strip takes the full width so the three
+     lenses stay one choice rather than three crowded chips. */
+  .plan-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .plan-controls .focuses {
+    justify-content: flex-start;
+  }
+  /* The column head follows the row: two tracks, and the two zones that moved
+     under the title are no longer columns to head. */
+  .plan-column-head {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  .plan-column-head > span:nth-child(n + 3) {
+    display: none;
+  }
   .plan-row .who,
   .plan-row .when {
     text-align: left;
@@ -3113,24 +3327,52 @@ td .not-person {
     padding-right: 12px;
   }
   /* The pack's `.step-head,.step-main{padding-left:18px;padding-right:18px}`,
-     reached the way production composes the step: `.step` carries `margin: 0
-     8px` that the pack's step does not, so the pack's 18px of inset is 8px of
-     margin and 10px of padding here — the same distance from the page's content
-     edge to the step's first word, which is the measurement the pack fixes.
-     Desktop resolves the same way (8 + 19 against the pack's 27). Raising this
-     to a literal 18px would inset the step 26px and is the one change here that
-     measurement caught: the two files disagree on the number and agree on the
-     rendered result. */
+     now reached literally: the step used to carry an 8px margin the pack's step
+     does not, so this had to be 10px to land the first word the same distance
+     from the page edge. The margin went with the group panel, so the number and
+     the rendered result agree again. */
   .step-head,
   .step-main {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 18px;
+    padding-right: 18px;
   }
   .step-head-top {
     display: block;
   }
   .step-head-top > .status {
     margin-top: 12px;
+  }
+  /* The lens strip goes full width and its three tabs share it; the focus row
+     scrolls sideways rather than wrapping into three lines on a phone. */
+  .plan-controls .view-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .plan-controls .tabs.view-tabs {
+    width: 100%;
+  }
+  .plan-controls .tabs.view-tabs .tab {
+    flex: 1;
+  }
+  .plan-controls .focuses {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .plan-controls .focus {
+    flex: 0 0 auto;
+  }
+  /* The group head keeps its heading and its control on one line; the date
+     drops under them rather than squeezing the heading. */
+  .plan-group-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .plan-group-date {
+    grid-column: 1;
+    text-align: left;
+  }
+  /* A one-column row has no columns to head. */
+  .plan-column-head {
+    display: none;
   }
   /* The pack drops the labels to 8px here. Production keeps them at the
      smallest size the type scale has and lets a long stage name wrap onto a
