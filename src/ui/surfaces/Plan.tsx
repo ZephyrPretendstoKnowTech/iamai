@@ -15,9 +15,10 @@ import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
+import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { floorRows, phaseRows, undatedRows } from './planRows.ts'
-import { planFinish } from '../../derive/finish.ts'
+import { planFinish, planWeeks } from '../../derive/finish.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -25,7 +26,7 @@ import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip } from '../components/index.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
-import { statusOf } from './statusWord.ts'
+import { cleanupStatusOf, statusOf } from './statusWord.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
 import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
@@ -116,8 +117,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // What holds the plan: a readiness number where one does, else the steps whose
   // policy cannot be written yet and the step each waits on.
   const waiting = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id))
-  // Weeks derive from the finish date, not the last blocked wave (item 15).
-  const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(c.schedule.start)) / (7 * 86_400_000))) : c.schedule.weeks
+  // Weeks derive from the finish date, not the last blocked wave (item 15); one derivation, shared with the print and the sample tile (derive/finish.ts).
+  const weeks = planWeeks(finish, c.schedule.start, c.schedule.weeks)
   const P = pages.plan as Record<string, string>
   const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
   // Until Start the plan is pressed (or a date is set in Plan settings), every
@@ -237,7 +238,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         <section className="phase">
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(cleanupPhase.start), end: absoluteDate(cleanupPhase.end) })}</h2>
           {cleanupPhase.rows.map((r) => (
-            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} alertingDone={data.mapping?.breakGlassAnswers?.signInMonitoring === true} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} />
+            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={data.mapping?.breakGlassAnswers ?? null} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} />
           ))}
         </section>
       )}
@@ -254,10 +255,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
 }
 
 /** A Cleanup row (§5): the content title, one status word, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant }: {
+function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
-  alertingDone: boolean
+  /** The emergency-access attestations, the second fact that can complete the alerting row (roadmap/cleanupDone.ts). */
+  answers: { signInMonitoring: boolean | null } | null
   nameOf: (id: string) => string
   open: boolean
   onToggle: () => void
@@ -270,8 +272,11 @@ function CleanupRow({ phase, row, alertingDone, nameOf, open, onToggle, onScan, 
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
   // A row marked done is In place from its recorded date (E3); alerting is also
-  // the recorded fact (prompt 49 item 5); the rest are Ready while they have something to say.
-  const status = row.done || (alertingDone && row.kind === 'alerting') ? { word: 'In place', tone: 'ok' as const } : { word: 'Ready', tone: 'ok' as const }
+  // the recorded attestation (prompt 49 item 5). Both facts are read in one
+  // place (roadmap/cleanupDone.ts `cleanupComplete`) and worded in one place
+  // (statusWord.ts `cleanupStatusOf`), because the printed document read only
+  // the first of them and called the same row Ready (task 042).
+  const status = cleanupStatusOf(cleanupComplete(row, answers))
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
   const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
   return (

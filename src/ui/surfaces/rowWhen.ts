@@ -6,6 +6,7 @@
 // blocked step with no date of its own reads its wave's start, so a row reads
 // Blocked · <date>, Report-only · ready <date> or Ready · now, never Blocked · now.
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
+import { existingOf } from './stepContract.ts'
 import { list } from '../../copy/statements.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -122,11 +123,17 @@ export function rowReason(step: Step): string | null {
   // says so, because "Satisfied by A" over a goal A only half covers reads as
   // though B were spare. Null where this scan classified no satisfying policy:
   // nothing here invents one.
-  if (isPreserved(step)) {
-    const by = step.satisfiedBy
-    if (!by || by.policies.length === 0) return null
-    return by.sufficient !== null ? fillText(PLAN.satisfiedBy, { policies: by.sufficient }) : fillText(PLAN.satisfiedTogether, { policies: list(by.policies) })
-  }
+  //
+  // The policy is the Step Contract's own reading of `Step.satisfiedBy`
+  // (stepContract.ts `existingOf`) — the same one the opened step's finding and
+  // its rail carry — so the row and the step it opens cannot name a different
+  // set or disagree about whether one policy covers the goal by itself. This
+  // used to be a second copy of that reading here, and the copy's plural branch
+  // fired on any set the classifier left without a sufficient policy, a set of
+  // one included.
+  const existing = existingOf(step)
+  if (existing !== null) return existing.together ? fillText(PLAN.satisfiedTogether, { policies: list(existing.names) }) : fillText(PLAN.satisfiedBy, { policies: existing.names[0] })
+  if (isPreserved(step)) return null
   if (heldForReview(step)) return step.state.observation?.note ?? null
   // What earned the enforcement, beside the word that offers it: the two gates'
   // own numbers, in the one reading the step's Done-when also uses

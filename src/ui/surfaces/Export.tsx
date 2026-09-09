@@ -149,9 +149,12 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   const tenantName = (snapshot.config.organization?.rows?.[0] as { displayName?: string } | undefined)?.displayName ?? account.username
   const planId = planIdFor(snapshot.tenantId)
   const operator = { userId: account.localAccountId, userPrincipalName: account.username }
-  // The verification window's people, from the one facts function (derive/facts.ts): still to set up is nothing set up or set up but not proven.
+  // The verification window's people, from the one facts function
+  // (derive/facts.ts). The page hands the counts over and words nothing: which
+  // sentence the window's note carries is the printed document's, out of its own
+  // content entries, and how many people are still to set up is
+  // derive/facts.ts's (task 042).
   const tenantFacts = data.mapping ? facts(snapshot, data.mapping) : null
-  const toSetUp = tenantFacts ? tenantFacts.rungs[1] + tenantFacts.rungs[2] : 0
   const copy = (id: string, text: string): void => {
     void exportClipboard(text, REDACTED).then((ok) => {
       if (!ok) return
@@ -343,12 +346,13 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           baselinePin={pinOf(baseline)}
           steps={steps}
           schedule={schedule}
-          verificationNote={tenantFacts && toSetUp > 0 ? `${toSetUp} of ${tenantFacts.active} active people still to set up.` : 'Everyone active is ready.'}
+          facts={tenantFacts}
           scanAt={scan.at}
           coverage={coverage}
           goalMap={c.goalMap}
           stepCtx={stepCtx}
           notes={data.mapping?.notAssessedNotes ?? {}}
+          answers={data.mapping?.breakGlassAnswers ?? null}
         />
       )}
     </section>

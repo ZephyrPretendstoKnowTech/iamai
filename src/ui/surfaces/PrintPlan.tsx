@@ -7,16 +7,19 @@ import type { Schedule } from '../../roadmap/schedule.ts'
 import type { CoverageReport } from '../../coverage/types.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
-import { planFinish } from '../../derive/finish.ts'
+import { planFinish, planWeeks } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { BrandMark } from '../components/Mark.tsx'
 import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
+import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
+import { cleanupStatusOf } from './statusWord.ts'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
-import { stepFacts } from '../../derive/facts.ts'
+import { stepFacts, toSetUp } from '../../derive/facts.ts'
+import type { Facts } from '../../derive/facts.ts'
 import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
@@ -53,20 +56,29 @@ export function PrintPlan({
   baselinePin = null,
   steps,
   schedule,
-  verificationNote,
+  facts,
   scanAt,
   coverage,
   goalMap,
   stepCtx,
   notes = {},
+  answers = null,
 }: {
   tenantName: string
   baselineLabel: string
   operator: string
   baselinePin?: string | null
   steps: Step[]
-  /** Who the verification window is for, already worded (ux-review-06 §24). */
-  verificationNote: string
+  /**
+   * The tenant's people counts (derive/facts.ts), for the verification window's
+   * own note. The note used to arrive pre-worded from Export.tsx, which built
+   * both of its sentences in JSX out of two rungs of the ladder: the only two
+   * sentences in the printed plan that existed in no content file, and a
+   * readiness claim made outside the readiness authorities (task 042). Null
+   * where the counts are not available, and then the row carries no note rather
+   * than the ready one.
+   */
+  facts: Facts | null
   schedule: Schedule
   /** The scan the plan reads, so page 1 can date the posture. */
   scanAt: string
@@ -78,6 +90,8 @@ export function PrintPlan({
   stepCtx: (step: Step) => StepVarContext
   /** The not-assessed Cleanup row's notes (does not apply, with the reason), as the Plan shows them. */
   notes?: NotAssessedNotes
+  /** The emergency-access attestations, so a Cleanup row the Plan calls In place is not Ready here (roadmap/cleanupDone.ts). */
+  answers?: { signInMonitoring: boolean | null } | null
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
@@ -116,7 +130,12 @@ export function PrintPlan({
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
   const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup)
-  const weeks = finish.finish ? Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(schedule.start)) / (7 * 86_400_000))) : schedule.weeks
+  // Who the registration and verification window is for, from the one people
+  // count (derive/facts.ts) and the content's own two sentences. Nothing is
+  // claimed where the counts are absent: an empty cell, never "everyone is
+  // ready" (task 042).
+  const verificationNote = facts === null ? '' : toSetUp(facts) > 0 ? fillText(C.verificationNote, { n: toSetUp(facts), active: facts.active }) : C.verificationNoteReady
+  const weeks = planWeeks(finish, schedule.start, schedule.weeks)
   // The same header line the Plan shows (derive/planHeader.ts), without the anchored start.
   const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint: FINISH.waiting(finish.waiting), startedFrom: null })
 
@@ -255,7 +274,7 @@ export function PrintPlan({
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
           {schedule.cleanup.rows.map((r) => (
             <article key={r.kind} className="print-step">
-              <CleanupBody phase={schedule.cleanup!} row={r} status={r.done ? { word: 'In place', tone: 'ok' } : { word: 'Ready', tone: 'ok' }} notes={notes} />
+              <CleanupBody phase={schedule.cleanup!} row={r} status={cleanupStatusOf(cleanupComplete(r, answers))} notes={notes} />
             </article>
           ))}
         </section>
