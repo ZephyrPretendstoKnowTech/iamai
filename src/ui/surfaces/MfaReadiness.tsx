@@ -370,20 +370,30 @@ function ReadinessPage({ snapshot, context, dependency }: { snapshot: TenantSnap
     {
       key: 'readiness',
       header: T.columns[4],
-      minWidth: '11rem',
+      minWidth: '12rem',
       // Passkey-ready first, then the people with the most to do: the group is
       // the page's order and the rung breaks the tie inside it.
       sortValue: (r) => (r.kind !== 'person' ? -1 : !r.active ? 0 : r.rung ?? 0),
       csv: (r) => readinessWord(r),
+      // The pack draws this cell as ONE bounded status object — a marker and a
+      // word inside a full-round outline — and production drew a loose badge
+      // beside loose text, so the column read as two things rather than one
+      // state. The outline is the shared `.pill` role (task 031), which is
+      // geometry and never a state colour; what is inside it is unchanged, and
+      // that is the point: the marker is still the rung's own badge, carrying
+      // the rung's number and its accessible name, and the word beside it is
+      // still the group derive/mfaReadiness.ts put the row in. The word is what
+      // says the state — the pill bounds it and the badge colours the rung, and
+      // neither is ever the only signal.
       render: (r) => (
-        <>
+        <span className="readiness-status pill">
           <RungBadge rung={r.rung} />
           {r.group !== null ? (
             <span className="group-word">{readinessWord(r)}</span>
           ) : (
             <span className="not-person">{r.kind !== 'person' ? T.notAPerson : notActiveWord()}</span>
           )}
-        </>
+        </span>
       ),
     },
     {
@@ -499,17 +509,37 @@ function ReadinessPage({ snapshot, context, dependency }: { snapshot: TenantSnap
           relationship really exists: the step this page was opened from, or the
           first step on the plan a person's authentication method is holding.
           The pack's shape, never its sample sentence — nothing is drawn here to
-          fill the panel. */}
+          fill the panel.
+
+          The pack divides it: what is true on the left, the way to the Plan
+          step held apart on the right, and the two stacked once the notice is
+          too narrow to hold both. So each branch names its own two parts —
+          `.callout-explain` and `.callout-action` — and the readiness rules in
+          app.css lay them out. The words, the number and the destination are
+          unchanged; only the relationship between them is now drawn.
+
+          The space between the two parts stays in the DOM, so the notice reads
+          as the one sentence it always did to anything reading its text rather
+          than its layout. A whitespace-only node is not a flex item, so it
+          draws nothing. */}
       {context ? (
         <Callout kind="info">
-          {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { n: context.ids.length, step: context.title })}{' '}
-          <a href={`#/plan/${encodeURIComponent(context.stepId)}`}>{T.planContext.back}</a>
+          <span className="callout-explain">
+            {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { n: context.ids.length, step: context.title })}
+          </span>{' '}
+          <a className="callout-action" href={`#/plan/${encodeURIComponent(context.stepId)}`}>
+            {T.planContext.back}
+          </a>
         </Callout>
       ) : (
         dependency && (
-          <Callout kind="warning" title={T.planContext.dependencyTitle}>
-            {fillText(T.planContext.dependency, { n: dependency.n, step: dependency.title })}{' '}
-            <a href={`#/plan/${encodeURIComponent(dependency.stepId)}`}>{T.planContext.dependencyLink}</a>
+          <Callout kind="warning">
+            <span className="callout-explain">
+              <strong>{T.planContext.dependencyTitle}</strong> {fillText(T.planContext.dependency, { n: dependency.n, step: dependency.title })}
+            </span>{' '}
+            <a className="callout-action" href={`#/plan/${encodeURIComponent(dependency.stepId)}`}>
+              {T.planContext.dependencyLink}
+            </a>
           </Callout>
         )
       )}
