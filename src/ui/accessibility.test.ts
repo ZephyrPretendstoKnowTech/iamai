@@ -466,9 +466,16 @@ test('the one Plan row says it is a control and whether the step under it is ope
   assert.match(div.attrs, /onClick=\{onToggle\}/)
   assert.match(div.attrs, /e\.key === 'Enter' \|\| e\.key === ' '/)
   assert.match(div.attrs, /e\.preventDefault\(\)/)
-  // Every Step Contract fact the row carried is still on it, in order.
-  const spans = [...row.matchAll(/className="(?:plan-row-main|step-title|who|plan-row-reason)"/g)]
-  assert.equal(spans.length, 4, 'the row lost or gained a column')
+  // Every Step Contract fact the row carried is still on it, in the four zones
+  // the approved pack draws (task 033): the state, the title with its quiet
+  // reason under it, who it touches, when. A zone that disappears takes a fact
+  // with it.
+  const spans = [...row.matchAll(/className="(?:plan-row-status|plan-row-title|step-title|who|plan-row-reason)"/g)]
+  assert.equal(spans.length, 5, 'the row lost or gained a column')
+  // The reason belongs to the title it explains, not to the row as a whole: a
+  // screen reader and a sighted reader both meet it under the step's name.
+  assert.ok(row.indexOf('className="plan-row-title"') < row.indexOf('className="plan-row-reason"'), 'the reason is no longer inside the title zone')
+  assert.ok(row.indexOf('className="plan-row-reason"') < row.indexOf('className="who"'), 'the reason is no longer read before who and when')
   assert.match(row, /className=\{`when\$\{whenReason \? ' when-reason' : ''\}`\}/)
   assert.match(row, /<Status tone=\{tone\}>\{word\}<\/Status>/)
   assert.match(row, /<span className="next-mark" aria-label=\{nextLabel\}>/)
@@ -583,7 +590,12 @@ test('the wide regions scroll inside themselves, and JSON and PowerShell wrap ra
 test('the narrow layouts collapse rather than compress', () => {
   const narrow = (max: number): string => css.match(new RegExp(`@media \\(max-width: ${max}px\\) \\{[\\s\\S]*?\\n\\}`, 'g'))?.join('\n') ?? ''
   assert.match(narrow(640), /\.group-counts[\s\S]*grid-template-columns:\s*1fr/, 'the readiness counts stack')
-  assert.match(narrow(640), /\.plan-row-main \.status[\s\S]*flex:\s*0 0 auto/, 'the status column gives way to a long status word')
+  // The Plan row collapses at the pack's own breakpoint: four zones become two,
+  // and who and when drop under the state and the title rather than being
+  // squeezed into slivers of one line (task 033).
+  assert.match(narrow(940), /\.plan-row \{[\s\S]*grid-template-columns:\s*110px minmax\(0, 1fr\)/, 'the roadmap row does not collapse to two tracks')
+  assert.match(narrow(940), /\.plan-row \.who,\s*\n\s*\.plan-row \.when \{[\s\S]*text-align:\s*left/, 'who and when do not left-align once they move below')
+  assert.match(narrow(940), /\.plan-row \.status[\s\S]*white-space:\s*normal/, 'the status column gives way to a long status word')
   assert.match(narrow(700), /\.tiles[\s\S]*grid-template-columns:\s*repeat\(2/, 'the stat tiles halve')
   assert.match(narrow(700), /header\.app \{[\s\S]*flex-wrap:\s*wrap/, 'the header wraps')
   assert.match(homeCss.match(/@media \(max-width: 700px\) \{[\s\S]*?\n\}/)?.[0] ?? '', /header\.app/, 'the home header wraps')
