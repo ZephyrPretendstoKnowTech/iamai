@@ -27,7 +27,9 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
-import { groupOf, readinessView, shows } from '../../derive/mfaReadiness.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { actionable, groupOf, readinessView, scoredPeople, shows } from '../../derive/mfaReadiness.ts'
+import { firstMfaDependency, stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import type { ShowKey } from '../../derive/mfaReadiness.ts'
 import { hasPortablePhishingResistant, methodsIndex, rungOf } from '../../derive/ladder.ts'
 import { methodWord, readinessWord, roleWord, rowEvidenceText } from './readinessCells.ts'
@@ -92,18 +94,32 @@ test('one callout under the summary, in the pack’s place, and it is not drawn 
   const at = (s: string): number => pack.indexOf(s)
   assert.ok(at('class="summary"') < at('class="callout"') && at('class="callout"') < at('class="toolbar"'), 'the pack no longer puts the callout between the summary and the toolbar')
 
-  // Production: the callout is the SAME element in the same place on both
-  // branches — the step this page was opened from, or the plan dependency —
-  // and each branch is a condition, never an unconditional panel with sample
-  // words in it.
+  // Production: ONE callout element, in the same place, on every scanned page.
+  // It used to be two conditional ones whose conditions could both be false, so
+  // an all-ready tenant and a tenant whose holds this scan could not measure
+  // lost the panel and the page's anatomy changed with the tenant. What varies
+  // is the notice's words, and each of them is production's own fact — the pack
+  // supplies no sentence here.
   const body = SURFACE.slice(SURFACE.indexOf('<section className="readiness-summary panel">'))
   const callout = body.indexOf('<Callout')
   assert.ok(callout > 0 && callout < body.indexOf('<div className="toolbar'), 'the callout is not between the summary and the toolbar')
-  assert.equal((body.match(/<Callout/g) ?? []).length, 2, 'the two branches of the one callout')
-  assert.match(SURFACE, /\{context \? \([\s\S]*?\) : \(\n\s*dependency &&/, 'the two branches are not one slot')
-  // The dependency is read from the plan's own hold, never counted here.
-  assert.match(SURFACE, /const h = stepMfaHold\(s, scored\)/, 'the dependency is not the plan authority’s answer')
-  assert.match(SURFACE, /h\?\.ids && h\.ids\.length > 0/, 'an unknown reach must not become a number in the callout')
+  assert.equal((SURFACE.match(/<Callout/g) ?? []).length, 1, 'the one callout became more than one element')
+  assert.doesNotMatch(body, /\{context \? \(\s*<Callout|dependency && \(\s*<Callout/, 'the callout is drawn on a condition again')
+  assert.match(body, /<Callout kind=\{notice\.kind\}>/, 'the one callout is not the notice’s')
+  // The state is the plan authority's answer, and the words for it are chosen
+  // in one place (noticeWords).
+  assert.match(SURFACE, /data\.computed \? firstMfaDependency\(data\.computed\.steps, data\.computed\.viability\) : \{ kind: 'pending' \}/, 'the dependency is not the plan authority’s answer')
+  for (const kind of ['holding', 'unknown', 'none']) {
+    assert.match(SURFACE, new RegExp(`dependency\.kind === '${kind}'`), `the notice has no words for a ${kind} dependency`)
+  }
+  // An unknown reach is named as unknown and never counted: no branch of the
+  // notice turns a hold this scan could not measure into a number.
+  assert.match(SURFACE, /dependency\.kind === 'unknown'[\s\S]{0,200}fillText\(P\.unknown, \{ step: contentTitle\(dependency\.step\) \}\)/, 'an unknown reach must not become a number in the callout')
+  // A settled absence is stated only where the plan computation settled it: the
+  // pending branch says no step is named, never that none exists.
+  assert.match(SURFACE, /dependency\.kind === 'none'[\s\S]{0,200}text: P\.dependencyNone\b/, 'the no-dependency state does not say so')
+  assert.match(SURFACE, /title: P\.dependencyTitle, text: P\.dependencyPending/, 'the un-computed plan reports an absence it never proved')
+  assert.doesNotMatch(SURFACE, /!data\.computed[\s\S]{0,80}dependencyNone/, 'a plan that has not computed claims there is no dependency')
 })
 
 test('the callout divides what is true from the way to the Plan step, and stacks them at the pack’s narrow width', () => {
@@ -115,14 +131,17 @@ test('the callout divides what is true from the way to the Plan step, and stacks
   const narrow = pack.match(/@media\(max-width:620px\)\{[\s\S]*?\n\}/)?.[0] ?? ''
   assert.match(narrow, /\.callout\{align-items:flex-start;flex-direction:column\}/, 'the pack no longer stacks the callout at 620')
 
-  // Production: BOTH branches of the one callout name their two parts, so the
-  // Plan link is the action of the notice and not a word inside its sentence.
+  // Production: the one callout names its two parts, so the way to the Plan is
+  // the action of the notice and not a word inside its sentence — on every
+  // state, because there is one element and the state is only its words.
   const parts = [...SURFACE.matchAll(/<Callout[\s\S]{0,900}?<\/Callout>/g)].map((m) => m[0])
-  assert.equal(parts.length, 2, 'the two branches of the one callout')
-  for (const part of parts) {
-    assert.match(part, /<span className="callout-explain">/, 'a callout branch states its sentence outside an explanation block')
-    assert.match(part, /<a className="callout-action" href=\{`#\/plan\//, 'a callout branch does not hold its Plan step as the action')
-  }
+  assert.equal(parts.length, 1, 'the one callout became more than one element')
+  assert.match(parts[0], /<span className="callout-explain">/, 'the callout states its sentence outside an explanation block')
+  assert.match(parts[0], /<a className="callout-action" href=\{notice\.href\}>/, 'the callout does not hold the way to the Plan as its action')
+  // And every state's destination is the Plan: the step where the notice names
+  // one, the Plan itself where it does not.
+  assert.match(SURFACE, /const stepHref = \(stepId: string\): string => `#\/plan\/\$\{encodeURIComponent\(stepId\)\}`/, 'a notice no longer links to the step it names')
+  assert.match(SURFACE, /href: PLAN_HREF/, 'a notice with no step to name has nowhere to go')
   // And the layout is the pack's: the body divides, and the division becomes a
   // stack at the pack's own breakpoint.
   const body = CSS.match(/\.surface\.readiness \.callout \.callout-body \{[^}]*\}/)?.[0] ?? ''
@@ -264,26 +283,118 @@ test('every cell consumes an authority already made: no view-local rung, method,
   assert.match(SURFACE, /csv: \(r\) => readinessWord\(r\)/, 'the readiness cell is not the row’s settled group')
 })
 
-test('the summary’s three numbers are the view’s groups, and the sub-line is the same partition read the other way', () => {
-  for (const name of ['demo', 'getiamai'] as const) {
+test('the summary’s three numbers are the view’s groups, and the sub-line counts only what the scan settled', () => {
+  for (const name of ['demo', 'getiamai', 'hostile'] as const) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     // The four groups partition the active people, so the panel's headline
     // denominator and its three stats cannot disagree with the ladder.
     const summed = v.groups.ready + v.groups.needsProof + v.groups.needsPasskey + v.groups.unknown
     assert.equal(summed, v.facts.active, `${name}: the groups no longer partition the active people`)
-    // The sub-line the panel renders is `active - ready`, which is exactly the
-    // other three groups: it counts nobody a second time and invents nobody.
-    assert.equal(v.facts.active - v.groups.ready, v.groups.needsProof + v.groups.needsPasskey + v.groups.unknown, `${name}: the needs-action line is not the rest of the partition`)
+    // The sub-line the panel renders counts the two SETTLED groups, and the
+    // people this scan could not read are not among them: `active - ready`
+    // would have swept them in, which is the whole defect.
+    assert.equal(actionable(v.groups), v.groups.needsProof + v.groups.needsPasskey, `${name}: the needs-action line is not the settled part of the partition`)
+    assert.equal(v.facts.active - v.groups.ready - v.groups.unknown, actionable(v.groups), `${name}: the needs-action line and the unknown sentence do not account for everybody`)
     // And no account the campaign does not count is in any of them.
     for (const r of v.rows) {
       if (r.kind !== 'person' || !r.active) assert.equal(r.group, null, `${name}: ${r.kind} counted among the active people`)
     }
   }
   // The surface states them from the view and holds no number of its own.
-  assert.match(SURFACE, /const needAction = facts\.active - groups\.ready/, 'the needs-action count is not the view’s own partition')
+  assert.match(SURFACE, /const needAction = actionable\(groups\)/, 'the needs-action count is not the view’s settled partition')
   assert.match(SURFACE, /\{groups\[g\]\}/, 'a stat renders something other than the view’s count')
   assert.doesNotMatch(SURFACE, /\bconst (READY|ACTIVE|TOTAL)\s*=\s*\d/, 'a hard-coded count on the surface')
+  assert.doesNotMatch(SURFACE, /facts\.active - groups\.ready/, 'the needs-action count counts the unknown people again')
+})
+
+// The regression the correction is for. `hostile` is the tenant whose
+// registration report could not be read at all: every active person is
+// `unknown`, and nothing about any of them has been established.
+test('a tenant whose methods could not be read is never told those people need action', () => {
+  const f = fixture('hostile')
+  const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+  assert.ok(v.groups.unknown > 0, 'the hostile fixture no longer holds anybody whose methods could not be read')
+  assert.equal(v.methodsRead, false)
+  // What the page says: nobody is counted as needing action, because nobody has
+  // been shown to; the unknown people are stated as unknown in their own
+  // sentence; and the summary's own denominator is untouched.
+  assert.equal(actionable(v.groups), 0, 'somebody nobody could read was counted as needing action')
+  assert.equal(v.groups.unknown, v.facts.active, 'the unknown sentence does not account for the active people')
+  // And the sub-line is not the all-clear either: "Nobody is waiting on a
+  // method" is a claim about people this scan could not read. The third line
+  // exists for exactly this state, and the surface chooses it on `unknown`.
+  const W = pages.readiness as unknown as { summarySub: string; summarySubNone: string; summarySubUnknown: string }
+  assert.match(W.summarySubUnknown, /\S/, 'there is no sub-line for a tenant with nothing settled')
+  assert.notEqual(W.summarySubUnknown, W.summarySubNone)
+  assert.match(SURFACE, /needAction > 0 \? fillText\(T\.summarySub, \{ n: needAction \}\) : groups\.unknown > 0 \? T\.summarySubUnknown : T\.summarySubNone/, 'the sub-line gives the all-clear over people it could not read')
+  // The three numbers reconcile with the filter, which is deliberately the
+  // wider set: the Needs action list keeps the unknown people on screen — they
+  // are not done — and that list is the sub-line's count plus the unknown one.
+  const needsActionRows = v.rows.filter((r) => shows(r, 'needsAction')).length
+  assert.equal(needsActionRows, actionable(v.groups) + v.groups.unknown, 'the Needs action filter and the counts above it do not reconcile')
+  assert.equal(needsActionRows, v.groups.unknown, 'hostile: the Needs action list is the unknown people')
+  // Nobody has been moved out of the working list to make the number smaller.
+  for (const r of v.rows) if (r.group === 'unknown') assert.equal(shows(r, 'needsAction'), true, `${r.user.id}: an unreadable account was dropped from the working list`)
+  // The same reconciliation on a tenant that was read: with nothing unknown,
+  // the settled count and the filter are the same number.
+  const demo = readinessView(fixture('demo').snapshot, fixture('demo').snapshot.asOf, fixture('demo').mapping)
+  assert.equal(demo.groups.unknown, 0)
+  assert.equal(demo.rows.filter((r) => shows(r, 'needsAction')).length, actionable(demo.groups))
+})
+
+// The second regression the correction is for. The callout used to be drawn
+// only where a known, non-empty hold existed, so the states below rendered no
+// supporting panel at all — including the one the reader most needs told
+// (a hold this scan could not measure) and the one worth stating plainly
+// (nothing on the plan is waiting).
+test('the plan dependency the page states has a truthful answer for every tenant, including unknown and none', () => {
+  const seen = new Set<string>()
+  for (const name of ['micro', 'demo', 'messy', 'hostile', 'midflight'] as const) {
+    const f = fixture(name)
+    const steps = runFixture(f).steps
+    const scored = scoredPeople(f.snapshot, f.mapping, f.snapshot.asOf)
+    const d = firstMfaDependency(steps, scored)
+    seen.add(d.kind)
+    // Whatever it is, it is `stepMfaHold`'s answer about the step it names —
+    // the same measure the Plan step's own handoff draws — and never a count
+    // taken here.
+    if (d.kind === 'holding') {
+      assert.deepEqual(stepMfaHold(d.step, scored)?.ids?.length, d.n, `${name}: the number beside the step is not the step's own hold`)
+      assert.ok(d.n > 0, `${name}: a dependency on nobody`)
+    }
+    if (d.kind === 'unknown') assert.equal(stepMfaHold(d.step, scored)?.ids, null, `${name}: an unknown reach that was measured after all`)
+    // None is a settled, empty answer: every step on the plan was asked.
+    if (d.kind === 'none') {
+      for (const step of steps) {
+        const h = stepMfaHold(step, scored)
+        assert.ok(!h || (h.ids !== null && h.ids.length === 0), `${name}: ${step.id} is waiting and the page would say nothing is`)
+      }
+    }
+    // Plan order decides, and an unknown hold is never stepped over in favour
+    // of a later number.
+    if (d.kind !== 'none') {
+      for (const step of steps) {
+        if (step.id === d.step.id) break
+        const h = stepMfaHold(step, scored)
+        assert.ok(!h || (h.ids !== null && h.ids.length === 0), `${name}: ${step.id} holds earlier than the step the page names`)
+      }
+    }
+  }
+  // All three really occur across the fixtures, so none of the branches above
+  // is proving itself over an empty set.
+  assert.deepEqual([...seen].sort(), ['holding', 'none', 'unknown'], 'the fixtures no longer cover every dependency state')
+  // And each state has words of its own to say, none of them the pack's sample.
+  const P = (pages.readiness as unknown as { planContext: Record<string, string> }).planContext
+  for (const k of ['dependencyTitle', 'dependency', 'dependencyLink', 'unknown', 'dependencyNoneTitle', 'dependencyNone', 'dependencyPending', 'planLink']) {
+    assert.match(P[k] ?? '', /\S/, `the ${k} state has no words`)
+  }
+  assert.notEqual(P.dependencyNone, P.dependencyPending, 'a plan that has not computed says the same thing as one with nothing waiting')
+  const pack = read(PACK)
+  const sample = pack.match(/<div class="callout">[\s\S]*?<\/div>\s*<a/)?.[0] ?? ''
+  for (const k of ['dependency', 'dependencyNone', 'dependencyPending', 'unknown']) {
+    assert.ok(!sample.includes(P[k]), `the ${k} sentence was taken from the pack`)
+  }
 })
 
 test('registration is still not proof, and the strongest method is still the ladder’s', () => {
