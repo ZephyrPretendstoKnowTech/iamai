@@ -52,7 +52,7 @@ accounts sharing a display name and a third given an 8×-repeated label (`collid
 | plan length in weeks | `derive/finish.ts` `planFinish` — `PSA` | Plan header, print cover, Connect sample tile | **three copies of the arithmetic** — corrected, see §3.2 |
 | implementation eligibility | `operations.ts` `implementationOffered` — `PSA` | `contract.implementation`, `jsonOffered`, `stepPortalLines`, export view | none |
 | goal already satisfied, and by which policy | `coverage/coverage.ts` `satisfaction` → `Step.satisfiedBy` → `stepContract.ts` `existingOf` — `PSA` → `DP` | opened step finding, rail block, collapsed row reason | **row had its own copy** — corrected, see §3.3 |
-| Cleanup row completion | `roadmap/cleanupDone.ts` — `PSA` | Plan row, print | **two readings** — corrected, see §3.1 |
+| Cleanup row completion | `roadmap/cleanupDone.ts` `cleanupComplete` — `PSA` | Plan row, print row, and `derive/facts.ts` `stepFacts` (the Plan header, print cover and Connect tile count) | **three readings** — two corrected in §3.1, the aggregate in §3.1 correction 1 |
 
 ### MFA
 
@@ -154,6 +154,18 @@ one wording, beside `statusOf`, so the board has one status vocabulary. `PrintPl
 recorded completes nothing; absent and unread are the same) and `042.15` (neither surface writes a
 status word or re-derives completion).
 
+**Correction 1 (post-review).** The first pass moved the ROW's reading into `cleanupComplete` and
+left the AGGREGATE behind: `derive/facts.ts` `stepFacts` — the one count the Plan header, the print
+cover and Connect's Plan tile state as "N of M in place" — still counted a Cleanup row by
+`row.done` alone, and neither surface handed it the answers. So after the attestation the alerting
+row read "In place" under a header that had not counted it: the same one-fact-two-answers defect,
+one level up. `stepFacts(steps, cleanup, answers)` now counts rows through `cleanupComplete`, and
+`answers` is a REQUIRED parameter so a caller decides rather than forgets; Plan, PrintPlan,
+Connect's tile and `demoFacts` each pass the mapping's `breakGlassAnswers`. Invariant `042.16` (the
+aggregate moves by exactly the rows `cleanupComplete` calls complete, for every answer state, and
+the attestation moves it by exactly the undone alerting row) plus the extended print-cover test in
+`cleanupExports.test.ts`.
+
 ### 3.2 The plan's length in weeks was computed three times — `ARCHITECTURAL_RISK`
 
 **Evidence.** The identical expression
@@ -252,10 +264,10 @@ does not already resolve.
 | Measure | Before | After |
 |---|---|---|
 | Semantic authorities | unchanged | unchanged — no new authority; `cleanupComplete`, `planWeeks` and `toSetUp` each moved a calculation into the module that already owned the fact |
-| Duplicate derivations | 4 (Cleanup completion ×2, weeks ×3, satisfying policy ×2, still-to-set-up ×1 in JSX) | 0 |
+| Duplicate derivations | 4 (Cleanup completion ×3 — two renderers and the shared count, weeks ×3, satisfying policy ×2, still-to-set-up ×1 in JSX) | 0 (the third Cleanup reading closed by correction 1) |
 | One-off branches in render surfaces | 2 ad-hoc completion expressions, 4 hard-coded status words, 1 hard-coded readiness sentence pair | 0 |
-| Page-specific business logic | Export computed a readiness population; Plan and Print each computed a Cleanup state | none |
-| Durable invariants | — | 16 tests, 14 synthetic tenants, 21 named scenarios, all selected by predicate |
+| Page-specific business logic | Export computed a readiness population; Plan and Print each computed a Cleanup state; the shared count computed a third | none |
+| Durable invariants | — | 17 tests, 14 synthetic tenants, 21 named scenarios, all selected by predicate |
 
 No fixture-name, object-id, UPN, display-name or page-name special case was added. Test `042.14`
 enforces that by reading the corpus's and the suite's own bytes.

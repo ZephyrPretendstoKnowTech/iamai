@@ -17,7 +17,7 @@ export function demoFacts(): DemoFacts {
   const d = demoTenant(false)
   const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
   const cleanup = run.schedule.cleanup ?? null
-  const { steps, done: inPlace } = stepFacts(run.steps, cleanup)
+  const { steps, done: inPlace } = stepFacts(run.steps, cleanup, d.mapping.breakGlassAnswers ?? null)
   const finish = planFinish(run.steps, cleanup?.end ?? null)
   // Weeks derive from the finish date, as the Plan header does, from the Plan header's own derivation (derive/finish.ts).
   const weeks = planWeeks(finish, run.schedule.start, run.schedule.weeks)

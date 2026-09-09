@@ -477,7 +477,9 @@ function SignedIn({
   const planScan = scanInput.kind === 'complete' ? lastScan : null
   const plan = usePlanData(planScan, baseline, true)
   const computed = plan.computed
-  const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null) : null
+  // The destination's own count, including the Cleanup rows the emergency-access
+  // answers complete (derive/facts.ts): the tile and the Plan header state one number.
+  const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null, plan.mapping?.breakGlassAnswers ?? null) : null
   // What the complete scan produced, for the step's meta row. Each number comes
   // from the authority that already owns it: derive/facts.ts for the people (the
   // one denominator the Plan and MFA Readiness count against), the loaded

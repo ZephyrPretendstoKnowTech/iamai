@@ -41,7 +41,7 @@ import { contentStepFor } from './content/stepTitle.ts'
 import { actionable, READINESS_GROUPS, shows } from './derive/mfaReadiness.ts'
 import { rungOf, windowsHelloOnly } from './derive/ladder.ts'
 import { stepPopulation, reached } from './derive/population.ts'
-import { factsOf, toSetUp } from './derive/facts.ts'
+import { factsOf, stepFacts, toSetUp } from './derive/facts.ts'
 import { readinessWord, nextStateWord, roleWord, methodWord, rowEvidenceText } from './ui/surfaces/readinessCells.ts'
 import { readinessTable } from './ui/surfaces/inventoryTables.ts'
 import { firstMfaDependency, stepMfaHold } from './derive/stepMfaReadiness.ts'
@@ -417,7 +417,7 @@ test('042.12: the sample tenant runs the production path and states the producti
   const d = demoTenant(false)
   const run = runFixture({ ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping })
   const cleanup = run.schedule.cleanup ?? null
-  const counts = stepFacts(run.steps, cleanup)
+  const counts = stepFacts(run.steps, cleanup, d.mapping.breakGlassAnswers ?? null)
   const shown = demoFacts()
   assert.equal(shown.people, facts(d.snapshot, d.mapping).active, 'the sample tile counts people its own way')
   assert.equal(shown.steps, counts.steps, 'the sample tile counts steps its own way')
@@ -444,6 +444,47 @@ test('042.13: a Cleanup row reads the same on the Plan and in the printed plan',
       assert.notEqual(cleanupStatusOf(true).word, 'Enforced', 'a Cleanup row claims a rollout it never had')
     }
   }
+})
+
+// ---- the aggregate counts the rows the way the rows read themselves ----
+
+/**
+ * The Plan header, the print cover and Connect's Plan tile all state "N of M in
+ * place" from `derive/facts.ts` `stepFacts`. A Cleanup row is one of those M,
+ * and its completion is `cleanupComplete` — the same reading the row itself
+ * renders. `stepFacts` counted `row.done` alone, so a tenant that had ticked the
+ * emergency-access sign-in-monitoring attestation saw the alerting row say "In
+ * place" with a header that had not counted it: one row, one fact, two answers
+ * again, one level up (task 042 correction 1).
+ */
+test('042.16: the plan header counts a Cleanup row exactly when the row reads In place', () => {
+  const attested = { credentialStorage: true, signInMonitoring: true }
+  const denied = { credentialStorage: false, signInMonitoring: false }
+  const silent = { credentialStorage: null, signInMonitoring: null }
+  let alertingCases = 0
+  for (const c of corpus()) {
+    const cleanup = c.run.schedule.cleanup ?? null
+    const rows = cleanup?.rows ?? []
+    if (rows.length === 0) continue
+    // The aggregate is the trackable steps' done plus the rows the one Cleanup
+    // authority calls complete — for every answer state, never for `row.done` alone.
+    for (const answers of [attested, denied, silent, null, undefined] as const) {
+      const agg = stepFacts(c.run.steps, cleanup, answers)
+      const byRow = rows.filter((r) => cleanupComplete(r, answers)).length
+      assert.equal(agg.done - stepFacts(c.run.steps, null, answers).done, byRow, `${c.label}: the header counts a Cleanup row the rows do not`)
+      assert.ok(agg.done <= agg.steps, `${c.label}: more rows in place than there are rows`)
+    }
+    // The attestation moves the aggregate by exactly the alerting row, and only
+    // when that row was not already done; nothing recorded moves nothing.
+    const alerting = rows.find((r) => r.kind === 'alerting')
+    if (!alerting) continue
+    alertingCases++
+    const expected = alerting.done === null ? 1 : 0
+    assert.equal(stepFacts(c.run.steps, cleanup, attested).done - stepFacts(c.run.steps, cleanup, silent).done, expected, `${c.label}: the attestation did not reach the header's count`)
+    assert.equal(stepFacts(c.run.steps, cleanup, denied).done, stepFacts(c.run.steps, cleanup, silent).done, `${c.label}: a declined attestation completed a row`)
+    assert.equal(stepFacts(c.run.steps, cleanup, null).done, stepFacts(c.run.steps, cleanup, undefined).done, `${c.label}: an absent record and an unread one differ in the header`)
+  }
+  assert.ok(alertingCases > 0, 'no case in the corpus has an alerting Cleanup row: the assertion above is vacuous')
 })
 
 // ---- 13. no assertion above depends on an identifier ----
