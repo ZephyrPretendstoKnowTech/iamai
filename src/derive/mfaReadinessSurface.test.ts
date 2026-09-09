@@ -422,8 +422,12 @@ test('an unknown reach keeps the step it came from, and never becomes a tenant-w
   assert.equal(handoff.match(/href=\{readinessStepHref\(step\.id\)\}/g)?.length, 1, 'and the one it has is the step route')
   // And the page it lands on has the unknown state to render.
   const page = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(page, /context\.ids === null \? fillText\(T\.planContext\.unknown/, 'the step-scoped page says the reach is unknown')
-  assert.match(page, /T\.planContext\.back/, 'and offers the way back to the step')
+  assert.match(page, /context\.ids === null \? fillText\(P\.unknown, \{ step: context\.title \}\)/, 'the step-scoped page says the reach is unknown')
+  assert.match(page, /link: P\.back/, 'and offers the way back to the step')
+  // And the same fact arriving from the other side — the plan's own dependency
+  // on a step whose people this scan could not settle — says it in the same
+  // words rather than saying nothing at all.
+  assert.match(page, /dependency\.kind === 'unknown'[\s\S]{0,120}fillText\(P\.unknown/, 'the plan dependency skips a hold it could not measure')
 })
 
 // ---- G. one surface ------------------------------------------------------------

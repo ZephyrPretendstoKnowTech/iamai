@@ -96,3 +96,39 @@ export function stepMfaHold(step: Step, scored: readonly MfaViability[]): StepMf
   }
   return { family: measure, ids }
 }
+
+/**
+ * The plan's current MFA dependency, read the other way round (task 037): the
+ * first step in plan order whose own sign-in requirement is holding it, for the
+ * MFA Readiness page to state when it was not opened from a step.
+ *
+ *   holding   a settled reach with people in it: the step, and how many of the
+ *             people it reaches cannot meet its requirement yet.
+ *   unknown   a hold whose people this scan could not settle. It is named as a
+ *             step with an unknown reach, never skipped and never counted as
+ *             nobody — skipping it is what let the page say nothing at all.
+ *   none      the plan computed and no step is waiting on anybody's method. A
+ *             settled, empty answer, which is a fact the page may state.
+ *
+ * Plan order decides, and nothing else: the first candidate wins whether its
+ * reach is settled or unknown, so an unknown hold cannot be stepped over in
+ * favour of a later number. A hold whose reach is settled and EMPTY is not a
+ * dependency — nobody in it is waiting — and the scan goes on to the next step.
+ *
+ * `stepMfaHold` is the one measure behind every branch, so the step named here,
+ * the number beside it and the Plan step's own handoff cannot disagree.
+ */
+export type PlanMfaDependency =
+  | { kind: 'holding'; step: Step; n: number }
+  | { kind: 'unknown'; step: Step }
+  | { kind: 'none' }
+
+export function firstMfaDependency(steps: readonly Step[], scored: readonly MfaViability[]): PlanMfaDependency {
+  for (const step of steps) {
+    const hold = stepMfaHold(step, scored)
+    if (!hold) continue
+    if (hold.ids === null) return { kind: 'unknown', step }
+    if (hold.ids.length > 0) return { kind: 'holding', step, n: hold.ids.length }
+  }
+  return { kind: 'none' }
+}

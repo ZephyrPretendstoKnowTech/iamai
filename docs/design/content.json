@@ -659,6 +659,7 @@
       "summaryNone": "No active people to count.",
       "summarySub": "{n} people still need action.",
       "summarySubNone": "Nobody is waiting on a method.",
+      "summarySubUnknown": "Nobody whose registered methods could be read is waiting on one.",
       "groups": {
         "$comment": "The three groupings the page shows over the ladder's rungs (derive/mfaReadiness.ts): views of the same evidence, never a second reading of it.",
         "ready": {
@@ -689,13 +690,17 @@
       "unknownMethods": "Registered methods could not be read for {n} active people, so their passkey state is not known.",
       "separate": "Not counted here:",
       "planContext": {
-        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it. `dependency` is the same relationship read the other way (task 037): arriving at the page unfiltered, the first step on the plan whose own sign-in requirement is holding it, named with the people it is waiting on. Both are derive/stepMfaReadiness.ts's answer; neither is a second reading of it.",
+        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it. The rest are the same relationship read the other way (task 037): arriving at the page unfiltered, the plan's current dependency, which the page always states. `dependency` names a step with the people it is waiting on; `unknown` serves both sides, a step waiting on sign-in readiness whose people this scan could not settle; `dependencyNone` is the settled, empty answer, and `dependencyPending` is the honest one before the plan has computed. Every branch is derive/stepMfaReadiness.ts's answer; none is a second reading of it.",
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step",
         "dependencyTitle": "Current Plan dependency",
         "dependency": "{n} people cannot meet the sign-in requirement for {step} yet.",
-        "dependencyLink": "Open the Plan step →"
+        "dependencyLink": "Open the Plan step →",
+        "dependencyNoneTitle": "No current Plan dependency",
+        "dependencyNone": "No step on the plan is waiting on anybody's sign-in method.",
+        "dependencyPending": "The plan has not been worked out here yet, so no step is named.",
+        "planLink": "Open the Plan →"
       },
       "remediation": {
         "$comment": "The panel a row's Next step opens (task 014). It holds no guidance of its own: every instruction comes from shared.methodGuides, which the help-desk copy and the campaign step read too. Closed until the operator opens it, so the page stays diagnostic.",

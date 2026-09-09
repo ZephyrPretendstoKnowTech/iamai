@@ -47,6 +47,26 @@ export type ReadinessGroup = 'ready' | 'needsProof' | 'needsPasskey' | 'unknown'
 /** The three the summary counts, in the order it shows them; `unknown` is stated in words, never as a fourth count. */
 export const READINESS_GROUPS: readonly ReadinessGroup[] = ['ready', 'needsProof', 'needsPasskey']
 
+/**
+ * How many active people this scan established still need something done. The
+ * two settled groups, and only those: a person whose registered methods could
+ * not be read has not been shown to need a passkey, to need proof, or to need
+ * anything at all, so counting them here would state as a finding what is
+ * actually an unmeasured source.
+ *
+ * It is the partition read forward rather than `active - ready` read backwards,
+ * because those two differ by exactly `unknown` — the number the page states as
+ * unknown in its own sentence instead.
+ *
+ * The `needsAction` filter is deliberately the wider set (`shows`): unknown is
+ * not done, so the operator's working list keeps those people on screen. The
+ * two reconcile — the filter's rows are this count plus `unknown` — and the
+ * page says both numbers rather than folding one into the other.
+ */
+export function actionable(groups: Record<ReadinessGroup, number>): number {
+  return groups.needsProof + groups.needsPasskey
+}
+
 /** The Show list's keys, in the order the page offers them: every account, the people who need something, the three groups. */
 export type ShowKey = 'all' | 'needsAction' | ReadinessGroup | `rung-${Rung}` | 'notActive' | Kind | 'guests'
 export const SHOW_KEYS: readonly ShowKey[] = ['all', 'needsAction', 'needsPasskey', 'needsProof', 'ready']

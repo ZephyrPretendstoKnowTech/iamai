@@ -811,11 +811,12 @@ export function renderPages(): string {
       p(fill(td.summarySub, { n: 8 }), {}) +
       p(td.summaryNone, {}) +
       p(td.summarySubNone, {}) +
+      p(td.summarySubUnknown, {}) +
       h('The three groupings') +
       `<ul>${groupRows}</ul>` +
       p(fill(td.unknownMethods, { n: 3 }), {}) +
       h('Opened from a Plan step, and the plan dependency the page states on its own') +
-      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back, td.planContext.dependencyTitle, fill(td.planContext.dependency, { n: 6, step: 'Require MFA for everyone' }), td.planContext.dependencyLink], {}) +
+      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back, td.planContext.dependencyTitle, fill(td.planContext.dependency, { n: 6, step: 'Require MFA for everyone' }), td.planContext.dependencyLink, td.planContext.dependencyNoneTitle, td.planContext.dependencyNone, td.planContext.dependencyPending, td.planContext.planLink], {}) +
       h('The ladder behind the groupings') +
       `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })}</p>` +
       `<ul>${rungRows}</ul>` +

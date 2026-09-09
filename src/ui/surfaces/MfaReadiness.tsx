@@ -43,14 +43,23 @@
 // resolved here from the plan this page computes, over the same rows the table
 // shows (derive/stepMfaReadiness.ts). The counts above the table stay the whole
 // tenant's — the callout says what the filter is.
+//
+// The callout is one element on every scanned page and its WORDS carry the
+// state (noticeWords): the step this page was opened from, or the plan's own
+// current dependency — a step with the people it is waiting on, a step whose
+// people this scan could not settle, the settled answer that nothing is
+// waiting, or, before the plan has computed here, that no step is named yet.
+// The anatomy is the pack's and does not vary with what the scan found; only
+// the sentence does.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AccountInfo } from '@azure/msal-browser'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { BaselineResult } from '../baseline.ts'
 import type { Rung } from '../../derive/ladder.ts'
-import { READINESS_GROUPS, SHOW_KEYS, showKeyOf, shows, readinessView } from '../../derive/mfaReadiness.ts'
+import { READINESS_GROUPS, SHOW_KEYS, actionable, showKeyOf, shows, readinessView } from '../../derive/mfaReadiness.ts'
 import type { ReadinessGroup, ReadinessRow, ShowKey } from '../../derive/mfaReadiness.ts'
-import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
+import { firstMfaDependency, stepMfaHold } from '../../derive/stepMfaReadiness.ts'
+import type { PlanMfaDependency } from '../../derive/stepMfaReadiness.ts'
 import { app, pages } from '../../content/content.ts'
 import { PASSKEY_TARGET, TENANT_PREREQUISITE, guideText, methodGuide, remediationFor } from '../../content/methodGuides.ts'
 import type { MethodGuideId, Remediation } from '../../content/methodGuides.ts'
@@ -60,7 +69,7 @@ import { monthDay } from '../../copy/dates.ts'
 import { groupWords, ledgerParts, methodWord, nextStateWord, notActiveWord, readinessWord, roleWord, rowEvidenceText, rungWords, showWord } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
-import { readinessHref, showFromReadinessHash, stepFromReadinessHash } from '../shell/routes.ts'
+import { PLAN_HREF, readinessHref, showFromReadinessHash, stepFromReadinessHash } from '../shell/routes.ts'
 import { Button, Callout, DataTable, InfoTip, PageTip } from '../components/index.ts'
 import type { Column } from '../components/index.ts'
 import { REDACTED, exportClipboard } from '../exportGuard.ts'
@@ -77,6 +86,7 @@ type ReadinessCopy = {
   summaryNone: string
   summarySub: string
   summarySubNone: string
+  summarySubUnknown: string
   adminsOnly: string
   columns: string[]
   notAPerson: string
@@ -84,7 +94,7 @@ type ReadinessCopy = {
   unknownMethods: string
   inventory: string
   tip: string
-  planContext: { filtered: string; unknown: string; back: string; dependencyTitle: string; dependency: string; dependencyLink: string }
+  planContext: { filtered: string; unknown: string; back: string; dependencyTitle: string; dependency: string; dependencyLink: string; dependencyNoneTitle: string; dependencyNone: string; dependencyPending: string; planLink: string }
   remediation: { heading: string; choose: string; other: string; copy: string; copied: string; close: string; learn: string }
 }
 const T = pages.readiness as unknown as ReadinessCopy
@@ -117,16 +127,66 @@ function RungBadge({ rung }: { rung: Rung | null }) {
 type PlanContext = { title: string; stepId: string; ids: string[] | null }
 
 /**
- * The plan dependency the unfiltered page states (task 037): the first step on
- * the plan whose own sign-in requirement is holding it, and how many of the
- * people it reaches cannot meet that requirement yet.
+ * The plan dependency the unscoped page states (task 037, corrected): the
+ * relationship derive/stepMfaReadiness.ts's `firstMfaDependency` settled, plus
+ * the one state that is not its answer to give — `pending`, before the plan has
+ * computed on this device at all.
  *
  * It is the same relationship the Plan step's own handoff draws
  * (surfaces/MfaHandoff.tsx), read from this side. `stepMfaHold` is the one
  * authority for both, so the number here and the number on the step are the
  * same number; nothing is measured a second time.
+ *
+ * Every state is stated. The page used to render this callout only where a
+ * known, non-empty hold existed, so an all-ready tenant, a tenant whose reach
+ * this scan could not settle, and a tenant with nothing on the plan waiting all
+ * lost the supporting panel entirely — the anatomy changed with the tenant, and
+ * the state hardest to read (unknown) was the one that said nothing. The four
+ * states below are exhaustive, and each says only what it has.
  */
-type PlanDependency = { title: string; stepId: string; n: number }
+type PlanDependency = PlanMfaDependency | { kind: 'pending' }
+
+/**
+ * The one supporting notice under the summary, as words: the tone it is drawn
+ * in, the title it leads with where it has one, the sentence, and the way to
+ * the Plan it holds apart from it.
+ *
+ * One notice and one shape, whatever the tenant is: the page's anatomy is the
+ * approved pack's and does not vary with what the scan found. What varies is
+ * this — and only among sentences production owns, each of them a fact
+ * something already settled.
+ */
+type ReadinessNotice = { kind: 'info' | 'warning'; title: string | null; text: string; href: string; link: string }
+
+const stepHref = (stepId: string): string => `#/plan/${encodeURIComponent(stepId)}`
+
+/**
+ * The notice for the page as it stands: the step it was opened from where there
+ * is one, and the plan's own current dependency otherwise.
+ *
+ * The scoped branch leads with no title — the sentence is about the page in
+ * front of the reader — and its action is the way back to the step. The
+ * dependency branch names itself, because it is a fact about somewhere else.
+ */
+function noticeWords(context: PlanContext | null, dependency: PlanDependency): ReadinessNotice {
+  const P = T.planContext
+  if (context) {
+    // An unknown reach stays unknown: no number, and the table is not filtered.
+    const text = context.ids === null ? fillText(P.unknown, { step: context.title }) : fillText(P.filtered, { n: context.ids.length, step: context.title })
+    return { kind: 'info', title: null, text, href: stepHref(context.stepId), link: P.back }
+  }
+  if (dependency.kind === 'holding') return { kind: 'warning', title: P.dependencyTitle, text: fillText(P.dependency, { n: dependency.n, step: contentTitle(dependency.step) }), href: stepHref(dependency.step.id), link: P.dependencyLink }
+  // A hold whose people this scan could not settle: the same words the
+  // step-scoped page says on the same fact (planContext.unknown), because it is
+  // the same fact. No number is invented for it and no filter is offered.
+  if (dependency.kind === 'unknown') return { kind: 'info', title: P.dependencyTitle, text: fillText(P.unknown, { step: contentTitle(dependency.step) }), href: stepHref(dependency.step.id), link: P.dependencyLink }
+  // Nothing on the plan is waiting on anybody's method. A settled, empty answer
+  // the plan computation proved, which is why it is a state and not a silence.
+  if (dependency.kind === 'none') return { kind: 'info', title: P.dependencyNoneTitle, text: P.dependencyNone, href: PLAN_HREF, link: P.planLink }
+  // The plan has not computed here yet, so there is no dependency to name —
+  // and, in particular, no basis for saying there is none.
+  return { kind: 'info', title: P.dependencyTitle, text: P.dependencyPending, href: PLAN_HREF, link: P.planLink }
+}
 
 export function MfaReadiness({ scan: lastScan, baseline }: {
   scan: { snapshot: TenantSnapshot; at: string } | null
@@ -149,24 +209,20 @@ export function MfaReadiness({ scan: lastScan, baseline }: {
   // The plan's own scoring, the one the readiness percentage that holds the step
   // was taken over (planData.ts): the people it names cannot disagree with it.
   const hold = step && data.computed ? stepMfaHold(step, scored) : null
-  // No callout where there is no relationship: a step that is not on this plan,
-  // or one nothing about anybody's authentication method is holding.
+  // No scope where there is no relationship: a step that is not on this plan, or
+  // one nothing about anybody's authentication method is holding. Such a page is
+  // the unfiltered page, and it states the plan's dependency like any other.
   const context: PlanContext | null = step && hold ? { title: contentTitle(step), stepId: step.id, ids: hold.ids } : null
-  // Unscoped: the first step in plan order that a person's authentication method
-  // is actually holding, and only where this scan settled who — an unknown reach
-  // is the Plan's sentence to make, not a number to state here.
-  let dependency: PlanDependency | null = null
-  if (stepId === null && data.computed) {
-    for (const s of steps) {
-      const h = stepMfaHold(s, scored)
-      if (h?.ids && h.ids.length > 0) {
-        dependency = { title: contentTitle(s), stepId: s.id, n: h.ids.length }
-        break
-      }
-    }
-  }
-  if (!lastScan) return <ReadinessPage snapshot={null} context={null} dependency={null} />
-  return <ReadinessPage snapshot={lastScan.snapshot} context={context} dependency={dependency} />
+  // The plan's own current dependency, whichever of its states this scan and
+  // this plan settled; `pending` before the plan has computed here, because
+  // nothing may report an absence the plan never proved.
+  //
+  // Memoised on the plan itself: it walks every step, and the answer can only
+  // change when the plan does.
+  const dependency = useMemo<PlanDependency>(() => (data.computed ? firstMfaDependency(data.computed.steps, data.computed.viability) : { kind: 'pending' }), [data.computed])
+  const notice = noticeWords(context, dependency)
+  if (!lastScan) return <ReadinessPage snapshot={null} context={null} notice={notice} />
+  return <ReadinessPage snapshot={lastScan.snapshot} context={context} notice={notice} />
 }
 
 /**
@@ -271,7 +327,7 @@ function RemediationPanel({ row, guideId, onPick, onClose }: {
   )
 }
 
-function ReadinessPage({ snapshot, context, dependency }: { snapshot: TenantSnapshot | null; context: PlanContext | null; dependency: PlanDependency | null }) {
+function ReadinessPage({ snapshot, context, notice }: { snapshot: TenantSnapshot | null; context: PlanContext | null; notice: ReadinessNotice }) {
   // The population's mapping (the detected emergency and service accounts, and every saved decision): the Plan's and Connect's.
   const mapping = useAppliedMapping(snapshot)
   // Scan again, beside the heading (ui/actions.ts): the scan's line shows under the header, and it returns here with the filter kept.
@@ -465,11 +521,23 @@ function ReadinessPage({ snapshot, context, dependency }: { snapshot: TenantSnap
   const ledger = ledgerParts(facts)
   const summary = facts.active > 0 ? fillText(T.summary, { ready: groups.ready, active: facts.active }) : T.summaryNone
   // The second line of the summary's main cell: how many of the active people
-  // are still waiting on a method. It is the ladder's own partition read the
-  // other way — the active people who are not passkey-ready — and never a
+  // this scan established still need something done. It is
+  // derive/mfaReadiness.ts's `actionable` — the two settled groups — and never a
   // second count of anybody.
-  const needAction = facts.active - groups.ready
-  const summarySub = facts.active > 0 ? (needAction > 0 ? fillText(T.summarySub, { n: needAction }) : T.summarySubNone) : ''
+  //
+  // It used to be `active - ready`, which silently swept `unknown` in with them:
+  // a tenant whose registration report could not be read was told in the
+  // page's most prominent sentence that all of those people "still need action",
+  // when IAMAI does not know whether any of them holds a passkey. Unknown is
+  // stated as unknown, in its own sentence under the panel, and is not counted
+  // as a finding here.
+  //
+  // The same reason there are three sub-lines and not two: with nobody settled
+  // as needing action and somebody unknown, "Nobody is waiting on a method" is
+  // a claim about people this scan could not read, so the page says what it can
+  // instead — nobody it could read is waiting.
+  const needAction = actionable(groups)
+  const summarySub = facts.active === 0 ? '' : needAction > 0 ? fillText(T.summarySub, { n: needAction }) : groups.unknown > 0 ? T.summarySubUnknown : T.summarySubNone
   // The Show list, as the pack's filter pills. A link that arrived filtered to a
   // rung or to a separate population keeps its own pill on the end, so the
   // control still says what is on screen.
@@ -505,44 +573,34 @@ function ReadinessPage({ snapshot, context, dependency }: { snapshot: TenantSnap
           )
         })}
       </section>
-      {/* One callout under the summary, in the pack's place, and only where a
-          relationship really exists: the step this page was opened from, or the
-          first step on the plan a person's authentication method is holding.
-          The pack's shape, never its sample sentence — nothing is drawn here to
-          fill the panel.
+      {/* The pack's one callout, under the summary and in its place — one
+          element, drawn on every scanned page, whose WORDS say which
+          relationship this page has to the Plan (noticeWords). It used to be
+          two conditional callouts, and both conditions could be false, so a
+          tenant with nothing known holding the plan lost the panel and the page
+          had a different anatomy depending on what the scan found. The pack's
+          shape, never its sample sentence — every branch is production's own
+          fact, and nothing is drawn here to fill the panel.
 
           The pack divides it: what is true on the left, the way to the Plan
-          step held apart on the right, and the two stacked once the notice is
-          too narrow to hold both. So each branch names its own two parts —
+          held apart on the right, and the two stacked once the notice is too
+          narrow to hold both. So the notice names its own two parts —
           `.callout-explain` and `.callout-action` — and the readiness rules in
-          app.css lay them out. The words, the number and the destination are
-          unchanged; only the relationship between them is now drawn.
+          app.css lay them out.
 
           The space between the two parts stays in the DOM, so the notice reads
           as the one sentence it always did to anything reading its text rather
           than its layout. A whitespace-only node is not a flex item, so it
           draws nothing. */}
-      {context ? (
-        <Callout kind="info">
-          <span className="callout-explain">
-            {context.ids === null ? fillText(T.planContext.unknown, { step: context.title }) : fillText(T.planContext.filtered, { n: context.ids.length, step: context.title })}
-          </span>{' '}
-          <a className="callout-action" href={`#/plan/${encodeURIComponent(context.stepId)}`}>
-            {T.planContext.back}
-          </a>
-        </Callout>
-      ) : (
-        dependency && (
-          <Callout kind="warning">
-            <span className="callout-explain">
-              <strong>{T.planContext.dependencyTitle}</strong> {fillText(T.planContext.dependency, { n: dependency.n, step: dependency.title })}
-            </span>{' '}
-            <a className="callout-action" href={`#/plan/${encodeURIComponent(dependency.stepId)}`}>
-              {T.planContext.dependencyLink}
-            </a>
-          </Callout>
-        )
-      )}
+      <Callout kind={notice.kind}>
+        <span className="callout-explain">
+          {notice.title !== null && <strong>{notice.title} </strong>}
+          {notice.text}
+        </span>{' '}
+        <a className="callout-action" href={notice.href}>
+          {notice.link}
+        </a>
+      </Callout>
       {/* Unknown stays a sentence, never a fourth count: the page will not put a
           number beside a state it could not establish. */}
       {groups.unknown > 0 && <p className="reason">{fillText(T.unknownMethods, { n: groups.unknown })}</p>}
