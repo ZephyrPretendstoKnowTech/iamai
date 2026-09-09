@@ -125,7 +125,10 @@ function Flow({ children }: { children: ReactNode }) {
  * approval, red no role or a personal account), and the step carries its place
  * in the progression (task 016): the stage with the next action is marked Next
  * and drawn forward, the ones behind it step back. The marker is a word, not a
- * colour, so the progression reads without seeing the accent.
+ * colour, so the progression reads without seeing the accent. It sits beside
+ * the heading rather than inside it: the heading is the step's title and its
+ * state, and a progression marker inside the heading joins the heading's text,
+ * so the step would announce and read as "Scan not started Next".
  *
  * The action zone is the third grid track and holds the step's own buttons. A
  * message an action produced stays in the content zone: it is a sentence, and a
@@ -136,16 +139,18 @@ function Step({ n, title, state, tone, stateTone, stage, actions, children }: { 
     <section className={`connect-step${tone ? ` ${tone}` : ''}${stage ? ` ${stage}` : ''}`}>
       <span className="n">{n}</span>
       <div className="connect-step-body">
-        <h2>
-          {title}
-          {state && (
-            <>
-              {' '}
-              <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>
-            </>
-          )}
+        <div className="connect-step-head">
+          <h2>
+            {title}
+            {state && (
+              <>
+                {' '}
+                <span className={`state${stateTone ? ` ${stateTone}` : ''}`}>{state}</span>
+              </>
+            )}
+          </h2>
           {stage === 'current' && <span className="next">{W.next}</span>}
-        </h2>
+        </div>
         {children}
       </div>
       <div className="connect-step-actions">{actions}</div>
