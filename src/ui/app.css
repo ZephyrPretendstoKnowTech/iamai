@@ -1361,12 +1361,16 @@ footer.app a {
 .assumption-editor select {
   width: 100%;
 }
+/* Beside the title it marks, not inside it: the title zone's first line is the
+   step's name, and the marker follows it (task 033, after 664fc3f). */
 .next-mark {
   font-size: var(--t-2);
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   padding: 0 6px;
+  margin-left: 8px;
+  white-space: nowrap;
 }
 /* A wave is a raised panel, so a section reads as a unit (prompt 49.1 item 12):
    --bg-raised, a hairline border, an 8px radius, the header inside, its rows
@@ -1375,18 +1379,38 @@ footer.app a {
   background: var(--bg-raised);
   border: 1px solid var(--rule);
   border-radius: var(--radius-control);
-  padding: 4px 16px 8px;
+  padding: 4px 0 8px;
   margin: 20px 0;
 }
+/* The panel's own inset is the row's inset, so a group heading and the titles
+   under it start on one line and a row's hover surface reaches the panel edge
+   instead of leaving a gutter beside it (task 033). */
 .phase h2 {
   font-size: var(--t-4);
   margin: 14px 0 2px;
-  padding-bottom: 8px;
+  padding: 0 17px 8px;
   border-bottom: 1px solid var(--rule);
 }
+/* ---- the approved roadmap row (task 033) ----
+   docs/design/approved/plan-step-v1.html `.roadmap-row`: four zones on one
+   line — the state, the title with its quiet reason under it, who it touches,
+   and when — at 126 / 1fr / 240 / 125 with an 18px gap, 64px of minimum height
+   and a 17px inset. The pack's own numbers; the 1fr track is `minmax(0, 1fr)`
+   so a long policy or group name wraps inside its column rather than widening
+   the grid.
+
+   The pack draws the row only in its open form, attached to the step beneath
+   it, so its `10px 10px 0 0` radius and its border are the OPEN row's rule and
+   are applied as such below. A list of collapsed rows is not a stack of cards:
+   the rows sit on the group panel and are told apart by the hairline separator
+   task 031 proved shared. */
 .plan-row {
-  display: block;
-  padding: 10px 6px;
+  display: grid;
+  grid-template-columns: 126px minmax(0, 1fr) 240px 125px;
+  gap: 18px;
+  align-items: center;
+  min-height: 64px;
+  padding: 0 17px;
   border-bottom: 1px solid var(--rule);
   border-radius: var(--radius);
   cursor: pointer;
@@ -1398,44 +1422,40 @@ footer.app a {
 .plan-row:hover {
   background: var(--bg-inset);
 }
-.plan-row-main {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+/* The open row is the head of the step under it, so it keeps its surface and
+   squares off the edge the step attaches to. The attached frame itself is pack
+   034's; this is the join it attaches to. */
+.plan-row[aria-expanded='true'] {
+  background: var(--bg-inset);
+  border-radius: var(--radius) var(--radius) 0 0;
+  border-bottom: 1px solid var(--rule);
 }
-/* The status column is fixed-width so the dots align down the page (item 13). */
-.plan-row-main .status {
-  flex: 0 0 7.5rem;
+.plan-row-title {
+  min-width: 0;
 }
 .plan-row-reason {
   display: block;
   color: var(--ink-3);
-  font-size: var(--t-2);
-  margin-top: 4px;
+  font-size: var(--t-1);
+  margin-top: 2px;
 }
 /* Row hierarchy (item 13): the title carries the weight; status, who and date recede. */
 .plan-row .step-title {
-  flex: 1 1 8rem;
-  min-width: 0;
   font-weight: 500;
 }
-.plan-row .who {
-  color: var(--ink-3);
-  font-size: var(--t-2);
-}
+.plan-row .who,
 .plan-row .when {
   color: var(--ink-3);
-  font-size: var(--t-2);
+  font-size: var(--t-1);
+  text-align: right;
+}
+.plan-row .when {
   white-space: nowrap;
-  margin-left: auto;
 }
 /* A readiness-held step reads its reason here, not a date (prompt 50.1 item 4):
-   longer than a date, so it wraps and right-aligns rather than pushing the row wide. */
+   a sentence rather than a date, so it wraps within the timing column. */
 .plan-row .when.when-reason {
   white-space: normal;
-  text-align: right;
-  max-width: 18rem;
 }
 /* The open step keeps a raised treatment inside the wave panel (item 12). */
 .step-body {
@@ -2277,15 +2297,30 @@ td .group-word {
 .surface .mfa-handoff {
   margin: 12px 0;
 }
+/* The pack's own roadmap breakpoint (task 033). Below 940 the four zones become
+   two: the state and the title keep the top line, and who and when drop under
+   them and left-align — the state's column narrows to 110px and carries the
+   metadata beneath it, exactly as `docs/design/approved/plan-step-v1.html`
+   places four children in a two-track grid. Nothing is dropped; a row that has
+   to wrap gets vertical padding, because the pack's 64px minimum stops being
+   the row's height once the metadata takes three lines. */
+@media (max-width: 940px) {
+  .plan-row {
+    grid-template-columns: 110px minmax(0, 1fr);
+    padding: 12px 17px;
+  }
+  .plan-row .who,
+  .plan-row .when {
+    text-align: left;
+  }
+  /* A long state word owns its column rather than being clipped by it (task 017). */
+  .plan-row .status {
+    white-space: normal;
+  }
+}
 @media (max-width: 640px) {
   .group-counts {
     grid-template-columns: 1fr;
-  }
-  /* The 7.5rem status column aligns the dots down a wide page; on a narrow one
-     it is a fixed track a long status word overflows, so it gives way to the
-     word (task 017). */
-  .plan-row-main .status {
-    flex: 0 0 auto;
   }
 }
 

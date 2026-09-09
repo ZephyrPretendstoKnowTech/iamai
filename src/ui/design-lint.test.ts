@@ -135,6 +135,15 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
     for (const m of r.body.matchAll(/border-radius\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
       if (SHAPE.has(v)) continue
+      // A shape may be asymmetric as long as every corner of it is still one of
+      // the three tokens. The approved Plan pack draws the open roadmap row
+      // that way — `.roadmap-row{border-radius:10px 10px 0 0}` in
+      // docs/design/approved/plan-step-v1.html — because the row is the head of
+      // the step attached under it and squares off the edge they share. What
+      // this rule exists to stop is a raw px value, and a corner list built
+      // only from --radius / --radius-control / --radius-panel / 0 introduces
+      // none: the hierarchy is still the one authority.
+      if (v.split(/\s+/).every((part) => SHAPE.has(part))) continue
       // A state dot is a circle: the shared `.status` dot, and the one the
       // approved Connect pack sets in its status strip
       // (docs/design/approved/connect-v3.html `.dot{border-radius:50%}`). So is

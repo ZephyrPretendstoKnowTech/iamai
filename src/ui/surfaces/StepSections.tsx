@@ -22,6 +22,20 @@ import { CONTRACT } from './stepContract.ts'
  * surface built its own and they drifted apart a column at a time. It stays
  * deliberately thin: at ~38 baseline policies the collapsed rows are what makes
  * the Plan readable, so a row says only enough to decide whether to open it.
+ *
+ * Task 033 restored the four zones the approved Plan pack draws
+ * (`docs/design/approved/plan-step-v1.html`, `.roadmap-row`):
+ *
+ *     status | title over its quiet reason | who | when
+ *
+ * The zones carry production's facts and nothing else — `statusOf`,
+ * `contentTitle`, `rowReason`, `rowWho`, `rowWhen`, each already the one
+ * authority for what it says. What changed is where the row puts them: the
+ * reason was a full-width line under the whole row, so a blocked step's cause
+ * sat under the state column rather than under the title it belongs to, and the
+ * who and when floated at the end of a wrapping flex line instead of holding
+ * columns that align down the page. Nothing here recomputes a state, a date or
+ * a count.
  */
 export function PlanRow({ word, tone, title, who, when, whenReason = false, reason = null, nextLabel = null, open, onToggle }: {
   word: string
@@ -56,18 +70,22 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
         }
       }}
     >
-      <span className="plan-row-main">
+      <span className="plan-row-status">
         <Status tone={tone}>{word}</Status>
+      </span>
+      {/* The pack's `.row-title`: the title, and under it the one quiet line
+          that says why the row is in the state the first zone names. */}
+      <span className="plan-row-title">
+        <span className="step-title">{title}</span>
         {nextLabel && (
           <span className="next-mark" aria-label={nextLabel}>
             {nextLabel}
           </span>
         )}
-        <span className="step-title">{title}</span>
-        <span className="who">{who}</span>
-        <span className={`when${whenReason ? ' when-reason' : ''}`}>{when}</span>
+        {reason && <span className="plan-row-reason">{reason}</span>}
       </span>
-      {reason && <span className="plan-row-reason">{reason}</span>}
+      <span className="who">{who}</span>
+      <span className={`when${whenReason ? ' when-reason' : ''}`}>{when}</span>
     </div>
   )
 }
