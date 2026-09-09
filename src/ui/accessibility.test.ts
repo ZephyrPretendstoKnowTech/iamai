@@ -627,7 +627,15 @@ test('the narrow layouts collapse rather than compress', () => {
   assert.match(narrow(940), /\.plan-row \.status[\s\S]*white-space:\s*normal/, 'the status column gives way to a long status word')
   assert.match(narrow(700), /\.tiles[\s\S]*grid-template-columns:\s*repeat\(2/, 'the stat tiles halve')
   assert.match(narrow(700), /header\.app \{[\s\S]*flex-wrap:\s*wrap/, 'the header wraps')
-  assert.match(homeCss.match(/@media \(max-width: 700px\) \{[\s\S]*?\n\}/)?.[0] ?? '', /header\.app/, 'the home header wraps')
+  // Home collapses at its own pack's two breakpoints (task 038): the product
+  // section and its rail become one column at 760, and at 560 the gutters
+  // tighten and the header gives back its gap. The header wraps at every width
+  // rather than pushing the way into the product off the side.
+  assert.match(homeCss, /header\.app \{[\s\S]*?flex-wrap: wrap;/, 'the home header wraps')
+  const homeNarrow = (max: number): string => homeCss.match(new RegExp(`@media \\(max-width: ${max}px\\) \\{[\\s\\S]*?\\n\\}`))?.[0] ?? ''
+  assert.match(homeNarrow(760), /\.product \{\s*grid-template-columns: 1fr;/, 'the home product section does not collapse')
+  assert.match(homeNarrow(760), /\.side \{[\s\S]*?border-left: 0;\s*border-top: 1px solid/, "the home rail's border does not move above it")
+  assert.match(homeNarrow(560), /header\.app/, "the home header does not give way at the pack's own breakpoint")
 })
 
 // ------------------------------------------------ G. table semantics at any width

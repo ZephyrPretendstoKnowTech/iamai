@@ -1,28 +1,32 @@
 // Writes home/theme.css and home/index.html from the tool's own sources
-// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; rebuilt by task 016).
+// (prompt 47.1 Part 3 item 11; prompt 52 Part 1; rebuilt by task 016; the
+// approved composition restored by task 038).
 //
-// The composition below is the page as built. The owner's Home design authority
-// is docs/design/approved/home-v2.html, recorded in
-// docs/design/approved/manifest.json; this generator does not implement its
-// composition, and pack 038 owns that restoration
-// (docs/design/authority-reconciliation.md). Task 030 gave the page the brand
-// it will be restored in: the Mineral Teal tokens, IBM Plex, the Guided Route
-// mark in the lockup, and the pack's 1040px column.
+// The composition below is the owner's approved Home design,
+// docs/design/approved/home-v2.html, recorded in
+// docs/design/approved/manifest.json. That file owns the anatomy — the public
+// header, the hero and its meta row, the two-column product section with its
+// side rail, the Reads / Compares / Plans rows, the label-and-explanation
+// catches, the trust row, About and the footer, and the 760 and 560
+// breakpoints. It does NOT own the words (docs/design/content.json) or the
+// technical truth (what IAMAI reads, what it may not do): where the pack's
+// placeholder copy and production's own accurate sentence disagree,
+// production's sentence wins and the pack's shape keeps it
+// (docs/design/authority-reconciliation.md).
 //
-// The home page wears the same palette, type scale and
-// fonts as the planner (theme.css from the tokens), and every sentence it shows
-// is a string in docs/design/content.json (pages.home; the footer is the app's,
-// pages.footer; the theme control's labels are the app's, pages.app.shell),
-// generated here so the home page and the app cannot drift. home.test.ts fails
-// while either generated file and its source disagree, the way tokens.test.ts
-// guards tokens.css.
+// The home page wears the same palette, type scale and fonts as the planner
+// (theme.css from the tokens), and every sentence it shows is a string in
+// docs/design/content.json (pages.home; the footer is the app's, pages.footer;
+// the theme control's labels are the app's, pages.app.shell), generated here so
+// the home page and the app cannot drift. home.test.ts fails while either
+// generated file and its source disagree, the way tokens.test.ts guards
+// tokens.css.
 //
-// The page is six sections in one column, separated by rules rather than by
-// boxes: the hero (the outcome, what IAMAI does about it, the two ways in), What
-// it does (Reads / Compares / Plans), the standard it plans towards, what it
-// catches before a change goes live, what it does with your tenant, and About.
-// The one pair of actions is in the hero; no section repeats them, and the tool
-// card, its Preview pill and the Tools grid left with the v2 direction.
+// The page is the public header, the hero, four sections separated by rules
+// rather than by boxes — what it does (with the baseline in its rail), what it
+// catches, what it does with your tenant, About — and the footer. The two ways
+// in are in the hero; the header and the rail carry the product entry the pack
+// puts there, and nothing else on the page is a call to action.
 //
 // The fonts and the planner hrefs are referenced through the {{TOOL_PATH}}
 // placeholder that scripts/assemble-site.mjs substitutes, so the path lives in
@@ -34,9 +38,13 @@ import { MARK_GEOMETRY, MARK_VIEWBOX } from '../src/brand/logo/mark.ts'
 import { renderTokensCss } from '../src/ui/tokens.ts'
 import { pages } from '../src/content/content.ts'
 
-/** The planner and its sample-data view, under the substituted tool path. */
+/** The planner, its sample-data view and its How page, under the substituted tool path. */
 const PLANNER_HREF = '/{{TOOL_PATH}}/#/connect'
 const DEMO_HREF = '/{{TOOL_PATH}}/?demo=1#/plan'
+const HOW_HREF = '/{{TOOL_PATH}}/#/how'
+
+/** The one destination that is the product itself: the header link, the hero's primary action, the rail's link. */
+export const PRODUCT_ENTRY = PLANNER_HREF
 
 /**
  * The opener the mockup retired: the old lede and the planner's old body. None
@@ -55,34 +63,44 @@ export const RETIRED_OPENER = [
   'See it with sample data',
 ]
 
-/** One beat of what IAMAI does: the verb, then the rest of the sentence. */
+/** One row of what IAMAI does: the verb in the label column, the rest beside it. */
 export type HomeBeat = { verb: string; text: string }
+/** One thing IAMAI catches: what kind of problem it is, then the example. */
+export type HomeCatch = { label: string; text: string }
 /** One trust claim: what it is called, what it actually means, and where to check. */
 export type HomeTrust = { title: string; body: string; link?: string; href?: string }
+type Link = { text: string; href: string }
 type HomeContent = {
   metaTitle: string
   metaDescription: string
   brand: string
+  navHow: string
+  navSource: Link
+  eyebrow: string
   h1: string
   siteLine: string
   open: string
   demo: string
-  heroNote: string
+  heroMeta: string[]
   workLabel: string
+  workHeading: string
+  workLead: string
   work: HomeBeat[]
   baselineLabel: string
+  baselineName: string
   baseline: string
   baselineGoal: string
   baselineNote: string
   catchesLabel: string
-  catches: string[]
+  catchesHeading: string
+  catches: HomeCatch[]
   trustLabel: string
+  trustHeading: string
   trust: HomeTrust[]
   aboutLabel: string
+  aboutHeading: string
   about: string
-  aboutLinks: { text: string; href: string }[]
 }
-type Link = { text: string; href: string }
 
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -93,46 +111,69 @@ function button(text: string, href: string, weight: 'primary' | 'secondary' | 't
   return `<a class="btn btn-${weight}" href="${href}">${esc(text)}</a>`
 }
 
+/** The small label over a heading, and the heading itself. */
+function heading(id: string, label: string, text: string): string {
+  return `<p class="eyebrow">${esc(label)}</p>
+        <h2 id="${id}-heading">${esc(text)}</h2>`
+}
+
 /**
- * One section of the page: a heading and its body, separated from the one above
- * it by a rule. Six of these and the hero are the whole page — the v2 direction
- * puts the hierarchy in the type and the spacing, not in a wall of boxes.
+ * One section of the page: the small label the pack sets over the heading, the
+ * heading itself, and the body — separated from the section above it by a rule.
+ * Four of these and the hero are the whole page.
+ *
+ * The heading is an h2 everywhere. The pack draws the product section's as an
+ * h3 with no h2 above it, which is a heading level skipped; the level is
+ * production's to keep and the size is the pack's to set (`.band-lead h2`).
  */
-function section(id: string, title: string, body: string): string {
+function section(id: string, label: string, text: string, body: string): string {
   return `<section class="band" aria-labelledby="${id}-heading">
-        <h2 id="${id}-heading">${esc(title)}</h2>
+        ${heading(id, label, text)}
         ${body}
       </section>`
 }
 
-/** Reads / Compares / Plans: the verb in the page's weight, the rest after it. */
-export function beatList(beats: HomeBeat[]): string {
-  return `<ul class="beats">
-          ${beats.map((b) => `<li><b>${esc(b.verb)}</b> ${esc(b.text)}</li>`).join('\n          ')}
-        </ul>`
+/** Reads / Compares / Plans: the verb in its own column, the rest beside it, a hairline between. */
+export function beatRows(beats: HomeBeat[]): string {
+  return `<div class="steps">
+              ${beats.map((b) => `<div class="step"><b>${esc(b.verb)}</b><span>${esc(b.text)}</span></div>`).join('\n              ')}
+            </div>`
 }
 
-/** What IAMAI catches before a change goes live: a plain list, no cards. */
-export function catchList(items: string[]): string {
-  return `<ul class="catch">
-          ${items.map((c) => `<li>${esc(c)}</li>`).join('\n          ')}
-        </ul>`
+/** What IAMAI catches before a change goes live: the kind of problem, then the example. */
+export function catchRows(items: HomeCatch[]): string {
+  return `<div class="catches">
+          ${items.map((c) => `<div class="catch"><b>${esc(c.label)}</b><span>${esc(c.text)}</span></div>`).join('\n          ')}
+        </div>`
 }
 
 /**
- * What IAMAI does with the tenant: each claim named, then said in terms someone
- * can check. Specific architecture, not reassurance — a definition list, so the
- * claim and its evidence stay attached.
+ * What IAMAI does with the tenant: each claim led by its name, then said in
+ * terms someone can check. Specific architecture, not reassurance — one row of
+ * short statements, the last carrying the source to read.
  */
-export function trustList(items: HomeTrust[]): string {
-  return `<dl class="trust">
+export function trustRow(items: HomeTrust[]): string {
+  return `<div class="trust">
           ${items
-            .map(
-              (t) =>
-                `<dt>${esc(t.title)}</dt>\n          <dd>${esc(t.body)}${t.link && t.href ? ` <a class="lnk" href="${t.href}">${esc(t.link)}</a>` : ''}</dd>`,
-            )
+            .map((t) => `<span><strong>${esc(t.title)}</strong> ${esc(t.body)}${t.link && t.href ? ` <a class="lnk" href="${t.href}">${esc(t.link)}</a>` : ''}</span>`)
             .join('\n          ')}
-        </dl>`
+        </div>`
+}
+
+/**
+ * The side rail beside what IAMAI does: the standard the plan is measured
+ * against, and the way in. Narrower than the column it sits beside, separated
+ * by a left border on a wide screen and by a top border under 760.
+ */
+export function baselineRail(h: HomeContent): string {
+  return `<aside class="side">
+            <p class="label">${esc(h.baselineLabel)}</p>
+            <strong>${esc(h.baselineName)}</strong>
+            <p>${esc(h.baseline)}</p>
+            <p>${esc(h.baselineGoal)}</p>
+            <p class="small">${esc(h.baselineNote)}</p>
+            <p class="small"><a class="enter" href="${PRODUCT_ENTRY}">${esc(h.open)}</a></p>
+          </aside>`
 }
 
 export function renderHomeTheme(): string {
@@ -145,10 +186,13 @@ export function renderHomeHtml(): string {
   const h = pages.home as unknown as HomeContent
   const shell = pages.app.shell as { lightTheme: string; darkTheme: string; themeTooltip: string }
   const footer = pages.footer as { links: Link[] }
-  const aboutButtons = h.aboutLinks.map((l, i) => button(l.text, l.href, i === 0 ? 'secondary' : 'tertiary')).join('\n          ')
-  // The footer is the app's (AppShell's Footer, pages.footer): the same four links, joined the same way; the home link and the mail link open in place.
+  // The footer is the app's (pages.footer), in the arrangement the pack draws:
+  // the product's name on the left, the public links on the right. The link
+  // back to this page is the name on the left, so it is not repeated as a link
+  // to itself on the right.
   const footerLinks = footer.links
-    .map((l, i) => `${i > 0 ? ' | ' : ''}<a href="${l.href}"${/^https:\/\/getiamai\.com\/?$/.test(l.href) || l.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(l.text)}</a>`)
+    .filter((l) => !/^https:\/\/getiamai\.com\/?$/.test(l.href))
+    .map((l, i) => `${i > 0 ? ' · ' : ''}<a href="${l.href}"${l.href.startsWith('mailto:') ? '' : ' target="_blank" rel="noopener noreferrer"'}>${esc(l.text)}</a>`)
     .join('')
   return `<!doctype html>
 <html lang="en">
@@ -177,42 +221,64 @@ export function renderHomeHtml(): string {
     <link rel="stylesheet" href="/home.css" />
   </head>
   <body>
+    <!-- The public header the pack draws: the lockup on the left, the public
+         links on the right, the product entry last. It is lighter than the
+         planner's shell and carries no signed-in state — no tabs, no Account. -->
     <header class="app">
       <a class="wordmark" href="/">
         <svg width="20" height="20" viewBox="${MARK_VIEWBOX}" aria-hidden="true" focusable="false">${MARK_GEOMETRY}</svg>
         ${esc(h.brand)}
       </a>
       <div class="right">
+        <nav class="links">
+          <a href="${HOW_HREF}">${esc(h.navHow)}</a>
+          <a href="${h.navSource.href}" target="_blank" rel="noopener noreferrer">${esc(h.navSource.text)}</a>
+          <a class="enter" href="${PRODUCT_ENTRY}">${esc(h.open)}</a>
+        </nav>
         <!-- The theme control is text, not a button face, the way the app's is (AppShell). -->
         <button class="text-control" id="theme" type="button" title="${esc(shell.themeTooltip)}">${esc(shell.darkTheme)}</button>
       </div>
     </header>
 
     <main class="page">
-      <!-- The outcome, what IAMAI does about it, and the two ways in. The only
-           actions on the page: no section below repeats them. -->
+      <!-- The outcome, what IAMAI does about it, the two ways in, and the three
+           claims the trust section below spends the rest of the page proving. -->
       <div class="hero">
+        <p class="eyebrow">${esc(h.eyebrow)}</p>
         <h1>${esc(h.h1)}</h1>
         <p class="site-line">${esc(h.siteLine)}</p>
         <p class="actions">
-          ${button(h.open, PLANNER_HREF, 'primary')}
+          ${button(h.open, PRODUCT_ENTRY, 'primary')}
           ${button(h.demo, DEMO_HREF, 'secondary')}
         </p>
-        <p class="note">${esc(h.heroNote)}</p>
+        <p class="meta">
+          ${h.heroMeta.map((m) => `<span>${esc(m)}</span>`).join('\n          ')}
+        </p>
       </div>
 
-      ${section('work', h.workLabel, beatList(h.work))}
+      <!-- What IAMAI does, and beside it the standard it is doing it against.
+           The heading sits inside the wider column, not above both, so the
+           rail's own label starts level with it (the pack's product grid). -->
+      <section class="band band-lead" aria-labelledby="work-heading">
+        <div class="product">
+          <div>
+            ${heading('work', h.workLabel, h.workHeading)}
+            <p class="lead">${esc(h.workLead)}</p>
+            ${beatRows(h.work)}
+          </div>
+          ${baselineRail(h)}
+        </div>
+      </section>
 
-      ${section('baseline', h.baselineLabel, `<p>${esc(h.baseline)}</p>\n        <p>${esc(h.baselineGoal)}</p>\n        <p class="note">${esc(h.baselineNote)}</p>`)}
+      ${section('catches', h.catchesLabel, h.catchesHeading, catchRows(h.catches))}
 
-      ${section('catches', h.catchesLabel, catchList(h.catches))}
+      ${section('trust', h.trustLabel, h.trustHeading, trustRow(h.trust))}
 
-      ${section('trust', h.trustLabel, trustList(h.trust))}
-
-      ${section('about', h.aboutLabel, `<p>${esc(h.about)}</p>\n        <p class="actions">\n          ${aboutButtons}\n        </p>`)}
+      ${section('about', h.aboutLabel, h.aboutHeading, `<div class="about"><p>${esc(h.about)}</p></div>`)}
     </main>
 
     <footer class="app">
+      <span>${esc(h.brand)}</span>
       <span class="footer-links">${footerLinks}</span>
     </footer>
 

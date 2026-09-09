@@ -1625,24 +1625,26 @@ function scanPlanFile() {
   return { present: true, steps: steps.length, savedAt: redact(plan.createdAt ?? '') }
 }
 
-// ---- the home page (as built by task 016) ----
+// ---- the home page (task 016; the approved composition restored by task 038) ----
 //
-// These checks read the page that exists. Home's design authority is
-// docs/design/approved/home-v2.html (manifest.json in that
-// folder); the page does not implement it yet and packs 030+ own the
-// restoration, which moves these checks with the surface.
+// These checks read the page that exists, and the page now implements Home's
+// design authority: docs/design/approved/home-v2.html (manifest.json in that
+// folder). A later pack that moves the anatomy moves these checks with it.
 //
 // getiamai.com's front page, generated from pages.home by scripts/build-home.ts
 // and assembled over the bundle by scripts/assemble-site.mjs, walked from the
-// static server like the bundle: the hero (the outcome, the site line, the only
-// two actions and the note), the five sections in order, the beats, the
-// examples, the trust claims, About with its three buttons, the app's footer,
-// the header's text theme control in both themes, every string a content
-// string, nothing of the retired opener, and none of the retired tool-card
-// composition.
+// static server like the bundle: the public header (the lockup, the public
+// links, the product entry, the text theme control), the hero (the eyebrow, the
+// outcome, the site line, the only two actions and the meta row), the four
+// sections in order, the Reads / Compares / Plans rows beside the baseline rail,
+// the labelled examples, the trust row, About, the footer's name and links, both
+// themes, every string a content string, nothing of the retired opener, and none
+// of the retired tool-card composition.
 const HOME = pages.home
 const HOME_SHELL = pages.app.shell
 const HOME_FOOTER = pages.footer.links
+/** The public links the footer shows: the app's, minus the one that points at this page. */
+const HOME_FOOTER_LINKS = HOME_FOOTER.filter((l) => !/^https:\/\/getiamai\.com\/?$/.test(l.href))
 const WEIGHT = `(b) => /btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none'`
 const homeLeaves = (node, out = [], key = '') => {
   if (typeof node === 'string') {
@@ -1667,18 +1669,42 @@ async function walkHome(url) {
   for (const s of RETIRED_OPENER) if (pageText.includes(s)) add('P0', `${label}: the retired opener still renders: "${s.slice(0, 60)}"`)
   if (/Built for/.test(pageText)) add('P0', `${label}: a Built for block renders; the site line carries the audience`)
   // The retired composition: the tool card, its Preview pill and the Tools grid
-  // left with the v2 direction and may not come back.
-  const retired = await evaluate(`[...document.querySelectorAll('main.page .card, main.page .pill, main.page .grid, main.page .tool-name, main.page details')].length`)
-  if (retired > 0) add('P0', `${label}: ${retired} element(s) of the retired tool-card composition (a card, a pill, a grid or a collapsible) render on the home page`)
-  // The hero: the outcome, the site line, the only two actions on the page, the note.
-  const hero = await evaluate(`(() => { const h = document.querySelector('main.page .hero'); if (!h) return null; const w = ${WEIGHT}; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { h1: tx(h.querySelector('h1')), line: tx(h.querySelector('p.site-line')), note: tx(h.querySelector('p.note')), buttons: [...h.querySelectorAll('.actions a.btn')].map((b) => ({ t: tx(b), w: w(b), href: b.getAttribute('href') })) } })()`)
+  // left with the v2 direction and may not come back. Nor may a card wall: the
+  // approved Home separates its sections with a hairline, and the only bordered
+  // things in the page body are the two hero actions.
+  const retired = await evaluate(`[...document.querySelectorAll('main.page .card, main.page .pill, main.page .grid, main.page .tool-name, main.page details, main.page .panel, main.page .panel-key')].length`)
+  if (retired > 0) add('P0', `${label}: ${retired} element(s) of the retired tool-card composition (a card, a pill, a grid, a collapsible or a panel) render on the home page`)
+  const boxes = await evaluate(`[...document.querySelectorAll('main.page *')].filter((e) => { const s = getComputedStyle(e); return s.borderBottomWidth !== '0px' && s.borderLeftWidth !== '0px' && s.borderRightWidth !== '0px' }).length`)
+  if (boxes !== 2) add('P0', `${label}: ${boxes} boxed element(s) in the page body; the two hero actions and nothing else`)
+  // The public header: the lockup, the public links with the product entry
+  // last, and the theme control. No signed-in navigation on a public page.
+  const header = await evaluate(`(() => { const h = document.querySelector('header.app'); if (!h) return null; const a = h.querySelector('a.wordmark'); return { brand: a ? (a.textContent || '').trim() : null, href: a ? a.getAttribute('href') : null, links: [...h.querySelectorAll('nav.links a')].map((l) => ({ t: (l.textContent || '').trim(), href: l.getAttribute('href') })), tabs: [...h.querySelectorAll('.tabs, [aria-current]')].length } })()`)
+  if (!header) add('P0', `${label}: no header`)
+  else {
+    if (header.brand !== HOME.brand || header.href !== '/') add('P0', `${label}: the wordmark is "${header.brand}" → ${header.href}; ${HOME.brand} → /`)
+    const wantLinks = [
+      { t: HOME.navHow, href: `/${TOOL_PATH}/#/how` },
+      { t: HOME.navSource.text, href: HOME.navSource.href },
+      { t: HOME.open, href: `/${TOOL_PATH}/#/connect` },
+    ]
+    if (JSON.stringify(header.links) !== JSON.stringify(wantLinks)) {
+      add('P0', `${label}: the public header's links are ${header.links.map((l) => `${l.t} (${l.href})`).join(', ') || 'missing'}; ${wantLinks.map((l) => `${l.t} (${l.href})`).join(', ')}`)
+    }
+    if (header.tabs > 0) add('P0', `${label}: the signed-in navigation renders in the public header`)
+  }
+  // The hero: the eyebrow, the outcome, the site line, the only two actions on
+  // the page, and the meta row of three claims.
+  const hero = await evaluate(`(() => { const h = document.querySelector('main.page .hero'); if (!h) return null; const w = ${WEIGHT}; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { eyebrow: tx(h.querySelector('p.eyebrow')), h1: tx(h.querySelector('h1')), line: tx(h.querySelector('p.site-line')), meta: [...h.querySelectorAll('p.meta span')].map(tx), buttons: [...h.querySelectorAll('.actions a.btn')].map((b) => ({ t: tx(b), w: w(b), href: b.getAttribute('href') })), display: Math.round(parseFloat(getComputedStyle(h.querySelector('h1')).fontSize)) } })()`)
   if (!hero) add('P0', `${label}: no hero`)
   else {
+    if (hero.eyebrow !== HOME.eyebrow) add('P0', `${label}: the hero eyebrow reads "${hero.eyebrow}"; ${HOME.eyebrow}`)
     if (hero.h1 !== HOME.h1) add('P0', `${label}: the headline reads "${hero.h1}"; ${HOME.h1}`)
     if (hero.line !== HOME.siteLine) add('P0', `${label}: the site line reads "${hero.line}"; ${HOME.siteLine}`)
-    if (hero.note !== HOME.heroNote) add('P0', `${label}: the hero note reads "${hero.note}"; ${HOME.heroNote}`)
+    if (JSON.stringify(hero.meta) !== JSON.stringify(HOME.heroMeta)) add('P0', `${label}: the hero's meta row reads ${hero.meta.join(' · ') || 'nothing'}; ${HOME.heroMeta.join(' · ')}`)
+    // The pack's display size, rendered: 50px at 1280 (docs/design/approved/home-v2.html).
+    if (hero.display !== 50) add('P0', `${label}: the hero display renders at ${hero.display}px; the approved pack sets 50`)
     // The outcome comes first: the hero never names Conditional Access.
-    const heroWords = `${hero.h1} ${hero.line} ${hero.note}`
+    const heroWords = `${hero.eyebrow} ${hero.h1} ${hero.line}`
     if (/Conditional Access/.test(heroWords)) add('P0', `${label}: the hero names Conditional Access before the baseline gives the term any context`)
     const wantHero = [
       { t: HOME.open, w: 'primary', href: `/${TOOL_PATH}/#/connect` },
@@ -1686,71 +1712,94 @@ async function walkHome(url) {
     ]
     if (JSON.stringify(hero.buttons) !== JSON.stringify(wantHero)) add('P0', `${label}: the hero's actions are ${hero.buttons.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ') || 'missing'}; ${wantHero.map((b) => `${b.t} (${b.w}, ${b.href})`).join(', ')}`)
   }
-  // One pair of ways in, in the hero: no section repeats the call to action.
-  const intoTool = await evaluate(`[...document.querySelectorAll('main.page a[href^="/${TOOL_PATH}/"]')].map((a) => ({ t: (a.textContent || '').trim(), inHero: !!a.closest('.hero') }))`)
-  if (intoTool.length !== 2 || intoTool.some((a) => !a.inHero)) add('P0', `${label}: ${intoTool.length} link(s) into the planner, ${intoTool.filter((a) => !a.inHero).length} outside the hero; two, both in the hero`)
-  // The five sections, in order, each a heading and its body.
-  const bands = await evaluate(`[...document.querySelectorAll('main.page section.band')].map((s) => ({ id: s.getAttribute('aria-labelledby'), title: ((s.querySelector('h2') || {}).textContent || '').trim(), text: (s.innerText || '').replace(/\\s+/g, ' ').trim() }))`)
-  const wantBands = [
-    ['work-heading', HOME.workLabel],
-    ['baseline-heading', HOME.baselineLabel],
-    ['catches-heading', HOME.catchesLabel],
-    ['trust-heading', HOME.trustLabel],
-    ['about-heading', HOME.aboutLabel],
+  // The ways into the product are the three the approved pack draws: the header,
+  // the hero's primary action and the side rail — plus the hero's sample data
+  // and the header's How. No section below invents a fourth call to action.
+  const intoTool = await evaluate(`[...document.querySelectorAll('a[href^="/${TOOL_PATH}/"]')].map((a) => ({ href: a.getAttribute('href'), where: a.closest('header') ? 'header' : a.closest('.hero') ? 'hero' : a.closest('.side') ? 'rail' : 'elsewhere' }))`)
+  const wantInto = [
+    { href: `/${TOOL_PATH}/#/how`, where: 'header' },
+    { href: `/${TOOL_PATH}/#/connect`, where: 'header' },
+    { href: `/${TOOL_PATH}/#/connect`, where: 'hero' },
+    { href: `/${TOOL_PATH}/?demo=1#/plan`, where: 'hero' },
+    { href: `/${TOOL_PATH}/#/connect`, where: 'rail' },
   ]
-  if (bands.length !== wantBands.length || bands.some((b, i) => b.id !== wantBands[i][0] || b.title !== wantBands[i][1])) {
-    add('P0', `${label}: the sections read ${bands.map((b) => b.title).join(' · ')}; ${wantBands.map((b) => b[1]).join(' · ')}`)
+  if (JSON.stringify(intoTool) !== JSON.stringify(wantInto)) {
+    add('P0', `${label}: the links into the planner are ${intoTool.map((a) => `${a.href} (${a.where})`).join(', ') || 'none'}; ${wantInto.map((a) => `${a.href} (${a.where})`).join(', ')}`)
   }
-  // What it does: Reads / Compares / Plans, from pages.home.work.
-  const beats = await evaluate(`[...document.querySelectorAll('main.page .beats li')].map((l) => ({ verb: ((l.querySelector('b') || {}).textContent || '').trim(), text: (l.textContent || '').replace(/\\s+/g, ' ').trim() }))`)
-  const wantBeats = HOME.work.map((b) => `${b.verb} ${b.text}`)
-  if (beats.map((b) => b.text).join('|') !== wantBeats.join('|')) add('P0', `${label}: the beats read ${beats.map((b) => b.verb).join(' / ') || 'nothing'}; ${HOME.work.map((b) => b.verb).join(' / ')}, from pages.home.work`)
-  // The baseline: what the term means, whose the default is, and its aim — with
-  // no claim that Microsoft endorses or certifies any of it.
-  const baseline = bands.find((b) => b.id === 'baseline-heading')
-  if (!baseline) add('P0', `${label}: no baseline section`)
+  // The four sections, in order, each an eyebrow, a heading and its body.
+  const bands = await evaluate(`[...document.querySelectorAll('main.page section.band')].map((s) => ({ id: s.getAttribute('aria-labelledby'), label: ((s.querySelector('p.eyebrow') || {}).textContent || '').trim(), title: ((s.querySelector('h2') || {}).textContent || '').trim(), text: (s.innerText || '').replace(/\\s+/g, ' ').trim() }))`)
+  const wantBands = [
+    ['work-heading', HOME.workLabel, HOME.workHeading],
+    ['catches-heading', HOME.catchesLabel, HOME.catchesHeading],
+    ['trust-heading', HOME.trustLabel, HOME.trustHeading],
+    ['about-heading', HOME.aboutLabel, HOME.aboutHeading],
+  ]
+  if (bands.length !== wantBands.length || bands.some((b, i) => b.id !== wantBands[i][0] || b.label !== wantBands[i][1] || b.title !== wantBands[i][2])) {
+    add('P0', `${label}: the sections read ${bands.map((b) => `${b.label} / ${b.title}`).join(' · ')}; ${wantBands.map((b) => `${b[1]} / ${b[2]}`).join(' · ')}`)
+  }
+  // The headings step down without skipping: one h1, four h2, no h3.
+  const levels = await evaluate(`[...document.querySelectorAll('main.page h1, main.page h2, main.page h3')].map((h) => h.tagName)`)
+  if (JSON.stringify(levels) !== JSON.stringify(['H1', 'H2', 'H2', 'H2', 'H2'])) add('P0', `${label}: the headings are ${levels.join(' ')}; H1 then four H2`)
+  // What it does: Reads / Compares / Plans, from pages.home.work, in the pack's
+  // two-column product section with the baseline rail beside them.
+  const beats = await evaluate(`[...document.querySelectorAll('main.page .steps .step')].map((l) => ({ verb: ((l.querySelector('b') || {}).textContent || '').trim(), text: ((l.querySelector('span') || {}).textContent || '').replace(/\\s+/g, ' ').trim() }))`)
+  if (JSON.stringify(beats) !== JSON.stringify(HOME.work.map((b) => ({ verb: b.verb, text: b.text })))) {
+    add('P0', `${label}: the beats read ${beats.map((b) => b.verb).join(' / ') || 'nothing'}; ${HOME.work.map((b) => b.verb).join(' / ')}, from pages.home.work`)
+  }
+  const product = await evaluate(`(() => { const p = document.querySelector('main.page .product'); const side = document.querySelector('main.page .product aside.side'); if (!p || !side) return null; const ps = getComputedStyle(p); const ss = getComputedStyle(side); const main = p.firstElementChild; return { display: ps.display, columns: ps.gridTemplateColumns.split(' ').length, mainWider: main.getBoundingClientRect().width > side.getBoundingClientRect().width, border: ss.borderLeftWidth } })()`)
+  if (!product) add('P0', `${label}: the approved two-column product section and its side rail do not render`)
   else {
-    for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) if (!baseline.text.includes(fact)) add('P0', `${label}: the baseline section does not name ${fact}`)
-    if (!/^A baseline is /.test(HOME.baseline)) add('P0', `${label}: the baseline section does not explain what a baseline is before using the term`)
-    if (/Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie/i.test(baseline.text)) add('P0', `${label}: the baseline section claims a Microsoft endorsement: "${baseline.text.slice(0, 100)}"`)
+    if (product.display !== 'grid' || product.columns !== 2) add('P0', `${label}: the product section is ${product.display} with ${product.columns} column(s); the approved pack is a two-column grid`)
+    if (!product.mainWider) add('P0', `${label}: the side rail is not narrower than the column it sits beside`)
+    if (product.border === '0px') add('P0', `${label}: the side rail has no border separating it from the column beside it`)
   }
-  // What it catches: a short plain list.
-  const catches = await evaluate(`[...document.querySelectorAll('main.page ul.catch li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
-  if (catches.join('|') !== HOME.catches.join('|')) add('P0', `${label}: the examples list ${catches.length} item(s) that differ from pages.home.catches`)
+  // The baseline, in the rail: what the term means, whose the default is, and
+  // its aim — with no claim that Microsoft endorses or certifies any of it.
+  const rail = await evaluate(`(() => { const s = document.querySelector('main.page aside.side'); return s ? (s.innerText || '').replace(/\\s+/g, ' ').trim() : null })()`)
+  if (!rail) add('P0', `${label}: no baseline rail`)
+  else {
+    for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) if (!rail.includes(fact)) add('P0', `${label}: the baseline rail does not name ${fact}`)
+    if (!/^A baseline is /.test(HOME.baseline)) add('P0', `${label}: the baseline rail does not explain what a baseline is before using the term`)
+    if (/Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie/i.test(rail)) add('P0', `${label}: the baseline rail claims a Microsoft endorsement: "${rail.slice(0, 100)}"`)
+  }
+  // What it catches: a few labelled rows, the kind of problem then the example.
+  const catches = await evaluate(`[...document.querySelectorAll('main.page .catches .catch')].map((c) => ({ label: ((c.querySelector('b') || {}).textContent || '').trim(), text: ((c.querySelector('span') || {}).textContent || '').replace(/\\s+/g, ' ').trim() }))`)
+  if (JSON.stringify(catches) !== JSON.stringify(HOME.catches.map((c) => ({ label: c.label, text: c.text })))) add('P0', `${label}: the examples list ${catches.length} row(s) that differ from pages.home.catches`)
   if (catches.length > 6) add('P0', `${label}: ${catches.length} examples; a few, not a wall`)
   // Trust: read-only, browser-local, public source — each specific enough to check.
-  const trust = await evaluate(`(() => { const dl = document.querySelector('main.page dl.trust'); if (!dl) return null; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { rows: [...dl.querySelectorAll('dt')].map((dt, i) => ({ title: tx(dt), body: tx(dl.querySelectorAll('dd')[i]) })), links: [...dl.querySelectorAll('a')].map((a) => a.getAttribute('href')) } })()`)
-  if (!trust) add('P0', `${label}: no trust section`)
+  const trust = await evaluate(`(() => { const t = document.querySelector('main.page .trust'); if (!t) return null; const tx = (e) => ((e || {}).textContent || '').replace(/\\s+/g, ' ').trim(); return { rows: [...t.querySelectorAll(':scope > span')].map((s) => ({ title: tx(s.querySelector('strong')), body: tx(s) })), links: [...t.querySelectorAll('a')].map((a) => a.getAttribute('href')) } })()`)
+  if (!trust) add('P0', `${label}: no trust row`)
   else {
-    if (trust.rows.length !== HOME.trust.length) add('P0', `${label}: the trust section has ${trust.rows.length} claims; ${HOME.trust.length}`)
-    const said = trust.rows.map((r) => `${r.title} ${r.body}`).join(' ')
-    if (!/create, change or delete|read-only/i.test(said)) add('P0', `${label}: the trust section does not say IAMAI is read-only in terms anyone can check`)
-    if (!/browser/.test(said)) add('P0', `${label}: the trust section does not say the tenant's data stays in the browser`)
-    if (!trust.links.some((h) => /github\.com/.test(h || ''))) add('P0', `${label}: the trust section does not link the public source`)
-    if (/privacy first|secure by design|your data is safe/i.test(said)) add('P0', `${label}: the trust section trades a specific claim for a slogan: "${said.slice(0, 80)}"`)
+    if (trust.rows.length !== HOME.trust.length) add('P0', `${label}: the trust row has ${trust.rows.length} claims; ${HOME.trust.length}`)
+    const said = trust.rows.map((r) => r.body).join(' ')
+    if (!/create, change or delete|read-only/i.test(said)) add('P0', `${label}: the trust row does not say IAMAI is read-only in terms anyone can check`)
+    if (!/browser/.test(said)) add('P0', `${label}: the trust row does not say the tenant's data stays in the browser`)
+    if (!trust.links.some((h) => /github\.com/.test(h || ''))) add('P0', `${label}: the trust row does not link the public source`)
+    if (/privacy first|secure by design|your data is safe/i.test(said)) add('P0', `${label}: the trust row trades a specific claim for a slogan: "${said.slice(0, 80)}"`)
+    if (/ISO ?27001|SOC ?2|GDPR compliant|HIPAA|certified|uptime|SLA|trusted by/i.test(said)) add('P0', `${label}: the trust row makes a guarantee nothing in the product backs: "${said.slice(0, 80)}"`)
     if (/Cloudflare/.test(said)) add('P0', `${label}: the hosting sentence is How's, said once, not repeated here`)
   }
-  // About: the paragraph and its three buttons, secondary then tertiary.
-  const about = await evaluate(`(() => { const s = document.querySelector('main.page section.band[aria-labelledby="about-heading"]'); if (!s) return null; const w = ${WEIGHT}; return { body: ((s.querySelector('p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), buttons: [...s.querySelectorAll('.actions a.btn')].map((b) => ({ t: (b.textContent || '').trim(), w: w(b), href: b.getAttribute('href') })) } })()`)
+  // About: the paragraph, and nothing invented beside it. The public links are
+  // the footer's; About is not a second call to action.
+  const about = await evaluate(`(() => { const s = document.querySelector('main.page section.band[aria-labelledby="about-heading"]'); if (!s) return null; return { body: ((s.querySelector('.about p') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), links: s.querySelectorAll('a').length } })()`)
   if (!about) add('P0', `${label}: no About section`)
   else {
     if (about.body !== HOME.about) add('P0', `${label}: About reads "${about.body.slice(0, 60)}"; pages.home.about`)
-    const wantAbout = HOME.aboutLinks.map((l, i) => ({ t: l.text, w: i === 0 ? 'secondary' : 'tertiary', href: l.href }))
-    if (about.buttons.length !== 3 || JSON.stringify(about.buttons) !== JSON.stringify(wantAbout)) add('P0', `${label}: About's buttons are ${about.buttons.map((b) => `${b.t} (${b.w})`).join(', ') || 'missing'}; ${wantAbout.map((b) => `${b.t} (${b.w})`).join(', ')}`)
+    if (about.links > 0) add('P0', `${label}: About carries ${about.links} link(s); the approved pack keeps the public links in the footer`)
   }
   // Nothing is collected: the dropped opt-in has no endpoint behind it.
   const fields = await evaluate(`document.querySelectorAll('form, input, textarea, select').length`)
   if (fields > 0) add('P0', `${label}: ${fields} form control(s) on a page that collects nothing`)
-  // The footer is the app's: pages.footer's links, joined with a bar.
-  const footer = await evaluate(`(() => { const f = document.querySelector('footer.app'); return f ? { text: (f.innerText || '').replace(/\\s+/g, ' ').trim(), links: [...f.querySelectorAll('a')].map((a) => ({ text: (a.textContent || '').trim(), href: a.getAttribute('href') })) } : null })()`)
+  // The footer: the product's name on the left, the app's public links on the
+  // right (pages.footer, less the one that points at this page).
+  const footer = await evaluate(`(() => { const f = document.querySelector('footer.app'); return f ? { first: ((f.firstElementChild || {}).textContent || '').trim(), links: [...f.querySelectorAll('a')].map((a) => ({ text: (a.textContent || '').trim(), href: a.getAttribute('href') })), between: getComputedStyle(f).justifyContent } : null })()`)
   if (!footer) add('P0', `${label}: no footer`)
   else {
-    if (footer.text !== HOME_FOOTER.map((l) => l.text).join(' | ')) add('P0', `${label}: the footer reads "${footer.text}"; the app's ${HOME_FOOTER.map((l) => l.text).join(' | ')}`)
-    if (JSON.stringify(footer.links) !== JSON.stringify(HOME_FOOTER)) add('P0', `${label}: the footer's links differ from pages.footer`)
+    if (footer.first !== HOME.brand) add('P0', `${label}: the footer opens with "${footer.first}"; the product's name, ${HOME.brand}`)
+    if (JSON.stringify(footer.links) !== JSON.stringify(HOME_FOOTER_LINKS)) add('P0', `${label}: the footer's links differ from pages.footer`)
+    if (footer.between !== 'space-between') add('P0', `${label}: the footer's name and links are not at the two ends (justify-content: ${footer.between})`)
   }
-  // The header: the brand, and the theme control as text (no button face), in both themes.
-  const brand = await evaluate(`(() => { const a = document.querySelector('header.app a.wordmark'); return a ? { t: (a.textContent || '').trim(), href: a.getAttribute('href') } : null })()`)
-  if (!brand || brand.t !== HOME.brand || brand.href !== '/') add('P0', `${label}: the wordmark is ${brand ? `"${brand.t}" → ${brand.href}` : 'missing'}; ${HOME.brand} → /`)
+  // The header's theme control is text, not a button face, in both themes.
   const faces = await evaluate(`[...document.querySelectorAll('header.app .right button')].map((b) => { const cs = getComputedStyle(b); return { t: (b.textContent || '').trim(), border: cs.borderTopWidth, bg: cs.backgroundColor, pad: cs.paddingLeft } })`)
   if (!faces.some((f) => f.t === HOME_SHELL.darkTheme || f.t === HOME_SHELL.lightTheme)) add('P0', `${label}: no theme control in the header with the app's labels`)
   for (const f of faces) if (f.border !== '0px' || !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(f.bg) || f.pad !== '0px') add('P0', `${label}: the header's ${f.t} control has a button face (border ${f.border}, background ${f.bg}, padding ${f.pad}); text`)
@@ -1774,6 +1823,27 @@ async function walkHome(url) {
   const strays = shown.filter((s) => !allowed.has(s))
   if (strays.length > 0) add('P0', `${label}: string(s) on the page that are not in content.json: ${strays.map((s) => `"${s.slice(0, 40)}"`).join(', ')}`)
   for (const s of homeLeaves(HOME)) if (!shown.includes(s) && s !== HOME.metaTitle && s !== HOME.metaDescription) add('P0', `${label}: pages.home string not on the page: "${s.slice(0, 60)}"`)
+  // The pack's two breakpoints, as the page renders them: at 760 the product
+  // and its rail become one column and the rail's border moves to the top; at
+  // 560 the gutters tighten and one supporting header link stands down. The way
+  // into the product is on screen at every width, and nothing overflows.
+  for (const width of [768, 390]) {
+    const ndir = join(OUT, 'home', String(width))
+    mkdirSync(ndir, { recursive: true })
+    await setWidth(width)
+    await sleep(300)
+    const narrow = await evaluate(`(() => { const p = document.querySelector('main.page .product'); const side = document.querySelector('main.page aside.side'); const cs = getComputedStyle(p); const ss = getComputedStyle(side); const enter = [...document.querySelectorAll('a[href^="/${TOOL_PATH}/#/connect"]')].filter((a) => getComputedStyle(a).display !== 'none'); return { columns: cs.gridTemplateColumns.split(' ').length, leftBorder: ss.borderLeftWidth, topBorder: ss.borderTopWidth, catches: getComputedStyle(document.querySelector('main.page .catch')).gridTemplateColumns.split(' ').length, enter: enter.length, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth } })()`)
+    await shot(join(ndir, 'home.png'))
+    if (narrow.overflow > 1) add('P0', `home @${width} /: the page is ${narrow.overflow}px wider than the viewport`)
+    if (narrow.enter < 1) add('P0', `home @${width} /: no way into the product is on screen`)
+    if (width <= 760) {
+      if (narrow.columns !== 1) add('P0', `home @${width} /: the product section is still ${narrow.columns} columns; the approved pack collapses it at 760`)
+      if (narrow.leftBorder !== '0px' || narrow.topBorder === '0px') add('P0', `home @${width} /: the rail's border did not move from its left to its top (left ${narrow.leftBorder}, top ${narrow.topBorder})`)
+      if (narrow.catches !== 1) add('P0', `home @${width} /: a catch is still ${narrow.catches} columns; the approved pack stacks it at 760`)
+    }
+  }
+  await setWidth(1280)
+  await sleep(200)
   return [{ width: 1280, route: '', words: text.split(/\s+/).filter(Boolean).length, rows: bands.length }]
 }
 let homeSummary = null

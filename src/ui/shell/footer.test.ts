@@ -21,13 +21,18 @@ test('the footer has four links: IAMAI Home (a link), LinkedIn, GitHub, feedback
   const shell = readFileSync('src/ui/shell/AppShell.tsx', 'utf8')
   assert.match(shell, /footer\.links\.map\(/)
   assert.match(shell, /startsWith\('mailto:'\) \? \(\s*<a href=\{l\.href\}>/)
-  // The home page renders the same four, joined by |.
+  // The home page renders the same links, in the arrangement its approved pack
+  // draws (task 038): the product's name on the left, the public links on the
+  // right. The link that points at this page IS the name on the left, so it is
+  // not repeated as a link to itself — every destination is still reachable.
   const html = renderHomeHtml()
   const footer = html.slice(html.indexOf('<footer class="app">'), html.indexOf('</footer>'))
-  assert.equal((footer.match(/<a /g) ?? []).length, 4, 'four links on the home page')
-  assert.ok(footer.includes('<a href="https://getiamai.com/">IAMAI Home</a>'), 'IAMAI Home is a link')
+  assert.equal((footer.match(/<a /g) ?? []).length, 3, 'the three public links on the home page')
+  assert.ok(footer.includes('<span>IAMAI</span>'), "the product's name stands where the link to this page would be")
+  assert.ok(!footer.includes('href="https://getiamai.com/"'), 'the home page does not link to itself in its own footer')
   assert.ok(footer.includes('<a href="mailto:feedback@getiamai.com">feedback@getiamai.com</a>'), 'the feedback address is a mail link, in place')
-  assert.equal((footer.match(/ \| /g) ?? []).length, 3)
+  for (const l of FOOTER.slice(1)) assert.ok(footer.includes(`>${l.text}</a>`), `${l.text} is on the home page`)
+  assert.equal((footer.match(/ · /g) ?? []).length, 2)
 })
 
 test('"people" on Today, the Plan and Connect; "user" only for an Entra user object', () => {

@@ -612,27 +612,35 @@ export function renderPages(): string {
     // then five sections — what it does, the standard it plans towards, what it
     // catches, what it does with your tenant, About.
     out.push(
+      // The home page as task 038 restored it: the public header's links, the
+      // hero with its meta row, what it does beside the baseline rail, the
+      // labelled catches, the trust row, About, and the footer's name.
       '<section class="page"><h3>Home page — getiamai.com</h3>' +
+        `<p class="sub">${esc(H.brand)} · ${esc(H.navHow)} · ${esc((H.navSource as { text: string }).text)} · ${esc(H.open)}</p>` +
+        `<p class="sub">${esc(H.eyebrow)}</p>` +
         `<h2 class="h1">${esc(H.h1)}</h2>` +
         p(H.siteLine, {}) +
         btn(H.open, true) +
         btn(H.demo) +
-        p(H.heroNote, {}, 'sub') +
+        `<p class="sub">${(H.heroMeta as string[]).map((m) => esc(m)).join(' · ')}</p>` +
         h(H.workLabel) +
-        ul((H.work as { verb: string; text: string }[]).map((b) => `${b.verb} ${b.text}`), {}) +
+        `<h2>${esc(H.workHeading)}</h2>` +
+        p(H.workLead, {}) +
+        ul((H.work as { verb: string; text: string }[]).map((b) => `${b.verb} — ${b.text}`), {}) +
         h(H.baselineLabel) +
+        `<p><b>${esc(H.baselineName)}</b></p>` +
         p(H.baseline, {}) +
         p(H.baselineGoal, {}) +
         p(H.baselineNote, {}, 'sub') +
         h(H.catchesLabel) +
-        ul(H.catches, {}) +
+        `<h2>${esc(H.catchesHeading)}</h2>` +
+        ul((H.catches as { label: string; text: string }[]).map((c) => `${c.label} — ${c.text}`), {}) +
         h(H.trustLabel) +
+        `<h2>${esc(H.trustHeading)}</h2>` +
         (H.trust as { title: string; body: string; link?: string }[]).map((c) => `<p><b>${esc(c.title)}</b> ${esc(c.body)}${c.link ? ` <a>${esc(c.link)}</a>` : ''}</p>`).join('') +
         h(H.aboutLabel) +
+        `<h2>${esc(H.aboutHeading)}</h2>` +
         p(H.about, {}) +
-        '<p>' +
-        (H.aboutLinks as { text: string }[]).map((l) => btn(l.text)).join(' ') +
-        '</p>' +
         `<p class="sub">${esc(H.brand)}</p>` +
         `<p class="sub">Meta description: ${esc(H.metaDescription)}</p></section>`,
     )
