@@ -157,7 +157,7 @@
     "provenance": "docs/brand/font-provenance.md",
     "appliedToProduction": true,
     "appliedBy": "030-theme-typography-shell-foundation",
-    "appliedNote": "Task 030 wired the three families and the interface scale, and added the display ramp read out of the four approved packs (src/ui/tokens.ts DISPLAY). Its correction staged IBM Plex Serif SemiBold and Bold and normalised the Serif family onto @ibm/plex-serif@1.1.0, so every role weight above is set in a real face: ROLE_WEIGHTS.display is the approved 700, not a browser-synthesised fake bold. src/ui/tokens.test.ts fails if a role's weight has no staged face. What typography does NOT yet do is compose a page: the sizes production sets are the interface scale, and a surface expresses the display ramp when its restoration pack (031-038) lands."
+    "appliedNote": "Task 030 wired the three families and the interface scale, and added the display ramp read out of the four approved packs (src/ui/tokens.ts DISPLAY). Its correction staged IBM Plex Serif SemiBold and Bold and normalised the Serif family onto @ibm/plex-serif@1.1.0, so every role weight above is set in a real face: ROLE_WEIGHTS.display is the approved 700, not a browser-synthesised fake bold. src/ui/tokens.test.ts fails if a role's weight has no staged face. Composing a page was left to the restoration packs: at task 030 the sizes production set were the interface scale alone, and a surface expressed the display ramp only once its own pack restored it. Packs 031-040 did that for every surface, and `production.pageCompositionRestored` below is where that fact is recorded — this note is task 030's history and does not hold a second copy of it."
   },
   "ui": {
     "icons": {

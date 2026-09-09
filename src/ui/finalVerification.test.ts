@@ -122,6 +122,48 @@ test('the design manifest and the brand manifest tell the same story about what 
   }
 })
 
+test('neither machine authority still describes the restoration packs as work to come', () => {
+  // The flags agreeing is not enough on its own. Task 041 set
+  // `pageCompositionRestored: true` while the brand manifest's own
+  // `typography.appliedNote` still read "What typography does NOT yet do is
+  // compose a page ... when its restoration pack (031-038) lands" — one file
+  // answering the same question twice, in two tenses, with the prose half
+  // telling a later engineer the program is outstanding. A machine authority
+  // that says a landed pack is future work is the exact defect this task was
+  // opened to close, so the prose in these two files is held to their flags.
+  const strings = (v: unknown, out: string[] = []): string[] => {
+    if (typeof v === 'string') out.push(v)
+    else if (Array.isArray(v)) for (const x of v) strings(x, out)
+    else if (v && typeof v === 'object') for (const x of Object.values(v)) strings(x, out)
+    return out
+  }
+
+  // Present-tense or future-tense claims that page composition, the display
+  // ramp or a restoration pack is still to come. Past-tense history is what
+  // these notes are FOR and is deliberately not matched: "packs 031-040 did
+  // that" and "expressed the display ramp only once its own pack restored it"
+  // both describe what happened and both pass.
+  const PENDING = [
+    /\bdoes not yet\b/i,
+    /\b(is|are|has|have) not yet\b/i,
+    /\bnot yet (applied|restored|composed|landed|expressed)\b/i,
+    /\bwhen (its|their|the) restoration pack\b/i,
+    /restoration pack[^.]*\b(lands|will)\b/i,
+    /\b(page composition|display ramp)[^.]*\b(pending|outstanding|still to|remains? to)\b/i,
+  ]
+
+  assert.equal(BRAND.production.pageCompositionRestored, true, 'this guard reads the flag it holds the prose to')
+  for (const file of ['docs/brand/brand-manifest.json', 'docs/design/approved/manifest.json']) {
+    const all = strings(JSON.parse(read(file)))
+    assert.ok(all.length > 30, `only ${all.length} strings walked in ${file} — the walk is broken, not the file`)
+    for (const value of all) {
+      for (const pattern of PENDING) {
+        assert.ok(!pattern.test(value), `${file} still calls restoration future work (${pattern}): ${value.slice(0, 160)}`)
+      }
+    }
+  }
+})
+
 // ---------------------------------------------- 3. the report is the artifact
 
 test('the final verification report exists and names its authority and its evidence', () => {

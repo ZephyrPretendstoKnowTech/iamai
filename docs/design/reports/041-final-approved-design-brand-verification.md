@@ -337,6 +337,18 @@ manifest ever tell different stories again.
 
 **Classification.** `LANDED REPO FACT` (the restoration landed; the record did not follow).
 
+**Correction 1 (after review).** The fix above set the two flags and left one of the same two
+files answering the question twice: `brand-manifest.json`'s `typography.appliedNote` still read
+"What typography does NOT yet do is compose a page … a surface expresses the display ramp when
+its restoration pack (031-038) lands", in the present tense, beside the
+`pageCompositionRestored: true` this task had just written. A reader of the machine brand
+authority could still conclude the display ramp was unapplied surface by surface. The note now
+tells task 030's history in the past tense and defers the current state to the flag rather than
+restating it, and a new guard in `finalVerification.test.ts` sweeps every string in both
+machine authorities for present- or future-tense claims that page composition, the display ramp
+or a restoration pack is still to come. The flags agreeing with each other was not enough while
+prose in the same file disagreed with both.
+
 ### Finding 2 — Connect's ready destination compresses the pack's eyebrow into its meta line
 
 **Finding.** The pack's Plan-ready destination is eyebrow (`PLAN READY`) / display heading /
