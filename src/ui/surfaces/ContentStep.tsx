@@ -52,8 +52,8 @@ import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
-import { stepContract } from './stepContract.ts'
-import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepSection, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
+import { CONTRACT, stepContract } from './stepContract.ts'
+import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, hasRail } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
@@ -82,6 +82,9 @@ function offersDoesntApply(cs: Record<string, any>, step: Step): boolean {
   return true
 }
 const SHARED = content.shared as Record<string, string>
+
+/** The opened step's eyebrow, one label per steps[] kind (pages.app.plan.stepContract.kind). */
+const KINDS: Record<string, string> = CONTRACT.kind
 
 /** One who block on the default step: the sentence, and its names under it when they are short enough to read. */
 function WhoBlockView({ block }: { block: WhoBlock }) {
@@ -203,27 +206,50 @@ export function ContentStep({
   const { inline: whoInline, held: whoHeld } = whoBlocks(who, ex as Record<string, unknown>)
   const lead = whoLeadLine(who, ex as Record<string, unknown>, [...whoInline, ...whoHeld])
   const showWho = lead !== null || whoInline.length > 0 || (contract.who !== null && !contract.who.known)
+  // Whether the contract has anything for the rail. One predicate, read here and
+  // by the rail itself, so the frame cannot leave a 290px column beside nothing.
+  const rail = hasRail(contract)
 
   return (
-    <div className="step-body">
-      <p className="line">
-        <span className="step-title">{title}</span>
-      </p>
-      <StepState contract={contract} />
-      <PolicyMembers members={contract.members} />
-      <Line s={cs.changeLine} ex={ex} cls="reason" />
+    // The opened step, as the approved Plan pack draws it (task 034;
+    // docs/design/approved/plan-step-v1.html `.step`): one frame attached under
+    // the roadmap row that opened it — the row is its top edge, so the frame
+    // carries no top border of its own and rounds off only the bottom — with the
+    // head above and the main column and its right rail below.
+    <article className="step panel panel-key">
+      <StepHead
+        eyebrow={KINDS[String(cs.kind ?? '')] ?? null}
+        title={title}
+        sub={
+          <>
+            {/* The one supporting line the step already carried under its
+                title: what this change is, and the step it is done with. */}
+            <Line s={cs.changeLine} ex={ex} cls="step-sub" />
+            <Line s={cs.partner} ex={ex} cls="step-sub partner" />
+          </>
+        }
+        word={contract.state.word}
+        tone={contract.state.tone}
+        track={contract.track}
+      >
+        {/* Where the step is on both axes, and what happens next: the pack's
+            track caption, above the track it captions. */}
+        <StepState contract={contract} />
+        <PolicyMembers members={contract.members} />
+      </StepHead>
+      <div className={`step-body${rail ? ' has-rail' : ''}`}>
+        <div className="step-main">
       {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
           the step says so and offers no instructions. The words belong to the
           reviewed source policy the step's own state names, never to the goal,
           so whichever goal a baseline hands that source says the same thing
           about it. They are the content file's; nothing here composes them. */}
       {conflictWords && <p className="reason conflict"><T s={conflictWords} ex={ex} /></p>}
-      <Line s={cs.partner} ex={ex} cls="reason partner" />
 
       {/* The contract's Why: the step's own sentence where the content file has
           one, and the engine's where it does not (a validation blocker states how
           many of its checks are outstanding, and that changes between scans). */}
-      <h3>{HEAD.why}</h3>
+      <h4>{HEAD.why}</h4>
       <p>
         {contract.why}{' '}
         {learn.url && (
@@ -237,14 +263,14 @@ export function ContentStep({
 
       {/* Who this touches: the counts and the consequences that decide the next
           action. A list longer than NAMES_INLINE names is in More. */}
-      {showWho && <h3>{HEAD.who}</h3>}
+      {showWho && <h4>{HEAD.who}</h4>}
       {lead && <p className="line">{lead}</p>}
       {whoInline.map((b) => <WhoBlockView key={b.key} block={b} />)}
       {/* Foundation A settled the reach and could not: no count, no names, and
           one line saying so rather than the goal's people standing in. */}
       {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
 
-      <h3>{HEAD.whatToDo}</h3>
+      <h4>{HEAD.whatToDo}</h4>
       {/* The one action, always. Where nothing overrules the lifecycle this is the
           step's own lead; where an authority does — a policy the plan may not
           write, a goal already in place, a question waiting on a person — it is
@@ -310,7 +336,7 @@ export function ContentStep({
 
       {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
         <>
-          <h3>{HEAD.dates}</h3>
+          <h4>{HEAD.dates}</h4>
           <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
         </>
       )}
@@ -351,7 +377,14 @@ export function ContentStep({
           Close
         </Button>
       </p>
-    </div>
+        </div>
+        {/* The rail belongs to this step, not to the page: it sits inside the
+            frame, beside the main column at full width and under it once the
+            pack's own breakpoint collapses the body to one column. Where the
+            contract has nothing for it, there is no rail and no empty track. */}
+        {rail && <StepRail contract={contract} />}
+      </div>
+    </article>
   )
 }
 
@@ -548,7 +581,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
       </StepSection>
       {risks.length > 0 && (
         <>
-          <h3>{HEAD.risks}</h3>
+          <h4>{HEAD.risks}</h4>
           {/* The items that apply here first, marked; the rest under Also possible.
               When none applies the rest stand under the heading, never an empty list. */}
           {applies.length > 0 && <ul className="sections">{applies.map((r, i) => <li key={i}><T s={r.text} ex={ex} /> <span className="chip">applies here</span></li>)}</ul>}
@@ -561,7 +594,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           a changed one has its settings put back (stepExport.ts ifWrongLineFor). */}
       {ifWrong && whole(ifWrong, ex) && (
         <>
-          <h3>{HEAD.ifWrong}</h3>
+          <h4>{HEAD.ifWrong}</h4>
           <p className="line"><T s={ifWrong} ex={ex} /></p>
         </>
       )}
@@ -570,13 +603,13 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           and it is here whole rather than half of it above. */}
       {cs.lockedOut && (
         <>
-          <h3>{cs.lockedOut.label}</h3>
+          <h4>{cs.lockedOut.label}</h4>
           <ul className="sections">{(cs.lockedOut.steps || []).map((x: unknown, i: number) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
         </>
       )}
       {comms && commsText && (
         <>
-          <h3>{HEAD.comms}</h3>
+          <h4>{HEAD.comms}</h4>
           <div className="copy-box">
             <Button variant="secondary" onClick={() => copy('comms', commsText)}>
               {copied === 'comms' ? 'Copied' : 'Copy'}
@@ -591,14 +624,14 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
       )}
       {Array.isArray(more.helpDesk) && (more.helpDesk as unknown[]).filter((x) => whole(x, ex)).length > 0 && (
         <>
-          <h3>{HEAD.helpDesk}</h3>
+          <h4>{HEAD.helpDesk}</h4>
           <ul className="sections">{(more.helpDesk as unknown[]).filter((x) => whole(x, ex)).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
           <p className="reason adapt">{ADAPT_LINE}</p>
         </>
       )}
       {managerText(cs, ex as Record<string, unknown>) !== null && (
         <>
-          <h3>{HEAD.manager}</h3>
+          <h4>{HEAD.manager}</h4>
           {/* The three sentences, and the clause the records earn (managerNone under its applies, E9). */}
           <p className="reason">{managerText(cs, ex as Record<string, unknown>)}</p>
           <p className="actions"><Button variant="secondary" onClick={() => copy('manager', managerText(cs, ex as Record<string, unknown>) ?? '')}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>

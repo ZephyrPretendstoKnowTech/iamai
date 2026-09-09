@@ -271,7 +271,7 @@ const extractIn = (rootExpr, excludeSel = '') => `(() => {
   // An empty section: a heading with nothing but another heading (or the end) after it.
   const emptySections = []
   const isEmptyList = (n) => n && /^(UL|OL)$/.test(n.tagName) && n.querySelectorAll('li').length === 0
-  for (const h of [...root.querySelectorAll('h3')].filter(vis)) {
+  for (const h of [...root.querySelectorAll('h3, h4')].filter(vis).filter((e) => !e.classList.contains('step-title'))) {
     let n = h.nextElementSibling
     while (n && (((n.tagName === 'P' || n.tagName === 'DIV') && n.classList.contains('actions')) || isEmptyList(n))) n = n.nextElementSibling
     if (!n || /^H[1-4]$/.test(n.tagName)) emptySections.push(txt(h))

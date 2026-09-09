@@ -5,6 +5,7 @@
 //   node scripts/render-design.mjs --canonical     the four approved HTML packs
 //   node scripts/render-design.mjs --production    the built application shell
 //   node scripts/render-design.mjs --list          what it would write, no browser
+//   node scripts/render-design.mjs --production --only plan,plan-step   named shots only
 //
 // Why this exists. Task 028 established the four approved HTML packs as the
 // application-design authority, and recorded scripts/walk.mjs as the mechanism
@@ -70,6 +71,14 @@ export function expectedOutputs() {
   return canonicalTargets().flatMap((t) => WIDTHS.map((w) => `${t.out}/${w}.png`))
 }
 
+/**
+ * `--only a,b` narrows a production run to named shots. A restoration pack
+ * iterates on one surface and re-shooting all of them takes minutes; the
+ * evidence a task commits is still a full run, so the two sets it compares were
+ * shot in the same order.
+ */
+const ONLY = process.argv.indexOf('--only') !== -1 ? process.argv[process.argv.indexOf('--only') + 1] : null
+
 /** The routes and themes the built application is shot in (task 030 Part Q). */
 const PRODUCTION_SHOTS = [
   { name: 'connect', hash: '#/connect' },
@@ -80,6 +89,22 @@ const PRODUCTION_SHOTS = [
   // signed in.
   { name: 'connect-signedout', hash: '#/connect', noDemo: true },
   { name: 'plan', hash: '#/plan' },
+  // The Plan with one step open. The approved Plan pack's subject is the
+  // EXPANDED step — the row it attaches to, the head, the lifecycle track, the
+  // main column and the right rail — and a collapsed-roadmap plate cannot be
+  // evidence for any of it (task 034). The step is opened the way an operator
+  // opens one: the first roadmap row is clicked.
+  { name: 'plan-step', hash: '#/plan', after: `(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()` },
+  // And a step that is actually on the rollout lifecycle, so the plate carries
+  // the track and the rail as well as the frame. The first row that produces a
+  // track is used rather than a step named here, so the evidence does not break
+  // when the demo fixture changes. React renders on its own schedule, so each
+  // click is given time to land before the next row is tried.
+  {
+    name: 'plan-step-lifecycle',
+    hash: '#/plan',
+    after: `(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (const r of document.querySelectorAll('main.page .plan-row')) { r.click(); await wait(180); if (document.querySelector('main.page .step .track')) return true; r.click(); await wait(60) } return false })()`,
+  },
   { name: 'readiness', hash: '#/readiness' },
   // Export is governed by no pack, and it is the one surface that renders an
   // attention notice unconditionally. Task 031 added it because a renderer that
@@ -182,7 +207,7 @@ await send('Page.enable')
  * One deterministic plate: a fixed viewport width, the document's own height
  * clipped to MAX_HEIGHT, fonts settled before the shutter, device scale 1.
  */
-async function shoot(url, out, width, { before = null } = {}) {
+async function shoot(url, out, width, { before = null, after = null } = {}) {
   await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false })
   await send('Page.navigate', { url })
   await sleep(900)
@@ -194,6 +219,13 @@ async function shoot(url, out, width, { before = null } = {}) {
     await sleep(900)
   }
   await sleep(400)
+  if (after) {
+    // A shot of a state the operator reaches by acting — opening a Plan step —
+    // rather than by a URL. It runs after the page has settled and before the
+    // shutter, and it changes nothing outside the page.
+    await send('Runtime.evaluate', { expression: after, awaitPromise: true })
+    await sleep(700)
+  }
   await send('Runtime.evaluate', { expression: 'document.fonts.ready', awaitPromise: true })
   await sleep(200)
   const measured = await send('Runtime.evaluate', {
@@ -225,11 +257,12 @@ if (wantProduction) {
     // The demo tenant, so the shell renders with a scan behind it and the tabs
     // are live. No real tenant is ever read by this script.
     for (const theme of THEMES) {
-      for (const shot of PRODUCTION_SHOTS) {
+      for (const shot of PRODUCTION_SHOTS.filter((s) => ONLY === null || ONLY.split(',').includes(s.name))) {
         const url = `http://127.0.0.1:${port}/planner/${shot.noDemo ? '' : '?demo=1'}${shot.hash}`
         for (const width of WIDTHS) {
           await shoot(url, `${OUT_PRODUCTION}/${shot.name}-${theme}-${width}.png`, width, {
             before: `document.documentElement.dataset.theme = ${JSON.stringify(theme)}; localStorage.setItem('iamai-theme', ${JSON.stringify(theme)})`,
+            after: shot.after ?? null,
           })
         }
       }

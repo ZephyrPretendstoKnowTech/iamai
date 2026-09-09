@@ -167,9 +167,12 @@ test('the Plan draws a step body one way, through the Step Contract components',
   // The two of them and nothing else: a third `step-body` is a second renderer.
   const bodies = ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx']
   for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/PrintPlan.tsx', 'src/ui/surfaces/Export.tsx', 'src/ui/surfaces/PlanFooter.tsx']) {
-    assert.doesNotMatch(readFileSync(file, 'utf8'), /className="step-body"/, `${file} builds a step body of its own`)
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /className=[{"]`?step-body/, `${file} builds a step body of its own`)
   }
-  for (const file of bodies) assert.match(readFileSync(file, 'utf8'), /className="step-body"/, `${file} is a step body`)
+  // Task 034 gave the body the approved frame's two columns, so the class the
+  // step carries is `step-body` plus the rail marker where the contract has one
+  // for it. The claim is unchanged: two files draw a step body and no other may.
+  for (const file of bodies) assert.match(readFileSync(file, 'utf8'), /className=[{"]`?step-body/, `${file} is a step body`)
 })
 
 test('a section heading is written in one place and read everywhere', () => {

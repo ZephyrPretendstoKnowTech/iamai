@@ -12,9 +12,9 @@ import { useState } from 'react'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { app } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
-import { Button, Status } from '../components/index.ts'
+import { Button } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import { DoneWhen, StepSection } from './StepSections.tsx'
+import { DoneWhen, StepHead, StepSection } from './StepSections.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 import type { NotAssessedNotes } from './cleanupExport.ts'
@@ -52,10 +52,15 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   const doneWhen = entry.doneWhen.filter(whole)
   const policies: string[] = row.kind === 'notAssessed' ? row.lists.policies ?? [] : []
   return (
-    <div className="step-body">
-      <p className="line">
-        <span className="step-title">{entry.title}</span> <Status tone={status.tone}>{status.word}</Status>
-      </p>
+    // The same frame the Plan draws for a step (task 034): attached under the row
+    // that opened it, its head above the body. A Cleanup row is not a policy,
+    // has no lifecycle to be at and no milestone or implementation to summarise,
+    // so it draws no track and no rail — the frame is the same, the step
+    // activates less of it.
+    <article className="step panel panel-key">
+      <StepHead title={entry.title} word={status.word} tone={status.tone} />
+      <div className="step-body">
+        <div className="step-main">
       {/* The same sections, in the same order, under the same headings as a step
           (StepSections.tsx, stepHeadings.ts). A Cleanup row is not a policy and
           has no lifecycle to be at, so it activates fewer of them; it does not
@@ -108,6 +113,8 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           )}
         </p>
       )}
-    </div>
+        </div>
+      </div>
+    </article>
   )
 }
