@@ -229,10 +229,24 @@ test('a pattern only one pack draws did not become a global role', () => {
   assert.match(ruleBody(plan, '.callout', { solo: true })!, /border-left:\s*3px/, "the Plan's left-edge callout is gone")
   assert.doesNotMatch(ruleBody(app, '.callout', { solo: true })!, /border-left/, "the Plan's left-edge callout must not become the shared one")
 
-  // The four packs set four different row grids. None of them may appear in
-  // the shared layer: that is page anatomy, and it is packs 032-038's.
+  // The four packs set four different row grids. None of them may appear in the
+  // SHARED layer: that is page anatomy, and it belongs to the surface that owns
+  // it. Task 031 wrote this as "nowhere in app.css" because no restoration pack
+  // had landed yet and app.css held no surface anatomy from a pack. Task 032
+  // landed Connect's 46/1fr/auto step, and app.css is where a surface's own CSS
+  // lives in this product — so the check is now the thing it always meant: not
+  // in the shared roles block, and only ever under its own surface's selector.
+  const sharedRoles = app.slice(app.indexOf('shared approved-design roles (task 031)'), app.indexOf('/* ================= a surface: prose and rows'))
+  assert.ok(sharedRoles.length > 500, 'the shared roles block could not be located')
   for (const grid of ['126px', '46px minmax', 'minmax(210px', '78px 1fr', '160px 1fr']) {
-    assert.ok(!app.includes(grid), `app.css copied a pack's column grid (${grid}) into the shared layer`)
+    assert.ok(!sharedRoles.includes(grid), `the shared roles block copied a pack's column grid (${grid})`)
+  }
+  // And where a grid IS in app.css, it is on the surface that draws it.
+  const stripped = app.replace(/\/\*[\s\S]*?\*\//g, '')
+  for (const [grid, owner] of [['46px minmax', /^\.connect-/]] as const) {
+    const carriers = [...stripped.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((m) => m[2].includes(grid)).map((m) => m[1].replace(/\s+/g, ' ').trim())
+    assert.ok(carriers.length > 0, `${grid} is in no rule in app.css`)
+    for (const sel of carriers) assert.match(sel, owner, `${grid} is set on "${sel}", which is not the surface that owns it`)
   }
 })
 

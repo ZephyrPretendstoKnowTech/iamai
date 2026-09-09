@@ -525,7 +525,7 @@ async function walkFixture(fx) {
         await evaluate(`sessionStorage.removeItem('iamai.preloadReloaded'); window.__stillHere = 1; window.dispatchEvent(new Event('vite:preloadError', { cancelable: true }))`)
         const reloaded = await waitFor(`(performance.getEntriesByType('navigation')[0] || {}).type === 'reload' && window.__stillHere === undefined`, 8000)
         if (!reloaded) add('P0', `${label}: a chunk load failure did not reload the page`)
-        await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
+        await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3`, 15000)
         const prevented = await evaluate(`(() => { const e = new Event('vite:preloadError', { cancelable: true }); window.__stillHere = 2; window.dispatchEvent(e); return e.defaultPrevented })()`)
         await sleep(1500)
         const stayed = await evaluate(`window.__stillHere === 2`)
@@ -634,13 +634,40 @@ async function walkFixture(fx) {
       // plan, and offers Scan tenant; a token without the roles names the role to
       // ask for and does not start the scan.
       if (route === 'connect') {
-        // Connect is four numbered tiles in both states (docs/design/connect-mockup.html):
-        // one heading above them, the account (or the sign-in) tile, the baseline,
-        // what happens next, and the scan in exactly one of its states; every
-        // action a button in one of three weights.
+        // Connect is the approved staged flow in both states
+        // (docs/design/approved/connect-v3.html): an eyebrow and one heading, a status
+        // strip, one contiguous flow holding the account (or the sign-in) step, the
+        // baseline and the scan in exactly one of its states, then the Plan as a
+        // separate destination panel; every action a button in one of three weights,
+        // in its own step's action zone.
         const signedOut = ['signedOut', 'consent', 'personal', 'cancelled'].includes(fx.mock)
-        const tiles = await evaluate(`[...document.querySelectorAll('main.page section.step-tile')].map((s) => ({ n: ((s.querySelector('.n') || {}).textContent || '').trim(), h2: ((s.querySelector('h2') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), state: ((s.querySelector('h2 .state') || {}).textContent || '').trim(), cls: s.className, buttons: [...s.querySelectorAll('button, a.btn')].filter((b) => !b.closest('.picker')).map((b) => ({ t: (b.textContent || '').trim(), w: /btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none' })), text: (s.innerText || '').replace(/\\s+/g, ' '), paragraphs: [...s.querySelectorAll(':scope > p')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim()) }))`)
-        if (tiles.length !== 4 || tiles.map((x) => x.n).join('') !== '1234') add('P0', `${label}: Connect renders ${tiles.length} tiles numbered ${tiles.map((x) => x.n).join(',')}; four, 1 to 4`)
+        // Task 032: the four stages, their order and their words are unchanged;
+        // where they sit is not. The capture reads the three flow steps and the
+        // destination as the same four records, so every check below still asks
+        // the same question of the same stage.
+        const capture = `(s, n) => ({ n, h2: ((s.querySelector('h2') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), state: ((s.querySelector('h2 .state') || {}).textContent || '').trim(), cls: s.className, buttons: [...s.querySelectorAll('button, a.btn')].filter((b) => !b.closest('.picker')).map((b) => ({ t: (b.textContent || '').trim(), w: /btn-primary/.test(b.className) ? 'primary' : /btn-secondary/.test(b.className) ? 'secondary' : /btn-tertiary/.test(b.className) ? 'tertiary' : 'none' })), text: (s.innerText || '').replace(/\\s+/g, ' '), paragraphs: [...s.querySelectorAll('.connect-step-body > p, .connect-destination-copy > p')].map((p) => (p.textContent || '').replace(/\\s+/g, ' ').trim()) })`
+        const flow = await evaluate(`(() => { const cap = ${capture}; return [...document.querySelectorAll('main.page .connect-flow .connect-step')].map((s) => cap(s, ((s.querySelector('.n') || {}).textContent || '').trim())) })()`)
+        const dest = await evaluate(`(() => { const cap = ${capture}; const d = document.querySelector('main.page .connect-destination'); return d ? cap(d, '4') : null })()`)
+        const tiles = [...flow, ...(dest ? [dest] : [])]
+        // One flow panel, three steps in it, and the Plan outside it.
+        const flowPanels = await evaluate(`document.querySelectorAll('main.page .connect-flow').length`)
+        if (flowPanels !== 1) add('P0', `${label}: Connect renders ${flowPanels} flow panels; the approved design is one contiguous flow`)
+        if (flow.length !== 3 || flow.map((x) => x.n).join('') !== '123') add('P0', `${label}: the flow holds ${flow.length} steps numbered ${flow.map((x) => x.n).join(',')}; three, 1 to 3`)
+        if (!dest) add('P0', `${label}: Connect renders no Plan destination panel below the flow`)
+        if (await evaluate(`document.querySelector('main.page .connect-flow .connect-destination') !== null`)) add('P0', `${label}: the Plan destination is inside the flow; the approved design puts it below`)
+        // A step's action belongs to the step's own action zone, never stacked under its copy.
+        const strayActions = await evaluate(`[...document.querySelectorAll('main.page .connect-step-body button, main.page .connect-step-body a.btn')].filter((b) => !b.closest('.picker')).map((b) => (b.textContent || '').trim())`)
+        if (strayActions.length > 0) add('P0', `${label}: action(s) outside the step's action zone: ${strayActions.join(' | ')}`)
+        // The mockup's state switch is scaffolding for demonstrating states; it is not product.
+        if (await evaluate(`document.querySelector('main.page .state-switch') !== null`)) add('P0', `${label}: the design pack's mockup state switch shipped to production`)
+        // One status strip above the flow, and its state is a word, not a colour.
+        const strip = await evaluate(`(() => { const e = document.querySelector('main.page .connect-status'); if (!e) return null; return { n: document.querySelectorAll('main.page .connect-status').length, title: ((e.querySelector('strong') || {}).textContent || '').trim(), text: ((e.querySelector('.quiet') || {}).textContent || '').trim(), dot: document.querySelectorAll('main.page .connect-status .dot[aria-hidden="true"]').length } })()`)
+        if (!strip) add('P0', `${label}: Connect has no status strip above the flow`)
+        else {
+          if (strip.n !== 1) add('P0', `${label}: ${strip.n} status strips; one`)
+          if (!strip.title) add('P0', `${label}: the status strip carries no state title; the state must not be the dot alone`)
+          if (strip.dot !== 1) add('P0', `${label}: the status strip's dot is not decoration (aria-hidden)`)
+        }
         const [t1, t2, t3, t4] = tiles
         const btnOf = (tile, re) => (tile ? tile.buttons.find((b) => re.test(b.t)) : undefined)
         const expectBtn = (tile, re, w, what) => {
@@ -658,7 +685,7 @@ async function walkFixture(fx) {
         const lede = await evaluate(`((document.querySelector('main.page p.lede') || {}).textContent || '').trim()`)
         if (/Conditional Access/.test(`${h1} ${lede}`)) add('P0', `${label}: the heading or its line names Conditional Access before the baseline stage gives the term context`)
         // Every action is a button in one of three weights; nothing on Connect is a bare link.
-        const bare = await evaluate(`[...document.querySelectorAll('main.page section.step-tile a[href]:not(.btn):not(.lnk)')].map((a) => (a.textContent || '').trim())`)
+        const bare = await evaluate(`[...document.querySelectorAll('main.page .connect-step a[href]:not(.btn):not(.lnk), main.page .connect-destination a[href]:not(.btn):not(.lnk)')].map((a) => (a.textContent || '').trim())`)
         if (bare.length > 0) add('P0', `${label}: bare link(s) on Connect: ${bare.join(' | ')}; every action is a button in one of three weights`)
         if (/Security Reader|Reports Reader|Directory Readers/.test(text)) add('P0', `${label}: a role other than Global Reader is named on screen`)
         if (/Everything the scan found is inside the plan/.test(text)) add('P0', `${label}: the "everything the scan found" line still renders`)
@@ -733,9 +760,19 @@ async function walkFixture(fx) {
         }
         // 2 Baseline
         if (t2) {
-          if (!/^Baseline .+ · \d+ polic/.test(t2.h2)) add('P0', `${label}: tile 2 does not carry the baseline name and count as its state: "${t2.h2}"`)
-          // One policy count, the pinned package's, signed out and (the demo runs on it) signed in.
-          if ((signedOut || inDemo) && !new RegExp(' · ' + PINNED_COUNT + ' policies$').test(t2.state)) add('P0', `${label}: tile 2 reads "${t2.state}"; the pinned package holds ${PINNED_COUNT} policies`)
+          // The approved pack nests the package's own card in the step: the step's
+          // state is the STEP's state word, and the name, the size and the version are
+          // the card's (task 032).
+          if (t2.state !== 'selected') add('P0', `${label}: the baseline step's state reads "${t2.state}"; selected`)
+          const card = await evaluate(`(() => { const c = document.querySelector('main.page .connect-step .baseline-card'); if (!c) return null; return { name: ((c.querySelector('.baseline-name') || {}).textContent || '').trim(), source: ((c.querySelector('.baseline-source') || {}).textContent || '').trim() } })()`)
+          if (!card) add('P0', `${label}: the baseline step nests no baseline card`)
+          else {
+            if (!card.name) add('P0', `${label}: the baseline card names no package`)
+            // One policy count, the pinned package's, signed out and (the demo runs on it) signed in.
+            if ((signedOut || inDemo) && !new RegExp('^' + PINNED_COUNT + ' policies · pinned version$').test(card.source)) add('P0', `${label}: the baseline card reads "${card.source}"; the pinned package holds ${PINNED_COUNT} policies`)
+          }
+          // Nothing fabricates a credential, a verification badge or a release state.
+          if (/Microsoft MVP\s*$|verified|certified|MVP badge/i.test(card ? card.source : '')) add('P0', `${label}: the baseline card's source line carries a credential claim: "${card.source}"`)
           // The author's update (task 021): one row per evolving source policy,
           // never per changed file. The mock's source files at each commit hold
           // one renamed-and-changed policy, one added, one changed and one
@@ -743,7 +780,7 @@ async function walkFixture(fx) {
           // carries what it was called, what materially changed, and the step it
           // still stands behind, because its policy id never moved.
           if (fx.mock === 'author') {
-            const review = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /Updated by its author/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; return { summary: (d.querySelector('summary').textContent || '').replace(/\\s+/g, ' ').trim(), note: ((d.querySelector('p.quiet') || {}).textContent || '').trim(), rows: [...d.querySelectorAll(':scope > ul.diff > li')].map((li) => ({ tag: ((li.querySelector('.tag') || {}).textContent || '').trim(), policy: ((li.querySelector('.policy') || {}).textContent || '').trim(), was: ((li.querySelector('.was') || {}).textContent || '').trim(), deltas: [...li.querySelectorAll('.deltas li')].map((x) => (x.textContent || '').trim()), steps: [...li.querySelectorAll('.steps li')].map((x) => (x.textContent || '').trim()) })) } })()`)
+            const review = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page .connect-step details')].find((x) => /Updated by its author/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; return { summary: (d.querySelector('summary').textContent || '').replace(/\\s+/g, ' ').trim(), note: ((d.querySelector('p.quiet') || {}).textContent || '').trim(), rows: [...d.querySelectorAll(':scope > ul.diff > li')].map((li) => ({ tag: ((li.querySelector('.tag') || {}).textContent || '').trim(), policy: ((li.querySelector('.policy') || {}).textContent || '').trim(), was: ((li.querySelector('.was') || {}).textContent || '').trim(), deltas: [...li.querySelectorAll('.deltas li')].map((x) => (x.textContent || '').trim()), steps: [...li.querySelectorAll('.steps li')].map((x) => (x.textContent || '').trim()) })) } })()`)
             if (!review) add('P0', `${label}: tile 2 has no author-update review`)
             else {
               if (!/^Updated by its author on .+ · 4 policies changed · review$/.test(review.summary)) add('P0', `${label}: the review summary reads "${review.summary}"`)
@@ -785,12 +822,21 @@ async function walkFixture(fx) {
           if (/What happens next/.test(t3.text)) add('P0', `${label}: tile 3 still reads What happens next`)
           for (const s of ['policies, people, sign-in records and licences', 'what each baseline policy is for', 'a dated plan for the difference']) if (t3.text.includes(s)) add('P0', `${label}: tile 3 still carries a Reads / Compares / Writes beat ("${s}")`)
           if (/Read-only\. It holds no permission/.test(t3.text)) add('P0', `${label}: tile 3 still carries the read-only line`)
-          const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page section.step-tile details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); const tile = d.closest('section.step-tile'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: tile ? ((tile.querySelector('.n') || {}).textContent || '').trim() : '' } })()`)
+          const limits = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page .connect-step details')].find((x) => /IAMAI limitations/.test((x.querySelector('summary') || {}).textContent || '')); if (!d) return null; const ps = d.querySelectorAll('p'); const tile = d.closest('.connect-step'); return { items: d.querySelectorAll('li').length, last: ((ps[ps.length - 1] || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: tile ? ((tile.querySelector('.n') || {}).textContent || '').trim() : '' } })()`)
           if (!limits) add('P0', `${label}: tile 3 has no IAMAI limitations collapsible`)
           else {
             if (limits.n !== '3') add('P0', `${label}: the limitations collapsible sits in tile ${limits.n}; tile 3`)
             if (limits.items !== 5) add('P0', `${label}: the limitations list has ${limits.items} lines; five`)
             if (limits.last !== 'Permissions, every check it runs, and its limits in full: How IAMAI works →') add('P0', `${label}: the limitations' last line reads "${limits.last}"`)
+          }
+          // The counts the approved pack draws under a complete scan. They are real or
+          // they are absent: the row is never drawn from a placeholder, and it never
+          // appears in a state that produced no plan.
+          const metaRow = await evaluate(`[...document.querySelectorAll('main.page .connect-step .meta-counts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
+          if (want !== 'complete' && metaRow.length > 0) add('P0', `${label}: the scan step carries counts in the ${want} state: ${JSON.stringify(metaRow)}`)
+          if (metaRow.length > 0) {
+            if (metaRow.map((m) => m.label).join(' · ') !== 'active people · baseline policies · plan steps') add('P0', `${label}: the scan counts read ${JSON.stringify(metaRow)}; active people · baseline policies · plan steps`)
+            else if (!metaRow.every((m) => /^\d+$/.test(m.value))) add('P0', `${label}: a scan count is not a number: ${JSON.stringify(metaRow)}`)
           }
           const badge = { complete: 'done', gaps: 'wait', role: 'stop' }[want]
           if (badge && !new RegExp('\\b' + badge + '\\b').test(t3.cls)) add('P0', `${label}: tile 3's number badge does not carry the ${want} state colour (class ${badge}); it has "${t3.cls}"`)
@@ -807,11 +853,11 @@ async function walkFixture(fx) {
             if (t3.buttons.length !== 1) add('P0', `${label}: the complete Scan tile has ${t3.buttons.length} buttons; Scan again alone`)
           }
           if (want === 'gaps') {
-            const rows = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
+            const rows = await evaluate(`[...document.querySelectorAll('main.page .connect-step .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (!rows.some((r) => /^Conditional Access policies not read$/.test(r))) add('P0', `${label}: the policies section row is not marked not read: ${JSON.stringify(rows)}`)
             if (!rows.some((r) => /^Sign-in records not read$/.test(r))) add('P0', `${label}: the sign-in records row is not marked not read: ${JSON.stringify(rows)}`)
             if (!/Ask whoever administers the tenant for Global Reader; it reads every section and writes nothing\./.test(t3.text)) add('P0', `${label}: the gaps tile lacks the one ask for Global Reader`)
-            if (!(await evaluate(`[...document.querySelectorAll('main.page section.step-tile a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
+            if (!(await evaluate(`[...document.querySelectorAll('main.page .connect-step a.lnk')].some((a) => /Microsoft: Global Reader/.test(a.textContent || '') && /global-reader/.test(a.getAttribute('href') || ''))`))) add('P0', `${label}: the gaps tile lacks Microsoft's Global Reader link`)
             expectBtn(t3, /^Sign in with another account$/, 'primary', 'the gaps tile')
             expectBtn(t3, /^Scan again$/, 'secondary', 'the gaps tile')
             if (t3.buttons.length !== 2) add('P0', `${label}: the gaps tile has ${t3.buttons.length} buttons; Sign in with another account and Scan again`)
@@ -820,7 +866,7 @@ async function walkFixture(fx) {
           }
           if (want === 'role') {
             if (!/holds none of the roles that read Conditional Access policies, people and sign-in records\./.test(t3.text)) add('P0', `${label}: the role tile does not name the account and the three sections: "${t3.text}"`)
-            const rows = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
+            const rows = await evaluate(`[...document.querySelectorAll('main.page .connect-step .tile-rows li')].map((l) => (l.textContent || '').replace(/\\s+/g, ' ').trim())`)
             if (rows.length !== 1 || !/^Everything IAMAI needs, read-only ask for Global Reader$/.test(rows[0])) add('P0', `${label}: the role tile's rows read ${JSON.stringify(rows)}; one row asking for Global Reader`)
             expectBtn(t3, /^Sign in with another account$/, 'primary', 'the role tile')
             if (t3.buttons.length !== 1) add('P0', `${label}: the role tile has ${t3.buttons.length} buttons; Sign in with another account alone`)
@@ -828,8 +874,8 @@ async function walkFixture(fx) {
           }
           if (want === 'scanning') {
             // One line (the section being read · elapsed), one bar, Stop: never the caption and the line both.
-            if (!(await evaluate(`document.querySelector('main.page section.step-tile .progress') !== null`))) add('P0', `${label}: the scanning tile has no bar`)
-            if (await evaluate(`document.querySelector('main.page section.step-tile .progress-caption') !== null`)) add('P0', `${label}: the scanning tile renders the bar's caption beside the state line; one line only`)
+            if (!(await evaluate(`document.querySelector('main.page .connect-step .progress') !== null`))) add('P0', `${label}: the scanning tile has no bar`)
+            if (await evaluate(`document.querySelector('main.page .connect-step .progress-caption') !== null`)) add('P0', `${label}: the scanning tile renders the bar's caption beside the state line; one line only`)
             if (!/^Scan reading [a-z][^·]* · \d+(m \d+)?s$/.test(t3.h2)) add('P0', `${label}: the scanning line reads "${t3.h2}"; the section being read · elapsed`)
             if (t3.paragraphs.some((p) => /elapsed|reading/i.test(p))) add('P0', `${label}: the scanning tile repeats the lane or the elapsed time in a paragraph: ${JSON.stringify(t3.paragraphs)}`)
             expectBtn(t3, /^Stop$/, 'tertiary', 'the scanning tile')
@@ -853,8 +899,11 @@ async function walkFixture(fx) {
         const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ done · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
         if (t4) {
           if (!PLAN_STATES[wantPlan].test(t4.h2)) add('P0', `${label}: tile 4 reads "${t4.h2}"; Plan in the ${wantPlan} state`)
-          if (wantPlan === 'ready' && !/\bdone\b/.test(t4.cls)) add('P0', `${label}: the ready Plan tile's badge does not carry the accent (${t4.cls})`)
-          if (wantPlan !== 'ready' && /\b(done|wait|stop)\b/.test(t4.cls)) add('P0', `${label}: the ${wantPlan} Plan tile carries a state colour (${t4.cls})`)
+          // The approved pack tints the destination only when the plan is actually
+          // ready; every other real state keeps the plain panel, so the tint is never
+          // a readiness claim made in CSS (task 032).
+          if (wantPlan === 'ready' && !/\bready\b/.test(t4.cls)) add('P0', `${label}: the ready Plan destination is not marked ready (${t4.cls})`)
+          if (wantPlan !== 'ready' && /\bready\b/.test(t4.cls)) add('P0', `${label}: the ${wantPlan} Plan destination carries the ready treatment (${t4.cls})`)
           const PLAN_OTHER = { ready: [/^Open the plan →$/, /\d+ people \d+ policies/, /from the scan/], last: [/^Open the last full plan/, /last full plan/], waiting: [], sample: [/What the sample tenant produced/, /already in place/, /^Open the sample plan$/] }
           for (const [k, res] of Object.entries(PLAN_OTHER)) {
             if (k === wantPlan) continue
@@ -868,12 +917,12 @@ async function walkFixture(fx) {
             // ladder — MFA Readiness comes after the plan, not in front of it (task 016).
             const counted = await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan /.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
             if (!counted) add('P0', `${label}: the Plan tile never counted its steps in its state line`)
-            const state = await evaluate(`((document.querySelectorAll('main.page section.step-tile')[3] || {}).querySelector('h2 .state') || {}).textContent || ''`)
+            const state = await evaluate(`((document.querySelector('main.page .connect-destination') || {}).querySelector('h2 .state') || {}).textContent || ''`)
             const sm = state.match(/^ready · (\d+) steps, (\d+) done · from the scan /)
             if (!sm) add('P0', `${label}: the Plan tile's state reads "${state}"; ready · N steps, N done · from the scan <age>`)
             else if (Number(sm[2]) > Number(sm[1])) add('P0', `${label}: more done than steps: "${state}"`)
-            if ((await evaluate(`document.querySelectorAll('main.page section.step-tile .facts').length`)) > 0) add('P0', `${label}: the Plan tile still renders a facts row`)
-            if ((await evaluate(`document.querySelectorAll('main.page section.step-tile .rung-tiles, main.page section.step-tile .rung-tile').length`)) > 0) {
+            if ((await evaluate(`document.querySelectorAll('main.page .connect-destination .facts').length`)) > 0) add('P0', `${label}: the Plan destination still renders a facts row`)
+            if ((await evaluate(`document.querySelectorAll('main.page .rung-tiles, main.page .rung-tile').length`)) > 0) {
               add('P0', `${label}: the readiness ladder is back on the Plan tile; MFA Readiness comes after the plan`)
             }
             if (/\d+ → \d+|\d+ → [A-Z][a-z]{2} \d+/.test(t4.text)) add('P0', `${label}: the Plan tile carries a drop line or a window: "${t4.text.slice(0, 80)}"`)
@@ -888,7 +937,7 @@ async function walkFixture(fx) {
               if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
               else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} done; the Plan header ${hm[1]} · ${hm[2]}`)
               await evaluate(`location.hash = '#/connect'`)
-              await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 15000)
+              await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3`, 15000)
             }
             expectBtn(t4, /^Open the plan →$/, 'primary', 'the Plan tile')
             if (t4.buttons.length !== 1) add('P0', `${label}: the ready Plan tile has ${t4.buttons.length} buttons; Open the plan alone`)
@@ -908,7 +957,7 @@ async function walkFixture(fx) {
           }
           if (wantPlan === 'waiting' && (t4.buttons.length !== 0 || /\d+ people/.test(t4.text))) add('P0', `${label}: the waiting Plan tile carries buttons or facts: ${JSON.stringify(t4.buttons)} "${t4.text}"`)
           if (wantPlan === 'sample') {
-            const facts = await evaluate(`[...document.querySelectorAll('main.page section.step-tile .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
+            const facts = await evaluate(`[...document.querySelectorAll('main.page .connect-destination .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
             if (facts.map((f) => f.label).join(' · ') !== 'active people · steps · already in place · to finish') add('P0', `${label}: the sample tile's facts read ${JSON.stringify(facts)}; active people · steps · already in place · to finish`)
             else if (!facts.slice(0, 3).every((f) => /^\d+$/.test(f.value) && Number(f.value) > 0) || !/^\d+ weeks?$/.test(facts[3].value)) add('P0', `${label}: the sample tile's facts are not computed numbers: ${JSON.stringify(facts)}`)
             else if (Number(facts[2].value) > Number(facts[1].value)) add('P0', `${label}: more already in place than steps: ${JSON.stringify(facts)}`)
@@ -921,13 +970,13 @@ async function walkFixture(fx) {
         // The progression (task 016): tenant → baseline → scan → Plan, with one
         // stage current and the finished ones settled behind it. The marker on
         // the current stage is a word, so the state is never colour alone.
-        const progression = tiles.map((t) => (/\bcurrent\b/.test(t.cls) ? 'current' : /\bsettled\b/.test(t.cls) ? 'settled' : 'ahead'))
+        const progression = flow.map((t) => (/\bcurrent\b/.test(t.cls) ? 'current' : /\bsettled\b/.test(t.cls) ? 'settled' : 'ahead'))
         const currents = progression.filter((x) => x === 'current').length
         if (currents > 1) add('P0', `${label}: ${currents} stages are current; one at a time (${progression.join(' · ')})`)
         const firstCurrent = progression.indexOf('current')
         if (firstCurrent !== -1 && progression.lastIndexOf('settled') > firstCurrent) add('P0', `${label}: a settled stage sits after the current one: ${progression.join(' · ')}`)
         if (firstCurrent !== -1) {
-          const marker = await evaluate(`[...document.querySelectorAll('main.page section.step-tile.current .next')].map((e) => (e.textContent || '').trim())`)
+          const marker = await evaluate(`[...document.querySelectorAll('main.page .connect-step.current .next')].map((e) => (e.textContent || '').trim())`)
           if (marker.length !== 1 || !marker[0]) add('P0', `${label}: the current stage carries no word marking it; the state must not be colour alone`)
         }
         // MFA Readiness comes after the plan: Connect never routes to it.
@@ -1774,7 +1823,7 @@ let firstLoadMs = null
     const demoChunkInDemo = await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/assets\\/demo-[^/]*\\.js/.test(e.name))`)
     if (!demoChunkInDemo) add('P0', 'production bundle, demo: the demo chunk (demo-*.js) did not load in demo mode')
     await send('Page.navigate', { url: `http://localhost:${STATIC_PORT}/${TOOL_PATH}/#/connect` })
-    await waitFor(`document.querySelectorAll('main.page section.step-tile').length === 4`, 30000)
+    await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3`, 30000)
     const demoChunkSignedOut = await evaluate(`performance.getEntriesByType('resource').filter((e) => /\\/assets\\/demo(Facts)?-[^/]*\\.js/.test(e.name)).map((e) => e.name.split('/').pop())`)
     if (demoChunkSignedOut.length > 0) add('P0', `production bundle, signed out: the demo chunk loaded outside demo mode (${demoChunkSignedOut.join(', ')})`)
     // The home page, assembled over this bundle (dist/index.html) and served from the same root.

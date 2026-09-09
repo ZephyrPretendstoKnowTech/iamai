@@ -107,9 +107,11 @@ test('design 2: no box-shadow except the focus ring and the one key-panel shadow
   for (const r of rules) {
     for (const m of r.body.matchAll(/box-shadow\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
-      // The approved Plan lifts an opened step off the page, so the product has
-      // exactly one panel shadow, on exactly one role class (task 030).
-      if (v === 'var(--shadow-panel)' && /\.panel-key\b/.test(r.selector)) continue
+      // The approved Plan lifts an opened step off the page, and the approved
+      // Connect lifts its staged flow the same way
+      // (docs/design/approved/connect-v3.html `.flow{box-shadow:var(--shadow)}`).
+      // One shadow value, on the two role classes the packs put it on.
+      if (v === 'var(--shadow-panel)' && /\.panel-key\b|\.connect-flow\b/.test(r.selector)) continue
       if (v !== 'var(--focus-ring)' && v !== 'none') hits.push(where(r, `box-shadow: ${v}`))
     }
     if (/gradient\s*\(/.test(r.body)) hits.push(where(r, 'gradient'))
@@ -133,15 +135,21 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
     for (const m of r.body.matchAll(/border-radius\s*:\s*([^;]+)/g)) {
       const v = m[1].trim()
       if (SHAPE.has(v)) continue
-      // The Connect tiles' number badge is a circle (docs/design/connect-mockup.html), and so is the ladder's rung badge (docs/design/mockups/today-v2.html).
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.step-tile \.n/.test(r.selector) || /\.rung-badge/.test(r.selector))) continue
+      // A state dot is a circle: the shared `.status` dot, and the one the
+      // approved Connect pack sets in its status strip
+      // (docs/design/approved/connect-v3.html `.dot{border-radius:50%}`). So is
+      // the ladder's rung badge (docs/design/mockups/today-v2.html).
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
       // MFA pack's readiness cell are both `border-radius:999px`
       // (docs/design/approved/plan-step-v1.html `.badge`,
       // docs/design/approved/mfa-readiness-v2.html `.status`), which is a full
       // round rather than a value on the 4/8/12 shape hierarchy.
-      if (v === '999px' && /\.chip-(select|remove)|\.pill\b/.test(r.selector)) continue
+      // and the approved Connect step's numbered badge, which that pack draws as
+      // a full round rather than a value on the 4/8/12 hierarchy
+      // (docs/design/approved/connect-v3.html `.num{border-radius:999px}`).
+      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
@@ -184,9 +192,12 @@ test('design 4: font-family only via --font-*, a weight only via a named role, a
 
 test('design 5: --ok, --wait, --stop and --idle only inside a .status rule, or a Connect tile carrying its state colour', () => {
   const { rules } = sources()
-  // A Connect tile's number badge and state word carry the state colour (docs/design/connect-mockup.html).
+  // A Connect step's number badge and state word carry the state colour, and so
+  // does the dot in the status strip above the flow
+  // (docs/design/approved/connect-v3.html). In each of those the state's word is
+  // beside the colour, so the meaning never depends on the colour alone.
   const hits = rules
-    .filter((r) => /var\(--(ok|wait|stop|idle)\)/.test(r.body) && !/\.status|\.step-tile/.test(r.selector))
+    .filter((r) => /var\(--(ok|wait|stop|idle)\)/.test(r.body) && !/\.status|\.connect-step|\.connect-status|\.connect-destination/.test(r.selector))
     .map((r) => where(r, r.body.match(/var\(--(ok|wait|stop|idle)\)/)?.[0] ?? ''))
   assert.deepEqual(hits, [])
 })
@@ -196,9 +207,12 @@ test('design 6: --bg-raised only on the two-depth panels and the floating layers
   // The raised surface is the two content panels (.wave, .export-card) and the
   // floating layers that already sit above the page (a tooltip, a menu, a table
   // row on hover). Nothing else in the content flow may gain a box.
-  // The Connect tiles are panels too (docs/design/connect-mockup.html), and so
-  // are the home page's cards (docs/design/home-mockup.html; home/home.css).
-  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.step-tile\b|\.card\b|\.panel\b/
+  // Connect's staged flow and its Plan destination are panels too
+  // (docs/design/approved/connect-v3.html `.flow` and `.ready`), and so are the
+  // home page's cards (docs/design/home-mockup.html; home/home.css). The steps
+  // INSIDE the flow are not, and must not become so: they sit on the one panel,
+  // which is what makes the flow contiguous instead of a stack of cards.
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.connect-flow\b|\.connect-destination\b|\.card\b|\.panel\b/
   const hits = rules
     // --surface is the canonical name and --bg-raised its compatibility alias;
     // they are one value, so the rule checks both.

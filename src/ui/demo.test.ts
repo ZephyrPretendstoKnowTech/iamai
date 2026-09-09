@@ -149,8 +149,10 @@ test('A: nothing in the demo offers a Microsoft sign-in or a Microsoft sign-out'
   // this tab, which is the demo reaching into a real tenant's session.
   const connect = read('src/ui/surfaces/Connect.tsx')
   assert.ok(/isDemo\(\) \? sampleTile\(/.test(connect), 'the demo still renders the signed-in account tile')
-  const actions = connect.slice(connect.indexOf('<div className="actions">', connect.indexOf('const t1 = isDemo()')))
-  const block = actions.slice(0, actions.indexOf('</div>'))
+  // Task 032 moved a step's buttons into the pack's action zone, which is a
+  // prop rather than a div inside the body; the branch itself is unchanged.
+  const actions = connect.slice(connect.indexOf('actions={', connect.indexOf('const t1 = isDemo()')))
+  const block = actions.slice(0, actions.indexOf('</Step>'))
   assert.ok(/isDemo\(\) \? \(/.test(block) && /exitDemoUrl\(\)/.test(block), "tile 1's actions are not branched for the demo")
   const demoArm = block.slice(block.indexOf('isDemo() ? ('), block.indexOf(') : ('))
   assert.equal(/signInAnother|signOut/.test(demoArm), false, 'tile 1 offers a Microsoft action in the demo')
