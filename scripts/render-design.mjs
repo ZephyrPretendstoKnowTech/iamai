@@ -105,6 +105,16 @@ const PRODUCTION_SHOTS = [
     hash: '#/plan',
     after: `(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (const r of document.querySelectorAll('main.page .plan-row')) { r.click(); await wait(180); if (document.querySelector('main.page .step .track')) return true; r.click(); await wait(60) } return false })()`,
   },
+  // A step that actually has findings, with its More opened: the pack's finding
+  // cards and the two-column small-card grammar inside the disclosure are the
+  // subject of pack 035, and neither appears on a step that has nothing to
+  // report or on a closed disclosure. The row is found rather than named, so
+  // the evidence survives a change to the demo fixture.
+  {
+    name: 'plan-step-findings',
+    hash: '#/plan',
+    after: `(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); for (const r of document.querySelectorAll('main.page .plan-row')) { r.click(); await wait(180); const step = document.querySelector('main.page .step'); if (step && step.querySelector('.findings')) { const more = step.querySelector('details.more'); if (more) more.open = true; await wait(120); return true } r.click(); await wait(60) } return false })()`,
+  },
   { name: 'readiness', hash: '#/readiness' },
   // Export is governed by no pack, and it is the one surface that renders an
   // attention notice unconditionally. Task 031 added it because a renderer that

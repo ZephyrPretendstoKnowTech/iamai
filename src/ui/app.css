@@ -1637,8 +1637,177 @@ footer.app a {
   font-size: var(--t-1);
   color: var(--ink-2);
 }
+/* The pack's side list: a rail block that is a handful of short items rather
+   than one metric (`.side-list{list-style:none;display:grid;gap:7px}` with a
+   6px dot before each). The dot is a bullet and carries no state — every item
+   in it is the same kind of fact — so it is the quiet ink and is hidden from
+   assistive technology, which reads the words. */
+.step .side-list {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.step .side-list li {
+  display: flex;
+  gap: 8px;
+  font-size: var(--t-1);
+  color: var(--ink-2);
+}
+.step .side-list .tiny {
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
 .step-body h4 {
   margin: 18px 0 6px;
+}
+/* ---- the sections of an opened step (task 035) ----
+   The pack divides the main column into ruled sections —
+   `.step-section{padding:19px 0;border-bottom:1px solid var(--line)}` in
+   docs/design/approved/plan-step-v1.html, with the last one's rule dropped.
+   Production drew the same content as a run of headings with nothing between
+   them, so the canonical order read as a column of paragraphs rather than as an
+   order. They are real <section> elements, so the division a sighted reader
+   sees is the structure a screen reader walks. */
+.step-section {
+  padding: 19px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.step-section:last-child {
+  border-bottom: 0;
+}
+/* A section's own heading sits at its top edge: the section's padding is the
+   space above it, so the standing h4 margin would double it. The second
+   selector is the heading inside the attention panel, which is a section's
+   heading too. */
+.step-section > h4,
+.step-section .callout h4 {
+  margin: 0 0 8px;
+}
+
+/* ---- What IAMAI found: the pack's finding cards ----
+   `.finding{border:1px solid var(--line);border-radius:8px;padding:11px 12px}`
+   under `.findings{display:grid;gap:10px}`, each with its key over it. The
+   pack's grid is three fixed columns because its sample step had three findings;
+   production renders however many the contract built, so the track sizing takes
+   the count from the content — one finding is one full-width card, not a third
+   of a row with two gaps beside it — and collapses to a single column on its own
+   at the width the pack collapses at. */
+.step .findings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  /* The grid is the section, not a paragraph in it: the reading measure that
+     holds prose to a comfortable line would leave the cards in a column a third
+     of the way across the step. */
+  max-width: none;
+  padding: 0;
+}
+.step .finding {
+  padding: 11px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--bg-inset);
+}
+.step .finding .key-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.step .finding .finding-text {
+  display: block;
+  font-size: var(--t-2);
+}
+
+/* ---- What to do: the action strip over the instruction block ----
+   The pack's `.action-tabs` are bordered chips rather than the underlined strip
+   the rest of the product uses, and they label a panel with an edge of its own
+   (`.instruction{border:1px solid var(--line);border-radius:8px;padding:13px
+   15px}`). The shared `.tabs` role keeps the behaviour; this is the Plan's own
+   treatment of it, and it does not touch the strips on Connect, Export or
+   Inventory. The selected tab is a border, a fill AND the ink together, over
+   `aria-selected` — never the tint alone. */
+.step .tabs.action-tabs {
+  gap: 6px;
+  border-bottom: 0;
+  margin: 0 0 12px;
+}
+.step .tabs.action-tabs .tab {
+  padding: 6px 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+.step .tabs.action-tabs .tab.active,
+.step .tabs.action-tabs .tab[aria-selected='true'] {
+  color: var(--ink);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.step .instruction {
+  padding: 13px 15px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--bg-inset);
+}
+.step .instruction > ol,
+.step .instruction > ul {
+  margin: 0;
+  padding-left: 19px;
+}
+.step .instruction li {
+  margin: 5px 0;
+}
+/* The JSON and the commands are already inside the instruction panel, so they
+   do not carry a second inset box of their own. They keep their own scroll:
+   a long policy body must not widen the step. */
+.step .instruction pre.mono {
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+
+/* ---- More: the pack's two-column small cards ----
+   `.more-grid{grid-template-columns:1fr 1fr}` over
+   `.more-card{border:1px solid var(--line);border-radius:8px;padding:11px 12px}`.
+   It holds the two blocks the pack's own samples hold — what could go wrong,
+   and the way back — and the work artifacts below it stay full width. */
+.step .more-grid {
+  display: grid;
+  /* The pack's two columns, sized from the content rather than fixed at two:
+     production writes one of these cards on a step that has no rollback to
+     describe, and a lone card holding half a row with a gap beside it reads as
+     a card that failed to load. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.step .more-card {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+}
+.step .more-card h5 {
+  margin: 0 0 5px;
+  font-family: var(--font-sans);
+  font-size: var(--t-2);
+  font-weight: var(--weight-strong);
+}
+.step .more-card p,
+.step .more-card li {
+  font-size: var(--t-2);
+  color: var(--ink-2);
+}
+.step .more-card ul,
+.step .more-card ol {
+  margin: 4px 0 0;
+  padding-left: 15px;
 }
 /* ================= the Step Contract (Foundation D) =================
    One structure for every step: where it is now, why, what IAMAI found, who it
@@ -1816,6 +1985,13 @@ footer.app a {
   .print-plan .step-head .step-title { font-size: var(--t-4); margin: 0 0 1mm; }
   .print-plan .step-body, .print-plan .step-body.has-rail { display: block; }
   .print-plan .step-main { padding: 0; }
+  /* On paper the sections are already separated by their headings; a rule under
+     every one of them is screen furniture. The More grid unstacks so a printed
+     step is one column all the way down. */
+  .print-plan .step-section { padding: 2mm 0 0; border-bottom: 0; }
+  .print-plan .more-grid { display: block; }
+  .print-plan .more-card { margin-top: 2mm; }
+  .print-plan .findings { grid-template-columns: 1fr; }
   .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--rule); background: none; }
   .print-plan .track { display: none; }
   .print-json { break-inside: auto; }
@@ -2509,6 +2685,12 @@ td .group-word {
      reader reads and what the page shows stay the same order at both widths. */
   .step-body.has-rail {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* `.findings,.more-grid{grid-template-columns:1fr}` at the same width. The
+     findings grid already collapses on its own track sizing; the More grid is
+     two fixed columns and needs telling. */
+  .step .more-grid {
+    grid-template-columns: 1fr;
   }
   .step-side {
     border-left: 0;

@@ -53,6 +53,8 @@ type ContractWords = {
   railImplementation: string
   implementationReady: string
   implementationNone: string
+  railChannels: Record<string, string>
+  foundLabel: Record<string, string>
   next: string
   nextOn: string
   foundHeading: string
@@ -124,8 +126,18 @@ export type ContractState = {
  */
 export type ContractMilestone = { kind: Milestone['kind']; label: string; at: string | null; gatedBy: string | null; line: string | null }
 
-/** One thing this scan observed that changes what the operator should do. */
-export type ContractFound = { key: string; text: string }
+/**
+ * One thing this scan observed that changes what the operator should do.
+ *
+ * `label` names which kind of finding it is — the classification `foundOf`
+ * already makes when it decides to add the entry — so the approved pack's
+ * finding card can carry its key over the sentence
+ * (`docs/design/approved/plan-step-v1.html` `.finding .k`). It is a name for
+ * the category and never a second reading of the evidence: nothing here splits
+ * a finding's sentence into a headline and a detail, because production writes
+ * one sentence and inventing the split would be inventing emphasis.
+ */
+export type ContractFound = { key: string; label: string; text: string }
 
 /**
  * Who the step reaches. `known: false` is a real answer and never a zero: an
@@ -305,6 +317,9 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
   }
 }
 
+/** One finding, with the key that names its kind over it (pages.app.plan.stepContract.foundLabel). */
+const found = (key: string, text: string): ContractFound => ({ key, label: CONTRACT.foundLabel[key], text })
+
 /**
  * What this scan saw that bears on the decision. Observed evidence only: a
  * number the plan itself waits on, a policy already delivering the goal, and
@@ -314,7 +329,7 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
 function foundOf(step: Step, tenant: string, said: string | null): ContractFound[] {
   const out: ContractFound[] = []
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push({ key: 'readiness', text: fillText(CONTRACT.foundReadiness, { ...gate }) })
+  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', fillText(CONTRACT.foundReadiness, { ...gate })))
   // A goal the tenant already delivers, and *which* policy delivers it. The
   // line used to say only that the tenant "already has a policy doing this",
   // which is the one fact an operator cannot act on: to check that IAMAI
@@ -338,7 +353,7 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
         : by.sufficient !== null
           ? fillText(CONTRACT.foundInPlaceNamed, { policies: by.sufficient })
           : fillText(CONTRACT.foundInPlaceTogether, { policies: list(by.policies) })
-    out.push({ key: 'in-place', text })
+    out.push(found('in-place', text))
   }
   // The step's one observation is Foundation B's own aggregate over its members
   // (lifecycle.ts aggregateObservation); this reports it and never re-derives it.
@@ -346,7 +361,7 @@ function foundOf(step: Step, tenant: string, said: string | null): ContractFound
   // milestone, and the Next line then carries it: saying it twice on one step
   // reads as two findings.
   const obs = step.state.observation
-  if (obs && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push({ key: 'observation', text: obs.note })
+  if (obs && (obs.reviewRequired || obs.continuity === 'reset' || (obs.changed !== 'none' && obs.changed !== 'first-scan')) && !(said ?? '').includes(obs.note)) out.push(found('observation', obs.note))
   return out
 }
 

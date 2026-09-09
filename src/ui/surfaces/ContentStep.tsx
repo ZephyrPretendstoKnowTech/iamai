@@ -34,7 +34,7 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
-import { Picker, TabList, onePanelProps } from '../components/index.ts'
+import { Callout, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption, TabItem } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
@@ -43,7 +43,7 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { jsonOffered, policyJsonText, stepOperations, waitingLine } from './stepJson.ts'
+import { policyJsonText, stepOperations, waitingLine } from './stepJson.ts'
 import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } from './stepExport.ts'
 import { list } from '../../copy/statements.ts'
 import { stepVars } from './stepVars.ts'
@@ -244,32 +244,51 @@ export function ContentStep({
           reviewed source policy the step's own state names, never to the goal,
           so whichever goal a baseline hands that source says the same thing
           about it. They are the content file's; nothing here composes them. */}
-      {conflictWords && <p className="reason conflict"><T s={conflictWords} ex={ex} /></p>}
+      {conflictWords && (
+        <section className="step-section">
+          {/* The pack's attention panel at its danger weight
+              (`docs/design/approved/plan-step-v1.html` `.attention.danger`,
+              "Do not deploy this policy from the current baseline"), which is
+              the shared `.callout` role task 031 built. It stays at the top of
+              the step, above Why: the pack's own conflict variant has nothing
+              above it to be above, and a notice that a policy must not be
+              deployed is not something to meet after two sections of
+              explanation. */}
+          <Callout kind="danger"><T s={conflictWords} ex={ex} /></Callout>
+        </section>
+      )}
 
       {/* The contract's Why: the step's own sentence where the content file has
           one, and the engine's where it does not (a validation blocker states how
           many of its checks are outstanding, and that changes between scans). */}
-      <h4>{HEAD.why}</h4>
-      <p>
-        {contract.why}{' '}
-        {learn.url && (
-          <a href={learn.url} target="_blank" rel="noopener noreferrer">
-            Learn →
-          </a>
-        )}
-      </p>
+      <section className="step-section">
+        <h4>{HEAD.why}</h4>
+        <p>
+          {contract.why}{' '}
+          {learn.url && (
+            <a href={learn.url} target="_blank" rel="noopener noreferrer">
+              Learn →
+            </a>
+          )}
+        </p>
+      </section>
 
       <WhatIamaiFound found={contract.found} />
 
       {/* Who this touches: the counts and the consequences that decide the next
           action. A list longer than NAMES_INLINE names is in More. */}
-      {showWho && <h4>{HEAD.who}</h4>}
-      {lead && <p className="line">{lead}</p>}
-      {whoInline.map((b) => <WhoBlockView key={b.key} block={b} />)}
-      {/* Foundation A settled the reach and could not: no count, no names, and
-          one line saying so rather than the goal's people standing in. */}
-      {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
+      {showWho && (
+        <section className="step-section">
+          <h4>{HEAD.who}</h4>
+          {lead && <p className="line">{lead}</p>}
+          {whoInline.map((b) => <WhoBlockView key={b.key} block={b} />)}
+          {/* Foundation A settled the reach and could not: no count, no names, and
+              one line saying so rather than the goal's people standing in. */}
+          {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
+        </section>
+      )}
 
+      <section className="step-section">
       <h4>{HEAD.whatToDo}</h4>
       {/* The one action, always. Where nothing overrules the lifecycle this is the
           step's own lead; where an authority does — a policy the plan may not
@@ -298,19 +317,35 @@ export function ContentStep({
               carry anything is unchanged — the JSON and PowerShell tabs stay
               selectable and say what they are waiting on, because withholding
               the tab would hide the reason. */}
-          <TabList base={doBase} tabs={DO_TABS} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} />
-          <div {...onePanelProps(doBase, tab)}>
+          {/* The pack's action strip over the instruction block it labels
+              (`docs/design/approved/plan-step-v1.html` `.action-tabs` over
+              `.instruction`): the three channels read as one control, and what
+              they select sits in a panel of its own rather than loose on the
+              page. It is the shared `TabList` wearing the Plan's own strip
+              treatment, so the keyboard behaviour and the selected-state
+              semantics task 017 built are unchanged. */}
+          <TabList base={doBase} tabs={DO_TABS} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} className="tabs action-tabs no-print" />
+          <div className="instruction" {...onePanelProps(doBase, tab)}>
             {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
-            {/* The JSON and PowerShell tabs render only when every object the body
-                names exists in the tenant; otherwise one line names the Preparation
-                step that creates it, and Download JSON is not offered. */}
-            {(tab === 'json' || tab === 'ps') && !jsonOffered(step) && (
+            {/* Whether an artifact is offered is Foundation A's one answer, and
+                the contract already carries it (stepContract.ts
+                `implementation.offered`, which is roadmap/operations.ts
+                `implementationOffered` — the same reading `stepJson.jsonOffered`
+                and the portal translator both make). It is read here, never
+                asked again: a channel this surface decided for itself is how the
+                screen came to instruct a change the artifacts refused to
+                describe. Where it is withheld, one line names the Preparation
+                step that would clear it, and Download JSON is not offered. */}
+            {(tab === 'json' || tab === 'ps') && !contract.implementation.offered && (
               <p className="reason">{waitingLine(step, String(ex.tenant ?? ''))}</p>
             )}
-            {tab === 'json' && jsonOffered(step) && <pre className="mono">{policyJsonText(step)}</pre>}
-            {tab === 'ps' && jsonOffered(step) && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}
+            {/* The JSON is stepJson.ts's, over the step's own resolved
+                operations, and the commands are stepPowerShell.ts's over the
+                same operations. Neither is composed here. */}
+            {tab === 'json' && contract.implementation.offered && <pre className="mono">{policyJsonText(step)}</pre>}
+            {tab === 'ps' && contract.implementation.offered && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}
           </div>
-          {jsonOffered(step) && (
+          {contract.implementation.offered && (
             <p className="actions">
               <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, policyJsonText(step), 'application/json', REDACTED)}>
                 Download JSON
@@ -324,10 +359,21 @@ export function ContentStep({
         // has them; the eight reason branches that used to stand here were the
         // same eight sentences a second time, chosen by a second reading of
         // Foundation A inside the JSX.
-        (hasSteps || before.length > 0) && <ol className="sections">{[...before.map((l) => <>{l}</>), ...instructions.steps.map((l) => <T s={l} ex={ex} />)].map((node, i) => <li key={i}>{node}</li>)}</ol>
+        (hasSteps || before.length > 0) && (
+          <div className="instruction">
+            <ol className="sections">{[...before.map((l) => <>{l}</>), ...instructions.steps.map((l) => <T s={l} ex={ex} />)].map((node, i) => <li key={i}>{node}</li>)}</ol>
+          </div>
+        )
       )}
+      </section>
 
-      <FixBeforeContinuing fix={contract.fix} />
+      {/* The pack's attention panel, at the weight the step's own condition
+          gives it (Foundation B): a policy the baseline contradicts, or a step
+          the plan is blocked on, is the danger weight the pack draws for "do not
+          deploy"; everything else outstanding is the ordinary attention weight.
+          The severity is production's — nothing here reads a blocker to decide
+          how alarming it is. */}
+      <FixBeforeContinuing fix={contract.fix} tone={contract.state.condition === 'blocked' || contract.state.condition === 'baseline-conflict' ? 'danger' : 'warning'} />
 
       {/* Where this step's own enforcement waits on the people it reaches being
           able to sign in the way it asks, who those people are is MFA
@@ -335,10 +381,10 @@ export function ContentStep({
       <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
 
       {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
-        <>
+        <section className="step-section">
           <h4>{HEAD.dates}</h4>
           <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
-        </>
+        </section>
       )}
 
       {/* Every step has a completion, and it is concrete. The step's own gates
@@ -352,6 +398,7 @@ export function ContentStep({
           yet, the recovery runbook, and the three copy boxes. None of it decides
           the next action, so none of it stands between the operator and it. The
           print opens More, so a printed step is unchanged. */}
+      <section className="step-section">
       <More
         cs={cs}
         ex={ex}
@@ -366,6 +413,7 @@ export function ContentStep({
         copied={copied}
         open={printing === true}
       />
+      </section>
 
       <p className="actions no-print">
         {cs.scanControl && onScan && (
@@ -571,7 +619,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
       {/* The people behind the counts above: the same lines, with their names
           under them. Nothing here is new evidence; it is the evidence the step
           already stated, at the length it actually is. */}
-      <StepSection heading={HEAD.namesHeld} when={contractWho.length > 0}>
+      <StepSection heading={HEAD.namesHeld} when={contractWho.length > 0} frame={false}>
         {contractWho.map((b) => (
           <div key={b.key} className="names-group">
             {b.lead && <p className="reason">{b.lead}</p>}
@@ -579,24 +627,36 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           </div>
         ))}
       </StepSection>
-      {risks.length > 0 && (
-        <>
-          <h4>{HEAD.risks}</h4>
-          {/* The items that apply here first, marked; the rest under Also possible.
-              When none applies the rest stand under the heading, never an empty list. */}
-          {applies.length > 0 && <ul className="sections">{applies.map((r, i) => <li key={i}><T s={r.text} ex={ex} /> <span className="chip">applies here</span></li>)}</ul>}
-          {rest.length > 0 && applies.length > 0 && <p className="sub">{HEAD.alsoPossible}</p>}
-          {rest.length > 0 && <ul className="sections">{rest.map((r, i) => <li key={i}><T s={r.text} ex={ex} /></li>)}</ul>}
-        </>
-      )}
-      {/* The rollback the step's operation earns, not the one its content was
-          written with: a created policy is set back to report-only or deleted,
-          a changed one has its settings put back (stepExport.ts ifWrongLineFor). */}
-      {ifWrong && whole(ifWrong, ex) && (
-        <>
-          <h4>{HEAD.ifWrong}</h4>
-          <p className="line"><T s={ifWrong} ex={ex} /></p>
-        </>
+      {/* The pack draws the disclosure as a two-column grid of small cards at
+          the wider widths (`docs/design/approved/plan-step-v1.html`
+          `.more-grid` / `.more-card`), and its own sample cards are these two:
+          what could go wrong, and the way back. Production already writes both
+          in that shape, so they take the grid. Nothing is invented to fill a
+          second column — one card alone is one card — and the work artifacts
+          below (the names, the recovery runbook, the three copy boxes) stay
+          full width, because a copy box halved is a copy box nobody can read. */}
+      {(risks.length > 0 || (ifWrong !== null && whole(ifWrong, ex))) && (
+        <div className="more-grid">
+          {risks.length > 0 && (
+            <div className="more-card">
+              <h5>{HEAD.risks}</h5>
+              {/* The items that apply here first, marked; the rest under Also possible.
+                  When none applies the rest stand under the heading, never an empty list. */}
+              {applies.length > 0 && <ul className="sections">{applies.map((r, i) => <li key={i}><T s={r.text} ex={ex} /> <span className="chip">applies here</span></li>)}</ul>}
+              {rest.length > 0 && applies.length > 0 && <p className="sub">{HEAD.alsoPossible}</p>}
+              {rest.length > 0 && <ul className="sections">{rest.map((r, i) => <li key={i}><T s={r.text} ex={ex} /></li>)}</ul>}
+            </div>
+          )}
+          {/* The rollback the step's operation earns, not the one its content was
+              written with: a created policy is set back to report-only or deleted,
+              a changed one has its settings put back (stepExport.ts ifWrongLineFor). */}
+          {ifWrong && whole(ifWrong, ex) && (
+            <div className="more-card">
+              <h5>{HEAD.ifWrong}</h5>
+              <p className="line"><T s={ifWrong} ex={ex} /></p>
+            </div>
+          )}
+        </div>
       )}
       {/* The recovery runbook the emergency-access step carries: what to do the
           day a change locks somebody out. It is not the next action on any step,

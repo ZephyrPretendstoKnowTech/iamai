@@ -1017,6 +1017,18 @@
           "railImplementation": "Implementation",
           "implementationReady": "Portal steps, JSON and PowerShell",
           "implementationNone": "Nothing to submit yet",
+          "railChannels": {
+            "$comment": "The rail's Implementation block as the approved Plan pack draws a side block (task 035; docs/design/approved/plan-step-v1.html `.side-list`): one short item per channel rather than one sentence naming all three. It restates `implementationReady` in the pack's grammar and adds no fact — the channels stand or fall together on Foundation A's one answer (roadmap/operations.ts implementationOffered), so a step that offers none shows `implementationNone` instead and no list at all.",
+            "portal": "Portal steps",
+            "json": "JSON",
+            "powershell": "PowerShell"
+          },
+          "foundLabel": {
+            "$comment": "The key over each finding card (task 035; docs/design/approved/plan-step-v1.html `.finding .k`). It names which KIND of finding this is — the classification stepContract.ts foundOf already makes when it builds the list — and never restates the finding's own sentence.",
+            "readiness": "Readiness",
+            "in-place": "Existing coverage",
+            "observation": "New evidence"
+          },
           "condition": {
             "healthy": "Healthy",
             "review-required": "Review required",

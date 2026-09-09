@@ -148,7 +148,11 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // approved Connect pack sets in its status strip
       // (docs/design/approved/connect-v3.html `.dot{border-radius:50%}`). So is
       // the ladder's rung badge (docs/design/mockups/today-v2.html).
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector))) continue
+      // And the bullet in a Plan rail's side list
+      // (docs/design/approved/plan-step-v1.html `.tiny{border-radius:50%}`),
+      // which is a list marker rather than a state: it carries the quiet ink,
+      // not a status colour, and is hidden from assistive technology.
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
       // MFA pack's readiness cell are both `border-radius:999px`
