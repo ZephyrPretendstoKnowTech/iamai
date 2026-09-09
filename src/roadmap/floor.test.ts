@@ -12,7 +12,7 @@ import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
 import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
-import { phases } from '../content/content.ts'
+import { app, phases } from '../content/content.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
@@ -243,7 +243,7 @@ test('the printed document carries the floor as the same named group, never unde
   assert.ok(at('{floor.length > 0 && (') < at('{schedule.cleanup && ('), 'the floor group precedes Cleanup')
 })
 
-test('the Plan page contract accepts the floor heading exactly, and nothing broader', () => {
+test('the Plan page contract accepts the two named groups exactly, and nothing broader', () => {
   const contract = JSON.parse(readFileSync(new URL('../../docs/qa/page-contracts.json', import.meta.url), 'utf8')) as { surfaces: { id: string; allow: { headings: string[] } }[] }
   const headings = contract.surfaces.find((s) => s.id === 'plan')!.allow.headings
   assert.deepEqual(headings, [
@@ -252,7 +252,13 @@ test('the Plan page contract accepts the floor heading exactly, and nothing broa
     're:^Phase \\d+ · .+ → .+$',
     're:^Cleanup( · .+ → .+)?$',
     phases.recommended,
-  ], 'the contract gained the exact heading and no new pattern')
+    // Task 036 named the undated group on screen with the words the print has
+    // always used over the same rows (app.plan.held). Both entries are exact
+    // strings read from the content file: the guard this test is here for is a
+    // broad new PATTERN in the Plan's closed heading list, not a group the Plan
+    // stopped drawing anonymously.
+    (app.plan as unknown as { held: { heading: string } }).held.heading,
+  ], 'the contract gained the exact headings and no new pattern')
 })
 
 // ---- Correction 1: absence from the active baseline is authoritative for the

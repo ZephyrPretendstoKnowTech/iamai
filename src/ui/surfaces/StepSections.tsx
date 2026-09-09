@@ -14,7 +14,7 @@ import { Callout, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
-import { CONTRACT, stageClass } from './stepContract.ts'
+import { CONTRACT, railBlocks, stageClass } from './stepContract.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -202,27 +202,46 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * Every block is a fact the contract already holds, shown only where it has one.
  * Nothing is filled in to make the rail look populated — a step with no dated
  * milestone shows no milestone block, and where the whole rail is empty there is
- * no rail and the body is one column. Pack 035 owns the rest of the pack's side
- * blocks; this is the frame they will sit in, carrying what production can say
- * truthfully today.
+ * no rail and the body is one column.
+ *
+ * Task 036 completed it with the pack's In-place block, which was the one side
+ * block production had a truthful source for and was not drawing. The pack's
+ * remaining sample blocks — a Readiness list of PASSED prerequisites, a
+ * strength comparison against the baseline — stay unbuilt: production surfaces
+ * only what is outstanding, and it holds no structured "how much stronger"
+ * fact. Inventing either to fill the column is what §5 forbids.
  */
 /** The three implementation channels, in the order What to do offers them. */
 const CHANNELS = ['portal', 'json', 'powershell']
 
-export function hasRail(contract: StepContract): boolean {
-  return railMilestone(contract) || railImplementation(contract)
-}
-
-const railMilestone = (c: StepContract): boolean => c.milestone.at !== null || c.milestone.gatedBy !== null
-const railImplementation = (c: StepContract): boolean => c.members.length > 0
-
 export function StepRail({ contract }: { contract: StepContract }) {
   const m = contract.milestone
-  const showMilestone = railMilestone(contract)
-  const showImplementation = railImplementation(contract)
-  if (!showMilestone && !showImplementation) return null
+  const existing = contract.existing
+  const { milestone: showMilestone, implementation: showImplementation } = railBlocks(contract)
+  if (!showMilestone && !showImplementation && existing === null) return null
   return (
     <aside className="step-side surface-inset">
+      {/* A goal the tenant already delivers has no milestone and no
+          implementation to summarise, so before task 036 its rail was empty and
+          the In-place step drew none at all — while the approved pack's own
+          In-place variant is defined by this block
+          (`docs/design/approved/plan-step-v1.html` V4: "Existing
+          implementation" over the policy's name).
+
+          The name is the classifier's (`contract.existing`, which is
+          `Step.satisfiedBy` read once and shared with the finding in the main
+          column): the tenant's own policy under the tenant's own name, never
+          the baseline's, and never one this scan did not classify. Where two
+          policies cover the goal between them both are named and the sub says
+          so, because the rail must not present a policy that does not cover the
+          goal as the one that delivers it. */}
+      {existing !== null && (
+        <div className="side-block">
+          <div className="key-label">{CONTRACT.railExisting}</div>
+          <p className="metric metric-name">{existing.names.join(' · ')}</p>
+          <p className="metric-sub">{existing.together ? CONTRACT.railExistingTogether : CONTRACT.railExistingKeep}</p>
+        </div>
+      )}
       {showMilestone && (
         <div className="side-block">
           <div className="key-label">{CONTRACT.railMilestone}</div>
