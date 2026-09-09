@@ -127,7 +127,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
 
   if (!scan || !account || !snapshot) {
     return (
-      <section className="surface">
+      <section className="surface export">
         <h1>{P.h1}</h1>
         <p>
           {S.scanNeedsConnect} <a href="#/connect">{S.connectLink}</a>
@@ -137,7 +137,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
   }
   if (!c) {
     return (
-      <section className="surface">
+      <section className="surface export">
         <h1>{P.h1}</h1>
         <p className="reason">{S.loading}</p>
       </section>
