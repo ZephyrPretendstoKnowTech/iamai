@@ -18,6 +18,7 @@ import { headerTabsLine, HEADER_TAB_KEYS } from '../content/contentChecks.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { statusOf } from './surfaces/statusWord.ts'
+import { CONTRACT } from './surfaces/stepContract.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const css = read('src/ui/app.css')
@@ -403,8 +404,21 @@ test('a tablist keeps the keyboard behaviour its role promises, and its panels a
 test("the Plan step's three implementation channels are one tab set, and all three stay offered", () => {
   assert.match(contentStep, /import \{ Callout, Picker, TabList, onePanelProps \}/)
   assert.doesNotMatch(contentStep, /role="tablist"/, 'the step reuses the shared strip rather than hand-rolling one')
+  // The approved order is Entra, then PowerShell, then JSON: the console an
+  // operator is most likely to use first, then the two machine channels. The
+  // IDS are internal and deliberately unchanged — `portal` is the channel that
+  // renders stepPortal.ts's lines, whatever Microsoft calls its console.
   const ids = [...(contentStep.match(/const DO_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual(ids, ['portal', 'json', 'ps'])
+  assert.deepEqual(ids, ['portal', 'ps', 'json'])
+  // And the labels are the content file's, not this file's: the strip and the
+  // rail's Implementation block name the same three channels, so they read the
+  // same three words from one entry.
+  assert.match(contentStep, /label: CONTRACT\.railChannels\.portal/, 'the strip writes its own label beside the rail’s')
+  assert.deepEqual(
+    [CONTRACT.railChannels.portal, CONTRACT.railChannels.powershell, CONTRACT.railChannels.json],
+    ['Entra', 'PowerShell', 'JSON'],
+    'the operator-facing channel labels moved',
+  )
   assert.match(contentStep, /<TabList base=\{doBase\}[\s\S]*?panelId=\{\(\) => `\$\{doBase\}-panel`\}/)
   // Task 035 gave the panel the approved pack's instruction-block edge. It is
   // still one panel, still labelled by whichever tab is selected, and still

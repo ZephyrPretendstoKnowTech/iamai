@@ -212,7 +212,7 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * fact. Inventing either to fill the column is what §5 forbids.
  */
 /** The three implementation channels, in the order What to do offers them. */
-const CHANNELS = ['portal', 'json', 'powershell']
+const CHANNELS = ['portal', 'powershell', 'json']
 
 export function StepRail({ contract }: { contract: StepContract }) {
   const m = contract.milestone

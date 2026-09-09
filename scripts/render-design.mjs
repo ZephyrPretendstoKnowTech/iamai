@@ -31,6 +31,40 @@ import { setTimeout as sleep } from 'node:timers/promises'
 const root = resolve(import.meta.dirname, '..')
 const at = (p) => resolve(root, p)
 
+/**
+ * Put the Plan board back to how a visit finds it, before a shot sets the one
+ * state it is evidence for.
+ *
+ * These shots all reach the same URL, and a navigation whose only difference is
+ * the hash does not remount the page — so without this the third shot inherits
+ * the second's pressed filter and its scroll position, and the plate shows a
+ * board no fresh visit produces. It resets the lens to Roadmap, releases any
+ * pressed focus control, closes an open step and scrolls to the top.
+ */
+const RESET = `const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (const b of document.querySelectorAll('main.page .plan-controls .focus[aria-pressed="true"]')) { b.click(); await wait(120) }
+  const home = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((t) => (t.textContent || '').trim() === 'Roadmap');
+  if (home && home.getAttribute('aria-selected') !== 'true') { home.click(); await wait(220) }
+  const openRow = document.querySelector('main.page .plan-row[aria-expanded="true"]');
+  if (openRow) { openRow.click(); await wait(220) }
+  window.scrollTo(0, 0); await wait(120);`
+
+/**
+ * Press one of the board's controls by its visible label and let React settle.
+ * The lens tabs and the focus toggles are different elements doing the same job
+ * here, so one helper finds either.
+ */
+const PRESS = (label) =>
+  `(async () => { ${RESET} const want = ${JSON.stringify(label)}; const b = [...document.querySelectorAll('main.page .plan-controls [role=tab], main.page .plan-controls .focus')].find((x) => (x.textContent || '').trim().startsWith(want)); if (!b) return false; b.click(); await wait(320); window.scrollTo(0, 0); await wait(120); return true })()`
+
+/**
+ * Open a step on the roadmap, then optionally regroup the board. `lens` null
+ * leaves it on the roadmap; a label switches to that lens afterwards, which is
+ * how the two shots together evidence that an open step survives a regroup.
+ */
+const OPEN_THEN = (lens) =>
+  `(async () => { ${RESET} const rows = [...document.querySelectorAll('main.page .plan-row')]; const r = rows.find((x) => /Intune Enrollment/.test(x.textContent || '')) || rows[0]; if (!r) return false; r.click(); await wait(340); const lens = ${JSON.stringify(lens)}; if (lens) { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((b) => (b.textContent || '').trim() === lens); if (t) t.click(); await wait(380) } window.scrollTo(0, 0); await wait(120); return !!document.querySelector('main.page .step') })()`
+
 /** The widths every restoration pack owes evidence at (docs/design/approved/manifest.json renderedEvidence). */
 export const WIDTHS = [1280, 768, 390]
 
@@ -88,13 +122,32 @@ const PRODUCTION_SHOTS = [
   // with the canonical (task 032). No tenant is read: the app is simply not
   // signed in.
   { name: 'connect-signedout', hash: '#/connect', noDemo: true },
-  { name: 'plan', hash: '#/plan' },
+  // The board as a visit finds it. It carries a reset because every Plan shot
+  // reaches the same URL and a hash-only navigation does not remount the page:
+  // without it this plate inherits whichever lens the previous shot selected.
+  { name: 'plan', hash: '#/plan', after: PRESS('Roadmap') },
   // The Plan with one step open. The approved Plan pack's subject is the
   // EXPANDED step — the row it attaches to, the head, the lifecycle track, the
   // main column and the right rail — and a collapsed-roadmap plate cannot be
   // evidence for any of it (task 034). The step is opened the way an operator
   // opens one: the first roadmap row is clicked.
   { name: 'plan-step', hash: '#/plan', after: `(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()` },
+  // The board's lenses and focus controls (the Plan organisation pass). Each is
+  // the same rows re-headed, so the evidence for that claim is one board shot
+  // several ways rather than several different pages.
+  //
+  // Each `after` presses a real control by its own visible label — the same
+  // thing an operator does — rather than reaching into state, so a shot cannot
+  // show a board the interface itself cannot produce.
+  { name: 'plan-status', hash: '#/plan', after: PRESS('Status') },
+  { name: 'plan-type', hash: '#/plan', after: PRESS('Work type') },
+  { name: 'plan-attention', hash: '#/plan', after: PRESS('Needs attention') },
+  { name: 'plan-upnext', hash: '#/plan', after: PRESS('Up next') },
+  { name: 'plan-completed', hash: '#/plan', after: PRESS('Show completed') },
+  // Open-step context across a lens change: the same step is opened on the
+  // roadmap, and must still be open after the board is regrouped under Status.
+  { name: 'plan-open-roadmap', hash: '#/plan', after: OPEN_THEN(null) },
+  { name: 'plan-open-status', hash: '#/plan', after: OPEN_THEN('Status') },
   // And a step that is actually on the rollout lifecycle, so the plate carries
   // the track and the rail as well as the frame. The first row that produces a
   // track is used rather than a step named here, so the evidence does not break

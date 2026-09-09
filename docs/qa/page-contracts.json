@@ -467,15 +467,21 @@
       "allow": {
         "headings": [
           "Plan",
-          "re:^Preparation( · .+ → .+)?$",
-          "re:^Phase \\d+ · .+ → .+$",
-          "re:^Cleanup( · .+ → .+)?$",
+          "Preparation",
+          "re:^Phase \\d+$",
+          "Cleanup",
           "Microsoft recommended, not in this baseline",
-          "Waiting on something else"
+          "Waiting on something else",
+          "Complete"
         ],
         "tabs": [],
         "tiles": [],
-        "columns": [],
+        "columns": [
+          "State",
+          "Step",
+          "Impact",
+          "When"
+        ],
         "chips": [
           "In place",
           "Ready",
@@ -489,10 +495,17 @@
           "Doesn't apply"
         ],
         "buttons": [
-          "Start the plan"
+          "Start the plan",
+          "Roadmap",
+          "Status",
+          "Work type",
+          "re:^Needs attention\\s*\\d+$",
+          "re:^Up next\\s*\\d+$",
+          "re:^Show completed\\s*\\d+$",
+          "+",
+          "−"
         ],
         "summaries": [
-          "re:^Already in place \\(\\d+\\)$",
           "re:^Doesn't apply here \\(\\d+\\)$",
           "re:^Not licensed \\(\\d+\\)$",
           "re:^Housekeeping \\(\\d+\\)$"
@@ -586,10 +599,6 @@
         "actions": [
           {
             "click": "summary",
-            "text": "Already in place"
-          },
-          {
-            "click": "summary",
             "text": "Doesn't apply here"
           },
           {
@@ -608,15 +617,9 @@
         "tabs": [],
         "tiles": [],
         "columns": [],
-        "chips": [
-          "In place",
-          "Enforced",
-          "Skipped",
-          "Doesn't apply"
-        ],
+        "chips": [],
         "buttons": [],
         "summaries": [
-          "re:^Already in place \\(\\d+\\)$",
           "re:^Doesn't apply here \\(\\d+\\)$",
           "re:^Not licensed \\(\\d+\\)$",
           "re:^Housekeeping \\(\\d+\\)$"
@@ -626,8 +629,8 @@
         ]
       },
       "budget": {
-        "sentences": 24,
-        "words": 380
+        "sentences": 16,
+        "words": 260
       },
       "forbid": [
         "Could not be evaluated",

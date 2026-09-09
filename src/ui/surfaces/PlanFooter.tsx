@@ -1,10 +1,14 @@
-// The Plan footer (prompt 48 item 13, target-state §5). Three collapsed
-// details, one line each when collapsed: what is already in place, what does
-// not apply here, and housekeeping (policies off the baseline or the naming
-// convention, policies not assessed, static-rule violations, and checks that
-// could not run). This is what Findings becomes.
-import { Fragment } from 'react'
-import type { ReactNode } from 'react'
+// The Plan footer (prompt 48 item 13, target-state §5). The collapsed details
+// under the board: what does not apply here, what a licence switched off, and
+// housekeeping (policies off the baseline or the naming convention, policies not
+// assessed, static-rule violations, and checks that could not run). This is what
+// Findings becomes.
+//
+// It no longer holds the In place ROWS. Finished steps are the board's Complete
+// group now (Plan.tsx), because the board's three lenses group rows and a lens
+// cannot group a row that lives in another component. What is left here is
+// everything that was never a row: the person's own answers, the licence ladder
+// and the housekeeping list.
 import type { Step } from '../../roadmap/types.ts'
 import { app, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -17,12 +21,11 @@ import { notLicensedNote, notLicensedRows, notLicensedSummary } from '../../deri
 type FooterWords = { inPlace: string; doesntApply: string; doesntApplyRow: string; housekeeping: string; notInBaseline: string; notInBaselineKeep: string }
 const F = (pages.plan as { footer: FooterWords }).footer
 
-export function PlanFooter({ computed, nameOf, onPutBack, renderRow }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void; /** An In place row as the plan's own row, so it opens in place: a done step still carries its decisions (a policy in place keeps its partner question; a made device decision keeps its effect lines). One renderer, always: the footer had a row of its own behind an optional prop that nothing ever left unset, and it had drifted to a different shape. */ renderRow: (step: Step) => ReactNode }) {
+export function PlanFooter({ computed, nameOf, onPutBack }: { computed: PlanComputed; nameOf: (id: string) => string; onPutBack: (stepId: string) => void }) {
   void nameOf
   // The steps the person said do not apply here (mapping.notApplicable), with
   // the reason as given and a way back; the engine's own not-applicable goals follow.
   const said = computed.steps.filter((s) => typeof s.doesntApply === 'string' && s.doesntApply.length > 0)
-  const inPlace = computed.steps.filter((s) => s.status === 'done')
   // Doesn't apply here holds the person's answers only; a goal a licence switched
   // off is a Not licensed row (derive/notLicensed.ts).
   // The licence ladder as rows (prompt 52 Part 3): the content step's title and
@@ -40,14 +43,6 @@ export function PlanFooter({ computed, nameOf, onPutBack, renderRow }: { compute
 
   return (
     <div className="plan-footer">
-      {inPlace.length > 0 && (
-        <details>
-          <summary>{fillText(F.inPlace, { n: inPlace.length })}</summary>
-          {inPlace.map((s) => (
-            <Fragment key={s.id}>{renderRow(s)}</Fragment>
-          ))}
-        </details>
-      )}
       {said.length > 0 && (
         <details>
           <summary>{fillText(F.doesntApply, { n: said.length })}</summary>

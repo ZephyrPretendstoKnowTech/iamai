@@ -1440,9 +1440,14 @@ async function walkFixture(fx) {
         for (const t of fd.titles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name} @${width} /plan footer: "${t}" is a goal the baseline does not hold`)
         for (const row of fd.rows) for (const nm of ABSENT_GOAL_NAMES) if (row.text.includes(nm)) add('P0', `${fx.name} @${width} /plan footer: "${nm}" is a goal the baseline does not hold`)
         // A done step's row shows no date word: blank, never "now".
-        const doneWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-footer .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ((r.querySelector('.when') || {}).textContent || '').trim())`)
+        // The done rows are the board's Complete group now, not the footer's
+        // first details (Plan.tsx). The invariant is the row's, not the
+        // container's: a done row's date column is blank, never "now".
+        await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show completed/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
+        await sleep(200)
+        const doneWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ((r.querySelector('.when') || {}).textContent || '').trim())`)
         const dated = doneWhens.filter((w) => w !== '')
-        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan footer: ${dated.length} done row(s) carry a date word ("${dated[0]}"); a done row is blank`)
+        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} done row(s) carry a date word ("${dated[0]}"); a done row is blank`)
       }
       // A started plan (E5), on day one: Start the plan locks the dates; the
       // Start date field and its note go, and "started <date>" stands in their

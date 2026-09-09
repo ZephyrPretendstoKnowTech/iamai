@@ -160,7 +160,10 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // (docs/design/approved/anatomy/plan-step-v1.html `.tiny{border-radius:50%}`),
       // which is a list marker rather than a state: it carries the quiet ink,
       // not a status colour, and is hidden from assistive technology.
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector))) continue
+      // The Plan board's focus controls carry the same two shapes: a dot beside
+      // the control's own word, and the count in a full round beside it
+      // (docs/design/approved/reference/iamai-plan-organization-final.html).
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector) || /\.plan-controls \.dot/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
       // MFA pack's readiness cell are both `border-radius:999px`
@@ -170,7 +173,7 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // and the approved Connect step's numbered badge, which that pack draws as
       // a full round rather than a value on the 4/8/12 hierarchy
       // (docs/design/approved/anatomy/connect-v3.html `.num{border-radius:999px}`).
-      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b/.test(r.selector)) continue
+      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b|\.plan-controls \.count/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
@@ -230,8 +233,13 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //   .stage-*         a lifecycle stage, whose name is under the bar
   //   .role-admin      the admin role's own NAME, set in the admin colour
   //                    (docs/design/approved/anatomy/mfa-readiness-v2.html)
+  //   .plan-controls .dot-*
+  //                    the dot inside a focus control, whose own label is the
+  //                    state it filters to ("Needs attention", "Up next"). The
+  //                    dot is `aria-hidden` and the word is the control's name,
+  //                    so nothing here is carried by the colour.
   const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
-  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-/
+  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))
@@ -246,10 +254,20 @@ test('design 6: the raised surface only on the panels and the floating layers (p
   // row on hover). Nothing else in the content flow may gain a box.
   // Connect's staged flow and its Plan destination are panels too
   // (docs/design/approved/anatomy/connect-v3.html `.flow` and `.ready`), and so are the
-  // home page's cards (docs/design/home-mockup.html; home/home.css). The steps
-  // INSIDE the flow are not, and must not become so: they sit on the one panel,
-  // which is what makes the flow contiguous instead of a stack of cards.
-  const ALLOWED = /\.wave\b|\.phase\b|\.export-grid|\.infotip-pop|\.menu-list|tbody tr:hover|\.connect-flow\b|\.connect-destination\b|\.card\b|\.panel\b/
+  // home page's cards (home/home.css). The steps INSIDE the flow are not, and
+  // must not become so: they sit on the one panel, which is what makes the flow
+  // contiguous instead of a stack of cards.
+  //
+  // The OPEN Plan row is the newest entry and is the rule working, not an
+  // exception to it. The Plan's phase used to be the panel and its rows sat on
+  // it; the approved reference inverts that — transparent hairline rows in a
+  // group, and only the opened row surface-backed as the attached header of its
+  // step (docs/design/approved/reference/REFERENCE-MANIFEST.json globalRulings
+  // `planCollapsedRows`). The board therefore has exactly one raised object at a
+  // time, which is the one the operator is working on. The COLLAPSED row must
+  // never gain it, which is why this names the open-state selector and not
+  // `.plan-row`.
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-grid|\.infotip-pop|\.menu-list|tbody tr:hover|\.connect-flow\b|\.connect-destination\b|\.card\b|\.panel\b|\.plan-row\[aria-expanded='true'\]/
   const hits = rules
     // Task 040 deleted the --bg-raised alias; --surface is the one name now.
     .filter((r) => /var\(--surface\)/.test(r.body) && !ALLOWED.test(r.selector))
