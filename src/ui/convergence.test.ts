@@ -263,6 +263,30 @@ test('the three uncovered surfaces take the display ramp, and take it below ever
   for (const t of ['d-1', 'd-2', 'd-3', 'd-5']) assert.ok(ramp(t) > ramp('d-9'), `${t} is not above the secondary heading`)
 })
 
+test('a surface takes its own route styling in every state it can render, not only when its data arrived', () => {
+  // The ramp above is keyed on the surface class, so a branch that renders a
+  // bare `.surface` renders the OLD heading: the same route would change its
+  // typographic hierarchy when its data state changed. Export is the surface
+  // with more than one branch (no scan, plan still computing, plan ready), and
+  // two of the three did not carry the class when task 040 landed.
+  for (const [name, src] of [
+    ['export', EXPORT],
+    ['how', HOW],
+    ['inventory', INVENTORY_ROOT],
+  ] as const) {
+    const roots = [...src.matchAll(/<section className="surface([^"]*)"/g)].map((m) => m[1])
+    assert.ok(roots.length > 0, `${name} renders no surface root`)
+    for (const rest of roots) {
+      assert.ok(rest.split(/\s+/).includes(name), `a ${name} branch renders <section className="surface${rest}">`)
+    }
+  }
+  // Export's three branches are still the three states, with their own words.
+  assert.equal([...EXPORT.matchAll(/<section className="surface export">/g)].length, 3)
+  assert.match(EXPORT, /\{S\.scanNeedsConnect\}/)
+  assert.match(EXPORT, /\{S\.loading\}/)
+  assert.match(EXPORT, /\{P\.intro\}/)
+})
+
 // -------------------------------------------------- 6. what did NOT converge
 
 test('How still derives its permission and read truth from the runtime registries', () => {
