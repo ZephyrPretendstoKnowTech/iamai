@@ -1523,9 +1523,8 @@ footer.app a {
    second parallel grid a screen reader reads separately.
 
    It renders `contract.track` (stepContract.ts), which is a projection of
-   Foundation B's lifecycle. Nothing here decides a stage, and the current
-   stage's partial bar is the pack's static treatment, not a measured
-   percentage. */
+   Foundation B's lifecycle. Nothing here decides a stage, and a stage's fill is
+   the pack's static treatment for that stage, not a measured percentage. */
 .step .track-wrap {
   margin-top: 17px;
 }
@@ -1558,9 +1557,30 @@ footer.app a {
   width: 100%;
   background: var(--success);
 }
-.step .track .stage.current .stage-fill {
+/* The current stage is drawn as the stage it IS. The pack gives each of the four
+   its own treatment (`.stage.current` at 62%, `.stage.ready` at 84%, `.done`
+   full, and an unfilled bar for a policy that is not deployed), and one blanket
+   partial fill would draw a step that has deployed nothing — or one already
+   enforced — as a rollout half way through. So:
+
+   Not deployed  no fill at all; there is nothing under way yet.
+   Report-only   the pack's 62% attention treatment.
+   Ready to      the pack's own further-along treatment, at its 84%, in brand
+     enforce     rather than attention: the policy is waiting on the operator,
+                 not on a problem.
+   Enforced      complete, which is the `.reached` fill above — `stepTrack` marks
+                 every stage reached at the end of the lifecycle, and no rule
+                 here paints over it.
+
+   Nothing measures anything: these are the pack's static treatments per stage,
+   and which stage is current stays `contract.track`'s answer alone. */
+.step .track .stage.current.stage-report-only .stage-fill {
   width: 62%;
   background: var(--attention);
+}
+.step .track .stage.current.stage-ready-to-enforce .stage-fill {
+  width: 84%;
+  background: var(--accent);
 }
 .step .track .stage-label {
   font-family: var(--font-sans);

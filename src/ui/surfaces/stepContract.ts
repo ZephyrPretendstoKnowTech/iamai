@@ -172,6 +172,22 @@ export function stepTrack(step: Step): ContractStage[] {
   return LIFECYCLE_ORDER.map((key, i) => ({ key, label: CONTRACT.lifecycle[key], reached: i < at || s.lifecycle === 'enforced', current: i === at }))
 }
 
+/**
+ * The one class list a stage is drawn with: the stage it *is*, then whether the
+ * lifecycle is past it and whether the step is at it.
+ *
+ * The stage's own name is on the element because the pack draws each of the four
+ * differently when it is the current one — Not deployed as an unfilled bar,
+ * Report-only and Ready to enforce as their own two partial treatments, Enforced
+ * as complete — and one blanket "current" treatment would paint a step that has
+ * deployed nothing, or one that is already finished, as mid-rollout. This adds
+ * no fact: `key` is the stage `stepTrack` already projected, and which treatment
+ * belongs to which stage is app.css's.
+ */
+export function stageClass(stage: ContractStage): string {
+  return `stage stage-${stage.key}${stage.reached ? ' reached' : ''}${stage.current ? ' current' : ''}`
+}
+
 /** One required policy member of the step (Foundation B), with its own name and its own stage. */
 export type ContractMember = {
   key: string
