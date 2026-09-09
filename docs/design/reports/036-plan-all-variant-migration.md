@@ -56,7 +56,7 @@ shape it renders at — kind, lifecycle, condition, outcome, action mode, track,
 implementation, rail, findings, blockers, members, reach — rather than by
 grepping for names.
 
-Four states no single scan of a fixture can produce were derived rather than
+Five states no single scan of a fixture can produce were derived rather than
 assumed:
 
 | State | How it is reached | Why it cannot be skipped |
@@ -64,12 +64,15 @@ assumed:
 | `needs-decision` | `noExclusionsAnswer(f)` | every committed fixture answers the exclusions question, so the state a real tenant starts in appears in no plain run |
 | `review-required` | a second scan of an edited policy read against the first scan's record | it is a *difference* between two scans and does not exist in one |
 | `set-aside` | `mapping.notApplicable[stepId]` | it is an operator action |
+| **a goal the baseline implements with two policies** (`multiPolicy`) | the fixture read again with **none of the tenant's own Conditional Access** (`paired(f)`), then with one half of the pair deployed in report-only, then with that half edited between two scans | every fixture's tenant already delivers `guests-mfa` with a policy of its own, so on all of them the pair is *preserved* and never rendered apart — correction 1 |
 | actionable implementation on the demo | `curatedFixture` / `asCuratedBaseline` | an unsettled source group holds the whole policy, so the demo's own baseline reaches almost none of the implementable shapes |
 
-**Result: 34 distinct renderable shapes across 6 presentation kinds** (`policy`,
+**Result: 41 distinct renderable shapes across 6 presentation kinds** (`policy`,
 `object`, `blocker`, `check`, `campaign`, `ladder`), 5 lifecycle values
 (including *none*), 5 conditions, and 8 action modes (`deploy`, `observe`,
-`enforce`, `preserve`, `resolve`, `decide`, `verify`, `restore`).
+`enforce`, `preserve`, `resolve`, `decide`, `verify`, `restore`). Six of the 41
+are two-policy shapes, added by correction 1; the first pass reported 34 and
+reached none of them.
 
 The full list is not paraphrased here: it is `INVENTORY` in
 `src/ui/surfaces/planVariants.test.ts`, recomputed from every fixture on every
@@ -91,6 +94,7 @@ test run and asserted equal. Prose rots; that list fails.
 | Set aside | `state.setAside` | `PlanRow` | `ContentStep` | yes | none |
 | Preparation / object / blocker | `steps[].kind` `object` \| `blocker` | `PlanRow` | `ContentStep` | yes | none |
 | Check, Campaign, Hardening rung | `steps[].kind` `check` \| `campaign` \| `ladder` | `PlanRow` | `ContentStep` | yes | none |
+| **Two-policy goal (Foundation B members)** | `requiredMembers`, `contract.members`, `multiPolicy` | `PlanRow` | `ContentStep` → `PolicyMembers` | yes | none — but unproved by this file until correction 1 |
 | Cleanup row | `CleanupPhase.rows` | `PlanRow` | `CleanupBody` | yes (034) | none |
 | **Undated held group** | `undatedRows` | `PlanRow`, **under no heading** | `ContentStep` | **partial** | **the group's name** |
 
@@ -288,16 +292,21 @@ Both are full runs of `scripts/render-design.mjs --production`, at 1280 / 768 /
 evidence.
 
 New in both sets, added by this task: **`plan-step-inplace`,
-`plan-step-blocked`, `plan-step-conflict`, `plan-step-decision`**. Each opens
-roadmap rows until the opened step satisfies a predicate about what it
-*contains* — a rail metric name, an attention panel with a blocking list, a
-danger callout without one, a decision label — so the plate cannot silently be
-of the wrong step, and the evidence survives a change to the demo fixture. The
+`plan-step-blocked`, `plan-step-conflict`, `plan-step-decision`,
+`plan-step-review`**. Each opens roadmap rows until the opened step satisfies a
+predicate about what it *contains* — a rail metric name, an attention panel with
+a blocking list and no decision, a danger callout without a blocking list, a
+decision label, a review-required condition — so the plate cannot silently be of
+the wrong step, and the evidence survives a change to the demo fixture. The
 driver now prints `NOT FOUND` when no row matched.
 
-**Of the 78 plates shot in both runs, the 48 that differ are all Plan plates.**
+`plan-step-review` and the mutual exclusion of the blocked and decision
+predicates are **correction 1**; see §12.
+
+**Of the 84 plates shot in both runs, the 54 that differ are all Plan plates.**
 Connect, Connect signed-out, MFA Readiness, Home and Export — 30 plates in both
 themes at all three widths — are byte-identical. Nothing leaked out of the Plan.
+(78 and 48 before correction 1 added the six `plan-step-review` plates.)
 
 ### The one that matters most
 
@@ -316,7 +325,9 @@ document.
 |---|---|---|---|
 | In place | rail carries `Core - Block - Legacy authentication` under "Existing implementation"; no track; What to do says "nothing to create" | rail under the main column | same, one column |
 | Baseline conflict | danger callout above Why; no track; rail carries "Next milestone → the baseline defines this policy two ways" with **no date**; no findings, no Fix — truthfully sparse | collapses | collapses |
-| Blocked / decision | attention panel with the numbered blocking list; picker chips are a draft with a Save, never a confirmation | collapses | collapses |
+| Blocked | attention panel with the numbered blocking list, and no decision to answer | collapses | collapses |
+| Needs decision | the same attention panel *and* the decision row under What to do: picker chips are a draft with a Save, never a confirmation | collapses | collapses |
+| Review required (V3) | head reads "In place · Review required"; What IAMAI found carries the NEW EVIDENCE card ("the policy itself changed … what was watched before this is no longer what is deployed") beside EXISTING COVERAGE; the after plate also carries the In-place rail this task added, which the before plate does not | collapses | collapses |
 | The board | the undated group is now headed "Waiting on something else"; the h1 is the pack's serif 42 | 34 | 30 |
 
 `LANDED REPO FACT` — a capture artifact, not a defect: in a full-page
@@ -370,7 +381,7 @@ drawing what production claims to have restored.
 | Check | Result |
 |---|---|
 | `npx tsc --noEmit` | clean |
-| `npm test` | 1939 pass, 0 fail, 2 skipped |
+| `npm test` | 1939 pass, 0 fail, 2 skipped (correction 1: 1939 pass, 0 fail, 2 skipped — §7 and §7b added) |
 | `npm run build:site` | built |
 | `npm run smoke` | pass |
 | `git diff --check` | clean |
@@ -379,7 +390,108 @@ drawing what production claims to have restored.
 | Task-030 foundation (`foundation.test.ts`, `tokens.test.ts`) | pass |
 | Pack 033/034/035 regressions (`planAnatomy.test.ts`) | pass, unchanged |
 | Step Contract (`stepContract.test.ts`) | pass, 12 contracts |
+| All-variant sweep (`planVariants.test.ts`) | pass, 16 tests, 41-shape inventory |
 | Accessibility (`accessibility.test.ts`) | pass |
 | Canonical + production render | `docs/screens/036/{before,after}` |
 
 `npm run walk` was not run locally; the `deploy-pages` workflow owns the walk.
+
+---
+
+## 12 — correction 1
+
+Two findings, both on the *proof* rather than on the product: the migration
+itself is unchanged, the canonical Plan HTML is untouched and its hash is still
+`1f1bda57…`.
+
+### 12.1 The all-variant inventory omitted multi-policy steps
+
+`LANDED REPO FACT`. Every one of the 34 shapes the first pass pinned ended in
+`one-policy`. A goal the pinned baseline implements with **two** policies —
+`guests-mfa` — is one step delivering two objects, each with its own name, its
+own stage, its own observation history and its own review state (Foundation B,
+`roadmap/tracking.ts` `requiredMembers`; rendered by `StepSections.tsx`
+`PolicyMembers`). The sweep reached that path on **no** fixture, so a file whose
+whole claim is "every shape the Plan can render" left the one rendering branch
+that can *lose facts* unswept: a migration could have flattened the pair to its
+deployed half and the gate would still have passed.
+
+It was unreachable for a reason, and the reason is production's: on every
+committed fixture the tenant already delivers `guests-mfa` with a policy of its
+own, so the step is `preserved` and its pair is never rendered apart.
+
+The fix is a third derived reading in the sweep — `paired(f)` in
+`planVariants.test.ts` — which reads every fixture again with **none of the
+tenant's own Conditional Access**, which is the ordinary greenfield shape, and
+then twice more:
+
+| Reading | What it makes true |
+|---|---|
+| `+no-ca` | both halves of the pair required, neither deployed |
+| `+half-pair` | one half deployed in report-only, the other not built: two stages, two histories |
+| `+half-pair+rescan` | that half edited by hand between two scans: **one** member held for review, the other not |
+
+Nothing writes an observation: the third run's record is the second run's own,
+exactly as `rescanned` already did it for a single-member step.
+
+The inventory is now **41 shapes**, six of them `members`. The three cases are
+also named in `CASES`, so §1 fails if any of them stops being reachable.
+
+New `§7` asserts over **every** multi-policy variant in the sweep, not over a
+named case: one member per required member in the baseline's order, distinct
+keys, distinct labels, distinct names, distinct lines; each member's stage is
+the tracking record's *for that key*, each member's review state is its own, and
+each member's `since` is the observation recorded *for that key* — never the
+step's aggregate and never the other half's. It then asserts the sweep actually
+reaches a pair at two different stages and a pair with exactly one half held for
+review, and that a member needing a look never leaves its step reading
+`healthy`. (Which badge the step ends up wearing is the condition precedence's
+answer — a blocked step outranks a held one — so `healthy` is the assertion, not
+`review-required`.) `§7b` holds the renderer to the same one source.
+
+`stepContract.test.ts` contract 8 already proved the canonical pair in depth;
+what was missing was the *sweep*, and that is what this adds.
+
+### 12.2 The blocked and decision plates were byte-identical
+
+`LANDED REPO FACT`. The two capture predicates were not mutually exclusive: a
+step waiting on a person also lists what is outstanding, so
+`.callout` + `.blocking` matched the decision step, and the first row satisfying
+both produced one step's picture under two names. All twelve plates (two
+variants × two themes × three widths) were duplicates, in the before set as well
+as the after set.
+
+The blocked predicate is now the attention panel and its list **and no decision
+row**; the decision predicate is unchanged. The two plate sets are now distinct
+at every width in both themes.
+
+And `plan-step-review` adds the one canonical variant that had no production
+plate at all. It is not obtained by changing the sample tenant. The demo *is*
+two scans of one org, and selecting the follow-up scan carries day one's record
+into it, observations and all (`ui/demo.ts` `nextDemoRecord`), so the sample's
+own progression renders a policy held for review. The driver waits for day one's
+plan to record what it saw, puts the demo's snapshot bookkeeping back to what a
+visitor who has not opened week two yet has, and presses the selector a visitor
+presses; the one row it writes is the sample tenant's own (`ui/demoMode.ts`).
+Without that reset the shot is order-dependent — the first pass writes a record
+for the follow-up scan and every pass after it reads week two against week two's
+own observations, which is a tenant nothing changed in.
+
+Both plate sets were **re-shot end to end**: the after set from this tree, the
+before set from a build of task 036's base commit `a8f6dce` in a separate
+worktree, with the corrected script in both. All eighteen re-shot plates report
+no `NOT FOUND` and all eighteen are distinct.
+
+| Re-shot | before | after |
+|---|---|---|
+| `plan-step-blocked` × 2 themes × 3 widths | `a8f6dce` | this tree |
+| `plan-step-decision` × 2 themes × 3 widths | `a8f6dce` | this tree |
+| `plan-step-review` × 2 themes × 3 widths | `a8f6dce` | this tree |
+
+### 12.3 What was deliberately not touched
+
+- The `needs-decision` **condition** plate stays deferred for the reason §10
+  gives: the demo answers that question, and demo truth is not changed for a
+  screenshot. It is proved at contract level over nine plans in the sweep.
+- No Foundation, no contract and no engine file changed. The correction is a
+  test file, a capture script and this report.
