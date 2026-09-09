@@ -112,8 +112,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the last phase, Cleanup included (§9).
   const cleanupPhase = c.schedule.cleanup ?? null
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
-  // One count for the header, the print cover and Connect (derive/facts.ts): the steps and the Cleanup rows.
-  const { steps: total, done: inPlace } = stepFacts(c.steps, cleanupPhase)
+  // One count for the header, the print cover and Connect (derive/facts.ts):
+  // the steps and the Cleanup rows, each row counted the way the row reads
+  // itself (the answers complete the alerting row without a date).
+  const answers = data.mapping?.breakGlassAnswers ?? null
+  const { steps: total, done: inPlace } = stepFacts(c.steps, cleanupPhase, answers)
   // What holds the plan: a readiness number where one does, else the steps whose
   // policy cannot be written yet and the step each waits on.
   const waiting = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id))
@@ -238,7 +241,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         <section className="phase">
           <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(cleanupPhase.start), end: absoluteDate(cleanupPhase.end) })}</h2>
           {cleanupPhase.rows.map((r) => (
-            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={data.mapping?.breakGlassAnswers ?? null} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} />
+            <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === `cleanup-${r.kind}`} onToggle={() => openStep(`cleanup-${r.kind}`)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} />
           ))}
         </section>
       )}

@@ -29,7 +29,7 @@ test("every surface's facts are identical on both fixtures: Today, the ladder, t
     const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
     assert.deepEqual({ 1: cl.noMethod.length, 2: cl.unproven.length, 3: cl.rung3.length, 4: cl.rung4.length }, { 1: F.rungs[1], 2: F.rungs[2], 3: F.rungs[3], 4: F.rungs[4] }, `${name}: the campaign step's groups`)
     const run = runFixture(f)
-    const sf = stepFacts(run.steps, run.schedule.cleanup)
+    const sf = stepFacts(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
     assert.ok(sf.steps > 0 && sf.done <= sf.steps, `${name}: the plan's steps and done`)
   }
   const d = fixture('demo')

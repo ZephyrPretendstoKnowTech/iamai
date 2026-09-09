@@ -8,6 +8,7 @@
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import type { CleanupPhase } from '../roadmap/cleanupPhase.ts'
+import { cleanupComplete } from '../roadmap/cleanupDone.ts'
 import { KINDS, RUNGS, ladder } from './ladder.ts'
 import type { Kind, Ladder, LadderMapping, Rung } from './ladder.ts'
 import { doneSteps, trackableSteps } from './sets.ts'
@@ -33,18 +34,30 @@ export function facts(snapshot: TenantSnapshot, mapping: LadderMapping, now: str
   return factsOf(ladder(snapshot, mapping, now))
 }
 
+/** What completes a Cleanup row beyond its Done control: the mapping's emergency-access answers, as `cleanupComplete` reads them. */
+export type CleanupAnswers = { signInMonitoring: boolean | null } | null | undefined
+
 /** The plan's facts: the rows it is measured against (the trackable steps plus the Cleanup rows), and how many are done. */
 export type StepFacts = { steps: number; done: number }
 
 /**
  * The counts the Plan header, the print cover and Connect's Plan tile share
  * (E4): the trackable steps plus the Cleanup rows (a step the person said does
- * not apply is out), and how many are done (a Cleanup row marked done counts as one).
+ * not apply is out), and how many are done.
+ *
+ * A Cleanup row is in place exactly when the row itself reads In place, which is
+ * `roadmap/cleanupDone.ts` `cleanupComplete(row, answers)` and not `row.done`:
+ * the emergency-access sign-in-monitoring attestation completes the alerting row
+ * without recording a date. Counting `row.done` here put the aggregate one
+ * behind the rows it aggregates — a row saying In place under a header that had
+ * not counted it (task 042 correction 1). `answers` is the mapping's
+ * `breakGlassAnswers`, and it is required so that a caller decides rather than
+ * forgets; absent or null is nothing recorded, which completes nothing.
  */
-export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null | undefined): StepFacts {
+export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null | undefined, answers: CleanupAnswers): StepFacts {
   const counted = steps.filter((s) => !s.doesntApply)
   const rows = cleanup?.rows ?? []
-  return { steps: trackableSteps(counted).length + rows.length, done: doneSteps(counted).length + rows.filter((r) => r.done).length }
+  return { steps: trackableSteps(counted).length + rows.length, done: doneSteps(counted).length + rows.filter((r) => cleanupComplete(r, answers)).length }
 }
 
 /**

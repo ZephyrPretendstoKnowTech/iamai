@@ -41,13 +41,24 @@ test('every Cleanup row is a calendar entry on its day, with what the row says',
 
 test("the print cover's step count is the Plan header's: the steps and the Cleanup rows", () => {
   const { r } = setUp()
-  const counts = stepFacts(r.steps, r.schedule.cleanup)
+  // The answers are the Cleanup rows' second completion (roadmap/cleanupDone.ts);
+  // this fixture's rows are counted against nothing recorded unless stated.
+  const silent = { credentialStorage: null, signInMonitoring: null }
+  const counts = stepFacts(r.steps, r.schedule.cleanup, silent)
   const rows = r.schedule.cleanup!.rows.length
   assert.ok(rows > 0)
   assert.equal(counts.steps, trackableSteps(r.steps.filter((s) => !s.doesntApply)).length + rows, 'Cleanup rows count')
   assert.equal(counts.done, doneSteps(r.steps).length, 'no Cleanup row is done yet')
   const withDone = { ...r.schedule.cleanup!, rows: r.schedule.cleanup!.rows.map((x, i) => (i === 0 ? { ...x, done: '2026-09-03T12:00:00.000Z' } : x)) }
-  assert.equal(stepFacts(r.steps, withDone).done, counts.done + 1, 'a Cleanup row marked done is in place')
+  assert.equal(stepFacts(r.steps, withDone, silent).done, counts.done + 1, 'a Cleanup row marked done is in place')
+  // The attestation completes the alerting row without a date, and the count the
+  // Plan header and the print cover state moves with it (task 042 correction 1).
+  const alerting = r.schedule.cleanup!.rows.find((x) => x.kind === 'alerting')
+  assert.ok(alerting && alerting.done === null, 'the fixture no longer has an undone alerting row')
+  const attested = { credentialStorage: true, signInMonitoring: true }
+  const denied = { credentialStorage: true, signInMonitoring: false }
+  assert.equal(stepFacts(r.steps, r.schedule.cleanup, attested).done, counts.done + 1, 'the sign-in-monitoring attestation is not in the header count')
+  assert.equal(stepFacts(r.steps, r.schedule.cleanup, denied).done, counts.done, 'a declined attestation completed a row')
 })
 
 test('the prompt pack and the bundle list Cleanup under cleanup; the bundle drops the v2 field names', () => {

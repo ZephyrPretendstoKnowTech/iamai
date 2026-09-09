@@ -129,7 +129,7 @@ export function PrintPlan({
   const doesntApplyNames = coverage.results.filter((r) => goalInMap(goalMap, r.goal.id) && r.status === 'not-applicable').map((r) => r.goal.shortName || r.goal.name)
   const notLicensedCount = notLicensedRows(coverage, goalMap).length
   // The header's own count (derive/facts.ts): the steps and the Cleanup rows, so the cover and the Plan agree.
-  const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup)
+  const { steps: totalCount, done: inPlaceCount } = stepFacts(steps, schedule.cleanup, answers)
   // Who the registration and verification window is for, from the one people
   // count (derive/facts.ts) and the content's own two sentences. Nothing is
   // claimed where the counts are absent: an empty cell, never "everyone is
