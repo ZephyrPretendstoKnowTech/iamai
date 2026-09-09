@@ -94,7 +94,7 @@ export function stages(done: readonly boolean[]): Stage[] {
 
 /**
  * The status strip the approved pack sets above the staged flow
- * (docs/design/approved/connect-v3.html): a state indicator, a state title and
+ * (docs/design/approved/anatomy/connect-v3.html): a state indicator, a state title and
  * a quiet line.
  *
  * It is a PROJECTION of the progression, not a second reading of it. It takes
@@ -204,7 +204,7 @@ export type BaselineUpdate = { date: string; changes: PolicyChange[]; incomplete
 export type BaselineReviewRow = { tag: string; policy: string; was: string | null; deltas: string[]; steps: string[] }
 /**
  * The baseline's own card, nested inside step 2 by the approved pack
- * (docs/design/approved/connect-v3.html): the package's name, a quiet source
+ * (docs/design/approved/anatomy/connect-v3.html): the package's name, a quiet source
  * line, and the copy that explains what a baseline is and what this one aims
  * at. Every value is the loaded package's — the name it carries, how many
  * policies it holds, and whether it is the pinned version or one someone

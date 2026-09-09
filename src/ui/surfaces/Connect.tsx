@@ -1,6 +1,6 @@
 // Connect answers one question: where am I in setup, and what do I do next?
 //
-// The anatomy is the approved pack's (docs/design/approved/connect-v3.html,
+// The anatomy is the approved pack's (docs/design/approved/anatomy/connect-v3.html,
 // restored by task 032): an eyebrow, the heading and its lead; one status strip
 // saying where setup stands; ONE contiguous staged flow holding the three setup
 // steps — never three or four unrelated cards; and the Plan as a separate

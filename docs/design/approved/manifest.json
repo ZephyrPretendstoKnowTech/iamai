@@ -1,5 +1,5 @@
 {
-  "$comment": "The design-authority manifest (task 028, corrected by task 030). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Packs 031-040 restored the four surfaces onto their packs and task 041 verified them, so every `implementationState` below now reads `restored` and names the pack that did it. `productionAssumedConformant` stays false on purpose and is not a leftover: conformance is EVIDENCED, never assumed. A surface earns it again on every change, by the two-sided anatomy test that reads the canonical bytes at test time (src/ui/surfaces/{connectAnatomy,planAnatomy,readinessAnatomy}.test.ts, src/home.test.ts) and by the rendered comparison scripts/render-design.mjs writes. A commit after this one can regress a surface without touching this file, which is exactly why nothing here may assume. The brand skin is recorded in docs/brand/brand-manifest.json and docs/design/brand-decisions.md; the forensic record is docs/design/authority-reconciliation.md.",
+  "$comment": "The design-authority manifest (task 028, corrected by task 030). One current record per governed surface, naming the owner-approved HTML pack that owns that surface's visual anatomy and the SHA-256 of its exact bytes. src/ui/design-authority.test.ts fails when a canonical file, a hash, or a record here drifts. The packs own composition, hierarchy, density, placement, disclosure, table/row treatment, status presentation, interaction and responsive behaviour; they do NOT own product copy (docs/design/content.json) and they do NOT own technical truth (the engine, the baseline, Graph, lifecycle, MFA proof). Packs 031-040 restored the four surfaces onto their packs and task 041 verified them, so every `implementationState` below now reads `restored` and names the pack that did it. `productionAssumedConformant` stays false on purpose and is not a leftover: conformance is EVIDENCED, never assumed. A surface earns it again on every change, by the two-sided anatomy test that reads the canonical bytes at test time (src/ui/surfaces/{connectAnatomy,planAnatomy,readinessAnatomy}.test.ts, src/home.test.ts) and by the rendered comparison scripts/render-design.mjs writes. A commit after this one can regress a surface without touching this file, which is exactly why nothing here may assume. The brand skin is recorded in docs/brand/brand-manifest.json, and the current approved appearance in docs/design/approved/reference/. The four canonical packs live under docs/design/approved/anatomy/ since the design folder was cleaned; their bytes and hashes did not change, only their directory did.",
   "version": 2,
   "establishedBy": "028-design-brand-authority-reconciliation",
   "establishedOn": "2026-09-08",
@@ -29,7 +29,7 @@
       "name": "Home",
       "produces": "home/index.html (getiamai.com/)",
       "ownerApprovedSourceName": "iamai-home-design-pack-v2.html",
-      "path": "docs/design/approved/home-v2.html",
+      "path": "docs/design/approved/anatomy/home-v2.html",
       "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50",
       "declaredTitle": "IAMAI Home Design Pack v2",
       "observed": {
@@ -53,7 +53,7 @@
       "name": "Connect",
       "produces": "#/connect",
       "ownerApprovedSourceName": "iamai-connect-design-pack-v3.html",
-      "path": "docs/design/approved/connect-v3.html",
+      "path": "docs/design/approved/anatomy/connect-v3.html",
       "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b",
       "declaredTitle": "IAMAI Connect Design Pack v1",
       "declaredTitleNote": "The <title> inside the file still says v1; the owner's file name, and this record, say v3. The bytes and the hash are the identity — a stale title element inside an approved file is not a reason to edit the file.",
@@ -78,7 +78,7 @@
       "produces": "#/plan and the opened step",
       "ownerApprovedSourceName": "plan-step-design-pack(1).html",
       "sourceNameNote": "The (1) is upload provenance from the owner's original file name only. The canonical repository file name drops it; nothing may reintroduce a second current Plan pack under the (1) name.",
-      "path": "docs/design/approved/plan-step-v1.html",
+      "path": "docs/design/approved/anatomy/plan-step-v1.html",
       "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec",
       "declaredTitle": "IAMAI Plan Step Design Pack",
       "observed": {
@@ -103,7 +103,7 @@
       "name": "MFA Readiness",
       "produces": "#/readiness",
       "ownerApprovedSourceName": "iamai-mfa-readiness-design-pack-v2.html",
-      "path": "docs/design/approved/mfa-readiness-v2.html",
+      "path": "docs/design/approved/anatomy/mfa-readiness-v2.html",
       "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512",
       "declaredTitle": "IAMAI MFA Readiness Design Pack v2",
       "observed": {
@@ -123,17 +123,17 @@
     }
   ],
   "brand": {
-    "$comment": "The approved brand skin. It may repaint the approved anatomy; it may not rearrange it. The machine-readable brand authority is docs/brand/brand-manifest.json (task 029).",
-    "record": "docs/design/brand-decisions.md",
+    "$comment": "The approved brand skin. It may repaint the approved anatomy; it may not rearrange it. The machine-readable brand authority is docs/brand/brand-manifest.json (task 029). The current approved appearance is shown by the comparison references in docs/design/approved/reference/, which are derived visual reference and never an anatomy or a copy authority.",
     "manifest": "docs/brand/brand-manifest.json",
+    "visualReference": "docs/design/approved/reference/REFERENCE-MANIFEST.json",
     "light": "Mineral Teal",
-    "dark": "Deep Mineral",
+    "dark": "Blue Slate",
     "typography": {
       "display": "IBM Plex Serif",
       "interface": "IBM Plex Sans",
       "technical": "IBM Plex Mono"
     },
-    "logoDirection": "Guided Route — Variant 2",
+    "logoDirection": "Threshold",
     "assetsOwnedBy": "029-final-brand-assets-contract",
     "appliedToProductionBy": "030-theme-typography-shell-foundation",
     "applicationLayoutAuthority": false
@@ -158,7 +158,7 @@
     "command": "node scripts/render-design.mjs [--canonical] [--production]",
     "output": "docs/design/approved/rendered/<surface>/<width>.png",
     "walkNote": "scripts/walk.mjs renders the built application at 1280 only. Version 1 of this manifest named the walk as the mechanism for all three widths, which was never true; task 030 added the renderer above, which takes all three and renders the canonical HTML itself.",
-    "contract": "docs/design/authority-reconciliation.md#6-rendered-evidence-contract-for-packs-029"
+    "contract": "docs/design/approved/manifest.json#renderedEvidence"
   },
   "foundation": {
     "$comment": "What task 030 put underneath the restoration packs. It is capability, not composition: no page anatomy was restored.",
@@ -169,5 +169,9 @@
     "shell": "src/ui/shell/AppShell.tsx",
     "routeWidths": { "home": 1040, "connect": 1040, "plan": 1240, "mfa-readiness": 1200, "default": 760 }
   },
-  "reconciliation": "docs/design/authority-reconciliation.md"
+  "layout": {
+    "$comment": "Where the two kinds of design authority live after the design folder was cleaned. They are deliberately not merged: anatomy owns page structure, reference owns the current approved appearance. Production technical/content truth still outranks both.",
+    "anatomy": "docs/design/approved/anatomy/",
+    "visualReference": "docs/design/approved/reference/"
+  }
 }

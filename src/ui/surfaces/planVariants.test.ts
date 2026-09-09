@@ -2,7 +2,7 @@
 //
 // Tasks 033, 034 and 035 restored the approved Plan pack's row, its attached
 // expanded frame and the content anatomy inside it, and proved each against
-// `docs/design/approved/plan-step-v1.html` (src/ui/surfaces/planAnatomy.test.ts).
+// `docs/design/approved/anatomy/plan-step-v1.html` (src/ui/surfaces/planAnatomy.test.ts).
 // What none of them proved is the sentence this pack exists to make true:
 //
 //   EVERY step the product can render goes through that grammar, and what
@@ -591,7 +591,7 @@ test('§5 the rail exists only where the contract has a block for it, on every v
 })
 
 test('§5b a preserved goal now draws the pack’s In-place rail, and the pack still draws it', () => {
-  const pack = read('docs/design/approved/plan-step-v1.html')
+  const pack = read('docs/design/approved/anatomy/plan-step-v1.html')
   const v4 = pack.slice(pack.indexOf('<!-- V4 -->'), pack.indexOf('<!-- V5 -->'))
   assert.ok(v4.includes('Existing implementation'), 'the pack no longer draws the In-place variant’s existing-implementation block')
   assert.ok(!v4.includes('<div class="track"'), 'the pack now draws a lifecycle track on its In-place variant')

@@ -117,7 +117,7 @@ test('design 2: no box-shadow except the focus ring and the one key-panel shadow
       const v = m[1].trim()
       // The approved Plan lifts an opened step off the page, and the approved
       // Connect lifts its staged flow the same way
-      // (docs/design/approved/connect-v3.html `.flow{box-shadow:var(--shadow)}`).
+      // (docs/design/approved/anatomy/connect-v3.html `.flow{box-shadow:var(--shadow)}`).
       // One shadow value, on the two role classes the packs put it on.
       if (v === 'var(--shadow-panel)' && /\.panel-key\b|\.connect-flow\b/.test(r.selector)) continue
       if (v !== 'var(--focus-ring)' && v !== 'none') hits.push(where(r, `box-shadow: ${v}`))
@@ -146,7 +146,7 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // A shape may be asymmetric as long as every corner of it is still one of
       // the three tokens. The approved Plan pack draws the open roadmap row
       // that way — `.roadmap-row{border-radius:10px 10px 0 0}` in
-      // docs/design/approved/plan-step-v1.html — because the row is the head of
+      // docs/design/approved/anatomy/plan-step-v1.html — because the row is the head of
       // the step attached under it and squares off the edge they share. What
       // this rule exists to stop is a raw px value, and a corner list built
       // only from --radius / --radius-control / --radius-panel / 0 introduces
@@ -154,22 +154,22 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       if (v.split(/\s+/).every((part) => SHAPE.has(part))) continue
       // A state dot is a circle: the shared `.status` dot, and the one the
       // approved Connect pack sets in its status strip
-      // (docs/design/approved/connect-v3.html `.dot{border-radius:50%}`). So is
+      // (docs/design/approved/anatomy/connect-v3.html `.dot{border-radius:50%}`). So is
       // the ladder's rung badge (docs/design/mockups/today-v2.html).
       // And the bullet in a Plan rail's side list
-      // (docs/design/approved/plan-step-v1.html `.tiny{border-radius:50%}`),
+      // (docs/design/approved/anatomy/plan-step-v1.html `.tiny{border-radius:50%}`),
       // which is a list marker rather than a state: it carries the quiet ink,
       // not a status colour, and is hidden from assistive technology.
       if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
       // MFA pack's readiness cell are both `border-radius:999px`
-      // (docs/design/approved/plan-step-v1.html `.badge`,
-      // docs/design/approved/mfa-readiness-v2.html `.status`), which is a full
+      // (docs/design/approved/anatomy/plan-step-v1.html `.badge`,
+      // docs/design/approved/anatomy/mfa-readiness-v2.html `.status`), which is a full
       // round rather than a value on the 4/8/12 shape hierarchy.
       // and the approved Connect step's numbered badge, which that pack draws as
       // a full round rather than a value on the 4/8/12 hierarchy
-      // (docs/design/approved/connect-v3.html `.num{border-radius:999px}`).
+      // (docs/design/approved/anatomy/connect-v3.html `.num{border-radius:999px}`).
       if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
@@ -225,11 +225,11 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //   .callout-*       a notice whose tone is border + tint + icon, with the
   //                    words at full body contrast (task 031)
   //   .connect-*       a step number, a state word and the strip's dot, each
-  //                    beside its own word (docs/design/approved/connect-v3.html)
+  //                    beside its own word (docs/design/approved/anatomy/connect-v3.html)
   //   .rung-*, .stat-n a ladder rung and the count it names, both labelled
   //   .stage-*         a lifecycle stage, whose name is under the bar
   //   .role-admin      the admin role's own NAME, set in the admin colour
-  //                    (docs/design/approved/mfa-readiness-v2.html)
+  //                    (docs/design/approved/anatomy/mfa-readiness-v2.html)
   const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
   const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-/
   const hits = rules
@@ -245,7 +245,7 @@ test('design 6: the raised surface only on the panels and the floating layers (p
   // floating layers that already sit above the page (a tooltip, a menu, a table
   // row on hover). Nothing else in the content flow may gain a box.
   // Connect's staged flow and its Plan destination are panels too
-  // (docs/design/approved/connect-v3.html `.flow` and `.ready`), and so are the
+  // (docs/design/approved/anatomy/connect-v3.html `.flow` and `.ready`), and so are the
   // home page's cards (docs/design/home-mockup.html; home/home.css). The steps
   // INSIDE the flow are not, and must not become so: they sit on the one panel,
   // which is what makes the flow contiguous instead of a stack of cards.

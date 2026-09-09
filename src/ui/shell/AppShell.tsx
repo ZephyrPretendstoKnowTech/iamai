@@ -228,7 +228,7 @@ export function AppShell({
   const exportActive = route === 'export'
   const planActive = route === 'plan'
   // The approved Plan pack declares a sticky topbar
-  // (`docs/design/approved/plan-step-v1.html` `.topbar{position:sticky;top:0}`),
+  // (`docs/design/approved/anatomy/plan-step-v1.html` `.topbar{position:sticky;top:0}`),
   // and the Plan is the one surface long enough to need one: an opened step runs
   // well past a screen, and the destinations should not scroll away under it.
   // Task 030 built the capability as a class rather than a global rule, because
@@ -249,7 +249,7 @@ export function AppShell({
     // itself.
     <div className={`shell${sticky ? ' shell-sticky' : ''}`} data-route={route}>
       <header className="app">
-        {/* The brand lockup: the Guided Route mark beside the wordmark IAMAI,
+        {/* The brand lockup: the Threshold mark beside the wordmark IAMAI,
             composed at use in IBM Plex Sans (task 029). No tagline and no
             descriptor beside it — the product's full name, IAMAI Planner, is
             the registered application and the tab title, not the wordmark

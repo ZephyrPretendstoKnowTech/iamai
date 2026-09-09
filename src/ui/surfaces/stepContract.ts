@@ -135,7 +135,7 @@ export type ContractMilestone = { kind: Milestone['kind']; label: string; at: st
  * `label` names which kind of finding it is — the classification `foundOf`
  * already makes when it decides to add the entry — so the approved pack's
  * finding card can carry its key over the sentence
- * (`docs/design/approved/plan-step-v1.html` `.finding .k`). It is a name for
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.finding .k`). It is a name for
  * the category and never a second reading of the evidence: nothing here splits
  * a finding's sentence into a headline and a detail, because production writes
  * one sentence and inventing the split would be inventing emphasis.
@@ -160,7 +160,7 @@ export type ContractFix = { key: string; text: string }
 
 /**
  * The four rollout stages, as the approved Plan pack draws them
- * (`docs/design/approved/plan-step-v1.html` `.track`): Not deployed →
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.track`): Not deployed →
  * Report-only → Ready to enforce → Enforced, with the one the step is at marked.
  *
  * A projection of `Step.state.lifecycle` and nothing else. It computes no
@@ -247,7 +247,7 @@ export type ContractMember = {
  * The tenant's own policy that already delivers this goal, named.
  *
  * The approved Plan pack's In-place variant draws it as a side block
- * (`docs/design/approved/plan-step-v1.html` V4 `.side-block`, "Existing
+ * (`docs/design/approved/anatomy/plan-step-v1.html` V4 `.side-block`, "Existing
  * implementation" over the policy's name): the one fact that variant's rail
  * exists to carry, and the one an operator needs to check IAMAI accepted the
  * right control before they leave it alone.

@@ -172,7 +172,10 @@ hr {
   height: var(--control);
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  /* A control takes the control rung of the shape hierarchy, not the compact
+     one (docs/brand/brand-manifest.json ui.radiusPx; every approved reference
+     puts the control rung on the button face). */
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--secondary-text);
   cursor: pointer;
@@ -222,6 +225,61 @@ hr {
 .btn-tertiary:active {
   color: var(--primary-text);
 }
+
+/* The approved dark controls (docs/design/approved/reference/: `.btn.primary`
+   is `border-color:var(--brand-primary); background:var(--brand-soft);
+   color:var(--brand-soft-text)`, and the plain `.btn` is a transparent face
+   inside `var(--strong-line)` carrying `var(--primary-text)`).
+   On the dark canvas a solid teal fill reads as a lit block; the approved
+   treatment is the brand tint inside a brand edge, which sits at the same
+   weight as everything around it. It is scoped to the dark theme on purpose:
+   Mineral Teal's filled primary is approved as it stands and does not move
+   because the dark palette did. Every value is a token, so this is the same
+   palette under a different theme, not a second set of colours. */
+:root[data-theme='dark'] .btn-primary {
+  background: var(--brand-soft);
+  color: var(--brand-soft-text);
+  border-color: var(--brand-primary);
+}
+:root[data-theme='dark'] .btn-primary:hover,
+:root[data-theme='dark'] .btn-primary:active,
+:root[data-theme='dark'] .btn-primary:focus-visible {
+  background: var(--brand-soft);
+  color: var(--brand-soft-text);
+}
+:root[data-theme='dark'] .btn-secondary {
+  color: var(--primary-text);
+  background: transparent;
+  border-color: var(--strong-line);
+}
+:root[data-theme='dark'] .btn-secondary:hover,
+:root[data-theme='dark'] .btn-secondary:active {
+  color: var(--primary-text);
+  background: var(--brand-soft);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .btn-primary {
+    background: var(--brand-soft);
+    color: var(--brand-soft-text);
+    border-color: var(--brand-primary);
+  }
+  :root:not([data-theme]) .btn-primary:hover,
+  :root:not([data-theme]) .btn-primary:active,
+  :root:not([data-theme]) .btn-primary:focus-visible {
+    background: var(--brand-soft);
+    color: var(--brand-soft-text);
+  }
+  :root:not([data-theme]) .btn-secondary {
+    color: var(--primary-text);
+    background: transparent;
+    border-color: var(--strong-line);
+  }
+  :root:not([data-theme]) .btn-secondary:hover,
+  :root:not([data-theme]) .btn-secondary:active {
+    color: var(--primary-text);
+    background: var(--brand-soft);
+  }
+}
 .btn-sm {
   height: var(--control);
 }
@@ -249,7 +307,8 @@ textarea,
   padding: 0 8px;
   /* 3:1 against the page, as a control edge must be (WCAG 1.4.11): ink-3, not the hairline. */
   border: 1px solid var(--quiet-text);
-  border-radius: var(--radius);
+  /* A field is a control, and takes the control rung with the buttons. */
+  border-radius: var(--radius-control);
   background: var(--secondary-surface);
   color: var(--primary-text);
   min-width: 0;
@@ -557,7 +616,7 @@ header.app {
   border-bottom: 1px solid var(--line);
   background: var(--canvas);
 }
-/* The lockup: the Guided Route mark beside the live text IAMAI, in IBM Plex
+/* The lockup: the Threshold mark beside the live text IAMAI, in IBM Plex
    Sans at the wordmark weight, with the brand's gap of 0.28 of the mark
    (20px mark, so 6px). No tagline, no descriptor: docs/brand/brand-manifest.json
    logo.wordmark. */
@@ -1174,7 +1233,7 @@ footer.app a {
 }
 /* Connect's prose reads wider than the body measure but nothing like its page:
    the approved pack caps its lead at 780px and its quiet copy at 710
-   (docs/design/approved/connect-v3.html), so the column here is --measure-lead
+   (docs/design/approved/anatomy/connect-v3.html), so the column here is --measure-lead
    rather than the 1040px the page is now set to. Widening a page is not
    widening a sentence. */
 .surface.connect p,
@@ -1533,7 +1592,7 @@ footer.app a {
   border-bottom: 1px solid var(--line);
 }
 /* ---- the approved roadmap row (task 033) ----
-   docs/design/approved/plan-step-v1.html `.roadmap-row`: four zones on one
+   docs/design/approved/anatomy/plan-step-v1.html `.roadmap-row`: four zones on one
    line — the state, the title with its quiet reason under it, who it touches,
    and when — at 126 / 1fr / 240 / 125 with an 18px gap, 64px of minimum height
    and a 17px inset. The pack's own numbers; the 1fr track is `minmax(0, 1fr)`
@@ -1609,7 +1668,7 @@ footer.app a {
   white-space: normal;
 }
 /* ---- the approved expanded step (task 034) ----
-   docs/design/approved/plan-step-v1.html: the row opens into ONE frame attached
+   docs/design/approved/anatomy/plan-step-v1.html: the row opens into ONE frame attached
    under it — `.step{border:1px solid var(--line);border-top:0;border-radius:0 0
    12px 12px;box-shadow:var(--shadow)}` — with `.step-head` above and
    `.step-body{grid-template-columns:minmax(0,1fr) 290px}` below it. The frame
@@ -1774,7 +1833,7 @@ footer.app a {
   font-weight: var(--weight-strong);
 }
 /* A metric that is a tenant object's name and not a date or a number: the pack
-   drops it a step for exactly this block (`docs/design/approved/plan-step-v1.html`
+   drops it a step for exactly this block (`docs/design/approved/anatomy/plan-step-v1.html`
    V4 sets the existing policy's name to 14px against the 18px of a date), and a
    real Conditional Access policy name is longer than "Sep 22" — long enough to
    push the 290px rail wide if it is allowed to. So it takes the smaller step of
@@ -1821,7 +1880,7 @@ footer.app a {
 /* ---- the sections of an opened step (task 035) ----
    The pack divides the main column into ruled sections —
    `.step-section{padding:19px 0;border-bottom:1px solid var(--line)}` in
-   docs/design/approved/plan-step-v1.html, with the last one's rule dropped.
+   docs/design/approved/anatomy/plan-step-v1.html, with the last one's rule dropped.
    Production drew the same content as a run of headings with nothing between
    them, so the canonical order read as a column of paragraphs rather than as an
    order. They are real <section> elements, so the division a sighted reader
@@ -2250,7 +2309,7 @@ footer.app a {
   gap: 8px;
 }
 
-/* ================= Connect: the approved staged flow (docs/design/approved/connect-v3.html) =================
+/* ================= Connect: the approved staged flow (docs/design/approved/anatomy/connect-v3.html) =================
 
    Task 032. The pack's anatomy, restored: an eyebrow and the display heading,
    ONE status strip, ONE contiguous flow panel holding the three setup steps,
@@ -2788,7 +2847,7 @@ td .not-person {
 
 /* ================= MFA Readiness — the approved pack (tasks 012, 037) =========
 
-   The anatomy here is read out of `docs/design/approved/mfa-readiness-v2.html`
+   The anatomy here is read out of `docs/design/approved/anatomy/mfa-readiness-v2.html`
    and belongs to that surface alone: the integrated summary, the filter pills,
    the six-zone person table and the stacked row are MFA's page composition, not
    shared roles. What IS shared it composes rather than re-declares — `.panel`,
@@ -2987,7 +3046,7 @@ td .not-person {
 /* The pack's own roadmap breakpoint (task 033). Below 940 the four zones become
    two: the state and the title keep the top line, and who and when drop under
    them and left-align — the state's column narrows to 110px and carries the
-   metadata beneath it, exactly as `docs/design/approved/plan-step-v1.html`
+   metadata beneath it, exactly as `docs/design/approved/anatomy/plan-step-v1.html`
    places four children in a two-track grid. Nothing is dropped; a row that has
    to wrap gets vertical padding, because the pack's 64px minimum stops being
    the row's height once the metadata takes three lines. */

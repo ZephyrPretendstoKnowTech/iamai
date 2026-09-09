@@ -25,7 +25,7 @@ import { CONTRACT, railBlocks, stageClass } from './stepContract.ts'
  * the Plan readable, so a row says only enough to decide whether to open it.
  *
  * Task 033 restored the four zones the approved Plan pack draws
- * (`docs/design/approved/plan-step-v1.html`, `.roadmap-row`):
+ * (`docs/design/approved/anatomy/plan-step-v1.html`, `.roadmap-row`):
  *
  *     status | title over its quiet reason | who | when
  *
@@ -125,7 +125,7 @@ export function StepState({ contract }: { contract: StepContract }) {
 
 /**
  * The opened step's head, as the approved Plan pack draws it
- * (`docs/design/approved/plan-step-v1.html` `.step-head`): an eyebrow naming
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.step-head`): an eyebrow naming
  * what kind of step this is, the title, the supporting line under it, and the
  * state badge held to the right of all three. Below them the lifecycle track.
  *
@@ -225,7 +225,7 @@ export function StepRail({ contract }: { contract: StepContract }) {
           implementation to summarise, so before task 036 its rail was empty and
           the In-place step drew none at all — while the approved pack's own
           In-place variant is defined by this block
-          (`docs/design/approved/plan-step-v1.html` V4: "Existing
+          (`docs/design/approved/anatomy/plan-step-v1.html` V4: "Existing
           implementation" over the policy's name).
 
           The name is the classifier's (`contract.existing`, which is
@@ -257,7 +257,7 @@ export function StepRail({ contract }: { contract: StepContract }) {
               What to do and is stated once, in the main column.
 
               Task 035 put it in the pack's side-list grammar
-              (`docs/design/approved/plan-step-v1.html` `.side-list`): one item
+              (`docs/design/approved/anatomy/plan-step-v1.html` `.side-list`): one item
               per channel where the step offers them. That is the same one
               answer, listed rather than said in a sentence — the three channels
               stand or fall together on `implementationOffered`
@@ -309,7 +309,7 @@ export function PolicyMembers({ members }: { members: ContractMember[] }) {
  * heading with nothing under it is not rendered.
  *
  * Task 035 gave it the frame the approved pack draws around every section of an
- * opened step (`docs/design/approved/plan-step-v1.html` `.step-section`): a
+ * opened step (`docs/design/approved/anatomy/plan-step-v1.html` `.step-section`): a
  * `<section>` of its own, divided from the next by the frame's hairline. The
  * division is what makes the canonical order legible as an order rather than as
  * a column of headings — and it is a real element, so the sections a step
@@ -337,7 +337,7 @@ export function StepSection({ heading, when = true, frame = true, children }: { 
 
 /**
  * What this scan observed that bears on the decision, in the approved pack's
- * finding-card grammar (`docs/design/approved/plan-step-v1.html` `.findings`):
+ * finding-card grammar (`docs/design/approved/anatomy/plan-step-v1.html` `.findings`):
  * a key naming what kind of finding this is, over the finding itself.
  *
  * Conditional, and never padded. The pack's sample draws three cards because

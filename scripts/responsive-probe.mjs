@@ -72,7 +72,7 @@ const READ = `(el) => {
  */
 const SURFACES = {
   home: {
-    canonical: 'docs/design/approved/home-v2.html',
+    canonical: 'docs/design/approved/anatomy/home-v2.html',
     route: { home: true },
     breakpoints: [760, 560],
     probes: [
@@ -89,7 +89,7 @@ const SURFACES = {
     ],
   },
   connect: {
-    canonical: 'docs/design/approved/connect-v3.html',
+    canonical: 'docs/design/approved/anatomy/connect-v3.html',
     route: { hash: '#/connect' },
     breakpoints: [760],
     probes: [
@@ -104,7 +104,7 @@ const SURFACES = {
     ],
   },
   plan: {
-    canonical: 'docs/design/approved/plan-step-v1.html',
+    canonical: 'docs/design/approved/anatomy/plan-step-v1.html',
     route: { hash: '#/plan', openStep: true },
     breakpoints: [940, 650],
     probes: [
@@ -123,7 +123,7 @@ const SURFACES = {
     ],
   },
   readiness: {
-    canonical: 'docs/design/approved/mfa-readiness-v2.html',
+    canonical: 'docs/design/approved/anatomy/mfa-readiness-v2.html',
     route: { hash: '#/readiness' },
     breakpoints: [900, 620],
     probes: [
