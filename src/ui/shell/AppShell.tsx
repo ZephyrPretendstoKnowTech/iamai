@@ -234,7 +234,13 @@ export function AppShell({
   // is still exactly one `header.app` in the product.
   const sticky = planActive
   return (
-    <div className={`shell${sticky ? ' shell-sticky' : ''}`}>
+    // The route is carried on the shell as well as on `main.page`, because two
+    // packs tighten the page gutter at their own narrow breakpoint (Plan at
+    // 650, MFA Readiness at 620) and the header and footer have to tighten with
+    // it — a page inset 12px under a header inset 24px puts the wordmark out of
+    // line with the content it sits above. `main.page` keeps its own attribute:
+    // the route WIDTH is a property of the page element and is read there.
+    <div className={`shell${sticky ? ' shell-sticky' : ''}`} data-route={route}>
       <header className="app">
         {/* The brand lockup: the Guided Route mark beside the wordmark IAMAI,
             composed at use in IBM Plex Sans (task 029). No tagline and no
