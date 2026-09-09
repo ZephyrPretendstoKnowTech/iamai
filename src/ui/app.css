@@ -25,8 +25,8 @@
 }
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--canvas);
+  color: var(--primary-text);
   font-variant-numeric: tabular-nums;
 }
 h1,
@@ -100,8 +100,14 @@ kbd,
   font-family: var(--font-mono);
   font-size: var(--t-2);
 }
+/* Technical content sits on the code surface — the brand's own role for "code,
+   JSON, PowerShell, a Graph path" (docs/brand/brand-manifest.json), and the
+   surface the approved Plan pack draws its code on. Until task 040 the role
+   existed with no consumer and every code block in the product used the inset
+   surface instead, so the one depth the palette reserves for technical text was
+   the one depth nothing used. */
 pre {
-  background: var(--bg-inset);
+  background: var(--code-surface);
   padding: var(--pad);
   margin: 0;
   overflow: auto;
@@ -109,14 +115,14 @@ pre {
 }
 a,
 .link {
-  color: var(--accent);
+  color: var(--brand-primary);
   text-decoration: underline;
   text-underline-offset: 2px;
   text-decoration-thickness: 1px;
 }
 a:hover,
 .link:hover {
-  color: var(--accent);
+  color: var(--brand-primary);
 }
 :focus-visible {
   outline: none;
@@ -133,17 +139,17 @@ a:hover,
   }
 }
 ::selection {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--brand-primary);
+  color: var(--on-brand);
 }
 hr {
   border: 0;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   margin: 0;
 }
 .muted,
 .meta {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .meta {
   font-size: var(--t-2);
@@ -168,7 +174,7 @@ hr {
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -177,44 +183,44 @@ hr {
   white-space: nowrap;
 }
 .btn:disabled {
-  color: var(--ink-3);
+  color: var(--quiet-text);
   cursor: default;
 }
 .btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
-  border-color: var(--accent);
+  background: var(--brand-primary);
+  color: var(--on-brand);
+  border-color: var(--brand-primary);
 }
 .btn-primary:hover,
 .btn-primary:active,
 .btn-primary:focus-visible {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--brand-primary);
+  color: var(--on-brand);
 }
 .btn-primary:disabled {
-  background: var(--rule-strong);
-  border-color: var(--rule-strong);
-  color: var(--ink-2);
+  background: var(--strong-line);
+  border-color: var(--strong-line);
+  color: var(--secondary-text);
 }
 /* The three weights (docs/design/connect-mockup.html): primary filled accent, secondary outlined accent, tertiary muted. */
 .btn-secondary {
-  color: var(--accent);
+  color: var(--brand-primary);
   background: transparent;
-  border-color: var(--accent);
+  border-color: var(--brand-primary);
 }
 .btn-secondary:hover,
 .btn-secondary:active {
-  color: var(--accent);
-  background: var(--accent-tint);
+  color: var(--brand-primary);
+  background: var(--brand-soft);
 }
 .btn-tertiary {
-  color: var(--ink-2);
-  background: var(--bg-inset);
-  border-color: var(--rule-strong);
+  color: var(--secondary-text);
+  background: var(--secondary-surface);
+  border-color: var(--strong-line);
 }
 .btn-tertiary:hover,
 .btn-tertiary:active {
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .btn-sm {
   height: var(--control);
@@ -222,7 +228,7 @@ hr {
 .btn .spinner {
   width: 12px;
   height: 12px;
-  border: 1.5px solid var(--on-accent);
+  border: 1.5px solid var(--on-brand);
   border-right-color: transparent;
   border-radius: 50%;
   display: inline-block;
@@ -242,10 +248,10 @@ textarea,
   height: var(--control);
   padding: 0 8px;
   /* 3:1 against the page, as a control edge must be (WCAG 1.4.11): ink-3, not the hairline. */
-  border: 1px solid var(--ink-3);
+  border: 1px solid var(--quiet-text);
   border-radius: var(--radius);
-  background: var(--bg-inset);
-  color: var(--ink);
+  background: var(--secondary-surface);
+  color: var(--primary-text);
   min-width: 0;
   max-width: 100%;
 }
@@ -257,7 +263,7 @@ select {
   padding-right: 24px;
 }
 label {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 
 /* ================= status: a dot and the word ================= */
@@ -270,7 +276,7 @@ label {
   font-family: var(--font-sans);
   font-size: var(--t-2);
   font-weight: 400;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -286,13 +292,13 @@ label {
   flex: none;
 }
 .status.status-ok::before {
-  background: var(--ok);
+  background: var(--success-text);
 }
 .status.status-wait::before {
-  background: var(--wait);
+  background: var(--attention-text);
 }
 .status.status-stop::before {
-  background: var(--stop);
+  background: var(--danger-text);
 }
 .status.status-idle::before {
   background: var(--idle);
@@ -309,15 +315,15 @@ th {
   font-family: var(--font-sans);
   font-size: var(--t-2);
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   text-align: left;
   padding: 8px 12px 8px 0;
-  border-bottom: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--strong-line);
   white-space: nowrap;
 }
 td {
   padding: 8px 12px 8px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
 th:last-child,
@@ -334,7 +340,7 @@ td:last-child {
   gap: 12px;
   align-items: center;
   padding: 8px 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 /* A sortable column header is a button inside the th, so it inherits the
@@ -355,7 +361,7 @@ details {
 }
 details > summary {
   cursor: pointer;
-  color: var(--ink);
+  color: var(--primary-text);
   list-style: none;
   padding: 8px 0;
   display: flex;
@@ -369,8 +375,8 @@ details > summary::before {
   content: '';
   width: 6px;
   height: 6px;
-  border-right: 1.5px solid var(--ink-2);
-  border-bottom: 1.5px solid var(--ink-2);
+  border-right: 1.5px solid var(--secondary-text);
+  border-bottom: 1.5px solid var(--secondary-text);
   transform: rotate(-45deg);
   flex: none;
   margin-left: 2px;
@@ -394,9 +400,9 @@ details > *:not(summary) {
   cursor: pointer;
   width: 14px;
   height: 14px;
-  border: 1px solid var(--ink-2);
+  border: 1px solid var(--secondary-text);
   border-radius: 50%;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-family: var(--font-serif);
   font-size: var(--t-2);
   line-height: 1;
@@ -407,9 +413,9 @@ details > *:not(summary) {
 .infotip-pop {
   position: fixed;
   z-index: 20;
-  background: var(--bg-raised);
-  color: var(--ink);
-  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--primary-text);
+  border: 1px solid var(--line);
   padding: 8px 12px;
   width: 320px;
   font-size: var(--t-2);
@@ -426,7 +432,7 @@ details > *:not(summary) {
 .tabs {
   display: flex;
   gap: 20px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   background: transparent;
   /* The strip scrolls sideways when the labels do not fit, and a scroll box
      clips at its padding edge — including the 2px focus ring on the first and
@@ -444,7 +450,7 @@ details > *:not(summary) {
   font-family: var(--font-sans);
   font-size: var(--t-3);
   font-weight: 400;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   padding: 8px 0;
   border-bottom: 1.5px solid transparent;
   white-space: nowrap;
@@ -452,12 +458,12 @@ details > *:not(summary) {
 .tab.active,
 .tabs .tab.active,
 .tab[aria-selected='true'] {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
+  color: var(--primary-text);
+  border-bottom-color: var(--brand-primary);
   background: transparent;
 }
 .tab-badge {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
   margin-left: 4px;
   background: transparent;
@@ -476,8 +482,8 @@ details > *:not(summary) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 24px;
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   padding: 12px 0;
   margin: 16px 0;
 }
@@ -486,17 +492,17 @@ details > *:not(summary) {
   font-size: var(--t-6);
   font-weight: 400;
   line-height: var(--lh-heading);
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .tile .stat-label {
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
   display: flex;
   align-items: center;
 }
 .tile .stat-sub {
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 @media (max-width: 700px) {
   .tiles {
@@ -515,8 +521,8 @@ details > *:not(summary) {
   position: absolute;
   right: 0;
   top: calc(100% + 4px);
-  background: var(--bg-raised);
-  border: 1px solid var(--rule);
+  background: var(--surface);
+  border: 1px solid var(--line);
   padding: 4px 0;
   min-width: 180px;
   z-index: 20;
@@ -548,8 +554,8 @@ header.app {
   align-items: center;
   gap: 24px;
   padding: 0 var(--pad);
-  border-bottom: 1px solid var(--rule);
-  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
 }
 /* The lockup: the Guided Route mark beside the live text IAMAI, in IBM Plex
    Sans at the wordmark weight, with the brand's gap of 0.28 of the mark
@@ -567,7 +573,7 @@ header.app .wordmark {
   letter-spacing: 0.005em;
 }
 header.app .tenant {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -579,20 +585,20 @@ header.app nav {
   gap: 0 20px;
 }
 header.app nav a {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   text-decoration: none;
   padding: 14px 0 12px;
   border-bottom: 1.5px solid transparent;
 }
 header.app nav a.active {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
+  color: var(--primary-text);
+  border-bottom-color: var(--brand-primary);
 }
 /* A tab waiting on the first scan looks like the disabled controls elsewhere
    (.btn:disabled): ink-3 and no pointer, so "not yet" is visible and not only
    in `aria-disabled` (task 017). */
 header.app nav a[aria-disabled='true'] {
-  color: var(--ink-3);
+  color: var(--quiet-text);
   cursor: default;
 }
 header.app .right {
@@ -603,13 +609,13 @@ header.app .right {
   white-space: nowrap;
 }
 header.app .right a {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   text-decoration: none;
 }
 /* The theme and Account controls: text in the header's colour, no button face. */
 header.app .right .text-control {
   font: inherit;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   background: none;
   border: 0;
   border-radius: 0;
@@ -619,14 +625,44 @@ header.app .right .text-control {
 }
 header.app .right .text-control:hover,
 header.app .right .text-control:focus-visible {
-  color: var(--ink);
+  color: var(--primary-text);
 }
-/* The page column. The default is the prose page; a surface with an approved
-   pack reads at the width that pack sets, keyed off `data-route` (AppShell).
-   The values are one authority, src/ui/tokens.ts ROUTE_WIDTHS, read out of the
-   files in docs/design/approved/. */
+/* The page column. Every route resolves ONE width, declared on the shell as
+   `--route-width` and read by the page and the footer alike, so the frame and
+   the content it frames cannot end up on two different columns. The default is
+   the prose page; a surface with an approved pack reads at the width that pack
+   sets; the three surfaces no pack governs read the width their content role
+   asks for (task 040). The values are one authority, src/ui/tokens.ts
+   ROUTE_WIDTHS — the four approved ones read out of the files in
+   docs/design/approved/, the other three chosen by content role.
+
+   It used to be `main.page[data-route=…]`, with `footer.app` on a fixed
+   `--table` of its own. That was invisible while every uncovered surface WAS
+   1040: the moment Export sat at 760 and Inventory at 1240, the footer was
+   wider than one page and narrower than another. */
+.shell {
+  --route-width: var(--page);
+}
+.shell[data-route='connect'] {
+  --route-width: var(--w-connect);
+}
+.shell[data-route='plan'] {
+  --route-width: var(--w-plan);
+}
+.shell[data-route='readiness'] {
+  --route-width: var(--w-readiness);
+}
+.shell[data-route='export'] {
+  --route-width: var(--w-export);
+}
+.shell[data-route='how'] {
+  --route-width: var(--w-how);
+}
+.shell[data-route='inventory'] {
+  --route-width: var(--w-inventory);
+}
 main.page {
-  max-width: calc(var(--page) + 2 * var(--pad));
+  max-width: calc(var(--route-width, var(--page)) + 2 * var(--pad));
   padding: var(--pad);
   margin: 0 auto;
   min-width: 0;
@@ -637,21 +673,6 @@ main.page {
      themselves, under `.tenant-object` and the technical faces below, so long
      tenant data still cannot widen the page. */
   overflow-wrap: break-word;
-}
-main.page[data-route='connect'] {
-  max-width: calc(var(--w-connect) + 2 * var(--pad));
-}
-main.page[data-route='plan'] {
-  max-width: calc(var(--w-plan) + 2 * var(--pad));
-}
-main.page[data-route='readiness'] {
-  max-width: calc(var(--w-readiness) + 2 * var(--pad));
-}
-/* Inventory and How are tables and reference prose with no pack of their own:
-   they keep the wide table cap until pack 040 converges them. */
-main.page[data-route='inventory'],
-main.page[data-route='how'] {
-  max-width: calc(var(--table) + 2 * var(--pad));
 }
 main.page img,
 main.page svg,
@@ -680,11 +701,19 @@ main.page td,
 main.page th {
   min-width: 0;
 }
+/* The footer stands on the page's own column. `width: 100%` is load-bearing:
+   `.shell` is a column flex container, and a flex item with `margin: 0 auto`
+   on the cross axis has its stretch cancelled by the auto margins — so without
+   it the footer shrank to the width of its own four links and sat centred under
+   a left-aligned page, on every route in the product. Its `max-width` and its
+   `justify-content: space-between` had never applied to anything. `main.page`
+   already carries the same `width: 100%` for the same reason (task 040). */
 footer.app {
-  max-width: calc(var(--table) + 2 * var(--pad));
+  width: 100%;
+  max-width: calc(var(--route-width, var(--page)) + 2 * var(--pad));
   margin: 0 auto;
   padding: 16px var(--pad) 32px;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
   display: flex;
   gap: 16px;
@@ -692,7 +721,7 @@ footer.app {
   justify-content: space-between;
 }
 footer.app a {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 
 /* ================= foundation capability (task 030) =================
@@ -753,7 +782,7 @@ footer.app a {
   font-weight: var(--weight-strong);
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* One step quieter and smaller: the key that names a field or a column rather
    than introducing a section. The Plan sets it on a side block's label and on
@@ -765,7 +794,7 @@ footer.app a {
   font-weight: var(--weight-strong);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 
 /* The pill: geometry only. The Plan's state badge and MFA's readiness cell are
@@ -782,7 +811,7 @@ footer.app a {
   width: max-content;
   max-width: 100%;
   padding: 4px 9px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: 999px;
   font-size: var(--t-0);
   line-height: var(--lh-body);
@@ -804,10 +833,10 @@ footer.app a {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--brand-primary);
   border-radius: var(--radius-control);
-  background: var(--accent-soft);
-  color: var(--ink);
+  background: var(--brand-tint);
+  color: var(--primary-text);
 }
 /* min-width:0 so a long tenant object inside a notice wraps in the panel
    instead of pushing the panel wider than its column. */
@@ -815,19 +844,19 @@ footer.app a {
   min-width: 0;
 }
 .callout svg {
-  color: var(--accent);
+  color: var(--brand-primary);
   flex: none;
 }
 .callout-warning {
   border-color: var(--attention);
-  background: var(--warning-soft);
+  background: var(--attention-tint);
 }
 .callout-warning svg {
   color: var(--attention-text);
 }
 .callout-danger {
   border-color: var(--danger);
-  background: var(--danger-soft);
+  background: var(--danger-tint);
 }
 .callout-danger svg {
   color: var(--danger-text);
@@ -836,7 +865,7 @@ footer.app a {
    colours in both themes and are asserted apart (src/ui/tokens.test.ts). */
 .callout-success {
   border-color: var(--success);
-  background: var(--success-soft);
+  background: var(--success-tint);
 }
 .callout-success svg {
   color: var(--success-text);
@@ -849,7 +878,101 @@ footer.app a {
    shared; the column grid inside each row is not, and belongs to the pack that
    owns that surface. */
 .row-group > * + * {
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
+}
+
+/* The panel table (task 040). Two of the four packs draw a table the same way —
+   `plan-step-v1.html` gives `th` an uppercase 11px on the secondary surface,
+   `mfa-readiness-v2.html` an uppercase 10px on the same surface, both inside
+   one bordered, rounded panel with the rows divided by top hairlines — so the
+   treatment is shared on the evidence standard the rest of this section uses
+   (src/ui/primitives.test.ts): two packs, drawn alike.
+
+   It is opt-in, not universal. `DataTable`'s `panel` prop has advertised "the
+   shared `.panel` role supplies the surface, the border and the radius" since
+   task 037, while the only rule behind it was scoped to `.surface.readiness` —
+   so How and Inventory could ask for it and get the plain flow table. This is
+   that rule, at the scope the component always described.
+
+   A table stays a table: no cardification, the horizontal scroll stays on the
+   wrap (a wide operational table is more useful scrolling than stacked), and
+   `.datatable-stacked` remains a separate opt-in that only MFA Readiness's pack
+   asks for. */
+.surface .datatable-wrap.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  /* `hidden` is what makes the outer radius clip the head band inside it; the
+     axis that has to scroll is re-enabled on the next line. */
+  overflow: hidden;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.surface .datatable-wrap.panel table.datatable th {
+  background: var(--secondary-surface);
+  border-bottom: 1px solid var(--line);
+  padding: 11px 14px;
+  font-size: var(--t-micro);
+  font-weight: var(--weight-strong);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--quiet-text);
+}
+.surface .datatable-wrap.panel table.datatable td {
+  padding: 12px 14px;
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+  vertical-align: middle;
+}
+.surface .datatable-wrap.panel table.datatable tbody tr:first-child td {
+  border-top: 0;
+}
+.surface .datatable-wrap.panel table.datatable th:last-child,
+.surface .datatable-wrap.panel table.datatable td:last-child {
+  padding-right: 14px;
+}
+/* The empty result. `EmptyState` has rendered an icon and a sentence with no
+   rule behind either since it was written, so "no rows" arrived as two loose
+   elements stacked in the flow — the same gap task 031 found behind `Callout`.
+   This is the treatment, not a new state: the icon is the muted component ink,
+   the sentence is the quiet reading level, and both sit on the inset surface
+   inside the same control radius every other quiet block uses.
+
+   The WORDS are untouched and stay the caller's. "No rows", "no sign-in window
+   in this scan" and "nothing matched this filter" are different facts about
+   different things, and a shared box must not turn any of them into any other:
+   `unknown` is not `empty`, and a permission the scan could not use is not a
+   population that is not there. */
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 16px;
+  margin: 12px 0;
+  background: var(--secondary-surface);
+  border-radius: var(--radius-control);
+  color: var(--quiet-text);
+}
+/* The icon inherits the quiet reading level rather than taking the muted
+   component ink: `mutedText` is 3.46:1 on the canvas, and every `color:` in
+   this sheet is swept for AA (src/ui/tokens.test.ts) because a rule cannot tell
+   a glyph from a word. The sentence beside it is what carries the meaning. */
+.empty > div {
+  display: flex;
+}
+.empty p {
+  margin: 0;
+}
+
+/* A table's own title, when the table is in a panel: the head of the panel,
+   above the column keys, on the panel's own surface. A page with several tables
+   carries one heading and names each table here, which is what How and
+   Inventory do — so the caption has to read as part of the object it titles
+   rather than as a loose bold line above a box. */
+.surface .datatable-wrap.panel table.datatable caption {
+  padding: 13px 14px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-3);
+  color: var(--primary-text);
 }
 
 /* A sticky planner topbar, which the approved Plan pack defines. The capability
@@ -867,8 +990,8 @@ footer.app a {
 .demo-banner {
   margin: 0;
   padding: 8px var(--pad);
-  border-bottom: 1px solid var(--rule);
-  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 /* The sample's two synthetic scans (task 026). The selected one is marked by
@@ -881,7 +1004,7 @@ footer.app a {
 }
 .demo-banner .demo-snapshots button {
   font: inherit;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   background: none;
   border: 0;
   border-radius: 0;
@@ -891,10 +1014,10 @@ footer.app a {
 }
 .demo-banner .demo-snapshots button:hover,
 .demo-banner .demo-snapshots button:focus-visible {
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .demo-banner .demo-snapshots button[aria-pressed='true'] {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
   text-decoration: underline;
   cursor: default;
@@ -903,8 +1026,8 @@ footer.app a {
 .scan-line {
   margin: 0;
   padding: 8px var(--pad);
-  border-bottom: 1px solid var(--rule);
-  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--secondary-text);
   font-size: var(--t-2);
   display: flex;
   align-items: center;
@@ -976,7 +1099,7 @@ footer.app a {
   margin: 0 0 4px;
 }
 .surface .lede {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   margin-bottom: 20px;
 }
 .surface .actions {
@@ -989,7 +1112,7 @@ footer.app a {
 /* A line of text with a control in it reads as one sentence: inline, never a flex row (a screen reader and the smoke read it as one line). */
 .surface .line {
   margin: 0 0 12px;
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .surface .line .btn {
   display: inline-flex;
@@ -1000,7 +1123,7 @@ footer.app a {
   border-color: transparent;
 }
 .surface .rows > * {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   padding: 10px 0;
 }
 .surface .toolbar {
@@ -1023,7 +1146,7 @@ footer.app a {
 .surface table caption {
   caption-side: top;
   text-align: left;
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
   padding: 20px 0 6px;
 }
@@ -1035,6 +1158,14 @@ footer.app a {
 .surface details.permissions th:first-child,
 .surface details.permissions td:first-child {
   min-width: 33ch;
+}
+/* A Graph permission name is one identifier: it does not break mid-word, here
+   or on How, which lists the same permissions from the same registry. Task 040
+   made that one declaration — the consent disclosure keeps its own 33ch column
+   floor above, because it is a two-column block that does not scroll, while
+   How's table is in a panel that does. */
+.permission-name,
+.surface details.permissions td:first-child code {
   white-space: nowrap;
   overflow-wrap: normal;
 }
@@ -1062,7 +1193,7 @@ footer.app a {
 .surface .tag {
   margin-left: 8px;
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 /* Tables on a surface (items 7 and 8): no inner scroll, the page scrolls and
    pagination is the height control; the header row is a hairline, not a band.
@@ -1086,22 +1217,22 @@ footer.app a {
   letter-spacing: 0;
   font-size: var(--t-2);
   font-weight: 500;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   min-width: 0;
   white-space: nowrap;
   padding: 8px 12px 8px 0;
-  border-bottom: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--strong-line);
 }
 .surface table.datatable td {
   padding: 8px 12px 8px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 .surface table.datatable th:last-child,
 .surface table.datatable td:last-child {
   padding-right: 0;
 }
 .surface table.datatable tbody tr:hover {
-  background: var(--bg-raised);
+  background: var(--surface);
 }
 .surface details.permissions .removing {
   margin-top: 16px;
@@ -1115,7 +1246,7 @@ footer.app a {
    hairline border, not --bg-raised. Its body is caveat prose kept out of the
    page's flow, so items are .limit blocks, not list prose. */
 .surface details.limits {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 12px 16px;
   margin: 24px 0;
@@ -1125,7 +1256,7 @@ footer.app a {
   cursor: default;
 }
 .surface details.limits .limits-intro {
-  color: var(--ink-2);
+  color: var(--secondary-text);
   margin: 8px 0 4px;
 }
 .surface details.limits .limits-list {
@@ -1137,18 +1268,18 @@ footer.app a {
 .surface details.limits .limit {
   padding-left: 16px;
   position: relative;
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .surface details.limits .limit::before {
   content: '·';
   position: absolute;
   left: 4px;
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 /* The page tip (target-state §8.8): quiet, at the page column. */
 .surface .tip {
   margin: 24px 0 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 /* A page tip is its own block, with the paragraph spacing above and below. */
@@ -1162,15 +1293,15 @@ footer.app a {
   margin: 8px 0;
 }
 .surface .found .frow {
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   padding: 6px 0;
 }
 .surface .found .frow:last-child {
   border-bottom: 0;
 }
 .surface .picker {
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   padding: 12px 0;
   margin: 12px 0;
 }
@@ -1187,8 +1318,8 @@ footer.app a {
   gap: 4px;
   padding: 2px 4px 2px 10px;
   border-radius: 999px;
-  background: var(--accent-tint);
-  color: var(--accent);
+  background: var(--brand-soft);
+  color: var(--brand-primary);
   font-size: var(--t-2);
   line-height: var(--lh-body);
 }
@@ -1202,11 +1333,11 @@ footer.app a {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--accent);
+  color: var(--brand-primary);
   cursor: pointer;
 }
 .chip-remove:hover {
-  background: var(--bg);
+  background: var(--canvas);
 }
 .picker-search {
   position: relative;
@@ -1216,7 +1347,7 @@ footer.app a {
 .picker-search-icon {
   position: absolute;
   left: 8px;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   pointer-events: none;
 }
 .surface .picker input[type='search'] {
@@ -1226,15 +1357,15 @@ footer.app a {
 }
 .picker-list {
   margin-top: 4px;
-  border: 1px solid var(--rule);
-  background: var(--bg);
+  border: 1px solid var(--line);
+  background: var(--canvas);
   max-height: 280px;
   overflow: auto;
 }
 .picker-heading {
   padding: 6px 8px;
-  border-bottom: 1px solid var(--rule);
-  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 .picker-option {
@@ -1246,9 +1377,9 @@ footer.app a {
   text-align: left;
   padding: 6px 8px;
   border: 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   background: transparent;
-  color: var(--ink);
+  color: var(--primary-text);
   font-family: var(--font-sans);
   font-size: var(--t-2);
   line-height: var(--lh-body);
@@ -1256,10 +1387,10 @@ footer.app a {
 }
 .picker-option:hover,
 .picker-option.focused {
-  background: var(--bg-inset);
+  background: var(--secondary-surface);
 }
 .picker-option-secondary {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .picker-footer {
   display: flex;
@@ -1267,24 +1398,24 @@ footer.app a {
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 .picker-count {
   margin-left: auto;
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .surface .picker label {
   display: flex;
   gap: 8px;
   align-items: flex-start;
-  color: var(--ink);
+  color: var(--primary-text);
   padding: 4px 0;
 }
 .surface progress {
   width: 100%;
   height: 4px;
-  accent-color: var(--accent);
+  accent-color: var(--brand-primary);
 }
 
 /* ================= print ================= */
@@ -1303,8 +1434,8 @@ footer.app a {
     color-scheme: light;
   }
   body {
-    background: var(--bg);
-    color: var(--ink);
+    background: var(--canvas);
+    color: var(--primary-text);
   }
   main.page {
     max-width: none;
@@ -1314,7 +1445,7 @@ footer.app a {
     display: block;
   }
   a {
-    color: var(--ink);
+    color: var(--primary-text);
     text-decoration: none;
   }
   .brand-mark {
@@ -1337,7 +1468,7 @@ footer.app a {
   gap: 8px;
   margin: 0 0 20px;
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 .assumption {
   display: inline-flex;
@@ -1353,7 +1484,7 @@ footer.app a {
 .assumption-editor {
   display: block;
   width: 100%;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   padding: 12px;
   margin-top: 4px;
 }
@@ -1365,8 +1496,8 @@ footer.app a {
    step's name, and the marker follows it (task 033, after 664fc3f). */
 .next-mark {
   font-size: var(--t-2);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--brand-primary);
+  border: 1px solid var(--brand-primary);
   border-radius: var(--radius);
   padding: 0 6px;
   margin-left: 8px;
@@ -1386,8 +1517,8 @@ footer.app a {
    --bg-raised, a hairline border, an 8px radius, the header inside, its rows
    separated by hairlines within it. Nothing else outside .export-card gets a box. */
 .phase {
-  background: var(--bg-raised);
-  border: 1px solid var(--rule);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
   padding: 4px 0 8px;
   margin: 20px 0;
@@ -1399,7 +1530,7 @@ footer.app a {
   font-size: var(--t-4);
   margin: 14px 0 2px;
   padding: 0 17px 8px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 /* ---- the approved roadmap row (task 033) ----
    docs/design/approved/plan-step-v1.html `.roadmap-row`: four zones on one
@@ -1421,7 +1552,7 @@ footer.app a {
   align-items: center;
   min-height: 64px;
   padding: 0 17px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   border-radius: var(--radius);
   cursor: pointer;
 }
@@ -1430,7 +1561,7 @@ footer.app a {
 }
 /* A hover surface on the row (item 13). */
 .plan-row:hover {
-  background: var(--bg-inset);
+  background: var(--secondary-surface);
 }
 /* The open row is the head of the step under it (task 033), and task 034
    attached the step to it: the row takes the frame's own border and rounds only
@@ -1444,8 +1575,8 @@ footer.app a {
    the title, the state and the timing stay on the line the collapsed rows above
    and below set. */
 .plan-row[aria-expanded='true'] {
-  background: var(--bg-inset);
-  border: 1px solid var(--rule);
+  background: var(--secondary-surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control) var(--radius-control) 0 0;
   margin: 0 8px;
   padding: 0 9px;
@@ -1455,7 +1586,7 @@ footer.app a {
 }
 .plan-row-reason {
   display: block;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-size: var(--t-1);
   margin-top: 2px;
 }
@@ -1465,7 +1596,7 @@ footer.app a {
 }
 .plan-row .who,
 .plan-row .when {
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-size: var(--t-1);
   text-align: right;
 }
@@ -1501,7 +1632,7 @@ footer.app a {
    them. `23px 27px 20px` in the pack, less the 8px the frame is already inset. */
 .step-head {
   padding: 23px 19px 20px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 .step-head-top {
   display: flex;
@@ -1523,7 +1654,7 @@ footer.app a {
 .step-head .step-sub {
   margin: 0;
   max-width: var(--measure);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 /* ---- the lifecycle track ----
    The pack's four stages: `.track{grid-template-columns:repeat(4,1fr);gap:8px}`
@@ -1554,7 +1685,7 @@ footer.app a {
   display: block;
   height: 6px;
   border-radius: var(--radius);
-  background: var(--rule);
+  background: var(--line);
   overflow: hidden;
 }
 .step .track .stage-fill {
@@ -1590,18 +1721,18 @@ footer.app a {
 }
 .step .track .stage.current.stage-ready-to-enforce .stage-fill {
   width: 84%;
-  background: var(--accent);
+  background: var(--brand-primary);
 }
 .step .track .stage-label {
   font-family: var(--font-sans);
   font-size: var(--t-micro);
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* The stage the step is at is named as well as coloured: `aria-current` carries
    it to a screen reader and the label takes the body ink for the eye, so the
    position never depends on telling two bar colours apart. */
 .step .track .stage.current .stage-label {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
 }
 /* ---- the body: the main column and the step's own right rail ----
@@ -1625,12 +1756,12 @@ footer.app a {
 .step-side {
   min-width: 0;
   padding: 20px 18px;
-  border-left: 1px solid var(--rule);
+  border-left: 1px solid var(--line);
 }
 .side-block {
   padding-bottom: 16px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 .side-block:last-child {
   padding-bottom: 0;
@@ -1656,7 +1787,7 @@ footer.app a {
 .side-block .metric-sub {
   margin: 2px 0 0;
   font-size: var(--t-1);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 /* The pack's side list: a rail block that is a handful of short items rather
    than one metric (`.side-list{list-style:none;display:grid;gap:7px}` with a
@@ -1674,7 +1805,7 @@ footer.app a {
   display: flex;
   gap: 8px;
   font-size: var(--t-1);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .step .side-list .tiny {
   width: 6px;
@@ -1682,7 +1813,7 @@ footer.app a {
   margin-top: 6px;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: var(--ink-3);
+  background: var(--quiet-text);
 }
 .step-body h4 {
   margin: 18px 0 6px;
@@ -1697,7 +1828,7 @@ footer.app a {
    sees is the structure a screen reader walks. */
 .step-section {
   padding: 19px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 .step-section:last-child {
   border-bottom: 0;
@@ -1733,9 +1864,9 @@ footer.app a {
 }
 .step .finding {
   padding: 11px 12px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  background: var(--bg-inset);
+  background: var(--secondary-surface);
 }
 .step .finding .key-label {
   display: block;
@@ -1761,20 +1892,20 @@ footer.app a {
 }
 .step .tabs.action-tabs .tab {
   padding: 6px 10px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
 }
 .step .tabs.action-tabs .tab.active,
 .step .tabs.action-tabs .tab[aria-selected='true'] {
-  color: var(--ink);
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  color: var(--primary-text);
+  border-color: var(--brand-primary);
+  background: var(--brand-tint);
 }
 .step .instruction {
   padding: 13px 15px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  background: var(--bg-inset);
+  background: var(--secondary-surface);
 }
 .step .instruction > ol,
 .step .instruction > ul {
@@ -1811,7 +1942,7 @@ footer.app a {
 .step .more-card {
   min-width: 0;
   padding: 11px 12px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
 }
 .step .more-card h5 {
@@ -1823,7 +1954,7 @@ footer.app a {
 .step .more-card p,
 .step .more-card li {
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .step .more-card ul,
 .step .more-card ol {
@@ -1844,11 +1975,11 @@ footer.app a {
 .step .step-state {
   margin: 2px 0 0;
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .step .step-state .stage {
   font-weight: 500;
-  color: var(--ink);
+  color: var(--primary-text);
 }
 /* A condition with something to say takes the ink; a healthy one recedes. The
    state colours live in .status and nowhere else (design lint 5), and they would
@@ -1858,14 +1989,14 @@ footer.app a {
 .step .step-state .condition-baseline-conflict,
 .step .step-state .condition-needs-decision,
 .step .step-state .condition-review-required {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: 500;
 }
 /* The next milestone, and only where Foundation B has a date for it. */
 .step .step-next {
   margin: 2px 0 0;
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 /* A goal the baseline implements with two policies: each member on its own row,
    with its own name and its own stage. Absent on a step with one policy. */
@@ -1873,16 +2004,16 @@ footer.app a {
   list-style: none;
   margin: 8px 0 0;
   padding: 0 0 0 12px;
-  border-left: 2px solid var(--rule);
+  border-left: 2px solid var(--line);
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .step .step-members > li {
   margin: 2px 0;
 }
 .step .step-members .member-label {
   font-weight: 500;
-  color: var(--ink);
+  color: var(--primary-text);
 }
 /* The one action. It is the sentence the step exists for, so it takes the weight
    the old status pill used to take. */
@@ -1893,12 +2024,12 @@ footer.app a {
 /* Nothing about a blocker is optional advice: the list keeps a rule of its own so
    it cannot be read as the paragraph before it. */
 .step-body ol.sections.blocking {
-  border-left: 2px solid var(--rule-strong);
+  border-left: 2px solid var(--strong-line);
   padding-left: 20px;
   margin-left: 2px;
 }
 .step-body pre.mono {
-  background: var(--bg-inset);
+  background: var(--code-surface);
   padding: 12px;
   overflow-x: auto;
   max-width: 100%;
@@ -1907,7 +2038,7 @@ footer.app a {
   white-space: pre-wrap;
 }
 .plan-settings {
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   padding: 16px;
   margin: 0 0 16px;
   max-width: 32rem;
@@ -1935,7 +2066,7 @@ footer.app a {
 .plan-start .rows > input,
 .plan-settings .rows > input,
 .plan-settings .rows > select {
-  border-bottom: 1px solid var(--ink-3);
+  border-bottom: 1px solid var(--quiet-text);
   padding: 0 8px;
 }
 .plan-settings label.rows {
@@ -1943,7 +2074,7 @@ footer.app a {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   padding: 10px 0;
 }
 .plan-settings .rows > * {
@@ -1960,7 +2091,7 @@ footer.app a {
 }
 .plan-footer {
   margin-top: 32px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   padding-top: 16px;
 }
 .plan-footer > details {
@@ -1985,18 +2116,18 @@ footer.app a {
   .print-only { display: revert; }
   body.has-print-plan > #root { display: none !important; }
   body.has-print-plan > .print-plan { display: block; }
-  .print-plan { color: var(--ink); font-size: var(--t-2); line-height: 1.45; }
+  .print-plan { color: var(--primary-text); font-size: var(--t-2); line-height: 1.45; }
   .print-plan a { color: inherit; text-decoration: none; }
-  .print-running { position: fixed; top: -12mm; left: 0; right: 0; font-size: var(--t-2); color: var(--ink-2); border-bottom: 1px solid var(--rule); padding-bottom: 2mm; }
+  .print-running { position: fixed; top: -12mm; left: 0; right: 0; font-size: var(--t-2); color: var(--secondary-text); border-bottom: 1px solid var(--line); padding-bottom: 2mm; }
   .print-cover { min-height: 70vh; display: flex; flex-direction: column; justify-content: center; break-after: page; }
   .print-cover h1 { font-size: var(--t-6); margin: 0 0 12mm; }
   .print-cover dl { display: grid; grid-template-columns: 8rem 1fr; gap: 3mm 6mm; }
-  .print-cover dt { color: var(--ink-2); }
+  .print-cover dt { color: var(--secondary-text); }
   .print-page { break-before: page; }
-  .print-page h2 { font-size: var(--t-5); margin: 0 0 4mm; border-bottom: 2px solid var(--accent); padding-bottom: 2mm; }
+  .print-page h2 { font-size: var(--t-5); margin: 0 0 4mm; border-bottom: 2px solid var(--brand-primary); padding-bottom: 2mm; }
   .print-page h3 { font-size: var(--t-4); margin: 6mm 0 2mm; }
   .print-page h4 { font-size: var(--t-3); margin: 4mm 0 1mm; }
-  .print-step { break-inside: avoid-page; border-top: 1px solid var(--rule); padding-top: 3mm; margin-top: 4mm; }
+  .print-step { break-inside: avoid-page; border-top: 1px solid var(--line); padding-top: 3mm; margin-top: 4mm; }
   /* The screen's attached frame is a screen idea: on paper a step is a section
      under a heading, in one column, with no card, no shadow and no rail beside
      it. The rail's own blocks still print, under the main column, because they
@@ -2013,39 +2144,103 @@ footer.app a {
   .print-plan .more-grid { display: block; }
   .print-plan .more-card { margin-top: 2mm; }
   .print-plan .findings { grid-template-columns: 1fr; }
-  .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--rule); background: none; }
+  .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--line); background: none; }
   .print-plan .track { display: none; }
   .print-json { break-inside: auto; }
   .print-plan .datatable, .print-plan table { width: 100%; border-collapse: collapse; }
-  .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--rule); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-2); }
-  .print-plan pre, .print-plan .code-block { font-size: var(--t-2); border: 1px solid var(--rule); background: var(--bg-inset); }
+  .print-plan .datatable th, .print-plan .datatable td, .print-plan table th, .print-plan table td { border: 1px solid var(--line); padding: 2mm; text-align: left; vertical-align: top; font-size: var(--t-2); }
+  .print-plan pre, .print-plan .code-block { font-size: var(--t-2); border: 1px solid var(--line); background: var(--secondary-surface); }
   .export-grid, .journey { grid-template-columns: 1fr !important; }
   .print-cover .brand-mark { color: var(--brand-primary); margin-bottom: 8mm; }
-  .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--rule); color: var(--ink-2); font-size: var(--t-2); }
-  .print-progress { border: 1px solid var(--rule); padding: 3mm 4mm; margin: 4mm 0; }
+  .print-cover .print-statement { margin-top: 10mm; padding-top: 4mm; border-top: 1px solid var(--line); color: var(--secondary-text); font-size: var(--t-2); }
+  .print-progress { border: 1px solid var(--line); padding: 3mm 4mm; margin: 4mm 0; }
   .print-progress p { margin: 0 0 1mm; }
 }
 
-/* ================= export cards (prompt 49) ================= */
+/* ================= the surfaces no approved pack governs (task 040) =================
+
+   Export, How and Inventory. No canonical HTML covers them and this task does
+   not invent one: what follows converges them onto the grammar the four
+   restored surfaces established, and every value here is an ENGINEERING choice
+   reusing something the product already resolves, never an approved one.
+
+   The page heading is the whole of the typographic drift. Production's default
+   `h1` is the serif display role at `--t-6`, 26px — the top of the INTERFACE
+   scale, which is where the display role sat before task 030 lifted the
+   ceiling. Every restored surface then took its pack's size from the display
+   ramp (Home 50, Plan 42, Connect 40, MFA 38) and these three were left behind,
+   so the product has a 38px page and a 26px page beside it.
+
+   They take `--d-9`, 30px: the smallest page-heading rung on the ramp (the
+   Plan's own `h1` below 650), which reads as clearly subordinate to all four
+   packed surfaces without introducing a number the ramp does not have. The
+   section `h2` is deliberately NOT moved — the packs set a section heading at
+   .58-.64 of their `h1`, and 20px against 30px is already inside that band, so
+   the outlier was the `h1` alone.
+
+   No eyebrow is added. All four packs open with one, but an eyebrow is a WORD,
+   and inventing page-label copy for three surfaces the owner has approved no
+   design for would be writing product copy to match a picture that does not
+   exist. */
+.surface.export h1,
+.surface.how h1,
+.surface.inventory h1 {
+  --display-size: var(--d-9);
+  line-height: var(--lh-display);
+}
+
+/* ================= Export's artifact groups (prompt 49; converged by task 040) =================
+
+   Export groups its six artifacts by the job each one does. Until task 040 a
+   group was an auto-filling grid of boxes, which produced two real defects at
+   every width the product is used at: a group of one artifact rendered a
+   half-width box beside an empty half (Doing the work, Timing), and a page of
+   six separately bordered boxes is the card wall the rest of the product does
+   not have.
+
+   The group is now ONE panel and each artifact is a row inside it, separated by
+   the shared `.row-group` hairline — the same anatomy Connect's approved flow
+   draws, and the same one the Plan's phases draw. Nothing about an artifact
+   changed: the six entries, their titles, their lines and their buttons are
+   what they were, and `.export-card` is still one element per artifact.
+
+   Export stays document-like rather than taking the Plan's expanded-step
+   anatomy: it is a list of things to take away, not a thing to decide. */
 .export-grid {
   display: grid;
-  /* min() keeps the track from being wider than the column it sits in: a fixed
-     20rem minimum overflowed the page on a phone (task 017). */
-  grid-template-columns: repeat(auto-fill, minmax(min(20rem, 100%), 1fr));
-  gap: 16px;
+  /* One column. A single track cannot leave a hole beside a lone artifact and
+     cannot overflow a phone, which is what the old `minmax(min(20rem,100%),1fr)`
+     was guarding against (task 017). */
+  grid-template-columns: 1fr;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
   margin-top: 16px;
 }
-/* Each export entry is a raised panel, the second surface depth (item 12). */
-.export-card {
-  background: var(--bg-raised);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-control);
-  padding: 16px;
+/* The artifact row. `.surface.export` outranks the generic `.card` the Card
+   component also carries, which is what takes the box off each entry: the panel
+   above owns the surface, the border and the radius now. */
+.surface.export .export-card {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 16px 18px;
+}
+.surface.export .export-card + .export-card {
+  border-top: 1px solid var(--line);
+}
+.surface.export .export-card h3 {
+  margin-top: 0;
 }
 .export-card .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+/* A row's last action has nothing under it, so the row's own padding is the
+   space rather than the actions' bottom margin. */
+.surface.export .export-card .actions:last-child {
+  margin-bottom: 0;
 }
 /* An option that needs a value: its words around the picker that supplies it. */
 .surface .option-value {
@@ -2096,25 +2291,25 @@ footer.app a {
   gap: 10px;
   margin-top: 28px;
   padding: 12px 14px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-control);
-  background: var(--bg-inset);
+  background: var(--secondary-surface);
 }
 .connect-status .dot {
   flex: 0 0 auto;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--ink-3);
+  background: var(--quiet-text);
 }
 .connect-status .dot.done {
-  background: var(--accent);
+  background: var(--brand-primary);
 }
 .connect-status .dot.wait {
-  background: var(--wait);
+  background: var(--attention-text);
 }
 .connect-status .dot.stop {
-  background: var(--stop);
+  background: var(--danger-text);
 }
 .connect-status-copy {
   margin: 0;
@@ -2123,21 +2318,21 @@ footer.app a {
   font-size: var(--t-2);
 }
 .connect-status-copy strong {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
 .connect-status-copy .quiet {
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 
 /* One contiguous flow, not a stack of cards: a single panel, the steps
    separated by the shared hairline. */
 .connect-flow {
   margin-top: 16px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
   overflow: hidden;
-  background: var(--bg-raised);
+  background: var(--surface);
   box-shadow: var(--shadow-panel);
 }
 /* The step's three zones: number, content, action. `minmax(0, 1fr)` is what
@@ -2154,11 +2349,11 @@ footer.app a {
   width: 32px;
   height: 32px;
   border-radius: 999px;
-  border: 1px solid var(--rule-strong);
-  background: var(--bg);
+  border: 1px solid var(--strong-line);
+  background: var(--canvas);
   display: grid;
   place-items: center;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-family: var(--font-mono);
   font-size: var(--t-1);
   /* IBM Plex Mono ships one staged face; a 500 here is a substituted 400 or a
@@ -2166,17 +2361,17 @@ footer.app a {
   font-weight: 400;
 }
 .connect-step.done .n {
-  background: var(--accent-tint);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--brand-soft);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 .connect-step.stop .n {
-  border-color: var(--stop);
-  color: var(--stop);
+  border-color: var(--danger-text);
+  color: var(--danger-text);
 }
 .connect-step.wait .n {
-  border-color: var(--wait);
-  color: var(--wait);
+  border-color: var(--attention-text);
+  color: var(--attention-text);
 }
 .connect-step-body {
   min-width: 0;
@@ -2204,16 +2399,16 @@ footer.app a {
 .connect-step h2 .state {
   font-size: var(--t-2);
   font-weight: var(--weight-body);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-step h2 .state.ok {
-  color: var(--ok);
+  color: var(--success-text);
 }
 .connect-step h2 .state.stop {
-  color: var(--stop);
+  color: var(--danger-text);
 }
 .connect-step h2 .state.wait {
-  color: var(--wait);
+  color: var(--attention-text);
 }
 /* The progression (task 016): the step with the next action is the loud one and
    the finished ones step back. The marker beside the heading is the word Next,
@@ -2223,11 +2418,11 @@ footer.app a {
    a tenant is connected — and dimming a live control is a contrast regression,
    so `ahead` steps take the quiet number and keep their copy at full ink. */
 .connect-step.current .n {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 .connect-step.settled h2 {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-step .next {
   font-size: var(--t-0);
@@ -2235,8 +2430,8 @@ footer.app a {
   line-height: 1.6;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: var(--accent-tint);
+  color: var(--brand-primary);
+  background: var(--brand-soft);
   border-radius: var(--radius);
   padding: 0 5px;
 }
@@ -2255,15 +2450,15 @@ footer.app a {
 }
 .connect-step p {
   margin: 6px 0 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   max-width: none;
 }
 .connect-step p strong {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
 .connect-step .quiet {
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-size: var(--t-2);
 }
 
@@ -2271,19 +2466,19 @@ footer.app a {
 .baseline-card {
   margin-top: 10px;
   padding: 13px 14px;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--strong-line);
   border-radius: var(--radius-control);
-  background: var(--bg-inset);
+  background: var(--secondary-surface);
 }
 .baseline-card .baseline-name {
   display: block;
   font-size: var(--t-3);
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
 .baseline-card .baseline-source {
   margin: 3px 0 0;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-size: var(--t-0);
 }
 .baseline-card p + p {
@@ -2304,10 +2499,10 @@ footer.app a {
 }
 .connect-step .meta-counts li {
   font-size: var(--t-1);
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 .connect-step .meta-counts b {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
 
@@ -2319,10 +2514,10 @@ footer.app a {
 }
 .connect-step .beats li {
   padding: 4px 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-step .beats b {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: var(--weight-strong);
   display: inline-block;
   width: 76px;
@@ -2331,7 +2526,7 @@ footer.app a {
   margin: 10px 0 0;
   padding: 0;
   list-style: none;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   max-width: none;
 }
 .connect-step .tile-rows li {
@@ -2339,14 +2534,14 @@ footer.app a {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
   font-size: var(--t-2);
 }
 .connect-step .tile-rows li span:last-child {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-step .role {
-  color: var(--ink);
+  color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
 .connect-step .diff {
@@ -2359,7 +2554,7 @@ footer.app a {
 .connect-step .diff li {
   padding: 5px 0;
   font-size: var(--t-2);
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 1px solid var(--line);
 }
 .connect-step .diff .change {
   display: flex;
@@ -2368,7 +2563,7 @@ footer.app a {
 .connect-step .diff .tag {
   width: 124px;
   flex: none;
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* Under the row: what it used to be called, what materially changed, then the steps. */
 .connect-step .diff .was,
@@ -2377,7 +2572,7 @@ footer.app a {
   margin: 2px 0 0 134px;
   padding: 0;
   list-style: none;
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 .connect-step .diff .deltas li,
 .connect-step .diff .steps li {
@@ -2386,11 +2581,11 @@ footer.app a {
   font-size: inherit;
 }
 .connect-step .diff .deltas {
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-step details summary {
   cursor: pointer;
-  color: var(--accent);
+  color: var(--brand-primary);
   font-size: var(--t-2);
   list-style: none;
   margin-top: 8px;
@@ -2399,7 +2594,7 @@ footer.app a {
   display: none;
 }
 .connect-step .lnk {
-  color: var(--accent);
+  color: var(--brand-primary);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -2422,13 +2617,13 @@ footer.app a {
   gap: 22px;
   align-items: center;
   padding: 22px;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-  background: var(--bg-raised);
+  background: var(--surface);
 }
 .connect-destination.ready {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: var(--brand-primary);
+  background: var(--brand-tint);
 }
 .connect-destination h2 {
   --display-size: var(--d-13);
@@ -2442,14 +2637,14 @@ footer.app a {
   font-family: var(--font-sans);
   font-size: var(--t-2);
   font-weight: var(--weight-body);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-destination h2 .state.ok {
-  color: var(--ok);
+  color: var(--success-text);
 }
 .connect-destination p {
   margin: 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   max-width: none;
 }
 .connect-destination .facts {
@@ -2463,7 +2658,7 @@ footer.app a {
 }
 .connect-destination .facts li {
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .connect-destination .facts b {
   display: block;
@@ -2471,7 +2666,7 @@ footer.app a {
   font-size: var(--t-5);
   font-weight: var(--weight-display);
   line-height: 1.2;
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .connect-destination-action {
   display: flex;
@@ -2522,17 +2717,17 @@ footer.app a {
 
 /* A boxed tile or count in the content flow. */
 .card {
-  background: var(--bg-raised);
-  border: 1px solid var(--rule);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
 }
 .surface .ledger {
   margin: 6px 0 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .surface .ledger .quiet {
   margin-left: 8px;
-  color: var(--ink-3);
+  color: var(--quiet-text);
   font-size: var(--t-2);
 }
 .rung-badge {
@@ -2546,7 +2741,7 @@ footer.app a {
   font-size: var(--t-1);
   /* one staged Mono face; see .connect-step .n */
   font-weight: 400;
-  color: var(--on-accent);
+  color: var(--on-brand);
   background: var(--rung-0);
 }
 .rung-badge.rung-5 {
@@ -2565,8 +2760,8 @@ footer.app a {
   background: var(--rung-1);
 }
 .rung-badge.rung-0 {
-  background: var(--bg-inset);
-  color: var(--ink-3);
+  background: var(--secondary-surface);
+  color: var(--quiet-text);
 }
 td .rung-badge {
   width: 20px;
@@ -2578,14 +2773,14 @@ td .rung-badge {
    no margin of its own. */
 td .not-person {
   font-size: var(--t-2);
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* A pressed filter carries `aria-pressed` for a screen reader and a check mark
    for anyone who cannot separate the accent from the hairline: the state is
    never the colour alone (task 017). */
 .surface .toolbar .btn[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
 }
 .surface .toolbar .btn[aria-pressed='true']::before {
   content: '\2713';
@@ -2612,7 +2807,7 @@ td .not-person {
 .surface.readiness .line.intro {
   font-size: var(--t-4);
   max-width: var(--page);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .surface.readiness > .eyebrow {
   margin-bottom: 6px;
@@ -2635,7 +2830,7 @@ td .not-person {
 }
 /* The divide is a hairline between cells, not a box around each. */
 .readiness-summary .summary-stat {
-  border-left: 1px solid var(--rule);
+  border-left: 1px solid var(--line);
 }
 .readiness-summary .summary-main .headline {
   --display-size: var(--d-14);
@@ -2644,7 +2839,7 @@ td .not-person {
 }
 .readiness-summary .summary-main .sub {
   margin: 0;
-  color: var(--ink-2);
+  color: var(--secondary-text);
   font-size: var(--t-2);
 }
 .readiness-summary .stat-n {
@@ -2656,12 +2851,12 @@ td .not-person {
 }
 .readiness-summary .stat-k {
   font-size: var(--t-1);
-  color: var(--ink);
+  color: var(--primary-text);
 }
 .readiness-summary .stat-hint {
   margin-top: 3px;
   font-size: var(--t-0);
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* Passkey-ready is the one count the page is about, so it takes the rung it
    names. The other two stay in the body ink: a stat is not a status, and the
@@ -2699,39 +2894,9 @@ td .not-person {
   height: var(--control);
 }
 
-/* The person table. The pack draws it as a panel: a head band on the inset
-   surface in the small uppercase key, then rows divided by top hairlines, all
-   inside one border with one radius. */
-.surface.readiness .datatable-wrap.panel {
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-panel);
-  overflow: hidden;
-  overflow-x: auto;
-  margin-top: 12px;
-}
-.surface.readiness table.datatable th {
-  background: var(--bg-inset);
-  border-bottom: 1px solid var(--rule);
-  padding: 11px 14px;
-  font-size: var(--t-micro);
-  font-weight: var(--weight-strong);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-.surface.readiness table.datatable td {
-  padding: 12px 14px;
-  border-bottom: 0;
-  border-top: 1px solid var(--rule);
-  vertical-align: middle;
-}
-.surface.readiness table.datatable tbody tr:first-child td {
-  border-top: 0;
-}
-.surface.readiness table.datatable th:last-child,
-.surface.readiness table.datatable td:last-child {
-  padding-right: 14px;
-}
+/* The person table takes the shared panel-table role (see `.datatable-wrap.panel`
+   in the shared roles above, promoted there by task 040). What stays here is
+   only what belongs to this pack: the Person cell and the stacked row. */
 /* The pack's Person cell: the name over the sign-in address. */
 .surface.readiness .person-name {
   display: block;
@@ -2741,7 +2906,7 @@ td .not-person {
   display: block;
   margin-top: 2px;
   font-size: var(--t-2);
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* The Readiness cell: the pack's bounded status object, which production had
    left as a badge and some text sitting loose in the column. The outline and
@@ -2760,13 +2925,13 @@ td .not-person {
 }
 /* Nothing to do: the pack's em rule in the quiet ink. */
 .surface.readiness .no-action {
-  color: var(--ink-3);
+  color: var(--quiet-text);
 }
 /* The Role cell. The admin ink is the pack's violet role colour, and it is the
    second signal: the word "Admin" is already there and says it on its own. */
 .surface.readiness .role {
   font-size: var(--t-2);
-  color: var(--ink-2);
+  color: var(--secondary-text);
 }
 .surface.readiness .role-admin {
   color: var(--admin-text);
@@ -2781,7 +2946,7 @@ td .not-person {
   flex-wrap: wrap;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
 }
 .surface.readiness .footer-note .ledger,
 .surface.readiness .footer-note .footer-link {
@@ -2811,7 +2976,7 @@ td .not-person {
   margin-top: 0;
 }
 .guide-panel .guide {
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--line);
   margin-top: 12px;
   padding-top: 4px;
 }
@@ -2861,7 +3026,7 @@ td .not-person {
   }
   .step-side {
     border-left: 0;
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
   }
 }
 /* The pack's second breakpoint. `.step-head,.step-main{padding-left:18px;
@@ -2938,7 +3103,7 @@ td .not-person {
     grid-column: 1 / -1;
   }
   .readiness-summary .summary-stat {
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
   }
   /* Every stat keeps its left hairline here, which is what the pack's pair of
      rules resolves to: `.summary-stat{border-left:1px solid var(--line)}` is
@@ -2968,7 +3133,7 @@ td .not-person {
   }
   .surface.readiness table.datatable tr {
     padding: 14px 16px;
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
   }
   .surface.readiness table.datatable tbody tr:first-child {
     border-top: 0;
@@ -3011,7 +3176,7 @@ td .not-person {
   }
   .readiness-summary .summary-stat {
     border-left: 0;
-    border-top: 1px solid var(--rule);
+    border-top: 1px solid var(--line);
   }
   /* The pack's `.callout{align-items:flex-start;flex-direction:column}`: too
      narrow to hold the sentence and the way out side by side, so the action

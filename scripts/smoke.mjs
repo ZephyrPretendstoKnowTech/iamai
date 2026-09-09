@@ -455,9 +455,22 @@ try {
   t = await text()
   check('Inventory: the heading, the ← MFA Readiness link, and no intro sentence', /Everything the scan read/.test(t) && /← MFA Readiness/.test(t) && !/as found: no analysis/.test(t))
   check('Inventory: the ten tabs', (await evaluate(`document.querySelectorAll('main.page [role=tab]').length`)) === 10)
-  // Walk fixes (prompt 47.1 Part 2): the table column, and a hairline header.
-  check('Inventory: the page uses the 1040px table column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))
-  check('Inventory: the header row is a hairline, not a band', (await evaluate(`getComputedStyle(document.querySelector('main.page table.datatable th')).backgroundColor`)) === 'rgba(0, 0, 0, 0)')
+  // The operational column, and the panel table's head band.
+  //
+  // Prompt 47.1 asked for the opposite of the second check: a transparent `th`,
+  // because the head it was replacing was the legacy sticky band. Task 040
+  // moved every panel table onto the treatment BOTH approved packs draw —
+  // `plan-step-v1.html` and `mfa-readiness-v2.html` each put the head on the
+  // secondary surface inside one bordered panel — so what the check now asks is
+  // that the head is that band and not the old one: on the inset surface, not
+  // sticky, inside a panel that carries the border.
+  check('Inventory: the page uses its own operational column', (await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)) >= 1040, String(await evaluate(`Math.round(document.querySelector('main.page').getBoundingClientRect().width)`)))
+  const invHead = await evaluate(`(() => { const th = document.querySelector('main.page .datatable-wrap.panel table.datatable th'); if (!th) return null; const cs = getComputedStyle(th); const wrap = getComputedStyle(th.closest('.datatable-wrap')); return { bg: cs.backgroundColor, inset: getComputedStyle(document.documentElement).getPropertyValue('--secondary-surface').trim(), position: cs.position, transform: cs.textTransform, border: wrap.borderTopWidth } })()`)
+  check(
+    'Inventory: the head is the packs’ inset band inside a panel, not the legacy sticky one',
+    invHead !== null && invHead.position === 'static' && invHead.transform === 'uppercase' && invHead.border !== '0px' && invHead.bg !== 'rgba(0, 0, 0, 0)',
+    JSON.stringify(invHead),
+  )
   await go('how')
   // How is a lazy chunk behind the shell's ready gate, so the page is read when
   // its last section is on screen, never on a fixed sleep: a slower machine
@@ -721,7 +734,7 @@ try {
   check('Checks: the severities render', /Must fix/.test(t) && /Recommended/.test(t) && /Note/.test(t))
   check('Checks: a break-glass rule is on the page in plain language', /Global Administrator is assigned permanently and active/.test(t))
   // Every check names its source, and the ones nobody documents say so (audit-program 6).
-  check('Checks: every rule names a source', /Source/.test(t) && /Microsoft: manage emergency access accounts/.test(t))
+  check('Checks: every rule names a source', /Source/i.test(t) && /Microsoft: manage emergency access accounts/.test(t))
   check('Checks: field practice is labelled rather than dressed up as Microsoft', /Field practice/.test(t))
 
   // Accessible names, from Chrome's own accessibility tree rather than from our

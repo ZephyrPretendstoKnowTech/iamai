@@ -11,8 +11,16 @@
 //   design 4: a font-family not one of the three --font-* variables, a
 //             font-weight that is not a named --weight-* role, a font-size not
 //             a --t-*, --d-* or --display-size variable
-//   design 5: --ok, --wait, --stop or --idle outside a .status rule
+//   design 5: a state colour outside the rules that carry a state
 //   design 6: the raised surface only on a panel or a floating layer
+//
+// Task 040 rewrote rule 5 on the same principle. It used to name the legacy
+// aliases --ok / --wait / --stop, so it constrained the OLD name of a state
+// colour and let the identical value through under its canonical one — the
+// callout tones were painting `--success-text` and `--danger-text` outside
+// every selector the rule listed, and it could not see them. With the aliases
+// gone it names the roles themselves and asks a stricter question: a state
+// colour may only be painted where a word or an icon says which state it is.
 //
 // Task 030 changed rules 2, 3, 4 and 6, and made each of them stricter rather
 // than looser. Before it, rule 3 was a 4px ceiling with a growing list of named
@@ -203,21 +211,37 @@ test('design 4: font-family only via --font-*, a weight only via a named role, a
   assert.deepEqual(hits, [])
 })
 
-test('design 5: --ok, --wait, --stop and --idle only inside a .status rule, or a Connect tile carrying its state colour', () => {
+test('design 5: a state colour is painted only where a word or an icon carries the state with it', () => {
   const { rules } = sources()
-  // A Connect step's number badge and state word carry the state colour, and so
-  // does the dot in the status strip above the flow
-  // (docs/design/approved/connect-v3.html). In each of those the state's word is
-  // beside the colour, so the meaning never depends on the colour alone.
+  // The state roles, by their canonical names. Until task 040 this rule named
+  // the legacy aliases --ok / --wait / --stop, which meant it constrained the
+  // OLD name and let the same colour through under its canonical one: the
+  // callout tones were already painting `--success-text` and `--danger-text`
+  // outside every selector listed here, and the rule could not see them. It now
+  // names the roles themselves, which is what it was always trying to say.
+  //
+  // Where a state colour is allowed, and why each is not colour alone:
+  //   .status          the status word itself
+  //   .callout-*       a notice whose tone is border + tint + icon, with the
+  //                    words at full body contrast (task 031)
+  //   .connect-*       a step number, a state word and the strip's dot, each
+  //                    beside its own word (docs/design/approved/connect-v3.html)
+  //   .rung-*, .stat-n a ladder rung and the count it names, both labelled
+  //   .stage-*         a lifecycle stage, whose name is under the bar
+  //   .role-admin      the admin role's own NAME, set in the admin colour
+  //                    (docs/design/approved/mfa-readiness-v2.html)
+  const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
+  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-/
   const hits = rules
-    .filter((r) => /var\(--(ok|wait|stop|idle)\)/.test(r.body) && !/\.status|\.connect-step|\.connect-status|\.connect-destination/.test(r.selector))
-    .map((r) => where(r, r.body.match(/var\(--(ok|wait|stop|idle)\)/)?.[0] ?? ''))
-  assert.deepEqual(hits, [])
+    .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
+    .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))
+  assert.deepEqual(hits, [], 'a state colour is painted where nothing says which state it is')
 })
 
-test('design 6: --bg-raised only on the two-depth panels and the floating layers (prompt 49.1 item 12)', () => {
+test('design 6: the raised surface only on the panels and the floating layers (prompt 49.1 item 12)', () => {
   const { rules } = sources()
-  // The raised surface is the two content panels (.wave, .export-card) and the
+  // The raised surface is the content panels (.wave, .export-grid — task 040
+  // made Export's group the panel and its entries plain rows in it) and the
   // floating layers that already sit above the page (a tooltip, a menu, a table
   // row on hover). Nothing else in the content flow may gain a box.
   // Connect's staged flow and its Plan destination are panels too
@@ -225,11 +249,10 @@ test('design 6: --bg-raised only on the two-depth panels and the floating layers
   // home page's cards (docs/design/home-mockup.html; home/home.css). The steps
   // INSIDE the flow are not, and must not become so: they sit on the one panel,
   // which is what makes the flow contiguous instead of a stack of cards.
-  const ALLOWED = /\.wave\b|\.phase\b|\.export-card|\.infotip-pop|\.menu-list|tbody tr:hover|\.connect-flow\b|\.connect-destination\b|\.card\b|\.panel\b/
+  const ALLOWED = /\.wave\b|\.phase\b|\.export-grid|\.infotip-pop|\.menu-list|tbody tr:hover|\.connect-flow\b|\.connect-destination\b|\.card\b|\.panel\b/
   const hits = rules
-    // --surface is the canonical name and --bg-raised its compatibility alias;
-    // they are one value, so the rule checks both.
-    .filter((r) => /var\(--(bg-raised|surface)\)/.test(r.body) && !ALLOWED.test(r.selector))
+    // Task 040 deleted the --bg-raised alias; --surface is the one name now.
+    .filter((r) => /var\(--surface\)/.test(r.body) && !ALLOWED.test(r.selector))
     .map((r) => where(r, 'the raised surface'))
   assert.deepEqual(hits, [], 'a new element gained the raised surface outside the panels and the floating layers')
 })

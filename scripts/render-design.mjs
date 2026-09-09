@@ -205,6 +205,23 @@ const PRODUCTION_SHOTS = [
   // cannot show a shared primitive cannot be the evidence for it — the same gap
   // task 030 closed for the packs themselves.
   { name: 'export', hash: '#/export' },
+  // How and Inventory, the other two surfaces no pack governs (task 040). The
+  // convergence pack owes rendered evidence for all three, and a renderer that
+  // can only reach one of them cannot supply it. How is the technical trust
+  // surface — generated permission and read tables — and Inventory is the
+  // densest table in the product, so between them they carry every table, code
+  // and identifier treatment the shared layer has.
+  { name: 'how', hash: '#/how' },
+  { name: 'inventory', hash: '#/inventory' },
+  // Inventory's People tab: the tab that actually holds tenant objects (a name
+  // over a UPN, a group name, a device name), which is where long-object
+  // containment either works or does not. The first tab is policies, so the tab
+  // is pressed by its accessible name rather than by index.
+  {
+    name: 'inventory-people',
+    hash: '#/inventory',
+    after: `(async () => { const wait = (ms) => new Promise((r) => setTimeout(r, ms)); const t = [...document.querySelectorAll('main.page .tab')].find((b) => /people/i.test(b.textContent || '')); if (!t) return false; t.click(); await wait(400); return true })()`,
+  },
 ]
 const THEMES = ['light', 'dark']
 

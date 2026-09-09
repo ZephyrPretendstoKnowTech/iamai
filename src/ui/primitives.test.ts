@@ -93,7 +93,7 @@ test('the eyebrow is shared because all four packs declare it, and they declare 
   assert.match(role, /letter-spacing: 0\.11em/)
   // 11px is text, so it takes the AA quiet level, not the muted component ink
   // (task 030 correction 1). src/ui/tokens.test.ts measures that it is AA.
-  assert.match(role, /color: var\(--ink-3\)/)
+  assert.match(role, /color: var\(--quiet-text\)/)
 })
 
 test('the key label is shared by the two packs that draw a field key, at the smaller step', () => {
@@ -165,18 +165,18 @@ test('the attention panel is shared by the two packs that draw it, and it is now
   const role = ruleBody(read(APP), '.callout', { solo: true })
   assert.ok(role, 'app.css has no .callout rule — an attention notice renders as plain text')
   assert.match(role, /border: 1px solid/)
-  assert.match(role, /background: var\(--accent-soft\)/)
+  assert.match(role, /background: var\(--brand-tint\)/)
   assert.match(role, /border-radius: var\(--radius-control\)/)
   // The tone is border + tint + icon; the words stay at full body contrast, so
   // the notice never depends on colour to be read.
-  assert.match(role, /color: var\(--ink\)/)
+  assert.match(role, /color: var\(--primary-text\)/)
 
   // Brand teal is the info tone; success is the semantic green. They are
   // different colours and must not collapse into one another.
   const success = ruleBody(read(APP), '.callout-success', { solo: true })
   assert.ok(success, 'no success tone')
   assert.match(success, /var\(--success\)/)
-  assert.doesNotMatch(success, /var\(--accent/, 'the brand colour must not stand in for semantic success')
+  assert.doesNotMatch(success, /var\(--brand-/, 'the brand colour must not stand in for semantic success')
 })
 
 test('the row hairline is shared by three packs, and no universal row grid came with it', () => {
@@ -193,7 +193,7 @@ test('the row hairline is shared by three packs, and no universal row grid came 
   }
   const role = ruleBody(read(APP), '.row-group > * + *', { solo: true })
   assert.ok(role, 'app.css has no .row-group role')
-  assert.match(role, /border-top: 1px solid var\(--rule\)/)
+  assert.match(role, /border-top: 1px solid var\(--line\)/)
   // The separator is what is shared. The column grid inside a row is not: the
   // four packs set four different ones, and each belongs to its own pack.
   assert.doesNotMatch(role, /grid/, '.row-group must not impose a column grid')

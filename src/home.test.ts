@@ -251,8 +251,8 @@ test('no card wall, no pill, no Tools grid, no generated tagline', () => {
   assert.ok(!('planner' in H) && !('toolsLabel' in H) && !('howLabel' in H) && !('how' in H), 'the tool-card content keys were retired')
   assert.ok(!JSON.stringify(H).includes('Preview'), 'the Preview pill and its word are gone')
   // Nothing on the page is a raised box: the sections are separated by a rule.
-  assert.match(css, /\.band \{\s*border-top: 1px solid var\(--rule\);/, 'a section is a hairline, not a card')
-  assert.doesNotMatch(css, /background: var\(--bg-raised\)/, 'no raised panel remains in the home stylesheet')
+  assert.match(css, /\.band \{\s*border-top: 1px solid var\(--line\);/, 'a section is a hairline, not a card')
+  assert.doesNotMatch(css, /background: var\(--surface\)/, 'no raised panel remains in the home stylesheet')
   assert.doesNotMatch(css, /\.panel\b|\.panel-key\b/, 'the page was not blanket-cardified with the panel roles')
   // The brand's own rule: the lockup is the mark and IAMAI, with nothing under it.
   const brand = JSON.parse(readFileSync('docs/brand/brand-manifest.json', 'utf8')) as { brand: { tagline: string | null } }
@@ -320,8 +320,8 @@ test('the side rail explains the baseline and attributes it without claiming an 
   assert.doesNotMatch(said, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft|partnership/i, said)
   // The rail is subordinate to the column beside it, and separates from it — a
   // left border on a wide screen, a top border when the two stack.
-  assert.match(css, /\.side \{\s*padding-left: 24px;\s*border-left: 1px solid var\(--rule\);/, "the rail carries the pack's left border")
-  assert.match(css, /\.side \{[\s\S]*?border-left: 0;\s*border-top: 1px solid var\(--rule\);/, 'and moves it to the top when the two columns stack')
+  assert.match(css, /\.side \{\s*padding-left: 24px;\s*border-left: 1px solid var\(--line\);/, "the rail carries the pack's left border")
+  assert.match(css, /\.side \{[\s\S]*?border-left: 0;\s*border-top: 1px solid var\(--line\);/, 'and moves it to the top when the two columns stack')
 })
 
 // A small set of real examples, and no more. Each is something the product can

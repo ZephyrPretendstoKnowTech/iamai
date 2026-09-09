@@ -81,7 +81,7 @@ test('the summary is one integrated panel with a dominant cell and three stats, 
   const rule = CSS.match(/\.readiness-summary \{[^}]*\}/)?.[0] ?? ''
   assert.match(rule, /grid-template-columns: minmax\(0, 1\.8fr\) repeat\(3, minmax\(120px, 0\.65fr\)\)/, "production's summary is not the pack's grid")
   assert.match(rule, /overflow: hidden/, 'production does not clip the cells to the panel radius')
-  assert.match(CSS, /\.readiness-summary \.summary-stat \{[^}]*border-left: 1px solid var\(--rule\)/, 'the stats are not divided by a hairline')
+  assert.match(CSS, /\.readiness-summary \.summary-stat \{[^}]*border-left: 1px solid var\(--line\)/, 'the stats are not divided by a hairline')
   assert.doesNotMatch(CSS, /\.group-tile|\.group-counts|\.group-count\b/, 'the four separate count cards left dead rules behind')
   assert.doesNotMatch(SURFACE, /group-tile|group-counts/, 'the surface still draws the count cards the panel replaced')
 })

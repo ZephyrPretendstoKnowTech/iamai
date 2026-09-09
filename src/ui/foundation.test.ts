@@ -67,10 +67,13 @@ test('a weight above 500 is reachable only by naming its brand role', () => {
 // ---------------------------------------------------------------------- widths
 
 test('each approved surface resolves to the column its pack sets, and prose does not', () => {
+  // Task 040 moved the width from `main.page[data-route=…]` onto the shell as
+  // `--route-width`, so the page and the footer read ONE value per route. The
+  // fact this test asserts is unchanged: which column each route resolves to.
   const width = (route: string, token: string) =>
     assert.match(
       css,
-      new RegExp(`main\\.page\\[data-route='${route}'\\] \\{\\s*\\n\\s*max-width: calc\\(var\\(--${token}\\) \\+ 2 \\* var\\(--pad\\)\\);`),
+      new RegExp(`\\.shell\\[data-route='${route}'\\] \\{\\s*\\n\\s*--route-width: var\\(--${token}\\);`),
       `${route} does not resolve to var(--${token})`,
     )
   width('connect', 'w-connect')
@@ -82,9 +85,23 @@ test('each approved surface resolves to the column its pack sets, and prose does
   // Home is a separate build path with its own sheet, and the same token.
   assert.match(homeCss, /max-width: calc\(var\(--w-home\) \+ 2 \* var\(--pad\)\)/)
   assert.match(tokensCss, new RegExp(`--w-home: ${ROUTE_WIDTHS.home}px;`))
-  // Everything else keeps the prose page.
-  assert.match(css, /main\.page \{[\s\S]*?max-width: calc\(var\(--page\) \+ 2 \* var\(--pad\)\)/)
+  // A route with no width of its own keeps the prose page, and so does a page
+  // rendered outside the shell.
+  assert.match(css, /\.shell \{\s*\n\s*--route-width: var\(--page\);/)
+  assert.match(css, /main\.page \{[\s\S]*?max-width: calc\(var\(--route-width, var\(--page\)\) \+ 2 \* var\(--pad\)\)/)
   assert.match(tokensCss, new RegExp(`--page: ${ROUTE_WIDTHS.default}px;`))
+  // The three surfaces no pack governs resolve to a width chosen by content
+  // role (task 040). These are engineering choices, not owner decisions: the
+  // test holds them to ONE authority, not to an approved value.
+  width('export', 'w-export')
+  width('how', 'w-how')
+  width('inventory', 'w-inventory')
+  assert.match(tokensCss, new RegExp(`--w-export: ${ROUTE_WIDTHS.export}px;`))
+  assert.match(tokensCss, new RegExp(`--w-how: ${ROUTE_WIDTHS.how}px;`))
+  assert.match(tokensCss, new RegExp(`--w-inventory: ${ROUTE_WIDTHS.inventory}px;`))
+  // The frame is the page's own column: the footer reads the same value, so a
+  // 1040px How and a 1240px Inventory cannot share one fixed footer width.
+  assert.match(css, /footer\.app \{\s*\n\s*width: 100%;\s*\n\s*max-width: calc\(var\(--route-width, var\(--page\)\) \+ 2 \* var\(--pad\)\);/)
 })
 
 test('the reading measure is separate from the page, so a wide page is not a wide sentence', () => {
