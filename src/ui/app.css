@@ -1779,6 +1779,15 @@ footer.app a {
 .connect-step-body {
   min-width: 0;
 }
+/* The heading and the progression marker on one baseline. The marker is beside
+   the heading, never within it: the heading's text is the step's title and its
+   state, and nothing else. */
+.connect-step-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .connect-step h2 {
   font-family: var(--font-sans);
   font-size: var(--t-4);

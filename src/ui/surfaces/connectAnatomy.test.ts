@@ -177,6 +177,16 @@ test('no state on Connect is carried by colour alone', () => {
   // Every tone the step can take is set beside a word: the state line, or the
   // Next marker on the current step.
   assert.match(CONNECT, /\{stage === 'current' && <span className="next">\{W\.next\}<\/span>\}/, 'the current step carries no word marker')
+  // And the marker is beside the heading, not inside it. A heading carries the
+  // step's title and its state and nothing else: a marker within the h2 joins
+  // the heading's own text, so the step reads "Scan not started Next" to a
+  // screen reader and to anything that reads the heading (the walk read exactly
+  // that on five fixtures after task 032's rebuild).
+  const heads = CONNECT.match(/<h2[^>]*>[\s\S]*?<\/h2>/g) ?? []
+  assert.ok(heads.length > 0, 'Connect renders no headings')
+  for (const h of heads) assert.equal(h.includes('className="next"'), false, `a heading carries the Next marker in its own text: ${h}`)
+  assert.match(CONNECT, /<div className="connect-step-head">/, 'the step heading and its marker no longer share a row')
+  assert.ok(CSS.includes('.connect-step-head'), 'the step heading row is not drawn')
   assert.match(CONNECT, /<span className=\{`state\$\{stateTone \? ` \$\{stateTone\}` : ''\}`\}>\{state\}<\/span>/, 'the step state is not rendered as a word')
   // The numbered badge's colour classes exist only alongside those words.
   for (const cls of ['.connect-step.done .n', '.connect-step.stop .n', '.connect-step.wait .n']) {
