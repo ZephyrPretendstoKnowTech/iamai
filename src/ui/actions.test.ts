@@ -292,7 +292,18 @@ test('each action from each location reaches the same function: the surfaces imp
   }
   // The steps' Scan to update the plan is the Plan's handler, which is the action.
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /runScan\(returnTo\)/, "the Plan's onScan is the one scan action")
-  for (const file of ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx']) assert.match(readFileSync(file, 'utf8'), /onClick=\{onScan\}/, `${file} calls the handler it was given`)
+  // A step calls the handler it was GIVEN, never a scan of its own. The content
+  // step now hands that handler to the frame's footer (StepSections.tsx
+  // StepFooter) instead of drawing the button itself, so the chain is checked
+  // through both links: the step passes the handler it was given, and the footer
+  // is what presses it.
+  assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /onScan=\{cs\.scanControl && onScan \? onScan : null\}/, 'the content step no longer hands the footer the handler it was given')
+  assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /onClick=\{onScan\}/, 'the step footer calls the handler it was given')
+  assert.match(readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8'), /onClick=\{onScan\}/, 'the Cleanup step calls the handler it was given')
+  // And neither builds one: the only scan on a step is the one the Plan passed down.
+  for (const file of ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/StepSections.tsx']) {
+    assert.equal(readFileSync(file, 'utf8').includes('runScan('), false, `${file} runs a scan of its own`)
+  }
   // The header menu's two buttons, Connect's tile buttons and Today's Scan again call the actions by name.
   assert.match(readFileSync('src/ui/shell/AppShell.tsx', 'utf8'), /run\(signOut\(\)\)[\s\S]*run\(forgetTenant\(\)\)/)
   assert.match(readFileSync('src/ui/surfaces/Connect.tsx', 'utf8'), /run\(signInAnother\(\)\)[\s\S]*run\(signOut\(\)\)/)

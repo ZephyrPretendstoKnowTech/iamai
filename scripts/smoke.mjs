@@ -548,6 +548,17 @@ try {
     `(() => { const s = document.querySelector('main.page .step'); if (!s) return null; const row = s.previousElementSibling; return { tag: s.tagName, head: !!s.querySelector(':scope > .step-head'), main: !!s.querySelector('.step-body > .step-main'), row: row ? row.className + '|' + row.getAttribute('aria-expanded') : null } })()`,
   )
   check('Plan: the opened step is a frame attached under the row that opened it', !!framed && framed.tag === 'ARTICLE' && framed.head && framed.main && framed.row === 'plan-row|true', JSON.stringify(framed))
+  // The frame's own footer: under BOTH columns, not the last line of the main
+  // column. `Close` is always there; the scan is only where a scan is how the
+  // step is verified.
+  check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
+  check('Plan: the footer offers Close, and a scan only where the step is verified by one', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Close')) return false; return b.every((t) => t === 'Close' || t === 'Scan to update the plan') && !f.querySelector('button[disabled]') })()`))
+  // The head badge carries the lifecycle and the condition, once. The line that
+  // repeated them under the title is gone.
+  check('Plan: the step head states the lifecycle and condition once', await evaluate(`document.querySelectorAll('main.page .step .step-state').length === 0 && !!document.querySelector('main.page .step .step-head .status')`))
+  // The implementation control follows the capability: a strip only where there
+  // is a choice, and never a one-tab tab set.
+  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const strip = st.querySelector('.tabs.action-tabs'); const solo = st.querySelector('.single-channel-label'); if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !solo; return true })()`))
   // The approved Plan pack's topbar is sticky, and it is the one app header.
   const stickyHeader = await evaluate(
     `(async () => { window.scrollTo(0, 800); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const hs = document.querySelectorAll('header.app'); const t = hs[0].getBoundingClientRect().top; window.scrollTo(0, 0); return { n: hs.length, top: Math.round(t), sticky: getComputedStyle(hs[0]).position } })()`,

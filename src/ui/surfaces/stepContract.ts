@@ -191,7 +191,12 @@ export type ContractStage = { key: Lifecycle; label: string; reached: boolean; c
  */
 export function railBlocks(c: StepContract): { milestone: boolean; implementation: boolean; existing: boolean } {
   return {
-    milestone: c.milestone.at !== null || c.milestone.gatedBy !== null,
+    // A DATE, and nothing else. The gate — "after: Create or Correct Emergency
+    // Access Accounts" — is the header's Next caption now (`nextCaption`), and a
+    // rail block that repeated it word for word beside the caption was the same
+    // sentence twice on one screen. What is left here is the fact the header
+    // cannot carry: when.
+    milestone: c.milestone.at !== null,
     implementation: c.members.length > 0,
     existing: c.existing !== null,
   }
@@ -680,3 +685,84 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
   }
 }
+
+/**
+ * The head badge's words: the lifecycle stage and the condition, composed.
+ *
+ * They stay two facts (Foundation B) and are composed only for display — the
+ * contract still carries `stage`, `condition` and `word` separately, and the
+ * export view and every row still read `state.word`. A step with no lifecycle
+ * (a prerequisite, a check) has no stage to compose, so it shows the one status
+ * word it has always shown.
+ *
+ * A condition of `healthy` says nothing beside a stage: "Report-only · Healthy"
+ * reads as a claim, and the absence of a condition is already the claim.
+ */
+export function badgeLabel(contract: StepContract): string {
+  const s = contract.state
+  if (s.stage === '') return s.word
+  return s.condition === 'healthy' ? s.stage : `${s.stage} · ${s.conditionLabel}`
+}
+
+/**
+ * The opened step's head, as the approved Plan pack draws it
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.step-head`): an eyebrow naming
+ * what kind of step this is, the title, the supporting line under it, and the
+ * state badge held to the right of all three. Below them the lifecycle track.
+ *
+ * The head is the first thing under the row it attaches to, and it repeats the
+ * row's title on purpose: the row is the board and the head is the step, and the
+ * pack draws the title in both.
+ *
+ * Everything here is handed to it. Nothing in the head reads a step, a lifecycle
+ * or a date.
+ */
+
+/**
+ * The footer's own words.
+ *
+ * `scan` and `close` are the labels the step already used, moved rather than
+ * written. The two notes are this pass's, and they live here for the same reason
+ * the board's control vocabulary lives in planBoard.ts: the task that specified
+ * them holds docs/design/content.json out of scope. A later content pass moves
+ * all four without touching a component, because every one of them is read from
+ * this record.
+ *
+ * Which note a step shows is read off the contract — a step with outstanding
+ * blockers is being asked whether the blocker is resolved, not whether a policy
+ * was created — and never off its title.
+ */
+export const FOOTER = {
+  scan: 'Scan to update the plan',
+  close: 'Close',
+  changed: 'Changes made in Microsoft?',
+  resolved: 'Resolved the issue?',
+} as const
+
+/**
+ * The header's Next caption: where the step is going, above the track that says
+ * where it is.
+ *
+ * Two existing facts, in order of specificity, and neither of them new:
+ *
+ *   1. `milestone.line` — Foundation B's own dated sentence ("Next: leave it in
+ *      report-only until Sep 17, 2026"). It is null unless there is a date,
+ *      because undated it and What to do are the same fact and What to do is the
+ *      more specific of the two.
+ *   2. `milestone.gatedBy` — what has to clear first. Undated steps have this and
+ *      only this, and until now it was rendered ONLY in the rail, so a blocked
+ *      policy's header said where it was and never what would move it. It is
+ *      wrapped in the same `CONTRACT.next` template the dated line uses, so the
+ *      two captions read alike and no new sentence is written.
+ *
+ * A step with neither gets no caption. That is the correct answer, not a gap to
+ * fill: "Next: continue" is a caption that says nothing and trains the reader to
+ * skip the line where the real ones live.
+ */
+export function nextCaption(c: StepContract): string | null {
+  if (c.milestone.line !== null) return c.milestone.line
+  return c.milestone.gatedBy !== null ? fillText(CONTRACT.next, { label: c.milestone.gatedBy }) : null
+}
+
+/** Which footer note a step carries: the blocker question where it has blockers, else the change question. */
+export const footerNote = (contract: StepContract): string => (contract.fix.length > 0 ? FOOTER.resolved : FOOTER.changed)

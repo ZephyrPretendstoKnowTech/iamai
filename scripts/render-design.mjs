@@ -54,6 +54,44 @@ const RESET = `const wait = (ms) => new Promise((r) => setTimeout(r, ms));
  * The lens tabs and the focus toggles are different elements doing the same job
  * here, so one helper finds either.
  */
+/**
+ * Reach the demo's follow-up scan: the second of the sample org's two snapshots.
+ *
+ * Day one holds only Not deployed and Enforced policies, so every mid-rollout
+ * state — report-only, ready to enforce, review required — is a comparison
+ * between two scans of one tenant, and only the follow-up produces one. Nothing
+ * about the sample tenant is changed to obtain them: this puts the demo's
+ * snapshot bookkeeping back to what a visitor who has not opened week two yet
+ * has, then presses the selector a visitor presses. Every id it writes is the
+ * sample tenant's; no real tenant has a row here.
+ *
+ * Without the reset the shots are order-dependent: the first pass writes a
+ * record for the follow-up scan, and every pass after it reads week two against
+ * week two's own observations, which is a tenant nothing changed in.
+ */
+const WEEK2 = `await wait(2500)
+       await new Promise((done) => {
+         const open = indexedDB.open('iamai')
+         open.onsuccess = () => {
+           const d = open.result
+           if (!d.objectStoreNames.contains('plan')) { d.close(); return done() }
+           const t = d.transaction('plan', 'readwrite')
+           t.objectStore('plan').put({ tenantId: 'demo-sample-tenant#snapshots', current: 'initial', records: {} })
+           t.oncomplete = () => { d.close(); done() }
+           t.onerror = () => { d.close(); done() }
+         }
+         open.onerror = () => done()
+       })
+       const pick = document.querySelector('.demo-snapshots button[aria-pressed="false"]')
+       if (!pick) return false
+       pick.click()
+       await wait(3000)`
+
+/** The same, then Show completed, which is where a finished policy's row lives. */
+const WEEK2_COMPLETED = `${WEEK2}
+       const finished = [...document.querySelectorAll('main.page .plan-controls .focus')].find((b) => /Show completed/.test(b.textContent || ''))
+       if (finished && finished.getAttribute('aria-pressed') !== 'true') { finished.click(); await wait(600) }`
+
 const PRESS = (label) =>
   `(async () => { ${RESET} const want = ${JSON.stringify(label)}; const b = [...document.querySelectorAll('main.page .plan-controls [role=tab], main.page .plan-controls .focus')].find((x) => (x.textContent || '').trim().startsWith(want)); if (!b) return false; b.click(); await wait(320); window.scrollTo(0, 0); await wait(120); return true })()`
 
@@ -217,6 +255,24 @@ const PRODUCTION_SHOTS = [
     [
       'plan-step-review',
       `!!s.querySelector('.condition-review-required')`,
+      WEEK2,
+    ],
+    // The rest of the policy lifecycle, each FOUND by the stage its track is at
+    // rather than by naming a step, so the plates survive a change to the sample
+    // tenant and cannot silently shoot the wrong state. Day one holds only Not
+    // deployed and Enforced policies, so the three mid-rollout states use the
+    // same follow-up scan the review shot does.
+    //
+    // Enforced is a finished step, which lives in the board's Complete group and
+    // is collapsed until Show completed is pressed — so that shot presses it,
+    // the way an operator reaches those rows.
+    ['plan-step-notdeployed', `!!s.querySelector('.stage.stage-not-deployed.current') && !s.querySelector('.blocking')`, WEEK2],
+    ['plan-step-reportonly', `!!s.querySelector('.stage.stage-report-only.current') && !s.querySelector('.condition-review-required') && !s.querySelector('.blocking')`, WEEK2],
+    ['plan-step-readytoenforce', `!!s.querySelector('.stage.stage-ready-to-enforce.current')`, WEEK2],
+    ['plan-step-enforced', `!!s.querySelector('.stage.stage-enforced.current')`, WEEK2_COMPLETED],
+    [
+      '__superseded-inline-review-pre',
+      `false`,
       `await wait(2500)
        await new Promise((done) => {
          const open = indexedDB.open('iamai')
