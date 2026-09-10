@@ -55,3 +55,22 @@ test('Sign in as another account is a fresh authentication attempt: the picker i
   // is the account initAuth makes active, so a stale cached account cannot win.
   assert.doesNotMatch(body, /getActiveAccount|getAllAccounts|setActiveAccount/, 'signInAnother picks an account out of the cache instead of letting the redirect decide')
 })
+
+// Permission truth (task Step 1 A). Every user-facing permission disclosure —
+// Connect's consent rows, How's table — is generated from `GRAPH_SCOPES`
+// (src/graph/scopes.ts), and src/ui/permissions.test.ts holds the copy to that
+// list. That only makes the disclosure honest if the list is also what MSAL is
+// actually handed. Nothing asserted that before: a scope literal added to one
+// acquireToken call would have been requested at sign-in and shown nowhere.
+//
+// So: every scope argument in this module is `GRAPH_SCOPES` itself, and no
+// Graph permission name is written into the file.
+test('every sign-in and token request is handed GRAPH_SCOPES, and no scope literal is written into this module', () => {
+  const requests = [...src.matchAll(/\bscopes:\s*([^,}]+)/g)].map((m) => m[1].trim())
+  assert.ok(requests.length >= 5, `expected every loginRedirect/acquireToken call to pass scopes; found ${requests.length}`)
+  for (const arg of requests) assert.equal(arg, 'GRAPH_SCOPES', `a token request passes ${arg} instead of the canonical scope list`)
+  // The canonical list is imported, never restated.
+  assert.match(src, /import \{ GRAPH_SCOPES \} from '\.\/scopes\.ts'/, 'the scope list is not imported from its one home')
+  const literals = [...src.matchAll(/'[A-Za-z]+(?:\.[A-Za-z]+)*\.(?:Read|ReadWrite|ReadBasic)\.[A-Za-z]+'/g)].map((m) => m[0])
+  assert.deepEqual(literals, [], 'a Graph permission is named in the sign-in module rather than read from scopes.ts')
+})

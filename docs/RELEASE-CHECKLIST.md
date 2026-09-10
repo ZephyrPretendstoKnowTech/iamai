@@ -24,8 +24,16 @@ export redaction test) run in CI on every push; this list is the rest.
       a redirect URI that is registered and unused costs nothing.
 - [ ] Set the publisher domain on the registration so the consent screen shows a verified
       publisher rather than "unverified".
-- [ ] Confirm the requested permissions are exactly the read scopes in `src/graph/msal.ts`
+- [ ] Confirm the requested permissions are exactly the read scopes in `src/graph/scopes.ts`
       and that no write scope was added by hand in the portal.
+- [ ] Remove `Application.Read.All` from the registration's configured API permissions. The
+      app stopped requesting it on 2026-08-30 (`src/graph/scopes.ts`), but Entra returns every
+      *consented* delegated permission in a token's `scp` claim, not only the ones the request
+      asked for. While it stays configured and consented, a live token still carries a scope
+      no disclosure mentions and no collector spends. Tenants that consented before it is
+      removed keep the stale grant until an admin deletes or re-consents the IAMAI enterprise
+      application; the disclosure's own removal steps (Enterprise applications → IAMAI →
+      Properties → Delete) clear it.
 
 ## Repository
 

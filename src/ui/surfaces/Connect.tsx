@@ -62,7 +62,7 @@ import { chooseBaseline, scan as runScan, signIn, signInAnother, signOut, stopSc
 import { useAction } from '../useAction.ts'
 import { useSession } from '../session.ts'
 import { W, accountTile, baselineTile, connectStatus, planTile, sampleTile, scanTile, signInTile, stages } from '../scan/connectView.ts'
-import type { Action, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
+import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, PlanTile, ScanCounts, ScanInput, ScanTile, Stage, Tone } from '../scan/connectView.ts'
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { usePlanData } from './planData.ts'
 
@@ -409,6 +409,20 @@ function SignedOut({ error, baseline, baselineRestoreError, authorUpdate }: Base
  * and cannot reach into the stage's own component, so this asks the view model
  * the one question the strip needs — never a second reading of the baseline.
  */
+/**
+ * Where the loaded package came from, for the source-and-version disclosure
+ * (task Step 1 C). The commit is the loaded package's own (`origin.commit`),
+ * the repository and the read date are the pinned index's — no third place
+ * states either. An uploaded package has no origin to name, so it gets none.
+ */
+function baselinePin(baseline: BaselineResult | null): BaselinePin | null {
+  if (!baseline || baseline.origin.kind !== 'github') return null
+  const { owner, repo, commit } = baseline.origin
+  // The URL is the owner and repo the package was actually fetched from, so the
+  // link and the commit beside it can never name different repositories.
+  return { repo: `${owner}/${repo}`, url: `https://github.com/${owner}/${repo}`, commit, readAt: PINNED_BASELINE.generatedAt }
+}
+
 function baselineStrings(baseline: BaselineResult | null): { title: string; state: string; tone: Tone } {
   const t = baselineTile({ name: baseline?.source ?? null, policyCount: baseline?.pkg.policies.length ?? 0, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading: null, update: null, stepsFor: () => [] })
   return { title: t.title, state: t.state, tone: t.tone }
@@ -660,7 +674,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
   const policies = baseline?.pkg.policies ?? []
   const goalMap = baseline?.goalMap ?? PINNED_GOAL_MAP
   const stepsFor = (change: PolicyChange): string[] => stepsForChange(change, goalMap)
-  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', loading: busy, update, stepsFor })
+  const t2 = baselineTile({ name: baseline?.source ?? null, policyCount: policies.length, version: baseline?.origin.kind === 'upload' ? 'uploaded' : 'pinned', pin: baselinePin(baseline), loading: busy, update, stepsFor })
   return (
     <Step
       n={2}
@@ -692,6 +706,16 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
         <details>
           <summary>{t2.source.summary}</summary>
           <p className="quiet">{t2.source.text}</p>
+          {/* The source, where it can be opened and checked, and the revision
+              IAMAI holds of it. Both are the loaded package's own facts. */}
+          {t2.source.link && (
+            <p className="quiet">
+              <a href={t2.source.link.url} target="_blank" rel="noopener noreferrer">
+                {t2.source.link.label}
+              </a>
+            </p>
+          )}
+          {t2.source.version && <p className="quiet">{t2.source.version}</p>}
         </details>
       )}
       {t2.paragraphs.map((text) => (

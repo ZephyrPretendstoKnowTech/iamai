@@ -50,7 +50,7 @@ type Words = {
     }
   }
   account: { title: string; line: string; note: string; signInAnother: string; signOut: string; sampleTitle: string; sampleNote: string }
-  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
+  baseline: { title: string; loading: string; none: string; selected: string; count: string; versionPinned: string; versionUploaded: string; sourceSummary: string; sourceVersion: string; sourceUploaded: string; what: string; pinned: string; goal: string; updated: string; updatedPartial: string; incomplete: string; diff: Record<ChangeKind, string>; diffWas: string; diffAdded: string; diffRemoved: string; diffBoth: string; diffSet: string; diffCleared: string; diffChanged: string; diffUnreviewed: string; diffConflict: string; diffFields: Record<string, string>; diffStep: string; diffNoStep: string; change: string; howToMakeOne: string }
   scan: {
     title: string
     limitsSummary: string
@@ -221,8 +221,13 @@ export type BaselineTile = {
   tone: Tone
   /** The nested card, once a package is loaded. */
   card: BaselineCard | null
-  /** The pack's source-and-version disclosure under the card. */
-  source: { summary: string; text: string } | null
+  /**
+   * The pack's source-and-version disclosure under the card. `text` is what a
+   * pinned baseline means; `link` is where the package actually came from and
+   * `version` is the revision IAMAI holds, both read from the loaded package's
+   * own origin so there is no second version authority (task Step 1 C).
+   */
+  source: { summary: string; text: string; link: { label: string; url: string } | null; version: string | null } | null
   /** The explaining copy when there is no card to nest it in (nothing loaded yet, or a load that failed). */
   paragraphs: string[]
   update: { summary: string; note: string | null; rows: BaselineReviewRow[] } | null
@@ -241,10 +246,33 @@ function deltaLine(d: SemanticDelta): string {
   return fillText(B.diffChanged, { field })
 }
 
+/**
+ * Where the loaded package came from and which revision of it IAMAI holds.
+ * The pinned package names its repository and the commit it was read at — the
+ * disclosure is only useful if a reader can go and check it. An uploaded
+ * package names neither, because IAMAI did not fetch it and knows nothing about
+ * where it came from; saying so is the honest version of "source and version".
+ */
+function sourceOf(version: 'pinned' | 'uploaded' | undefined, pin: BaselinePin | null | undefined): { link: { label: string; url: string } | null; version: string | null } {
+  const B = W.baseline
+  if (version === 'uploaded') return { link: null, version: B.sourceUploaded }
+  if (!pin) return { link: null, version: null }
+  return {
+    link: { label: pin.repo, url: pin.url },
+    // Seven characters is how GitHub itself names a commit; the full one is in
+    // the link's own history, and the disclosure has to stay compact.
+    version: fillText(B.sourceVersion, { commit: pin.commit.slice(0, 7), date: absoluteDate(pin.readAt) }),
+  }
+}
+
+/** The pinned package's provenance, from its origin and `baselines/*.index.json`. */
+export type BaselinePin = { repo: string; url: string; commit: string; readAt: string }
+
 export function baselineTile({
   name,
   policyCount,
   version,
+  pin,
   loading,
   update,
   stepsFor,
@@ -253,6 +281,14 @@ export function baselineTile({
   policyCount: number
   /** Where the loaded package came from (ui/baseline.ts BaselineResult.origin): the pinned index, or files someone uploaded. */
   version?: 'pinned' | 'uploaded'
+  /**
+   * The pinned package's provenance, for the source-and-version disclosure:
+   * the repository it was read from and the commit it was read at. Connect
+   * takes it from the loaded package's origin and `baselines/*.index.json`,
+   * which are the only places either fact is written down. Absent for an
+   * uploaded package, which has no source to name.
+   */
+  pin?: { repo: string; url: string; commit: string; readAt: string } | null
   loading: string | null
   update: BaselineUpdate | null
   /** The plan steps that policy stands behind, from the goal map by stable identity (derive/baselineDiff.ts stepsForChange). */
@@ -283,7 +319,7 @@ export function baselineTile({
     state,
     tone: name ? 'done' : null,
     card,
-    source: card ? { summary: B.sourceSummary, text: B.pinned } : null,
+    source: card ? { summary: B.sourceSummary, text: B.pinned, ...sourceOf(version, pin) } : null,
     paragraphs: card ? [] : [B.what, B.goal, B.pinned],
     update:
       update && (rows.length > 0 || incomplete)

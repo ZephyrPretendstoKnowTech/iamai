@@ -414,7 +414,9 @@
         "count": "{policyCount} policies",
         "versionPinned": "pinned version",
         "versionUploaded": "uploaded package",
-        "sourceSummary": "Source and version"
+        "sourceSummary": "Source and version",
+        "sourceVersion": "Commit {commit}, read from that repository on {date}.",
+        "sourceUploaded": "This package came from files you uploaded, so IAMAI cannot name a source for it or tell you when its author changes it."
       },
       "scan": {
         "title": "Scan",
@@ -873,8 +875,8 @@
           "body": "IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in."
         },
         {
-          "title": "Nothing leaves the browser",
-          "body": "The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no analytics, no upload; an export is a file you save yourself."
+          "title": "Your tenant's data never leaves the browser",
+          "body": "The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no upload, nothing about your tenant sent anywhere; an export is a file you save yourself. The web host that serves this page counts page loads, as web hosts do, and never sees your tenant."
         },
         {
           "title": "Source is public",
@@ -1238,7 +1240,7 @@
         },
         "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not.",
         "hosting": "Where it runs",
-        "hostingBody": "getiamai.com is a static site: files on GitHub Pages, served through Cloudflare. Your tenant's data is not part of that. The scan calls Microsoft Graph from this browser and the snapshot stays here, so nothing Cloudflare or GitHub serves has ever held it. The source is public and inspectable on GitHub.",
+        "hostingBody": "getiamai.com is a static site: files on GitHub Pages, served through Cloudflare. Your tenant's data is not part of that. The scan calls Microsoft Graph from this browser and the snapshot stays here, so nothing Cloudflare or GitHub serves has ever held it. The source is public and inspectable on GitHub. One thing IAMAI does not control: Cloudflare adds its own page-load beacon to the HTML as it serves it, so the host measures page loads and network timing for this site. The beacon is not in IAMAI's bundle and cannot be removed from the repository, only from the Cloudflare account. It measures the page, not the scan, and carries nothing from your tenant.",
         "credits": "Credits",
         "creditBaseline": "The default baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech. IAMAI pins a reviewed version of it and reads it unchanged.",
         "creditAnalyzer": "CA Policy Analyzer by Jon Hope",

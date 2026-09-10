@@ -71,10 +71,20 @@ Everything stays in your browser:
 "Forget this tenant" (top right) deletes every IndexedDB store for that tenant and signs
 you out, which clears the token cache.
 
-No tenant data is sent anywhere on its own. The app has no backend, no analytics, no error
-reporting, and no fonts or scripts from a CDN; the only hosts it contacts are
-`graph.microsoft.com` (the tenant's own data), `login.microsoftonline.com` (sign-in) and
-`raw.githubusercontent.com` (the pinned baseline files, which carry no tenant data).
+No tenant data is sent anywhere on its own. The app has no backend, no analytics of its
+own, no error reporting, and no fonts or scripts from a CDN; the only hosts the bundle
+contacts are `graph.microsoft.com` (the tenant's own data), `login.microsoftonline.com`
+(sign-in) and `raw.githubusercontent.com` (the pinned baseline files, which carry no tenant
+data). `src/network.test.ts` fails the build if a fourth appears in the source.
+
+The public site is the one exception, and it is the host's, not the app's: getiamai.com is
+served through Cloudflare, and Cloudflare injects its Web Analytics beacon
+(`static.cloudflareinsights.com/beacon.min.js`, reporting to `/cdn-cgi/rum`) into the HTML
+at the edge. It is not in the repository and not in the build — `dist/` contains no
+reference to it — so it cannot be removed from here; it is a setting on the Cloudflare
+account. What it collects is page-load and network timing for the site. It is loaded before
+any sign-in, it is not given the snapshot, and no code in the app calls it. Running the
+bundle from a clone, or from any host without that setting, loads nothing but the app.
 
 Data moves when you choose to move it, and only then: saving a plan file, a change record
 or a CSV; downloading the grounding bundle; copying a prompt to the clipboard; printing;

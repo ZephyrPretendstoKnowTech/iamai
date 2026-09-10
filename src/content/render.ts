@@ -670,6 +670,11 @@ export function renderPages(): string {
           '</div>' +
           `<details open><summary>${esc(cx.baseline.sourceSummary)}</summary>` +
           p(cx.baseline.pinned, {}) +
+          // Where the package came from and which revision of it is held: the
+          // pinned package names both, an uploaded one can name neither.
+          `<p class="sub">Jhope188/ConditionalAccessPolicies</p>` +
+          p(cx.baseline.sourceVersion, { commit: '90d9b89', date: 'Sep 8, 2026' }, 'sub') +
+          p(cx.baseline.sourceUploaded, {}, 'sub') +
           '</details>' +
           // The author's update, one row per evolving source policy (task 021):
           // the change word, the policy, what it was called, what materially

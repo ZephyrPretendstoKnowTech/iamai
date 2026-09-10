@@ -19,7 +19,7 @@ tenant's current state to a chosen baseline without lockouts.
 | Decision | Value |
 |---|---|
 | Write access | **None.** Read-only delegated Graph, forever in v1. No policy creation, no report-only creation. |
-| Runtime | Static SPA. No server, no telemetry, no CDN dependencies (bundle everything). "Review the code, then connect." |
+| Runtime | Static SPA. No server, no telemetry in the bundle, no CDN dependencies (bundle everything). "Review the code, then connect." The public host injects its own page-load beacon at the edge; SECURITY.md says so. |
 | Consent | **One** admin-consent screen with the full read scope set. No staged consent, no opt-out checkbox. |
 | Baseline v1 | Jon Hope's repo `Jhope188/ConditionalAccessPolicies` as the shipped default, loaded live from GitHub at a pinned commit. Upload of a package is the second path. Custom repo URL later. |
 | Diff priority | 1) actual security gaps (intent coverage, exclusion-aware) 2) naming/organization as a secondary report. |

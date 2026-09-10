@@ -62,6 +62,8 @@ const REPEATERS = contracts.repeaters ?? []
 const contractById = Object.fromEntries((contracts.surfaces ?? []).map((c) => [c.id, c]))
 // The pinned package's policy count (baselines/*.pinned.json): the Baseline tile's one count, signed in and out.
 const PINNED_COUNT = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')).policies.length
+// The revision the pinned package holds, as Connect's source-and-version disclosure shows it (task Step 1 C).
+const PINNED_SHORT = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')).commit.slice(0, 7)
 // The Cleanup rows' titles, from the same content the rows render. A Cleanup row
 // is not a step — no lifecycle, no condition — and its date column reads
 // "done <date>" by design (ui/surfaces/cleanupExport.ts `cleanupWhen`).
@@ -803,6 +805,17 @@ async function walkFixture(fx) {
           }
           // Nothing fabricates a credential, a verification badge or a release state.
           if (/Microsoft MVP\s*$|verified|certified|MVP badge/i.test(card ? card.source : '')) add('P0', `${label}: the baseline card's source line carries a credential claim: "${card.source}"`)
+          // Source and version (task Step 1 C). A disclosure headed "Source and
+          // version" has to answer both: the repository the package was read
+          // from, as a link that can be opened, and the revision IAMAI holds.
+          if (signedOut || inDemo) {
+            const prov = await evaluate(`(() => { const d = [...document.querySelectorAll('main.page .connect-step details')].find((e) => (((e.querySelector('summary') || {}).textContent) || '').indexOf('Source and version') >= 0); if (!d) return null; const a = d.querySelector('a'); return { text: (d.textContent || '').replace(/\s+/g, ' ').trim(), href: a ? a.getAttribute('href') : null } })()`)
+            if (!prov) add('P0', `${label}: the baseline step draws no source-and-version disclosure`)
+            else {
+              if (!prov.href || prov.href.indexOf('https://github.com/') !== 0) add('P0', `${label}: the source-and-version disclosure links nothing a reader can open: ${prov.href}`)
+              if (prov.text.indexOf(PINNED_SHORT) < 0) add('P0', `${label}: the source-and-version disclosure reads "${prov.text.slice(0, 140)}"; the pinned package is at ${PINNED_SHORT}`)
+            }
+          }
           // The author's update (task 021): one row per evolving source policy,
           // never per changed file. The mock's source files at each commit hold
           // one renamed-and-changed policy, one added, one changed and one

@@ -58,3 +58,21 @@ test('Application.Read.All is not requested (prompt 46 item 23)', () => {
   const used = new Set(COLLECTOR_REGISTRY.flatMap((s) => s.scopes))
   for (const scope of GRAPH_SCOPES) if (!SIGN_IN_SCOPES.includes(scope)) assert.ok(used.has(scope), `${scope} is requested and spent`)
 })
+
+// The canonical requested set, written down once so that adding a scope is a
+// deliberate act with a visible diff rather than a quiet widening of consent.
+// Every disclosure on the public surfaces is generated from this list, and
+// src/graph/msal.test.ts holds MSAL's own token requests to it.
+test('the requested scope set is exactly the nine the product discloses', () => {
+  assert.deepEqual(GRAPH_SCOPES, [
+    'Policy.Read.All',
+    'Directory.Read.All',
+    'AuditLog.Read.All',
+    'RoleManagement.Read.Directory',
+    'UserAuthenticationMethod.Read.All',
+    'Reports.Read.All',
+    'openid',
+    'profile',
+    'offline_access',
+  ])
+})
