@@ -1,7 +1,7 @@
 // Signature evaluation and floor raising (intents.md §4–§5). Pure.
 import coreAdminRoles from '../../data/core-admin-roles.json' with { type: 'json' }
 import { grantFloorRank, satisfiesFloor } from './strength.ts'
-import type { Floor, Goal, PolicyFacts, Signature } from './types.ts'
+import type { Floor, Goal, PolicyFacts, PopulationSpec, Signature } from './types.ts'
 
 export const CORE_ADMIN_ROLE_IDS = new Set(coreAdminRoles.roles.map((r) => r.templateId.toLowerCase()))
 
@@ -214,23 +214,98 @@ export function goalsMatching(facts: PolicyFacts, goals: Goal[]): Goal[] {
   return goals.filter((g) => g.implementations.some((impl) => impl.kind === 'ca' && matchesSignature(facts, impl.signature)))
 }
 
-// A baseline policy may only raise a goal's floor when its own scope covers
-// the goal's expected population — an admin-scoped baseline policy must not
-// raise the all-users floor (first run, §13).
-function coversPopulation(b: PolicyFacts, kind: string): boolean {
+/**
+ * How much of a goal's population class a policy's assignments reach, read from
+ * who it includes and who it excludes, never from its name. `whole`: it includes
+ * the class and excludes no part of it. `part`: it includes some of the class.
+ * `none`: the class is outside the policy — never included, or excluded outright.
+ *
+ * Wherever the goal has people the directory measures reach (population.ts
+ * resolveFactsWho). This is the reading for what the directory cannot say:
+ * whether a policy is this goal's policy at all, what a policy would do for a
+ * goal nobody is in today, and whether a baseline policy's scope is the goal's.
+ * A policy that excludes every guest is not a guest policy however strong its
+ * grant, and it is still not one in a tenant with no guests to count.
+ */
+export function populationReach(f: PolicyFacts, kind: PopulationSpec['kind']): 'whole' | 'part' | 'none' {
+  const named = f.who.roles.size > 0 || f.who.groups.size > 0 || f.who.users.size > 0
   switch (kind) {
-    case 'all':
-    case 'members':
-      return b.who.all
     case 'guests':
-      return b.who.all || b.who.guests !== null
-    case 'coreAdmins':
-      return b.who.all || [...b.who.roles].some((r) => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase()))
+      if (f.who.guests === null) return 'none'
+      // An exclusion naming no type excludes every guest; one naming types narrows them.
+      if (f.whoNot.guests) return (f.whoNot.guestTypes ?? []).length === 0 ? 'none' : 'part'
+      return 'whole'
+    case 'coreAdmins': {
+      const isCore = (r: string): boolean => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase())
+      const excluded = [...f.whoNot.roles].filter(isCore)
+      if (f.who.all) return excluded.length === 0 ? 'whole' : 'part'
+      const included = [...f.who.roles].filter(isCore)
+      if (included.length === 0) return 'none'
+      const excludedSet = new Set(excluded.map((r) => r.toLowerCase()))
+      if (included.every((r) => excludedSet.has(r.toLowerCase()))) return 'none'
+      return excluded.length === 0 ? 'whole' : 'part'
+    }
+    case 'members':
+      return f.who.all ? 'whole' : named ? 'part' : 'none'
+    case 'all':
+      if (f.who.all) return f.whoNot.guests ? 'part' : 'whole'
+      return named || f.who.guests !== null ? 'part' : 'none'
     case 'workload':
-      return b.workload !== null
-    default:
-      return b.who.all
+      return f.workload !== null ? 'whole' : 'none'
+    case 'serviceAccounts':
+      // Which accounts a group holds is the mapping's; the assignments alone prove only All with nothing carved out.
+      if (f.who.all) return f.whoNot.groups.size === 0 && f.whoNot.users.size === 0 && f.whoNot.roles.size === 0 ? 'whole' : 'part'
+      return named ? 'part' : 'none'
   }
+}
+
+const lowerSet = (s: Iterable<string>): Set<string> => new Set([...s].map((x) => x.toLowerCase()))
+const within = (a: ReadonlySet<string>, b: ReadonlySet<string>): boolean => [...a].every((x) => b.has(x))
+const locationsNarrow = (f: PolicyFacts): boolean => f.locations !== null && (f.locations.exclude.size > 0 || [...f.locations.include].some((l) => !/^all$/i.test(l)))
+const platformsNarrow = (f: PolicyFacts): boolean => f.platforms !== null && (f.platforms.exclude.size > 0 || [...f.platforms.include].some((p) => !/^all$/i.test(p)))
+const clientAppsNarrow = (f: PolicyFacts): boolean => f.clientApps.size > 0 && !f.clientApps.has('all')
+
+/**
+ * The conditions that confine a tenant policy to fewer sign-ins than the goal's
+ * reference policy (the baseline member the goal is evaluated against, else the
+ * goal's own template), by dimension. Empty when the policy applies wherever the
+ * reference does.
+ *
+ * Every condition is a filter: a policy carrying one the reference does not
+ * applies to fewer sign-ins, and one carrying the reference's own condition
+ * applies to as many only where it filters no more tightly — more platforms,
+ * more client app kinds, more risk levels, no platform the reference does not
+ * also exclude. A device filter IAMAI does not evaluate is the reference's only
+ * where it is the same rule in the same mode. Locations name tenant objects, so
+ * where the reference carries a location condition the goal's own signature
+ * reads the tenant's; where it carries none, any location condition narrows.
+ * A condition IAMAI cannot read is never read as absent.
+ */
+export function narrowerConditions(f: PolicyFacts, reference: PolicyFacts): string[] {
+  const out: string[] = []
+  if (locationsNarrow(f) && !locationsNarrow(reference)) out.push('locations')
+  if (platformsNarrow(f)) {
+    const include = lowerSet(f.platforms?.include ?? [])
+    const broadEnough =
+      platformsNarrow(reference) &&
+      (include.has('all') || within(lowerSet(reference.platforms?.include ?? []), include)) &&
+      within(lowerSet(f.platforms?.exclude ?? []), lowerSet(reference.platforms?.exclude ?? []))
+    if (!broadEnough) out.push('platforms')
+  }
+  if (f.deviceFilter !== null) {
+    const r = reference.deviceFilter
+    if (r === null || r.mode.toLowerCase() !== f.deviceFilter.mode.toLowerCase() || r.rule.trim() !== f.deviceFilter.rule.trim()) out.push('deviceFilter')
+  }
+  if (clientAppsNarrow(f) && !(clientAppsNarrow(reference) && within(reference.clientApps, f.clientApps))) out.push('clientAppTypes')
+  const levels: [string, Set<string>, Set<string>][] = [
+    ['signInRisk', f.signInRisk, reference.signInRisk],
+    ['userRisk', f.userRisk, reference.userRisk],
+    ['servicePrincipalRisk', f.spRisk, reference.spRisk],
+    ['authenticationFlows', lowerSet(f.flows), lowerSet(reference.flows)],
+  ]
+  for (const [name, own, ref] of levels) if (own.size > 0 && (ref.size === 0 || !within(ref, own))) out.push(name)
+  out.push(...f.unreadConditions)
+  return out
 }
 
 // §5 floor raising: a baseline policy that matches a goal and is stricter
@@ -244,8 +319,11 @@ export function raiseFloor(
   const floor: Floor = { ...impl.floor }
   let raised: { from: string; to: string; by: string } | null = null
   const AUTH_FLOORS = new Set(['mfa', 'passwordless', 'phishingResistant'])
+  // A baseline policy may only raise a goal's floor when its own scope is the
+  // goal's whole population — an admin-scoped baseline policy must not raise the
+  // all-users floor (first run, §13).
   for (const b of baselineMatches) {
-    if (!coversPopulation(b, impl.expectedWho.kind)) continue
+    if (populationReach(b, impl.expectedWho.kind) !== 'whole') continue
     const tier = b.grant?.strength
     // Only an authentication floor can be raised by a stronger authentication
     // strength — never a device, app-protection, block or password-change floor.
