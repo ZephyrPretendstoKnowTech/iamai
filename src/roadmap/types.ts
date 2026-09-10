@@ -213,7 +213,11 @@ export type Action = {
  * a step blocker needs none, its step title is the reason.
  */
 export type Blocker =
-  | { kind: 'step'; stepId: string; label: string; binding?: string }
+  /**
+   * `held`: the step waited on is itself held (roadmap/holds.ts markHoldChains),
+   * so this wait is a hold and not sequencing. Absent on every other wait.
+   */
+  | { kind: 'step'; stepId: string; label: string; binding?: string; held?: true }
   | { kind: 'setup'; questionNumber: number; label: string; binding?: string }
   | { kind: 'readiness'; label: string; binding?: string }
   | { kind: 'evidence'; label: string; binding?: string }

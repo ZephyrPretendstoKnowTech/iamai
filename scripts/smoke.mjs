@@ -539,7 +539,13 @@ try {
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
   check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
-  check('Plan: a held row reads Held rather than a date it is not on', (await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').every((r) => { const w = ((r.querySelector('.when') || {}).textContent || '').trim(); return w === '' || w === 'Held' || /reaches|held|ready/i.test(w) })`)))
+  // A held row reads Held (or the threshold, review or records that hold it); a
+  // row only sequenced after a scheduled prerequisite is not held, keeps its date
+  // and names what it comes after (roadmap/holds.ts). A date is never shown on a
+  // Blocked row without that.
+  const blockedWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').map((r) => ({ when: ((r.querySelector('.when') || {}).textContent || '').trim(), reason: ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim() }))`)
+  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === '' || when === 'Held' || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^after: /.test(reason))))
+  check('Plan: a Blocked row reads Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
   check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
   // The opened step is one frame attached under the row that opened it, with a

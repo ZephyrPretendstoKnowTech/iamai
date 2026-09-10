@@ -53,6 +53,9 @@ export function holdOf(step: Step): Hold | null {
   const policy = isOpenPolicy(step)
   if (policy && unavailableReason(step) !== null) return { kind: 'unavailable' }
   if (policy && enforcementHeld(step)) return { kind: 'readiness' }
+  // A wait on a step that is itself held is a hold (markHoldChains below): the
+  // step waited on has no date, so nothing can be dated after it.
+  if (step.blockers.some((b) => b.kind === 'step' && b.held === true)) return { kind: 'prerequisite' }
   if (c === 'needs-decision') return policy ? { kind: 'decision' } : null
   if (c === 'blocked') {
     // Blocked with nothing named is held: nothing says what would release it.
@@ -80,4 +83,34 @@ export function holdOf(step: Step): Hold | null {
 /** True when anything holds the step. */
 export function isHeld(step: Step): boolean {
   return holdOf(step) !== null
+}
+
+/**
+ * Marks every wait on a held step as a hold (`Blocker.held`), through the whole
+ * chain: B waits on A, and A is held, so B cannot be dated after A either — and
+ * whatever waits on B cannot be dated after B. A wait on a step nothing holds
+ * stays sequencing. The mark is read by `holdOf` and nothing else, and it is
+ * recomputed from `holdOf` each time, so it never outlives the hold it records.
+ *
+ * Runs wherever holds are read over a whole plan: before tracking decides who is
+ * ready (roadmap/progress.ts), before the schedule withdraws what is held
+ * (roadmap/forecast.ts), and before the reasons are written (roadmap/stateReason.ts).
+ */
+export function markHoldChains(steps: readonly Step[]): void {
+  const byId = new Map(steps.map((s) => [s.id, s]))
+  for (const s of steps) for (const b of s.blockers) if (b.kind === 'step') delete b.held
+  // The dependency graph is acyclic, so a chain is at most every step long.
+  for (let pass = 0, changed = true; changed && pass <= steps.length; pass++) {
+    changed = false
+    for (const s of steps) {
+      for (const b of s.blockers) {
+        if (b.kind !== 'step' || b.held) continue
+        const waitedOn = byId.get(b.stepId)
+        if (waitedOn && isHeld(waitedOn)) {
+          b.held = true
+          changed = true
+        }
+      }
+    }
+  }
 }

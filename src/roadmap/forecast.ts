@@ -31,7 +31,7 @@ import type { Step, StepEvents } from './types.ts'
 import type { Schedule } from './schedule.ts'
 import { readBackPlacement } from './schedule.ts'
 import { policyHold } from './operations.ts'
-import { isHeld } from './holds.ts'
+import { isHeld, markHoldChains } from './holds.ts'
 
 /** What a step's enforcement date is worth. */
 export type EnforcementBasis =
@@ -255,6 +255,7 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
   // The rollout as the generator drew it, before anything is withdrawn: its length
   // if nothing held any of it. An estimate, never a step's date (derive/finish.ts planWeeks).
   schedule.estimate ??= { weeks: schedule.weeks, targetEnd: schedule.targetEnd, reason: schedule.derivation.reason }
+  markHoldChains(steps)
   for (const step of steps) {
     const held = isHeld(step)
     if (!held && !enforcementUnearned(step)) continue

@@ -560,7 +560,11 @@
         "readiness": "when {measure} reaches {threshold} (now {value})",
         "count": "when {n} {thing} exist (now {have})",
         "baseline": "the baseline defines this policy two ways",
-        "exclusionsGroup": "until you choose the exclusions group"
+        "exclusionsGroup": "until you choose the exclusions group",
+        "unsettled": "until the groups the source policy leaves out are identified",
+        "pairUnmatched": "until both policies of the pair can be matched",
+        "noOperation": "until a scan rebuilds this step",
+        "emergency": "until emergency access is provably out of scope"
       },
       "gapSuffix": {
         "admin-session": "sessions expire {current}, the baseline wants {wanted}",

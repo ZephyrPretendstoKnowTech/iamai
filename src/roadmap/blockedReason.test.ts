@@ -8,10 +8,15 @@ import assert from 'node:assert/strict'
 import { BLOCKED_REASON, BLOCKED_REASON_MAX_WORDS } from '../copy/reasons.ts'
 import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { isHeld } from './holds.ts'
 
 const SHAPES = [/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ exists? \(now \d+\)$/]
-/** The fourth shape is the content file's own sentence, not a fill: matched whole. */
-const inShape = (reason: string): boolean => reason === BLOCKED_REASON.baseline || SHAPES.some((re) => re.test(reason))
+/**
+ * The fourth shape is the content file's own sentence, not a fill: matched whole.
+ * So are the holds no step of the plan clears (roadmap/stateReason.ts holdReasonFor).
+ */
+const SENTENCES = [BLOCKED_REASON.baseline, BLOCKED_REASON.exclusionsGroup, BLOCKED_REASON.unsettled, BLOCKED_REASON.pairUnmatched, BLOCKED_REASON.noOperation, BLOCKED_REASON.emergency]
+const inShape = (reason: string): boolean => SENTENCES.includes(reason) || SHAPES.some((re) => re.test(reason))
 const words = (s: string): number => s.trim().split(/\s+/).length
 
 test('the four shapes', () => {
@@ -32,7 +37,9 @@ test('every blocked step on every fixture carries one binding reason, in shape, 
     const r = runFixture(f)
     for (const s of r.steps) {
       if (s.status !== 'blocked') {
-        if (s.blockedReason !== null) failures.push(`${f.name}/${s.id}: not blocked but carries a reason`)
+        // A held step says what holds it whatever its word (roadmap/holds.ts); nothing else carries a reason.
+        if (s.blockedReason !== null && !isHeld(s)) failures.push(`${f.name}/${s.id}: not blocked but carries a reason`)
+        if (s.blockedReason !== null && !inShape(s.blockedReason)) failures.push(`${f.name}/${s.id}: "${s.blockedReason}" is in none of the shapes`)
         continue
       }
       blocked += 1

@@ -2,6 +2,7 @@
 // Ready · Blocked · Report-only · Enforced · Skipped. The verb lives in the
 // title, so this is a state, never an action. Pure.
 import type { Step } from '../../roadmap/types.ts'
+import { isHeld } from '../../roadmap/holds.ts'
 import type { StatusTone } from '../components/index.ts'
 
 export type StatusView = { word: string; tone: StatusTone }
@@ -28,6 +29,11 @@ export function statusOf(step: Step): StatusView {
       // there.
       return step.state.inPlace || step.state.lifecycle !== 'enforced' ? { word: 'In place', tone: 'ok' } : { word: 'Enforced', tone: 'ok' }
     case 'ready':
+      // Ready says the work can be done today. A step something holds cannot
+      // (roadmap/holds.ts): a policy Foundation A will not write reads Blocked,
+      // the Plan's word for waiting on something else, beside the reason that
+      // says what — never Ready under Waiting on something else.
+      if (isHeld(step)) return { word: 'Blocked', tone: step.operatorSafe === false ? 'stop' : 'wait' }
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':
       // Two states project to `blocked`, and they are not the same thing to act

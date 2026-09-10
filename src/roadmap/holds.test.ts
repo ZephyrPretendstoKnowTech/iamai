@@ -14,8 +14,13 @@ import { allCuratedFixtures, allFixtures, curatedFixture, fixture, noExclusionsA
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { observationsOf } from './tracking.ts'
-import { holdOf, isHeld } from './holds.ts'
-import { heldForReview, nextMilestone } from './lifecycle.ts'
+import { holdOf, isHeld, markHoldChains } from './holds.ts'
+import { heldForReview, nextMilestone, raiseCondition } from './lifecycle.ts'
+import { annotateStateReasons } from './stateReason.ts'
+import { planIdFor } from './generate.ts'
+import { BLOCKED_REASON } from '../copy/reasons.ts'
+import { DEMO_TENANT_ID } from '../ui/demoMode.ts'
+import { statusOf } from '../ui/surfaces/statusWord.ts'
 import { settleForecast } from './forecast.ts'
 import { buildIcs } from './ics.ts'
 import { groundingBundle } from './prompts.ts'
@@ -27,12 +32,12 @@ import { FINISH } from '../copy/statements.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
-import { rowWhen } from '../ui/surfaces/rowWhen.ts'
+import { rowReason, rowWhen, rowWhenWraps } from '../ui/surfaces/rowWhen.ts'
 import { datesLineFor, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
-import { statusGroupOf } from '../ui/surfaces/planBoard.ts'
+import { BOARD, boardWhenOf, statusGroupOf } from '../ui/surfaces/planBoard.ts'
 import { cleanupExportViews } from '../ui/surfaces/cleanupExport.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
 import { demoTenant } from '../ui/demo.ts'
@@ -267,6 +272,101 @@ test('Step 4 F: a step already in place has no future date and no calendar entry
     }
   }
   assert.ok(checked > 10, `the fixtures have steps in place: ${checked}`)
+})
+
+// ---- final correction 1: a scheduled dependency never reads Held ----
+
+test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is dated and never Held; one waiting on an unresolved one is Held and undated', () => {
+  const g = planOf(curatedFixture('getiamai'))
+  const sequenced = stepOf(g, 's-goal-block-legacy-auth')
+  assert.ok(sequenced.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), 'the premise: it waits on emergency access, which Preparation schedules')
+  assert.equal(isHeld(sequenced), false)
+  assert.ok(phased(g).has(sequenced.id), 'it stays in its numbered phase')
+  assert.match(boardWhenOf(sequenced), YEAR, 'the board shows its date')
+  assert.notEqual(boardWhenOf(sequenced), BOARD.held, 'and never Held')
+  assert.match(rowReason(sequenced) ?? '', /^after: /, 'the row names what it comes after')
+  const p = planOf(curatedFixture('demo'))
+  const held = stepOf(p, 's-goal-service-accounts-trusted-network')
+  assert.ok(isHeld(held), 'the premise: it waits on an object the tenant does not have')
+  assert.equal(boardWhenOf(held), BOARD.held, 'the board says Held')
+  assert.ok(undatedRows(p.r.steps, p.r.schedule.waves).some((s) => s.id === held.id), 'under Waiting on something else')
+  nothingIsDated(p, held)
+  assert.ok((rowReason(held) ?? '').length > 0, 'and says what it waits on')
+  // Over every plan: Held on the board exactly where the step is held.
+  for (const q of plans()) for (const s of q.r.steps.filter(open)) assert.equal(boardWhenOf(s) === BOARD.held, isHeld(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
+})
+
+// ---- final correction 2: a held step never reads Ready ----
+
+test('Step 4 correction 2: a held, unwritable step not yet deployed reads Blocked, never Ready, and sits undated under Waiting', () => {
+  const d = demoTenant(true)
+  const f = { ...fixture('demo-week2'), snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
+  const p = planOf(f)
+  for (const id of ['s-goal-admin-session', 's-goal-block-unsupported-platforms', 's-goal-all-users-no-persistence']) {
+    const s = stepOf(p, id)
+    assert.equal(s.state.lifecycle, 'not-deployed', `${id}: the lifecycle is unchanged`)
+    assert.equal(holdOf(s)?.kind, 'unavailable', `${id}: the premise, Foundation A will not write it`)
+    assert.equal(statusOf(s).word, 'Blocked', `${id}: the row word`)
+    assert.ok(undatedRows(p.r.steps, p.r.schedule.waves).some((x) => x.id === id), `${id}: under Waiting on something else`)
+    assert.equal(rowWhen(s), '', `${id}: no date`)
+  }
+  for (const q of plans()) for (const s of q.r.steps.filter(open)) if (isHeld(s)) assert.ok(!['Ready', 'Ready to enforce'].includes(statusOf(s).word), `${q.f.name}/${s.id}: a held step reads ${statusOf(s).word}`)
+})
+
+// ---- final correction 3: every held row says why ----
+
+/** The reason a row gives: its reason line, or the date column where that carries the reason (a threshold, held for review, held for its records). */
+const reasonOf = (s: Step): string => rowReason(s) ?? (rowWhenWraps(s) ? rowWhen(s) : '')
+
+test('Step 4 correction 3: every held row carries a concrete reason from the hold itself', () => {
+  const GENERIC = /waiting on prerequisite|something is blocking|additional review required|named cause/i
+  const d1 = demoTenant(false)
+  const d2 = demoTenant(true)
+  const demos = [planOf({ ...fixture('demo'), snapshot: d1.snapshot, mapping: d1.mapping, planId: planIdFor(DEMO_TENANT_ID) }), planOf({ ...fixture('demo-week2'), snapshot: d2.snapshot, mapping: d2.mapping, planId: planIdFor(DEMO_TENANT_ID) })]
+  let checked = 0
+  for (const q of [...plans(), ...demos]) {
+    for (const s of q.r.steps.filter(open)) {
+      if (!isHeld(s)) continue
+      const reason = reasonOf(s)
+      assert.ok(reason.trim().length > 0, `${q.f.name}/${s.id} (${holdOf(s)?.kind}): held with no reason`)
+      assert.doesNotMatch(reason, GENERIC, `${q.f.name}/${s.id}: "${reason}"`)
+      checked += 1
+    }
+  }
+  assert.ok(checked > 50, `held rows checked: ${checked}`)
+  // The unsettled source group names itself, not the step the row is sequenced after.
+  const token = stepOf(demos[1], 's-goal-token-protection')
+  assert.equal(token.blockedReason, BLOCKED_REASON.unsettled)
+  assert.equal(rowReason(token), BLOCKED_REASON.unsettled)
+})
+
+// ---- final correction 4: a hold chain ----
+
+test('Step 4 correction 4: a step waiting on a held step is held too; waiting on a scheduled one it is sequenced', () => {
+  const g = planOf(curatedFixture('getiamai'))
+  const a = stepOf(g, 's-prereq-break-glass')
+  const b = stepOf(g, 's-goal-block-legacy-auth')
+  assert.ok(b.blockers.some((x) => x.kind === 'step' && x.stepId === a.id), 'the premise: B waits on A')
+  assert.equal(isHeld(a), false, 'A is scheduled')
+  assert.equal(isHeld(b), false, 'so B is sequenced after it')
+  assert.ok(b.events !== null && b.rings.length > 0, 'and dated')
+  // A becomes held: a Setup answer nobody has given, which no step of the plan schedules.
+  a.blockers.push({ kind: 'setup', questionNumber: 1, label: 'emergency-access', binding: 'when 1 emergency-access account exist (now 0)' })
+  raiseCondition(a, 'blocked')
+  assert.equal(holdOf(a)?.kind, 'prerequisite', 'the premise: A is held')
+  settleForecast(g.r.steps, g.r.schedule)
+  annotateStateReasons(g.r.steps)
+  assert.equal(holdOf(b)?.kind, 'prerequisite', 'B cannot be dated after a step that has no date')
+  assert.equal(b.events, null, 'B has no enforcement day')
+  assert.deepEqual(b.rings, [], 'and no rollout')
+  assert.equal(phased({ ...g }).has(b.id), false, 'and sits in no numbered phase')
+  assert.equal(b.blockedReason, BLOCKED_REASON.after(a.plainTitle || a.title), 'its reason names the held step it waits on')
+  assert.equal(boardWhenOf(b), BOARD.held)
+  // And the mark is the hold's, not a record of it: clear A and B is sequenced again.
+  a.blockers.pop()
+  a.state = { ...a.state, condition: 'healthy' }
+  markHoldChains(g.r.steps)
+  assert.equal(isHeld(b), false, 'released with A')
 })
 
 // ---- who a step reaches is not a date ----
