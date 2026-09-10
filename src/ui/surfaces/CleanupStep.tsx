@@ -58,7 +58,7 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
     // so it draws no track and no rail — the frame is the same, the step
     // activates less of it.
     <article className="step panel panel-key">
-      <StepHead title={entry.title} word={status.word} tone={status.tone} />
+      <StepHead title={entry.title} badge={status.word} tone={status.tone} />
       <div className="step-body">
         <div className="step-main">
       {/* The same sections, in the same order, under the same headings as a step

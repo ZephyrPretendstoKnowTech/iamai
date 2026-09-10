@@ -10,11 +10,11 @@
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
 import type { ReactNode } from 'react'
-import { Callout, Status } from '../components/index.ts'
+import { Button, Callout, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
-import { CONTRACT, railBlocks, stageClass } from './stepContract.ts'
+import { CONTRACT, FOOTER, badgeLabel, footerNote, nextCaption, railBlocks, stageClass } from './stepContract.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -105,44 +105,30 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
  * next milestone and What to do are the same fact, and What to do is the more
  * specific of the two.
  */
+export { badgeLabel, footerNote, nextCaption, FOOTER }
+
 export function StepState({ contract }: { contract: StepContract }) {
-  const s = contract.state
-  const showCondition = s.stage !== '' || s.condition !== 'healthy'
-  if (s.stage === '' && !showCondition && contract.milestone.line === null) return null
-  return (
-    <>
-      {(s.stage !== '' || showCondition) && (
-        <p className="step-state">
-          {s.stage !== '' && <span className="stage">{s.stage}</span>}
-          {s.stage !== '' && showCondition && <span aria-hidden="true"> · </span>}
-          {showCondition && <span className={`condition condition-${s.condition}`}>{s.conditionLabel}</span>}
-        </p>
-      )}
-      {contract.milestone.line && <p className="step-next">{contract.milestone.line}</p>}
-    </>
-  )
+  // The two axes moved into the head's badge (`badgeLabel`), which is where the
+  // approved step reference puts them: "Report-only · Review required", once.
+  // What is left here is the one thing the badge does not say — what happens
+  // next — as the caption directly above the track it captions.
+  //
+  // It reads `nextCaption`, which is the dated milestone sentence where there is
+  // one and the gate the rail used to hold alone where there is not. A step with
+  // neither gets no caption rather than a manufactured one.
+  const next = nextCaption(contract)
+  if (next === null) return null
+  return <p className="step-next">{next}</p>
 }
 
-/**
- * The opened step's head, as the approved Plan pack draws it
- * (`docs/design/approved/anatomy/plan-step-v1.html` `.step-head`): an eyebrow naming
- * what kind of step this is, the title, the supporting line under it, and the
- * state badge held to the right of all three. Below them the lifecycle track.
- *
- * The head is the first thing under the row it attaches to, and it repeats the
- * row's title on purpose: the row is the board and the head is the step, and the
- * pack draws the title in both.
- *
- * Everything here is handed to it. Nothing in the head reads a step, a lifecycle
- * or a date.
- */
-export function StepHead({ eyebrow = null, title, sub = null, word, tone, track = [], children }: {
+export function StepHead({ eyebrow = null, title, sub = null, badge, tone, track = [], children }: {
   /** What kind of step this is (pages.app.plan.stepContract.kind); null where the kind has no label. */
   eyebrow?: string | null
   title: string
   /** The one supporting line under the title; null where the step has none. */
   sub?: ReactNode
-  word: string
+  /** The composed lifecycle · condition label (`badgeLabel`), or the one status word. */
+  badge: string
   tone: StatusTone
   track?: ContractStage[]
   /** Where the step is and what happens next — the pack's track caption, above the track it captions. */
@@ -157,7 +143,7 @@ export function StepHead({ eyebrow = null, title, sub = null, word, tone, track 
           {sub}
         </div>
         <Status tone={tone} pill>
-          {word}
+          {badge}
         </Status>
       </div>
       {children}
@@ -279,6 +265,38 @@ export function StepRail({ contract }: { contract: StepContract }) {
         </div>
       )}
     </aside>
+  )
+}
+
+/**
+ * The step's own footer: what to do with the step once it has been read.
+ *
+ * It is a footer of the FRAME, not a paragraph at the end of the main column —
+ * full width under both, on the quieter surface, divided by the frame's own
+ * hairline (the approved step reference's `.footer`). Before this it was the
+ * last line of the main column, so on a step with a rail it sat two thirds of
+ * the way across under a column of prose and read as part of More.
+ *
+ * It offers only what production already does. `Scan to update the plan` is the
+ * existing action, on the existing routing, shown where the step's own content
+ * entry says a scan is how this step is verified (`cs.scanControl`) — which is
+ * exactly the states where something in the tenant has to change before the
+ * plan can move. A step that is observation-only offers Close alone rather than
+ * a disabled button kept for symmetry.
+ */
+export function StepFooter({ note = null, onScan, onClose }: { note?: string | null; onScan?: (() => void) | null; onClose: () => void }) {
+  return (
+    <footer className="step-footer no-print">
+      {onScan && note && <span className="step-footer-note">{note}</span>}
+      {onScan && (
+        <Button variant="primary" onClick={onScan}>
+          {FOOTER.scan}
+        </Button>
+      )}
+      <Button variant="secondary" onClick={onClose}>
+        {FOOTER.close}
+      </Button>
+    </footer>
   )
 }
 

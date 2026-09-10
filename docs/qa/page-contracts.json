@@ -678,9 +678,9 @@
           "Done when"
         ],
         "tabs": [
-          "Portal steps",
-          "JSON",
-          "PowerShell"
+          "Entra",
+          "PowerShell",
+          "JSON"
         ],
         "tiles": [],
         "columns": [],
@@ -695,6 +695,7 @@
           "Enforced",
           "Skipped",
           "Doesn't apply",
+          "re:^(Not deployed|Report-only|Ready to enforce|Enforced) · (Blocked|Review required|Needs decision|Baseline conflict)$",
           "re:^CIS \\d+(\\.\\d+)?$"
         ],
         "buttons": [

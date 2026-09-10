@@ -424,7 +424,11 @@ test("the Plan step's three implementation channels are one tab set, and all thr
   // still one panel, still labelled by whichever tab is selected, and still
   // reachable: a panel of prose or a scrolling code block holds nothing else a
   // keyboard can land on.
-  assert.match(contentStep, /<div className="instruction" \{\.\.\.onePanelProps\(doBase, tab\)\}>/)
+  // The panel is a TAB panel only where there are tabs. With one channel there
+  // is no strip to label it and no selection to announce, so the panel props are
+  // applied only when the capability rule produced a choice (channelsFor).
+  assert.match(contentStep, /<div className="instruction" \{\.\.\.\(channels\.length > 1 \? onePanelProps\(doBase, tab\) : \{\}\)\}>/)
+  assert.match(contentStep, /channels\.length > 1 \? \(\n\s*<TabList/, 'the strip is drawn without asking whether there is a choice')
   // Availability is unchanged in meaning and is read from ONE authority: the
   // machine channels render only where Foundation A offers an implementation,
   // and Download JSON is gated on the same answer. The surface asks the Step

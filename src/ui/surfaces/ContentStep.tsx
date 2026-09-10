@@ -53,7 +53,7 @@ import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
 import { CONTRACT, hasRail, stepContract } from './stepContract.ts'
-import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
+import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel, footerNote } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
@@ -61,6 +61,32 @@ import type { WhoBlock } from './whoBlocks.ts'
 
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
+
+/**
+ * Which implementation channels this step actually has, in the approved order.
+ *
+ * Availability is production's, read and not guessed: the portal channel exists
+ * when the translator produced lines for this step, and the two machine channels
+ * exist together when Foundation A offers an implementation
+ * (`contract.implementation.offered`, which is roadmap/operations.ts
+ * `implementationOffered` and is also `stepJson.jsonOffered`). Nothing here asks
+ * a second time, and nothing here manufactures a channel to fill a strip.
+ *
+ * What the count decides is the CONTROL, which is the approved rule:
+ *
+ *   0  no selector at all — the step's ordinary instructions, where it has any
+ *   1  the channel itself, directly, with no strip to choose from
+ *   2+ a real tab set, in the order Entra → PowerShell → JSON
+ *
+ * A one-tab tab set is a control that cannot be operated, and it says the step
+ * has options it does not have.
+ */
+function channelsFor(hasPortal: boolean, machineOffered: boolean): DoTab[] {
+  const out: DoTab[] = []
+  if (hasPortal) out.push('portal')
+  if (machineOffered) out.push('ps', 'json')
+  return out
+}
 
 /**
  * The three implementation channels, in the approved order — Entra, then
@@ -153,7 +179,7 @@ export function ContentStep({
   /** Printing: More stands open, so every step prints in full (§7). */
   printing?: boolean
 }) {
-  const [tab, setTab] = useState<DoTab>('portal')
+  const [chosen, setTab] = useState<DoTab>('portal')
   const doBase = useId()
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
@@ -211,6 +237,12 @@ export function ContentStep({
   // is created: the device-settings toggle, password writeback, the SharePoint
   // access control) stay above the translator's portal lines, numbered with them.
   const before = instructions.before
+  // The channels this step actually has, and the one the panel is showing. The
+  // chosen tab is clamped to what is available, so a step that offers only the
+  // portal cannot be left showing an empty JSON panel by a click on another
+  // step — the frame is reused across rows and the state is not.
+  const channels = channelsFor(portal !== null && portal.length + before.length > 0, contract.implementation.offered)
+  const tab: DoTab = channels.includes(chosen) ? chosen : (channels[0] ?? 'portal')
   const hasSteps = instructions.steps.length > 0
   // Who this touches, split into what the default step shows and what More
   // carries (whoBlocks.ts): the counts and the consequences here, the names
@@ -244,7 +276,7 @@ export function ContentStep({
             <Line s={cs.partner} ex={ex} cls="step-sub partner" />
           </>
         }
-        word={contract.state.word}
+        badge={badgeLabel(contract)}
         tone={contract.state.tone}
         track={contract.track}
       >
@@ -340,8 +372,15 @@ export function ContentStep({
               page. It is the shared `TabList` wearing the Plan's own strip
               treatment, so the keyboard behaviour and the selected-state
               semantics task 017 built are unchanged. */}
-          <TabList base={doBase} tabs={DO_TABS} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} className="tabs action-tabs no-print" />
-          <div className="instruction" {...onePanelProps(doBase, tab)}>
+          {/* The control follows the CAPABILITY (channelsFor above): a strip only
+              where there is a choice to make. One channel renders itself, with
+              its name over it, and no tab set to operate. */}
+          {channels.length > 1 ? (
+            <TabList base={doBase} tabs={DO_TABS.filter((t) => channels.includes(t.id as DoTab))} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} className="tabs action-tabs no-print" />
+          ) : (
+            <div className="single-channel-label">{DO_TABS.find((t) => t.id === channels[0])?.label}</div>
+          )}
+          <div className="instruction" {...(channels.length > 1 ? onePanelProps(doBase, tab) : {})}>
             {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
             {/* Whether an artifact is offered is Foundation A's one answer, and
                 the contract already carries it (stepContract.ts
@@ -431,16 +470,6 @@ export function ContentStep({
       />
       </section>
 
-      <p className="actions no-print">
-        {cs.scanControl && onScan && (
-          <Button variant="secondary" onClick={onScan}>
-            Scan to update the plan
-          </Button>
-        )}
-        <Button variant="tertiary" onClick={onClose}>
-          Close
-        </Button>
-      </p>
         </div>
         {/* The rail belongs to this step, not to the page: it sits inside the
             frame, beside the main column at full width and under it once the
@@ -448,6 +477,11 @@ export function ContentStep({
             contract has nothing for it, there is no rail and no empty track. */}
         {rail && <StepRail contract={contract} />}
       </div>
+      {/* The frame's own footer, under both columns (StepSections.tsx
+          StepFooter). It offers the existing scan action where the step's
+          content entry says a scan is how this step is verified, and Close
+          otherwise — never a disabled button kept for symmetry. */}
+      <StepFooter note={footerNote(contract)} onScan={cs.scanControl && onScan ? onScan : null} onClose={onClose} />
     </article>
   )
 }

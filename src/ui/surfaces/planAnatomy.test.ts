@@ -348,7 +348,14 @@ test('each lifecycle is drawn as itself, and no step is painted mid-rollout that
   assert.match(rule('.step .track .stage-fill'), /width: 0;/, 'an unmarked stage claims progress')
   assert.match(rule('.step .track .stage.reached .stage-fill'), /width: 100%;\n\s*background: var\(--success\);/, 'a passed stage is no longer complete')
   assert.match(rule('.step .track .stage.current.stage-report-only .stage-fill'), /width: 62%;\n\s*background: var\(--attention\);/, "Report-only lost the pack's current treatment")
-  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--brand-primary\);/, 'Ready to enforce lost its own treatment')
+  // Ready to enforce is a STATE and takes a semantic role, not the brand: the
+  // brand answers "this is IAMAI, this is selected", never "the tenant is in a
+  // good state" (docs/brand/brand-manifest.json semantics). The approved step
+  // reference paints this stage `var(--success)` with the stages already passed,
+  // which is what it means — the gates have closed and the change is earned.
+  // The 84% stays: the stage is reached, not finished.
+  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--success\);/, 'Ready to enforce lost its own treatment')
+  assert.equal(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill').includes('--brand-primary'), false, 'the brand is painting a tenant state')
   // The blanket rule the four replaced: a `.current` fill that names no stage
   // paints Not deployed and Enforced with Report-only's bar.
   assert.equal(/\.step \.track \.stage\.current \.stage-fill \{/.test(CSS), false, 'one treatment is applied to every current stage again')

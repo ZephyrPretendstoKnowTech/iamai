@@ -68,6 +68,7 @@
     "mfa-readiness": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512"
   },
   "files": {
+    "iamai-plan-step-variants-final.html": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
     "iamai-plan-organization-final.html": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
     "iamai-approved-visual-system-comparison-reference.html": "9ee6c601e7091fee1193203dedf9b9fffa83ec020035fa9b08c398d9bbc305a1",
     "iamai-connect-approved-comparison-reference.html": "5c910dc89787a02779a6473951c82423665c1ad6610dc6217eed61dff46d852f",
@@ -99,16 +100,59 @@
       "product copy",
       "technical truth"
     ],
-    "expandedStepAuthority": "iamai-plan-approved-comparison-reference.html",
-    "expandedStepAuthorityNote": "The existing Plan reference remains current for expanded-step presentation until the later Plan-step implementation pass. Neither file supersedes the other; they own different halves of the Plan.",
+    "expandedStepAuthority": "iamai-plan-step-variants-final.html",
+    "expandedStepAuthorityNote": "The two files own different halves of the Plan: this one owns the board, and the step-variants reference owns what a row opens into. See `planStep` below, which also records where it supersedes the older comparison reference.",
     "anatomyAuthority": "docs/design/approved/anatomy/plan-step-v1.html",
     "exampleDataNote": "The file carries design-example counts, dates, phase names and tenant facts. None of them is production data and none may be copied into production: docs/design/content.json remains the copy authority and the engine remains the fact authority.",
-    "implementedBy": "plan board organization pass",
-    "notYetAuthoritative": {
-      "$comment": "Present in this directory and deliberately NOT recorded as authority yet: it is the later step-family variants pass's input, and recording it now would make it look like something this pass implemented.",
-      "file": "iamai-plan-step-variants-final.html",
-      "sha256": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03"
-    }
+    "implementedBy": "plan board organization pass"
+  },
+  "planStep": {
+    "$comment": "The final EXPANDED-STEP visual authority. It is the other half of the Plan: iamai-plan-organization-final.html owns the board a step opens from, and this owns what opens. Recorded as its own block, with its own boundary, because two Plan references are current at once and a later task must be able to read which owns what as a value rather than by opening both and guessing.",
+    "file": "iamai-plan-step-variants-final.html",
+    "sha256": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
+    "owns": [
+      "expanded Plan step visual hierarchy",
+      "the shared step frame",
+      "the full-width expanded-step header",
+      "policy lifecycle presentation",
+      "conditional findings presentation",
+      "optional right-rail behaviour",
+      "action and implementation-channel presentation rules",
+      "contextual step footer presentation",
+      "the visual treatment of the step-family variants it draws"
+    ],
+    "doesNotOwn": [
+      "production copy",
+      "tenant facts",
+      "baseline truth",
+      "lifecycle calculation",
+      "readiness calculation",
+      "condition calculation",
+      "scheduling and date calculation",
+      "population calculations",
+      "decision persistence",
+      "implementation instructions and artifacts",
+      "MFA readiness calculations",
+      "Graph collection",
+      "Export semantics"
+    ],
+    "exampleDataNote": "The file carries example people, counts, dates, tenant object names, policy facts and explanatory copy. None of it is production data and none may be copied into production: docs/design/content.json remains the copy authority and the engine remains the fact authority.",
+    "supersedes": {
+      "$comment": "Where the two disagree about expanded-step PRESENTATION, this file wins. The older reference is not deleted and its hash is not touched: it is the record of what the expanded step looked like before, and it is still the current authority for anything this file does not draw.",
+      "file": "iamai-plan-approved-comparison-reference.html",
+      "scope": "expanded-step visual presentation only",
+      "remainsAuthoritativeFor": "anything the step-variants reference does not draw"
+    },
+    "families": {
+      "$comment": "The reference draws six step families. A family is migrated when production renders it from this reference rather than from the older one; the rest keep the presentation they have until their own pass.",
+      "policy": "migrated",
+      "setup": "pending",
+      "mfa": "pending",
+      "inPlace": "pending",
+      "decision": "pending",
+      "resolution": "pending"
+    },
+    "implementedBy": "plan shared step frame + policy rollout family pass"
   },
   "logo": {
     "name": "Threshold",

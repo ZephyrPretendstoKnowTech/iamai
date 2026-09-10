@@ -1921,8 +1921,23 @@ footer.app a {
    It renders `contract.track` (stepContract.ts), which is a projection of
    Foundation B's lifecycle. Nothing here decides a stage, and a stage's fill is
    the pack's static treatment for that stage, not a measured percentage. */
+/* The lifecycle spans the WHOLE header, which is the fact it states: where the
+   policy is in its rollout is a property of the step, not of its left-hand
+   column.
+
+   It did not, and the cause was a prose rule reaching a grid: `.surface p,
+   .surface ul, .surface ol` caps everything it matches at `--measure` (72ch),
+   for the good reason that a paragraph 1234px wide is unreadable. The track is
+   an `<ol>`, so it was caught by that cap and stopped at about 45% of the frame
+   — four stages crushed into the left half of a full-width header, reading as if
+   they belonged to the main column. `.step .findings` already had to say this
+   for the same reason; the track was the one that was missed.
+
+   The measure still holds every SENTENCE in the head, including the Next
+   caption, which is a paragraph and wants it. */
 .step .track-wrap {
   margin-top: 17px;
+  max-width: none;
 }
 .step .track {
   display: grid;
@@ -1931,6 +1946,8 @@ footer.app a {
   list-style: none;
   margin: 0;
   padding: 0;
+  /* The grid is the header's, not a list inside a paragraph column. */
+  max-width: none;
 }
 .step .track .stage {
   display: grid;
@@ -1974,9 +1991,16 @@ footer.app a {
   width: 62%;
   background: var(--attention);
 }
+/* Ready to enforce is a STATE, and the brand is not a state
+   (docs/brand/brand-manifest.json semantics: brandPrimary answers "this is
+   IAMAI, this is selected", never "the tenant is in a good state"). The approved
+   step reference paints this stage `var(--success)` along with the stages
+   already passed, which is what it means: the gates have closed and the change
+   has been earned. The 84% is production's own progress language and is kept —
+   the stage is reached, not finished. */
 .step .track .stage.current.stage-ready-to-enforce .stage-fill {
   width: 84%;
-  background: var(--brand-primary);
+  background: var(--success);
 }
 .step .track .stage-label {
   font-family: var(--font-sans);
@@ -2132,6 +2156,41 @@ footer.app a {
 .step .finding .finding-text {
   display: block;
   font-size: var(--t-2);
+}
+
+/* ---- the step's own footer ----
+   The approved step reference's `.footer`: under BOTH columns, full width, on
+   the quieter surface, divided by the frame's own hairline. It used to be the
+   last line of the main column, so on a step with a rail it sat two thirds of
+   the way across under a column of prose and read as the end of More rather
+   than as the frame's controls. */
+.step-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 27px;
+  border-top: 1px solid var(--line);
+  background: var(--secondary-surface);
+}
+/* The question the scan answers, held to the left of the controls it belongs
+   to. It renders only beside a scan control: with nothing to press it would be
+   a question the footer asks and cannot act on. */
+.step-footer-note {
+  margin-right: auto;
+  color: var(--quiet-text);
+  font-size: var(--t-0);
+}
+/* One channel is not a choice, so it is not a tab strip: the channel names
+   itself over the block it labels. The floor for a compact label here is
+   --t-micro, the same as the board's column head. */
+.single-channel-label {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: var(--weight-strong);
+  color: var(--quiet-text);
+  margin-bottom: 6px;
 }
 
 /* ---- What to do: the action strip over the instruction block ----
@@ -2402,6 +2461,7 @@ footer.app a {
   .print-plan .more-card { margin-top: 2mm; }
   .print-plan .findings { grid-template-columns: 1fr; }
   .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--line); background: none; }
+  .print-plan .step-footer { display: none; }
   .print-plan .track { display: none; }
   .print-json { break-inside: auto; }
   .print-plan .datatable, .print-plan table { width: 100%; border-collapse: collapse; }
@@ -3332,9 +3392,19 @@ td .not-person {
      from the page edge. The margin went with the group panel, so the number and
      the rendered result agree again. */
   .step-head,
-  .step-main {
+  .step-main,
+  .step-footer {
     padding-left: 18px;
     padding-right: 18px;
+  }
+  /* The controls wrap before they clip, and the question takes its own line
+     above them rather than squeezing them off the edge. */
+  .step-footer {
+    flex-wrap: wrap;
+  }
+  .step-footer-note {
+    width: 100%;
+    margin-right: 0;
   }
   .step-head-top {
     display: block;
