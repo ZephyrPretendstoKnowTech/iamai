@@ -378,7 +378,17 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
   'policy · adjust · ready-to-enforce · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-token-protection
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · rail · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
-  'policy · adjust · ready-to-enforce · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-token-protection
+  // Step 3 correction: the report-only policy whose required exclusions group has
+  // no usable, owner-confirmed object stays report-only instead of reading Ready to
+  // enforce; an existing policy short of the group is a change, held on the
+  // exclusions prerequisite with no operation while there is no group to add, and
+  // offered once there is.
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-token-protection
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-mfa-all-users
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // demo/s-goal-guests-mfa
+  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-rail · no-found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-known', // demo+curated/s-goal-mfa-all-users
   'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa

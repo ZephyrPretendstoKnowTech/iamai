@@ -42,6 +42,7 @@ export function toCoverageMapping(state: MappingState, exclusionsGroupId: string
   return {
     breakGlassUsers,
     exclusionGroups,
+    exclusionsGroupId,
     serviceAccountUsers: [...state.serviceAccountUserIds],
   }
 }

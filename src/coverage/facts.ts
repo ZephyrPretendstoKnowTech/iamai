@@ -25,15 +25,23 @@ function carries(v: unknown): boolean {
   return true
 }
 
-function unreadConditions(c: Record<string, unknown>, users: Record<string, unknown>, devices: Record<string, unknown> | null): string[] {
+function unreadConditions(c: Record<string, unknown>, devices: Record<string, unknown> | null): string[] {
   const out = Object.entries(c)
     .filter(([k, v]) => !k.startsWith('@') && !READ_CONDITIONS.has(k) && carries(v))
     .map(([k]) => `conditions.${k}`)
   for (const [k, v] of Object.entries(devices ?? {})) if (!k.startsWith('@') && k !== 'deviceFilter' && carries(v)) out.push(`conditions.devices.${k}`)
-  // Guests of named tenants only: the population reading counts every guest.
-  const tenants = ((users.includeGuestsOrExternalUsers ?? null) as Record<string, unknown> | null)?.externalTenants as Record<string, unknown> | null | undefined
-  if (tenants && String(tenants.membershipKind ?? '').toLowerCase() !== 'all') out.push('conditions.users.includeGuestsOrExternalUsers.externalTenants')
   return out
+}
+
+/** Whose guests a guest include reaches: every external tenant's, only named tenants', or a scope IAMAI does not read. */
+function guestTenantsOf(users: Record<string, unknown>): 'all' | 'named' | 'unknown' {
+  const tenants = ((users.includeGuestsOrExternalUsers ?? null) as Record<string, unknown> | null)?.externalTenants as Record<string, unknown> | null | undefined
+  if (!tenants) return 'all'
+  const kind = String(tenants.membershipKind ?? '').toLowerCase()
+  const type = String(tenants['@odata.type'] ?? '').toLowerCase()
+  if (kind === 'all' || (kind === '' && type.endsWith('allexternaltenants'))) return 'all'
+  if (kind === 'enumerated' || (kind === '' && type.endsWith('enumeratedexternaltenants'))) return 'named'
+  return 'unknown'
 }
 
 export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoftManaged = false): PolicyFacts {
@@ -102,6 +110,7 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
       all: has(includeUsers, 'All'),
       members: has(includeUsers, 'All'), // members are covered whenever All is; explicit member-only targeting is via groups
       guests: includeGuests !== null ? [...includeGuests] : has(includeUsers, 'All') ? [] : null,
+      guestTenants: guestTenantsOf(users),
       roles: set(users.includeRoles),
       groups: set(users.includeGroups),
       users: new Set([...includeUsers].filter((u) => !/^(All|None|GuestsOrExternalUsers)$/i.test(u))),
@@ -146,7 +155,7 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
         ? { mode: typeof f.mode === 'string' ? f.mode : 'include', rule: f.rule }
         : null
     })(),
-    unreadConditions: unreadConditions(c, users, devices),
+    unreadConditions: unreadConditions(c, devices),
     workload:
       workloadSps.size > 0 || typeof spFilter === 'string'
         ? { sps: workloadSps, filterRule: typeof spFilter === 'string' ? spFilter : null }

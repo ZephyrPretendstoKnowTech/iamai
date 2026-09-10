@@ -13,6 +13,8 @@ export type PolicyFacts = {
     all: boolean
     members: boolean
     guests: GuestKinds | null
+    /** Whose guests a guest include reaches: every external tenant's, only named tenants', or a scope IAMAI does not read. */
+    guestTenants: 'all' | 'named' | 'unknown'
     roles: Set<string>
     groups: Set<string>
     users: Set<string>
@@ -158,6 +160,12 @@ export type ReasonKind =
   | 'apps-excluded'
   | 'session-weaker'
   | 'disabled-candidate'
+  /** A condition confines the policy to fewer sign-ins than the baseline's (classify.ts narrowerConditions). */
+  | 'conditions-narrower'
+  /** The goal's own policy carves out the exclusions group and this policy does not. */
+  | 'exclusion-missing'
+  /** The satisfiers between them reach fewer guest and external user kinds than the goal's baseline policies. */
+  | 'guest-types-narrower'
 
 export type Reason = {
   kind: ReasonKind

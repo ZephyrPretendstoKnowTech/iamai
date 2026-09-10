@@ -45,7 +45,7 @@
 // record by hand.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer, withBreakGlassCarveOut } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
@@ -130,7 +130,9 @@ function caseOf(f: Fixture, directory?: DirectoryEvidence): Case {
  * and the same emergency accounts as the answered fixture.
  */
 function open(): Fixture {
-  return noExclusionsAnswer(fixture(FIXTURE))
+  // The small tenant whose policies carve out its break-glass group, so both groups
+  // qualify and the one an operator chooses is not the one that sorts first.
+  return noExclusionsAnswer(withBreakGlassCarveOut(fixture(FIXTURE)))
 }
 
 /**

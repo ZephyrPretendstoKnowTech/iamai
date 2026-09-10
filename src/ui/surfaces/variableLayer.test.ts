@@ -35,7 +35,10 @@ test('missingVars names only the variables a line does not fill', () => {
 })
 
 test('the campaign who and done-when lines have no hole on the demo and GetIAMAI', () => {
-  const fixtures = allFixtures().filter((f) => f.name === 'demo' || f.name === 'getiamai')
+  // The demo in week two: on day one its MFA step is held by the baseline's
+  // unsettled source references with an unread reach, whose counts Foundation A
+  // withholds by design (Step 3 correction made that step a change rather than In place).
+  const fixtures = allFixtures().filter((f) => f.name === 'demo-week2' || f.name === 'getiamai')
   for (const f of fixtures) {
     const run = runFixture(f)
     const firstEnforce = run.steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null

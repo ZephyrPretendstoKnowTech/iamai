@@ -9,7 +9,8 @@ import { allFixtures } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 
 test('the guests goal names its own coverage, and the row says so or nothing', () => {
-  const run = runFixture(allFixtures().find((f) => f.name === 'demo')!)
+  // Week two: the guest policy carves out the chosen exclusions group and is in place; on day one it does not (Step 3 correction).
+  const run = runFixture(allFixtures().find((f) => f.name === 'demo-week2')!)
   const g = run.steps.find((s) => s.goalId === 'guests-mfa')!
   // Item 15: the goal's own policy, not the all-users match.
   assert.ok(g.deliveredBy.length > 0, 'the guests goal has existing coverage')

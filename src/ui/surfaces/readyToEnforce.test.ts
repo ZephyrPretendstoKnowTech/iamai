@@ -935,7 +935,10 @@ test('007.13: a Ready lifecycle Foundation A will not implement is offered no im
   const f = noExclusionsAnswer(fixture(FIXTURE))
   const run = runFixture(f)
   const c = caseOf(run, f.snapshot, f, STEP_ID)
-  assert.equal(c.step.state.lifecycle, 'ready-to-enforce', 'Foundation B still says the gates closed')
+  // Foundation B's gates closed, but the policy's required exclusions group has no
+  // usable, owner-confirmed object, so the policy goes on being watched and is not
+  // ready to turn on (Step 3 correction, owner decision). Foundation A's hold is unchanged.
+  assert.equal(c.step.state.lifecycle, 'report-only', 'not Ready to enforce while the exclusions prerequisite is unresolved')
   assert.equal(unavailableReason(c.step), 'missing-object')
   assert.ok((c.step.action.missing ?? []).length > 0, 'and it says which object')
   assert.equal(implementationOffered(c.step), false)

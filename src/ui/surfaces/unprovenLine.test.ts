@@ -24,8 +24,9 @@ const campaignOn = (name: FixtureName) => {
 }
 
 test('with Require MFA for Everyone in place, the line does not render although people are in the bucket', () => {
-  const c = campaignOn('demo')
-  assert.equal(c.mfaInPlace, true, 'the demo has Require MFA for Everyone in place')
+  // Week two, where the MFA policy carves out the chosen exclusions group; on day one it does not and is partly in place.
+  const c = campaignOn('demo-week2')
+  assert.equal(c.mfaInPlace, true, 'the demo in week two has Require MFA for Everyone in place')
   assert.ok(c.unproven.length > 0, 'the records still hold people never seen to complete MFA')
   assert.deepEqual(c.ex.unproven, [], 'the step carries nobody in the bucket')
   assert.ok(!c.lines.some((l) => UNPROVEN.test(l)), 'no "never seen to complete MFA" line')

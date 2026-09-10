@@ -2,7 +2,8 @@
 import goalsData from '../../data/goals.json' with { type: 'json' }
 import { groupSignatures } from '../baseline/index.ts'
 import type { CaPolicy } from '../baseline/types.ts'
-import { matchesSignature, narrowerConditions, populationReach, raiseFloor } from './classify.ts'
+import { guestKindsReached, matchesSignature, narrowerConditions, populationReach, raiseFloor } from './classify.ts'
+import { engine } from '../content/content.ts'
 import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import { policyFacts } from './facts.ts'
@@ -105,7 +106,19 @@ export type CoverageInput = {
    * policies is not the exclusions group because it is excluded. Only a caller
    * with no mapping at all falls back to the adapter's assumed reading.
    */
-  mapping?: { breakGlassUsers?: string[]; exclusionGroups?: Record<string, string>; /** The confirmed service accounts: the population of a goal that targets them (E9). */ serviceAccountUsers?: string[] }
+  mapping?: {
+    breakGlassUsers?: string[]
+    exclusionGroups?: Record<string, string>
+    /**
+     * The exclusions group the operator chose and this scan read (Step 2,
+     * mapping/safetyChoice.ts actionableExclusionsGroupId), or null where there is
+     * none. A goal whose own policy carves the group out is not in place on a
+     * policy that does not. Undefined: the caller has no such identity to check.
+     */
+    exclusionsGroupId?: string | null
+    /** The confirmed service accounts: the population of a goal that targets them (E9). */
+    serviceAccountUsers?: string[]
+  }
   /**
    * The baseline's goal map (walk-51 item 9, goalMap.ts): for a goal it holds,
    * the map's policy is the one evaluated against — its floor, its name in a
@@ -148,7 +161,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const goalMap = input.goalMap ?? PINNED_GOAL_MAP
   const factsByKey = new Map<string, PolicyFacts>()
   input.baselinePolicies.forEach((p, i) => factsByKey.set(policyKey(p as { id?: string | null; displayName: string }), baselineFacts[i]))
-  const goals: { goal: Goal; baselineMatches: PolicyFacts[] }[] = CATALOGUE.map((goal) => {
+  const rawByFacts = new Map<PolicyFacts, unknown>(baselineFacts.map((f, i) => [f, input.baselinePolicies[i]]))
+  const goals: { goal: Goal; baselineMatches: PolicyFacts[]; goalPolicies: PolicyFacts[] }[] = CATALOGUE.map((goal) => {
     const signatureMatches = baselineFacts.filter((f) =>
       goal.implementations.some((impl) => matchesSignature(f, impl.signature)),
     )
@@ -156,7 +170,9 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     // The map's policies, in order (A first), when the package carries them;
     // else the signature matches (an upload with no map, a synthetic fixture).
     const mapped = (goalMap[goal.id] ?? []).map((k) => factsByKey.get(k)).filter((f): f is PolicyFacts => f !== undefined)
-    return { goal, baselineMatches: mapped.length > 0 ? mapped.slice(0, 1) : signatureMatches }
+    // Every policy the baseline implements the goal with, both halves of a pair:
+    // what the goal reaches is what they reach together.
+    return { goal, baselineMatches: mapped.length > 0 ? mapped.slice(0, 1) : signatureMatches, goalPolicies: mapped.length > 0 ? mapped : signatureMatches }
   })
   // Baseline policies no catalogue goal matches are not goals, findings or
   // steps (prompt 46 item 14, target-state §5 footer). They are listed as not
@@ -169,8 +185,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     .map((b) => ({ name: b.name, json: jsonOf(b.name), reason: b.workload !== null ? NOT_ASSESSED.agentIdentity : NOT_ASSESSED.noGoal }))
   for (const w of input.baselineUnusable) notAssessed.push({ name: w.policyName, json: jsonOf(w.policyName), reason: w.warning })
 
-  const results: GoalResult[] = goals.map(({ goal, baselineMatches }) =>
-    evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets),
+  const results: GoalResult[] = goals.map(({ goal, baselineMatches, goalPolicies }) =>
+    evaluateGoal(goal, baselineMatches, tenantFacts, input, assumed, facets, goalPolicies, rawByFacts),
   )
 
   // A tenant policy "maps to a goal" when any catalogue signature matches it,
@@ -233,6 +249,20 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   }
 }
 
+/**
+ * Whether the goal's own policy carves out the exclusions group: the baseline
+ * member through its placeholder for the author's exclusions group, the goal's
+ * template through its `{exclusionsGroup}` token. Only a goal whose policy does
+ * makes the carve-out part of what being in place means; nothing else is required.
+ */
+function carvesOutExclusionsGroup(raw: unknown): boolean {
+  const p = (raw ?? {}) as { placeholders?: Record<string, string>; conditions?: { users?: { excludeGroups?: unknown } } }
+  const groups = p.conditions?.users?.excludeGroups
+  const excluded = Array.isArray(groups) ? groups.filter((g): g is string => typeof g === 'string').map((g) => g.toLowerCase()) : []
+  const tokens = new Set(['{exclusionsgroup}', ...Object.entries(p.placeholders ?? {}).filter(([, t]) => t === 'exclusionsGroup').map(([id]) => id.toLowerCase())])
+  return excluded.some((g) => tokens.has(g))
+}
+
 function confirmedExclusions(mapping: NonNullable<CoverageInput['mapping']>): AssumedExclusions {
   return {
     groups: new Map(Object.entries(mapping.exclusionGroups ?? {})),
@@ -248,6 +278,8 @@ function evaluateGoal(
   input: CoverageInput,
   assumed: AssumedExclusions,
   facets: ReturnType<typeof detectFacets>,
+  goalPolicies: PolicyFacts[],
+  rawByFacts: ReadonlyMap<PolicyFacts, unknown>,
 ): GoalResult {
   const impl = goal.implementations[0]
   const base: Omit<GoalResult, 'status' | 'statement'> = {
@@ -302,6 +334,21 @@ function evaluateGoal(
   // goal's own template. A tenant policy is read against it for what it gives
   // away — resources it excludes, conditions that confine it — and never by name.
   const reference = baselineMatches[0] ?? policyFacts(impl.template, input.strengths)
+  // The exclusions group, where the goal's own policy carves it out, is part of
+  // what the goal means (owner decision, Step 3 correction): the group the
+  // operator chose and this scan read, or null where there is none for a policy
+  // to carry. A caller with no mapping has no such identity to check against.
+  const requiresExclusion = carvesOutExclusionsGroup(baselineMatches[0] !== undefined ? (rawByFacts.get(baselineMatches[0]) ?? null) : impl.template)
+  const mappedGroup = input.mapping?.exclusionsGroupId
+  const exclusionsGroupKey = mappedGroup === undefined ? undefined : mappedGroup === null ? null : mappedGroup.toLowerCase()
+  // The guest and external user kinds the goal's own policies reach between them.
+  const requiredKinds = new Set<string>()
+  if (impl.expectedWho.kind === 'guests' || impl.expectedWho.kind === 'all') {
+    for (const b of goalPolicies.length > 0 ? goalPolicies : [reference]) {
+      const k = guestKindsReached(b)
+      if (k !== 'unknown') for (const x of k) requiredKinds.add(x)
+    }
+  }
   // The reference's own resource exclusions. A tenant policy that excludes
   // exactly what the reference excludes delivers the same scope; one that
   // excludes more delivers a narrower scope, and an exclusion IAMAI drops here
@@ -311,13 +358,20 @@ function evaluateGoal(
   // Candidates (§7.1): the goal's shape, and this goal's policy at all. A policy
   // whose assignments leave the goal's population outside it (an internal-users
   // policy that excludes guests, for the guests goal) is another goal's policy
-  // whatever its grant; so is one a condition confines to fewer sign-ins than
-  // the reference (a block that applies only off the office network, MFA only on
-  // Windows). Neither is a weaker version of this goal's control, and neither
-  // may be counted, named or changed as though it were.
-  const candidates = tenantFacts.filter(
-    (f) => matchesSignature(f, impl.signature) && populationReach(f, impl.expectedWho.kind) !== 'none' && narrowerConditions(f, reference).length === 0,
-  )
+  // whatever its grant, and may not be counted, named or changed as though it
+  // were. A policy that is this goal's policy but falls short of it — a narrower
+  // condition, fewer apps, no exclusions group — stays a candidate: it is the
+  // policy to correct, and dropping it would ask for a duplicate. A condition
+  // that defines another catalogue goal (risk, flows, legacy clients) is the
+  // signature's to read, so that policy never becomes this goal's candidate.
+  const candidates = tenantFacts.filter((f) => matchesSignature(f, impl.signature) && populationReach(f, impl.expectedWho.kind) !== 'none')
+  // An all-users goal asks about guest kinds only where a policy of its own says
+  // something about them — excludes guests, or includes some kinds or some
+  // tenants. Policies that reach people by name, group or role make no statement
+  // about guest kinds, and the directory measures who they reach.
+  const narrowsGuests = (f: PolicyFacts): boolean =>
+    (f.who.all && f.whoNot.guests) || (!f.who.all && f.who.guests !== null && (f.who.guests.length > 0 || f.who.guestTenants !== 'all' || f.whoNot.guests))
+  if (impl.expectedWho.kind === 'all' && !candidates.some((f) => (f.state === 'enabled' || f.state === 'enabledForReportingButNotEnforced') && narrowsGuests(f))) requiredKinds.clear()
   if (impl.expectedWho.kind === 'workload') {
     return evaluateStructural(goal, base, candidates, floor, baselineMatches)
   }
@@ -335,6 +389,12 @@ function evaluateGoal(
   const coveredBy = new Map<string, Set<string>>()
   /** The candidates whose assignments reach the goal's whole population class: the only proof there is where nobody is in it. */
   const reachesWhole = new Set<string>()
+  /** The strong candidates nothing about which falls short: the only policies that can deliver the goal. */
+  const eligible = new Set<string>()
+  /** The expected people the satisfiers cover. `enforced` is everyone a strong policy covers, satisfier or not. */
+  const satisfied = new Set<string>()
+  /** Where a candidate falls short of the goal: stated only where nothing else delivers it. */
+  const defects: Reason[] = []
   const reasons: Reason[] = []
   let anyEstimated = false
   let anyUnresolved = false
@@ -352,6 +412,14 @@ function evaluateGoal(
     const extraExcluded = [...c.apps.excludedIds].filter((a) => !baselineExcludedApps.has(a.toLowerCase()))
     const unreadableAppFilter = c.apps.filterRule !== null
     if (extraExcluded.length > 0 || unreadableAppFilter) caveats.push('apps-excluded')
+    // Conditions that confine it to fewer sign-ins than the reference, and the
+    // exclusions group the goal's own policy carves out and this one does not.
+    const conditions = narrowerConditions(c, reference)
+    if (conditions.length > 0) caveats.push('conditions-narrower')
+    const lacksExclusion = requiresExclusion && exclusionsGroupKey !== undefined &&!(exclusionsGroupKey !== null && [...c.whoNot.groups].some((g) => g.toLowerCase() === exclusionsGroupKey))
+    // With no usable, owner-confirmed group there is nothing the policy could carry
+    // yet: the correction waits on the exclusions prerequisite (owner decision).
+    if (lacksExclusion) caveats.push(...(exclusionsGroupKey === null ? ['exclusion-missing', 'exclusion-unresolved'] : ['exclusion-missing']))
     const live = c.state === 'enabled' || c.state === 'enabledForReportingButNotEnforced'
     if (populationReach(c, impl.expectedWho.kind) === 'whole') reachesWhole.add(c.id)
 
@@ -382,21 +450,12 @@ function evaluateGoal(
       for (const id of strongPop) reportOnly.add(id)
     } else if (meetsFloor) {
       contribution = 'strong'
-      coveredBy.set(c.id, strongPop)
       for (const id of strongPop) enforced.add(id)
-      if (caveats.includes('apps-narrower')) {
-        reasons.push({
-          kind: 'apps-narrower',
-          userIds: [...strongPop],
-          detail: REASON.appsNarrower(c.name),
-        })
-      }
-      if (caveats.includes('apps-excluded')) {
-        reasons.push({
-          kind: 'apps-excluded',
-          userIds: [...strongPop],
-          detail: unreadableAppFilter ? REASON.appsFiltered(c.name) : REASON.appsExcluded(c.name, extraExcluded.length),
-        })
+      // A satisfier: nothing about it falls short, and nothing about its reach is unread.
+      if (caveats.length === 0 && who.unresolvedGroups.length === 0) {
+        eligible.add(c.id)
+        coveredBy.set(c.id, strongPop)
+        for (const id of strongPop) satisfied.add(id)
       }
     } else {
       contribution = 'weak'
@@ -417,6 +476,17 @@ function evaluateGoal(
     // own scope belongs to mfa-all-users), so it is not this goal's own coverage.
     const ownScope = impl.expectedWho.kind === 'all' || !c.who.all
     contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope })
+    // Stated for an enforced policy that meets the floor. A report-only or weaker
+    // policy's gap is its state or its control, and its enforcement carries only
+    // that: Microsoft asks no exclusion of a report-only policy, and Foundation A
+    // refuses any final policy that still reaches an emergency account.
+    if (contribution === 'strong' && caveats.length > 0) {
+      const people = [...strongPop]
+      if (caveats.includes('apps-narrower')) defects.push({ kind: 'apps-narrower', userIds: people, detail: REASON.appsNarrower(c.name) })
+      if (caveats.includes('apps-excluded')) defects.push({ kind: 'apps-excluded', userIds: people, detail: unreadableAppFilter ? REASON.appsFiltered(c.name) : REASON.appsExcluded(c.name, extraExcluded.length) })
+      if (conditions.length > 0) defects.push({ kind: 'conditions-narrower', userIds: people, detail: REASON.conditionsNarrower(c.name, conditions) })
+      if (lacksExclusion) defects.push({ kind: 'exclusion-missing', userIds: [], detail: REASON.exclusionMissing(c.name) })
+    }
   }
 
   for (const id of enforced) {
@@ -501,25 +571,67 @@ function evaluateGoal(
   // over an empty set: that is how an internal-users policy that excludes guests
   // was named the policy satisfying the guests goal in a tenant with no guests.
   const vacuous = effectiveExpected.size === 0
-  const fullyEnforced = vacuous
-    ? contributions.some((c) => c.contribution === 'strong' && reachesWhole.has(c.policyId))
-    : [...effectiveExpected].every((id) => enforced.has(id))
+  // The guest and external user kinds the satisfiers reach between them, against
+  // the kinds the goal's own policies reach. The directory cannot say which kind
+  // a guest is, so a policy for some kinds reaches everyone it counts and still
+  // leaves the other kinds out: a gap no headcount shows, least of all in a
+  // tenant with no guests. A kind IAMAI cannot read settles nothing.
+  const reachedKinds = new Set<string>()
+  let kindsUnknown = false
+  for (const c of candidates) {
+    if (!eligible.has(c.id)) continue
+    const k = guestKindsReached(c)
+    if (k === 'unknown') kindsUnknown = true
+    else for (const x of k) reachedKinds.add(x)
+  }
+  const missingKinds = [...requiredKinds].filter((k) => !reachedKinds.has(k))
+  // The kinds no live candidate reaches at all. Kinds only a policy that falls
+  // short reaches are that policy's finding, stated by its own reason.
+  const liveKinds = new Set<string>()
+  for (const c of candidates) {
+    if (c.state !== 'enabled' && c.state !== 'enabledForReportingButNotEnforced') continue
+    const k = guestKindsReached(c)
+    if (k !== 'unknown') for (const x of k) liveKinds.add(x)
+  }
+  const unreachedKinds = [...requiredKinds].filter((k) => !liveKinds.has(k))
+  const peopleCovered = vacuous
+    ? contributions.some((c) => eligible.has(c.policyId) && (impl.expectedWho.kind === 'guests' || reachesWhole.has(c.policyId)))
+    : [...effectiveExpected].every((id) => satisfied.has(id))
+  const fullyEnforced = peopleCovered && missingKinds.length === 0
 
   // A goal the policy delivers for fewer apps than the goal expects is not in
   // place; it is partly in place (prompt 37 §10). Saying "In place ... Covers
   // fewer apps than the goal expects" in one breath is the contradiction the
   // review caught (T13): the caveat is the finding, so it decides the status
   // rather than trailing after it.
-  const appsNarrower = reasons.some((r) => r.kind === 'apps-narrower' || r.kind === 'apps-excluded')
-
+  //
+  // One policy that delivers the goal delivers it (owner decision, Step 3
+  // correction): the status reads the satisfiers, so a second policy that falls
+  // short does not make a delivered goal partly delivered. Where nothing else
+  // delivers the goal, the policy that falls short is the one to correct.
   let status: GoalResult['status']
-  if (anyUnresolved) status = 'unknown'
-  else if (contributions.length === 0 || disabledOnly) status = 'absent'
-  else if (fullyEnforced) status = appsNarrower ? 'partial' : 'enforced'
+  if (contributions.length === 0 || disabledOnly) status = 'absent'
+  else if (fullyEnforced) status = 'enforced'
+  else if (anyUnresolved || (kindsUnknown && missingKinds.length > 0)) status = 'unknown'
   else if (enforced.size === 0 && reportOnly.size === 0 && weak.size > 0 && reasons.some((r) => r.belowBaseline) && reasons.every((r) => r.belowBaseline || (r.kind === 'excluded' && r.expected)))
     status = 'below-baseline'
-  else if (enforced.size > 0 || reportOnly.size > 0 || weak.size > 0) status = 'partial'
+  // A strong policy of the goal's own that reaches the goal's people and carves
+  // them out through an exclusion nobody confirmed is the policy to correct, not a
+  // missing one: calling it absent would ask for a duplicate beside it.
+  else if (
+    enforced.size > 0 ||
+    reportOnly.size > 0 ||
+    weak.size > 0 ||
+    (contributions.some((c) => c.contribution === 'strong') && (vacuous || reasons.some((r) => r.kind === 'excluded' && !r.expected && r.userIds.length > 0)))
+  )
+    status = 'partial'
   else status = 'absent'
+
+  // What falls short is the finding only where the goal is not delivered.
+  if (status !== 'enforced') {
+    reasons.push(...defects)
+    if (unreachedKinds.length > 0 && !kindsUnknown) reasons.push({ kind: 'guest-types-narrower', userIds: [], detail: REASON.guestTypes(requiredKinds.size - unreachedKinds.length, requiredKinds.size) })
+  }
 
   // Who satisfied it, from the classifier that decided it was satisfied. Every
   // strong candidate that covers somebody the goal still expects is in the set:
@@ -529,9 +641,23 @@ function evaluateGoal(
   // the proof a singular sentence needs — one policy covering every expected
   // person by itself — and nothing but this decides it.
   if (status === 'enforced') {
-    const strongContribs = contributions.filter((c) => c.contribution === 'strong')
-    const contributors = vacuous ? strongContribs.filter((c) => reachesWhole.has(c.policyId)) : strongContribs.filter((c) => [...(coveredBy.get(c.policyId) ?? [])].some((id) => effectiveExpected.has(id)))
-    const covers = (c: CandidateContribution): boolean => [...effectiveExpected].every((id) => coveredBy.get(c.policyId)?.has(id))
+    const strongContribs = contributions.filter((c) => eligible.has(c.policyId))
+    const kindsOf = (id: string): Set<string> => {
+      const f = candidates.find((x) => x.id === id)
+      const k = f ? guestKindsReached(f) : new Set<string>()
+      return k === 'unknown' ? new Set<string>() : k
+    }
+    const contributes = (c: CandidateContribution): boolean =>
+      vacuous
+        ? impl.expectedWho.kind === 'guests'
+          ? kindsOf(c.policyId).size > 0
+          : reachesWhole.has(c.policyId)
+        : [...(coveredBy.get(c.policyId) ?? [])].some((id) => effectiveExpected.has(id)) || [...kindsOf(c.policyId)].some((k) => requiredKinds.has(k))
+    const contributors = strongContribs.filter(contributes)
+    const covers = (c: CandidateContribution): boolean =>
+      [...effectiveExpected].every((id) => coveredBy.get(c.policyId)?.has(id)) &&
+      [...requiredKinds].every((k) => kindsOf(c.policyId).has(k)) &&
+      (!vacuous || impl.expectedWho.kind === 'guests' || reachesWhole.has(c.policyId))
     // The goal's own policy first (walk-51 item 15): where a guest policy and an
     // all-users policy each cover every guest, the guest policy is the one that
     // satisfies the guests goal, and the all-users policy is that goal's answer.
@@ -686,7 +812,13 @@ function buildStatement(
   // Which accounts, not just how many, when this goal excludes fewer than the
   // tenant's full break-glass set (prompt 37 §5, T14).
   const breakGlassMissing = [...allBreakGlass].filter((id) => !breakGlassIds.has(id))
-  const narrower = base.reasons.some((r) => r.kind === 'apps-narrower' || r.kind === 'apps-excluded') ? ' Covers fewer apps than the goal expects.' : ''
+  const has = (kind: string): boolean => base.reasons.some((r) => r.kind === kind)
+  const narrower = [
+    has('apps-narrower') || has('apps-excluded') ? ' Covers fewer apps than the goal expects.' : '',
+    has('conditions-narrower') ? ` ${engine.coverage.statement.conditionsNarrower}` : '',
+    has('guest-types-narrower') ? ` ${engine.coverage.statement.guestTypes}` : '',
+    has('exclusion-missing') ? ` ${engine.coverage.statement.exclusionMissing}` : '',
+  ].join('')
 
   // The policies the classifier counted towards the satisfaction, not every strong
   // candidate: a strong policy that covers none of the goal's people delivers none of it.

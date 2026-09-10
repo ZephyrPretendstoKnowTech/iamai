@@ -283,6 +283,35 @@
       },
       "readiness": {
         "notMeasured": "not measured"
+      },
+      "coverage": {
+        "$comment": "Why an existing policy that is this goal's policy does not put the goal in place (src/coverage/coverage.ts): the reason under the goal, the gap a plan row shows, and the sentence the goal's statement adds. A gap never contains the word \"and\": the row keeps only what comes before it (coverage/verdict.ts gapClauseOf).",
+        "reason": {
+          "exclusionMissing": "{policy} does not exclude the exclusions group",
+          "conditionsNarrower": "{policy} applies only under narrower conditions than the baseline: {conditions}",
+          "guestTypes": "The policies reach {reached} of the {required} guest types the baseline covers"
+        },
+        "gap": {
+          "exclusionMissing": "does not exclude the exclusions group",
+          "conditionsNarrower": "applies only under narrower conditions",
+          "guestTypes": "reaches only some guest types"
+        },
+        "statement": {
+          "exclusionMissing": "It does not exclude the exclusions group.",
+          "conditionsNarrower": "It applies only under narrower conditions than the baseline.",
+          "guestTypes": "It reaches only some guest types."
+        },
+        "conditions": {
+          "locations": "locations",
+          "platforms": "device platforms",
+          "deviceFilter": "a device filter",
+          "clientAppTypes": "client apps",
+          "signInRisk": "sign-in risk",
+          "userRisk": "user risk",
+          "servicePrincipalRisk": "service principal risk",
+          "authenticationFlows": "authentication flows",
+          "unread": "a condition IAMAI does not read"
+        }
       }
     }
   },

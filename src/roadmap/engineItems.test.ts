@@ -28,7 +28,9 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming })
 
 test('the three blocks are evidence-gated with no device-readiness gate; the admin session policy has no admin-readiness gate', () => {
-  const f = fixture('demo')
+  // Week two: the device-code block carves out the chosen exclusions group and is delivered, so its
+  // evidence stands as the step's own. On day one it lacks the group and is partly in place (Step 3 correction).
+  const f = fixture('demo-week2')
   const r = runFixture(f)
   for (const goalId of ['block-device-code', 'block-auth-transfer', 'block-unsupported-platforms']) {
     const s = r.steps.find((x) => x.goalId === goalId)!
@@ -48,7 +50,8 @@ test('the three blocks are evidence-gated with no device-readiness gate; the adm
 })
 
 test("the manager's nobody-here-used-it clause applies only when the records show nobody affected", () => {
-  const f = fixture('demo')
+  // Week two, where the device-code block is delivered (see above).
+  const f = fixture('demo-week2')
   const r = runFixture(f)
   const ctx = ctxFor(f, r)
   const dc = r.steps.find((x) => x.goalId === 'block-device-code')!

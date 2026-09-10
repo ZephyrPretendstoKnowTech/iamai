@@ -202,7 +202,11 @@ test('B: the sample Plan shows a useful mix, and every part of it is derived', (
   const by = (p: (s: Step) => boolean) => run.steps.filter(p)
   // Work already done: a control the tenant's own policies satisfy.
   const satisfied = by((s) => s.state.satisfied === true && s.state.inPlace === true)
-  assert.ok(satisfied.length >= 2, `the sample has ${satisfied.length} controls already in place`)
+  // Day one's policies carve out the break-glass group rather than the chosen
+  // exclusions group, so they are partly in place until it is corrected (Step 3
+  // correction); what is in place needs no exclusions group.
+  assert.ok(satisfied.length >= 1, `the sample has ${satisfied.length} controls already in place`)
+  assert.ok(by((s) => s.id.startsWith('s-goal-') && s.status !== 'done' && run.coverage.results.some((x) => x.goal.id === s.goalId && x.reasons.some((y) => y.kind === 'exclusion-missing'))).length >= 1, 'and controls partly in place for the exclusions group alone')
   // Work still to do.
   assert.ok(by((s) => s.status !== 'done').length >= 5, 'the sample has controls that still need work')
   // A real prerequisite, named by the step that holds it — not a label.
