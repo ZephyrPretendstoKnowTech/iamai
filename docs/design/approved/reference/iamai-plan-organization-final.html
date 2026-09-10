@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IAMAI Plan Organization — Final Reference</title>
+<style>
+:root{
+  --canvas:#0D1117;--surface:#151C25;--secondary:#111821;--raised:#1A2430;
+  --line:#2B3745;--strong:#39495A;--text:#F2F5F7;--text2:#C7D0D8;--muted:#8F9AA6;
+  --brand:#58C8BC;--brand2:#78D9CE;--brand-soft:#173A3D;--brand-soft-text:#DFFFF9;
+  --success:#79D7A6;--attention:#E3B35B;--danger:#E88A8A;
+  --hover:rgba(255,255,255,.018);--shell:rgba(13,17,23,.95);--brand-border:rgba(88,200,188,.45);
+  --font-display:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --font-ui:"IBM Plex Sans",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --r8:8px;--r12:12px;
+}
+*{box-sizing:border-box} html{background:var(--canvas)}
+body{margin:0;background:var(--canvas);color:var(--text);font:14px/1.5 var(--font-ui)}
+button,input{font:inherit;color:inherit}button{cursor:pointer}
+.topbar{position:sticky;top:0;z-index:30;background:var(--shell);border-bottom:1px solid var(--line)}
+.topbar-inner{width:min(1240px,calc(100% - 44px));margin:auto;height:54px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{display:flex;align-items:center;gap:6px;font-weight:700}.brand svg{width:20px;height:20px;color:var(--brand)}
+.nav{display:flex;align-items:center;gap:5px}.nav span{padding:7px 9px;border-radius:7px;color:var(--muted);font-size:12px}.nav .active{background:var(--secondary);color:var(--text)}
+.shell-meta{font-size:11px;color:var(--muted);white-space:nowrap}
+.page{width:min(1240px,calc(100% - 44px));margin:0 auto 80px}
+.hero{padding:42px 0 22px}.eyebrow{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700}
+h1{font:700 42px/1.06 var(--font-display);margin:7px 0 8px}.hero p{margin:0;color:var(--text2);font-size:16px;max-width:760px}
+.controls{display:grid;grid-template-columns:auto minmax(240px,1fr) auto;gap:12px;align-items:center;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 0}
+.view-wrap{display:flex;align-items:center;gap:8px}.label{font-size:12px;color:var(--muted)}
+.tabs{display:flex;border:1px solid var(--strong);border-radius:10px;overflow:hidden;background:var(--secondary)}
+.tabs button{border:0;border-right:1px solid var(--line);background:transparent;color:var(--muted);padding:8px 13px}.tabs button:last-child{border-right:0}
+.tabs button.active{background:var(--brand-soft);color:var(--brand-soft-text);box-shadow:inset 0 0 0 1px var(--brand-border)}
+.search{position:relative;min-width:0}.search input{width:100%;background:var(--secondary);border:1px solid var(--strong);border-radius:var(--r8);padding:9px 12px 9px 34px;outline:none}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted)}
+.focuses{display:flex;align-items:center;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+.focus,.completed-toggle{border:1px solid var(--strong);background:transparent;color:var(--text2);border-radius:var(--r8);padding:8px 10px;display:inline-flex;align-items:center;gap:7px}
+.focus.active,.completed-toggle.active{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-soft-text)}
+.count{min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--secondary);color:var(--muted);font-size:10px;display:grid;place-items:center}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto;background:var(--muted)}.dot.good{background:var(--success)}.dot.attn{background:var(--attention)}.dot.bad{background:var(--danger)}
+.board{padding-top:20px}.view{display:none}.view.active{display:block}.group{margin-top:24px;border-top:1px solid var(--strong)}.group:first-child{margin-top:0}
+.group.secondary{opacity:.9}.group-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:16px;align-items:center;padding:15px 0 10px}
+.group h2{font:700 21px/1.15 var(--font-display);margin:0}.group-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.group-date{font-size:12px;color:var(--text2);text-align:right;white-space:nowrap}.chev{width:30px;height:30px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:var(--r8)}
+.column-head,.row{display:grid;grid-template-columns:126px minmax(0,1fr) 240px 125px;gap:14px;align-items:center}
+.column-head{min-height:30px;padding:0 17px;border-top:1px solid var(--line);color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.column-head div:nth-child(n+3){text-align:right}.rows{border-bottom:1px solid var(--strong)}
+.row{min-height:64px;padding:0 17px;border-top:1px solid var(--line)}.row:hover{background:var(--hover)}.row.open{background:var(--surface)}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap}.title strong{display:block;font-weight:650}.sub{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta,.when{text-align:right;color:var(--muted);font-size:12px}.empty{display:none;text-align:center;color:var(--muted);padding:40px 0}.empty.show{display:block}
+@media(max-width:940px){
+  .controls{grid-template-columns:1fr}.focuses{justify-content:flex-start}
+  .column-head,.row{grid-template-columns:110px minmax(0,1fr)}.column-head div:nth-child(n+3){display:none}.meta,.when{text-align:left}
+}
+@media(max-width:650px){
+  .page,.topbar-inner{width:min(100% - 24px,1240px)}.nav{display:none}.shell-meta{display:none}h1{font-size:34px}
+  .view-wrap{flex-direction:column;align-items:flex-start}.tabs{width:100%}.tabs button{flex:1}
+  .focuses{overflow-x:auto;flex-wrap:nowrap}.focus,.completed-toggle{flex:0 0 auto}
+  .group-head{grid-template-columns:1fr auto}.group-date{grid-column:1;text-align:left}
+  .column-head{display:none}.row{grid-template-columns:1fr;gap:5px;padding:11px 8px}.meta,.when{text-align:left;font-size:11px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path d="M0 22 L31 30 L31 90 L0 100 Z"/><path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/></svg>IAMAI</div>
+    <nav class="nav"><span>Connect</span><span class="active">Plan</span><span>MFA Readiness</span><span>Export</span><span>How</span></nav>
+    <div class="shell-meta">Light theme · Account</div>
+  </div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div class="eyebrow">Tenant-specific rollout</div>
+    <h1>Plan</h1>
+    <p>Move from the tenant's current state to the baseline in a sequence that keeps the next safe action obvious.</p>
+  </section>
+
+  <section class="controls" aria-label="Plan controls">
+    <div class="view-wrap">
+      <span class="label">Group by</span>
+      <div class="tabs" role="tablist" aria-label="Plan grouping">
+        <button class="active" data-view="roadmap" role="tab" aria-selected="true">Roadmap</button>
+        <button data-view="status" role="tab" aria-selected="false">Status</button>
+        <button data-view="type" role="tab" aria-selected="false">Work type</button>
+      </div>
+    </div>
+    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" placeholder="Search steps..." aria-label="Search steps"></label>
+    <div class="focuses">
+      <button class="focus" data-focus="attention"><span class="dot bad"></span>Needs attention <span class="count">4</span></button>
+      <button class="focus" data-focus="upnext"><span class="dot attn"></span>Up next <span class="count">6</span></button>
+      <button class="completed-toggle" id="showCompleted">Show completed</button>
+    </div>
+  </section>
+
+  <section class="board">
+    <div class="view active" data-panel="roadmap">
+      <section class="group">
+        <div class="group-head"><div><h2>Preparation</h2><div class="group-meta">9 steps · 1 needs attention · finish before Phase 1</div></div><div class="group-date"></div><button class="chev">−</button></div>
+        <div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+          <div class="row open" data-title="Create or Correct Emergency Access Accounts" data-focus="upnext" data-type="setup" data-complete="no"><div class="status"><span class="dot"></span>Not started</div><div class="title"><strong>Create or Correct Emergency Access Accounts</strong><div class="sub">Tenant setup · Needed by Phase 1</div></div><div class="meta">—</div><div class="when"></div></div>
+          <div class="row" data-title="Create or Correct Exclusions Group" data-focus="upnext" data-type="setup" data-complete="no"><div class="status"><span class="dot"></span>Not started</div><div class="title"><strong>Create or Correct Exclusions Group</strong><div class="sub">Tenant setup · Needed by Phase 1</div></div><div class="meta">—</div><div class="when"></div></div>
+          <div class="row" data-title="Use Separate Accounts for Admin Work" data-focus="attention" data-type="setup" data-complete="no"><div class="status"><span class="dot bad"></span>Blocked</div><div class="title"><strong>Use Separate Accounts for Admin Work</strong><div class="sub">Tenant setup · 2 people need correction</div></div><div class="meta">2 people</div><div class="when"></div></div>
+          <div class="row" data-title="Create and Enforce the MFA Registration Campaign" data-focus="upnext" data-type="mfa" data-complete="no"><div class="status"><span class="dot attn"></span>In progress</div><div class="title"><strong>Create and Enforce the MFA Registration Campaign</strong><div class="sub">MFA & Authentication · Needed by Phase 1</div></div><div class="meta">7 people</div><div class="when"></div></div>
+        </div></div>
+      </section>
+
+      <section class="group">
+        <div class="group-head"><div><h2>Phase 1</h2><div class="group-meta">8 policy steps · 2 need attention</div></div><div class="group-date">Sep 22–27, 2026</div><button class="chev">−</button></div>
+        <div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+          <div class="row" data-title="Require a Fresh Sign-in for Intune Enrollment" data-focus="attention" data-type="ca" data-complete="no"><div class="status"><span class="dot bad"></span>Blocked</div><div class="title"><strong>Require a Fresh Sign-in for Intune Enrollment</strong><div class="sub">Conditional Access · Not deployed · prerequisite unresolved</div></div><div class="meta">31 people</div><div class="when">Starts Sep 22</div></div>
+          <div class="row" data-title="Require MFA for Administrators" data-focus="" data-type="ca" data-complete="no"><div class="status"><span class="dot attn"></span>Report-only</div><div class="title"><strong>Require MFA for Administrators</strong><div class="sub">Conditional Access · existing tenant policy</div></div><div class="meta">18 admins</div><div class="when">Review Sep 24</div></div>
+        </div></div>
+      </section>
+
+      <section class="group secondary">
+        <div class="group-head"><div><h2>Phase 2</h2><div class="group-meta">6 policy steps · follows Phase 1</div></div><div class="group-date">Sep 28–Oct 4, 2026</div><button class="chev">−</button></div>
+        <div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+          <div class="row" data-title="Require MFA to Register a Device" data-focus="upnext" data-type="ca" data-complete="no"><div class="status"><span class="dot"></span>Not deployed</div><div class="title"><strong>Require MFA to Register a Device</strong><div class="sub">Conditional Access</div></div><div class="meta">30 people</div><div class="when">Starts Sep 28</div></div>
+        </div></div>
+      </section>
+
+      <section class="group secondary">
+        <div class="group-head"><div><h2>Waiting</h2><div class="group-meta">5 steps · held by prerequisites, decisions, or unresolved evidence</div></div><div class="group-date"></div><button class="chev">+</button></div>
+        <div class="rows-wrap" hidden><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+          <div class="row" data-title="Limit How Long Sessions Last" data-focus="attention" data-type="ca" data-complete="no"><div class="status"><span class="dot bad"></span>Needs decision</div><div class="title"><strong>Limit How Long Sessions Last</strong><div class="sub">Conditional Access · scope unresolved</div></div><div class="meta">30 people</div><div class="when">Held</div></div>
+        </div></div>
+      </section>
+
+      <section class="group secondary">
+        <div class="group-head"><div><h2>Additional Microsoft recommendations</h2><div class="group-meta">Optional controls outside this baseline</div></div><div class="group-date"></div><button class="chev">+</button></div>
+        <div class="rows-wrap" hidden><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+          <div class="row" data-title="Protect Sign-In Method Registration" data-focus="" data-type="mfa" data-complete="no"><div class="status"><span class="dot"></span>Not started</div><div class="title"><strong>Protect Sign-In Method Registration</strong><div class="sub">MFA & Authentication · optional recommendation</div></div><div class="meta">30 people</div><div class="when"></div></div>
+        </div></div>
+      </section>
+
+      <section class="group secondary completed-group">
+        <div class="group-head"><div><h2>Complete</h2><div class="group-meta">5 steps · available for audit</div></div><div class="group-date"></div><button class="chev">+</button></div>
+        <div class="rows-wrap" hidden><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+          <div class="row" data-title="Alert on Emergency Account Sign-ins" data-focus="" data-type="setup" data-complete="yes"><div class="status"><span class="dot good"></span>Complete</div><div class="title"><strong>Alert on Emergency Account Sign-ins</strong><div class="sub">Tenant setup</div></div><div class="meta">2 accounts</div><div class="when"></div></div>
+        </div></div>
+      </section>
+    </div>
+
+    <div class="view" data-panel="status">
+      <section class="group"><div class="group-head"><div><h2>Needs attention</h2><div class="group-meta">Blocked, review-required, or decision-owned work</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Use Separate Accounts for Admin Work" data-focus="attention" data-type="setup" data-complete="no"><div class="status"><span class="dot bad"></span>Blocked</div><div class="title"><strong>Use Separate Accounts for Admin Work</strong><div class="sub">Tenant setup · 2 people need correction</div></div><div class="meta">2 people</div><div class="when"></div></div>
+        <div class="row" data-title="Require a Fresh Sign-in for Intune Enrollment" data-focus="attention" data-type="ca" data-complete="no"><div class="status"><span class="dot bad"></span>Blocked</div><div class="title"><strong>Require a Fresh Sign-in for Intune Enrollment</strong><div class="sub">Conditional Access · Not deployed · prerequisite unresolved</div></div><div class="meta">31 people</div><div class="when">Starts Sep 22</div></div>
+      </div></div></section>
+      <section class="group"><div class="group-head"><div><h2>Up next</h2><div class="group-meta">Work the operator can advance now</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Create or Correct Emergency Access Accounts" data-focus="upnext" data-type="setup" data-complete="no"><div class="status"><span class="dot"></span>Not started</div><div class="title"><strong>Create or Correct Emergency Access Accounts</strong><div class="sub">Tenant setup · Needed by Phase 1</div></div><div class="meta">—</div><div class="when"></div></div>
+        <div class="row" data-title="Create and Enforce the MFA Registration Campaign" data-focus="upnext" data-type="mfa" data-complete="no"><div class="status"><span class="dot attn"></span>In progress</div><div class="title"><strong>Create and Enforce the MFA Registration Campaign</strong><div class="sub">MFA & Authentication · Needed by Phase 1</div></div><div class="meta">7 people</div><div class="when"></div></div>
+      </div></div></section>
+      <section class="group secondary"><div class="group-head"><div><h2>In progress</h2><div class="group-meta">Active policy observation and configuration work</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Require MFA for Administrators" data-focus="" data-type="ca" data-complete="no"><div class="status"><span class="dot attn"></span>Report-only</div><div class="title"><strong>Require MFA for Administrators</strong><div class="sub">Conditional Access · existing tenant policy</div></div><div class="meta">18 admins</div><div class="when">Review Sep 24</div></div>
+      </div></div></section>
+      <section class="group secondary completed-group"><div class="group-head"><div><h2>Complete</h2><div class="group-meta">Already satisfied or finished</div></div><div></div><button class="chev">+</button></div><div class="rows-wrap" hidden><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Alert on Emergency Account Sign-ins" data-focus="" data-type="setup" data-complete="yes"><div class="status"><span class="dot good"></span>Complete</div><div class="title"><strong>Alert on Emergency Account Sign-ins</strong><div class="sub">Tenant setup</div></div><div class="meta">2 accounts</div><div class="when"></div></div>
+      </div></div></section>
+    </div>
+
+    <div class="view" data-panel="type">
+      <section class="group"><div class="group-head"><div><h2>Conditional Access</h2><div class="group-meta">Policy rollout work</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Require a Fresh Sign-in for Intune Enrollment" data-focus="attention" data-type="ca" data-complete="no"><div class="status"><span class="dot bad"></span>Blocked</div><div class="title"><strong>Require a Fresh Sign-in for Intune Enrollment</strong><div class="sub">Phase 1 · Not deployed · prerequisite unresolved</div></div><div class="meta">31 people</div><div class="when">Starts Sep 22</div></div>
+        <div class="row" data-title="Require MFA for Administrators" data-focus="" data-type="ca" data-complete="no"><div class="status"><span class="dot attn"></span>Report-only</div><div class="title"><strong>Require MFA for Administrators</strong><div class="sub">Phase 1 · existing tenant policy</div></div><div class="meta">18 admins</div><div class="when">Review Sep 24</div></div>
+      </div></div></section>
+      <section class="group"><div class="group-head"><div><h2>MFA & Authentication</h2><div class="group-meta">Registration, methods, and authentication readiness</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Create and Enforce the MFA Registration Campaign" data-focus="upnext" data-type="mfa" data-complete="no"><div class="status"><span class="dot attn"></span>In progress</div><div class="title"><strong>Create and Enforce the MFA Registration Campaign</strong><div class="sub">Preparation · Needed by Phase 1</div></div><div class="meta">7 people</div><div class="when"></div></div>
+      </div></div></section>
+      <section class="group"><div class="group-head"><div><h2>Tenant setup</h2><div class="group-meta">Accounts, groups, locations, devices, and prerequisites</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Create or Correct Emergency Access Accounts" data-focus="upnext" data-type="setup" data-complete="no"><div class="status"><span class="dot"></span>Not started</div><div class="title"><strong>Create or Correct Emergency Access Accounts</strong><div class="sub">Preparation · Needed by Phase 1</div></div><div class="meta">—</div><div class="when"></div></div>
+      </div></div></section>
+      <section class="group secondary"><div class="group-head"><div><h2>Resolution & decisions</h2><div class="group-meta">Operator-owned choices and source ambiguities</div></div><div></div><button class="chev">−</button></div><div class="rows-wrap"><div class="column-head"><div>State</div><div>Step</div><div>Impact</div><div>When</div></div><div class="rows">
+        <div class="row" data-title="Resolve the Admin Portal Baseline Conflict" data-focus="attention" data-type="resolution" data-complete="no"><div class="status"><span class="dot bad"></span>Blocked</div><div class="title"><strong>Resolve the Admin Portal Baseline Conflict</strong><div class="sub">Source conflict · no tenant action yet</div></div><div class="meta">—</div><div class="when">Held</div></div>
+      </div></div></section>
+    </div>
+    <div class="empty" id="empty">No steps match this view.</div>
+  </section>
+</main>
+<script>
+const buttons=[...document.querySelectorAll('[data-view]')],panels=[...document.querySelectorAll('[data-panel]')],search=document.getElementById('search'),focusButtons=[...document.querySelectorAll('[data-focus]')],showCompleted=document.getElementById('showCompleted'),empty=document.getElementById('empty');
+let focus='',completed=false;
+buttons.forEach(b=>b.addEventListener('click',()=>{buttons.forEach(x=>{const a=x===b;x.classList.toggle('active',a);x.setAttribute('aria-selected',a?'true':'false')});panels.forEach(p=>p.classList.toggle('active',p.dataset.panel===b.dataset.view));apply()}));
+focusButtons.forEach(b=>b.addEventListener('click',()=>{focus=focus===b.dataset.focus?'':b.dataset.focus;focusButtons.forEach(x=>x.classList.toggle('active',x.dataset.focus===focus));apply()}));
+showCompleted.addEventListener('click',()=>{completed=!completed;showCompleted.classList.toggle('active',completed);apply()});
+search.addEventListener('input',apply);
+document.querySelectorAll('.chev').forEach(b=>b.addEventListener('click',()=>{const w=b.closest('.group').querySelector('.rows-wrap');if(w.hasAttribute('hidden')){w.removeAttribute('hidden');b.textContent='−'}else{w.setAttribute('hidden','');b.textContent='+'}}));
+function apply(){
+  const q=search.value.trim().toLowerCase(),panel=document.querySelector('.view.active');let visible=0;
+  panel.querySelectorAll('.row').forEach(r=>{const ok=(!q||(r.dataset.title||'').toLowerCase().includes(q))&&(!focus||r.dataset.focus===focus)&&(completed||r.dataset.complete!=='yes');r.style.display=ok?'grid':'none';if(ok)visible++});
+  panel.querySelectorAll('.group').forEach(g=>{const rows=[...g.querySelectorAll('.row')];g.style.display=rows.some(r=>r.style.display!=='none')?'block':'none'});
+  empty.classList.toggle('show',visible===0);
+}
+apply();
+</script>
+</body>
+</html>

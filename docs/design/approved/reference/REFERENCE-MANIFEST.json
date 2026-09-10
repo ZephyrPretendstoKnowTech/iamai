@@ -1,0 +1,189 @@
+{
+  "generated": "2026-09-09",
+  "status": "current-approved-comparison-reference",
+  "purpose": "Current IAMAI visual comparison/reference pack. Canonical HTML continues to own application anatomy; these files own the approved visual skin used for rendered comparison.",
+  "authority": {
+    "precedence": [
+      "production technical/content truth",
+      "approved HTML application anatomy",
+      "approved visual skin"
+    ],
+    "pageReferenceCopyAuthority": false,
+    "copyAuthority": "docs/design/content.json",
+    "lightTheme": "Mineral Teal",
+    "darkTheme": "Blue Slate",
+    "firstVisitThemeRule": "prefers-color-scheme",
+    "typography": {
+      "display": "IBM Plex Serif",
+      "interface": "IBM Plex Sans",
+      "technical": "IBM Plex Mono"
+    },
+    "logo": {
+      "$comment": "Identity and provenance only. The measurements live once, in the `logo` block at the foot of this file, which is read off iamai-threshold-master.svg. An earlier iteration repeated a DIFFERENT set of numbers here (32-unit panels, a 36-unit gap, y32/y91/y24); those were stale and are removed, because a second copy of a measurement is the thing that lets a redraw look approved.",
+      "name": "Threshold",
+      "asset": "iamai-threshold-master.svg",
+      "authorityDocument": "iamai-threshold-logo-authority.html",
+      "repositoryTarget": "src/brand/logo/iamai-threshold-master.svg",
+      "geometry": "see the `logo` block at the foot of this file",
+      "effects": "none",
+      "gradient": false,
+      "stroke": false
+    }
+  },
+  "globalRulings": {
+    "primaryButton": {
+      "radiusPx": 8,
+      "background": "#173A3D",
+      "border": "#58C8BC",
+      "text": "#DFFFF9"
+    },
+    "secondaryButton": {
+      "radiusPx": 8,
+      "background": "transparent",
+      "border": "#39495A",
+      "text": "#F2F5F7"
+    },
+    "statusPills": "primary-text words + semantic dot; state must never be color-only",
+    "gradients": "prohibited in application references",
+    "derivedColors": "may derive from core roles but may not introduce independent brand/semantic hues",
+    "planCollapsedRows": "transparent hairline-separated rows inside phase grouping; opened row becomes the attached surface-backed header"
+  },
+  "repositoryIntegration": {
+    "referenceDirectory": "docs/design/approved/reference/",
+    "designManifest": "docs/design/approved/manifest.json",
+    "brandManifest": "docs/brand/brand-manifest.json",
+    "designAuthorityManifestChange": "dark name -> Blue Slate; logo direction -> Threshold",
+    "runtimeTokens": [
+      "src/ui/tokens.ts",
+      "src/ui/tokens.css"
+    ],
+    "renderer": "scripts/render-design.mjs",
+    "rendererRuling": "canonical HTML remains anatomy authority; rendered visual comparison target uses the derived approved references",
+    "testsNote": "tests that byte-pin Deep Mineral or Guided Route must be updated to Blue Slate and Threshold"
+  },
+  "canonicalSources": {
+    "home": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50",
+    "connect": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b",
+    "plan": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec",
+    "mfa-readiness": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512"
+  },
+  "files": {
+    "iamai-plan-step-variants-final.html": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
+    "iamai-plan-organization-final.html": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
+    "iamai-approved-visual-system-comparison-reference.html": "9ee6c601e7091fee1193203dedf9b9fffa83ec020035fa9b08c398d9bbc305a1",
+    "iamai-connect-approved-comparison-reference.html": "5c910dc89787a02779a6473951c82423665c1ad6610dc6217eed61dff46d852f",
+    "iamai-home-approved-comparison-reference.html": "ff4413a4c14de2d720bbc9f87889e9532d1201f0d7af3630be42f58369cc5594",
+    "iamai-mfa-readiness-approved-comparison-reference.html": "62d6f5820d63ea7c7bfd2dc8e02f3fabd24fc1285400b009210033e457f4615e",
+    "iamai-plan-approved-comparison-reference.html": "293e26093cd5bd1b4e0681015c92678ff07a9accf3d3d3cba5ff1df44dfa43f1",
+    "iamai-threshold-logo-authority.html": "f614e5dfb7487e8af5101d8e9325c768a623dd34cad056bc96d31f786ffee7aa",
+    "iamai-threshold-master.svg": "0bd2591af69fbe39138134a5af12f979ba91be2735afa59b6e190e8a51551775"
+  },
+  "planOrganization": {
+    "$comment": "The final Plan BOARD organisation authority. It is recorded separately from the `files` hash because its authority is narrow and the boundary is the point: two Plan references are current at once and a later task must be able to read which owns what, as a value rather than by opening both.",
+    "file": "iamai-plan-organization-final.html",
+    "sha256": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
+    "owns": [
+      "Plan header and board controls",
+      "group framing and group headers",
+      "collapsed roadmap rows and the column head",
+      "Roadmap / Status / Work type grouping",
+      "Needs attention / Up next focus controls",
+      "search",
+      "completed visibility",
+      "responsive board behaviour"
+    ],
+    "doesNotOwn": [
+      "expanded-step content",
+      "expanded-step anatomy or section order",
+      "step semantics",
+      "implementation channels",
+      "product copy",
+      "technical truth"
+    ],
+    "expandedStepAuthority": "iamai-plan-step-variants-final.html",
+    "expandedStepAuthorityNote": "The two files own different halves of the Plan: this one owns the board, and the step-variants reference owns what a row opens into. See `planStep` below, which also records where it supersedes the older comparison reference.",
+    "anatomyAuthority": "docs/design/approved/anatomy/plan-step-v1.html",
+    "exampleDataNote": "The file carries design-example counts, dates, phase names and tenant facts. None of them is production data and none may be copied into production: docs/design/content.json remains the copy authority and the engine remains the fact authority.",
+    "implementedBy": "plan board organization pass"
+  },
+  "planStep": {
+    "$comment": "The final EXPANDED-STEP visual authority. It is the other half of the Plan: iamai-plan-organization-final.html owns the board a step opens from, and this owns what opens. Recorded as its own block, with its own boundary, because two Plan references are current at once and a later task must be able to read which owns what as a value rather than by opening both and guessing.",
+    "file": "iamai-plan-step-variants-final.html",
+    "sha256": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
+    "owns": [
+      "expanded Plan step visual hierarchy",
+      "the shared step frame",
+      "the full-width expanded-step header",
+      "policy lifecycle presentation",
+      "conditional findings presentation",
+      "optional right-rail behaviour",
+      "action and implementation-channel presentation rules",
+      "contextual step footer presentation",
+      "the visual treatment of the step-family variants it draws"
+    ],
+    "doesNotOwn": [
+      "production copy",
+      "tenant facts",
+      "baseline truth",
+      "lifecycle calculation",
+      "readiness calculation",
+      "condition calculation",
+      "scheduling and date calculation",
+      "population calculations",
+      "decision persistence",
+      "implementation instructions and artifacts",
+      "MFA readiness calculations",
+      "Graph collection",
+      "Export semantics"
+    ],
+    "exampleDataNote": "The file carries example people, counts, dates, tenant object names, policy facts and explanatory copy. None of it is production data and none may be copied into production: docs/design/content.json remains the copy authority and the engine remains the fact authority.",
+    "supersedes": {
+      "$comment": "Where the two disagree about expanded-step PRESENTATION, this file wins. The older reference is not deleted and its hash is not touched: it is the record of what the expanded step looked like before, and it is still the current authority for anything this file does not draw.",
+      "file": "iamai-plan-approved-comparison-reference.html",
+      "scope": "expanded-step visual presentation only",
+      "remainsAuthoritativeFor": "anything the step-variants reference does not draw"
+    },
+    "families": {
+      "$comment": "The reference draws six step families, and production now renders all six from it. `migrated` means the family goes through the ONE shared expanded-step frame with its optional modules gated by production truth — not that it has a renderer of its own. There is no per-family shell, which is the fact `src/ui/surfaces/stepFamilies.test.ts` holds the repository to.",
+      "policy": "migrated",
+      "setup": "migrated",
+      "mfa": "migrated",
+      "inPlace": "migrated",
+      "decision": "migrated",
+      "resolution": "migrated"
+    },
+    "familyModel": {
+      "$comment": "How a family is arrived at, so a later reader does not go looking for six components. `stepFamily` (src/ui/surfaces/stepContract.ts) is a READING and selects nothing: every optional module gates itself on the truth it needs, and the family is what you get when those gates resolve. Nothing reads a step's title.",
+      "frame": "src/ui/surfaces/ContentStep.tsx",
+      "projection": "src/ui/surfaces/stepContract.ts stepFamily",
+      "modules": [
+        "lifecycle track — where stepTrack finds a recorded lifecycle",
+        "Next caption — where the milestone has a dated line or a gate",
+        "What IAMAI found — where the contract built findings",
+        "Who this touches — where the population is worth stating",
+        "Fix before continuing — where the validation authority has outstanding checks",
+        "decision primitive — where the content entry carries one",
+        "MFA preview and handoff — where stepMfaHold names people",
+        "implementation channels — 0/1/2+ from Foundation A and the translator",
+        "Done when — except a goal the tenant already delivers, which says it under What to do",
+        "rail — where railBlocks has something the header does not carry"
+      ]
+    },
+    "implementedBy": "plan shared step frame + policy rollout family pass; remaining families migrated by the final expanded-step pass"
+  },
+  "logo": {
+    "name": "Threshold",
+    "asset": "iamai-threshold-master.svg",
+    "viewBox": "0 0 100 100",
+    "leftPanelPath": "M0 22 L31 30 L31 90 L0 100 Z",
+    "rightPanelPath": "M35 30 L100 0 L100 100 L69 90 L69 30 Z",
+    "columnWidth": 31,
+    "doorwayInnerLeftX": 31,
+    "doorwayInnerRightX": 69,
+    "doorwayWidth": 38,
+    "doorwayTopY": 30,
+    "innerBottomY": 90,
+    "lintelTipX": 35,
+    "criticalRule": "Right panel is five points; x35,y30 lintel tip must never be removed or moved to x69."
+  }
+}

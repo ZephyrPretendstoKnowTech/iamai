@@ -1,8 +1,8 @@
-// The IAMAI mark (task 030): the Guided Route logo, in the shell and on the
+// The IAMAI mark (task 030): the Threshold logo, in the shell and on the
 // print cover.
 //
 // The geometry is not drawn here. src/brand/logo/mark.ts is written from
-// src/brand/logo/iamai-guided-route-master.svg by scripts/gen-brand.mjs, and
+// src/brand/logo/iamai-threshold-master.svg by scripts/gen-brand.mjs, and
 // src/brand/brand.test.ts re-derives it and fails on drift — so the interface
 // renders the one master rather than a second copy of the mark that would part
 // company with it the first time either was corrected (task 029).
@@ -26,6 +26,7 @@ export function BrandMark({ size = 20, className = '' }: { size?: number; classN
       width={size}
       height={size}
       viewBox={MARK_VIEWBOX}
+      fill="currentColor"
       aria-hidden="true"
       focusable="false"
       dangerouslySetInnerHTML={{ __html: MARK_GEOMETRY }}

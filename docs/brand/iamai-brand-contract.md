@@ -22,10 +22,10 @@ Brand is a skin over an anatomy.
 
    | Surface | File | SHA-256 |
    |---|---|---|
-   | Home | [`docs/design/approved/home-v2.html`](../design/approved/home-v2.html) | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
-   | Connect | [`docs/design/approved/connect-v3.html`](../design/approved/connect-v3.html) | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
-   | Plan + step | [`docs/design/approved/plan-step-v1.html`](../design/approved/plan-step-v1.html) | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
-   | MFA Readiness | [`docs/design/approved/mfa-readiness-v2.html`](../design/approved/mfa-readiness-v2.html) | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
+   | Home | [`docs/design/approved/anatomy/home-v2.html`](../design/approved/anatomy/home-v2.html) | `88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50` |
+   | Connect | [`docs/design/approved/anatomy/connect-v3.html`](../design/approved/anatomy/connect-v3.html) | `903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b` |
+   | Plan + step | [`docs/design/approved/anatomy/plan-step-v1.html`](../design/approved/anatomy/plan-step-v1.html) | `1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` |
+   | MFA Readiness | [`docs/design/approved/anatomy/mfa-readiness-v2.html`](../design/approved/anatomy/mfa-readiness-v2.html) | `12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512` |
 
 3. **This brand skin.**
 
@@ -84,27 +84,27 @@ Two themes. Every value is exact; an approximation is a different colour.
 | admin / violet | `#6658A4` |
 | code surface | `#EEEAE3` |
 
-### Dark — Deep Mineral
+### Dark — Blue Slate
 
 | Role | Value |
 |---|---|
-| canvas | `#0E1516` |
-| surface | `#151F20` |
-| secondary surface | `#111A1B` |
-| line | `#2A3737` |
-| strong line | `#3B4B4A` |
-| primary text | `#F0F4F2` |
-| secondary text | `#C4CECA` |
-| muted text | `#879693` |
-| brand teal | `#59C7B7` |
-| secondary teal | `#7AD9CB` |
-| soft teal | `#173B37` |
-| teal on soft | `#D9FFF8` |
+| canvas | `#0D1117` |
+| surface | `#151C25` |
+| secondary surface | `#111821` |
+| line | `#2B3745` |
+| strong line | `#39495A` |
+| primary text | `#F2F5F7` |
+| secondary text | `#C7D0D8` |
+| muted text | `#8F9AA6` |
+| brand teal | `#58C8BC` |
+| secondary teal | `#78D9CE` |
+| soft teal | `#173A3D` |
+| teal on soft | `#DFFFF9` |
 | success | `#79D7A6` |
 | attention | `#E3B35B` |
 | danger | `#E88A8A` |
 | admin / violet | `#B9A7FF` |
-| code surface | `#0A1112` |
+| code surface | `#0A0F15` |
 
 ### Semantic separation — the rule that is easy to get wrong
 
@@ -157,89 +157,79 @@ governs take the smallest page rung (task 040). §12 records what is switched on
 
 ---
 
-## 4. The mark — Guided Route
+## 4. The mark — Threshold
 
-The approved logo family is **Guided Route, variant 2**, version 1. The master is
-[`src/brand/logo/iamai-guided-route-master.svg`](../../src/brand/logo/iamai-guided-route-master.svg).
+The approved logo family is **Threshold**, variant 1, version 2. The master is
+[`src/brand/logo/iamai-threshold-master.svg`](../../src/brand/logo/iamai-threshold-master.svg),
+a byte-for-byte copy of the owner-approved geometry authority
+[`docs/design/approved/reference/iamai-threshold-master.svg`](../design/approved/reference/iamai-threshold-master.svg)
+(`sha256 0bd2591af69fbe39138134a5af12f979ba91be2735afa59b6e190e8a51551775`).
+
+Version 1 was Guided Route — variant 2: a rounded window with a route, an origin node, a
+waypoint and a destination arrow travelling through it. The owner replaced it. The record of
+what it was lives in this file's history, not beside its replacement, because two marks
+described as current is exactly how the wrong one gets drawn.
 
 ### Intent
 
 ```text
-origin  →  guided rising route  →  waypoint  →  upper-right destination
+two panels  →  an opening between them  →  a threshold to cross
 ```
 
-Where the tenant is now, the ordered plan, a meaningful step reached, where the tenant is
-going. It is an A-to-Z journey that never draws an `A` or a `Z`.
+A doorway a tenant walks through, not a journey drawn on a map. It draws no letter and no
+device.
 
 ### Topology
 
-1. an open rounded-window frame;
-2. a lower-left origin node, nested in the frame's bottom-left corner;
-3. one rising route, easing out of the origin and bowing below the diagonal;
-4. one midpoint waypoint on that route;
-5. an upper-right destination arrow;
-6. the frame's top-right corner is open, so the route travels **through** the frame rather
-   than sitting inside a box.
+1. two flat filled panels, and nothing else;
+2. equal panel widths — 31 units each, on a `0 0 100 100` grid;
+3. an opening 38 units wide, between inner edges `x31` and `x69`;
+4. the left panel slopes toward the opening: `y22` at the outer edge, `y30` at the inner;
+5. the right panel is **five points**, and the fifth — `x35,y30` — is a leftward lintel
+   overhang above the opening;
+6. a tall outer rise on the right, from `y0` at the outer edge down to the outer bottoms at
+   `y100`.
 
-Nothing else. No second route, no extra waypoint, no map contours, no closed generic rounded
-square, and never a shield, padlock, brain, sparkle, AI glyph, GPS pin, folded map, globe or
-neon.
+Nothing else. No stroke, no midpoint dot, no route line, no rounded frame, no shield, no
+padlock, no sparkle, no gradient, no shadow.
+
+**The critical rule.** The right panel is the five points
+`(35,30) → (100,0) → (100,100) → (69,90) → (69,30)`. Removing the `(35,30)` point, or
+starting that polygon at `(69,30)`, destroys the approved mark. It is the difference between
+a threshold with a lintel and two unrelated slabs, and it is the one change that would still
+pass every softer check — so `src/brand/brand.test.ts` counts those points.
 
 ### Master rules
 
-`viewBox="0 0 64 64"`, vector geometry only, one colour source (`currentColor`), stroke 4.6
-with round caps and joins. No `<image>`, `<script>`, `<foreignObject>`, `<text>`, gradient,
-filter, embedded font or external reference. It must stay readable at 16px, and it must work
-printed in one colour.
+`viewBox="0 0 100 100"`, two `<path>` elements, `fill="currentColor"`, no stroke. No
+`<image>`, `<script>`, `<foreignObject>`, `<text>`, `<tspan>`, gradient, filter, embedded
+font or external reference. It must stay readable at 16px, and it must work printed in one
+colour.
 
-### Refinement record
+The master carries a `<title>` and a `<desc>`. They name the mark for anyone who opens the
+file on its own; they are not a wordmark and not a tagline, and `scripts/brandDerive.ts`
+strips them from the geometry the interface draws, because that mark is `aria-hidden` beside
+the live wordmark.
 
-The approved direction arrived as this starting geometry. It is kept here so any later
-question about what changed has an answer that is not somebody's memory:
+### The approved geometry
 
 ```svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 10H43c6.1 0 11 4.9 11 11v5" stroke-width="5.2"/>
-    <path d="M54 40v3c0 6.1-4.9 11-11 11H21c-6.1 0-11-4.9-11-11V31" stroke-width="5.2"/>
-    <path d="M10 24v-3c0-6.1 4.9-11 11-11" stroke-width="5.2"/>
-    <path d="M15 46C21 44 23 38 28 35c5-3 8-1 12-5 4-4 5-9 10-13" stroke-width="5.2"/>
-    <path d="M44 14h10v10" stroke-width="5.2"/>
-  </g>
-  <circle cx="15" cy="46" r="5.2" fill="currentColor"/>
-  <circle cx="30.5" cy="34" r="4.3" fill="currentColor"/>
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 100 100"
+     fill="currentColor"
+     preserveAspectRatio="xMidYMid meet"
+     shape-rendering="geometricPrecision">
+  <title>IAMAI Threshold</title>
+  <desc>Two equal-width doorway panels form an open threshold. The left panel slopes toward the opening. The right panel has a leftward upper lintel overhang, a tall outer rise, and a matching outward-descending lower edge.</desc>
+  <path d="M0 22 L31 30 L31 90 L0 100 Z"/>
+  <path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/>
 </svg>
 ```
 
-It is the right concept drawn with three collisions, each of which is a measurement rather
-than an opinion:
-
-- the arrowhead's bar (`M44 14h10`) and the frame's top-right corner arc overlap by about
-  **2.4 units** of a 5.2 stroke, so the two merge into one blob;
-- the arrowhead's vertical arm runs down `x=54` from `y=14` to `y=24`, and the frame's right
-  edge occupies `x=54` from `y=21`: the arm is drawn **on top of** the frame;
-- the origin node sits 6.7 units from the bottom-left corner's centre with a radius of 5.2,
-  which puts it **3.5 units inside** that arc's stroke, welding the node to the frame;
-- and the route ends at `(50,17)` while the arrowhead's vertex is at `(54,14)`, so the two
-  touch at a tangent instead of joining.
-
-At 16px the result fills in. The refinement keeps the concept and the topology and fixes the
-spacing:
-
-| Change | Why |
-|---|---|
-| the frame's gaps moved from mid-left and mid-right to the **top-right corner**, and the three other corners closed | the openings now sit where the route needs them, which is what topology point 6 asks for; a frame open on two opposite corners reads as a ring with a slash through it at 20px |
-| the origin node **nested at the bottom-left corner's centre** `(21,43)`, radius 5 | even 3.7-unit daylight from the arc on every side, instead of a 3.5-unit overlap |
-| the arrowhead moved into the open corner: vertex `(50,15)`, arms of 7.5 | 4.4 and 3.0 units of daylight from the two frame ends, and no overlap with anything |
-| the route's end **joined to the arrowhead vertex** | one arrow, not a line near a corner |
-| the route re-drawn from `(21,43)` through a waypoint at `(34,35)`, bowing below the diagonal | a route rather than a straight diagonal, which also keeps the mark clear of the "open in a new window" idiom |
-| stroke 5.2 → **4.6**, one weight for every element | 1.75px at a 24px icon, which is the brand's own icon band (§7) |
-
-Nothing else moved: same frame, same single origin, same single route, same single waypoint,
-same upper-right arrow, no letterform, no second route, no added detail. A change beyond
-optical refinement is a new `logo.version` in `brand-manifest.json`, and
-`src/brand/brand.test.ts` fails the moment the mark stops being three paths and two nodes at
-one stroke weight.
+Where prose here and this SVG disagree, the SVG wins — and where this copy and
+`docs/design/approved/reference/iamai-threshold-master.svg` disagree, the approved reference
+wins. The mark is installed, never redrawn: an approximation drawn by eye is the failure this
+whole section exists to stop.
 
 ---
 
@@ -252,9 +242,9 @@ second authority, and the two would part company the first time one was correcte
 
 | Asset | Path | Colour |
 |---|---|---|
-| master | `src/brand/logo/iamai-guided-route-master.svg` | `currentColor` |
+| master | `src/brand/logo/iamai-threshold-master.svg` | `currentColor` |
 | light theme mark | `src/brand/logo/iamai-mark-light.svg` | `#0C6A64` |
-| dark theme mark | `src/brand/logo/iamai-mark-dark.svg` | `#59C7B7` |
+| dark theme mark | `src/brand/logo/iamai-mark-dark.svg` | `#58C8BC` |
 | monochrome ink | `src/brand/logo/iamai-mark-mono-ink.svg` | `#1D2528` |
 | monochrome light | `src/brand/logo/iamai-mark-mono-light.svg` | `#FFFDF9` |
 | favicon / app icon | `public/brand/favicon.svg` | `#FFFDF9` on `#0C6A64` |
@@ -265,13 +255,13 @@ second authority, and the two would part company the first time one was correcte
 - On a light surface use the light mark; on a dark surface use the dark mark. In a themed
   interface prefer the master with `currentColor` and let the theme supply the value.
 - **Monochrome**: ink on light, light on dark, at full strength. Never a tinted, screened or
-  50%-opacity mark; the origin node and the waypoint are the first things to disappear.
+  50%-opacity mark; the opening between the panels is the first thing to close up.
 - **Minimum size**: 16px for the standalone mark. Below that use the app icon.
 - **Header size**: 20–28px.
 - **Clear space**: at least 0.35 × the mark's height on every side of the mark or the
   lockup. Nothing sits inside it.
-- Do not rotate, shear, outline, add a shadow or glow, re-colour a single element, place the
-  mark on a busy photograph, or redraw it at a different stroke weight. Scale it.
+- Do not rotate, shear, outline, add a shadow or glow, re-colour one panel, place the mark
+  on a busy photograph, or redraw it. Scale it.
 - The app icon is a treatment of this logo, not another logo: the same geometry, scaled to
   0.86 and drawn light on a rounded brand field so it survives browser chrome at 16px.
 
@@ -282,7 +272,7 @@ second authority, and the two would part company the first time one was correcte
 The core lockup is exactly:
 
 ```text
-[Guided Route mark]  IAMAI
+[Threshold mark]  IAMAI
 ```
 
 There is **no tagline**. `brand-manifest.json` records `tagline: null`. The lines produced
@@ -389,7 +379,7 @@ machine-readable form, and `src/brand/brand.test.ts` fails when the two disagree
 |---|---|---|
 | favicon / app icon | wired, both the home page and the planner | 029 |
 | wordmark face available locally | yes | 029 |
-| palette applied to production | yes — `src/ui/tokens.ts` holds Mineral Teal and Deep Mineral, §2's values byte for byte | 030 |
+| palette applied to production | yes — `src/ui/tokens.ts` holds Mineral Teal and Blue Slate, §2's values byte for byte | 030 |
 | typography applied to production | yes — three families, the interface scale, the display ramp, and every role weight in a real staged face | 030 |
 | shell header logo | yes — the mark asset beside the live text `IAMAI` in `src/ui/shell/AppShell.tsx` | 030 |
 | page composition restored | yes — Connect (032), Plan (033–036), MFA Readiness (037) and Home (038) wear their approved anatomy, and Export, How and Inventory were converged onto the same grammar (040) | 031–040 |

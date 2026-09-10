@@ -18,9 +18,10 @@
     ]
   },
   "logo": {
-    "family": "Guided Route",
-    "variant": 2,
-    "version": 1,
+    "family": "Threshold",
+    "variant": 1,
+    "version": 2,
+    "familyNote": "Version 1 was Guided Route — Variant 2, a rounded window with a route through it. The owner replaced it with Threshold: two equal-width doorway panels forming an open threshold. The version moves because the mark changed family, which is the rule the previous version's record set. The geometry authority is docs/design/approved/reference/iamai-threshold-master.svg and the master below is a byte-for-byte copy of it.",
     "coreLockup": "mark + IAMAI",
     "wordmark": {
       "text": "IAMAI",
@@ -36,21 +37,42 @@
       "descriptorUnderWordmark": false
     },
     "topology": [
-      "an open rounded-window frame",
-      "a lower-left origin node",
-      "one rising route",
-      "one midpoint waypoint",
-      "an upper-right destination arrow",
-      "open space at the top-right corner and around the origin, so the route travels through the frame"
+      "two flat filled panels and nothing else",
+      "equal panel widths, 31 units each, on the 100 grid",
+      "an opening 38 units wide between inner edges x31 and x69",
+      "the left panel sloping toward the opening, from y22 at the outer edge to y30 at the inner",
+      "the right panel's five points, whose x35,y30 lintel tip is the leftward overhang above the opening",
+      "a tall outer rise on the right, from y0 at the outer edge down to the outer bottoms at y100"
     ],
-    "master": "src/brand/logo/iamai-guided-route-master.svg",
+    "geometry": {
+      "$comment": "The exact approved measurements. Prose loses; the SVG and these values win. The right panel is FIVE points: removing x35,y30, or starting the polygon at x69,y30, destroys the approved mark.",
+      "viewBox": "0 0 100 100",
+      "leftPanelPath": "M0 22 L31 30 L31 90 L0 100 Z",
+      "rightPanelPath": "M35 30 L100 0 L100 100 L69 90 L69 30 Z",
+      "columnWidth": 31,
+      "doorwayInnerLeftX": 31,
+      "doorwayInnerRightX": 69,
+      "doorwayWidth": 38,
+      "doorwayTopY": 30,
+      "innerBottomY": 90,
+      "outerBottomY": 100,
+      "lintelTipX": 35,
+      "rightPanelPoints": 5,
+      "stroke": false,
+      "gradient": false,
+      "shadow": false
+    },
+    "master": "src/brand/logo/iamai-threshold-master.svg",
+    "approvedReferenceMaster": "docs/design/approved/reference/iamai-threshold-master.svg",
+    "approvedReferenceMasterSha256": "0bd2591af69fbe39138134a5af12f979ba91be2735afa59b6e190e8a51551775",
     "masterRules": {
-      "viewBox": "0 0 64 64",
+      "viewBox": "0 0 100 100",
       "colorSource": "currentColor",
-      "forbids": ["image", "script", "foreignObject", "text", "tspan", "linearGradient", "radialGradient", "filter", "external href", "embedded font"]
+      "titleAndDescNote": "The approved master carries a <title> and a <desc>: they name the mark for anyone who opens the file, and they are not a wordmark or a tagline. scripts/brandDerive.ts strips them from the geometry the interface draws, because that mark is aria-hidden beside the live wordmark.",
+      "forbids": ["image", "script", "foreignObject", "text", "tspan", "linearGradient", "radialGradient", "filter", "external href", "embedded font", "stroke", "midpoint dot", "route line", "rounded frame", "shield", "lock", "sparkle", "shadow"]
     },
     "assets": {
-      "master": "src/brand/logo/iamai-guided-route-master.svg",
+      "master": "src/brand/logo/iamai-threshold-master.svg",
       "light": "src/brand/logo/iamai-mark-light.svg",
       "dark": "src/brand/logo/iamai-mark-dark.svg",
       "monoInk": "src/brand/logo/iamai-mark-mono-ink.svg",
@@ -60,7 +82,7 @@
     },
     "assetColors": {
       "light": "#0C6A64",
-      "dark": "#59C7B7",
+      "dark": "#58C8BC",
       "monoInk": "#1D2528",
       "monoLight": "#FFFDF9",
       "appIconField": "#0C6A64",
@@ -104,24 +126,24 @@
       "codeSurface": "#EEEAE3"
     },
     "dark": {
-      "name": "Deep Mineral",
-      "canvas": "#0E1516",
-      "surface": "#151F20",
-      "secondarySurface": "#111A1B",
-      "line": "#2A3737",
-      "strongLine": "#3B4B4A",
-      "primaryText": "#F0F4F2",
-      "secondaryText": "#C4CECA",
-      "mutedText": "#879693",
-      "brandPrimary": "#59C7B7",
-      "brandSecondary": "#7AD9CB",
-      "brandSoft": "#173B37",
-      "brandSoftText": "#D9FFF8",
+      "name": "Blue Slate",
+      "canvas": "#0D1117",
+      "surface": "#151C25",
+      "secondarySurface": "#111821",
+      "line": "#2B3745",
+      "strongLine": "#39495A",
+      "primaryText": "#F2F5F7",
+      "secondaryText": "#C7D0D8",
+      "mutedText": "#8F9AA6",
+      "brandPrimary": "#58C8BC",
+      "brandSecondary": "#78D9CE",
+      "brandSoft": "#173A3D",
+      "brandSoftText": "#DFFFF9",
       "success": "#79D7A6",
       "attention": "#E3B35B",
       "danger": "#E88A8A",
       "admin": "#B9A7FF",
-      "codeSurface": "#0A1112"
+      "codeSurface": "#0A0F15"
     }
   },
   "semantics": {
@@ -135,7 +157,7 @@
     },
     "brandPrimaryIsSuccess": false,
     "distinctPairs": [
-      { "light": ["#0C6A64", "#2C7A5A"], "dark": ["#59C7B7", "#79D7A6"] }
+      { "light": ["#0C6A64", "#2C7A5A"], "dark": ["#58C8BC", "#79D7A6"] }
     ]
   },
   "typography": {
@@ -187,10 +209,10 @@
     "brandMayChange": ["palette", "type family within an approved role", "logo", "icons", "radius and surface treatment where compatible", "hover/press/focus treatment", "restrained motion"],
     "brandMayNotChange": ["page anatomy", "major composition", "workflow", "information hierarchy", "major component placement", "disclosure structure", "table/row architecture", "responsive behaviour", "technical truth", "accurate production copy"],
     "surfaces": [
-      { "surface": "home", "path": "docs/design/approved/home-v2.html", "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50" },
-      { "surface": "connect", "path": "docs/design/approved/connect-v3.html", "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b" },
-      { "surface": "plan", "path": "docs/design/approved/plan-step-v1.html", "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec" },
-      { "surface": "mfa-readiness", "path": "docs/design/approved/mfa-readiness-v2.html", "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512" }
+      { "surface": "home", "path": "docs/design/approved/anatomy/home-v2.html", "sha256": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50" },
+      { "surface": "connect", "path": "docs/design/approved/anatomy/connect-v3.html", "sha256": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b" },
+      { "surface": "plan", "path": "docs/design/approved/anatomy/plan-step-v1.html", "sha256": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec" },
+      { "surface": "mfa-readiness", "path": "docs/design/approved/anatomy/mfa-readiness-v2.html", "sha256": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512" }
     ]
   },
   "generatedBrandApplicationPreviews": {
@@ -210,7 +232,6 @@
     "contract": "docs/brand/iamai-brand-contract.md",
     "brandSystem": "docs/brand/iamai-brand-system.html",
     "fontProvenance": "docs/brand/font-provenance.md",
-    "brandDecisions": "docs/design/brand-decisions.md",
     "designAuthority": "docs/design/approved/manifest.json",
     "visualEvidence": "docs/screens/29"
   },

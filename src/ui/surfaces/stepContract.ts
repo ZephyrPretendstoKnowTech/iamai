@@ -135,7 +135,7 @@ export type ContractMilestone = { kind: Milestone['kind']; label: string; at: st
  * `label` names which kind of finding it is — the classification `foundOf`
  * already makes when it decides to add the entry — so the approved pack's
  * finding card can carry its key over the sentence
- * (`docs/design/approved/plan-step-v1.html` `.finding .k`). It is a name for
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.finding .k`). It is a name for
  * the category and never a second reading of the evidence: nothing here splits
  * a finding's sentence into a headline and a detail, because production writes
  * one sentence and inventing the split would be inventing emphasis.
@@ -160,7 +160,7 @@ export type ContractFix = { key: string; text: string }
 
 /**
  * The four rollout stages, as the approved Plan pack draws them
- * (`docs/design/approved/plan-step-v1.html` `.track`): Not deployed →
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.track`): Not deployed →
  * Report-only → Ready to enforce → Enforced, with the one the step is at marked.
  *
  * A projection of `Step.state.lifecycle` and nothing else. It computes no
@@ -191,8 +191,17 @@ export type ContractStage = { key: Lifecycle; label: string; reached: boolean; c
  */
 export function railBlocks(c: StepContract): { milestone: boolean; implementation: boolean; existing: boolean } {
   return {
-    milestone: c.milestone.at !== null || c.milestone.gatedBy !== null,
-    implementation: c.members.length > 0,
+    // A DATE, and nothing else. The gate — "after: Create or Correct Emergency
+    // Access Accounts" — is the header's Next caption now (`nextCaption`), and a
+    // rail block that repeated it word for word beside the caption was the same
+    // sentence twice on one screen. What is left here is the fact the header
+    // cannot carry: when.
+    milestone: c.milestone.at !== null,
+    // Only while deploying is the current action. A blocked step's rail used to
+    // list Entra / PowerShell / JSON beside a main column that had just hidden
+    // them, which is a column advertising what the step declines to offer — and
+    // on a step whose rail held nothing else, a whole rail existing to do it.
+    implementation: c.members.length > 0 && c.state.condition === 'healthy',
     existing: c.existing !== null,
   }
 }
@@ -247,7 +256,7 @@ export type ContractMember = {
  * The tenant's own policy that already delivers this goal, named.
  *
  * The approved Plan pack's In-place variant draws it as a side block
- * (`docs/design/approved/plan-step-v1.html` V4 `.side-block`, "Existing
+ * (`docs/design/approved/anatomy/plan-step-v1.html` V4 `.side-block`, "Existing
  * implementation" over the policy's name): the one fact that variant's rail
  * exists to carry, and the one an operator needs to check IAMAI accepted the
  * right control before they leave it alone.
@@ -679,4 +688,208 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
   }
+}
+
+/**
+ * The head badge's words: the lifecycle stage and the condition, composed.
+ *
+ * They stay two facts (Foundation B) and are composed only for display — the
+ * contract still carries `stage`, `condition` and `word` separately, and the
+ * export view and every row still read `state.word`. A step with no lifecycle
+ * (a prerequisite, a check) has no stage to compose, so it shows the one status
+ * word it has always shown.
+ *
+ * A condition of `healthy` says nothing beside a stage: "Report-only · Healthy"
+ * reads as a claim, and the absence of a condition is already the claim.
+ */
+export function badgeLabel(contract: StepContract): string {
+  const s = contract.state
+  if (s.stage === '') return s.word
+  return s.condition === 'healthy' ? s.stage : `${s.stage} · ${s.conditionLabel}`
+}
+
+/**
+ * The opened step's head, as the approved Plan pack draws it
+ * (`docs/design/approved/anatomy/plan-step-v1.html` `.step-head`): an eyebrow naming
+ * what kind of step this is, the title, the supporting line under it, and the
+ * state badge held to the right of all three. Below them the lifecycle track.
+ *
+ * The head is the first thing under the row it attaches to, and it repeats the
+ * row's title on purpose: the row is the board and the head is the step, and the
+ * pack draws the title in both.
+ *
+ * Everything here is handed to it. Nothing in the head reads a step, a lifecycle
+ * or a date.
+ */
+
+/**
+ * The footer's own words.
+ *
+ * `scan` and `close` are the labels the step already used, moved rather than
+ * written. The two notes are this pass's, and they live here for the same reason
+ * the board's control vocabulary lives in planBoard.ts: the task that specified
+ * them holds docs/design/content.json out of scope. A later content pass moves
+ * all four without touching a component, because every one of them is read from
+ * this record.
+ *
+ * Which note a step shows is read off the contract — a step with outstanding
+ * blockers is being asked whether the blocker is resolved, not whether a policy
+ * was created — and never off its title.
+ */
+export const FOOTER = {
+  scan: 'Scan to update the plan',
+  close: 'Close',
+  changed: 'Changes made in Microsoft?',
+  resolved: 'Resolved the issue?',
+  /**
+   * A source that contradicts itself is not a tenant problem, and the step's own
+   * body says so. Asking "Changes made in Microsoft?" under it invited the
+   * operator to go and change a tenant that has nothing wrong with it.
+   */
+  source: 'Source corrected?',
+} as const
+
+/**
+ * Whether deploying is the step's CURRENT action, or whether something has to
+ * clear first.
+ *
+ * It reads the condition and nothing else, and the condition union is closed
+ * (roadmap/lifecycle.ts): `healthy` is the only one where the next thing to do
+ * is the change itself. `blocked` waits on work elsewhere, `review-required`
+ * waits on a person reading new evidence, `needs-decision` waits on the operator
+ * choosing, and `baseline-conflict` waits on a source that contradicts itself.
+ *
+ * What this gates is the DISPLAY. The artifacts are untouched: Foundation A's
+ * `implementation.offered` still says what exists, the JSON and the commands are
+ * still generated from the step's own resolved operations, and the moment the
+ * condition clears the same channels come back. A step that says "clear what
+ * this is waiting on" under What to do and then prints seven numbered steps for
+ * creating the policy is telling the operator to do two different things at
+ * once, and the numbered steps are the louder of the two.
+ */
+export function implementationIsCurrent(step: Pick<Step, 'state'>): boolean {
+  return step.state.condition === 'healthy'
+}
+
+/**
+ * Whether the footer offers the existing scan.
+ *
+ * A scan is how a tenant CHANGE is verified. A goal the tenant already delivers
+ * has no change to verify — its action is "keep the policy as it is" — so the
+ * footer offers Close alone rather than inviting a rescan that would confirm
+ * nothing. Everywhere else the step's own content entry decides, as it always
+ * has (`cs.scanControl`).
+ */
+export function footerOffersScan(step: Pick<Step, 'state'>): boolean {
+  return !(step.state.satisfied && step.state.inPlace)
+}
+
+/**
+ * Whether the opened step draws Done when.
+ *
+ * It does wherever work or verification remains, which is nearly everywhere.
+ * The exception is a goal the tenant already delivers: production's completion
+ * line for one reads "Already satisfied: <tenant> has this, and the step is to
+ * keep it that way", and its What to do reads "Keep the policy as it is" — the
+ * same instruction twice, three sections apart, on the one kind of step that has
+ * nothing left to do. The contract still CARRIES the line, unchanged, and the
+ * printed plan and the export still read it; this is the opened step declining
+ * to say it a second time.
+ */
+export function showsDoneWhen(step: Pick<Step, 'state'>): boolean {
+  return !(step.state.satisfied && step.state.inPlace)
+}
+
+/**
+ * Which family of work a step is, as a READING of what production already
+ * recorded — never as a switch.
+ *
+ * This selects nothing. Every optional module in the opened step is gated by its
+ * own truth: the lifecycle track renders where `stepTrack` finds a lifecycle,
+ * the channels where Foundation A offers them, the decision where the content
+ * entry carries one, the rail where `railBlocks` has something for it. A family
+ * is what you GET when those gates resolve, not what decides them — which is why
+ * one frame draws all six and no family has a shell of its own.
+ *
+ * It exists so the audit and the tests can name what they are looking at, and so
+ * a later reader can ask "is every family still going through one frame?" and
+ * get an answer that is not a list of file names.
+ *
+ * The order below is precedence, and it is the order the operator's question
+ * changes: a policy the tenant already satisfies is not a rollout, a step whose
+ * source contradicts itself is not a decision, and a step waiting on a person is
+ * not ordinary supporting work. Nothing here reads a title.
+ */
+export type StepFamily = 'policy' | 'supporting' | 'mfa' | 'in-place' | 'decision' | 'resolution'
+
+export function stepFamily(step: Pick<Step, 'state'>, contentKind: string | null): StepFamily {
+  const s = step.state
+  // The source contradicts itself: there is nothing to deploy and nothing to
+  // decide until it is settled.
+  if (s.condition === 'baseline-conflict') return 'resolution'
+  // The tenant already delivers the goal, and IAMAI is not claiming it put it
+  // there. This is `statusOf`'s existing distinction, read here rather than
+  // invented: `inPlace` is the provenance, and a satisfied goal whose policy
+  // this plan did NOT drive to enforcement is still the tenant's own. A step
+  // that IAMAI deployed and enforced is the policy family's sixth state
+  // (Enforced), keeps its lifecycle, and must not be filed here.
+  if (s.satisfied && (s.inPlace || s.lifecycle !== 'enforced')) return 'in-place'
+  // The step is waiting on the operator to choose, and the answer is on the row.
+  if (s.condition === 'needs-decision') return 'decision'
+  if (contentKind === 'policy') return 'policy'
+  if (contentKind === 'campaign') return 'mfa'
+  return 'supporting'
+}
+
+/**
+ * The header's Next caption: where the step is going, above the track that says
+ * where it is.
+ *
+ * Two existing facts, in order of specificity, and neither of them new:
+ *
+ *   1. `milestone.line` — Foundation B's own dated sentence ("Next: leave it in
+ *      report-only until Sep 17, 2026"). It is null unless there is a date,
+ *      because undated it and What to do are the same fact and What to do is the
+ *      more specific of the two.
+ *   2. `milestone.gatedBy` — what has to clear first. Undated steps have this and
+ *      only this, and until now it was rendered ONLY in the rail, so a blocked
+ *      policy's header said where it was and never what would move it. It is
+ *      wrapped in the same `CONTRACT.next` template the dated line uses, so the
+ *      two captions read alike and no new sentence is written.
+ *
+ * A step with neither gets no caption. That is the correct answer, not a gap to
+ * fill: "Next: continue" is a caption that says nothing and trains the reader to
+ * skip the line where the real ones live.
+ */
+export function nextCaption(c: StepContract): string | null {
+  if (c.milestone.line !== null) return c.milestone.line
+  if (c.milestone.gatedBy === null) return null
+  return fillText(CONTRACT.next, { label: withoutAfterColon(c.milestone.gatedBy) })
+}
+
+/**
+ * The one punctuation fix: `Next: after: X` reads as one sentence.
+ *
+ * `pages.plan.blocked.after` is `"after: {stepTitle}"`, written for a row's
+ * reason line where it stands alone and the colon is right. Wrapped in the
+ * caption's own `Next: {label}` frame it produced two colons in five words. This
+ * drops the SECOND colon and nothing else: the word `after` stays, the step
+ * title stays, and any other milestone text is returned byte for byte.
+ *
+ * It is a punctuation rule, not a rewrite — which is why it matches the exact
+ * existing prefix rather than looking for a word.
+ */
+const AFTER = 'after: '
+const withoutAfterColon = (s: string): string => (s.startsWith(AFTER) ? `after ${s.slice(AFTER.length)}` : s)
+
+/**
+ * Which question the footer asks, from the step's own condition and blockers.
+ *
+ *   baseline-conflict  the ambiguity is in the SOURCE, not the tenant
+ *   outstanding fixes  the operator was asked to clear something
+ *   otherwise          an ordinary tenant change
+ */
+export const footerNote = (contract: StepContract): string => {
+  if (contract.state.condition === 'baseline-conflict') return FOOTER.source
+  return contract.fix.length > 0 ? FOOTER.resolved : FOOTER.changed
 }

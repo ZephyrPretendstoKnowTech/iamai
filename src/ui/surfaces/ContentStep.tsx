@@ -52,8 +52,8 @@ import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
-import { CONTRACT, hasRail, stepContract } from './stepContract.ts'
-import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead } from './StepSections.tsx'
+import { CONTRACT, footerOffersScan, hasRail, implementationIsCurrent, showsDoneWhen, stepContract } from './stepContract.ts'
+import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel, footerNote } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
@@ -62,11 +62,53 @@ import type { WhoBlock } from './whoBlocks.ts'
 type Ex = Record<string, unknown>
 type DoTab = 'portal' | 'json' | 'ps'
 
-/** The three implementation channels, in the order the step offers them. */
+/**
+ * Which implementation channels this step actually has, in the approved order.
+ *
+ * Availability is production's, read and not guessed: the portal channel exists
+ * when the translator produced lines for this step, and the two machine channels
+ * exist together when Foundation A offers an implementation
+ * (`contract.implementation.offered`, which is roadmap/operations.ts
+ * `implementationOffered` and is also `stepJson.jsonOffered`). Nothing here asks
+ * a second time, and nothing here manufactures a channel to fill a strip.
+ *
+ * What the count decides is the CONTROL, which is the approved rule:
+ *
+ *   0  no selector at all — the step's ordinary instructions, where it has any
+ *   1  the channel itself, directly, with no strip to choose from
+ *   2+ a real tab set, in the order Entra → PowerShell → JSON
+ *
+ * A one-tab tab set is a control that cannot be operated, and it says the step
+ * has options it does not have.
+ */
+function channelsFor(hasPortal: boolean, machineOffered: boolean): DoTab[] {
+  const out: DoTab[] = []
+  if (hasPortal) out.push('portal')
+  if (machineOffered) out.push('ps', 'json')
+  return out
+}
+
+/**
+ * The three implementation channels, in the approved order — Entra, then
+ * PowerShell, then JSON — and under the labels an operator reads on the page.
+ *
+ * The words come from `CONTRACT.railChannels`
+ * (pages.app.plan.stepContract.railChannels), which is where the rail already
+ * reads them: the strip in What to do and the Implementation block in the rail
+ * name the same three channels, so they name them with the same three words
+ * from one entry. Before this they were two lists, and the strip's were written
+ * into this file.
+ *
+ * The ids are the internal ones and do not move: `portal` is the channel that
+ * renders the portal translator's lines (stepPortal.ts), whatever the operator-
+ * facing label for the Microsoft console is this year. Renaming it would churn
+ * `stepPortal.ts`, `stepInstructions.ts` and every test that reads the id, for
+ * no one's benefit.
+ */
 const DO_TABS: TabItem[] = [
-  { id: 'portal', label: 'Portal steps' },
-  { id: 'json', label: 'JSON' },
-  { id: 'ps', label: 'PowerShell' },
+  { id: 'portal', label: CONTRACT.railChannels.portal },
+  { id: 'ps', label: CONTRACT.railChannels.powershell },
+  { id: 'json', label: CONTRACT.railChannels.json },
 ]
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
@@ -137,7 +179,7 @@ export function ContentStep({
   /** Printing: More stands open, so every step prints in full (§7). */
   printing?: boolean
 }) {
-  const [tab, setTab] = useState<DoTab>('portal')
+  const [chosen, setTab] = useState<DoTab>('portal')
   const doBase = useId()
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
@@ -195,6 +237,19 @@ export function ContentStep({
   // is created: the device-settings toggle, password writeback, the SharePoint
   // access control) stay above the translator's portal lines, numbered with them.
   const before = instructions.before
+  // The channels this step actually has, and the one the panel is showing. The
+  // chosen tab is clamped to what is available, so a step that offers only the
+  // portal cannot be left showing an empty JSON panel by a click on another
+  // step — the frame is reused across rows and the state is not.
+  // What the step is offering RIGHT NOW. The capability is unchanged — the
+  // artifacts exist and `contract.implementation.offered` still says so — but a
+  // step whose current action is to clear a blocker, answer a decision or read
+  // new evidence is not also offering the deployment (stepContract.ts
+  // `implementationIsCurrent`). The same channels come back when the condition
+  // does, from the same call, with nothing regenerated.
+  const deployNow = implementationIsCurrent(step)
+  const channels = deployNow ? channelsFor(portal !== null && portal.length + before.length > 0, contract.implementation.offered) : []
+  const tab: DoTab = channels.includes(chosen) ? chosen : (channels[0] ?? 'portal')
   const hasSteps = instructions.steps.length > 0
   // Who this touches, split into what the default step shows and what More
   // carries (whoBlocks.ts): the counts and the consequences here, the names
@@ -212,7 +267,7 @@ export function ContentStep({
 
   return (
     // The opened step, as the approved Plan pack draws it (task 034;
-    // docs/design/approved/plan-step-v1.html `.step`): one frame attached under
+    // docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached under
     // the roadmap row that opened it — the row is its top edge, so the frame
     // carries no top border of its own and rounds off only the bottom — with the
     // head above and the main column and its right rail below.
@@ -228,7 +283,7 @@ export function ContentStep({
             <Line s={cs.partner} ex={ex} cls="step-sub partner" />
           </>
         }
-        word={contract.state.word}
+        badge={badgeLabel(contract)}
         tone={contract.state.tone}
         track={contract.track}
       >
@@ -247,7 +302,7 @@ export function ContentStep({
       {conflictWords && (
         <section className="step-section">
           {/* The pack's attention panel at its danger weight
-              (`docs/design/approved/plan-step-v1.html` `.attention.danger`,
+              (`docs/design/approved/anatomy/plan-step-v1.html` `.attention.danger`,
               "Do not deploy this policy from the current baseline"), which is
               the shared `.callout` role task 031 built. It stays at the top of
               the step, above Why: the pack's own conflict variant has nothing
@@ -309,7 +364,7 @@ export function ContentStep({
       {(truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create) && (
         <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
       )}
-      {portal ? (
+      {portal && channels.length > 0 ? (
         <>
           {/* One panel, three tabs (task 017): each names the panel it controls
               and the panel names the tab that labels it, so the three channels
@@ -318,14 +373,21 @@ export function ContentStep({
               selectable and say what they are waiting on, because withholding
               the tab would hide the reason. */}
           {/* The pack's action strip over the instruction block it labels
-              (`docs/design/approved/plan-step-v1.html` `.action-tabs` over
+              (`docs/design/approved/anatomy/plan-step-v1.html` `.action-tabs` over
               `.instruction`): the three channels read as one control, and what
               they select sits in a panel of its own rather than loose on the
               page. It is the shared `TabList` wearing the Plan's own strip
               treatment, so the keyboard behaviour and the selected-state
               semantics task 017 built are unchanged. */}
-          <TabList base={doBase} tabs={DO_TABS} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} className="tabs action-tabs no-print" />
-          <div className="instruction" {...onePanelProps(doBase, tab)}>
+          {/* The control follows the CAPABILITY (channelsFor above): a strip only
+              where there is a choice to make. One channel renders itself, with
+              its name over it, and no tab set to operate. */}
+          {channels.length > 1 ? (
+            <TabList base={doBase} tabs={DO_TABS.filter((t) => channels.includes(t.id as DoTab))} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} className="tabs action-tabs no-print" />
+          ) : (
+            <div className="single-channel-label">{DO_TABS.find((t) => t.id === channels[0])?.label}</div>
+          )}
+          <div className="instruction" {...(channels.length > 1 ? onePanelProps(doBase, tab) : {})}>
             {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
             {/* Whether an artifact is offered is Foundation A's one answer, and
                 the contract already carries it (stepContract.ts
@@ -391,7 +453,12 @@ export function ContentStep({
           where it has them; where a policy cannot be written yet, what would
           clear that instead — which is exactly the step that used to render no
           Done when at all (stepContract.ts doneWhenOf). */}
-      <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
+      {/* Everywhere but the one kind of step with nothing left to do: a goal
+          the tenant already delivers says "keep it" under What to do, and its
+          completion line says the same thing again (stepContract.ts
+          `showsDoneWhen`). The contract still carries it for the print and the
+          export; the opened step says it once. */}
+      {showsDoneWhen(step) && <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />}
 
       {/* Everything below the completion is audit depth and work artifacts: the
           names behind the counts, the way back from a change nobody has made
@@ -415,16 +482,6 @@ export function ContentStep({
       />
       </section>
 
-      <p className="actions no-print">
-        {cs.scanControl && onScan && (
-          <Button variant="secondary" onClick={onScan}>
-            Scan to update the plan
-          </Button>
-        )}
-        <Button variant="tertiary" onClick={onClose}>
-          Close
-        </Button>
-      </p>
         </div>
         {/* The rail belongs to this step, not to the page: it sits inside the
             frame, beside the main column at full width and under it once the
@@ -432,6 +489,11 @@ export function ContentStep({
             contract has nothing for it, there is no rail and no empty track. */}
         {rail && <StepRail contract={contract} />}
       </div>
+      {/* The frame's own footer, under both columns (StepSections.tsx
+          StepFooter). It offers the existing scan action where the step's
+          content entry says a scan is how this step is verified, and Close
+          otherwise — never a disabled button kept for symmetry. */}
+      <StepFooter note={footerNote(contract)} onScan={cs.scanControl && onScan && footerOffersScan(step) ? onScan : null} onClose={onClose} />
     </article>
   )
 }
@@ -628,7 +690,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
         ))}
       </StepSection>
       {/* The pack draws the disclosure as a two-column grid of small cards at
-          the wider widths (`docs/design/approved/plan-step-v1.html`
+          the wider widths (`docs/design/approved/anatomy/plan-step-v1.html`
           `.more-grid` / `.more-card`), and its own sample cards are these two:
           what could go wrong, and the way back. Production already writes both
           in that shape, so they take the grid. Nothing is invented to fill a

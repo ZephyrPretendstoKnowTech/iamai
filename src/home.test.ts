@@ -2,7 +2,7 @@
 // approved composition restored by task 038).
 //
 // These assertions hold the page as built to its generator, to its content, and
-// to the owner's Home design authority, docs/design/approved/home-v2.html
+// to the owner's Home design authority, docs/design/approved/anatomy/home-v2.html
 // (docs/design/approved/manifest.json). That pack owns the anatomy the tests
 // below name — the public header, the hero and its meta row, the two-column
 // product section with its side rail, the Reads / Compares / Plans rows, the
@@ -53,7 +53,7 @@ const SHELL = pages.app.shell as { lightTheme: string; darkTheme: string; themeT
 const SHELL_TABS = (pages.app.shell as { tabs: Record<string, string> }).tabs
 const REPO = 'https://github.com/ZephyrPretendstoKnowTech/iamai'
 /** The owner's approved Home pack: the anatomy this page implements. */
-const PACK = 'docs/design/approved/home-v2.html'
+const PACK = 'docs/design/approved/anatomy/home-v2.html'
 /** The planner's How page, the one public link that is not the product entry or the source. */
 const HOW_HREF = '/{{TOOL_PATH}}/#/how'
 const DEMO_HREF = '/{{TOOL_PATH}}/?demo=1#/plan'
@@ -133,7 +133,7 @@ test('the tool path is never hard-coded outside the build constant', () => {
 
 // ------------------------------------------------------- the design authority
 //
-// The page implements docs/design/approved/home-v2.html.
+// The page implements docs/design/approved/anatomy/home-v2.html.
 // src/ui/design-authority.test.ts guards all four packs and their recorded
 // hashes; this one is Home's own — the pack is unedited, and the numbers the
 // pack sets are the numbers this page's stylesheet sets.
@@ -162,7 +162,7 @@ test('the Home the page implements is the approved pack, unedited', () => {
 // in must not be shown the signed-in navigation.
 test('the public header is the lockup and real public links, not the planner shell', () => {
   const header = segment(html, 'header', 'app')
-  assert.ok(header.includes('<svg width="20" height="20"'), 'the Guided Route mark is in the lockup')
+  assert.ok(header.includes('<svg width="20" height="20"'), 'the Threshold mark is in the lockup')
   const wordmark = header.match(/<a class="wordmark" href="\/">[\s\S]*?<\/a>/)?.[0] ?? ''
   assert.ok(wordmark, 'the lockup links home')
   assert.deepEqual(textPieces(wordmark), [H.brand as string], 'the lockup is the mark and the wordmark, with no tagline under it')
@@ -450,7 +450,11 @@ test('light and dark: the palette is the tokens, the stylesheet names no colour 
   assert.match(theme, /prefers-color-scheme: dark/)
   assert.match(css, /:root\[data-theme='dark'\]\s*\{\s*color-scheme: dark;/)
   assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, 'a colour outside the tokens')
-  for (const m of css.matchAll(/border-radius:\s*([^;]+);/g)) assert.ok(['var(--radius)', '50%', '0'].includes(m[1].trim()), `radius ${m[1]} is beyond the token`)
+  // The three rungs of the shape hierarchy, a circle and a square corner:
+  // nothing else. A control takes --radius-control (docs/brand/brand-manifest.json
+  // ui.radiusPx), which is what the approved references set on `.btn`.
+  const SHAPE = ['var(--radius)', 'var(--radius-control)', 'var(--radius-panel)', '50%', '0']
+  for (const m of css.matchAll(/border-radius:\s*([^;]+);/g)) assert.ok(SHAPE.includes(m[1].trim()), `radius ${m[1]} is beyond the token`)
   for (const m of css.matchAll(/font-size:\s*([^;]+);/g)) assert.match(m[1].trim(), /^var\(--(t-[a-z0-9-]+|d-\d+)\)$/, `font size ${m[1]} is beyond the scale and the approved display ramp`)
 })
 
@@ -656,7 +660,8 @@ test('the built page, with its stylesheet, renders the tokens: the primary butto
       backgroundColor: rgb(LIGHT.brandPrimary),
       color: rgb(LIGHT.onBrand),
       borderTopColor: rgb(LIGHT.brandPrimary),
-      borderTopLeftRadius: `${LAYOUT.radiusPx}px`,
+      // A control takes the control rung, not the compact one (task: approved skin).
+      borderTopLeftRadius: `${LAYOUT.radiusControlPx}px`,
       height: `${LAYOUT.controlPx}px`,
       fontWeight: '500',
       textDecorationLine: 'none',

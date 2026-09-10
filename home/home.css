@@ -120,7 +120,7 @@ header.app {
   border-bottom: 1px solid var(--line);
   background: var(--canvas);
 }
-/* The lockup, the same one the planner's shell composes: the Guided Route mark
+/* The lockup, the same one the planner's shell composes: the Threshold mark
    beside the live text IAMAI in IBM Plex Sans at the wordmark weight, with the
    brand's gap of 0.28 of the mark. No tagline (docs/brand/brand-manifest.json). */
 header.app .wordmark {
@@ -414,7 +414,10 @@ main.page a[href] {
   height: var(--control);
   padding: 0 12px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  /* A control takes the control rung of the shape hierarchy, not the compact
+     one (docs/brand/brand-manifest.json ui.radiusPx; every approved reference
+     puts the control rung on the button face). */
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--secondary-text);
   cursor: pointer;
@@ -453,6 +456,61 @@ main.page a[href] {
 .btn-tertiary:hover,
 .btn-tertiary:active {
   color: var(--primary-text);
+}
+
+/* The approved dark controls (docs/design/approved/reference/: `.btn.primary`
+   is `border-color:var(--brand-primary); background:var(--brand-soft);
+   color:var(--brand-soft-text)`, and the plain `.btn` is a transparent face
+   inside `var(--strong-line)` carrying `var(--primary-text)`).
+   On the dark canvas a solid teal fill reads as a lit block; the approved
+   treatment is the brand tint inside a brand edge, which sits at the same
+   weight as everything around it. It is scoped to the dark theme on purpose:
+   Mineral Teal's filled primary is approved as it stands and does not move
+   because the dark palette did. Every value is a token, so this is the same
+   palette under a different theme, not a second set of colours. */
+:root[data-theme='dark'] .btn-primary {
+  background: var(--brand-soft);
+  color: var(--brand-soft-text);
+  border-color: var(--brand-primary);
+}
+:root[data-theme='dark'] .btn-primary:hover,
+:root[data-theme='dark'] .btn-primary:active,
+:root[data-theme='dark'] .btn-primary:focus-visible {
+  background: var(--brand-soft);
+  color: var(--brand-soft-text);
+}
+:root[data-theme='dark'] .btn-secondary {
+  color: var(--primary-text);
+  background: transparent;
+  border-color: var(--strong-line);
+}
+:root[data-theme='dark'] .btn-secondary:hover,
+:root[data-theme='dark'] .btn-secondary:active {
+  color: var(--primary-text);
+  background: var(--brand-soft);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .btn-primary {
+    background: var(--brand-soft);
+    color: var(--brand-soft-text);
+    border-color: var(--brand-primary);
+  }
+  :root:not([data-theme]) .btn-primary:hover,
+  :root:not([data-theme]) .btn-primary:active,
+  :root:not([data-theme]) .btn-primary:focus-visible {
+    background: var(--brand-soft);
+    color: var(--brand-soft-text);
+  }
+  :root:not([data-theme]) .btn-secondary {
+    color: var(--primary-text);
+    background: transparent;
+    border-color: var(--strong-line);
+  }
+  :root:not([data-theme]) .btn-secondary:hover,
+  :root:not([data-theme]) .btn-secondary:active {
+    color: var(--primary-text);
+    background: var(--brand-soft);
+  }
 }
 
 /* The footer the pack draws: the product's name on the left, the public links

@@ -31,6 +31,102 @@ import { setTimeout as sleep } from 'node:timers/promises'
 const root = resolve(import.meta.dirname, '..')
 const at = (p) => resolve(root, p)
 
+/**
+ * Put the Plan board back to how a visit finds it, before a shot sets the one
+ * state it is evidence for.
+ *
+ * These shots all reach the same URL, and a navigation whose only difference is
+ * the hash does not remount the page — so without this the third shot inherits
+ * the second's pressed filter and its scroll position, and the plate shows a
+ * board no fresh visit produces. It resets the lens to Roadmap, releases any
+ * pressed focus control, closes an open step and scrolls to the top.
+ */
+const RESET = `const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  for (const b of document.querySelectorAll('main.page .plan-controls .focus[aria-pressed="true"]')) { b.click(); await wait(120) }
+  const home = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((t) => (t.textContent || '').trim() === 'Roadmap');
+  if (home && home.getAttribute('aria-selected') !== 'true') { home.click(); await wait(220) }
+  const openRow = document.querySelector('main.page .plan-row[aria-expanded="true"]');
+  if (openRow) { openRow.click(); await wait(220) }
+  window.scrollTo(0, 0); await wait(120);`
+
+/**
+ * Press one of the board's controls by its visible label and let React settle.
+ * The lens tabs and the focus toggles are different elements doing the same job
+ * here, so one helper finds either.
+ */
+/**
+ * Reach the demo's follow-up scan: the second of the sample org's two snapshots.
+ *
+ * Day one holds only Not deployed and Enforced policies, so every mid-rollout
+ * state — report-only, ready to enforce, review required — is a comparison
+ * between two scans of one tenant, and only the follow-up produces one. Nothing
+ * about the sample tenant is changed to obtain them: this puts the demo's
+ * snapshot bookkeeping back to what a visitor who has not opened week two yet
+ * has, then presses the selector a visitor presses. Every id it writes is the
+ * sample tenant's; no real tenant has a row here.
+ *
+ * Without the reset the shots are order-dependent: the first pass writes a
+ * record for the follow-up scan, and every pass after it reads week two against
+ * week two's own observations, which is a tenant nothing changed in.
+ */
+const WEEK2 = `await wait(2500)
+       await new Promise((done) => {
+         const open = indexedDB.open('iamai')
+         open.onsuccess = () => {
+           const d = open.result
+           if (!d.objectStoreNames.contains('plan')) { d.close(); return done() }
+           const t = d.transaction('plan', 'readwrite')
+           t.objectStore('plan').put({ tenantId: 'demo-sample-tenant#snapshots', current: 'initial', records: {} })
+           t.oncomplete = () => { d.close(); done() }
+           t.onerror = () => { d.close(); done() }
+         }
+         open.onerror = () => done()
+       })
+       const pick = document.querySelector('.demo-snapshots button[aria-pressed="false"]')
+       if (!pick) return false
+       pick.click()
+       await wait(3000)`
+
+/** The same, then Show completed, which is where a finished policy's row lives. */
+const WEEK2_COMPLETED = `${WEEK2}
+       const finished = [...document.querySelectorAll('main.page .plan-controls .focus')].find((b) => /Show completed/.test(b.textContent || ''))
+       if (finished && finished.getAttribute('aria-pressed') !== 'true') { finished.click(); await wait(600) }`
+
+/**
+ * Reveal the board's Complete group, which is where a finished step's row lives,
+ * and fold the groups above it.
+ *
+ * Both halves are controls an operator presses. The fold matters for the plate
+ * rather than for the product: a full-page capture is clipped at MAX_HEIGHT, and
+ * with every phase open the Complete group's opened step runs past the clip and
+ * its footer — the thing the plate is evidence FOR — is not in the picture.
+ * Folding the other groups puts the step near the top without touching a fixture
+ * or a row.
+ */
+const SHOW_COMPLETED = `const finished = [...document.querySelectorAll('main.page .plan-controls .focus')].find((b) => /Show completed/.test(b.textContent || ''))
+       if (finished && finished.getAttribute('aria-pressed') !== 'true') { finished.click(); await wait(600) }
+       await wait(300)
+       for (const g of document.querySelectorAll('main.page .plan-group')) {
+         const head = g.querySelector('h2')
+         const toggle = g.querySelector('.plan-group-toggle')
+         if (!head || !toggle) continue
+         const isComplete = /^Complete$/.test((head.textContent || '').trim())
+         const open = toggle.getAttribute('aria-expanded') === 'true'
+         if (isComplete !== open) { toggle.click(); await wait(120) }
+       }
+       await wait(300)`
+
+const PRESS = (label) =>
+  `(async () => { ${RESET} const want = ${JSON.stringify(label)}; const b = [...document.querySelectorAll('main.page .plan-controls [role=tab], main.page .plan-controls .focus')].find((x) => (x.textContent || '').trim().startsWith(want)); if (!b) return false; b.click(); await wait(320); window.scrollTo(0, 0); await wait(120); return true })()`
+
+/**
+ * Open a step on the roadmap, then optionally regroup the board. `lens` null
+ * leaves it on the roadmap; a label switches to that lens afterwards, which is
+ * how the two shots together evidence that an open step survives a regroup.
+ */
+const OPEN_THEN = (lens) =>
+  `(async () => { ${RESET} const rows = [...document.querySelectorAll('main.page .plan-row')]; const r = rows.find((x) => /Intune Enrollment/.test(x.textContent || '')) || rows[0]; if (!r) return false; r.click(); await wait(340); const lens = ${JSON.stringify(lens)}; if (lens) { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((b) => (b.textContent || '').trim() === lens); if (t) t.click(); await wait(380) } window.scrollTo(0, 0); await wait(120); return !!document.querySelector('main.page .step') })()`
+
 /** The widths every restoration pack owes evidence at (docs/design/approved/manifest.json renderedEvidence). */
 export const WIDTHS = [1280, 768, 390]
 
@@ -88,13 +184,32 @@ const PRODUCTION_SHOTS = [
   // with the canonical (task 032). No tenant is read: the app is simply not
   // signed in.
   { name: 'connect-signedout', hash: '#/connect', noDemo: true },
-  { name: 'plan', hash: '#/plan' },
+  // The board as a visit finds it. It carries a reset because every Plan shot
+  // reaches the same URL and a hash-only navigation does not remount the page:
+  // without it this plate inherits whichever lens the previous shot selected.
+  { name: 'plan', hash: '#/plan', after: PRESS('Roadmap') },
   // The Plan with one step open. The approved Plan pack's subject is the
   // EXPANDED step — the row it attaches to, the head, the lifecycle track, the
   // main column and the right rail — and a collapsed-roadmap plate cannot be
   // evidence for any of it (task 034). The step is opened the way an operator
   // opens one: the first roadmap row is clicked.
   { name: 'plan-step', hash: '#/plan', after: `(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()` },
+  // The board's lenses and focus controls (the Plan organisation pass). Each is
+  // the same rows re-headed, so the evidence for that claim is one board shot
+  // several ways rather than several different pages.
+  //
+  // Each `after` presses a real control by its own visible label — the same
+  // thing an operator does — rather than reaching into state, so a shot cannot
+  // show a board the interface itself cannot produce.
+  { name: 'plan-status', hash: '#/plan', after: PRESS('Status') },
+  { name: 'plan-type', hash: '#/plan', after: PRESS('Work type') },
+  { name: 'plan-attention', hash: '#/plan', after: PRESS('Needs attention') },
+  { name: 'plan-upnext', hash: '#/plan', after: PRESS('Up next') },
+  { name: 'plan-completed', hash: '#/plan', after: PRESS('Show completed') },
+  // Open-step context across a lens change: the same step is opened on the
+  // roadmap, and must still be open after the board is regrouped under Status.
+  { name: 'plan-open-roadmap', hash: '#/plan', after: OPEN_THEN(null) },
+  { name: 'plan-open-status', hash: '#/plan', after: OPEN_THEN('Status') },
   // And a step that is actually on the rollout lifecycle, so the plate carries
   // the track and the rail as well as the frame. The first row that produces a
   // track is used rather than a step named here, so the evidence does not break
@@ -139,10 +254,23 @@ const PRODUCTION_SHOTS = [
   //
   // `pre` is what the driver does before it starts opening rows.
   ...[
-    ['plan-step-inplace', `!!s.querySelector('.step-side .metric-name')`],
+    // A goal the tenant already delivers. Its row is the board's Complete group
+    // now (the Plan board pass), which is collapsed until Show completed is
+    // pressed — so the driver presses it, the way an operator reaches those
+    // rows, and then opens the first row that is actually in that state.
+    //
+    // The predicate is the STATE and not a step id: an in-place step's footer
+    // offers Close alone, because there is no tenant change to verify. Nothing
+    // about the fixture is touched to produce it.
+    ['plan-step-inplace', `/^In place$/.test(((s.querySelector('.step-head .status') || {}).textContent || '').trim()) && !s.querySelector('.track') && !s.querySelector('.tabs.action-tabs, .single-channel-label') && [...s.querySelectorAll('.step-footer button')].every((b) => (b.textContent || '').trim() === 'Close')`, SHOW_COMPLETED],
     ['plan-step-blocked', `!!s.querySelector('.callout') && !!s.querySelector('.blocking') && !s.querySelector('.decision .dlabel')`],
     ['plan-step-conflict', `!!s.querySelector('.callout-danger, .callout.danger') && !s.querySelector('.blocking')`],
     ['plan-step-decision', `!!s.querySelector('.decision .dlabel')`],
+    // The MFA handoff and its bounded person preview: the one step whose own
+    // enforcement is held because the people it reaches cannot meet its
+    // sign-in requirement (derive/stepMfaReadiness.ts). Found by the preview it
+    // draws, so the plate cannot be a step that merely mentions MFA.
+    ['plan-step-mfa', `!!s.querySelector('.mfa-preview li')`],
     // The review-required variant (the approved pack's V3), which is the one
     // state no single scan produces: a policy is held for review because what
     // it MEANS is no longer what the plan asked for, and that is a comparison
@@ -164,6 +292,24 @@ const PRODUCTION_SHOTS = [
     [
       'plan-step-review',
       `!!s.querySelector('.condition-review-required')`,
+      WEEK2,
+    ],
+    // The rest of the policy lifecycle, each FOUND by the stage its track is at
+    // rather than by naming a step, so the plates survive a change to the sample
+    // tenant and cannot silently shoot the wrong state. Day one holds only Not
+    // deployed and Enforced policies, so the three mid-rollout states use the
+    // same follow-up scan the review shot does.
+    //
+    // Enforced is a finished step, which lives in the board's Complete group and
+    // is collapsed until Show completed is pressed — so that shot presses it,
+    // the way an operator reaches those rows.
+    ['plan-step-notdeployed', `!!s.querySelector('.stage.stage-not-deployed.current') && !s.querySelector('.blocking')`, WEEK2],
+    ['plan-step-reportonly', `!!s.querySelector('.stage.stage-report-only.current') && !s.querySelector('.condition-review-required') && !s.querySelector('.blocking')`, WEEK2],
+    ['plan-step-readytoenforce', `!!s.querySelector('.stage.stage-ready-to-enforce.current')`, WEEK2],
+    ['plan-step-enforced', `!!s.querySelector('.stage.stage-enforced.current')`, WEEK2_COMPLETED],
+    [
+      '__superseded-inline-review-pre',
+      `false`,
       `await wait(2500)
        await new Promise((done) => {
          const open = indexedDB.open('iamai')
@@ -193,7 +339,24 @@ const PRODUCTION_SHOTS = [
       for (const r of document.querySelectorAll('main.page .plan-row')) {
         r.click(); await wait(180)
         const s = r.parentElement && r.parentElement.querySelector('.step') || document.querySelector('main.page .step')
-        if (s && (${test})) { r.scrollIntoView({ block: 'start' }); await wait(120); return true }
+        if (s && (${test})) {
+          // Fold every group but the one holding the open step. A full-page
+          // capture is clipped at MAX_HEIGHT, and with a dozen phases open above
+          // it the step's own footer — often the thing the plate is evidence FOR
+          // — falls past the clip. Folding is a control an operator presses; it
+          // changes no row and no fixture.
+          const mine = r.closest('.plan-group')
+          for (const g of document.querySelectorAll('main.page .plan-group')) {
+            const toggle = g.querySelector('.plan-group-toggle')
+            if (!toggle) continue
+            const open = toggle.getAttribute('aria-expanded') === 'true'
+            if ((g === mine) !== open) { toggle.click(); await wait(120) }
+          }
+          await wait(250)
+          window.scrollTo(0, 0)
+          await wait(120)
+          return true
+        }
         r.click(); await wait(60)
       }
       return false

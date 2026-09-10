@@ -6,7 +6,7 @@
 // diagnostic before it is operational: the answer should be readable without
 // opening a row.
 //
-// The anatomy is `docs/design/approved/mfa-readiness-v2.html` and is asserted
+// The anatomy is `docs/design/approved/anatomy/mfa-readiness-v2.html` and is asserted
 // against it, both ways, in surfaces/readinessAnatomy.test.ts: an eyebrow and a
 // display heading, one supporting sentence, ONE integrated summary panel (a
 // dominant cell over the answer in a sentence, then the three counts as cells

@@ -10,11 +10,11 @@
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
 import type { ReactNode } from 'react'
-import { Callout, Status } from '../components/index.ts'
+import { Button, Callout, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
-import { CONTRACT, railBlocks, stageClass } from './stepContract.ts'
+import { CONTRACT, FOOTER, badgeLabel, footerNote, nextCaption, railBlocks, stageClass } from './stepContract.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -25,7 +25,7 @@ import { CONTRACT, railBlocks, stageClass } from './stepContract.ts'
  * the Plan readable, so a row says only enough to decide whether to open it.
  *
  * Task 033 restored the four zones the approved Plan pack draws
- * (`docs/design/approved/plan-step-v1.html`, `.roadmap-row`):
+ * (`docs/design/approved/anatomy/plan-step-v1.html`, `.roadmap-row`):
  *
  *     status | title over its quiet reason | who | when
  *
@@ -105,44 +105,30 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
  * next milestone and What to do are the same fact, and What to do is the more
  * specific of the two.
  */
+export { badgeLabel, footerNote, nextCaption, FOOTER }
+
 export function StepState({ contract }: { contract: StepContract }) {
-  const s = contract.state
-  const showCondition = s.stage !== '' || s.condition !== 'healthy'
-  if (s.stage === '' && !showCondition && contract.milestone.line === null) return null
-  return (
-    <>
-      {(s.stage !== '' || showCondition) && (
-        <p className="step-state">
-          {s.stage !== '' && <span className="stage">{s.stage}</span>}
-          {s.stage !== '' && showCondition && <span aria-hidden="true"> · </span>}
-          {showCondition && <span className={`condition condition-${s.condition}`}>{s.conditionLabel}</span>}
-        </p>
-      )}
-      {contract.milestone.line && <p className="step-next">{contract.milestone.line}</p>}
-    </>
-  )
+  // The two axes moved into the head's badge (`badgeLabel`), which is where the
+  // approved step reference puts them: "Report-only · Review required", once.
+  // What is left here is the one thing the badge does not say — what happens
+  // next — as the caption directly above the track it captions.
+  //
+  // It reads `nextCaption`, which is the dated milestone sentence where there is
+  // one and the gate the rail used to hold alone where there is not. A step with
+  // neither gets no caption rather than a manufactured one.
+  const next = nextCaption(contract)
+  if (next === null) return null
+  return <p className="step-next">{next}</p>
 }
 
-/**
- * The opened step's head, as the approved Plan pack draws it
- * (`docs/design/approved/plan-step-v1.html` `.step-head`): an eyebrow naming
- * what kind of step this is, the title, the supporting line under it, and the
- * state badge held to the right of all three. Below them the lifecycle track.
- *
- * The head is the first thing under the row it attaches to, and it repeats the
- * row's title on purpose: the row is the board and the head is the step, and the
- * pack draws the title in both.
- *
- * Everything here is handed to it. Nothing in the head reads a step, a lifecycle
- * or a date.
- */
-export function StepHead({ eyebrow = null, title, sub = null, word, tone, track = [], children }: {
+export function StepHead({ eyebrow = null, title, sub = null, badge, tone, track = [], children }: {
   /** What kind of step this is (pages.app.plan.stepContract.kind); null where the kind has no label. */
   eyebrow?: string | null
   title: string
   /** The one supporting line under the title; null where the step has none. */
   sub?: ReactNode
-  word: string
+  /** The composed lifecycle · condition label (`badgeLabel`), or the one status word. */
+  badge: string
   tone: StatusTone
   track?: ContractStage[]
   /** Where the step is and what happens next — the pack's track caption, above the track it captions. */
@@ -157,7 +143,7 @@ export function StepHead({ eyebrow = null, title, sub = null, word, tone, track 
           {sub}
         </div>
         <Status tone={tone} pill>
-          {word}
+          {badge}
         </Status>
       </div>
       {children}
@@ -212,7 +198,7 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * fact. Inventing either to fill the column is what §5 forbids.
  */
 /** The three implementation channels, in the order What to do offers them. */
-const CHANNELS = ['portal', 'json', 'powershell']
+const CHANNELS = ['portal', 'powershell', 'json']
 
 export function StepRail({ contract }: { contract: StepContract }) {
   const m = contract.milestone
@@ -225,7 +211,7 @@ export function StepRail({ contract }: { contract: StepContract }) {
           implementation to summarise, so before task 036 its rail was empty and
           the In-place step drew none at all — while the approved pack's own
           In-place variant is defined by this block
-          (`docs/design/approved/plan-step-v1.html` V4: "Existing
+          (`docs/design/approved/anatomy/plan-step-v1.html` V4: "Existing
           implementation" over the policy's name).
 
           The name is the classifier's (`contract.existing`, which is
@@ -257,7 +243,7 @@ export function StepRail({ contract }: { contract: StepContract }) {
               What to do and is stated once, in the main column.
 
               Task 035 put it in the pack's side-list grammar
-              (`docs/design/approved/plan-step-v1.html` `.side-list`): one item
+              (`docs/design/approved/anatomy/plan-step-v1.html` `.side-list`): one item
               per channel where the step offers them. That is the same one
               answer, listed rather than said in a sentence — the three channels
               stand or fall together on `implementationOffered`
@@ -279,6 +265,38 @@ export function StepRail({ contract }: { contract: StepContract }) {
         </div>
       )}
     </aside>
+  )
+}
+
+/**
+ * The step's own footer: what to do with the step once it has been read.
+ *
+ * It is a footer of the FRAME, not a paragraph at the end of the main column —
+ * full width under both, on the quieter surface, divided by the frame's own
+ * hairline (the approved step reference's `.footer`). Before this it was the
+ * last line of the main column, so on a step with a rail it sat two thirds of
+ * the way across under a column of prose and read as part of More.
+ *
+ * It offers only what production already does. `Scan to update the plan` is the
+ * existing action, on the existing routing, shown where the step's own content
+ * entry says a scan is how this step is verified (`cs.scanControl`) — which is
+ * exactly the states where something in the tenant has to change before the
+ * plan can move. A step that is observation-only offers Close alone rather than
+ * a disabled button kept for symmetry.
+ */
+export function StepFooter({ note = null, onScan, onClose }: { note?: string | null; onScan?: (() => void) | null; onClose: () => void }) {
+  return (
+    <footer className="step-footer no-print">
+      {onScan && note && <span className="step-footer-note">{note}</span>}
+      {onScan && (
+        <Button variant="primary" onClick={onScan}>
+          {FOOTER.scan}
+        </Button>
+      )}
+      <Button variant="secondary" onClick={onClose}>
+        {FOOTER.close}
+      </Button>
+    </footer>
   )
 }
 
@@ -309,7 +327,7 @@ export function PolicyMembers({ members }: { members: ContractMember[] }) {
  * heading with nothing under it is not rendered.
  *
  * Task 035 gave it the frame the approved pack draws around every section of an
- * opened step (`docs/design/approved/plan-step-v1.html` `.step-section`): a
+ * opened step (`docs/design/approved/anatomy/plan-step-v1.html` `.step-section`): a
  * `<section>` of its own, divided from the next by the frame's hairline. The
  * division is what makes the canonical order legible as an order rather than as
  * a column of headings — and it is a real element, so the sections a step
@@ -337,7 +355,7 @@ export function StepSection({ heading, when = true, frame = true, children }: { 
 
 /**
  * What this scan observed that bears on the decision, in the approved pack's
- * finding-card grammar (`docs/design/approved/plan-step-v1.html` `.findings`):
+ * finding-card grammar (`docs/design/approved/anatomy/plan-step-v1.html` `.findings`):
  * a key naming what kind of finding this is, over the finding itself.
  *
  * Conditional, and never padded. The pack's sample draws three cards because
