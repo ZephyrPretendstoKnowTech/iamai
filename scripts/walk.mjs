@@ -1304,11 +1304,14 @@ async function walkFixture(fx) {
           // One definition of enough (E7): the campaign email dates the MFA
           // enforcement day and the window; the managed-device email says what a
           // personal device can still do; step 12 asks for a passkey or a key.
-          // The email states the day MFA is enforced, so while the plan dates no such
-          // day — Require MFA for Everyone is held (roadmap/holds.ts) and in place it is
-          // not — there is no email to check: it is written once the day is.
+          // The email states the day MFA is enforced and the window up to the plan's
+          // first enforcement, so while the plan dates neither — Require MFA for
+          // Everyone is held, or in place with nothing else dated (roadmap/holds.ts) —
+          // there is no email to check: it is written once the day is.
           const mfaRowAt = rowTitles.findIndex((t) => /^Require MFA for Everyone$/.test(t))
-          const campaignDated = /\d{4}$/.test(rowWhens[mfaRowAt] || '') || campaignRungs?.mfaInPlace || emailText.trim() !== ''
+          const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+          const planDated = rowWhens.some((w) => DAY_ONLY.test(w || ''))
+          const campaignDated = emailText.trim() !== '' || DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignRungs?.mfaInPlace && planDated)
           if (/MFA Registration Campaign/.test(title) && campaignDated) {
             if (!/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
             // The email dates the enforcement it warns of: the MFA policy's day while
@@ -1380,7 +1383,9 @@ async function walkFixture(fx) {
             const rungPeople = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
             const devices = / · phone(?![a-z])/.test(rungPeople) || / · phone(?![a-z])/.test(bodyText)
             if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
-            if (week2 && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
+            // The device sentence is the email's, and the email is written only once the plan dates an enforcement.
+            const emailWritten = emailText.trim() !== '' || rowWhens.some((w) => /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(w || ''))
+            if (week2 && emailWritten && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
             if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
           }
         }
@@ -1525,16 +1530,20 @@ async function walkFixture(fx) {
         const pressed = await clickText('button', /^Start the plan$/)
         if (!pressed) add('P0', `${slabel}: no Start the plan control`)
         else {
-          // "started <date>" once, in the header line only.
-          const started = await waitFor(`/started \\S.*\\d{4}/.test((document.querySelector('main.page') || {}).innerText || '')`, 8000)
+          // "started <date>" once, in the header line only. A plan that cannot
+          // finish reads what holds it in that place instead, started or not
+          // (derive/planHeader.ts, roadmap/startPlan.test.ts), so the start is asked
+          // of the header only where the plan finishes.
+          const holding = /cannot finish until \S/.test(await mainText())
+          const started = holding || (await waitFor(`/started \\S.*\\d{4}/.test((document.querySelector('main.page') || {}).innerText || '')`, 8000))
           if (!started) add('P0', `${slabel}: the plan does not read started <date> after Start the plan`)
           const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
           if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
           const after = await mainText()
           if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
           const times = (after.match(/started \S+ \d{1,2}, \d{4}/g) ?? []).length
-          if (times !== 1) add('P0', `${slabel}: "started <date>" appears ${times} times; once, in the header line`)
-          if (!/^\d+ steps · \d+ done · started \S+ \d{1,2}, \d{4}/m.test(after)) add('P0', `${slabel}: the header line does not carry the start`)
+          if (!holding && times !== 1) add('P0', `${slabel}: "started <date>" appears ${times} times; once, in the header line`)
+          if (!holding && !/^\d+ steps · \d+ done · started \S+ \d{1,2}, \d{4}/m.test(after)) add('P0', `${slabel}: the header line does not carry the start`)
           checkText(slabel, after)
         }
       }

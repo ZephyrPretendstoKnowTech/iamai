@@ -22,7 +22,7 @@
 //
 // Pure: no DOM, no network.
 import { fillText, listCountVars, whole } from '../../content/render.ts'
-import { whoEvidenceLines } from './stepExport.ts'
+import { whoEvidenceLines, whoLeadTemplate } from './stepExport.ts'
 
 type Ex = Record<string, unknown>
 
@@ -120,8 +120,8 @@ export function whoBlocks(who: Record<string, unknown>, ex: Ex): { inline: WhoBl
  * step's summary of who — with its promise closed.
  */
 export function whoLeadLine(who: Record<string, unknown>, ex: Ex, blocks: WhoBlock[]): string | null {
-  const lead = who.lead
-  if (typeof lead !== 'string' || !whole(lead, ex)) return null
+  const lead = whoLeadTemplate(who, ex)
+  if (lead === null) return null
   if (!/:\s*$/.test(lead)) return fillText(lead, ex)
   if (blocks.length === 0) return null
   return closed(fillText(lead, ex))
