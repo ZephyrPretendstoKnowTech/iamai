@@ -22,6 +22,7 @@ import { rowWhen } from './rowWhen.ts'
 import { holdOf } from '../../roadmap/holds.ts'
 import { enforcementUnearned } from '../../roadmap/forecast.ts'
 import { rowWho } from './rowWho.ts'
+import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
 import { rungOf } from '../../derive/ladder.ts'
 import { adminUserIds } from '../../roles.ts'
@@ -155,8 +156,12 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   assert.equal(s.lockout, without.length)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const who = rowWho(s, nameOf)
-  // The who-line, its gap clause when the row has one, then the lockout count.
-  assert.equal(who, `${whoLine(s.population, nameOf, s.gapShort ?? s.gap ?? null)} · ${without.length} not yet at Passkey or security key, proven`)
+  // The who-line, its gap clause when the row has one, then the lockout count. A
+  // gap that only restates the state ("report-only, not enforced") is not impact:
+  // the row's status word already says it (rowWho.ts).
+  const gap = s.gapShort ?? s.gap ?? null
+  assert.equal(who, `${whoLine(s.population, nameOf, gap === REPORT_ONLY_GAP ? null : gap)} · ${without.length} not yet at Passkey or security key, proven`)
+  assert.ok(!who.includes(REPORT_ONLY_GAP), 'the Impact column restates the state')
   assert.match(who, new RegExp(`^${s.population.active} people · .*${without.length} not yet at Passkey or security key, proven$`))
   // Zero: no suffix. The block policies carry none.
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!

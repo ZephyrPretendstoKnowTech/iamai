@@ -301,8 +301,14 @@ export const FINISH = {
    * is what they wait on — a decision, a baseline conflict, records that do not
    * clear a policy (roadmap/holds.ts) — the clause names no object it cannot know.
    */
-  unwritable: (count: number, titles: string[]): string =>
-    count === 0 ? '' : titles.length > 0 ? `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${list(titles)}` : `${count} held ${count === 1 ? 'step is' : 'steps are'} cleared`,
+  unwritable: (count: number, titles: string[], named: number = count): string => {
+    if (count === 0) return ''
+    const cleared = `${count} held ${count === 1 ? 'step is' : 'steps are'} cleared`
+    if (titles.length === 0 || named <= 0) return cleared
+    // Only as many steps as actually wait on the named ones are said to (derive/finish.ts `named`).
+    if (named >= count) return `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${list(titles)}`
+    return `${cleared}, ${named} of them after ${list(titles)}`
+  },
   line: (date: string | null, waiting: { measure: string; count: number; family: string }[]): string => {
     const head = date ? `finishes ${date}` : 'nothing is dated'
     return waiting.length === 0 ? head : `${head} · ${FINISH.waiting(waiting)}`

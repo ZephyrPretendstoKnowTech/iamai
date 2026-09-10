@@ -1313,15 +1313,17 @@ async function walkFixture(fx) {
           const mfaRowAt = rowTitles.findIndex((t) => /^Require MFA for Everyone$/.test(t))
           const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
           const planDated = rowWhens.some((w) => DAY_ONLY.test(w || ''))
-          const campaignDated = emailText.trim() !== '' || DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignRungs?.mfaInPlace && planDated)
-          if (/MFA Registration Campaign/.test(title) && campaignDated) {
-            if (!/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
+          const campaignDated = DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignRungs?.mfaInPlace && planDated)
+          // While the plan dates nothing the email is its undated form (stepExport.ts
+          // commsFor): the day and the window are asked of it only where the plan has them.
+          if (/MFA Registration Campaign/.test(title) && (campaignDated || emailText.trim() !== '')) {
+            if (campaignDated && !/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
             // The email dates the enforcement it warns of: the MFA policy's day while
             // MFA is not yet in place; the first passkey policy's while one remains
             // (the passkey version names it; once none remains, nothing to date).
             const LONG = '(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}'
             const passkeyVersion = /You already confirm sign-ins/.test(emailText)
-            if (!passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
+            if (campaignDated && !passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
             if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
             if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
             // Where the Plan's row reads Require MFA for Everyone In place (the demo

@@ -133,7 +133,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const { steps: total, done: inPlace } = stepFacts(c.steps, cleanupPhase, answers)
   // What holds the plan: a readiness number where one does, else the steps whose
   // policy cannot be written yet and the step each waits on.
-  const waiting = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id))
+  const waiting = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id), finish.unwritable.named)
   // Weeks derive from the finish date, not the last blocked wave (item 15); one derivation, shared with the print and the sample tile (derive/finish.ts).
   const weeks = planWeeks(finish, c.schedule)
   // Held work dates no end (derive/finish.ts): Cleanup, which follows it, is undated with it.

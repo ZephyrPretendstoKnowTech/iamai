@@ -116,6 +116,30 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
   }
 }
 
+/**
+ * The steps of this plan a held step waits on, by id: the maker of an object a
+ * missing-object hold names, the held step a chain waits on, the emergency-access
+ * step an unverified way back in waits on. Empty where the hold names no step —
+ * a source group nothing explains, a readiness number, a decision, a conflict —
+ * and never a step the held one is only sequenced after, which is not a hold.
+ */
+export function holdWaitsOn(step: Step): string[] {
+  const hold = holdOf(step)
+  if (hold === null) return []
+  const ids: string[] = []
+  const add = (id: string | null | undefined): void => {
+    if (id && !ids.includes(id)) ids.push(id)
+  }
+  for (const b of step.blockers) if (b.kind === 'step' && b.held === true) add(b.stepId)
+  if (hold.kind === 'unavailable') {
+    const reason = unavailableReason(step)
+    if (reason === 'missing-object') for (const m of step.action.missing ?? []) add(m.stepId)
+    if (reason === 'escape-hatch-unverified') add(step.action.escapeHatch?.stepId)
+    if (reason === 'unsafe-emergency-access' || reason === 'unverified-emergency-exclusion') add(BREAK_GLASS_STEP_ID)
+  }
+  return ids
+}
+
 /** Fills blockedReason on every step in place; safe to call again after progress changes. */
 export function annotateStateReasons(steps: Step[]): Step[] {
   markHoldChains(steps)

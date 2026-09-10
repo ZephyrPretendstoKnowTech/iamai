@@ -323,7 +323,15 @@ export function commsFor(cs: Record<string, unknown>, ex: Record<string, unknown
   // A step already in place asks nobody to do anything: no email (stepVars stepDone).
   if (ex.stepDone) return null
   const inPlace = Boolean(ex.mfaInPlace) && typeof comms.bodyMfaInPlace === 'string'
-  const body = inPlace ? comms.bodyMfaInPlace : comms.body
+  const dated = inPlace ? comms.bodyMfaInPlace : comms.body
+  // The campaign is work for today: it is how readiness reaches the number the
+  // plan waits for, so its email is needed most while the plan dates nothing
+  // (roadmap/holds.ts). Where the dated body cannot fill, its undated form stands
+  // in — it names no day, no window and no phase, and says the date comes later.
+  // Every other hole still withholds the email whole: the undated form carries the
+  // same tenant and guidance variables.
+  const undated = inPlace ? comms.bodyMfaInPlaceUndated : comms.bodyUndated
+  const body = typeof dated === 'string' && whole(dated, ex) ? dated : typeof undated === 'string' && whole(undated, ex) ? undated : dated
   // The hole rule, once, for the screen, the copy box, the exports and the
   // tests' lines: the email renders whole or not at all, like any other line.
   if (![comms.salutation, body, comms.signature].every((part) => typeof part === 'string' && whole(part, ex))) return null

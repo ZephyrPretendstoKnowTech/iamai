@@ -107,18 +107,20 @@ export const TYPE_ORDER: WorkType[] = ['ca', 'mfa', 'setup', 'resolution']
  * A numbered rollout phase is never one of them: the roadmap's job is to show
  * what is coming, and collapsing the future to save vertical space is the board
  * hiding the thing it exists to say. What starts closed is what is not the
- * active sequence — work held elsewhere, optional recommendations, and finished
- * work, which `showCompleted` is the control for.
+ * active sequence — work held elsewhere and optional recommendations.
+ *
+ * Finished work is not one of them. Its group is drawn only while `Show
+ * completed` is on, so the control already decides whether it shows; starting it
+ * collapsed as well meant pressing Show completed added a folded heading and
+ * showed no row at all.
  */
 export const CLOSED_BY_DEFAULT = new Set<string>([
   // The Roadmap lens's keys: the undated held group, and Microsoft's own
   // recommendations, which are not this baseline's sequence.
   'held',
   'floor',
-  // The Status lens's key for the same idea, and the finished group both lenses
-  // share. `Show completed` is the control for that one.
+  // The Status lens's key for the same idea.
   'waiting',
-  'complete',
 ])
 
 /**

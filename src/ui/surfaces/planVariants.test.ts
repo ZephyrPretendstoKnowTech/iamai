@@ -55,6 +55,7 @@ import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Condition, Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { hasRail, railBlocks, stepContract, stepTrack } from './stepContract.ts'
+import { isHeld } from '../../roadmap/holds.ts'
 import type { StepContract } from './stepContract.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
@@ -360,7 +361,11 @@ const INVENTORY: string[] = [
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · fix · one-policy · who-none', // small/s-prereq-break-glass
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // small/s-prereq-allowed-countries
   'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // small/s-prereq-trusted-location
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-rail · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
+  // Step 5: a held policy not yet deployed that still hands over its report-only
+  // create says to create it now and what turning it on waits for (owner decision;
+  // roadmap/lifecycle.ts nextMilestone), so its action mode is deploy, not resolve.
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · no-found · fix · one-policy · who-known', // demo/s-goal-intune-enrollment-reauth
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-rail · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · in-place · do:preserve · no-track · no-implementation · rail · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
   'policy · create · enforced · healthy · in-place · do:preserve · no-track · no-implementation · rail · found · no-fix · one-policy · who-none', // small/s-goal-guests-mfa
@@ -402,7 +407,7 @@ const INVENTORY: string[] = [
   'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · no-rail · found · no-fix · members · who-unknown', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-rail · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-token-protection
 ]
 
@@ -564,7 +569,10 @@ test('§4 a blocker stays a blocker and a passed prerequisite leaves nothing beh
   // neither, which is the step that reads as blocked and explains nothing.
   every(
     'blocked-says-why',
-    (v) => v.c.state.condition !== 'blocked' || v.c.fix.length > 0 || v.c.whatToDo.kind === 'resolve' || v.c.whatToDo.kind === 'decide',
+    // A held step still handing over its report-only create says so in its action,
+    // with what turning it on waits for, and its row carries the hold's own reason
+    // (roadmap/lifecycle.ts nextMilestone, roadmap/stateReason.ts holdReasonFor).
+    (v) => v.c.state.condition !== 'blocked' || v.c.fix.length > 0 || v.c.whatToDo.kind === 'resolve' || v.c.whatToDo.kind === 'decide' || (v.c.whatToDo.kind === 'deploy' && isHeld(v.step) && (v.step.blockedReason ?? '').length > 0),
     'a blocked step neither lists a blocker nor states the authority’s reason',
   )
   // And a step held for review keeps that as its condition rather than having it

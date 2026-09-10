@@ -358,13 +358,20 @@ test('the roadmap keeps the future open: only the non-sequence groups start coll
   for (const key of ['wave-0', 'wave-1', 'wave-2', 'cleanup']) {
     assert.equal(CLOSED_BY_DEFAULT.has(key), false, `${key} starts collapsed`)
   }
-  // Both lenses' keys for the same three ideas: held work, optional
-  // recommendations, finished work. `held` is the Roadmap lens's key and
-  // `waiting` the Status lens's; missing one of them was a real defect — the
-  // Waiting group rendered open on the roadmap while its Status twin folded.
-  for (const key of ['held', 'waiting', 'floor', 'complete']) {
+  // Both lenses' keys for the same two ideas: held work and optional
+  // recommendations. `held` is the Roadmap lens's key and `waiting` the Status
+  // lens's; missing one of them was a real defect — the Waiting group rendered
+  // open on the roadmap while its Status twin folded.
+  for (const key of ['held', 'waiting', 'floor']) {
     assert.equal(CLOSED_BY_DEFAULT.has(key), true, `${key} does not start collapsed`)
   }
+  // Finished work is drawn only while Show completed is on, so it opens with the
+  // control: collapsed as well, pressing Show completed showed no row at all.
+  assert.equal(CLOSED_BY_DEFAULT.has('complete'), false, 'Show completed reveals a folded group and no rows')
+  const shown = groupsFor('roadmap', applyFocus(itemsFor(FIXTURES[0]), { ...NO_FOCUS, showCompleted: true })).find((g) => g.key === 'complete')
+  const hidden = groupsFor('roadmap', applyFocus(itemsFor(FIXTURES[0]), NO_FOCUS)).find((g) => g.key === 'complete')
+  assert.ok(shown && shown.items.length > 0, 'the premise: a fixture with finished work')
+  assert.equal(hidden, undefined, 'and the group is not drawn until the control asks for it')
 })
 
 test('a group summary counts the rows under it, so the heading cannot disagree with the group', () => {
