@@ -299,9 +299,10 @@ test('a step whose readiness this scan could not measure names nobody, and never
 })
 
 test("the handoff names the people the policy reaches, not the people its goal handed the step", () => {
-  // The demo's register-info step is an open policy whose own scope is not its
-  // goal's population: more accounts in scope, a different active set. The
-  // handoff must follow the policy, because that is who the step acts on.
+  // The demo's register-info step is an open policy: the handoff follows its own
+  // scope, because that is who the step acts on. Its active people used to differ
+  // from the goal's by the shared device, which was scored as a person; it is not
+  // one (derive/sets.ts accountKinds), so the difference is built below instead.
   for (const name of ['demo', 'demo-week2'] as const) {
     const f = fixture(name)
     const run = runFixture(f)
@@ -310,8 +311,6 @@ test("the handoff names the people the policy reaches, not the people its goal h
     const of = reached(step)
     assert.ok(of !== null)
     const policy = affectedIds(of)
-    const goal = affectedIds(step.population)
-    assert.notDeepEqual(policy, goal, `${name}: this fixture's policy cohort differs from its goal population`)
     const hold = stepMfaHold(step, scored)!
     assert.ok(hold.ids)
     const cohort = new Set(policy)

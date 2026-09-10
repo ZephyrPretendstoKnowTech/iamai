@@ -96,8 +96,16 @@ export type CoverageInput = {
   strengths: StrengthLookup
   groupMembers: GroupMembers
   facetOverrides?: FacetOverrides
-  /** Confirmed mapping (prompt 06); until then assumed exclusions are used. */
-  mapping?: { breakGlassUsers?: string[]; exclusionGroups?: Record<string, string>; confirmed?: boolean; /** The confirmed service accounts: the population of a goal that targets them (E9). */ serviceAccountUsers?: string[] }
+  /**
+   * The plan's identities (mapping/store.ts toCoverageMapping): the emergency
+   * accounts the operator chose and the exclusions group they chose that this
+   * scan read. Where a caller passes one it is the only authority on who an
+   * expected exclusion is — an account a policy excludes by name is not an
+   * emergency account because it is excluded, and a group excluded from most
+   * policies is not the exclusions group because it is excluded. Only a caller
+   * with no mapping at all falls back to the adapter's assumed reading.
+   */
+  mapping?: { breakGlassUsers?: string[]; exclusionGroups?: Record<string, string>; /** The confirmed service accounts: the population of a goal that targets them (E9). */ serviceAccountUsers?: string[] }
   /**
    * The baseline's goal map (walk-51 item 9, goalMap.ts): for a goal it holds,
    * the map's policy is the one evaluated against — its floor, its name in a
@@ -116,9 +124,12 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   )
   const baselineFacts = input.baselinePolicies.map((p) => policyFacts(p, input.strengths))
 
-  const assumed = input.mapping?.confirmed
-    ? confirmedExclusions(input.mapping)
-    : assumedExclusions(input.tenantPolicies)
+  // The mapping's identities whenever there is a mapping. This used to wait for
+  // every Setup answer, and until then called a directly-excluded account an
+  // emergency account and an often-excluded group the exclusions group: an
+  // unconfirmed "Breakglass" read as emergency access here and as a person on
+  // every other surface.
+  const assumed = input.mapping ? confirmedExclusions(input.mapping) : assumedExclusions(input.tenantPolicies)
   // Membership decides expected exclusions (ux-review-05 §1): a group whose
   // every member is a break-glass account is an expected exclusion whether or
   // not Setup named it, before and after the questions are answered.

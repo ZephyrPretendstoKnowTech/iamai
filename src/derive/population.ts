@@ -10,7 +10,6 @@ import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { rolloutBucket, scoreMfaViability } from '../scoring/mfaViability.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enabledUsers, notPeopleIds } from './sets.ts'
-import { sharedDeviceIds } from './sharedDevices.ts'
 import { affectedIds } from './whoLine.ts'
 import { effectsOf } from '../roadmap/strand.ts'
 import type { StepPopulation } from '../roadmap/types.ts'
@@ -84,22 +83,23 @@ export function activeAmong(viability: readonly MfaViability[], snapshot: Tenant
 }
 
 /**
- * The plan's active people, Today's denominator: enabled, not a service account,
- * signed in within the window. Today's tiles read this.
+ * The plan's active people, the one active-people set: enabled people
+ * (sets.ts personAccounts, so not an emergency, service or shared-device
+ * account) signed in within the window. `notPeople` is sets.ts notPeopleIds of
+ * the plan's mapping; the campaign, the ladder and MFA Readiness count this set.
  */
-export function activePeopleIds(snapshot: TenantSnapshot, now: string, serviceAccountIds: ReadonlySet<string> = new Set()): string[] {
-  return activeAmong(buildViabilityInputs(snapshot, now, serviceAccountIds).map(scoreMfaViability), snapshot, serviceAccountIds)
+export function activePeopleIds(snapshot: TenantSnapshot, now: string, notPeople: ReadonlySet<string> = new Set()): string[] {
+  return activeAmong(buildViabilityInputs(snapshot, now, notPeople).map(scoreMfaViability), snapshot, notPeople)
 }
 
 type CampaignMapping = { breakGlassUserIds: readonly string[]; serviceAccountUserIds: readonly string[] }
 
-/** The campaign's population: the plan's active people (the emergency and service accounts are not people, sets.ts notPeopleIds) minus the shared-device accounts. */
+/** The campaign's population over rows already scored: the plan's active people, through the one person boundary (sets.ts accountKinds). */
 export function campaignIds(viability: readonly MfaViability[], snapshot: TenantSnapshot, mapping: CampaignMapping): string[] {
-  const shared = new Set(sharedDeviceIds(snapshot))
-  return activeAmong(viability, snapshot, notPeopleIds(mapping)).filter((id) => !shared.has(id))
+  return activeAmong(viability, snapshot, notPeopleIds(mapping))
 }
 
-/** The campaign's population from the snapshot alone (Today, tests). */
+/** The campaign's population from the snapshot alone: `activePeopleIds` under the mapping's decisions. */
 export function campaignIdsFor(snapshot: TenantSnapshot, now: string, mapping: CampaignMapping): string[] {
-  return campaignIds(buildViabilityInputs(snapshot, now, notPeopleIds(mapping)).map(scoreMfaViability), snapshot, mapping)
+  return activePeopleIds(snapshot, now, notPeopleIds(mapping))
 }

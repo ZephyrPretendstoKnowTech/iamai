@@ -31,7 +31,7 @@ function tenantWithExclusionGroup(): { snapshot: TenantSnapshot; groups: GroupMe
   return { snapshot: s, groups }
 }
 
-function coverage(snapshot: TenantSnapshot, groups: GroupMembers, mapping?: { breakGlassUsers: string[]; exclusionGroups: Record<string, string>; confirmed: boolean }) {
+function coverage(snapshot: TenantSnapshot, groups: GroupMembers, mapping?: { breakGlassUsers: string[]; exclusionGroups: Record<string, string> }) {
   const baseline = fixtureBaseline()
   return computeCoverage({
     snapshot,
@@ -48,7 +48,7 @@ test('answering Setup never lowers coverage for an exclusion the answers justify
   const { snapshot, groups } = tenantWithExclusionGroup()
   const before = coverage(snapshot, groups)
   // Question 1 answered (break-glass = u-4), question 2 answered "does not exist yet".
-  const after = coverage(snapshot, groups, { breakGlassUsers: ['u-4'], exclusionGroups: {}, confirmed: true })
+  const after = coverage(snapshot, groups, { breakGlassUsers: ['u-4'], exclusionGroups: {} })
   const status = (r: ReturnType<typeof coverage>) => new Map(r.results.map((x) => [x.goal.id, x.status]))
   const b = status(before)
   const a = status(after)

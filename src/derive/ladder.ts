@@ -36,8 +36,8 @@ import { methodTier, scoreMfaViability, sortViability } from '../scoring/mfaViab
 import type { MethodKind, MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds } from '../roles.ts'
 import { campaignIds } from './population.ts'
-import { notPeopleIds, personAccounts } from './sets.ts'
-import { sharedDeviceIds } from './sharedDevices.ts'
+import { accountKinds, notPeopleIds } from './sets.ts'
+import type { NotPersonKind } from './sets.ts'
 
 export type Rung = 5 | 4 | 3 | 2 | 1
 /** Top to bottom, the order every surface lists them in. */
@@ -45,8 +45,8 @@ export const RUNGS: readonly Rung[] = [5, 4, 3, 2, 1]
 /** The rungs to prioritise: the rule sits between 4 and 3 on every surface. */
 export const PRIORITISE_FROM: Rung = 3
 
-/** The accounts that are not people: listed on Today, never counted on a rung. */
-export type Kind = 'emergency' | 'service' | 'shared' | 'disabled'
+/** The accounts that are not people (sets.ts accountKinds): listed on Today, never counted on a rung. */
+export type Kind = NotPersonKind
 export const KINDS: readonly Kind[] = ['emergency', 'service', 'shared', 'disabled']
 
 /** The words the method column uses; keys into pages.readiness.methods. */
@@ -179,18 +179,15 @@ export function ladder(snapshot: TenantSnapshot, mapping: LadderMapping, now: st
     const rung = rungOf(v)
     rungs[rung].push({ id: v.userId, rung, admin: admins.has(v.userId), viability: v })
   }
-  const emergency = new Set(mapping.breakGlassUserIds)
-  const confirmedService = new Set(mapping.serviceAccountUserIds)
-  const people = new Set(personAccounts(snapshot, notPeople).map((u) => u.id))
-  const shared = new Set(sharedDeviceIds(snapshot))
+  // What each account is (sets.ts accountKinds): the classification the scored
+  // people were already built on, so an account is on a rung, not active, or one
+  // kind, and never two of those.
+  const kindById = accountKinds(snapshot, mapping)
   const kinds: Record<Kind, UserRow[]> = { emergency: [], service: [], shared: [], disabled: [] }
   const notActive: UserRow[] = []
   for (const u of snapshot.users) {
-    if (emergency.has(u.id)) kinds.emergency.push(u)
-    // A confirmed service account by decision; an enabled account the directory's own shape says is not a person (a shared mailbox) by detection (sets.ts isNonPerson).
-    else if (confirmedService.has(u.id) || (!people.has(u.id) && u.accountEnabled !== false)) kinds.service.push(u)
-    else if (shared.has(u.id)) kinds.shared.push(u)
-    else if (u.accountEnabled === false) kinds.disabled.push(u)
+    const kind = kindById.get(u.id) ?? 'person'
+    if (kind !== 'person') kinds[kind].push(u)
     else if (!pop.has(u.id)) notActive.push(u)
   }
   const active = RUNGS.reduce((n, r) => n + rungs[r].length, 0)

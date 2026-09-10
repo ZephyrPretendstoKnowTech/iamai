@@ -267,7 +267,7 @@ export function usePlanData(
       groupMembers: groups,
       // Only a group the operator confirmed and this scan read carves anybody
       // out of a policy's reach (Foundation C).
-      mapping: toCoverageMapping(mapping, snapshot, actionableExclusionsGroupId({ snapshot, mapping, groups, directory })),
+      mapping: toCoverageMapping(mapping, actionableExclusionsGroupId({ snapshot, mapping, groups, directory })),
       facetOverrides: mapping.facetOverrides,
       goalMap: baseline.goalMap,
     })

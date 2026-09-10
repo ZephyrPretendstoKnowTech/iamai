@@ -86,7 +86,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
     baselineUnusable: f.baseline.report.warnings,
     strengths,
     groupMembers: f.groups,
-    mapping: toCoverageMapping(f.mapping, snapshot, exclusionsGroupId),
+    mapping: toCoverageMapping(f.mapping, exclusionsGroupId),
     facetOverrides: f.mapping.facetOverrides,
     goalMap: over.goalMap,
   })

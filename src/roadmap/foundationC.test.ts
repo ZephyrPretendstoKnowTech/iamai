@@ -567,7 +567,8 @@ test('L2. the wizard’s own detected answer does not make coverage call the exc
       assumed: { globalExclusion: assumed },
     }
     assert.equal(answersComplete(snapshot, state), false, `${assumed}: a detection is not the operator’s answer`)
-    assert.equal(toCoverageMapping(state, snapshot, null).confirmed, false, `${assumed}: and coverage is not told it is`)
+    // Coverage is told about the exclusions group only through the actionable id; a detection has none to give.
+    assert.deepEqual(Object.keys(toCoverageMapping(state, actionableExclusionsGroupId({ snapshot, mapping: state })).exclusionGroups ?? {}), [], `${assumed}: and coverage is not told it is`)
   }
   // The operator's own confirmation, through the one writer of that record.
   const confirmed: MappingState = {
@@ -577,7 +578,7 @@ test('L2. the wizard’s own detected answer does not make coverage call the exc
     assumed: { globalExclusion: 'confirmed' },
   }
   assert.equal(answersComplete(snapshot, confirmed), true)
-  assert.equal(toCoverageMapping(confirmed, snapshot, X).confirmed, true)
+  assert.equal(toCoverageMapping(confirmed, X).exclusionGroups?.[X], 'breakGlass/globalExclusion')
   // Including the answer "there is no such group yet", which is an answer.
   const none: MappingState = { ...confirmed, records: { [EXCLUSIONS_RECORD_KEY]: exclusionsGroupRecord(undefined, null) } }
   assert.equal(answersComplete(snapshot, none), true, 'an operator saying there is none is an operator answering')
@@ -624,7 +625,7 @@ test('L4. the upgraded tenant, end to end: nothing the legacy record touches rea
   assert.deepEqual(vars?.groupsTicked, [], 'the picker ticks nothing')
   const offeredIds = (vars?.groupsIds ?? []) as string[]
   assert.ok(offeredIds.some((id) => id.toLowerCase() === chosen.toLowerCase()), 'the group is still offered to choose')
-  assert.equal(toCoverageMapping(f.mapping, f.snapshot, null).confirmed, false, 'coverage is not told the safety answer is confirmed')
+  assert.notEqual(r.coverage.assumed.groups.get(chosen), 'breakGlass/globalExclusion', 'coverage is not told the safety answer is confirmed')
   assert.ok(!planText(r).includes(chosen), 'no step in the plan names the group')
   // The exact claim: the plan is the plan of a tenant with no answer at all.
   const unanswered = runFixture(noExclusionsAnswer(base), { mapping: noExclusionsAnswer(base).mapping })

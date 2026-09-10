@@ -25,7 +25,7 @@ import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
 import { campaignIds } from '../derive/population.ts'
-import { isNonPerson, notActiveUsers, notPeopleIds } from '../derive/sets.ts'
+import { notActiveUsers, notPeopleIds, personAccounts } from '../derive/sets.ts'
 import { adminsWithWorkloadOf } from '../derive/contentLists.ts'
 import { lockoutCount } from './lockout.ts'
 import { accountVerdict, effectsOf, familyReading, measuredReach, operationReach, scopeCohort, stepAccountVerdict } from './strand.ts'
@@ -59,7 +59,7 @@ import { evidenceFor } from './evidence.ts'
 import { goalFamily, mfaReady, readinessFor } from './readiness.ts'
 import { cantSeeFor, scenarioContext, scenarioLinesFor } from './scenarioLines.ts'
 import { SCENARIO } from '../copy/scenarios.ts'
-import { sharedDeviceIds, sharedDeviceUsers } from '../derive/sharedDevices.ts'
+import { sharedDeviceUsers } from '../derive/sharedDevices.ts'
 import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
@@ -619,7 +619,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // people for MFA and devices, admins for admin, guests for guest. The goal
   // loop keys the cache by family, so these seeds are what every step of the
   // family reads; a family without a seed (block, risk, location) is usage, not
-  // a readiness percentage, and its first goal fills the cache.
+  // a readiness percentage, and its first goal fills the cache. `viability` is
+  // the people already (scoring/fromSnapshot.ts over derive/sets.ts
+  // personAccounts): a shared device or a confirmed emergency account is never
+  // in a readiness denominator.
   {
     const allActive = viability.map((v) => v.userId)
     const adminIds = [...adminUserIds(snapshot.roles)]
@@ -631,24 +634,23 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   const readyActiveCache = new Map<string, number>()
   // Everyone the proposed policies exclude is out of every step's population:
-  // break-glass accounts, confirmed service accounts, and the members of the
-  // confirmed exclusion groups (roadmap-v2.md §7: a step never touches them).
+  // every account that is not a person (the confirmed emergency and service
+  // accounts, a mailbox the licence shape gives away, sign-in blocked, and the
+  // shared devices, which are out of every user policy and get their own step,
+  // prompt 48 item 4), and the members of the confirmed exclusion groups
+  // (roadmap-v2.md §7: a step never touches them). One boundary (derive/sets.ts
+  // accountKinds over the plan's decisions): a shared mailbox has no MFA method
+  // and never will (T12), and a nominated emergency account is a person until
+  // the operator chooses it.
+  const people = new Set(personAccounts(snapshot, notPeopleIds(mapping)).map((u) => u.id))
   const excluded = new Set<string>([...mapping.breakGlassUserIds, ...mapping.serviceAccountUserIds])
-  // Accounts that are not people are out of every readiness population too
-  // (prompt 37 §4): a shared mailbox has no MFA method and never will, so
-  // leaving it in makes the tenant look less ready than it is (T12, a
-  // "Feedback Mailbox" counted as a person with no method). The operator does
-  // not have to have confirmed it first — the licence says what it is.
-  for (const u of snapshot.users) if (isNonPerson(u, new Set(mapping.serviceAccountUserIds))) excluded.add(u.id)
+  for (const u of snapshot.users) if (!people.has(u.id)) excluded.add(u.id)
   // The people a zero has to be proved over: every active account in the tenant
   // that a proposed policy does not already exclude (roadmap/strand.ts
   // measuredReach). The tenant's own people, never a step's list of them.
   const activePeople = viability.filter((v) => v.activity === 'active' && !excluded.has(v.userId)).map((v) => v.userId)
-  // Shared devices (Teams Rooms) are out of every user policy and get their own
-  // step (prompt 48 item 4); the directory-sync account is out of the MFA and
-  // strength templates via excludeRoles in goals.json.
+  // The directory-sync account is out of the MFA and strength templates via excludeRoles in goals.json.
   const sharedDevices = sharedDeviceUsers(snapshot)
-  for (const id of sharedDeviceIds(snapshot)) excluded.add(id)
   const exclusionGroupIds = [exclusions.actionableId, mapping.serviceAccountsGroupId].filter((x): x is string => typeof x === 'string')
   for (const gid of exclusionGroupIds) for (const id of input.groupMembers?.get(gid)?.memberIds ?? []) excluded.add(id)
 
