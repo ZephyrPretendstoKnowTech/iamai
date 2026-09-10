@@ -6,7 +6,6 @@ import type { MappingState } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { emptyMappingState } from './types.ts'
 import { migrateEmergencySelection } from './emergencyChoice.ts'
-import { answersComplete } from './wizard.ts'
 
 export async function loadMappingState(tenantId: string): Promise<MappingState> {
   const stored = await loadMappingRecord<Partial<MappingState>>(tenantId)
@@ -23,15 +22,17 @@ export async function saveMappingState(state: MappingState): Promise<void> {
 }
 
 /**
- * Coverage consumes confirmed exclusions; the assumed banner drops once the
- * required wizard questions are answered (2026-08-27 redesign).
+ * The identities coverage reads, always the plan's own: the operator's
+ * confirmed emergency accounts, the exclusions group, and the service accounts.
+ * Coverage never infers them for itself while a Setup answer is outstanding
+ * (coverage.ts computeCoverage): an unanswered question has no answer.
  *
  * The exclusions group is passed in, never read from the record: coverage
  * counts the people a carve-out takes out of a policy's reach, so it may only
  * be told about a group the operator chose and this scan read
  * (mapping/safetyChoice.ts actionableExclusionsGroupId).
  */
-export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot, exclusionsGroupId: string | null): NonNullable<CoverageInput['mapping']> {
+export function toCoverageMapping(state: MappingState, exclusionsGroupId: string | null): NonNullable<CoverageInput['mapping']> {
   // The confirmed emergency accounts only; a nomination is not one of them
   // (mapping/emergencyChoice.ts), and the prior ids are context, never input.
   const breakGlassUsers = [...state.breakGlassUserIds]
@@ -41,7 +42,6 @@ export function toCoverageMapping(state: MappingState, snapshot: TenantSnapshot,
   return {
     breakGlassUsers,
     exclusionGroups,
-    confirmed: answersComplete(snapshot, state),
     serviceAccountUsers: [...state.serviceAccountUserIds],
   }
 }

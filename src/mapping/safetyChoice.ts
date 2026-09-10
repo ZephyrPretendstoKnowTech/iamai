@@ -67,6 +67,16 @@ export type SafetyRole = 'exclusionsGroup'
  */
 export type DetectionEvidence = 'complete' | 'incomplete'
 
+/**
+ * Why the evidence was incomplete, which is three different sentences to an
+ * operator: the policies could not be read, a group they name could not be read,
+ * or every read succeeded and the reading is still only the groups somebody
+ * asked for (`CandidateUniverse` partial). The last is the product's normal
+ * state, and saying "a group would not open" about it told an operator their
+ * reads had failed when every one of them had succeeded.
+ */
+export type DetectionGap = 'policies' | 'groups' | 'universe'
+
 export type SafetyStatus =
   /** The operator chose it and this scan read the object: actionable. */
   | 'confirmed'
@@ -117,10 +127,19 @@ export type SafetyChoice = {
   actionableName: string | null
   /** What IAMAI would put forward. Never authoritative, and never a substitute for a stored choice. */
   recommended: SafetyCandidate | null
+  /**
+   * The candidate worth naming to an operator who has not chosen: the
+   * recommendation, or — where the reading could not say it is the only one —
+   * the one verified candidate it did find. Named, never chosen, never
+   * actionable; an unanswered question stays unanswered with it.
+   */
+  suggested: SafetyCandidate | null
   /** Every object that plausibly serves the role, best first. Verified candidates only. */
   candidates: SafetyCandidate[]
   /** Whether the detection behind `candidates` was complete enough to conclude from. */
   evidence: DetectionEvidence
+  /** Why it was not, when it was not. */
+  gap: DetectionGap | null
   /** True wherever nothing may act on the choice yet. */
   unresolved: boolean
 }
@@ -142,6 +161,8 @@ export type SafetyChoiceInput = {
   candidates: SafetyCandidate[]
   /** Whether the detection had the evidence it needed. */
   evidence: DetectionEvidence
+  /** Why it did not, when it did not. */
+  gap?: DetectionGap | null
 }
 
 /**
@@ -156,13 +177,14 @@ export function resolveSafetyChoice(input: SafetyChoiceInput): SafetyChoice {
     evidence: input.evidence,
     recordedId: input.recorded?.id ?? null,
     recordedProvenance: input.recorded?.provenance ?? null,
+    gap: input.evidence === 'complete' ? null : (input.gap ?? null),
   }
   if (input.stored !== null) {
     // The operator's answer is theirs. It stays in every branch below; what
     // changes is whether IAMAI may act on it today. And in no branch is it
     // replaced by whatever IAMAI would recommend instead — a recommendation
     // answers a question nobody asked here.
-    const stored = { storedId: input.stored.id, storedName: input.stored.name, recommended: null, presence: input.presence }
+    const stored = { storedId: input.stored.id, storedName: input.stored.name, recommended: null, suggested: null, presence: input.presence }
     if (input.presence === 'present') {
       return { ...base, ...stored, status: 'confirmed', actionableId: input.stored.id, actionableName: input.stored.name, unresolved: false }
     }
@@ -177,12 +199,15 @@ export function resolveSafetyChoice(input: SafetyChoiceInput): SafetyChoice {
   // of the reading was, so that much can be said; a single candidate cannot be
   // called the only one, and an empty list cannot be called none.
   if (input.evidence === 'incomplete') {
-    return { ...base, ...nobody, status: input.candidates.length > 1 ? 'ambiguous' : 'undetermined', recommended: null }
+    // The one verified candidate is still named: it is not the only one, and it
+    // is not nothing either.
+    return { ...base, ...nobody, status: input.candidates.length > 1 ? 'ambiguous' : 'undetermined', recommended: null, suggested: input.candidates.length === 1 ? input.candidates[0] : null }
   }
   // More than one plausible object is not a close call to be settled by a sort
   // order: it is a question, and the operator answers it.
   const status: SafetyStatus = input.candidates.length === 0 ? 'none-found' : input.candidates.length === 1 ? 'recommended' : 'ambiguous'
-  return { ...base, ...nobody, status, recommended: status === 'recommended' ? input.candidates[0] : null }
+  const recommended = status === 'recommended' ? input.candidates[0] : null
+  return { ...base, ...nobody, status, recommended, suggested: recommended }
 }
 
 /**
@@ -452,18 +477,22 @@ export function groupEvidence(ctx: ExclusionsContext, id: string): ObjectEvidenc
  * accounts.
  */
 export function exclusionsDetectionEvidence(ctx: ExclusionsContext): DetectionEvidence {
+  return exclusionsDetectionGap(ctx) === null ? 'complete' : 'incomplete'
+}
+
+/** Which of the three conditions above did not hold: a failed read first, because that is what the operator can act on. */
+export function exclusionsDetectionGap(ctx: ExclusionsContext): DetectionGap | null {
   const evidence = evidenceOf(ctx)
-  if (evidence.universe !== 'complete') return 'incomplete'
-  if ((ctx.snapshot.config.caPolicies?.status ?? 'error') !== 'ok') return 'incomplete'
+  if ((ctx.snapshot.config.caPolicies?.status ?? 'error') !== 'ok') return 'policies'
   const ev = evidence.groups
   for (const id of policyGroupIds(ctx)) {
     const e = ev.get(id)
-    if (!e) return 'incomplete'
+    if (!e) return 'groups'
     if (e.presence === 'absent') continue
-    if (e.presence !== 'present') return 'incomplete'
-    if (e.members === 'unknown') return 'incomplete'
+    if (e.presence !== 'present') return 'groups'
+    if (e.members === 'unknown') return 'groups'
   }
-  return 'complete'
+  return evidence.universe === 'complete' ? null : 'universe'
 }
 
 /**
@@ -519,14 +548,18 @@ export function exclusionsGroupChoice(ctx: ExclusionsContext): SafetyChoice {
   // legacy detection's record has the first and not the second.
   const recorded = record?.resolvedId ?? null
   const decision = operatorExclusionsDecision(ctx.mapping)
+  // By object id and nothing else: a group that carries the chosen group's name
+  // under another id is a different group, and is at most a candidate.
   const read = decision === null ? null : (evidenceOf(ctx).groups.get(lc(decision.id)) ?? null)
+  const gap = exclusionsDetectionGap(ctx)
   return resolveSafetyChoice({
     role: 'exclusionsGroup',
     stored: decision === null ? null : { id: decision.id, name: read?.displayName ?? decision.name ?? null },
     recorded: recorded === null || record === null ? null : { id: recorded, provenance: record.provenance },
     presence: decision === null ? 'unknown' : (read?.presence ?? 'unknown'),
     candidates: exclusionsGroupCandidates(ctx),
-    evidence: exclusionsDetectionEvidence(ctx),
+    evidence: gap === null ? 'complete' : 'incomplete',
+    gap,
   })
 }
 

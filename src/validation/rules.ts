@@ -236,6 +236,19 @@ function livePolicies(ctx: ValidationContext): PolicyShape[] {
   return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state !== 'disabled')
 }
 
+/**
+ * The enabled and report-only policies that do not exclude this group, by name.
+ * The one reading of "a policy that does not yet exclude the exclusions group":
+ * the group's own check says it, and the emergency step names the same policies,
+ * rather than inferring them from how each account happens to be excluded.
+ */
+export function policiesNotExcludingGroup(tenantPolicies: readonly unknown[], groupId: string): string[] {
+  return (tenantPolicies as PolicyShape[])
+    .filter((p) => p.state !== 'disabled')
+    .filter((p) => !(p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === groupId.toLowerCase()))
+    .map((p) => p.displayName ?? '(unnamed)')
+}
+
 /** Policies that actually deny: Microsoft says report-only ones need no exclusion. */
 function enforcingPolicies(ctx: ValidationContext): PolicyShape[] {
   return (ctx.tenantPolicies as PolicyShape[]).filter((p) => p.state === 'enabled')
@@ -708,10 +721,9 @@ const xgUsedConsistently: ValidationRule<GroupTarget> = {
     // without a second look at its exclusions.
     const live = livePolicies(ctx)
     if (live.length === 0) return PASS
-    const excludes = (p: (typeof live)[number]): boolean => (p.conditions?.users?.excludeGroups ?? []).some((g) => g.toLowerCase() === entry.groupId.toLowerCase())
-    const missing = live.filter((p) => !excludes(p))
+    const missing = policiesNotExcludingGroup(ctx.tenantPolicies, entry.groupId)
     if (missing.length === 0) return PASS
-    return fail(F.xgInconsistent(live.length - missing.length, live.length), { policies: missing.map((p) => p.displayName ?? '(unnamed)') })
+    return fail(F.xgInconsistent(live.length - missing.length, live.length), { policies: missing })
   },
 }
 

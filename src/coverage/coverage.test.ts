@@ -173,7 +173,7 @@ test('4: exclusion group mapped as break-glass → enforced with expected note',
     ],
     {
       groupMembers: new Map([['grp-bg', { memberIds: ['u2', 'u3'], memberCount: 2, sampled: false }]]),
-      mapping: { confirmed: true, exclusionGroups: { 'grp-bg': 'breakGlass' }, breakGlassUsers: [] },
+      mapping: { exclusionGroups: { 'grp-bg': 'breakGlass' }, breakGlassUsers: [] },
     },
   )
   const g = goal(r, 'mfa-all-users')

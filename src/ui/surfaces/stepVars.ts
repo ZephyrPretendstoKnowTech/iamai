@@ -26,7 +26,7 @@ import { DECISION_STEPS } from '../../roadmap/decisions.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { NamingConvention } from '../../coverage/naming.ts'
-import { initialDomain } from '../../validation/rules.ts'
+import { initialDomain, policiesNotExcludingGroup } from '../../validation/rules.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { engine, shared } from '../../content/content.ts'
@@ -279,7 +279,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // countries, trusted-network, service-accounts and shared-devices pickers,
   // from the detections the plan runs, in the content file's row shape.
   const pickerRow = (contentStepFor(step) as { decision?: { pickerRow?: string } } | undefined)?.decision?.pickerRow
-  if (typeof pickerRow === 'string') Object.assign(v, pickerVars(step.id, pickerRow, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups }) ?? {})
+  if (typeof pickerRow === 'string') Object.assign(v, pickerVars(step.id, pickerRow, { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }) ?? {})
 
   // The emergency-access and exclusions-group steps (walk-51 item 14): the
   // failing checks routed through the content checkFixes, the counts for the
@@ -307,7 +307,9 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     // need one, and the words say which of the two this is
     // (mapping/safetyChoice.ts: the app's group reading is partial).
     v.needsCreate = choice.status === 'none-found'
-    v.createIfNeeded = choice.status === 'undetermined'
+    // And only where nothing plausible is in view: beside a group IAMAI found,
+    // "create one if you do not already have one" asks for a second.
+    v.createIfNeeded = choice.status === 'undetermined' && choice.suggested === null
     v.policyCount = policies.length
     // No group in use: no checks ran, so no count (the population's 0 would read "All 0 checks pass").
     if (id === null) delete v.total
@@ -339,15 +341,19 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     const chosen = choice.storedId === null ? null : (choice.storedName ?? ctx.nameOf(choice.storedId))
     if (choice.status === 'unverified' && chosen) v.unverifiedGroup = [chosen]
     if (choice.status === 'invalidated' && chosen) v.missingGroup = [chosen]
-    if (choice.recommended) {
-      v.suggestedGroup = [choice.recommended.name]
-      if (choice.recommended.memberCount !== null) v.suggestedMemberCount = choice.recommended.memberCount
-      v.suggestedExcludedFrom = choice.recommended.excludedFrom ?? 0
+    // The group IAMAI found, named and not chosen (safetyChoice.ts `suggested`):
+    // the recommendation, or the one verified candidate a partial reading found.
+    if (choice.suggested) {
+      v.suggestedGroup = [choice.suggested.name]
+      if (choice.suggested.memberCount !== null) v.suggestedMemberCount = choice.suggested.memberCount
+      v.suggestedExcludedFrom = choice.suggested.excludedFrom ?? 0
     }
     if (choice.status === 'ambiguous') v.candidateGroups = choice.candidates.map((c) => c.name)
-    if (choice.status === 'undetermined') {
-      // Which half of the reading came up short, in the engine's own words.
-      v.detectionGap = [(ctx.snapshot.config.caPolicies?.status ?? 'error') === 'ok' ? engine.detectionGap.groups : engine.detectionGap.policies]
+    // Which read came up short, in the engine's own words, and only where one
+    // did. Every read succeeding over a reading that is only ever partial is not
+    // a group that would not open; the create offer says what that reading is.
+    if (choice.status === 'undetermined' && (choice.gap === 'policies' || choice.gap === 'groups')) {
+      v.detectionGap = [engine.detectionGap[choice.gap]]
     }
   }
   // A check step with nothing checked (no target the scan could read) shows no count.
@@ -361,10 +367,18 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     })
     // Fewer than two accounts pass the count check: the create instructions show.
     v.needsCreate = step.checks.items.some((it) => it.fix === 'second-account')
-    // The policies that do not yet exclude the exclusions group (who line), from
-    // the excluded-everywhere checks' own values.
-    const notExcluding = [...new Set(step.checks.items.filter((it) => it.fix === 'excluded-everywhere').flatMap((it) => (Array.isArray(it.values.policies) ? (it.values.policies as string[]) : [])))]
-    if (notExcluding.length > 0) v.policiesNotExcluding = notExcluding
+    // The policies that do not yet exclude the exclusions group (the emergency
+    // step's who line): the group the operator chose and this scan read, and the
+    // list that group's own check names (validation/rules.ts
+    // policiesNotExcludingGroup). It was read from the accounts' checks, which
+    // count an account excluded through any group at all, so the emergency step
+    // named one policy for "the exclusions group" while the exclusions step named
+    // five. With no group in use there is no such group to name policies for.
+    if (DECISION_STEPS.emergency.has(step.id)) {
+      const groupId = exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }).actionableId
+      const notExcluding = groupId === null ? [] : policiesNotExcludingGroup(ctx.snapshot.config.caPolicies?.rows ?? [], groupId)
+      if (notExcluding.length > 0) v.policiesNotExcluding = notExcluding
+    }
     v.operator = ctx.operatorId ? ctx.nameOf(ctx.operatorId) : undefined
     v.tenantId = ctx.snapshot.tenantId
     v.onmicrosoftDomain = initialDomain(ctx.snapshot) ?? undefined

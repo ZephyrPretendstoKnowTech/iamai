@@ -573,7 +573,12 @@ test('the week-two policy that is ready to enforce is ready on its own scope', (
   assert.equal(step.cohort, undefined, 'so it has no cohort of its own')
   assert.equal(step.tracking?.readyNow, true, 'and it is ready on the deployed policy’s records')
   assert.equal(step.tracking?.seenInScope, step.tracking?.activeInScope, 'every active person the policy reaches has been seen')
-  assert.notEqual(step.tracking?.activeInScope, (step.population.activeIds ?? step.population.ids).length, 'the count is not the goal’s population')
+  // The deployed policy reaches every active person here, so its count and the
+  // goal's population coincide; a goal population of strangers shows which of
+  // the two the count is.
+  const strangers = ['00000000-0000-4000-8000-00000000dead', '00000000-0000-4000-8000-00000000beef']
+  const foreign = retrack(f, { population: (s) => ({ ...s.population, ids: strangers, activeIds: strangers, active: 2, total: 2 }) }).find((x) => x.id === 's-goal-token-protection') as Step
+  assert.equal(foreign.tracking?.activeInScope, step.tracking?.activeInScope, 'the count is not the goal’s population')
   const blind = retrack(f, { groupMembers: {} }).find((x) => x.id === 's-goal-token-protection') as Step
   assert.equal(blind.tracking?.readyNow, false, 'and with the scope unresolved the evidence gate closes rather than falling back')
 })
