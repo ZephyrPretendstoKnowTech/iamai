@@ -26,7 +26,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { absoluteDate, dateRange } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, NO_FOCUS, VIEWS, applyFocus, boardWhen, focusActive, focusCounts, groupSummary, groupsFor, statusGroupOf, workTypeOf } from './planBoard.ts'
+import { BOARD, NO_FOCUS, VIEWS, applyFocus, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, statusGroupOf, workTypeOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, Focus, RoadmapGroup, View } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -192,16 +192,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
       isNext,
       order: order++,
     })
-    // The board's reading of the timing column (planBoard.ts `boardWhen`). The
-    // VALUE is still `rowWhen`'s, unchanged and still what the opened step, the
-    // printed plan and every export read; this decides only what the board does
-    // with it — drop the generic `now`, and say `Held` where a wave date would
-    // otherwise imply a held step is still on schedule.
-    const when = boardWhen(rowWhen(step, group.start), {
-      genericNow: rowWhen(step, group.start) === PP.now,
-      held: status === 'waiting' || isHeld(step),
-      carriesReason: rowWhenWraps(step),
-    })
+    // The board's reading of the timing column (planBoard.ts `boardWhenOf`): the
+    // row's own value, with Held exactly where roadmap/holds.ts says the step is
+    // held — never for a step merely sequenced after another.
+    const when = boardWhenOf(step, group.start)
     renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} when={when} waveStart={group.start} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} />)
   }
 

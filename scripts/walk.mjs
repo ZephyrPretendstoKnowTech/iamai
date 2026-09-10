@@ -439,6 +439,7 @@ async function walkFixture(fx) {
   let rowReasons = []
   let rowTitlesOpen = []
   let rowReasonsOpen = []
+  let rowWhensOpen = []
   // The steps whose policy the plan cannot write yet, by title, and the campaign's
   // day-one email: the email names the first policy that needs a passkey, and a
   // policy the plan is holding is not one it may promise a date for.
@@ -1087,6 +1088,7 @@ async function walkFixture(fx) {
       // The rows as first seen, with every decision still open (the loop re-reads the rows after a decision moves a step).
       rowTitlesOpen = [...rowTitles]
       rowReasonsOpen = [...rowReasons]
+      rowWhensOpen = [...rowWhens]
       let inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
       // Finished rows are not opened one by one, for the same reason the footer's
       // never were: the loop below walks the work that is still to do.
@@ -1653,7 +1655,11 @@ async function walkFixture(fx) {
     if (fx.week2) {
       // The foundations are done on week two, so the wait on the decision is the binding reason a row shows.
       for (const re of DEVICE_STEPS) {
-        if (!reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
+        // A device step something else holds says what holds it (roadmap/holds.ts,
+        // stateReason.ts holdReasonFor) and reads Held; one only sequenced after the
+        // open decision names the decision.
+        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && rowWhensOpen[k] === 'Held')
+        if (!heldOpen && !reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
         if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
       }
     }

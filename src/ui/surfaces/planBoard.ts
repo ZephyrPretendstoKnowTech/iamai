@@ -22,6 +22,9 @@
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { Step } from '../../roadmap/types.ts'
+import { isHeld } from '../../roadmap/holds.ts'
+import { pages } from '../../content/content.ts'
+import { rowWhen, rowWhenWraps } from './rowWhen.ts'
 
 /**
  * The three facts the Status projection reads, and no more. Named as a type so
@@ -237,6 +240,17 @@ export function boardWhen(when: string, o: { genericNow: boolean; held: boolean;
   if (o.genericNow) return ''
   if (o.held && !o.carriesReason) return BOARD.held
   return when
+}
+
+/**
+ * The board's timing column for one step: the row's own value (rowWhen.ts), with
+ * Held exactly where roadmap/holds.ts says the step is held. A step sequenced
+ * after another is not held and keeps its date; the board infers nothing about
+ * holds from a step's status word or the group it sits in.
+ */
+export function boardWhenOf(step: Step, waveStart: string | null = null): string {
+  const when = rowWhen(step, waveStart)
+  return boardWhen(when, { genericNow: when === (pages.plan as { now: string }).now, held: isHeld(step), carriesReason: rowWhenWraps(step) })
 }
 
 /**

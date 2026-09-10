@@ -52,7 +52,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; unsettled: string; pairUnmatched: string; noOperation: string; emergency: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -65,6 +65,16 @@ export const BLOCKED_REASON = {
    * step is waiting on a person, and the row says which person's answer.
    */
   exclusionsGroup: BLOCKED.exclusionsGroup,
+  /**
+   * What holds a policy Foundation A cannot write when no step of the plan is what
+   * it waits on (roadmap/stateReason.ts holdReasonFor): a source group no settled
+   * reading explains, a pair it cannot match, a step with no policy to write, and
+   * emergency access it cannot prove is out of scope.
+   */
+  unsettled: BLOCKED.unsettled,
+  pairUnmatched: BLOCKED.pairUnmatched,
+  noOperation: BLOCKED.noOperation,
+  emergency: BLOCKED.emergency,
 }
 
 /** The measure a readiness threshold is stated against, by family. */

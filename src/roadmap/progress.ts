@@ -3,6 +3,7 @@ import type { CoverageReport } from '../coverage/types.ts'
 import { RETIRED_DECISION_STEPS } from './baselineConflict.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import { trackExecution } from './tracking.ts'
+import { markHoldChains } from './holds.ts'
 import type { TrackingEvidence } from './tracking.ts'
 import { isEmergencyAccess } from './blockerSteps.ts'
 import { engine } from '../content/content.ts'
@@ -110,6 +111,8 @@ export function applyProgress(
   // never a fallback to the goal's population.
   scopeEvidence: TrackingEvidence = {},
 ): Step[] {
+  // A wait on a held step is a hold before tracking asks who is ready (roadmap/holds.ts).
+  markHoldChains(steps)
   return trackExecution(steps, snapshot, coverage, planId, now, observations ?? {}, scopeEvidence)
 }
 

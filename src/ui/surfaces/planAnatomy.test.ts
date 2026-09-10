@@ -193,7 +193,8 @@ test('the state is a word, never a colour alone, in every state the plan can be 
   assert.match(ROW, /<Status tone=\{tone\}>\{word\}<\/Status>/, 'the state is no longer rendered as a word')
   // Every status a step can project renders a non-empty word. A tone with no
   // word would be a row whose meaning is the dot's colour.
-  const step = (over: Record<string, unknown>): Step => ({ status: 'ready', state: { inPlace: false, lifecycle: 'not-deployed', condition: 'healthy' }, operatorSafe: true, ...over }) as unknown as Step
+  // A step nothing holds: the word reads the hold (roadmap/holds.ts), which reads the step's kind and blockers.
+  const step = (over: Record<string, unknown>): Step => ({ status: 'ready', kind: 'prerequisite', blockers: [], state: { inPlace: false, lifecycle: 'not-deployed', condition: 'healthy' }, operatorSafe: true, ...over }) as unknown as Step
   const cases: Step[] = [
     step({ status: 'ready' }),
     step({ status: 'blocked' }),
@@ -230,11 +231,11 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   assert.match(PLAN, /title=\{contentTitle\(step\)\}/, 'the title is no longer the content entry')
   assert.match(PLAN, /who=\{rowWho\(step, nameOf\)\}/, 'the metadata zone no longer reads the one who-line authority')
   // The timing zone still reads `rowWhen` and nothing else — but through the
-  // board's own reading of it (planBoard.ts `boardWhen`), which drops the
-  // generic `now` and says `Held` where a wave date would imply a held step is
-  // still on schedule. `boardWhen` takes the VALUE and chooses what to show; it
-  // computes no date, and every other surface still calls `rowWhen` directly.
-  assert.match(PLAN, /const when = boardWhen\(rowWhen\(step, group\.start\), \{/, 'the timing zone no longer reads the one when authority')
+  // board's own reading of it (planBoard.ts `boardWhenOf`), which drops the
+  // generic `now` and says `Held` exactly where roadmap/holds.ts holds the step.
+  // It takes the VALUE and chooses what to show; it computes no date, and every
+  // other surface still calls `rowWhen` directly.
+  assert.match(PLAN, /const when = boardWhenOf\(step, group\.start\)/, 'the timing zone no longer reads the one when authority')
   assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
   assert.match(PLAN, /reason=\{rowReason\(step\)\}/, 'the quiet line no longer reads the one reason authority')
   assert.match(PLAN, /whenReason=\{rowWhenWraps\(step\)\}/)

@@ -102,6 +102,12 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // yet: the length is the rollout's estimate (derive/finish.ts planWeeks), a
   // state the review page's example plan is not in.
   '.pages.plan.lengthTipEstimate',
+  // What holds a policy no step of the plan clears, on its row (roadmap/stateReason.ts
+  // holdReasonFor): a state the review page's example plan is not in.
+  '.pages.plan.blocked.unsettled',
+  '.pages.plan.blocked.pairUnmatched',
+  '.pages.plan.blocked.noOperation',
+  '.pages.plan.blocked.emergency',
   '.pages.connect.plan.sample.weeksEstimate',
   // And the same column for a policy whose observation window closed on records
   // that have not cleared it (rowWhen.ts, derive/readyWhen.ts kind `since`):

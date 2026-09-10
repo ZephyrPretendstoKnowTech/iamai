@@ -15,7 +15,8 @@ import type { Step, StepStatus } from '../../roadmap/types.ts'
 const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Scheduled', 'Report-only', 'Ready to enforce', 'Enforced', 'Skipped'])
 
 function step(status: StepStatus, over: Partial<StepState> = {}): Step {
-  const built = { status, state: initialState(), tracking: null } as Step
+  // A step nothing holds: the word reads the hold (roadmap/holds.ts), which reads the step's kind and blockers.
+  const built = { status, kind: 'prerequisite', blockers: [], state: initialState(), tracking: null } as unknown as Step
   return setState(built, { ...stateForStatus(status), ...over })
 }
 

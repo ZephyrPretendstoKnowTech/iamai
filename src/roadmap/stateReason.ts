@@ -8,6 +8,9 @@ import {
   READINESS_THRESHOLD_MFA_PERCENT,
 } from './constants.ts'
 import type { Blocker, Step } from './types.ts'
+import { holdOf, markHoldChains } from './holds.ts'
+import { unavailableReason } from './operations.ts'
+import { BREAK_GLASS_STEP_ID } from './stepIds.ts'
 
 function thresholdFor(family: Step['readiness']['family']): number | null {
   if (family === 'mfa' || family === 'guest') return READINESS_THRESHOLD_MFA_PERCENT
@@ -51,11 +54,75 @@ export function blockedReasonFor(step: Step, stepById: Map<string, Step>): strin
   return BLOCKED_REASON.exist(1, 'named cause', 0)
 }
 
+/**
+ * What holds a held step, in the same shapes (roadmap/holds.ts): the cause the
+ * hold itself is, never the first step the row happens to be sequenced after. A
+ * policy held on a source group nothing explains used to read "after: Create or
+ * Correct Emergency Access Accounts" — true of its order, and not what holds it:
+ * finishing that step releases nothing.
+ *
+ * Null for a step nothing holds, and for the two holds whose row already reads
+ * its own cause — a policy held for review (its observation's note) and one held
+ * on its records (their numbers, ui/surfaces/rowWhen.ts rowReason).
+ */
+export function holdReasonFor(step: Step, stepById: Map<string, Step>): string | null {
+  const hold = holdOf(step)
+  if (hold === null || hold.kind === 'review' || hold.kind === 'evidence') return null
+  const titleOf = (id: string | null | undefined): string | null => {
+    const dep = id ? stepById.get(id) : undefined
+    return dep ? dep.plainTitle || dep.title : null
+  }
+  const after = (id: string | null | undefined): string | null => {
+    const t = titleOf(id)
+    return t ? BLOCKED_REASON.after(t) : null
+  }
+  const boundBy = (kind: Blocker['kind']): string | null => step.blockers.find((b) => b.kind === kind && typeof b.binding === 'string' && b.binding.length > 0)?.binding ?? null
+  switch (hold.kind) {
+    case 'conflict':
+      return blockedReasonFor(step, stepById)
+    case 'readiness':
+      return boundBy('readiness') ?? blockedReasonFor(step, stepById)
+    case 'decision':
+      return boundBy('decision') ?? blockedReasonFor(step, stepById)
+    case 'prerequisite': {
+      const chain = step.blockers.find((b): b is Extract<Blocker, { kind: 'step' }> => b.kind === 'step' && b.held === true)
+      return (chain ? after(chain.stepId) : null) ?? boundBy('setup') ?? boundBy('decision') ?? boundBy('evidence') ?? blockedReasonFor(step, stepById)
+    }
+    case 'unavailable': {
+      const missing = step.action.missing ?? []
+      switch (unavailableReason(step)) {
+        case 'missing-object': {
+          // A source group nothing explains binds before an object the tenant can make: no step clears it.
+          if (missing.some((m) => m.unreadable)) return BLOCKED_REASON.unsettled
+          return missing.map((m) => after(m.stepId)).find((r): r is string => r !== null) ?? blockedReasonFor(step, stepById)
+        }
+        case 'escape-hatch-unverified':
+          return after(step.action.escapeHatch?.stepId) ?? blockedReasonFor(step, stepById)
+        case 'readiness-unmet':
+          return boundBy('readiness') ?? blockedReasonFor(step, stepById)
+        case 'unmatched-pair':
+          return BLOCKED_REASON.pairUnmatched
+        case 'no-operation':
+          return BLOCKED_REASON.noOperation
+        case 'unsafe-emergency-access':
+        case 'unverified-emergency-exclusion':
+          return after(BREAK_GLASS_STEP_ID) ?? BLOCKED_REASON.emergency
+        case 'baseline-conflict':
+          return BLOCKED_REASON.baseline
+        default:
+          return blockedReasonFor(step, stepById)
+      }
+    }
+  }
+}
+
 /** Fills blockedReason on every step in place; safe to call again after progress changes. */
 export function annotateStateReasons(steps: Step[]): Step[] {
+  markHoldChains(steps)
   const byId = new Map(steps.map((s) => [s.id, s]))
   for (const s of steps) {
-    s.blockedReason = s.status === 'blocked' ? blockedReasonFor(s, byId) : null
+    // A held step says what holds it, whatever its word; a blocked one its binding wait.
+    s.blockedReason = holdReasonFor(s, byId) ?? (s.status === 'blocked' ? blockedReasonFor(s, byId) : null)
   }
   return steps
 }

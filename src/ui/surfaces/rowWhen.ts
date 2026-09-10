@@ -150,7 +150,7 @@ export function rowReason(step: Step): string | null {
   const existing = existingOf(step)
   if (existing !== null) return existing.together ? fillText(PLAN.satisfiedTogether, { policies: list(existing.names) }) : fillText(PLAN.satisfiedBy, { policies: existing.names[0] })
   if (isPreserved(step)) return null
-  if (heldForReview(step)) return step.state.observation?.note ?? null
+  if (heldForReview(step)) return step.state.observation?.note ?? PLAN.heldForReview
   // A step something else holds says what holds it, whatever its stage: a policy
   // being watched while the way back in is unverified reads that, and never the
   // evidence that would otherwise offer the change (roadmap/holds.ts).
