@@ -474,7 +474,11 @@
           "Waiting on something else",
           "Complete"
         ],
-        "tabs": [],
+        "tabs": [
+          "Roadmap",
+          "Status",
+          "Work type"
+        ],
         "tiles": [],
         "columns": [
           "State",
@@ -496,9 +500,6 @@
         ],
         "buttons": [
           "Start the plan",
-          "Roadmap",
-          "Status",
-          "Work type",
           "re:^Needs attention\\s*\\d+$",
           "re:^Up next\\s*\\d+$",
           "re:^Show completed\\s*\\d+$",
