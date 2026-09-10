@@ -2158,6 +2158,55 @@ footer.app a {
   font-size: var(--t-2);
 }
 
+/* ---- the MFA handoff's bounded person preview ----
+   Who is holding this step up, three at most, then the count and the way to the
+   page that owns the rest. The Plan says enough to make the hold concrete; MFA
+   Readiness owns the person-by-person diagnostic, and a longer list here would
+   be a second table to keep in step with the real one.
+
+   Each row is three zones so the two facts stay apart: what the person has, and
+   what they need. The labels are --t-micro, the same compact floor the board's
+   column head uses; nothing goes below it. */
+.step .mfa-preview {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-width: none;
+  display: grid;
+  gap: 6px;
+}
+.step .mfa-preview li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+  font-size: var(--t-2);
+}
+.step .mfa-preview .who {
+  display: grid;
+  min-width: 0;
+}
+.step .mfa-preview .name {
+  font-weight: var(--weight-strong);
+  overflow-wrap: anywhere;
+}
+.step .mfa-preview .role,
+.step .mfa-preview .state,
+.step .mfa-preview .next {
+  color: var(--quiet-text);
+  min-width: 0;
+}
+.step .mfa-preview .k {
+  font-size: var(--t-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: var(--weight-strong);
+}
+
 /* ---- the step's own footer ----
    The approved step reference's `.footer`: under BOTH columns, full width, on
    the quieter surface, divided by the frame's own hairline. It used to be the
@@ -3357,6 +3406,12 @@ td .not-person {
   .step .more-grid {
     grid-template-columns: 1fr;
   }
+  /* A person's three zones stack rather than shrink: a name, a method and a
+     next action each need their own line before the column is 200px wide. */
+  .step .mfa-preview li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
   .step-side {
     border-left: 0;
     border-top: 1px solid var(--line);
@@ -3424,12 +3479,24 @@ td .not-person {
   .plan-controls .tabs.view-tabs .tab {
     flex: 1;
   }
+  /* The focus row WRAPS. It used to scroll sideways, which put "Show completed"
+     half off the edge of a 390px screen with nothing to say it was there — a
+     control the operator cannot see is a control they do not have. Wrapping
+     costs one line and keeps every label whole and tappable, and the row is
+     three buttons, not a list that could grow. */
   .plan-controls .focuses {
-    overflow-x: auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    row-gap: 7px;
   }
   .plan-controls .focus {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    /* A long label wraps inside its own button rather than being clipped by it. */
+    white-space: normal;
+    text-align: left;
+    height: auto;
+    min-height: var(--control);
+    padding-top: 5px;
+    padding-bottom: 5px;
   }
   /* The group head keeps its heading and its control on one line; the date
      drops under them rather than squeezing the heading. */

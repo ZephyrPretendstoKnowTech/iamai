@@ -52,7 +52,7 @@ import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
 import { Button } from '../components/index.ts'
-import { CONTRACT, hasRail, stepContract } from './stepContract.ts'
+import { CONTRACT, footerOffersScan, hasRail, implementationIsCurrent, showsDoneWhen, stepContract } from './stepContract.ts'
 import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel, footerNote } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
@@ -241,7 +241,14 @@ export function ContentStep({
   // chosen tab is clamped to what is available, so a step that offers only the
   // portal cannot be left showing an empty JSON panel by a click on another
   // step — the frame is reused across rows and the state is not.
-  const channels = channelsFor(portal !== null && portal.length + before.length > 0, contract.implementation.offered)
+  // What the step is offering RIGHT NOW. The capability is unchanged — the
+  // artifacts exist and `contract.implementation.offered` still says so — but a
+  // step whose current action is to clear a blocker, answer a decision or read
+  // new evidence is not also offering the deployment (stepContract.ts
+  // `implementationIsCurrent`). The same channels come back when the condition
+  // does, from the same call, with nothing regenerated.
+  const deployNow = implementationIsCurrent(step)
+  const channels = deployNow ? channelsFor(portal !== null && portal.length + before.length > 0, contract.implementation.offered) : []
   const tab: DoTab = channels.includes(chosen) ? chosen : (channels[0] ?? 'portal')
   const hasSteps = instructions.steps.length > 0
   // Who this touches, split into what the default step shows and what More
@@ -357,7 +364,7 @@ export function ContentStep({
       {(truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create) && (
         <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
       )}
-      {portal ? (
+      {portal && channels.length > 0 ? (
         <>
           {/* One panel, three tabs (task 017): each names the panel it controls
               and the panel names the tab that labels it, so the three channels
@@ -446,7 +453,12 @@ export function ContentStep({
           where it has them; where a policy cannot be written yet, what would
           clear that instead — which is exactly the step that used to render no
           Done when at all (stepContract.ts doneWhenOf). */}
-      <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
+      {/* Everywhere but the one kind of step with nothing left to do: a goal
+          the tenant already delivers says "keep it" under What to do, and its
+          completion line says the same thing again (stepContract.ts
+          `showsDoneWhen`). The contract still carries it for the print and the
+          export; the opened step says it once. */}
+      {showsDoneWhen(step) && <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />}
 
       {/* Everything below the completion is audit depth and work artifacts: the
           names behind the counts, the way back from a change nobody has made
@@ -481,7 +493,7 @@ export function ContentStep({
           StepFooter). It offers the existing scan action where the step's
           content entry says a scan is how this step is verified, and Close
           otherwise — never a disabled button kept for symmetry. */}
-      <StepFooter note={footerNote(contract)} onScan={cs.scanControl && onScan ? onScan : null} onClose={onClose} />
+      <StepFooter note={footerNote(contract)} onScan={cs.scanControl && onScan && footerOffersScan(step) ? onScan : null} onClose={onClose} />
     </article>
   )
 }

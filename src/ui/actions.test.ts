@@ -297,7 +297,7 @@ test('each action from each location reaches the same function: the surfaces imp
   // StepFooter) instead of drawing the button itself, so the chain is checked
   // through both links: the step passes the handler it was given, and the footer
   // is what presses it.
-  assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /onScan=\{cs\.scanControl && onScan \? onScan : null\}/, 'the content step no longer hands the footer the handler it was given')
+  assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /onScan=\{cs\.scanControl && onScan && footerOffersScan\(step\) \? onScan : null\}/, 'the content step no longer hands the footer the handler it was given')
   assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /onClick=\{onScan\}/, 'the step footer calls the handler it was given')
   assert.match(readFileSync('src/ui/surfaces/CleanupStep.tsx', 'utf8'), /onClick=\{onScan\}/, 'the Cleanup step calls the handler it was given')
   // And neither builds one: the only scan on a step is the one the Plan passed down.

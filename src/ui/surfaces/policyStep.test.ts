@@ -13,13 +13,13 @@
 // a title.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { CONTRACT, FOOTER, badgeLabel, footerNote, hasRail, nextCaption, railBlocks, stepTrack as trackFor } from './stepContract.ts'
+import { CONTRACT, FOOTER, badgeLabel, footerNote, hasRail, implementationIsCurrent, nextCaption, railBlocks, stepTrack as trackFor } from './stepContract.ts'
 
 import type { ContractStage, StepContract } from './stepContract.ts'
 
@@ -207,7 +207,7 @@ test('every policy step in the fixtures offers a channel count the rule can draw
 // ----------------------------------------------------------------- the footer
 
 test('the footer offers the existing scan only where a scan is the verification, and Close always', () => {
-  assert.match(CONTENT_STEP, /<StepFooter note=\{footerNote\(contract\)\} onScan=\{cs\.scanControl && onScan \? onScan : null\}/, 'the footer decides for itself when a scan applies')
+  assert.match(CONTENT_STEP, /<StepFooter note=\{footerNote\(contract\)\} onScan=\{cs\.scanControl && onScan && footerOffersScan\(step\) \? onScan : null\}/, 'the footer decides for itself when a scan applies')
   // Close is unconditional; the scan is not. A disabled button kept for symmetry
   // is a control that teaches the operator to ignore the footer.
   const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('export const FOOTER'))
@@ -307,9 +307,26 @@ test('an undated blocked policy captions the gate the rail used to hold alone', 
   // what would move it. The gate is an existing contract field, wrapped in the
   // existing `Next: {label}` template — no new sentence is written.
   const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts' } } as unknown as StepContract
-  assert.equal(nextCaption(gated), 'Next: after: Create or Correct Emergency Access Accounts'.replace('Next: ', `${CONTRACT.next.split('{')[0]}`) || null, 'the gate is not captioned with the existing template')
   assert.ok((nextCaption(gated) ?? '').includes('Create or Correct Emergency Access Accounts'), 'the caption lost the gate')
   assert.ok((nextCaption(gated) ?? '').startsWith(CONTRACT.next.split('{')[0]), 'the caption does not use the existing Next template')
+})
+
+test('the caption reads as one sentence: the gate’s own colon is not repeated inside the frame', () => {
+  // `pages.plan.blocked.after` is "after: {stepTitle}", written for a row's
+  // reason line where it stands alone and the colon is right. Inside the
+  // caption's own "Next: {label}" frame it produced two colons in five words.
+  // Only that second colon goes; the word, the title and every other milestone
+  // string are returned byte for byte.
+  const gated = (g: string) => nextCaption({ milestone: { line: null, at: null, gatedBy: g } } as unknown as StepContract)
+  assert.equal(gated('after: Create or Correct Emergency Access Accounts'), 'Next: after Create or Correct Emergency Access Accounts')
+  assert.equal(gated('after: Anything At All'), 'Next: after Anything At All')
+  // Not the prefix: untouched, colon and all.
+  assert.equal(gated('once the exclusions group exists'), 'Next: once the exclusions group exists')
+  assert.equal(gated('waiting on: something else'), 'Next: waiting on: something else')
+  assert.equal(gated('afternoon deployment'), 'Next: afternoon deployment', 'the rule matched a word rather than the exact prefix')
+  // A dated line is Foundation B's own sentence and is never rewritten.
+  const dated = { milestone: { line: 'Next: leave it in report-only until Sep 17, 2026.', at: '2026-09-17', gatedBy: 'after: something' } } as unknown as StepContract
+  assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
 })
 
 test('a state with neither a dated line nor a gate gets no caption, and none is invented', () => {
@@ -317,10 +334,18 @@ test('a state with neither a dated line nor a gate gets no caption, and none is 
   assert.equal(nextCaption(bare), null, 'a caption was manufactured for a step with no next fact')
   // The projection reads two fields and computes nothing.
   const src = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-  const body = src.slice(src.indexOf('export function nextCaption'), src.indexOf('/** Which footer note'))
+  // The projection and the one punctuation helper beside it. `stepTitle` appears
+  // in the helper's comment because it names the content key it is fixing —
+  // which is why the guard reads the CODE and not the prose.
+  const from = src.indexOf('export function nextCaption')
+  const body = src.slice(from, src.indexOf('const AFTER =', from)).replace(/\/\*[\s\S]*?\*\//g, '')
   for (const forbidden of ['Date', 'absoluteDate', 'title', 'lifecycle', 'readyWhen', 'schedule', 'step.']) {
     assert.equal(body.includes(forbidden), false, `the caption computes ${forbidden} instead of reading the milestone`)
   }
+  // The helper is a string rule over an exact existing prefix, and nothing more.
+  const helper = src.slice(src.indexOf('const AFTER ='), src.indexOf('const AFTER =') + 220)
+  assert.match(helper, /const AFTER = 'after: '/, 'the prefix is no longer the exact content one')
+  assert.match(helper, /startsWith\(AFTER\)/, 'the helper matches something other than the exact prefix')
 })
 
 test('the caption and the rail do not print the same sentence twice', () => {
@@ -343,20 +368,25 @@ test('the caption and the rail do not print the same sentence twice', () => {
 
 // ------------------------------------------- the other families are untouched
 
-test('no other step family was migrated in this pass', () => {
-  // The frame is shared, so the OUTER shell of every family moved with it. What
-  // must not have moved is any family's internal presentation: Pass 3 owns those,
-  // and a half-migrated family is worse than an unmigrated one.
+test('every family is migrated, and each one still has the components it always had', () => {
+  // Prompt 2 asserted the other five were `pending`, which was true then. The
+  // final pass migrated them — which did NOT mean rewriting them: the frame was
+  // already shared, and migrating a family means its optional modules gate
+  // themselves on production truth through that one frame. So the guard now runs
+  // the other way: every family is migrated, and nothing that drew a family
+  // before has been deleted or replaced by a shell of its own.
   const manifest = JSON.parse(readFileSync('docs/design/approved/reference/REFERENCE-MANIFEST.json', 'utf8')) as {
     planStep: { families: Record<string, string> }
   }
-  assert.equal(manifest.planStep.families.policy, 'migrated')
-  for (const family of ['setup', 'mfa', 'inPlace', 'decision', 'resolution']) {
-    assert.equal(manifest.planStep.families[family], 'pending', `${family} is recorded as migrated, and this pass did not migrate it`)
+  for (const family of ['policy', 'setup', 'mfa', 'inPlace', 'decision', 'resolution']) {
+    assert.equal(manifest.planStep.families[family], 'migrated', `${family} is not recorded as migrated`)
   }
-  // The decision primitive, the people blocks and the campaign body are still
-  // drawn by the components that drew them before.
-  for (const untouched of ['<Decision d={d}', '<WhoBlockView', '<More']) {
-    assert.ok(CONTENT_STEP.includes(untouched), `${untouched} left the step: a non-policy family was migrated`)
+  // The decision primitive, the people blocks, More and the MFA handoff are all
+  // still drawn by the components that drew them, inside the same frame.
+  for (const kept of ['<Decision d={d}', '<WhoBlockView', '<More', '<MfaHandoff']) {
+    assert.ok(CONTENT_STEP.includes(kept), `${kept} left the step`)
   }
+  // src/ui/surfaces/stepFamilies.test.ts is where the one-frame claim is proven
+  // over the whole corpus; this only holds the record to it.
+  assert.ok(existsSync('src/ui/surfaces/stepFamilies.test.ts'), 'the family contract has no test')
 })

@@ -144,15 +144,32 @@
       "remainsAuthoritativeFor": "anything the step-variants reference does not draw"
     },
     "families": {
-      "$comment": "The reference draws six step families. A family is migrated when production renders it from this reference rather than from the older one; the rest keep the presentation they have until their own pass.",
+      "$comment": "The reference draws six step families, and production now renders all six from it. `migrated` means the family goes through the ONE shared expanded-step frame with its optional modules gated by production truth — not that it has a renderer of its own. There is no per-family shell, which is the fact `src/ui/surfaces/stepFamilies.test.ts` holds the repository to.",
       "policy": "migrated",
-      "setup": "pending",
-      "mfa": "pending",
-      "inPlace": "pending",
-      "decision": "pending",
-      "resolution": "pending"
+      "setup": "migrated",
+      "mfa": "migrated",
+      "inPlace": "migrated",
+      "decision": "migrated",
+      "resolution": "migrated"
     },
-    "implementedBy": "plan shared step frame + policy rollout family pass"
+    "familyModel": {
+      "$comment": "How a family is arrived at, so a later reader does not go looking for six components. `stepFamily` (src/ui/surfaces/stepContract.ts) is a READING and selects nothing: every optional module gates itself on the truth it needs, and the family is what you get when those gates resolve. Nothing reads a step's title.",
+      "frame": "src/ui/surfaces/ContentStep.tsx",
+      "projection": "src/ui/surfaces/stepContract.ts stepFamily",
+      "modules": [
+        "lifecycle track — where stepTrack finds a recorded lifecycle",
+        "Next caption — where the milestone has a dated line or a gate",
+        "What IAMAI found — where the contract built findings",
+        "Who this touches — where the population is worth stating",
+        "Fix before continuing — where the validation authority has outstanding checks",
+        "decision primitive — where the content entry carries one",
+        "MFA preview and handoff — where stepMfaHold names people",
+        "implementation channels — 0/1/2+ from Foundation A and the translator",
+        "Done when — except a goal the tenant already delivers, which says it under What to do",
+        "rail — where railBlocks has something the header does not carry"
+      ]
+    },
+    "implementedBy": "plan shared step frame + policy rollout family pass; remaining families migrated by the final expanded-step pass"
   },
   "logo": {
     "name": "Threshold",
