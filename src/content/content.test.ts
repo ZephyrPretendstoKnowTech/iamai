@@ -105,6 +105,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // What holds a policy no step of the plan clears, on its row (roadmap/stateReason.ts
   // holdReasonFor): a state the review page's example plan is not in.
   '.pages.plan.blocked.unsettled',
+  // The campaign email while the plan dates nothing (stepExport.ts commsFor): the
+  // review page's example plan dates its enforcement, so it renders the dated body.
+  '.steps[16].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.noOperation',
   '.pages.plan.blocked.emergency',

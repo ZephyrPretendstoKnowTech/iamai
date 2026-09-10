@@ -6,6 +6,7 @@
 // Pure.
 import { READINESS_MEASURE } from '../copy/reasons.ts'
 import { holdOf, isHeld } from '../roadmap/holds.ts'
+import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
 import type { Step } from '../roadmap/types.ts'
 
@@ -25,7 +26,8 @@ export type PlanFinish = {
    * line ended at "cannot finish until". A plan waiting on a safety object nobody
    * has chosen is the ordinary first visit (mapping/safetyChoice.ts), not an edge.
    */
-  unwritable: { count: number; waitsOn: string[] }
+  /** `named`: how many of the `count` wait on one of `waitsOn`; the rest are held by something no step clears. */
+  unwritable: { count: number; waitsOn: string[]; named: number }
 }
 
 /** The step waits whose decision the threshold is measured against: while the decision is open, the wait binds, not the number (E2: device readiness follows the device decision). */
@@ -52,7 +54,9 @@ const lastRingEnd = (s: Step): string | null => s.rings.at(-1)?.plannedEnd ?? nu
 export function planFinish(steps: Step[], cleanupEnd: string | null = null): PlanFinish {
   const waiting = new Map<string, { measure: string; count: number; family: Step['readiness']['family'] }>()
   let held = 0
+  let named = 0
   const waitsOn: string[] = []
+  const open = new Set(steps.filter((s) => s.status !== 'done' && s.status !== 'skipped').map((s) => s.id))
   for (const s of heldRequired(steps)) {
     // A readiness number the header can name ("3 MFA steps wait for MFA readiness"):
     // the threshold the row's own date column states. Every other hold is counted
@@ -65,8 +69,13 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
       continue
     }
     held += 1
-    for (const m of s.action.missing ?? []) if (m.stepId && !waitsOn.includes(m.stepId)) waitsOn.push(m.stepId)
-    for (const b of s.blockers) if (b.kind === 'step' && !waitsOn.includes(b.stepId)) waitsOn.push(b.stepId)
+    // What the hold itself waits on (roadmap/stateReason.ts holdWaitsOn), among the
+    // steps still to do. A step the held one is only sequenced after is not named:
+    // the header said "16 steps wait on Create or Correct Emergency Access Accounts"
+    // over rows whose reasons were source groups finishing that step does not clear.
+    const on = holdWaitsOn(s).filter((id) => open.has(id))
+    if (on.length > 0) named += 1
+    for (const id of on) if (!waitsOn.includes(id)) waitsOn.push(id)
   }
   const list = [...waiting.values()]
   // A plan with required work held finishes on no date: a finish measured to the
@@ -81,7 +90,7 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
     // Cleanup follows the last enforcement; it ends a plan the calendar dates.
     if (finish !== null && cleanupEnd !== null && cleanupEnd > finish) finish = cleanupEnd
   }
-  return { finish, held: held > 0 || list.length > 0, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0), unwritable: { count: held, waitsOn } }
+  return { finish, held: held > 0 || list.length > 0, waiting: list, waitingCount: list.reduce((n, w) => n + w.count, 0), unwritable: { count: held, waitsOn, named } }
 }
 
 /**

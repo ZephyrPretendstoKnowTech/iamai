@@ -245,6 +245,8 @@
         "conflict": "Wait for a reviewed baseline that settles the contradiction; there is nothing to submit.",
         "decide": "Answer the question this step is waiting on.",
         "resolve": "Clear what this step is waiting on.",
+        "prepareHeld": "Create the policy in report-only now; turning it on waits for {measure} to reach {threshold}.",
+        "prepareHeldOther": "Create the policy in report-only now; it is not turned on while this step is held.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
         "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
@@ -2577,6 +2579,8 @@
         "extra": "{deviceSentence}",
         "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together.",
         "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app so admin work and risky sign-ins keep working. It takes a few minutes. {registerPasskeyLine} Then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "bodyUndated": "Signing in to {tenant} is going to ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up now. It takes a few minutes. {registerPasskeyLine} If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. We will tell you the date before anything changes. If you get stuck, reply here and we will do it with you.",
+        "bodyMfaInPlaceUndated": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Add a passkey in the app now so admin work and risky sign-ins keep working. It takes a few minutes. {registerPasskeyLine} Then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
         "extraMfaInPlace": [
           "From {passkeyEnforceLong}, {passkeyPolicy} requires a passkey.",
           "{deviceSentence}"

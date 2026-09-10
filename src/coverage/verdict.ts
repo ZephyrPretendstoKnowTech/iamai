@@ -9,6 +9,9 @@
 import { engine } from '../content/content.ts'
 import type { GoalResult, GoalStatus, Verdict } from './types.ts'
 
+/** The gap clause of a goal covered only by a report-only policy: a state, which a row's own status word already says. */
+export const REPORT_ONLY_GAP = 'report-only, not enforced'
+
 export function verdictOf(status: GoalStatus): Verdict {
   switch (status) {
     case 'enforced':
@@ -67,7 +70,7 @@ export function gapSentenceOf(r: GoalResult): string | null {
   if (r.reasons.some((x) => x.kind === 'apps-narrower' || x.kind === 'apps-excluded')) return 'covers fewer apps than the baseline'
   if (r.reasons.some((x) => x.kind === 'conditions-narrower')) return engine.coverage.gap.conditionsNarrower
   if (r.reasons.some((x) => x.kind === 'guest-types-narrower')) return engine.coverage.gap.guestTypes
-  if (r.reportOnlyIds.length > 0 && r.enforcedIds.length === 0) return 'report-only, not enforced'
+  if (r.reportOnlyIds.length > 0 && r.enforcedIds.length === 0) return REPORT_ONLY_GAP
   if (r.reasons.some((x) => x.kind === 'exclusion-missing')) return engine.coverage.gap.exclusionMissing
   return null
 }

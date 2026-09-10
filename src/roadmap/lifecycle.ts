@@ -31,6 +31,7 @@ import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { historyReset } from './observation.ts'
 import { holdOf } from './holds.ts'
+import { implementationOffered } from './operations.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 
 const MILESTONE = engine.milestone
@@ -290,6 +291,17 @@ export function nextMilestone(step: Step): Milestone {
   if (hold?.kind === 'decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
   // Held on its records, it is still being watched: until they are clear, with no date.
   if (hold?.kind === 'evidence') return { kind: 'observe', label: MILESTONE.observeRecords, at: null, gatedBy: null }
+  // Held and not deployed, and Foundation A still hands over its create: a policy
+  // created in report-only denies nobody, so making it now is safe preparation
+  // (roadmap/operations.ts policyResult; owner decision, Step 5). The next thing is
+  // that, and what the hold keeps back is turning it on — said in the same line,
+  // because "Clear what this step is waiting on" above a create walk-through was
+  // two instructions pulling apart. Still no date: nothing schedules the hold clearing.
+  if (hold !== null && s.lifecycle === 'not-deployed' && implementationOffered(step)) {
+    const gate = step.action.readinessGate
+    const label = gate ? fillText(MILESTONE.prepareHeld, { measure: gate.measure, threshold: gate.threshold }) : MILESTONE.prepareHeldOther
+    return { kind: 'deploy', label, at: null, gatedBy: step.blockedReason }
+  }
   if (hold !== null) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
   if (s.lifecycle === 'ready-to-enforce') return { kind: 'enforce', label: MILESTONE.enforce, at: step.events?.enforce.at ?? null, gatedBy: null }
   if (s.lifecycle === 'report-only') {

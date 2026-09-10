@@ -139,7 +139,7 @@ export function PrintPlan({
   // What holds the plan, as the Plan header names it: a readiness number where one
   // does, else the held steps and the step each waits on (derive/finish.ts).
   const titleOf = (id: string): string => steps.find((s) => s.id === id)?.title ?? id
-  const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf))
+  const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)
   // Held work dates no end: the cover, the Cleanup heading and the header all say so.
   const cannotFinish = finish.held
   // The same header line the Plan shows (derive/planHeader.ts), without the anchored start.
