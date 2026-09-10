@@ -28,7 +28,8 @@ import { readyWhen } from '../derive/readyWhen.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { rowWhen } from '../ui/surfaces/rowWhen.ts'
-import { datesLineFor, stepExportView } from '../ui/surfaces/stepExport.ts'
+import { datesLineFor, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
+import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
 import { statusGroupOf } from '../ui/surfaces/planBoard.ts'
@@ -266,6 +267,25 @@ test('Step 4 F: a step already in place has no future date and no calendar entry
     }
   }
   assert.ok(checked > 10, `the fixtures have steps in place: ${checked}`)
+})
+
+// ---- who a step reaches is not a date ----
+
+test('Step 4: a campaign with no enrol-by day still says who it reaches, and states no day', () => {
+  // The app's demo on day one dates no enforcement at all: everything its
+  // policies wait on is held. The campaign's lead ends "until {enrollBy}", and
+  // without the date the people it counts went with it.
+  const d = demoTenant(false)
+  const f = { ...fixture('demo'), snapshot: d.snapshot, mapping: d.mapping }
+  const r = runFixture(f)
+  const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
+  assert.equal(r.steps.some((s) => s.events !== null), false, 'the premise: nothing is dated')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot) }
+  const lines = stepLines(camp, ctx)
+  const lead = lines.find((l) => /^\d+ active people · /.test(l))
+  assert.ok(lead, `the lead is there: ${lines.slice(0, 8).join(' | ')}`)
+  assert.match(lead!, /the plan waits for 90%\.$/, 'and names no day')
+  assert.doesNotMatch(lines.join('\n'), /Enrol by /, 'nothing states an enrol-by day')
 })
 
 // ---- no fake Now ----

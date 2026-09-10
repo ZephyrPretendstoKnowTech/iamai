@@ -2521,6 +2521,7 @@
       },
       "who": {
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
+        "leadUndated": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90%.",
         "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
           "$comment": "The campaign's groups are the ladder's rungs (derive/ladder.ts; pages.ladder titles), worst first; rung 5 needs nothing.",

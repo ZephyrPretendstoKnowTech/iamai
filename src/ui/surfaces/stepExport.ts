@@ -257,6 +257,19 @@ const listKeys = (line: string): string[] => [...line.matchAll(/\{list:([^}]+)\}
  * list has people; a line with {n} and no list not at zero; the none branch
  * only when no usage line renders (the existing-coverage line does not count).
  */
+/**
+ * The Who lead's template, whole: the step's own, or — where the only hole in it
+ * is a date the plan does not hold — its undated form. Who a step reaches is not
+ * a date, and the campaign's lead ("… the plan waits for 90% until {enrollBy}")
+ * vanished whole while nothing was dated (roadmap/holds.ts), taking the people
+ * it counts with it. Null where neither fills. The screen (whoBlocks.ts) and the
+ * rendered lines below read this one choice.
+ */
+export function whoLeadTemplate(who: Record<string, unknown>, ex: Record<string, unknown>): string | null {
+  for (const line of [who.lead, who.leadUndated]) if (typeof line === 'string' && whole(line, ex)) return line
+  return null
+}
+
 export function whoEvidenceLines(who: Record<string, unknown>, ex: Record<string, unknown>): string[] {
   const out: string[] = []
   let none: string | null = null
@@ -369,7 +382,7 @@ export function stepLines(step: Step, ctx: StepVarContext): string[] {
   add(cs.changeLine)
   add(cs.partner)
   const who = (cs.who ?? {}) as Record<string, unknown>
-  add(who.lead)
+  add(whoLeadTemplate(who, ex))
   add(who.adminsNote)
   // The evidence lines as the step gates them; a line that counts and lists counts its own list (render.ts listCountVars).
   for (const line of whoEvidenceLines(who, ex)) add(line, listCountVars(line, ex) as Record<string, unknown>)
