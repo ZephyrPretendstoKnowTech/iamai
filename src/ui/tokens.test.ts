@@ -1,8 +1,9 @@
 // Both themes must pass WCAG AA on every pair the interface actually paints,
 // and tokens.css must be exactly what tokens.ts renders.
 //
-// Task 030 swapped the shipped paper palette for the owner's Mineral Teal and
-// Deep Mineral (docs/brand/brand-manifest.json). The canonical seventeen are
+// Task 030 swapped the shipped paper palette for the owner's approved one:
+// Mineral Teal in light, and in dark the palette the owner has since replaced
+// with Blue Slate (docs/brand/brand-manifest.json). The canonical seventeen are
 // the owner's values and are not negotiable here — what this file proves is
 // that the values production actually paints TEXT with clear AA, which is why
 // tokens.ts carries a small derived set beside the canonical one.
@@ -164,7 +165,7 @@ test('every declared face is staged, and every staged face is declared', () => {
 
 test('the display ramp can express the approved packs, well past the old 26px ceiling', () => {
   const sizes: number[] = Object.values(DISPLAY)
-  assert.ok(Math.max(...sizes) >= 50, 'the Home display is 50px in docs/design/approved/home-v2.html')
+  assert.ok(Math.max(...sizes) >= 50, 'the Home display is 50px in docs/design/approved/anatomy/home-v2.html')
   // The four approved desktop display sizes, each with a token of its own.
   for (const px of [50, 42, 40, 38, 21]) assert.ok(sizes.includes(px), `no token expresses ${px}px`)
   // The old scale topped out at 26px, which no approved display heading fits.

@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- IAMAI current approved comparison reference, 2026-09-09. Surface: plan. Canonical HTML owns application anatomy; this reference applies the current approved visual skin only. Light theme remains Mineral Teal. Dark theme is Blue Slate. Typography is IBM Plex. Logo is Threshold. Copy shown here is anatomy-example copy, not copy authority; production copy authority is docs/design/content.json. -->
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IAMAI Plan Step Design Pack</title>
+<style>
+:root{
+  --canvas:#0D1117;
+  --surface:#151C25;
+  --secondary-surface:#111821;
+  --line:#2B3745;
+  --strong-line:#39495A;
+  --primary-text:#F2F5F7;
+  --secondary-text:#C7D0D8;
+  --muted-text:#8F9AA6;
+  --quiet-text:#8F9AA6;
+  --brand-primary:#58C8BC;
+  --brand-secondary:#78D9CE;
+  --brand-soft:#173A3D;
+  --brand-soft-text:#DFFFF9;
+  --success:#79D7A6;
+  --attention:#E3B35B;
+  --danger:#E88A8A;
+  --admin:#B9A7FF;
+  --code-surface:#0A0F15;
+  /* Derived aliases: no new brand hues. */
+  --raised-surface:#1A2430;
+  --focus-ring:#78D9CE;
+  --idle:#8F9AA6;
+  --brand-subtle:var(--brand-subtle);
+  --brand-border-soft:var(--brand-border-soft);
+  --brand-border:var(--brand-border);
+  --success-soft:#1A2928;
+  --attention-soft:#27241F;
+  --danger-soft:#272025;
+  --admin-soft:#222333;
+
+  /* Compatibility names used by the approved anatomy. */
+  --bg:var(--canvas);
+  --panel:var(--surface);
+  --panel2:var(--secondary-surface);
+  --line2:var(--strong-line);
+  --text:var(--primary-text);
+  --muted:var(--quiet-text);
+  --muted2:var(--muted-text);
+  --accent:var(--brand-primary);
+  --good:var(--success);
+  --warn:var(--attention);
+  
+  --chip:var(--secondary-surface);
+  --violet:var(--admin);
+  --shadow:0 18px 45px rgba(0,0,0,.32);
+
+  --font-display:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --font-interface:"IBM Plex Sans",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-technical:"IBM Plex Mono","Cascadia Code",Consolas,monospace;
+  --radius-compact:4px;
+  --radius-control:8px;
+  --radius-panel:12px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg);scroll-behavior:smooth}
+body{
+  margin:0;color:var(--text);
+  background:var(--bg);
+  font:14px/1.5 var(--font-interface)
+}
+a{color:var(--accent);text-decoration:none}
+button{font:inherit}
+.page{width:min(1240px,calc(100% - 44px));margin:0 auto 90px}
+.topbar{
+  position:sticky;top:0;z-index:30;
+  background:rgba(13,17,23,.88);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(43,55,69,.9)
+}
+.topbar-inner{width:min(1240px,calc(100% - 44px));margin:auto;display:flex;gap:18px;align-items:center;justify-content:space-between;padding:12px 0}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.brand-mark{display:none}
+.nav{display:flex;gap:6px;flex-wrap:wrap}
+.nav a{color:var(--muted);padding:6px 9px;border-radius:6px;font-size:12px}
+.nav a:hover{color:var(--text);background:var(--surface)}
+.hero{padding:56px 0 34px;border-bottom:1px solid var(--line)}
+.eyebrow{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.11em;font-weight:700}
+.hero h1{font:700 42px/1.1 var(--font-display);margin:9px 0 12px;max-width:860px}
+.hero p{max-width:840px;color:var(--secondary-text);font-size:17px;margin:0}
+.hero-rule{
+  margin-top:24px;display:inline-flex;gap:10px;align-items:flex-start;border:1px solid var(--brand-border-soft);
+  background:var(--brand-subtle);padding:12px 14px;border-radius:9px;max-width:920px
+}
+.hero-rule strong{color:var(--brand-soft-text)}
+.section{padding:42px 0;border-bottom:1px solid var(--line)}
+.section h2{font:700 27px/1.2 var(--font-display);margin:0 0 10px}
+.section-lead{color:var(--muted);max-width:860px;margin:0 0 24px;font-size:15px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:17px 18px}
+.card h3{margin:0 0 7px;font-size:14px}
+.card p{margin:0;color:var(--muted)}
+.callout{border-left:3px solid var(--accent);padding:10px 14px;background:rgba(89,199,183,.04);color:var(--secondary-text);border-radius:0 8px 8px 0}
+.callout.warn{border-color:var(--warn);background:rgba(227,179,91,.04)}
+.callout.danger{border-color:var(--danger);background:rgba(232,138,138,.04)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:760px;background:var(--panel)}
+th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:var(--panel2)}
+tr:last-child td{border-bottom:0}
+code{font:12px/1.5 var(--font-technical);background:var(--code-surface);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+pre{
+  margin:0;white-space:pre-wrap;font:12px/1.6 var(--font-technical);color:var(--secondary-text);
+  background:var(--code-surface);border:1px solid var(--line);padding:14px;border-radius:8px;overflow:auto
+}
+.badge{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--line2);background:var(--secondary-surface);border-radius:999px;padding:5px 8px;color:var(--muted);font-size:11px}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--idle)}
+.badge.good{color:var(--primary-text);border-color:var(--strong-line);background:var(--secondary-surface)}
+.badge.warn{color:var(--primary-text);border-color:var(--strong-line);background:var(--secondary-surface)}
+.badge.danger{color:var(--primary-text);border-color:var(--strong-line);background:var(--secondary-surface)}
+.badge.violet{color:var(--primary-text);border-color:var(--strong-line);background:var(--secondary-surface)}
+.flow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.flow .node{padding:8px 11px;border:1px solid var(--line);border-radius:7px;background:var(--panel);font-size:12px}
+.flow .arrow{color:var(--muted2)}
+.rules{display:grid;gap:10px;max-width:960px}
+.rule{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start}
+.rule .n{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line2);border-radius:7px;color:var(--accent);font-weight:700;background:var(--panel)}
+.rule strong{display:block;margin-bottom:2px}
+.rule span{color:var(--muted)}
+.variant-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
+.variant-tab{border:1px solid var(--line);background:transparent;color:var(--muted);padding:7px 10px;border-radius:8px;cursor:pointer}
+.variant-tab.active{color:var(--text);border-color:rgba(89,199,183,.55);background:rgba(89,199,183,.06)}
+.variant{display:none}.variant.active{display:block}
+.roadmap-row{
+  display:grid;grid-template-columns:126px 1fr 240px 125px;gap:18px;align-items:center;
+  min-height:64px;padding:0 17px;border:1px solid var(--line);border-radius:10px 10px 0 0;background:var(--surface)
+}
+.row-status{font-size:12px;display:flex;gap:8px;align-items:center}
+.row-status .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.row-title strong{display:block;margin-bottom:2px}
+.row-title span,.row-meta,.row-date{color:var(--muted);font-size:12px}
+.row-meta,.row-date{text-align:right}
+.step{
+  border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden
+}
+.step-head{padding:23px 27px 20px;border-bottom:1px solid var(--line)}
+.step-head-top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.step-head h3{font-size:21px;margin:5px 0 4px}
+.step-sub{color:var(--muted);max-width:760px}
+.track-wrap{margin-top:17px}
+.track-caption{font-size:12px;color:var(--muted);margin-bottom:7px}
+.track-caption strong{color:var(--text)}
+.track{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stage{height:6px;border-radius:99px;background:var(--line)}
+.stage.done{background:rgba(121,215,166,.65)}
+.stage.current{background:var(--attention)}
+.stage.ready{background:var(--brand-primary)}
+.track-labels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px;color:var(--muted2);font-size:10px}
+.step-body{display:grid;grid-template-columns:minmax(0,1fr) 290px}
+.step-main{padding:4px 27px 26px}
+.step-side{border-left:1px solid var(--line);background:var(--panel2);padding:20px 18px}
+.step-section{padding:19px 0;border-bottom:1px solid var(--line)}
+.step-section:last-child{border-bottom:0}
+.step-section h4,.step-side h4{margin:0 0 8px;font-size:14px}
+.step-section p{margin:0;color:var(--secondary-text)}
+.findings{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.finding{border:1px solid var(--line);border-radius:8px;background:var(--secondary-surface);padding:11px 12px}
+.finding .k{color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-size:10px;font-weight:700;margin-bottom:4px}
+.finding strong{display:block;margin-bottom:2px}
+.finding span{color:var(--muted);font-size:12px}
+.attention{border:1px solid rgba(227,179,91,.3);background:rgba(227,179,91,.05);border-radius:9px;padding:13px 14px}
+.attention.danger{border-color:rgba(232,138,138,.32);background:rgba(232,138,138,.05)}
+.attention-head{font-weight:700;color:var(--attention);margin-bottom:5px}
+.attention.danger .attention-head{color:var(--danger)}
+.action-tabs{display:flex;gap:6px;margin:0 0 12px}
+.action-tab{border:1px solid var(--line);background:transparent;color:var(--muted);padding:6px 10px;border-radius:8px}
+.action-tab.active{color:var(--text);border-color:rgba(89,199,183,.5);background:rgba(89,199,183,.06)}
+.instruction{border:1px solid var(--line);background:var(--code-surface);border-radius:8px;padding:13px 15px}
+.instruction ol,.instruction ul{margin:0;padding-left:19px}.instruction li{margin:5px 0}
+.done-list{margin:0;padding-left:18px}.done-list li{margin:5px 0}
+.side-block{padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+.side-block:last-child{border-bottom:0;margin-bottom:0}
+.side-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px}
+.metric{font-size:18px;font-weight:700}.metric-sub{font-size:11px;color:var(--muted)}
+.side-list{list-style:none;padding:0;margin:7px 0 0;display:grid;gap:7px}
+.side-list li{display:flex;gap:8px;font-size:12px;color:var(--secondary-text)}
+.tiny{width:6px;height:6px;border-radius:50%;background:var(--good);margin-top:6px;flex:0 0 auto}.tiny.warn{background:var(--warn)}.tiny.danger{background:var(--danger)}
+.selector{display:grid;gap:10px}
+.detected{border:1px solid var(--line);background:var(--secondary-surface);border-radius:8px;padding:13px}
+.detected-top{display:flex;justify-content:space-between;gap:12px}
+.detected-title{font-weight:700}.detected-meta{color:var(--muted);font-size:12px;margin-top:2px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:1px solid var(--line2);background:transparent;color:var(--primary-text);border-radius:8px;padding:7px 10px;cursor:pointer}
+.btn.primary{border-color:var(--brand-primary);background:var(--brand-soft);color:var(--brand-soft-text)}
+.btn.muted{color:var(--muted)}
+.more{margin-top:3px}
+.more summary{cursor:pointer;font-weight:700}
+.more-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.more-card{border:1px solid var(--line);background:var(--secondary-surface);border-radius:8px;padding:11px 12px}
+.more-card h5{margin:0 0 5px;font-size:12px}.more-card p,.more-card li{color:var(--muted);font-size:11px;margin:0}
+.more-card ul{padding-left:15px;margin:4px 0 0}
+.footer{display:flex;justify-content:space-between;gap:12px;padding:16px 27px;border-top:1px solid var(--line);background:var(--secondary-surface)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+.legend span{font-size:11px;color:var(--muted)}
+.small-note{color:var(--muted);font-size:12px}
+.backlog-table td:first-child{font-weight:700}
+.status-foundation{color:var(--accent)}
+.status-keep{color:var(--good)}
+.status-absorb{color:var(--warn)}
+.status-drop{color:var(--danger)}
+@media(max-width:940px){
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .roadmap-row{grid-template-columns:110px 1fr}.row-meta,.row-date{text-align:left}
+  .step-body{grid-template-columns:1fr}.step-side{border-left:0;border-top:1px solid var(--line)}
+  .findings,.more-grid{grid-template-columns:1fr}
+  .hero h1{font-size:34px}
+}
+@media(max-width:650px){
+  .page,.topbar-inner{width:min(100% - 24px,1240px)}
+  .nav{display:none}
+  .hero{padding-top:34px}
+  .hero h1{font-size:30px}
+  .step-head,.step-main,.footer{padding-left:18px;padding-right:18px}
+  .step-head-top{display:block}.step-head-top>.badge{margin-top:12px}
+  .track-labels{font-size:8px}
+}
+
+
+/* Task-029/030 approved brand skin applied without changing page anatomy. */
+.brand{gap:6px;font-family:var(--font-interface);font-weight:700;letter-spacing:.005em}
+.brand-mark-svg{width:20px;height:20px;display:block;flex:0 0 auto;color:var(--brand-primary)}
+button,input,select,textarea{font-family:var(--font-interface)}
+.btn{border-radius:var(--radius-control)}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+
+
+.card,.table-wrap{border-radius:var(--radius-panel)}
+.flow .node,.rule .n,.variant-tab,.action-tab,.instruction,.finding,.attention,.detected,.more-card{border-radius:var(--radius-control)}
+.roadmap-row{border-radius:var(--radius-panel) var(--radius-panel) 0 0}
+.step{border-radius:0 0 var(--radius-panel) var(--radius-panel)}
+
+
+/* Approved status rule: pills/lifecycle labels keep words in primary text; the dot carries semantic color. */
+.badge.good .dot,.status-success .dot{background:var(--success)}
+.badge.warn .dot,.status-attention .dot{background:var(--attention)}
+.badge.danger .dot,.status-danger .dot{background:var(--danger)}
+.badge.violet .dot{background:var(--admin)}
+.row-status{color:var(--primary-text)}
+.status-idle .dot{background:var(--idle)}
+/* Approved collapsed-roadmap reading: transparent hairline rows in a phase group; only the opened row becomes the attached surface header. */
+.roadmap-row.is-collapsed{background:transparent;border-left:0;border-right:0;border-radius:0;border-top:1px solid var(--line);border-bottom:0}
+
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand"><svg class="brand-mark-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" aria-hidden="true" focusable="false">
+  <path d="M0 22 L31 30 L31 90 L0 100 Z"/>
+  <path d="M35 30 L100 0 L100 100 L69 90 L69 30 Z"/>
+</svg> IAMAI · Plan Step Design Pack</div>
+    <nav class="nav">
+      <a href="#contract">Contract</a>
+      <a href="#states">States</a>
+      <a href="#variants">Variants</a>
+      <a href="#decisions">Decisions</a>
+      <a href="#history">Scan history</a>
+      <a href="#data">Data model</a>
+      <a href="#backlog">Backlog</a>
+      <a href="#sequence">Build order</a>
+    </nav>
+  </div>
+</div>
+
+<main class="page">
+  <section class="hero">
+    <div class="eyebrow">Product design reference · September 2026</div>
+    <h1>Plan steps should feel simple because the engine is doing the hard work.</h1>
+    <p>This pack defines the reusable UI and product behavior for IAMAI Plan steps. It preserves the baseline's policy boundaries, keeps the default surface concise, and gives the operator one clear next safe action at every step.</p>
+    <div class="hero-rule">
+      <strong>Core rule</strong>
+      <span>The engine may know everything. The default step shows only what changes the next safe action. Passed checks disappear; failures, decisions, and meaningful new evidence are promoted.</span>
+    </div>
+  </section>
+
+  <section class="section" id="contract">
+    <div class="eyebrow">01 · Step contract</div>
+    <h2>What constitutes a Plan step</h2>
+    <p class="section-lead">A step normally maps to one baseline policy, control, or supporting function with its own security purpose, scope, rollout behavior, and verification. IAMAI should not collapse separate baseline policies just because they contribute to the same broader security outcome.</p>
+
+    <div class="callout">
+      <strong>Working definition:</strong> A Plan step is the smallest operator-owned unit of work that can be understood, acted on, and verified independently while preserving the baseline's intended blast radius.
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card">
+        <h3>Baseline policy boundaries are preserved</h3>
+        <p>Separate Conditional Access policies remain separate steps when their scopes, exclusions, report-only evidence, rollback, or enforcement can differ.</p>
+      </div>
+      <div class="card">
+        <h3>Every step has a next action</h3>
+        <p>Implementation, decision, remediation, or resolution. A warning without a next action is not a complete Plan step.</p>
+      </div>
+    </div>
+
+    <div class="rules" style="margin-top:22px">
+      <div class="rule"><div class="n">1</div><div><strong>State / next milestone</strong><span>Always visible. The row and header answer where this step is now and what happens next.</span></div></div>
+      <div class="rule"><div class="n">2</div><div><strong>Why</strong><span>Always short. One or two sentences; deeper education belongs behind Learn or More.</span></div></div>
+      <div class="rule"><div class="n">3</div><div><strong>What IAMAI found</strong><span>Conditional. Show only when existing tenant state materially changes what the operator should do.</span></div></div>
+      <div class="rule"><div class="n">4</div><div><strong>Who this touches</strong><span>Conditional. Emphasize real-world experience, not raw assignment plumbing.</span></div></div>
+      <div class="rule"><div class="n">5</div><div><strong>What to do</strong><span>Always. This is the center of the step. Portal / JSON / PowerShell are representations of the same resolved action.</span></div></div>
+      <div class="rule"><div class="n">6</div><div><strong>Fix before continuing</strong><span>Conditional. Passed prerequisites disappear. Only current blockers, unsafe conditions, or unresolved new evidence intrude.</span></div></div>
+      <div class="rule"><div class="n">7</div><div><strong>Done when</strong><span>Shown when work or verification remains. Criteria must reflect the actual lifecycle state, not boilerplate.</span></div></div>
+      <div class="rule"><div class="n">8</div><div><strong>More</strong><span>Expandable depth: risks, rollback, provenance, exact scope, policy IDs, help-desk/manager context, technical evidence.</span></div></div>
+    </div>
+  </section>
+
+  <section class="section" id="states">
+    <div class="eyebrow">02 · Lifecycle and condition</div>
+    <h2>Keep rollout lifecycle separate from safety condition</h2>
+    <p class="section-lead">A policy can still be in Report-only while also being held by a new issue. “Review required” should not become another lifecycle stage.</p>
+
+    <div class="flow">
+      <div class="node">Not deployed</div><div class="arrow">→</div>
+      <div class="node">Report-only</div><div class="arrow">→</div>
+      <div class="node">Ready to enforce</div><div class="arrow">→</div>
+      <div class="node">Enforced</div>
+    </div>
+
+    <div class="legend">
+      <span><span class="badge good"><span class="dot"></span>Healthy</span> may advance when criteria are met</span>
+      <span><span class="badge warn"><span class="dot"></span>Review required</span> lifecycle stays the same, advancement pauses</span>
+      <span><span class="badge danger"><span class="dot"></span>Blocked</span> prerequisite or safety issue must be resolved</span>
+      <span><span class="badge violet"><span class="dot"></span>Needs decision</span> operator confirmation is required</span>
+    </div>
+
+    <div class="table-wrap" style="margin-top:18px">
+      <table>
+        <thead><tr><th>Lifecycle</th><th>Example condition</th><th>Meaning to operator</th><th>Can advance?</th></tr></thead>
+        <tbody>
+          <tr><td>Not deployed</td><td>Healthy</td><td>Safe to create when the scheduled milestone arrives.</td><td>Yes</td></tr>
+          <tr><td>Not deployed</td><td>Needs decision</td><td>IAMAI needs a confirmed group, user, location, or other operator-owned choice.</td><td>No</td></tr>
+          <tr><td>Report-only</td><td>Healthy</td><td>Continue collecting evidence.</td><td>When time + exposure + evidence criteria are met</td></tr>
+          <tr><td>Report-only</td><td>Review required</td><td>New data appeared that could change the enforcement decision.</td><td>No</td></tr>
+          <tr><td>Ready to enforce</td><td>Healthy</td><td>IAMAI has no unresolved reason to expect unintended impact.</td><td>Operator may enforce</td></tr>
+          <tr><td>Enforced</td><td>Review required</td><td>New post-enforcement evidence needs attention; the control remains enforced unless rollback criteria are met.</td><td>N/A</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" id="variants">
+    <div class="eyebrow">03 · Canonical variants</div>
+    <h2>Five reference cases, one visual system</h2>
+    <p class="section-lead">These are the design truth for implementation. Simple steps should render fewer sections; complex steps activate more of the same system.</p>
+
+    <div class="variant-tabs">
+      <button class="variant-tab active" data-v="v1">1 · Not deployed</button>
+      <button class="variant-tab" data-v="v2">2 · Report-only</button>
+      <button class="variant-tab" data-v="v3">3 · Review required</button>
+      <button class="variant-tab" data-v="v4">4 · Already in place</button>
+      <button class="variant-tab" data-v="v5">5 · Needs resolution</button>
+    </div>
+
+    <!-- V1 -->
+    <div class="variant active" id="v1">
+      <div class="roadmap-row">
+        <div class="row-status status-idle"><span class="dot"></span>Not deployed</div>
+        <div class="row-title"><strong>Block Unsupported Device Platforms</strong><span>4 active people in scope · safe to create in report-only</span></div>
+        <div class="row-meta">No blocking issues</div>
+        <div class="row-date">Start Sep 22</div>
+      </div>
+      <article class="step">
+        <header class="step-head">
+          <div class="step-head-top">
+            <div><div class="eyebrow">Policy step</div><h3>Block Unsupported Device Platforms</h3><div class="step-sub">Stop access from device platforms the organization does not support.</div></div>
+            <span class="badge"><span class="dot"></span>Not deployed</span>
+          </div>
+          <div class="track-wrap">
+            <div class="track-caption"><strong>Next:</strong> create the policy in Report-only on Sep 22.</div>
+            <div class="track"><div class="stage"></div><div class="stage"></div><div class="stage"></div><div class="stage"></div></div>
+            <div class="track-labels"><span>Not deployed</span><span>Report-only</span><span>Ready to enforce</span><span>Enforced</span></div>
+          </div>
+        </header>
+        <div class="step-body">
+          <div class="step-main">
+            <section class="step-section"><h4>Why</h4><p>Unsupported platforms expand attack surface and create sign-in paths your team cannot reliably secure. <a href="#">Learn →</a></p></section>
+            <section class="step-section"><h4>What IAMAI found</h4><div class="findings">
+              <div class="finding"><div class="k">Existing coverage</div><strong>No equivalent policy found</strong><span>Nothing currently blocks unsupported platforms.</span></div>
+              <div class="finding"><div class="k">Gap</div><strong>Control not deployed</strong><span>Create the baseline policy in report-only.</span></div>
+              <div class="finding"><div class="k">Safety</div><strong>Emergency access is preserved</strong><span>No action needed here.</span></div>
+            </div></section>
+            <section class="step-section"><h4>Who this touches</h4><p><strong>4 active people</strong> are technically in scope. None have signed in from an unsupported platform in the current evidence window.</p></section>
+            <section class="step-section"><h4>What to do</h4><div class="action-tabs"><span class="action-tab active">Portal</span><span class="action-tab">JSON</span><span class="action-tab">PowerShell</span></div><div class="instruction"><ol><li>Create the resolved policy with the baseline scope.</li><li>Exclude <strong>Breakglass Exclusion</strong>.</li><li>Set the policy to <strong>Report-only</strong>.</li><li>Scan again after deployment so IAMAI can begin observation.</li></ol></div></section>
+            <section class="step-section"><h4>Done when</h4><ul class="done-list"><li>Policy is present in Report-only.</li><li>IAMAI has begun collecting evidence against the deployed policy.</li></ul></section>
+            <section class="step-section"><details class="more"><summary>More</summary><div class="more-grid"><div class="more-card"><h5>What could go wrong</h5><p>An overly broad device-platform condition can block supported endpoints.</p></div><div class="more-card"><h5>Source & evidence</h5><p>Baseline policy + tenant device/sign-in evidence.</p></div></div></details></section>
+          </div>
+          <aside class="step-side">
+            <div class="side-block"><div class="side-label">Next milestone</div><div class="metric">Sep 22</div><div class="metric-sub">Create in Report-only</div></div>
+            <div class="side-block"><div class="side-label">Readiness</div><ul class="side-list"><li><span class="tiny"></span><span>Emergency access preserved</span></li><li><span class="tiny"></span><span>No unresolved prerequisite</span></li></ul></div>
+          </aside>
+        </div>
+      </article>
+    </div>
+
+    <!-- V2 -->
+    <div class="variant" id="v2">
+      <div class="roadmap-row">
+        <div class="row-status status-attention"><span class="dot"></span>Report-only</div>
+        <div class="row-title"><strong>Require MFA at Every Role Activation</strong><span>Day 5 of 7 · 12/12 admins observed · no unresolved failures</span></div>
+        <div class="row-meta">Ready review in 2 days</div>
+        <div class="row-date">Sep 17</div>
+      </div>
+      <article class="step">
+        <header class="step-head">
+          <div class="step-head-top">
+            <div><div class="eyebrow">Policy step</div><h3>Require MFA at Every Role Activation</h3><div class="step-sub">Require fresh, phishing-resistant MFA whenever an administrator activates a privileged role.</div></div>
+            <span class="badge warn"><span class="dot"></span>Report-only · Day 5 of 7</span>
+          </div>
+          <div class="track-wrap">
+            <div class="track-caption"><strong>Next:</strong> continue observation through Sep 17.</div>
+            <div class="track"><div class="stage done"></div><div class="stage current"></div><div class="stage"></div><div class="stage"></div></div>
+            <div class="track-labels"><span>Not deployed</span><span>Report-only</span><span>Ready to enforce</span><span>Enforced</span></div>
+          </div>
+        </header>
+        <div class="step-body">
+          <div class="step-main">
+            <section class="step-section"><h4>Why</h4><p>Role activation is one of the highest-value moments to demand strong proof of identity. <a href="#">Learn →</a></p></section>
+            <section class="step-section"><h4>What IAMAI found</h4><div class="findings">
+              <div class="finding"><div class="k">Current policy</div><strong>Report-only · 5 days</strong><span>First seen by IAMAI in Report-only on Sep 12.</span></div>
+              <div class="finding"><div class="k">Exposure</div><strong>12 / 12 admins observed</strong><span>Every person in scope has exercised the policy.</span></div>
+              <div class="finding"><div class="k">Evidence</div><strong>0 unexplained failures</strong><span>No current reason to hold advancement.</span></div>
+            </div></section>
+            <section class="step-section"><h4>Who this touches</h4><p><strong>12 administrators</strong> are in scope. All 12 already satisfy the required authentication method, so enforcement should be quiet if the remaining observation window stays clean.</p></section>
+            <section class="step-section"><h4>What to do</h4><div class="instruction"><ol><li>Keep the current policy in <strong>Report-only</strong>.</li><li>Do not change its scope or grant controls during the observation window.</li><li>Scan again on or after Sep 17. IAMAI will reassess readiness.</li></ol></div></section>
+            <section class="step-section"><h4>Done when</h4><ul class="done-list"><li>At least 7 report-only days are observed.</li><li>Everyone in scope has been observed.</li><li>No unexplained failures remain.</li></ul></section>
+            <section class="step-section"><details class="more"><summary>More</summary><div class="more-grid"><div class="more-card"><h5>Rollback</h5><p>If enforcement later causes unexpected failures, return the policy to Report-only.</p></div><div class="more-card"><h5>Existing policy match</h5><p><strong>Core - PIM - MFA</strong> satisfies the baseline shape closely enough to preserve.</p></div></div></details></section>
+          </div>
+          <aside class="step-side">
+            <div class="side-block"><div class="side-label">Earliest readiness review</div><div class="metric">Sep 17</div><div class="metric-sub">2 observation days remain</div></div>
+            <div class="side-block"><div class="side-label">Readiness</div><ul class="side-list"><li><span class="tiny"></span><span>12/12 admins observed</span></li><li><span class="tiny"></span><span>0 unexplained failures</span></li><li><span class="tiny"></span><span>Emergency access excluded</span></li></ul></div>
+          </aside>
+        </div>
+      </article>
+    </div>
+
+    <!-- V3 -->
+    <div class="variant" id="v3">
+      <div class="roadmap-row">
+        <div class="row-status status-attention"><span class="dot"></span>Report-only</div>
+        <div class="row-title"><strong>Require MFA at Every Role Activation</strong><span>Day 5 of 7 · review required · 1 new issue since last scan</span></div>
+        <div class="row-meta">12 admins · 10 should notice nothing</div>
+        <div class="row-date">Held until resolved</div>
+      </div>
+      <article class="step">
+        <header class="step-head">
+          <div class="step-head-top">
+            <div><div class="eyebrow">Policy step</div><h3>Require MFA at Every Role Activation</h3><div class="step-sub">Require fresh, phishing-resistant MFA whenever an administrator activates a privileged role.</div></div>
+            <span class="badge danger"><span class="dot"></span>Report-only · Review required</span>
+          </div>
+          <div class="track-wrap">
+            <div class="track-caption"><strong>Next:</strong> resolve 1 new sign-in issue before this policy can advance.</div>
+            <div class="track"><div class="stage done"></div><div class="stage current"></div><div class="stage"></div><div class="stage"></div></div>
+            <div class="track-labels"><span>Not deployed</span><span>Report-only</span><span>Ready to enforce</span><span>Enforced</span></div>
+          </div>
+        </header>
+        <div class="step-body">
+          <div class="step-main">
+            <section class="step-section"><h4>Why</h4><p>Role activation is one of the highest-value moments to demand strong proof of identity. <a href="#">Learn →</a></p></section>
+            <section class="step-section"><h4>What IAMAI found</h4><div class="findings">
+              <div class="finding"><div class="k">Current policy</div><strong>Report-only · 5 days</strong><span>The observation clock is still valid.</span></div>
+              <div class="finding"><div class="k">Exposure</div><strong>12 / 12 admins observed</strong><span>Coverage is sufficient for review.</span></div>
+              <div class="finding"><div class="k">New evidence</div><strong>1 issue needs review</strong><span>New report-only evidence could change the enforcement decision.</span></div>
+            </div></section>
+            <section class="step-section"><h4>Who this touches</h4><p><strong>12 administrators</strong> are in scope. 10 should notice no change, 1 event was expected, and 1 new failure needs review.</p></section>
+            <section class="step-section">
+              <div class="attention"><div class="attention-head">Fix before continuing</div><p>Jordan Lee would have been blocked during an expected role-activation workflow. Keep the policy in Report-only until this event is understood.</p>
+              <div class="small-note" style="margin-top:8px"><strong style="color:var(--text)">New since Sep 15:</strong> compliant Windows device · expected admin workflow · no matching explanation yet.</div></div>
+            </section>
+            <section class="step-section"><h4>What to do</h4><div class="instruction"><ol><li>Keep the policy in <strong>Report-only</strong>.</li><li>Review Jordan Lee's sign-in evidence and determine whether the block is expected or unintended.</li><li>Resolve the cause or adjust the rollout safely.</li><li>Scan again. IAMAI will recalculate whether the policy can advance.</li></ol></div></section>
+            <section class="step-section"><h4>Done when</h4><ul class="done-list"><li>Everyone in scope has been observed.</li><li>No unresolved new evidence remains.</li><li>At least 7 report-only days show no unexplained failures.</li></ul></section>
+            <section class="step-section"><details class="more"><summary>More</summary><div class="more-grid"><div class="more-card"><h5>What could go wrong</h5><p>An unresolved report-only failure can become a real outage after enforcement.</p></div><div class="more-card"><h5>Observation rule</h5><p>New evidence blocks advancement; it does not automatically reset the observation clock.</p></div></div></details></section>
+          </div>
+          <aside class="step-side">
+            <div class="side-block"><div class="side-label">Next milestone</div><div class="metric">Held</div><div class="metric-sub">Readiness review resumes after the issue is resolved</div></div>
+            <div class="side-block"><div class="side-label">Readiness</div><ul class="side-list"><li><span class="tiny"></span><span>Emergency access excluded</span></li><li><span class="tiny"></span><span>12/12 admins observed</span></li><li><span class="tiny warn"></span><span>1 new issue needs review</span></li></ul></div>
+          </aside>
+        </div>
+      </article>
+    </div>
+
+    <!-- V4 -->
+    <div class="variant" id="v4">
+      <div class="roadmap-row">
+        <div class="row-status status-success"><span class="dot"></span>In place</div>
+        <div class="row-title"><strong>Require MFA for Administrators</strong><span>Existing policy satisfies the baseline with stronger authentication</span></div>
+        <div class="row-meta">18 admins protected</div>
+        <div class="row-date">No change needed</div>
+      </div>
+      <article class="step">
+        <header class="step-head">
+          <div class="step-head-top">
+            <div><div class="eyebrow">Policy step</div><h3>Require MFA for Administrators</h3><div class="step-sub">Ensure privileged administrators must satisfy strong MFA before accessing protected resources.</div></div>
+            <span class="badge good"><span class="dot"></span>In place</span>
+          </div>
+        </header>
+        <div class="step-body">
+          <div class="step-main">
+            <section class="step-section"><h4>Why</h4><p>Administrator credentials have disproportionate impact. Strong MFA materially reduces the value of stolen passwords. <a href="#">Learn →</a></p></section>
+            <section class="step-section"><h4>What IAMAI found</h4><div class="findings">
+              <div class="finding"><div class="k">Existing policy</div><strong>Contoso - Admin Protection</strong><span>Matches the baseline control without relying on the baseline policy name.</span></div>
+              <div class="finding"><div class="k">Coverage</div><strong>18 / 18 admins protected</strong><span>No active administrator falls outside the control.</span></div>
+              <div class="finding"><div class="k">Strength</div><strong>Stronger than baseline</strong><span>Uses phishing-resistant authentication strength.</span></div>
+            </div></section>
+            <section class="step-section"><h4>What to do</h4><div class="instruction"><p>No tenant change is needed. Preserve the existing policy and rescan after future scope or authentication changes.</p></div></section>
+            <section class="step-section"><details class="more"><summary>More</summary><div class="more-grid"><div class="more-card"><h5>Why IAMAI accepted it</h5><p>Scope, exclusions, target resources, and grant controls satisfy or exceed the baseline security intent.</p></div><div class="more-card"><h5>Source & evidence</h5><p>Observed directly from the tenant's existing Conditional Access policy and active admin population.</p></div></div></details></section>
+          </div>
+          <aside class="step-side">
+            <div class="side-block"><div class="side-label">Existing implementation</div><div class="metric" style="font-size:14px">Contoso - Admin Protection</div><div class="metric-sub">Preserve instead of duplicating</div></div>
+            <div class="side-block"><div class="side-label">Current posture</div><ul class="side-list"><li><span class="tiny"></span><span>18/18 admins covered</span></li><li><span class="tiny"></span><span>Stronger authentication than baseline</span></li></ul></div>
+          </aside>
+        </div>
+      </article>
+    </div>
+
+    <!-- V5 -->
+    <div class="variant" id="v5">
+      <div class="roadmap-row">
+        <div class="row-status status-danger"><span class="dot"></span>Blocked</div>
+        <div class="row-title"><strong>Resolve the Admin Portal Baseline Conflict</strong><span>The baseline describes this policy two different ways</span></div>
+        <div class="row-meta">Baseline issue · not tenant failure</div>
+        <div class="row-date">No rollout date</div>
+      </div>
+      <article class="step">
+        <header class="step-head">
+          <div class="step-head-top">
+            <div><div class="eyebrow">Resolution step</div><h3>Resolve the Admin Portal Baseline Conflict</h3><div class="step-sub">Intended control: block Microsoft admin portals for non-admin users.</div></div>
+            <span class="badge danger"><span class="dot"></span>Blocked · baseline conflict</span>
+          </div>
+        </header>
+        <div class="step-body">
+          <div class="step-main">
+            <section class="step-section"><h4>Why</h4><p>The baseline documentation and exported policy produce different security outcomes. IAMAI will not guess which one was intended.</p></section>
+            <section class="step-section"><h4>What IAMAI found</h4><div class="findings">
+              <div class="finding"><div class="k">Documentation</div><strong>Non-admin users</strong><span>Describes the control as blocking standard accounts from admin portals.</span></div>
+              <div class="finding"><div class="k">Exported policy</div><strong>All users → Block</strong><span>No user, group, or Directory-role condition preserves ordinary administrators.</span></div>
+              <div class="finding"><div class="k">Potential consequence</div><strong>Administrators could be blocked</strong><span>Deploying the artifact as written can affect the people the documentation says should be spared.</span></div>
+            </div></section>
+            <section class="step-section"><div class="attention danger"><div class="attention-head">Do not deploy this policy from the current baseline</div><p>Nothing is wrong in your tenant. There is nothing to fix in your tenant for this step; the unresolved definition is in the baseline package.</p></div></section>
+            <section class="step-section"><h4>What to do</h4><div class="instruction"><ol><li>Leave this control deferred.</li><li>Continue with unrelated rollout steps; they are unaffected.</li><li>When a reviewed baseline version defines one unambiguous admin scope, scan again.</li><li>IAMAI will rebuild this step from the corrected policy and restore normal implementation instructions.</li></ol></div></section>
+            <section class="step-section"><h4>Done when</h4><ul class="done-list"><li>The reviewed baseline defines one unambiguous Admin Portal scope.</li><li>IAMAI can produce one safe tenant-resolved policy consistently across Portal, JSON, and PowerShell.</li></ul></section>
+            <section class="step-section"><details class="more"><summary>More</summary><div class="more-grid"><div class="more-card"><h5>Source evidence</h5><p>Baseline documentation says non-admins; exported policy includes All users and no admin-preservation condition.</p></div><div class="more-card"><h5>Manager explanation</h5><p>The baseline intends to close admin portals to standard accounts, but the exported policy would target administrators too. IAMAI is not acting on it until the source is unambiguous.</p></div></div></details></section>
+          </div>
+          <aside class="step-side">
+            <div class="side-block"><div class="side-label">Next milestone</div><div class="metric">Deferred</div><div class="metric-sub">No rollout date until the reviewed baseline resolves the conflict</div></div>
+            <div class="side-block"><div class="side-label">Implementation</div><ul class="side-list"><li><span class="tiny danger"></span><span>No Portal instructions</span></li><li><span class="tiny danger"></span><span>No JSON or PowerShell artifact</span></li></ul></div>
+          </aside>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="decisions">
+    <div class="eyebrow">04 · Decision primitive</div>
+    <h2>Detected is not the same as confirmed</h2>
+    <p class="section-lead">Any object that becomes an operator-owned safety decision should preserve provenance internally: observed, recommended, operator confirmed. The UI only exposes that distinction when it matters.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3>Recommended object pattern</h3>
+        <div class="selector" style="margin-top:12px">
+          <div class="detected">
+            <div class="detected-top">
+              <div><div class="detected-title">Breakglass Exclusion</div><div class="detected-meta">1 member · excluded from 8 of 8 relevant policies</div></div>
+              <span class="badge violet"><span class="dot"></span>Recommended</span>
+            </div>
+            <div class="actions"><button class="btn primary">Use this group</button><button class="btn">Choose a different group</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Rules</h3>
+        <p>IAMAI may automatically detect evidence. It should not silently turn a discovered object into an authoritative future-plan mapping when the choice is security-sensitive. A confirmed choice persists across scans until it becomes invalid.</p>
+      </div>
+    </div>
+
+    <div class="callout warn" style="margin-top:16px">
+      If two or more objects plausibly serve the same safety-critical role, IAMAI should not guess. That becomes a future security call-out and operator decision, not an automatic mapping.
+    </div>
+  </section>
+
+  <section class="section" id="history">
+    <div class="eyebrow">05 · Scan-to-scan evidence</div>
+    <h2>The Plan becomes a living rollout board</h2>
+    <p class="section-lead">Future scans should change the step only when new evidence changes the safety decision. The row becomes the board; the expanded step becomes the place to understand and act.</p>
+
+    <div class="grid-3">
+      <div class="card"><h3>Scan 1</h3><p><span class="badge warn"><span class="dot"></span>Report-only · Day 1</span></p><p style="margin-top:8px">7/20 people observed · no issues yet</p></div>
+      <div class="card"><h3>Scan 2</h3><p><span class="badge danger"><span class="dot"></span>Report-only · Review required</span></p><p style="margin-top:8px">20/20 observed · 1 new failure needs review</p></div>
+      <div class="card"><h3>Scan 3</h3><p><span class="badge good"><span class="dot"></span>Ready to enforce</span></p><p style="margin-top:8px">7 days · 20/20 observed · 0 unresolved issues</p></div>
+    </div>
+
+    <div class="table-wrap" style="margin-top:18px">
+      <table>
+        <thead><tr><th>Observed change</th><th>Default behavior</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>New expected report-only event</td><td>Record; do not block</td><td>It confirms intended behavior.</td></tr>
+          <tr><td>New unexplained report-only event</td><td>Review required; block advancement</td><td>Enforcement safety is no longer established.</td></tr>
+          <tr><td>Known harmful event</td><td>Blocked; remediation required</td><td>IAMAI has evidence enforcement would cause unintended harm.</td></tr>
+          <tr><td>Display-name-only policy edit</td><td>Keep observation clock</td><td>No meaningful security semantics changed.</td></tr>
+          <tr><td>Material scope / exclusion / grant-control edit</td><td>Recalculate evidence validity; usually restart observation</td><td>Old evidence may no longer prove the new policy is safe.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout" style="margin-top:16px">
+      Use provenance-safe wording. “First seen by IAMAI in Report-only on Sep 12” is different from “has continuously been in Report-only since Sep 12” unless Microsoft/audit evidence proves the actual state transition.
+    </div>
+  </section>
+
+  <section class="section" id="data">
+    <div class="eyebrow">06 · Implementation-facing model</div>
+    <h2>Design the data contract before rewriting ContentStep</h2>
+    <p class="section-lead">The UI should render a normalized Step View Model rather than accumulate policy-specific conditions. Every section is optional; the engine/content layer decides relevance.</p>
+
+<pre>PlanStepView {
+  id
+  kind: "policy" | "control" | "supporting" | "resolution"
+
+  header: {
+    title
+    subtitle?
+    lifecycle?: "not-deployed" | "report-only" | "ready-to-enforce" | "enforced"
+    condition?: "healthy" | "review-required" | "blocked" | "needs-decision" | "baseline-conflict"
+    nextMilestone?: { label, date? }
+  }
+
+  why: { text, learnUrl? }
+
+  findings?: [
+    { label, headline, detail, provenance? }
+  ]
+
+  impact?: {
+    headline
+    summaryLines[]
+  }
+
+  attention?: {
+    severity
+    title
+    detail
+    evidenceRefs?
+  }
+
+  action: {
+    mode: "implement" | "decide" | "remediate" | "resolve" | "preserve"
+    portal?
+    json?
+    powershell?
+    selector?
+    steps?
+  }
+
+  doneWhen?: string[]
+
+  more?: {
+    risks?
+    rollback?
+    source?
+    exactScope?
+    helpDesk?
+    manager?
+  }
+}</pre>
+
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card"><h3>Separate lifecycle from condition</h3><p>Do not let a single status enum drive rollout stage, blocker reason, readiness, dates, and styling. A step can be Report-only + Review required.</p></div>
+      <div class="card"><h3>One canonical resolved policy</h3><p>Baseline policy + applied tenant mapping should produce one resolved policy object. Impact, Portal, JSON, PowerShell, verification, and exports consume the same semantics.</p></div>
+      <div class="card"><h3>Observation record</h3><p>Persist first/last observed state, configuration fingerprint, affected-population fingerprint, observed counts, and unresolved evidence summaries.</p></div>
+      <div class="card"><h3>Decision provenance</h3><p>Track detected, recommended, and operator-confirmed values internally so the UI never makes an inferred object look manually selected.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="eyebrow">07 · Relevance and density</div>
+    <h2>Information appears because it changes the next safe action</h2>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Information</th><th>Default visibility</th><th>Rule</th></tr></thead>
+        <tbody>
+          <tr><td>Passed prerequisite</td><td>Hidden</td><td>Do not spend default-screen space congratulating the engine for checks that require no action.</td></tr>
+          <tr><td>Failed prerequisite</td><td>Promote to Fix before continuing</td><td>It changes the next action.</td></tr>
+          <tr><td>Existing equivalent policy</td><td>Show in What IAMAI found</td><td>It changes whether IAMAI creates, modifies, or preserves a control.</td></tr>
+          <tr><td>Raw group IDs / role IDs</td><td>More</td><td>Useful for audit, not for routine execution.</td></tr>
+          <tr><td>Real-world user impact</td><td>Show when meaningful</td><td>Prefer “2 people will be prompted” over raw assignment counts.</td></tr>
+          <tr><td>Rollback</td><td>More by default; promote when enforcement risk is high</td><td>Do not force a dedicated rollback block onto low-risk/supporting steps.</td></tr>
+          <tr><td>New material evidence</td><td>Promote</td><td>It may block lifecycle advancement.</td></tr>
+          <tr><td>Baseline provenance</td><td>More, unless conflict exists</td><td>Source detail is normally audit depth; a source conflict is itself the active problem.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="eyebrow">08 · Responsive / accessibility / overflow</div>
+    <h2>Solve the expensive UI problems once</h2>
+    <div class="grid-2">
+      <div class="card"><h3>Long tenant objects</h3><p>Group names, policy names, UPNs, and role names wrap naturally. Never let a long object widen the entire step or force horizontal page scrolling.</p></div>
+      <div class="card"><h3>Right rail collapse</h3><p>At narrower widths the rail moves below the main content. It does not disappear and it does not squeeze instructions into an unreadable column.</p></div>
+      <div class="card"><h3>State not color-only</h3><p>Healthy, Review required, Blocked, and Needs decision always include text/iconography in addition to color.</p></div>
+      <div class="card"><h3>Interactive controls</h3><p>Tabs, selectors, More disclosures, and buttons must be keyboard reachable and maintain visible focus states. Copy actions should have accessible labels.</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="backlog">
+    <div class="eyebrow">09 · Backlog impact</div>
+    <h2>What gets rebuilt, absorbed, kept, or deferred</h2>
+    <p class="section-lead">The new Step Contract changes the form of several old Plan tasks. Do not polish an old component that is about to be replaced.</p>
+
+    <div class="table-wrap backlog-table">
+      <table>
+        <thead><tr><th>Item</th><th>Decision</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td>Admin Portal conflict</td><td class="status-absorb">Absorb into redesign</td><td>Safety semantics stay; the old Dates / Done when / rollback layout should not be separately polished.</td></tr>
+          <tr><td>Canonical Portal / JSON / PowerShell semantics</td><td class="status-foundation">Foundation first</td><td>One resolved policy must drive every implementation channel and impact calculation.</td></tr>
+          <tr><td>Exclusions-group confirmation</td><td class="status-foundation">Build as decision primitive</td><td>Use this group / Choose a different group should become reusable, not a one-off picker patch.</td></tr>
+          <tr><td>MFA evidence correctness</td><td class="status-keep">Continue</td><td>Lifecycle readiness depends on trustworthy evidence; this is engine correctness, not visual redesign.</td></tr>
+          <tr><td>Today centering / narration</td><td class="status-keep">Continue later</td><td>Independent of Plan architecture.</td></tr>
+          <tr><td>Sign out / Forget validation</td><td class="status-keep">Continue</td><td>Session behavior is independent.</td></tr>
+          <tr><td>/rollout/ → /planner/</td><td class="status-keep">Continue</td><td>Infrastructure/auth path change; unrelated to step anatomy.</td></tr>
+          <tr><td>P4b semantic display</td><td class="status-absorb">Reassess under new contract</td><td>Blocked reason, Who this touches, and density belong in the new Step View Model.</td></tr>
+          <tr><td>P4b open-step visual cleanup</td><td class="status-drop">Drop as separate run</td><td>The redesigned step replaces the old open-step structure.</td></tr>
+          <tr><td>Emergency multi-list boxes</td><td class="status-absorb">Re-express in new What to do</td><td>Keep the safety requirements; do not build the old three-box layout first.</td></tr>
+          <tr><td>Passkey / TAP guidance</td><td class="status-keep">Keep content, use collapsibles</td><td>Deep instructions belong behind What to do / More so they do not overwhelm the step.</td></tr>
+          <tr><td>Plan readiness / 90% gate</td><td class="status-foundation">Rethink before coding</td><td>Ready to enforce should depend on time, exposure, unresolved evidence, and relevant prerequisites, not one global percentage.</td></tr>
+          <tr><td>Public-face mechanics</td><td class="status-keep">Continue later</td><td>Dependabot, demo reset, neutral UPNs, workflow cleanup remain independent.</td></tr>
+          <tr><td>Old unresolved step-audit items</td><td class="status-absorb">Re-audit after migration</td><td>Some old content/engine issues will disappear or move under the new Step Contract.</td></tr>
+          <tr><td>Baseline update review</td><td class="status-foundation">Fix before future re-pin</td><td>Current review overcounts file copies and cannot explain security-semantic changes.</td></tr>
+          <tr><td>Baseline object classifier</td><td class="status-foundation">Fix before future re-pin</td><td>Do not let heuristic placeholder classification become authoritative Plan semantics.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section" id="sequence">
+    <div class="eyebrow">10 · Recommended build sequence</div>
+    <h2>Implement the foundation before migrating forty-plus steps</h2>
+
+    <div class="rules">
+      <div class="rule"><div class="n">A</div><div><strong>Canonical resolved tenant policy</strong><span>One semantic resolution boundary feeds impact, Portal, JSON, PowerShell, verification, and exports. Fix duplicate translated exclusions here.</span></div></div>
+      <div class="rule"><div class="n">B</div><div><strong>Step model + lifecycle + observation contract</strong><span>Introduce the data model needed by this pack with minimal visual change. Include history/fingerprint fields now so scan-to-scan tracking does not require another type-system rewrite.</span></div></div>
+      <div class="rule"><div class="n">C</div><div><strong>Decision primitive</strong><span>Build reusable detected/recommended/confirmed selectors. Migrate exclusions-group confirmation onto it.</span></div></div>
+      <div class="rule"><div class="n">D</div><div><strong>New collapsed row + expanded step component</strong><span>Implement the visual primitives from this pack without step-specific exceptions.</span></div></div>
+      <div class="rule"><div class="n">E</div><div><strong>Migrate five canonical cases</strong><span>Not deployed, Report-only, Review required, Already in place, Needs resolution. Validate in production before mass migration.</span></div></div>
+      <div class="rule"><div class="n">F</div><div><strong>Migrate remaining Plan steps</strong><span>Each old step must map into the contract rather than recreating the old custom layout inside the new component.</span></div></div>
+      <div class="rule"><div class="n">G</div><div><strong>Re-audit the backlog</strong><span>Close items made obsolete by the redesign; then handle remaining engine/content issues one root cause at a time.</span></div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="eyebrow">11 · Acceptance principles</div>
+    <h2>How we know the redesign is working</h2>
+    <div class="grid-2">
+      <div class="card"><h3>At a glance</h3><p>A user can scan the collapsed Plan and understand which policies are not deployed, in Report-only, ready, enforced, or held by a real issue.</p></div>
+      <div class="card"><h3>On open</h3><p>The first screenful explains why this matters, what IAMAI found, and what the user should do next without requiring deep IAM expertise.</p></div>
+      <div class="card"><h3>On complexity</h3><p>The engine may evaluate many checks, but the default step shows at most the handful that change today's action. Passed prerequisites usually disappear.</p></div>
+      <div class="card"><h3>On trust</h3><p>Any important conclusion can be audited in More. Observed facts, IAMAI-derived recommendations, and operator-confirmed decisions do not blur together.</p></div>
+      <div class="card"><h3>On safety</h3><p>A policy cannot become Ready to enforce while unresolved material evidence, unsafe prerequisites, or an unresolved baseline definition remains.</p></div>
+      <div class="card"><h3>On implementation</h3><p>Portal, JSON, PowerShell, impact, and exports cannot disagree because they consume one canonical resolved tenant policy.</p></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const tabs=[...document.querySelectorAll('.variant-tab')];
+  const vars=[...document.querySelectorAll('.variant')];
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.toggle('active',x===t));
+    vars.forEach(v=>v.classList.toggle('active',v.id===t.dataset.v));
+  }));
+</script>
+</body>
+</html>

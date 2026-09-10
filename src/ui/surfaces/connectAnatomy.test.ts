@@ -3,7 +3,7 @@
 // The question this file answers is the one green tests could not answer
 // before: does production Connect have the SHAPE the owner approved, using real
 // product state rather than the mockup's? So every assertion is two-sided. It
-// reads `docs/design/approved/connect-v3.html` at test time and fails if the
+// reads `docs/design/approved/anatomy/connect-v3.html` at test time and fails if the
 // pack stops drawing the thing production claims to have restored; and it reads
 // production and fails if production stops drawing it.
 //
@@ -25,7 +25,7 @@ import type { ScanInput, Tone } from '../scan/connectView.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
-const PACK = 'docs/design/approved/connect-v3.html'
+const PACK = 'docs/design/approved/anatomy/connect-v3.html'
 const CONNECT = read('src/ui/surfaces/Connect.tsx')
 const CSS = read('src/ui/app.css')
 const stepsFor = (): string[] => []

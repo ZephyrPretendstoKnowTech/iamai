@@ -14,6 +14,7 @@ import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { app, phases } from '../content/content.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
+import { groupsFor } from '../ui/surfaces/planBoard.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
@@ -204,10 +205,25 @@ test('a baseline holding both recommendations leaves no floor group to draw', ()
   const held: GoalMap = { ...PINNED_GOAL_MAP, 'register-info-protected': ['(a baseline that holds it)'], 'block-legacy-auth': ['(a baseline that holds it)'] }
   const r = runFixture(fixture('demo-week2'), { goalMap: held })
   assert.deepEqual(floorRows(r.steps), [], 'no row belongs to the floor')
-  for (const src of ['../ui/surfaces/Plan.tsx', '../ui/surfaces/PrintPlan.tsx']) {
-    const text = readFileSync(new URL(src, import.meta.url), 'utf8')
-    assert.ok(text.includes('{floor.length > 0 && ('), `${src} draws the group unguarded`)
-  }
+  // The printed document still guards the heading explicitly.
+  const print = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
+  assert.ok(print.includes('{floor.length > 0 && ('), 'PrintPlan.tsx draws the group unguarded')
+  // The Plan does not need a guard any more, and this is the stronger fact: the
+  // board builds a group only where a row lands in it (planBoard.ts `byRoadmap`
+  // creates a group on first row; the keyed lenses drop empty groups outright),
+  // so an empty floor cannot produce a heading. Proven against the projection
+  // rather than against the JSX, because that is where the rule now lives.
+  const items = floorRows(r.steps).map((step, i) => ({
+    id: step.id,
+    title: step.title,
+    roadmap: { key: 'floor', label: phases.recommended, date: null, secondary: true, start: null },
+    status: 'waiting' as const,
+    workType: 'ca' as const,
+    isNext: false,
+    order: i,
+  }))
+  assert.deepEqual(groupsFor('roadmap', items), [], 'an empty floor still produced a group')
+  assert.deepEqual(groupsFor('status', items), [], 'an empty floor still produced a group in the Status lens')
 })
 
 // ---- The group on the page and in the printed document ----
@@ -216,14 +232,17 @@ test('the Plan draws the floor as its own named group, after the phases and befo
   assert.equal(phases.recommended, 'Microsoft recommended, not in this baseline')
   const src = readFileSync(new URL('../ui/surfaces/Plan.tsx', import.meta.url), 'utf8')
   const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
-  // Conditional: the heading exists only where the group has rows.
-  const group = src.slice(at('{floor.length > 0 && ('), at('{floor.length > 0 && (') + 400)
-  assert.match(group, /<h2>\{phases\.recommended\}<\/h2>/, 'the group is named, from content.phases')
-  // Placement, and not a numbered phase: a phase heading is built from
-  // phases.heading with its dates; the floor group's is the plain name.
-  assert.ok(at('{waveRows.map(') < at('{floor.length > 0 && ('), 'the floor group follows the numbered phases')
+  // The board composes its groups in order, so placement is the order the rows
+  // are added to the one row set rather than the order of two JSX blocks.
+  const group = src.slice(at('const floorGroup: RoadmapGroup'), at('const floorGroup: RoadmapGroup') + 260)
+  assert.match(group, /label: phases\.recommended/, 'the group is named, from content.phases')
+  // Not a numbered, dated phase: it has no schedule of its own, and it says so
+  // with a null rather than with a placeholder or a borrowed wave date.
+  assert.match(group, /date: null/, 'the floor group claims a date it does not have')
+  assert.match(group, /secondary: true/, 'the floor group reads as part of the active rollout sequence')
+  assert.ok(at('for (const [wi, w] of waveRows.entries())') < at('const floorGroup: RoadmapGroup'), 'the floor group follows the numbered phases')
   assert.match(src, /steps: phaseRows\(c\.steps, w\)/, 'a numbered phase decides its own rows')
-  assert.ok(at('{floor.length > 0 && (') < at('{cleanupPhase && ('), 'and precedes Cleanup')
+  assert.ok(at('const floorGroup: RoadmapGroup') < at('if (cleanupPhase) {'), 'and precedes Cleanup')
   assert.equal(src.includes('phases.heading, { name: phases.recommended'), false, 'the floor group is not dressed as a numbered, dated phase')
 })
 
@@ -248,9 +267,12 @@ test('the Plan page contract accepts the two named groups exactly, and nothing b
   const headings = contract.surfaces.find((s) => s.id === 'plan')!.allow.headings
   assert.deepEqual(headings, [
     'Plan',
-    're:^Preparation( · .+ → .+)?$',
-    're:^Phase \\d+ · .+ → .+$',
-    're:^Cleanup( · .+ → .+)?$',
+    // The board's group heads carry the group's NAME and put its date range in
+    // its own slot beside it, so the headings are plain names where they used to
+    // be name-plus-dates patterns. The one pattern left is the phase number.
+    'Preparation',
+    're:^Phase \\d+$',
+    'Cleanup',
     phases.recommended,
     // Task 036 named the undated group on screen with the words the print has
     // always used over the same rows (app.plan.held). Both entries are exact
@@ -258,6 +280,10 @@ test('the Plan page contract accepts the two named groups exactly, and nothing b
     // broad new PATTERN in the Plan's closed heading list, not a group the Plan
     // stopped drawing anonymously.
     (app.plan as unknown as { held: { heading: string } }).held.heading,
+    // Finished work is the board's last group now, not the footer's first
+    // details: a lens groups rows, and it cannot group a row that lives in
+    // another component.
+    'Complete',
   ], 'the contract gained the exact headings and no new pattern')
 })
 

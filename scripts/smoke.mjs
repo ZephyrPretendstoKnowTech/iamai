@@ -297,7 +297,7 @@ try {
   await go('connect')
   await sleep(600)
   t = await text()
-  // Connect as the approved staged flow and its Plan destination (docs/design/approved/connect-v3.html).
+  // Connect as the approved staged flow and its Plan destination (docs/design/approved/anatomy/connect-v3.html).
   check('Connect: tile 1 names the tenant, the account and its role', /Signed in\s+Contoso Pty Ltd/.test(t) && /alex@example\.com · Global Administrator/.test(t), (t.match(/Signed in[^\n]*/) ?? ['no signed-in line'])[0])
   check('Connect: tile 2 carries the baseline and its policy count', /Baseline\s+selected/.test(t) && /synthetic baseline/.test(t) && /1 polic(y|ies) · uploaded package/.test(t), (t.match(/Baseline[^\n]*/) ?? [''])[0])
   // Tile 4 (task 016): the Plan is the destination — the counted state, one line of what was built, and one way on. No facts row, no readiness ladder, and nothing on the page routing to MFA Readiness ahead of the plan. The tile's own text, since the header tab is named MFA Readiness.
@@ -516,7 +516,30 @@ try {
   const startExpected = startDow === 6 ? startShift(startToday, 2) : startDow === 0 ? startShift(startToday, 1) : startToday
   check('Plan: the Start date proposes today in the display zone', !!startField && startField.value === startExpected, `${startField && startField.value} vs ${startExpected} (${startZone ?? 'browser zone'})`)
   check("Plan: the Start date field is a spaced row in Plan settings' control style", !!startField && startField.display === 'flex' && parseFloat(startField.gap) >= 8 && startField.padTop === '0px' && startField.borderBottom === '1px', JSON.stringify(startField))
-  check('Plan: phases render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .phase').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
+  // The board's groups (`.plan-group`), each with its column head over its rows.
+  // The class moved with the group: a phase used to be a raised panel called
+  // `.phase` and is now one group among the board's, drawn by the same component
+  // whichever lens is showing (src/ui/surfaces/planBoard.ts).
+  check('Plan: groups render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .plan-group').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
+  check('Plan: the four zones are named over the rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-column-head')].slice(0, 1).flatMap((h) => [...h.children].map((c) => (c.textContent || '').trim())).join('|')`)) === 'State|Step|Impact|When')
+  // Roadmap is the default lens, and the three are one tab set.
+  check('Plan: Group by offers three lenses with Roadmap selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (t.textContent || '').trim() + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Roadmap:true Status:false Work type:false')
+  // The focus controls are toggles over the same rows, and their counts come
+  // from the board rather than from a constant.
+  check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Needs attention=\d+\/false \| Up next=\d+\/false \| Show completed=\d+\/false$/) !== null)
+  // Correction A: Up next is the Plan's own next marker — the row that draws the
+  // "next" pill — and not every step the engine calls ready. The two counts here
+  // are the whole point: before this, Up next held a dozen rows on the demo.
+  const upNextCount = Number(await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Up next/.test(x.textContent || '')); return b ? ((b.querySelector('.count') || {}).textContent || '0') : '0' })()`))
+  const nextPills = Number(await evaluate(`document.querySelectorAll('main.page .plan-row .next-mark').length`))
+  check('Plan: Up next counts the rows the plan marks next, not every ready row', upNextCount === nextPills && upNextCount >= 1, `Up next=${upNextCount} next pills=${nextPills}`)
+  const readyRows = Number(await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Ready').length`))
+  check('Plan: ready work outnumbers the next step, so Up next is not a synonym for ready', readyRows > upNextCount, `Ready rows=${readyRows} Up next=${upNextCount}`)
+  // Correction B: the board's timing column. The generic `now` every
+  // prerequisite and check carries is dropped, and a held row says so instead of
+  // borrowing its wave's date.
+  check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
+  check('Plan: a held row reads Held rather than a date it is not on', (await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').every((r) => { const w = ((r.querySelector('.when') || {}).textContent || '').trim(); return w === '' || w === 'Held' || /reaches|held|ready/i.test(w) })`)))
   check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
   // The opened step is one frame attached under the row that opened it, with a
@@ -525,17 +548,28 @@ try {
     `(() => { const s = document.querySelector('main.page .step'); if (!s) return null; const row = s.previousElementSibling; return { tag: s.tagName, head: !!s.querySelector(':scope > .step-head'), main: !!s.querySelector('.step-body > .step-main'), row: row ? row.className + '|' + row.getAttribute('aria-expanded') : null } })()`,
   )
   check('Plan: the opened step is a frame attached under the row that opened it', !!framed && framed.tag === 'ARTICLE' && framed.head && framed.main && framed.row === 'plan-row|true', JSON.stringify(framed))
+  // The frame's own footer: under BOTH columns, not the last line of the main
+  // column. `Close` is always there; the scan is only where a scan is how the
+  // step is verified.
+  check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
+  check('Plan: the footer offers Close, and a scan only where the step is verified by one', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Close')) return false; return b.every((t) => t === 'Close' || t === 'Scan to update the plan') && !f.querySelector('button[disabled]') })()`))
+  // The head badge carries the lifecycle and the condition, once. The line that
+  // repeated them under the title is gone.
+  check('Plan: the step head states the lifecycle and condition once', await evaluate(`document.querySelectorAll('main.page .step .step-state').length === 0 && !!document.querySelector('main.page .step .step-head .status')`))
+  // The implementation control follows the capability: a strip only where there
+  // is a choice, and never a one-tab tab set.
+  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const strip = st.querySelector('.tabs.action-tabs'); const solo = st.querySelector('.single-channel-label'); if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !solo; return true })()`))
   // The approved Plan pack's topbar is sticky, and it is the one app header.
   const stickyHeader = await evaluate(
     `(async () => { window.scrollTo(0, 800); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const hs = document.querySelectorAll('header.app'); const t = hs[0].getBoundingClientRect().top; window.scrollTo(0, 0); return { n: hs.length, top: Math.round(t), sticky: getComputedStyle(hs[0]).position } })()`,
   )
   check('Plan: the one app header stays put when the plan scrolls', !!stickyHeader && stickyHeader.n === 1 && stickyHeader.sticky === 'sticky' && stickyHeader.top === 0, JSON.stringify(stickyHeader))
-  // A policy step's What-to-do tabs (Portal steps, JSON, PowerShell) and the
+  // A policy step's What-to-do tabs (Entra, PowerShell, JSON) and the
   // Download JSON artifact never carry a forbidEverywhere string. Open the row of
   // a policy step until the tabs render.
   await evaluate(`(async () => { const wait=(ms)=>new Promise(r=>setTimeout(r,ms)); for (const r of [...document.querySelectorAll('main.page .plan-row')]) { r.click(); await wait(140); if (document.querySelector('main.page .step-body .tabs .tab')) return true; r.click(); await wait(40); } return false })()`)
   if (await evaluate(`!!document.querySelector('main.page .step-body .tabs .tab')`)) {
-    for (const tabLabel of ['JSON', 'PowerShell', 'Portal steps']) { await clickText(`/^${tabLabel}$/`); await sleep(120) }
+    for (const tabLabel of ['JSON', 'PowerShell', 'Entra']) { await clickText(`/^${tabLabel}$/`); await sleep(120) }
     const stepText = await evaluate(`(document.querySelector('main.page .step') || {}).textContent || ''`)
     const stepHits = FORBID_EVERYWHERE.filter((f) => stepText.includes(f))
     check('Step: the What-to-do tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))

@@ -13,16 +13,21 @@
 // It hashes RAW bytes on purpose. src/fingerprint.ts normalises line endings
 // because it answers "did the source change" the way git does; this test
 // answers "are these the exact approved bytes", and a normalised copy is not
-// those bytes. .gitattributes marks docs/design/approved/*.html as `-text` so
-// git never rewrites them and the hash is stable on every platform.
+// those bytes. .gitattributes marks the approved HTML as `-text` so git never
+// rewrites it and the hash is stable on every platform.
+//
+// The four packs moved into docs/design/approved/anatomy/ when the design
+// folder was cleaned, so that anatomy sits apart from the current visual
+// comparison references in docs/design/approved/reference/. The bytes and the
+// hashes below did not change: only the directory did.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 
-const DIR = 'docs/design/approved'
-const MANIFEST = `${DIR}/manifest.json`
+const DIR = 'docs/design/approved/anatomy'
+const MANIFEST = 'docs/design/approved/manifest.json'
 
 /**
  * The long upload names task 028 committed the packs under. Task 030 made the
@@ -105,7 +110,7 @@ test('every approved design pack is present with the owner-approved bytes', () =
       got,
       sha256,
       `${path} is not the owner-approved file (expected ${sha256}, got ${got}). ` +
-        'Restore the exact bytes; if only line endings differ, .gitattributes must keep docs/design/approved/*.html as -text.',
+        `Restore the exact bytes; if only line endings differ, .gitattributes must keep ${DIR}/*.html as -text.`,
     )
   }
 })
@@ -118,7 +123,7 @@ test('one file per surface: the upload-named copies are gone and cannot come bac
     assert.ok(!existsSync(`${DIR}/${file}`), `${DIR}/${file} is a second copy of an authority that already has a canonical name`)
   }
   const html = readdirSync(DIR).filter((f) => f.endsWith('.html')).sort()
-  assert.deepEqual(html, [...APPROVED.map((a) => a.file)].sort(), 'docs/design/approved holds exactly the four canonical packs')
+  assert.deepEqual(html, [...APPROVED.map((a) => a.file)].sort(), `${DIR} holds exactly the four canonical packs`)
 })
 
 test('no task edits an approved byte: the working tree is what the commit holds', () => {
@@ -220,7 +225,7 @@ test('a generated branding preview is never an application authority', () => {
   assert.equal(brand.applicationLayoutAuthority, false, 'the brand skin does not own page layout')
   // A preview must never appear as a governed surface's authority.
   for (const record of surfaces) {
-    assert.match(record.path, /^docs\/design\/approved\/[a-z0-9.-]+\.html$/, `${record.surface}: authority is an approved pack`)
+    assert.match(record.path, /^docs\/design\/approved\/anatomy\/[a-z0-9.-]+\.html$/, `${record.surface}: authority is an approved anatomy pack`)
     assert.ok(!/preview|brand-frame|concept/i.test(record.path), `${record.surface}: a preview cannot be an application authority`)
   }
 })

@@ -24,7 +24,7 @@ import { extname, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { absentStepIds } from '../src/roadmap/baselineScope.ts'
 import { isFloorGoal } from '../src/roadmap/floor.ts'
-import { pages, steps as contentSteps } from '../src/content/content.ts'
+import { cleanup as cleanupContent, pages, steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
 import { RE, beforeLines, headerTabsLine, readinessAllWord, readinessGroupTitles, rungTitles, staticFindings } from '../src/content/contentChecks.ts'
@@ -62,6 +62,10 @@ const REPEATERS = contracts.repeaters ?? []
 const contractById = Object.fromEntries((contracts.surfaces ?? []).map((c) => [c.id, c]))
 // The pinned package's policy count (baselines/*.pinned.json): the Baseline tile's one count, signed in and out.
 const PINNED_COUNT = JSON.parse(readFileSync('baselines/jhope188-conditionalaccesspolicies.pinned.json', 'utf8')).policies.length
+// The Cleanup rows' titles, from the same content the rows render. A Cleanup row
+// is not a step — no lifecycle, no condition — and its date column reads
+// "done <date>" by design (ui/surfaces/cleanupExport.ts `cleanupWhen`).
+const CLEANUP_TITLES = new Set(Object.values(cleanupContent).map((e) => (e && e.title) || '').filter(Boolean))
 
 // The titles and goal names that must never appear as a plan row: the content
 // steps absent from the pinned baseline, and the catalogue names of the goals
@@ -207,6 +211,21 @@ const settle = async () => {
     last = now
     await sleep(250)
   }
+}
+/**
+ * Reveal the board's completed work.
+ *
+ * Finished rows were the Plan footer's first `<details>`: closed, but in the
+ * DOM, so every check could read them and `inFooter` decided which to open.
+ * They are the board's Complete group now and `Show completed` is their one
+ * control, and that control FILTERS (ui/surfaces/planBoard.ts `applyFocus`) —
+ * an unpressed board has no completed row in the document at all. A check that
+ * reads finished work presses this first, and presses it again after every
+ * navigation, because the press is page state and a navigation drops it.
+ */
+const revealCompleted = async () => {
+  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show completed/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
+  await sleep(200)
 }
 const mainText = () => evaluate(`(document.querySelector('main.page') || document.body).innerText`)
 const shot = async (path) => {
@@ -646,7 +665,7 @@ async function walkFixture(fx) {
       // ask for and does not start the scan.
       if (route === 'connect') {
         // Connect is the approved staged flow in both states
-        // (docs/design/approved/connect-v3.html): an eyebrow and one heading, a status
+        // (docs/design/approved/anatomy/connect-v3.html): an eyebrow and one heading, a status
         // strip, one contiguous flow holding the account (or the sign-in) step, the
         // baseline and the scan in exactly one of its states, then the Plan as a
         // separate destination panel; every action a button in one of three weights,
@@ -1042,6 +1061,10 @@ async function walkFixture(fx) {
 
       // Every row, one by one: it opens; its body shares the row's title; the
       // body keeps the invariants; More opens; Learn links resolve.
+      // Finished work is in the document only while `Show completed` is pressed,
+      // so press it before the rows are read: these lists are what the checks
+      // below ask "is this step on the Plan at all".
+      await revealCompleted()
       let n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
       rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
       rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
@@ -1051,16 +1074,21 @@ async function walkFixture(fx) {
       rowTitlesOpen = [...rowTitles]
       rowReasonsOpen = [...rowReasons]
       let inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
+      // Finished rows are not opened one by one, for the same reason the footer's
+      // never were: the loop below walks the work that is still to do.
+      let inComplete = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-complete') !== null)`)
       for (let i = 0; i < n; i++) {
-        if (inFooter[i]) continue
+        if (inFooter[i] || inComplete[i]) continue
         const title = rowTitles[i]
         const slabel = `${fx.name} @${width} step "${title}"`
         // Set when a decision made on this step moved it to the footer (In place), so the rows below it moved up one.
         let decidedHere = false
         await send('Page.navigate', { url: `${fx.base}#/plan` })
         await sleep(300)
-        await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
+        await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
         await ensureWeek2('plan')
+        // The press does not survive the navigation above.
+        await revealCompleted()
         const rowThere = await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
         if (!rowThere) {
           add('P0', `${slabel}: the row is not on the Plan`)
@@ -1129,7 +1157,12 @@ async function walkFixture(fx) {
         const rowCount = countOf(rowWho, { names: true })
         const leadCount = leadAt >= 0 ? countOf(bodyLines[leadAt + 1] || '') : null
         if (rowCount !== null && leadCount !== null && rowCount !== leadCount) add('P0', `${slabel}: the row says ${rowCount} and the step's lead says ${leadCount} (one population per step)`)
-        const bodyTitle = await evaluate(`(document.querySelector('main.page .step-body .step-title') || {}).textContent || ''`)
+        // The opened step's title is its header's, and the header is beside the
+        // body rather than inside it since the shared step frame (StepSections.tsx
+        // `.step-head`). Read where it is: this is the guard that catches the loop
+        // opening a different row than the one it is labelling, and a selector that
+        // matches nothing makes it pass silently.
+        const bodyTitle = await evaluate(`(document.querySelector('main.page .step .step-head .step-title') || {}).textContent || ''`)
         if (/Exclusions Group/i.test(bodyTitle)) exclusionBody = bodyText
         const safe = title.replace(/[^\w-]+/g, '-').slice(0, 60)
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
@@ -1220,14 +1253,17 @@ async function walkFixture(fx) {
               const b = await clickText('label', /^Hybrid-joined is enough$/, 'main.page .step-body')
               const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
-              // Saved, the step is In place and sits in the footer; it opens there like any row, with its effect line.
-              const moved = c ? await waitFor(`[...document.querySelectorAll('main.page .plan-footer .plan-row .step-title')].some((e) => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000) : false
-              if (c && !moved) add('P0', `${slabel}: the decided step did not move to the footer as In place`)
+              // Saved, the step is In place and joins the board's Complete group;
+              // it opens there like any row, with its effect line. It is in the
+              // document only while `Show completed` is pressed.
+              if (c) await revealCompleted()
+              const moved = c ? await waitFor(`[...document.querySelectorAll('main.page #plan-group-complete .plan-row .step-title')].some((e) => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000) : false
+              if (c && !moved) add('P0', `${slabel}: the decided step did not join the Complete group as In place`)
               if (moved) {
                 await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
                 // The step stays open as it moves (the page keeps the opened id); a click would close it, so click only when its body is not there.
-                await evaluate(`(() => { if (document.querySelector('main.page .plan-footer .step-body')) return; const r = [...document.querySelectorAll('main.page .plan-footer .plan-row')].find((e) => /Decide How Devices Are Managed/.test((e.querySelector('.step-title') || {}).textContent || '')); if (r) { r.scrollIntoView({ block: 'center' }); r.click() } })()`)
-                const applied = await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page .plan-footer .step-body') || {}).innerText || '')`, 8000)
+                await evaluate(`(() => { if (document.querySelector('main.page #plan-group-complete .step-body')) return; const r = [...document.querySelectorAll('main.page #plan-group-complete .plan-row')].find((e) => /Decide How Devices Are Managed/.test((e.querySelector('.step-title') || {}).textContent || '')); if (r) { r.scrollIntoView({ block: 'center' }); r.click() } })()`)
+                const applied = await waitFor(`/Phones leave the compliant-device policy/.test((document.querySelector('main.page #plan-group-complete .step-body') || {}).innerText || '')`, 8000)
                 if (!applied) add('P0', `${slabel}: the phones answer's effect line does not show on the decided step`)
                 // Device readiness is measured against the answer from here: the numbers before the decision are not the numbers after it.
                 readinessOf(currentFixture).delete('device')
@@ -1338,7 +1374,9 @@ async function walkFixture(fx) {
           if (/Emergency Access Accounts/.test(title) && fx.week2 && asksWhy) add('P0', `${slabel}: the sign-in is a recorded drill in week two, and the step still asks who and why`)
           if (/already covers this with/.test(bodyText)) sawExistingCoverage = true
           if (/Emergency Access Drill/.test(title)) {
-            const doneOnRow = () => waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && /^done \\S.*\\d{4}$/.test((r.querySelector('.when') || {}).textContent || ''))`, 8000)
+            // Marking it done completes it, and a completed row is in the
+            // document only while `Show completed` is pressed.
+            const doneOnRow = async () => { await revealCompleted(); return waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && /^done \\S.*\\d{4}$/.test((r.querySelector('.when') || {}).textContent || ''))`, 8000) }
             if (fx.week2) {
               if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read done <date>`)
             } else {
@@ -1410,12 +1448,15 @@ async function walkFixture(fx) {
         const overflowStep = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
         if (overflowStep > 0) add('P1', `${slabel}: the opened step overflows the viewport by ${overflowStep}px`)
         if (decidedHere) {
-          // The decided step is In place and sits in the footer now; the rows below it moved up one. Re-read them and take this index again.
+          // The decided step is In place and has moved to the Complete group; the
+          // rows below it moved up one. Re-read them and take this index again.
           await sleep(300)
+          await revealCompleted()
           rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
           rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
           rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
           inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
+          inComplete = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-complete') !== null)`)
           n = rowTitles.length
           i -= 1
         }
@@ -1426,6 +1467,7 @@ async function walkFixture(fx) {
       await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
       await ensureWeek2('plan')
       await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
+      await revealCompleted()
       await sleep(200)
       // The rows as they stand after every step was opened (and, on week two, after the device decision was made on its step).
       rowTitlesAfter = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
@@ -1440,9 +1482,17 @@ async function walkFixture(fx) {
         for (const t of fd.titles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name} @${width} /plan footer: "${t}" is a goal the baseline does not hold`)
         for (const row of fd.rows) for (const nm of ABSENT_GOAL_NAMES) if (row.text.includes(nm)) add('P0', `${fx.name} @${width} /plan footer: "${nm}" is a goal the baseline does not hold`)
         // A done step's row shows no date word: blank, never "now".
-        const doneWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-footer .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ((r.querySelector('.when') || {}).textContent || '').trim())`)
-        const dated = doneWhens.filter((w) => w !== '')
-        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan footer: ${dated.length} done row(s) carry a date word ("${dated[0]}"); a done row is blank`)
+        // The done rows are the board's Complete group now, not the footer's
+        // first details (Plan.tsx). The invariant is the row's, not the
+        // container's: a done row's date column is blank, never "now".
+        await revealCompleted()
+        // A Cleanup row is not a step. It carries no lifecycle and no condition,
+        // and its date column reads "done <date>" by design — the drill check
+        // above asserts exactly that. Reading it here as well made two checks
+        // demand opposite things of one row, so neither could pass.
+        const doneRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
+        const dated = doneRows.filter((r) => r.when !== '' && !CLEANUP_TITLES.has(r.title))
+        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} done step row(s) carry a date word ("${dated[0].when}" on "${dated[0].title}"); a done row is blank`)
       }
       // A started plan (E5), on day one: Start the plan locks the dates; the
       // Start date field and its note go, and "started <date>" stands in their
@@ -1628,7 +1678,7 @@ function scanPlanFile() {
 // ---- the home page (task 016; the approved composition restored by task 038) ----
 //
 // These checks read the page that exists, and the page now implements Home's
-// design authority: docs/design/approved/home-v2.html (manifest.json in that
+// design authority: docs/design/approved/anatomy/home-v2.html (manifest.json in that
 // folder). A later pack that moves the anatomy moves these checks with it.
 //
 // getiamai.com's front page, generated from pages.home by scripts/build-home.ts
@@ -1701,7 +1751,7 @@ async function walkHome(url) {
     if (hero.h1 !== HOME.h1) add('P0', `${label}: the headline reads "${hero.h1}"; ${HOME.h1}`)
     if (hero.line !== HOME.siteLine) add('P0', `${label}: the site line reads "${hero.line}"; ${HOME.siteLine}`)
     if (JSON.stringify(hero.meta) !== JSON.stringify(HOME.heroMeta)) add('P0', `${label}: the hero's meta row reads ${hero.meta.join(' · ') || 'nothing'}; ${HOME.heroMeta.join(' · ')}`)
-    // The pack's display size, rendered: 50px at 1280 (docs/design/approved/home-v2.html).
+    // The pack's display size, rendered: 50px at 1280 (docs/design/approved/anatomy/home-v2.html).
     if (hero.display !== 50) add('P0', `${label}: the hero display renders at ${hero.display}px; the approved pack sets 50`)
     // The outcome comes first: the hero never names Conditional Access.
     const heroWords = `${hero.eyebrow} ${hero.h1} ${hero.line}`

@@ -5,4 +5,13 @@
 
 # The approved design packs are byte-exact authorities: their SHA-256 is the
 # authority, so git must never normalise them (src/ui/design-authority.test.ts).
+# The four canonical anatomy packs, and the current visual comparison
+# references beside them, are both hashed records.
 docs/design/approved/*.html -text
+docs/design/approved/anatomy/*.html -text
+docs/design/approved/reference/*.html -text
+docs/design/approved/reference/*.svg -text
+
+# The production Threshold master is a byte-for-byte copy of the approved
+# reference master, and docs/brand/brand-manifest.json records that SHA-256.
+src/brand/logo/iamai-threshold-master.svg -text

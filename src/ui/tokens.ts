@@ -6,10 +6,13 @@
 // (scripts/build-home.ts), so the home page and the planner cannot part.
 //
 // Task 030 replaced the paper/ink palette that shipped with the owner-approved
-// brand: Mineral Teal in light, Deep Mineral in dark, exactly as recorded in
+// brand: Mineral Teal in light, and in dark the palette the owner has since
+// replaced with Blue Slate — exactly as recorded in
 // docs/brand/brand-manifest.json (task 029). The seventeen semantic roles below
 // carry the manifest's values byte for byte; brand.test.ts fails when a value
-// here and a value there disagree.
+// here and a value there disagree. The light palette is untouched by the dark
+// replacement: Mineral Teal is approved as it stands, and a dark repaint is not
+// a reason to rebalance it.
 //
 // Two groups of names live in this file, and the difference matters:
 //
@@ -138,31 +141,31 @@ export const LIGHT: Palette = {
   brandSecondaryText: '#147068',
 }
 
-/** Deep Mineral. */
+/** Blue Slate. */
 export const DARK: Palette = {
-  canvas: '#0E1516',
-  surface: '#151F20',
-  secondarySurface: '#111A1B',
-  line: '#2A3737',
-  strongLine: '#3B4B4A',
-  primaryText: '#F0F4F2',
-  secondaryText: '#C4CECA',
-  mutedText: '#879693',
-  brandPrimary: '#59C7B7',
-  brandSecondary: '#7AD9CB',
-  brandSoft: '#173B37',
-  brandSoftText: '#D9FFF8',
+  canvas: '#0D1117',
+  surface: '#151C25',
+  secondarySurface: '#111821',
+  line: '#2B3745',
+  strongLine: '#39495A',
+  primaryText: '#F2F5F7',
+  secondaryText: '#C7D0D8',
+  mutedText: '#8F9AA6',
+  brandPrimary: '#58C8BC',
+  brandSecondary: '#78D9CE',
+  brandSoft: '#173A3D',
+  brandSoftText: '#DFFFF9',
   success: '#79D7A6',
   attention: '#E3B35B',
   danger: '#E88A8A',
   admin: '#B9A7FF',
-  codeSurface: '#0A1112',
+  codeSurface: '#0A0F15',
 
-  onBrand: '#0E1516',
-  // On the dark canvas the muted ink is already 5.46:1 at its worst, so the
+  onBrand: '#0D1117',
+  // On the dark canvas the muted ink is already 5.99:1 at its worst, so the
   // quiet text level is the canonical value rather than a second one.
-  quietText: '#879693',
-  idle: '#879693',
+  quietText: '#8F9AA6',
+  idle: '#8F9AA6',
   unproven: '#C98A2E',
   // On a dark canvas every canonical state colour is already AA as text, so a
   // derived variant would be a second value for no reason.
@@ -171,7 +174,7 @@ export const DARK: Palette = {
   dangerText: '#E88A8A',
   adminText: '#B9A7FF',
   unprovenText: '#C98A2E',
-  brandSecondaryText: '#7AD9CB',
+  brandSecondaryText: '#78D9CE',
 }
 
 /** The canonical seventeen, in the order docs/brand/brand-manifest.json lists them. */
@@ -325,13 +328,13 @@ export const LINE_HEIGHT = { body: 1.5, heading: 1.25, display: 1.1 } as const
  * change when the page does.
  */
 export const ROUTE_WIDTHS = {
-  /** docs/design/approved/home-v2.html — min(1040px, 100% - 40px). */
+  /** docs/design/approved/anatomy/home-v2.html — min(1040px, 100% - 40px). */
   home: 1040,
-  /** docs/design/approved/connect-v3.html — min(1040px, 100% - 40px). */
+  /** docs/design/approved/anatomy/connect-v3.html — min(1040px, 100% - 40px). */
   connect: 1040,
-  /** docs/design/approved/plan-step-v1.html — min(1240px, 100% - 44px). */
+  /** docs/design/approved/anatomy/plan-step-v1.html — min(1240px, 100% - 44px). */
   plan: 1240,
-  /** docs/design/approved/mfa-readiness-v2.html — min(1200px, 100% - 40px). */
+  /** docs/design/approved/anatomy/mfa-readiness-v2.html — min(1200px, 100% - 40px). */
   readiness: 1200,
   // The three surfaces no approved pack governs. Task 030 left them on the
   // generic prose page and the generic table cap; task 040 gives each one a

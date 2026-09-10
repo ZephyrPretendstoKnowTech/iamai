@@ -1,7 +1,7 @@
 // Task 033 — the approved Plan collapsed roadmap row; task 034 — the expanded frame.
 //
 // The same two-sided shape as src/ui/surfaces/connectAnatomy.test.ts (task
-// 032): every assertion reads `docs/design/approved/plan-step-v1.html` at test
+// 032): every assertion reads `docs/design/approved/anatomy/plan-step-v1.html` at test
 // time and fails if the pack stops drawing what production claims to have
 // restored, and reads production and fails if production stops drawing it. A
 // green unit test that only knows about production can pass while the two
@@ -39,7 +39,7 @@ import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
-const PACK = 'docs/design/approved/plan-step-v1.html'
+const PACK = 'docs/design/approved/anatomy/plan-step-v1.html'
 const SECTIONS = read('src/ui/surfaces/StepSections.tsx')
 const PLAN = read('src/ui/surfaces/Plan.tsx')
 const CSS = read('src/ui/app.css')
@@ -108,7 +108,15 @@ test('the pack draws a four-zone roadmap row, and so does production', () => {
   const row = rule('.plan-row')
   assert.match(row, /display: grid;/, 'the roadmap row is not a grid')
   assert.match(row, /grid-template-columns: 126px minmax\(0, 1fr\) 240px 125px;/, 'production lost the four-zone grid')
-  assert.match(row, /gap: 18px;/)
+  // 14px, not the pack's 18px. The pack draws the row on its own; the final
+  // organisation reference draws it under a column head in a group, and sets
+  // `gap:14px` on both so the head and the rows it names share one track set
+  // (docs/design/approved/reference/iamai-plan-organization-final.html
+  // `.column-head,.row`). That file owns the board; the pack still owns the
+  // opened step, and neither supersedes the other.
+  assert.match(row, /gap: 14px;/)
+  assert.match(rule('.plan-column-head'), /grid-template-columns: 126px minmax\(0, 1fr\) 240px 125px;/, 'the column head does not sit on the row’s tracks')
+  assert.match(rule('.plan-column-head'), /gap: 14px;/, 'the column head and the rows under it are on different gaps')
   assert.match(row, /min-height: 64px;/)
   assert.match(row, /padding: 0 17px;/)
 })
@@ -154,7 +162,16 @@ test('the row collapses at the breakpoint the pack collapses at, and drops nothi
   const narrow = atWidth(940)
   assert.match(narrow, /\.plan-row \{[\s\S]*grid-template-columns: 110px minmax\(0, 1fr\);/, 'the row does not collapse to two tracks')
   assert.match(narrow, /text-align: left;/, 'the moved zones do not left-align')
-  assert.equal(/display:\s*none/.test(narrow), false, 'a zone is hidden at the narrow width instead of moved')
+  // Nothing is hidden ON THE ROW. The rule reads the row's own declarations
+  // rather than the whole breakpoint, because the COLUMN HEAD does drop its
+  // third and fourth headings here — and must: the row no longer has a third or
+  // a fourth column for them to name, so a heading left standing would label a
+  // column that is not there. The zones themselves move under the title, which
+  // is what the two assertions above prove.
+  const rowAtNarrow = narrow.match(/\.plan-row \{[^}]*\}/)?.[0] ?? ''
+  assert.ok(rowAtNarrow !== '', 'the row has no rule at the narrow width')
+  assert.equal(/display:\s*none/.test(rowAtNarrow), false, 'a zone is hidden at the narrow width instead of moved')
+  assert.match(narrow, /\.plan-column-head \{[\s\S]*grid-template-columns: 110px minmax\(0, 1fr\);/, 'the column head does not follow the row it heads')
 })
 
 // ------------------------------------------------ the row presents truth, it does not compute it
@@ -212,7 +229,13 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   // Nothing on the Plan builds a count, a date or an elapsed time for display.
   assert.match(PLAN, /title=\{contentTitle\(step\)\}/, 'the title is no longer the content entry')
   assert.match(PLAN, /who=\{rowWho\(step, nameOf\)\}/, 'the metadata zone no longer reads the one who-line authority')
-  assert.match(PLAN, /when=\{rowWhen\(step, waveStart\)\}/, 'the timing zone no longer reads the one when authority')
+  // The timing zone still reads `rowWhen` and nothing else — but through the
+  // board's own reading of it (planBoard.ts `boardWhen`), which drops the
+  // generic `now` and says `Held` where a wave date would imply a held step is
+  // still on schedule. `boardWhen` takes the VALUE and chooses what to show; it
+  // computes no date, and every other surface still calls `rowWhen` directly.
+  assert.match(PLAN, /const when = boardWhen\(rowWhen\(step, group\.start\), \{/, 'the timing zone no longer reads the one when authority')
+  assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
   assert.match(PLAN, /reason=\{rowReason\(step\)\}/, 'the quiet line no longer reads the one reason authority')
   assert.match(PLAN, /whenReason=\{rowWhenWraps\(step\)\}/)
 })
@@ -325,7 +348,14 @@ test('each lifecycle is drawn as itself, and no step is painted mid-rollout that
   assert.match(rule('.step .track .stage-fill'), /width: 0;/, 'an unmarked stage claims progress')
   assert.match(rule('.step .track .stage.reached .stage-fill'), /width: 100%;\n\s*background: var\(--success\);/, 'a passed stage is no longer complete')
   assert.match(rule('.step .track .stage.current.stage-report-only .stage-fill'), /width: 62%;\n\s*background: var\(--attention\);/, "Report-only lost the pack's current treatment")
-  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--brand-primary\);/, 'Ready to enforce lost its own treatment')
+  // Ready to enforce is a STATE and takes a semantic role, not the brand: the
+  // brand answers "this is IAMAI, this is selected", never "the tenant is in a
+  // good state" (docs/brand/brand-manifest.json semantics). The approved step
+  // reference paints this stage `var(--success)` with the stages already passed,
+  // which is what it means — the gates have closed and the change is earned.
+  // The 84% stays: the stage is reached, not finished.
+  assert.match(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill'), /width: 84%;\n\s*background: var\(--success\);/, 'Ready to enforce lost its own treatment')
+  assert.equal(rule('.step .track .stage.current.stage-ready-to-enforce .stage-fill').includes('--brand-primary'), false, 'the brand is painting a tenant state')
   // The blanket rule the four replaced: a `.current` fill that names no stage
   // paints Not deployed and Enforced with Report-only's bar.
   assert.equal(/\.step \.track \.stage\.current \.stage-fill \{/.test(CSS), false, 'one treatment is applied to every current stage again')
@@ -698,7 +728,13 @@ test('the narrow widths keep every section, in order, and widen nothing', () => 
   // enough for two 260px tracks, so auto-fit alone would leave two findings
   // side by side at the width the pack draws them stacked.
   assert.match(narrow, /\.step \.findings,\s*\.step \.more-grid \{[\s\S]*?grid-template-columns: 1fr;/, 'the findings and More grids do not both collapse at 940')
-  assert.match(rule('.step .findings'), /minmax\(min\(100%, 260px\), 1fr\)/, 'a finding card can be wider than the column it sits in')
+  // Three equal tracks, each `minmax(0, 1fr)`: the pack's and the approved
+  // reference's `repeat(3,1fr)`, with a zero minimum so a long finding wraps
+  // inside its third of the row instead of widening the grid past the column.
+  // It replaced `auto-fit`, which stretched a lone finding across the whole
+  // column and turned one observation into a billboard.
+  assert.match(rule('.step .findings'), /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/, 'the findings grid is no longer the approved three tracks')
+  assert.match(read(PACK), /\.findings\{display:grid;grid-template-columns:repeat\(3,1fr\)/, 'the pack no longer lays three findings across a row')
   // Nothing is hidden to make the step shorter: the sections, the attention
   // panel, the strip and the rail are all still rendered at every width.
   for (const gone of ['.findings', '.instruction', '.step-section', '.callout', '.tabs.action-tabs']) {
