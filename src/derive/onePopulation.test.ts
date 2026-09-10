@@ -11,13 +11,14 @@ import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { notPeopleIds, peopleCounts } from './sets.ts'
 import { readinessView } from './mfaReadiness.ts'
-import { RUNGS, ladder } from './ladder.ts'
+import { ladder } from './ladder.ts'
+import { READINESS_STATES } from '../scoring/phishingResistant.ts'
 import { affectedIds } from './whoLine.ts'
 import { contentLists } from './contentLists.ts'
 import { planDates, stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { rowWho } from '../ui/surfaces/rowWho.ts'
-import { ledgerText } from '../ui/surfaces/readinessCells.ts'
+import { footerParts } from '../ui/surfaces/readinessCells.ts'
 import { inventoryTables } from '../ui/surfaces/inventoryTables.ts'
 
 const f = fixture('getiamai')
@@ -36,22 +37,22 @@ test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active
   const numbers = { strip: strip.active, lead: Number(ex.active), who: who.length, today: today.facts.active }
   assert.deepEqual(numbers, { strip: 2, lead: 2, who: 2, today: 2 }, JSON.stringify(numbers))
   assert.ok(lead.startsWith('2 active people'), lead)
-  assert.match(ledgerText(today.facts), /^\d+ accounts: 2 active people/, "Today's ledger")
+  assert.equal(today.facts.active + footerParts(today.facts).reduce((n, p) => n + Number(p.text.match(/^(\d+)/)?.[1]), 0), today.facts.accounts, 'the footer names everyone the 2 active people leave out')
   const whoText = rowWho(campaign, nameOf)
   for (const id of who) assert.ok(whoText.includes(nameOf(id)) || /2 people/.test(whoText), `${whoText} covers ${nameOf(id)}`)
   // The signed-in account is a person like any other: on every screen when the directory says it is active, on none otherwise.
   const row = today.rows.find((x) => x.user.id === f.operatorId)!
   assert.ok(row && row.kind === 'person', 'the operator has a row')
   assert.equal(who.includes(f.operatorId), row.active, 'the campaign counts the operator exactly when Today does')
-  assert.equal(RUNGS.some((r) => strip.rungs[r].some((p) => p.id === f.operatorId)), row.active, 'the ladder counts the operator exactly when Today does')
+  assert.equal(READINESS_STATES.some((s) => strip.states[s].some((p) => p.id === f.operatorId)), row.active, 'the partition counts the operator exactly when MFA Readiness does')
 })
 
-test('the emergency accounts are not people: listed on Today by kind, never on a rung or in the active count; Inventory and the emergency step list them', () => {
+test('the emergency accounts are not people: listed on MFA Readiness by kind, never in a readiness state or the active count; Inventory and the emergency step list them', () => {
   const emergency = f.mapping.breakGlassUserIds
   assert.ok(emergency.length === 2)
   for (const id of emergency) {
     const row = today.rows.find((x) => x.user.id === id)!
-    assert.ok(row && row.kind === 'emergency' && !row.active, `${nameOf(id)} is listed as emergency access, never counted`)
+    assert.ok(row && row.kind === 'emergency' && !row.active && row.state === null, `${nameOf(id)} is listed as emergency access, never counted`)
   }
   assert.equal(today.facts.kinds.emergency, emergency.length, 'the ledger counts them as emergency access')
   const withThem = peopleCounts(f.snapshot, f.snapshot.asOf, new Set(f.mapping.serviceAccountUserIds))

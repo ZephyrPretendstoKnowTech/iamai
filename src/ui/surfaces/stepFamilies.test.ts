@@ -355,7 +355,7 @@ test('a source conflict states the ambiguity and invents no deployment', () => {
 test('the MFA preview consumes existing readiness truth and computes none of its own', () => {
   // Every word in a preview row is one of MFA Readiness's own four projections,
   // so the Plan and the page cannot describe one person differently.
-  for (const cell of ['roleWord', 'methodWord', 'readinessWord', 'nextStateWord']) {
+  for (const cell of ['roleWord', 'methodsCell', 'readinessWord', 'actionOf']) {
     assert.ok(HANDOFF.includes(cell), `the preview writes its own ${cell}`)
   }
   assert.match(HANDOFF, /from '\.\/readinessCells\.ts'/, 'the preview does not read the shared cell projections')

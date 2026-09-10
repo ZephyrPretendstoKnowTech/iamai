@@ -6,6 +6,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
+import { rolloutBucket } from '../scoring/mfaViability.ts'
+import { contentLists } from '../derive/contentLists.ts'
 
 // Prompt 50 item 10: at least twelve of the twenty-two lockout scenarios fire on
 // the demo, and the property test names which — so the demo keeps showing them.
@@ -43,12 +45,14 @@ test('prompt 50 item 10: at least twelve scenarios fire on the demo, and these a
 test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracking story, and the in-place count rises', () => {
   const day1 = runFixture(fixture('demo'))
   const week2 = runFixture(fixture('demo-week2'))
-  const unproven = (r: ReturnType<typeof runFixture>): number => (r.steps.find((s) => s.kind === 'verify')?.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')?.people.length ?? 0
-  const inPlace = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'done').length
+  // Ready is phishing-resistant readiness (Step 7, scoring/phishingResistant.ts), over the active people.
+  const ready = (r: ReturnType<typeof runFixture>): number => r.viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state === 'ready').length
+  const inPlace =(r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'done').length
   // A policy in report-only is in-report-only, or ready-to-enforce once one of its two gates is met (tracking.ts); both read Report-only.
   const reportOnly = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.status === 'in-report-only' || s.status === 'ready-to-enforce').length
   const exclusionStep = (r: ReturnType<typeof runFixture>) => r.steps.find((s) => s.id === 's-prereq-exclusion-group')
-  assert.equal(unproven(week2), unproven(day1) - 3, 'three of the unproven are proven in week two')
+  // Three people who had only Authenticator on day one set up a passkey and proved it by week two.
+  assert.equal(ready(week2), ready(day1) + 3, 'three more people are Ready in week two')
   // By week two the admins phishing-resistant policy is enforced, the second
   // emergency account is excluded from the MFA policy, and the tenant's policies
   // carve out the group its technician chose rather than the break-glass group:
@@ -129,20 +133,22 @@ test('a fixture with no StoredSignIn evidence carries no evidence line outside t
 })
 
 test('getiamai: the campaign names real active people, never the break-glass admins', () => {
-  const r = runFixture(fixture('getiamai'))
-  const bg = new Set(r.input.snapshot ? [] : [])
-  const bgIds = new Set(runFixture(fixture('getiamai')).steps.length ? [] : [])
-  void bg; void bgIds
+  const f = fixture('getiamai')
+  const r = runFixture(f)
+  const bg = new Set(f.mapping.breakGlassUserIds)
   const verify = r.steps.find((s) => s.kind === 'verify')
   assert.ok(verify, 'the verification campaign exists')
-  // The campaign shows the registered-but-unproven active people (item 6),
-  // never a break-glass account (they are the tenant's admin cohort). The
-  // signed-in account is a person like any other (derive/operator.ts): both of
-  // GetIAMAI's two active people, the operator among them, are named.
-  const line = (verify!.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')
-  assert.ok(line && line.people.length === 2, `both registered-but-unproven people named: ${JSON.stringify(line?.people)}`)
-  const f = fixture('getiamai')
-  assert.ok(line!.people.includes(f.operatorId), 'the signed-in account is named like anyone else')
+  // The campaign names the active people who are not Ready (item 6; Step 7),
+  // never a break-glass account (they are the tenant's admin cohort). GetIAMAI's
+  // two active people hold only Authenticator, so both are in its Needs setup
+  // group; the signed-in account is a person like any other (derive/operator.ts).
+  const lists = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
+  const active = r.viability.filter((v) => rolloutBucket(v) !== null && !bg.has(v.userId)).map((v) => v.userId)
+  assert.equal(active.length, 2, 'the fixture has two active people')
+  assert.deepEqual([...lists.needsSetup].sort(), [...active].sort(), `both active people named in Needs setup: ${JSON.stringify(lists.needsSetup)}`)
+  assert.ok(lists.needsSetup.includes(f.operatorId), 'the signed-in account is named like anyone else')
+  for (const id of [...lists.noMethod, ...lists.needsSetup, ...lists.needsProof, ...lists.readinessUnknown]) assert.ok(!bg.has(id), `${id}: a break-glass account in the campaign's groups`)
+  for (const l of verify!.scenarioLines ?? []) for (const id of l.people) assert.ok(!bg.has(id), `${l.kind}: names a break-glass account`)
 })
 
 // Prompt 48.1 item 5: every admin holder resolves to a name; "an account IAMAI
@@ -160,16 +166,16 @@ test('no step names an unresolvable account: every holder resolves', async () =>
   }
 })
 
-// Prompt 48.1 item 6: the campaign's unproven and no-method lines fire wherever
-// Today's tile is non-zero, over the active, non-break-glass people.
-test('the campaign shows an unproven line exactly when Today has active registered-but-unproven people', async () => {
-  const { rolloutBucket } = await import('../scoring/mfaViability.ts')
+// Prompt 48.1 item 6 (Step 7): the campaign's needs-proof line fires wherever
+// MFA Readiness counts active, non-break-glass people who Need proof — a
+// phishing-resistant method not yet proven on every platform they use.
+test('the campaign shows a needs-proof line exactly when MFA Readiness has active people who Need proof', () => {
   for (const f of allFixtures()) {
     const r = runFixture(f)
     const verify = r.steps.find((s) => s.kind === 'verify')
     if (!verify) continue
     const bg = new Set(f.mapping.breakGlassUserIds)
-    const unproven = r.viability.filter((v) => rolloutBucket(v) === 'unproven' && !bg.has(v.userId)).length
+    const unproven = r.viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state === 'needsProof' && !bg.has(v.userId)).length
     const line = (verify.scenarioLines ?? []).find((l) => l.kind === 'campaignUnproven')
     assert.equal(Boolean(line), unproven > 0, `${f.name}: unproven line ${Boolean(line)} but ${unproven} unproven`)
     if (line) assert.equal(line.people.length, unproven, `${f.name}: unproven line names ${line.people.length} of ${unproven}`)

@@ -238,8 +238,12 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    state it filters to ("Needs attention", "Up next"). The
   //                    dot is `aria-hidden` and the word is the control's name,
   //                    so nothing here is carried by the colour.
+  //   .proof-mark-*    MFA Readiness's proof mark (docs/design/approved/reference/
+  //                    iamai-mfa-readiness-final.html `.mark`): a ✓ ? × ! glyph
+  //                    beside the proof line it marks, so the glyph and the
+  //                    line's words both say it and the colour says it a third time.
   const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
-  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-/
+  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-|\.proof-mark-/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))

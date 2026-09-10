@@ -77,9 +77,9 @@
     "licenceRule": "Where a control needs a licence {tenant} does not hold, the step uses the nearest control it does hold and says so; the licensed version is listed under Not licensed.",
     "methodGuides": {
       "$comment": "The one source of MFA remediation guidance (task 014). MFA Readiness's person panel, its copy-for-the-help-desk box, the campaign step's pointer and the campaign email all read from here; nothing writes a second version. A guide's steps may name a shared line as \"@key\" into `common`, so a sentence two platforms share is written once (src/content/methodGuides.ts resolves them). Which guide applies to a person is decided by the evidence, not here.",
-      "target": "The target is a passkey or security key the person has signed in with; IAMAI reads that from the sign-in records.",
+      "target": "The target is phishing-resistant MFA the person has been seen signing in with: a passkey, Windows Hello for Business or a certificate.",
       "prereq": "Passkey (FIDO2) has to be on in the tenant first; Set Up Passkeys to Match the Baseline turns it on.",
-      "pointer": "Person-by-person setup steps are on MFA Readiness; work its Needs a passkey and Needs proof lists there.",
+      "pointer": "Person-by-person setup steps are on MFA Readiness; work its Needs setup and Needs proof lists there.",
       "userInstruction": "Install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone.",
       "guest": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
       "common": {
@@ -590,58 +590,62 @@
       "startControl": "Start the plan",
       "line1Started": "{steps} steps · {done} done · started {start} · finishes {finish}"
     },
-    "ladder": {
-      "$comment": "The MFA readiness ladder (derive/ladder.ts; docs/design/mockups/today-v2.html): the header, the five rungs and the rule before the three to prioritise, read by Today's rows, the Plan strip and Connect's Plan tile.",
-      "header": "MFA Readiness",
-      "of": "of {n} active people",
-      "prioritise": "Prioritise",
-      "rungs": {
-        "r5": {
-          "title": "Passkey or security key, proven",
-          "tip": "A passkey in Microsoft Authenticator, a hardware security key, or a certificate that travels with the person; they have passed MFA with it. It cannot be phished.",
-          "desc": "Passes MFA from any device and cannot be phished. The target for everyone."
-        },
-        "r4": {
-          "title": "Authenticator app, proven",
-          "tip": "Approve or a code in Microsoft Authenticator on their phone; they have passed MFA with it.",
-          "desc": "Passes MFA from any device."
-        },
-        "r3": {
-          "title": "Windows Hello only",
-          "tip": "Windows Hello for Business or a certificate on one PC. It works on that PC and nowhere else.",
-          "desc": "Passes MFA on that PC only; a phone or a new device is blocked."
-        },
-        "r2": {
-          "title": "Set up, not proven",
-          "tip": "A method is registered, and no sign-in record names it, so IAMAI cannot prove the person can pass MFA with it.",
-          "desc": "Has a method; no sign-in record proves it works."
-        },
-        "r1": {
-          "title": "Nothing set up",
-          "tip": "No sign-in method registered. The first MFA prompt blocks them.",
-          "desc": "Blocked when MFA turns on."
-        }
-      }
-    },
     "readiness": {
+      "$comment": "MFA Readiness (task 012; Step 7, docs/design/approved/reference/iamai-mfa-readiness-final.html): who can meet phishing-resistant MFA, what IAMAI can actually prove, and what each person needs next. Every state, method, proof line and action is scoring/phishingResistant.ts personReadiness; these are only its words (surfaces/readinessCells.ts).",
       "h1": "MFA Readiness",
-      "ledger": {
-        "$comment": "One line under the heading: every account once, the kinds summing to the accounts; a kind at zero is left out.",
-        "lead": "{accounts} accounts:",
-        "active": "{n} active people",
-        "notActive": "{n} not active",
-        "emergency": "{n} emergency access",
-        "service": "{n} service accounts",
-        "shared": "{n} shared devices",
-        "disabled": "{n} sign-in disabled"
+      "eyebrow": "Tenant evidence",
+      "lead": "See who can meet phishing-resistant MFA and what each person needs next.",
+      "summaryLabel": "MFA readiness summary",
+      "summaryEyebrow": "Active people",
+      "summary": "{ready} of {active} are Ready.",
+      "summaryNone": "No active people to count.",
+      "summarySub": "Ready = qualifying proof on every platform IAMAI has seen them use.",
+      "states": {
+        "ready": {
+          "title": "Ready"
+        },
+        "needsProof": {
+          "title": "Needs proof",
+          "stat": "Need proof",
+          "hint": "Qualifying method, incomplete proof",
+          "aria": "Show people who need proof"
+        },
+        "needsSetup": {
+          "title": "Needs setup",
+          "stat": "Need setup",
+          "hint": "No current qualifying method",
+          "aria": "Show people who need setup"
+        },
+        "unknown": {
+          "title": "Unknown",
+          "stat": "Unknown",
+          "hint": "Evidence is incomplete",
+          "aria": "Show people with unknown readiness"
+        }
       },
+      "strip": {
+        "label": "Plan and passkey progress",
+        "gate": "Plan gate",
+        "gateLine": "{required} of {active} must be Ready",
+        "gateMore": "{n} more",
+        "gateMet": "Met",
+        "gateNotMeasured": "Not measured",
+        "gateLink": "View step →",
+        "rollout": "Passkey rollout",
+        "rolloutLine": "{have} of {active} have a passkey",
+        "rolloutWithout": "Show {n} without →",
+        "rolloutNone": "None without"
+      },
+      "search": "Search people or methods",
       "show": {
-        "all": "All accounts",
         "needsAction": "Needs action",
-        "needsPasskey": "Needs a passkey",
+        "admins": "Admins",
+        "noPasskey": "No passkey",
+        "ready": "Ready",
+        "all": "All",
         "needsProof": "Needs proof",
-        "ready": "Passkey-ready",
-        "unknown": "Not known",
+        "needsSetup": "Needs setup",
+        "unknown": "Unknown",
         "notActive": "Not active",
         "emergency": "Emergency access",
         "service": "Service accounts",
@@ -649,20 +653,20 @@
         "disabled": "Sign-in disabled",
         "guests": "Guests"
       },
-      "adminsOnly": "Admins only",
       "columns": [
-        "Account",
+        "Person",
         "Role",
-        "Strongest method",
+        "Methods",
         "Proof",
         "Readiness",
-        "Next step"
+        "Action"
       ],
+      "signInAddress": "Sign-in address",
       "roles": {
-        "$comment": "The Role cell (task 037). An account that is not a person reads its kind; everybody else is Admin or Person, from roles.ts and nothing else. The word is the meaning: the admin ink is a second signal, never the only one.",
         "admin": "Admin",
         "person": "Person"
       },
+      "guest": "Guest",
       "kinds": {
         "emergency": "Emergency access",
         "service": "Service account",
@@ -671,85 +675,96 @@
       },
       "notAPerson": "not a person",
       "methods": {
-        "passkey": "Passkey or security key",
-        "passwordless": "Authenticator passwordless",
-        "push": "App notification",
-        "otp": "One-time code",
-        "smsVoice": "Text or call",
+        "passkey": "Passkey",
         "windowsHello": "Windows Hello",
         "certificate": "Certificate",
-        "none": "None"
+        "authenticator": "Authenticator",
+        "oath": "One-time code",
+        "phone": "Text or call",
+        "none": "None",
+        "unknown": "Unknown",
+        "join": "+"
       },
-      "evidence": {
-        "windowsHello": "Windows Hello on one PC",
-        "phones": "{n} phone sign-ins in the window",
-        "phonesSome": "phone sign-ins in the window",
-        "noPhones": "no phone sign-ins seen",
-        "lastSignIn": "last sign-in {when}"
+      "methodsInSentence": {
+        "passkey": "passkey",
+        "windowsHello": "Windows Hello",
+        "certificate": "certificate",
+        "authenticator": "Authenticator",
+        "oath": "one-time code",
+        "phone": "text or call"
       },
-      "export": "Export CSV",
+      "methodNotes": {
+        "registered": "Registered",
+        "noPasskey": "No passkey",
+        "noQualifying": "No phishing-resistant method",
+        "lost": "{method} no longer present",
+        "unread": "Method read incomplete",
+        "signInsUnread": "Sign-in records not read"
+      },
+      "proof": {
+        "line": "{method} · {platform}",
+        "lineRetained": "{method} · {platform} · seen {date}",
+        "anyPlatform": "{method}",
+        "onPlatform": "{method} on {platform}",
+        "missing": "{platform}",
+        "notYetSeen": "No sign-in with it seen",
+        "notQualifying": "{method} · not phishing-resistant",
+        "noQualifying": "No qualifying method",
+        "lost": "{method} last seen {date}",
+        "unknown": "Not enough evidence",
+        "signInsUnread": "Sign-in records not read"
+      },
+      "actions": {
+        "addPasskey": "Add passkey",
+        "recommended": "Recommended",
+        "test": "Test {platform}",
+        "prove": "Sign in with {method}",
+        "setUp": "Set up passkey",
+        "restore": "Restore {method}",
+        "rescan": "Retry scan"
+      },
+      "empty": "No people match this view.",
+      "footerLead": "Not counted toward the {active} active people:",
       "inventory": "Every account and policy the scan read →",
-      "tip": "Every number here is a share of active people: those who signed in during the last 90 days.",
-      "$comment": "MFA Readiness (task 012), the surface that replaced Today: the readiness summary over active people, the three groupings (derive/mfaReadiness.ts), the table, and the quiet line for the populations the campaign does not count.",
-      "lead": "Who can already sign in with a passkey or security key, who still needs to prove one works, and who has none.",
-      "eyebrow": "Tenant evidence",
-      "summaryEyebrow": "Active people",
-      "summary": "{ready} of {active} active people have proven a passkey or security key.",
-      "summaryNone": "No active people to count.",
-      "summarySub": "{n} people still need action.",
-      "summarySubNone": "Nobody is waiting on a method.",
-      "summarySubUnknown": "Nobody whose registered methods could be read is waiting on one.",
-      "groups": {
-        "$comment": "The three groupings the page shows over the ladder's rungs (derive/mfaReadiness.ts): views of the same evidence, never a second reading of it.",
-        "ready": {
-          "title": "Passkey-ready",
-          "tip": "Holds a passkey or security key and has passed MFA with it. It cannot be phished, and it works from any device.",
-          "hint": "Proven, in a sign-in record",
-          "next": ""
-        },
-        "needsProof": {
-          "title": "Needs proof",
-          "tip": "A passkey or security key is registered, and no sign-in record names it yet, so IAMAI cannot say it works.",
-          "hint": "Registered; no record names it",
-          "next": "Sign in once with it"
-        },
-        "needsPasskey": {
-          "title": "Needs a passkey",
-          "tip": "No passkey or security key registered. Whatever else they hold can be phished, or works on one PC only.",
-          "hint": "Nothing at passkey strength",
-          "next": "Register a passkey or security key"
-        },
-        "unknown": {
-          "title": "Not known",
-          "tip": "The scan could not read this account's registered methods, so IAMAI will not say whether a passkey is there.",
-          "hint": "Registered methods not read",
-          "next": "Not known"
-        }
+      "ledger": {
+        "notActive": "{n} not active",
+        "emergency": "{n} emergency access",
+        "service": "{n} service accounts",
+        "shared": "{n} shared devices",
+        "disabled": "{n} sign-in disabled"
       },
-      "unknownMethods": "Registered methods could not be read for {n} active people, so their passkey state is not known.",
-      "separate": "Not counted here:",
+      "detail": {
+        "eyebrow": "Readiness detail",
+        "title": "{name} · {state}",
+        "why": "Why",
+        "next": "Next",
+        "close": "Close",
+        "scanAgain": "Scan again",
+        "and": "and",
+        "whyReady": "Phishing-resistant proof: {proof}. That covers every platform IAMAI has seen {name} use.",
+        "whyReadyNoPlatform": "Phishing-resistant proof: {proof}. IAMAI has not seen {name} sign in from a platform without it.",
+        "whyRetained": "Proof kept from an earlier scan: {proof}.",
+        "whyProofMissing": "Phishing-resistant proof: {proof}. IAMAI has also seen {name} use {missing}, with no phishing-resistant proof there.",
+        "whyNoProof": "Registered: {methods}. No phishing-resistant sign-in is in the records IAMAI holds.",
+        "whySetUp": "Registered: {methods}. Nothing registered meets the phishing-resistant target.",
+        "whySetUpOther": "The last MFA sign-in IAMAI saw used {method}, which is not phishing-resistant.",
+        "whyNoMethod": "IAMAI does not see a registered method that meets the phishing-resistant target.",
+        "whyLost": "A {method} was registered on an earlier scan, last seen {date}, and is not registered now.",
+        "whyUnknownMethods": "The method read for {name} is incomplete, so IAMAI cannot make a readiness decision.",
+        "whyUnknownSignIns": "The sign-in records could not be read, so IAMAI cannot see a phishing-resistant sign-in with {methods}.",
+        "nextNone": "No baseline action.",
+        "nextAddPasskey": "Recommended, not required: add a passkey for portable sign-in.",
+        "nextTest": "Complete one phishing-resistant sign-in from {platform}, then scan again.",
+        "nextProve": "Sign in once with {method}, then scan again.",
+        "nextSetUp": "Set up a passkey, use it once, then scan again.",
+        "nextRestore": "Restore the {method}, use it once, then scan again.",
+        "nextRescan": "Scan the tenant again."
+      },
       "planContext": {
-        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it. The rest are the same relationship read the other way (task 037): arriving at the page unfiltered, the plan's current dependency, which the page always states. `dependency` names a step with the people it is waiting on; `unknown` serves both sides, a step waiting on sign-in readiness whose people this scan could not settle; `dependencyNone` is the settled, empty answer, and `dependencyPending` is the honest one before the plan has computed. Every branch is derive/stepMfaReadiness.ts's answer; none is a second reading of it.",
+        "$comment": "MFA Readiness opened from a Plan step (#/readiness/step/<id>): the people that step is waiting on, and the way back. Shown only when the step is on the plan and its own requirement is what holds it; derive/stepMfaReadiness.ts is the answer.",
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
-        "back": "← Back to the step",
-        "dependencyTitle": "Current Plan dependency",
-        "dependency": "{n} people cannot meet the sign-in requirement for {step} yet.",
-        "dependencyLink": "Open the Plan step →",
-        "dependencyNoneTitle": "No current Plan dependency",
-        "dependencyNone": "No step on the plan is waiting on anybody's sign-in method.",
-        "dependencyPending": "The plan has not been worked out here yet, so no step is named.",
-        "planLink": "Open the Plan →"
-      },
-      "remediation": {
-        "$comment": "The panel a row's Next step opens (task 014). It holds no guidance of its own: every instruction comes from shared.methodGuides, which the help-desk copy and the campaign step read too. Closed until the operator opens it, so the page stays diagnostic.",
-        "heading": "Next step for {name}",
-        "choose": "Choose the method that fits their device:",
-        "other": "Useful, and short of the passkey target:",
-        "copy": "Copy for the help desk",
-        "copied": "Copied",
-        "close": "Close",
-        "learn": "Microsoft's steps →"
+        "back": "← Back to the step"
       }
     },
     "export": {
@@ -1070,7 +1085,7 @@
         "notAssessedPrompt": "Why does {policy} not apply to {tenant}? One line; it goes in the plan file.",
         "notAssessedRow": "{policy}: does not apply: {reason}",
         "notAssessedSave": "Save",
-        "lockoutSuffix": "{n} not yet at Passkey or security key, proven",
+        "lockoutSuffix": "{n} would be stopped",
         "held": {
           "$comment": "The undated group both the Plan and the print draw after the numbered phases (task 036): the steps whose policy cannot be written yet, so they sit in no wave and under no date (planRows.ts undatedRows). These were the print's words alone while the screen drew the same rows under no heading at all; it is one group with one name, so it is one entry both surfaces read. The lead is the print's only — on screen each row already says what holds it, in its own date column.",
           "heading": "Waiting on something else",
@@ -1180,17 +1195,8 @@
         "lineNoRecords": "no sign-in records",
         "lineNoRecordsReason": "no sign-in records ({reason})",
         "lineNoPeople": "no enabled people · {admins} admins · {records}",
-        "search": "Search people",
         "showLabel": "Show:",
-        "signInAddress": "Sign-in address",
         "admin": "Admin",
-        "guest": "Guest",
-        "mfaVia": "MFA via {method} {when}",
-        "mfaCompleted": "MFA completed {when} · the record names no method",
-        "neverSignedIn": "no sign-in on record",
-        "inactiveSince": "inactive since {date}",
-        "noMethodEvidence": "no MFA-capable method registered",
-        "noMatch": "Nobody matches.",
         "needsScan": "Nothing to show until the first scan.",
         "scanLink": "Scan the tenant",
         "lineNoRecordsLine": "{active} active people of {enabled} enabled · {admins} admins · {records}",
@@ -1242,9 +1248,9 @@
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",
         "observationText": "Every new policy collects report-only evidence at the same time.",
-        "$commentVerificationNote": "The verification window row's third column (task 042). The count is derive/facts.ts toSetUp over the ladder: the active people at rung 1 or 2, who have no method they have been seen to use. Both sentences lived in Export.tsx JSX until task 042; they are the only two the printed plan said that no content file held.",
-        "verificationNote": "{n} of {active} active people still to set up.",
-        "verificationNoteReady": "Everyone active can already pass MFA."
+        "$commentVerificationNote": "The verification window row’s third column (task 042; Step 7). The count is derive/facts.ts notReady: the active people who are not Ready for phishing-resistant MFA (Needs proof, Needs setup, Unknown), the same people MFA Readiness and the MFA gate count.",
+        "verificationNote": "{n} of {active} active people are not Ready yet.",
+        "verificationNoteReady": "Every active person is Ready."
       },
       "how": {
         "h1": "How IAMAI works",
@@ -2521,7 +2527,7 @@
       "kind": "campaign",
       "title": "Create and Enforce the MFA Registration Campaign",
       "changeLine": null,
-      "why": "Enforcement should change nothing for anyone; that is only true once every active person has a passkey, or at least a method, that has been seen to work.",
+      "why": "Enforcement should change nothing for anyone; that is only true once every active person holds a phishing-resistant method that has been seen to work.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
       },
@@ -2530,14 +2536,14 @@
         "leadUndated": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90%.",
         "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
-          "$comment": "The campaign's groups are the ladder's rungs (derive/ladder.ts; pages.ladder titles), worst first; rung 5 needs nothing.",
-          "noMethod": "{n} people at Nothing set up; issue a Temporary Access Pass, then register a passkey in Microsoft Authenticator:",
-          "unproven": "{n} people at Set up, not proven; ask each for one MFA sign-in:",
-          "rung3": "{n} people at Windows Hello only; register a passkey in Microsoft Authenticator, so a phone or a new PC works too:",
-          "rung4": "{n} people at Authenticator app, proven; add a passkey in Authenticator; a risky sign-in requires one:",
+          "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
+          "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
+          "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
+          "needsProof": "{n} people with a phishing-resistant method not yet proven on every platform they use; ask each to sign in with it from each one:",
+          "readinessUnknown": "{n} people whose methods or sign-in records could not be read; scan again before judging them:",
           "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
         },
-        "overlap": "Each person appears once, on their rung; an admin at Nothing set up is in that list with the admin instructions.",
+        "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
         "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
         "devices": "{deviceIntro} {list:deviceLines}"
       },
@@ -2567,8 +2573,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "Readiness reaches 90% of active people with a passkey or a working method, or {enrollBy} has passed and every holdout is reviewed.",
-        "Every admin has a passkey or a security key registered."
+        "Readiness reaches 90% of active people Ready for phishing-resistant MFA, or {enrollBy} has passed and every holdout is reviewed.",
+        "Every admin is Ready for phishing-resistant MFA."
       ],
       "ifWrong": null,
       "comms": {
@@ -2625,11 +2631,11 @@
         "adminEnforce": "Tuesday, September 15",
         "signature": "IT",
         "noMethod": [],
-        "unproven": [
-          "Lachlan Robinette (guest) · method not proven"
+        "needsSetup": [],
+        "needsProof": [
+          "Lachlan Robinette (guest) · passkey not proven on Windows"
         ],
-        "rung3": [],
-        "rung4": [],
+        "readinessUnknown": [],
         "adminsList": [
           "Lachlan Robinette · passkey registered",
           "Breakglass · see the emergency-access step"
@@ -2671,7 +2677,7 @@
         "evidence": [
           "The baseline's floor for everyone is the Multifactor authentication strength: a passkey, Authenticator approval, a security key, and a text message or call, which is why the campaign removes phone numbers. The campaign registers passkeys because the admin and risk policies require one, and a passkey cannot be phished.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
-          "{n} people have a registered method that no sign-in record proves: enforcement is its first test: {list:unproven}",
+          "{n} people have a registered method and no MFA sign-in in the records: enforcement is its first test: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
           "{operatorNoRecords}, your own account, is in scope: it signed in for this scan and has no sign-in records in the window.",
           "{existingCoverage}"
@@ -2760,8 +2766,8 @@
         "lead": "{admins} people hold an admin role",
         "evidence": [
           "No session control here on purpose: the baseline keeps sign-in frequency and persistence in their own policies (Shorten Admin Sessions, Limit How Long Sessions Last).",
-          "{n} admins are not yet at Passkey or security key, proven; register before {enforce}: {list:adminsWithout}",
-          "{adminsWithoutCount} admins are not yet at Passkey or security key, proven; register before {enforce}.",
+          "{n} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}: {list:adminsWithout}",
+          "{adminsWithoutCount} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}.",
           "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "Roles held through Privileged Identity Management are in scope only while activated.",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
@@ -4324,8 +4330,8 @@
       "who": {
         "lead": "{n} people hold an eligible role: {list:eligible}",
         "evidence": [
-          "{n} of them are not yet at Passkey or security key, proven: {list:eligibleWithout}",
-          "{eligibleWithoutCount} of them are not yet at Passkey or security key, proven.",
+          "{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}",
+          "{eligibleWithoutCount} of them are not yet Ready for phishing-resistant MFA.",
           "{n} of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work: {list:adminsWithWorkload}",
           "{existingCoverage}"
         ]

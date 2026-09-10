@@ -3076,11 +3076,6 @@ footer.app a {
     justify-content: flex-start;
   }
 }
-/* ================= the MFA readiness ladder (docs/design/mockups/plan-top-v2.html, connect-v2.html) =================
-   The five rung tiles, on Connect's Plan tile: each links to MFA Readiness
-   filtered to its rung. MFA Readiness itself counts the three groupings
-   (see below); the rung stays the badge in a row. */
-
 /* A boxed tile or count in the content flow. */
 .card {
   background: var(--surface);
@@ -3096,47 +3091,7 @@ footer.app a {
   color: var(--quiet-text);
   font-size: var(--t-2);
 }
-.rung-badge {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  text-align: center;
-  line-height: 24px;
-  font-family: var(--font-mono);
-  font-size: var(--t-1);
-  /* one staged Mono face; see .connect-step .n */
-  font-weight: 400;
-  color: var(--on-brand);
-  background: var(--rung-0);
-}
-.rung-badge.rung-5 {
-  background: var(--rung-5);
-}
-.rung-badge.rung-4 {
-  background: var(--rung-4);
-}
-.rung-badge.rung-3 {
-  background: var(--rung-3);
-}
-.rung-badge.rung-2 {
-  background: var(--rung-2);
-}
-.rung-badge.rung-1 {
-  background: var(--rung-1);
-}
-.rung-badge.rung-0 {
-  background: var(--secondary-surface);
-  color: var(--quiet-text);
-}
-td .rung-badge {
-  width: 20px;
-  height: 20px;
-  line-height: 20px;
-}
-/* The word for an account the campaign does not count, inside the readiness
-   cell's status outline. The gap beside the badge is the pill's, so this sets
-   no margin of its own. */
+/* The word for an account the page does not count, in the readiness cell. */
 td .not-person {
   font-size: var(--t-2);
   color: var(--quiet-text);
@@ -3152,24 +3107,20 @@ td .not-person {
   content: '\2713';
 }
 
-/* ================= MFA Readiness — the approved pack (tasks 012, 037) =========
+/* ================= MFA Readiness — the final reference (Step 7) ================
 
-   The anatomy here is read out of `docs/design/approved/anatomy/mfa-readiness-v2.html`
-   and belongs to that surface alone: the integrated summary, the filter pills,
-   the six-zone person table and the stacked row are MFA's page composition, not
-   shared roles. What IS shared it composes rather than re-declares — `.panel`,
-   `.eyebrow`, `.key-label`, `.pill`, `.callout` (task 031).
+   `docs/design/approved/reference/iamai-mfa-readiness-final.html` owns the
+   composition and belongs to this surface alone: one summary panel (the answer,
+   and three counts that are filters), the Plan gate and passkey rollout strip,
+   the search and the filter pills, the six-zone person worklist, the footer note
+   and the detail one level deep. What IS shared it composes rather than
+   re-declares — `.panel`, `.eyebrow`, `.key-label`, `.pill`, `.status` (task 031).
+   The reference's colours and faces arrive through the tokens (task 030). */
 
-   The pack is a dark Inter mockup and owns none of the colour or the typeface:
-   its `#9aa5b1` arrives as the quiet ink, its `Georgia 700 24px` as the display
-   role at `--d-14`. That translation is task 030's rule. */
-
-/* The pack's heading: serif 38, one step down at its second breakpoint. */
+/* The heading: serif 38, one step down at the narrow breakpoint. */
 .surface.readiness .display {
   --display-size: var(--d-5);
 }
-/* `.intro`: 16px, capped short of the page column so the sentence reads at a
-   measure while the table below it takes the full 1200. */
 .surface.readiness .line.intro {
   font-size: var(--t-4);
   max-width: var(--page);
@@ -3179,34 +3130,55 @@ td .not-person {
   margin-bottom: 6px;
 }
 
-/* The integrated summary. One panel with one border and one radius, divided
-   into a dominant cell and three stats by its own hairlines — never four cards.
-   `overflow: hidden` is what makes the outer radius clip the cells inside it,
-   which is how the pack draws it (`.summary{overflow:hidden}`). */
+/* The summary: one panel with one border and one radius, a dominant cell and
+   three counts divided by its own hairlines — never four cards. */
 .readiness-summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(120px, 0.65fr));
+  grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(135px, 0.65fr));
   overflow: hidden;
-  margin: 24px 0 14px;
+  margin: 28px 0 0;
 }
 .readiness-summary .summary-main,
 .readiness-summary .summary-stat {
   padding: 18px 20px;
   min-width: 0;
 }
-/* The divide is a hairline between cells, not a box around each. */
-.readiness-summary .summary-stat {
-  border-left: 1px solid var(--line);
+.readiness-summary .summary-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 .readiness-summary .summary-main .headline {
   --display-size: var(--d-14);
-  margin: 4px 0 5px;
+  margin: 2px 0 5px;
   max-width: none;
 }
 .readiness-summary .summary-main .sub {
   margin: 0;
   color: var(--secondary-text);
   font-size: var(--t-2);
+}
+/* A count is a filter into the worklist: a button with a hairline beside it. The
+   pressed one is underlined in the accent and says so with `aria-pressed`. */
+.readiness-summary .summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.readiness-summary .summary-stat:hover {
+  background: var(--secondary-surface);
+}
+.readiness-summary .summary-stat[aria-pressed='true'] {
+  border-bottom-color: var(--brand-primary);
+  background: var(--brand-soft);
 }
 .readiness-summary .stat-n {
   font-family: var(--font-serif);
@@ -3217,6 +3189,7 @@ td .not-person {
 }
 .readiness-summary .stat-k {
   font-size: var(--t-1);
+  font-weight: var(--weight-strong);
   color: var(--primary-text);
 }
 .readiness-summary .stat-hint {
@@ -3224,46 +3197,66 @@ td .not-person {
   font-size: var(--t-0);
   color: var(--quiet-text);
 }
-/* Passkey-ready is the one count the page is about, so it takes the rung it
-   names. The other two stay in the body ink: a stat is not a status, and the
-   word beside every number is what carries the meaning. */
-.readiness-summary .stat-n.group-ready {
-  color: var(--rung-5);
+
+/* The one strip that does two jobs: the Plan gate and the passkey rollout. */
+.progress-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 13px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
 }
-
-/* The callout under the summary. The shared `.callout` role owns the panel —
-   the tone border, the tint and the icon (task 031) — and the pack owns what
-   the panel is arranged as: the explanation on one side, the way to the Plan
-   step held apart on the other, and the two stacked at the narrow width below.
-   Production leads the notice with the tone icon, which the pack has no
-   equivalent for, so the division is inside the body: the body takes the rest
-   of the row and divides it, and the icon stays beside the whole thing.
-
-   This belongs to MFA Readiness and not to the shared role: the Plan's
-   attention panel draws no action of its own, and one pack is not evidence of
-   sharing (src/ui/primitives.test.ts). */
-.surface.readiness .callout .callout-body {
-  flex: 1;
+.progress-strip .progress-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
+  min-width: 0;
 }
-.surface.readiness .callout .callout-action {
+.progress-strip .progress-item + .progress-item {
+  border-left: 1px solid var(--line);
+  padding-left: 16px;
+  margin-left: 16px;
+}
+.progress-strip .progress-label {
+  min-width: 0;
+}
+.progress-strip .progress-label strong {
+  display: block;
+  font-size: var(--t-1);
+}
+.progress-strip .progress-label span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-0);
+  color: var(--quiet-text);
+}
+.progress-strip .progress-value {
+  font-size: var(--t-1);
+  font-weight: var(--weight-strong);
   white-space: nowrap;
 }
 
-/* The pack's toolbar: the search, then the filters as pills. `.pill` is the
-   shared geometry (task 031); the pressed treatment is the toolbar rule above,
-   which is a check mark as well as the accent. */
+/* A page scoped to one Plan step says so, above the toolbar. */
+.surface.readiness .scope-line {
+  margin: 16px 0 0;
+}
+
+/* The toolbar: the search, then the filters as pills. */
+.surface.readiness .toolbar {
+  margin-top: 24px;
+}
+.surface.readiness .toolbar input[type='search'] {
+  flex: 1;
+  min-width: 260px;
+}
 .surface.readiness .toolbar .btn.pill {
   height: var(--control);
 }
 
-/* The person table takes the shared panel-table role (see `.datatable-wrap.panel`
-   in the shared roles above, promoted there by task 040). What stays here is
-   only what belongs to this pack: the Person cell and the stacked row. */
-/* The pack's Person cell: the name over the sign-in address. */
+/* The worklist takes the shared panel-table role; what stays here is the cells. */
 .surface.readiness .person-name {
   display: block;
   font-weight: var(--weight-strong);
@@ -3274,36 +3267,73 @@ td .not-person {
   font-size: var(--t-2);
   color: var(--quiet-text);
 }
-/* The Readiness cell: the pack's bounded status object, which production had
-   left as a badge and some text sitting loose in the column. The outline and
-   the spacing are the shared `.pill` role (task 031) — the same geometry the
-   Plan's state badge takes, and no colour of its own — so what is inside it is
-   the only thing that says the state: the rung's own badge as the marker, and
-   the group's word beside it. Production's word is longer than the pack's
-   sample, so the column is given the width the pair needs rather than the word
-   breaking across two lines inside the outline. */
-.surface.readiness td .readiness-status {
-  vertical-align: middle;
-}
-.surface.readiness td .group-word,
-.surface.readiness td .not-person {
-  white-space: nowrap;
-}
-/* Nothing to do: the pack's em rule in the quiet ink. */
-.surface.readiness .no-action {
+/* The Role cell is understated: a word, and no colour of its own. */
+.surface.readiness .role {
+  font-size: var(--t-2);
   color: var(--quiet-text);
 }
-/* The Role cell. The admin ink is the pack's violet role colour, and it is the
-   second signal: the word "Admin" is already there and says it on its own. */
-.surface.readiness .role {
+.surface.readiness .methods-main {
+  display: block;
+  font-size: var(--t-2);
+  font-weight: var(--weight-strong);
+}
+.surface.readiness .methods-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-1);
+  color: var(--quiet-text);
+}
+.surface.readiness .proof-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   font-size: var(--t-2);
   color: var(--secondary-text);
 }
-.surface.readiness .role-admin {
-  color: var(--admin-text);
+.surface.readiness .proof-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 2px 0 0;
 }
-/* The footer note the pack closes the table with: the quiet line about what the
-   counts do not include, and the one link out of the surface. */
+.surface.readiness .proof-line:first-child {
+  margin-top: 0;
+}
+.surface.readiness .proof-mark {
+  width: 13px;
+  flex: none;
+  font-weight: var(--weight-strong);
+  color: var(--quiet-text);
+}
+.surface.readiness .proof-mark-good {
+  color: var(--success-text);
+}
+.surface.readiness .proof-mark-warn {
+  color: var(--attention-text);
+}
+.surface.readiness .proof-mark-bad,
+.surface.readiness .proof-mark-history {
+  color: var(--danger-text);
+}
+.surface.readiness td .status {
+  white-space: nowrap;
+  font-weight: var(--weight-strong);
+}
+.surface.readiness .no-action {
+  color: var(--quiet-text);
+}
+.surface.readiness .row-action {
+  white-space: nowrap;
+}
+.surface.readiness .row-action.recommended {
+  color: var(--secondary-text);
+}
+.surface.readiness .rec-label {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-0);
+  color: var(--quiet-text);
+}
 .surface.readiness .footer-note {
   display: flex;
   justify-content: space-between;
@@ -3330,21 +3360,54 @@ td .not-person {
   margin-bottom: 2px;
 }
 
-/* The remediation panel (task 014): one person, under the table, and only after
-   their Next step is pressed. It is a card in the page column so it reads as one
-   thing and never as a rail beside the diagnostic. */
-.guide-panel {
-  max-width: var(--page);
-  margin: 16px 0 0;
-  padding: 14px 16px 4px;
+/* The detail: one level deep, Why and Next, and nothing else. `.panel` supplies
+   the surface, the border and the radius. */
+.readiness-detail.panel {
+  width: min(620px, calc(100% - 28px));
+  padding: 0;
+  color: var(--primary-text);
 }
-.guide-panel h3 {
-  margin-top: 0;
+.readiness-detail .dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 17px 18px 15px;
+  border-bottom: 1px solid var(--line);
 }
-.guide-panel .guide {
+.readiness-detail .dialog-head h2 {
+  margin: 3px 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--d-14);
+  font-weight: var(--weight-display);
+  line-height: var(--lh-display);
+}
+.readiness-detail .dialog-body {
+  padding: 17px 18px 18px;
+}
+.readiness-detail .detail-block + .detail-block {
+  margin-top: 15px;
+  padding-top: 15px;
   border-top: 1px solid var(--line);
-  margin-top: 12px;
-  padding-top: 4px;
+}
+.readiness-detail .detail-block h3 {
+  margin: 0 0 5px;
+}
+.readiness-detail .detail-block p {
+  margin: 0;
+  font-size: var(--t-2);
+  color: var(--secondary-text);
+}
+.readiness-detail .detail-block p + p {
+  margin-top: 6px;
+}
+.readiness-detail .detail-action {
+  border-left: 2px solid var(--brand-primary);
+  padding-left: 10px;
+  font-weight: var(--weight-strong);
+}
+.readiness-detail .detail-block p.detail-action {
+  color: var(--primary-text);
 }
 /* The Plan step's line to MFA Readiness: a sentence and a link, nothing boxed. */
 .surface .mfa-handoff {
@@ -3522,18 +3585,11 @@ td .not-person {
     line-height: var(--lh-body);
   }
 }
-/* MFA Readiness's own first breakpoint (task 037). The pack collapses the
-   summary to `1fr 1fr` with the main cell spanning both, and turns the person
-   table into stacked rows: `.table-head{display:none}` and `.row{
-   grid-template-columns:1fr}`, every cell under its own key.
-
-   Production keeps a real `<table>` through the change — the element, the
-   `<th scope="col">` heads and the explicit ARIA roles that survive the display
-   swap (components/DataTable.tsx) — and shows the key that was already in the
-   DOM. The head is hidden from sight and stays in the accessibility tree, so a
-   screen reader still hears which column a value belongs to; the visible key is
-   `aria-hidden` for exactly that reason. */
-@media (max-width: 900px) {
+/* MFA Readiness's first breakpoint (the final reference, 940px): the summary
+   becomes `1fr 1fr` with the answer spanning both, the strip keeps its two
+   halves, and the worklist drops its Action column — the action is one tap into
+   the stacked row below 720, and the Readiness word still says what is needed. */
+@media (max-width: 940px) {
   .readiness-summary {
     grid-template-columns: 1fr 1fr;
   }
@@ -3543,12 +3599,52 @@ td .not-person {
   .readiness-summary .summary-stat {
     border-top: 1px solid var(--line);
   }
-  /* Every stat keeps its left hairline here, which is what the pack's pair of
-     rules resolves to: `.summary-stat{border-left:1px solid var(--line)}` is
-     never lifted at this width, and `.summary-stat:nth-child(3)` restates it.
-     Production used to clear it on the third stat alone — the one that opens a
-     second row — which left the two stats in the same column drawn
-     differently. The divider now reads the same way down the panel. */
+  .surface.readiness table.datatable th:nth-child(6),
+  .surface.readiness table.datatable td:nth-child(6) {
+    display: none;
+  }
+}
+/* The reference's second breakpoint (720px): the summary and the strip become
+   one column and the worklist becomes stacked rows, every cell under its own key.
+   Production keeps a real `<table>` through the change — the element, the
+   `<th scope="col">` heads and the explicit ARIA roles that survive the display
+   swap (components/DataTable.tsx) — and shows the key that was already in the
+   DOM. The head is hidden from sight and stays in the accessibility tree. */
+@media (max-width: 720px) {
+  .surface.readiness .display {
+    --display-size: var(--d-8);
+  }
+  .shell[data-route='readiness'] header.app,
+  .shell[data-route='readiness'] > main.page,
+  .shell[data-route='readiness'] footer.app {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .readiness-summary {
+    grid-template-columns: 1fr;
+  }
+  .readiness-summary .summary-main {
+    grid-column: auto;
+  }
+  .readiness-summary .summary-stat {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .progress-strip {
+    grid-template-columns: 1fr;
+  }
+  .progress-strip .progress-item + .progress-item {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 10px;
+    margin-left: 0;
+    margin-top: 10px;
+  }
+  .surface.readiness .toolbar input[type='search'] {
+    min-width: 0;
+    flex-basis: 100%;
+  }
   /* The head goes off screen and stays in the accessibility tree: `clip` rather
      than `display: none`, which would take the column header a stacked cell is
      still associated with out of it. */
@@ -3576,53 +3672,20 @@ td .not-person {
   .surface.readiness table.datatable tbody tr:first-child {
     border-top: 0;
   }
-  .surface.readiness table.datatable td {
+  /* The panel table rules a hairline above every cell; a stacked row keeps one
+     hairline, above the row, so its cells are not divided from each other. */
+  .surface.readiness .datatable-wrap.panel table.datatable td {
     padding: 0;
     border-top: 0;
   }
   .surface.readiness table.datatable td + td {
     margin-top: 8px;
   }
-  .surface.readiness table.datatable tbody tr:first-child td {
-    border-top: 0;
+  .surface.readiness table.datatable td:nth-child(6) {
+    display: block;
   }
   .surface.readiness .cell-key {
     display: block;
-  }
-}
-/* The pack's second breakpoint: the summary becomes one column and the callout
-   stacks its sentence above its link. The heading drops to 31px (--d-8). */
-@media (max-width: 620px) {
-  .surface.readiness .display {
-    --display-size: var(--d-8);
-  }
-  /* The pack's `.page{width:min(100% - 24px,1200px)}` at this breakpoint, the
-     same gutter move Home makes at 560 and Plan at 650 — each at its OWN
-     width, because a person-row that has just become a stack needs the room a
-     phone has and the three surfaces do not reach that point together. */
-  .shell[data-route='readiness'] header.app,
-  .shell[data-route='readiness'] > main.page,
-  .shell[data-route='readiness'] footer.app {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-  .readiness-summary {
-    grid-template-columns: 1fr;
-  }
-  .readiness-summary .summary-main {
-    grid-column: auto;
-  }
-  .readiness-summary .summary-stat {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-  /* The pack's `.callout{align-items:flex-start;flex-direction:column}`: too
-     narrow to hold the sentence and the way out side by side, so the action
-     goes under the explanation rather than either of them being squeezed. */
-  .surface.readiness .callout .callout-body {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
   }
   .surface.readiness .footer-note {
     flex-direction: column;

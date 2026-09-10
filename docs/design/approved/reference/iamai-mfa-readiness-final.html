@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IAMAI — MFA Readiness Owner Review v7</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0d1317;--surface:#131b20;--surface2:#10171b;--line:#26323a;--line2:#33444e;
+  --text:#eef4f3;--muted:#9caaa9;--muted2:#72817f;--teal:#58c8bd;--tealSoft:rgba(88,200,189,.08);
+  --good:#79c99c;--warn:#d5b36c;--bad:#d88d87;--unknown:#9ba7b7;--shadow:0 24px 70px rgba(0,0,0,.30)
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f4f7f6;--surface:#fff;--surface2:#f8faf9;--line:#dbe4e1;--line2:#c8d6d2;
+  --text:#16201f;--muted:#687675;--muted2:#879391;--teal:#177f78;--tealSoft:rgba(23,127,120,.07);
+  --good:#278652;--warn:#9c7118;--bad:#aa4b43;--unknown:#68778a;--shadow:0 24px 70px rgba(24,46,43,.16)
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font:14px/1.48 "IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif
+}
+button,input{font:inherit}
+button{color:inherit}
+a{color:var(--teal);text-decoration:none}
+a:hover{text-decoration:underline}
+.page{width:min(1200px,calc(100% - 40px));margin:0 auto 70px}
+.topbar{
+  min-height:64px;display:flex;justify-content:space-between;align-items:center;gap:18px;
+  border-bottom:1px solid var(--line)
+}
+.brand{font-weight:700;letter-spacing:-.01em}
+.nav{display:flex;gap:5px}
+.nav span{padding:6px 9px;border-radius:8px;color:var(--muted);font-size:12px}
+.nav .active{background:var(--surface);color:var(--text)}
+.meta{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:11px}
+.theme{
+  width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--surface);
+  display:grid;place-items:center;cursor:pointer;color:var(--muted)
+}
+
+main{padding-top:38px}
+.eyebrow{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.11em;font-weight:700}
+h1{
+  font:600 38px/1.08 "IBM Plex Serif",Georgia,serif;
+  letter-spacing:-.025em;margin:7px 0 8px
+}
+.intro{color:var(--muted);font-size:15px;margin:0;max-width:760px}
+
+/* Keep the useful v2 summary anatomy: one answer + three reasons it isn't complete. */
+.summary{
+  margin-top:28px;display:grid;grid-template-columns:minmax(0,1.8fr) repeat(3,minmax(135px,.65fr));
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)
+}
+.summary-main,.summary-stat{padding:18px 20px}
+.summary-main{display:flex;flex-direction:column;justify-content:center}
+.summary-main .headline{
+  font:600 24px/1.15 "IBM Plex Serif",Georgia,serif;
+  letter-spacing:-.015em;margin:2px 0 5px
+}
+.summary-main .sub{color:var(--muted);font-size:12px}
+.summary-stat{
+  text-align:left;border:0;border-left:1px solid var(--line);background:transparent;cursor:pointer
+}
+.summary-stat:hover{background:var(--surface2)}
+.summary-stat.active{box-shadow:inset 0 -2px 0 var(--teal);background:var(--tealSoft)}
+.summary-stat .n{font:600 28px/1 "IBM Plex Serif",Georgia,serif;margin-bottom:7px}
+.summary-stat .k{font-size:12px;font-weight:600}
+.summary-stat .hint{font-size:10px;color:var(--muted);margin-top:3px}
+
+/* One compact strip does two jobs that matter: Plan gate + passkey rollout. */
+.progress-strip{
+  margin-top:13px;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);
+  display:grid;grid-template-columns:1fr 1fr;gap:0
+}
+.progress-item{display:flex;align-items:center;justify-content:space-between;gap:16px;min-width:0}
+.progress-item + .progress-item{border-left:1px solid var(--line);padding-left:16px;margin-left:16px}
+.progress-label{min-width:0}
+.progress-label strong{display:block;font-size:12px}
+.progress-label span{display:block;margin-top:2px;color:var(--muted);font-size:10px}
+.progress-value{font-size:12px;font-weight:600;white-space:nowrap}
+.progress-value a{font-size:11px}
+
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:24px}
+.search{
+  min-width:260px;flex:1;padding:10px 11px;border:1px solid var(--line2);
+  border-radius:8px;background:var(--surface2);color:var(--text);outline:none
+}
+.search:focus{border-color:var(--teal)}
+.filter{
+  padding:8px 10px;border:1px solid var(--line);border-radius:999px;
+  background:var(--surface2);color:var(--muted);font-size:11px;cursor:pointer
+}
+.filter.active{color:var(--text);border-color:var(--teal);background:var(--tealSoft)}
+
+.table-wrap{margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.table-head,.row{
+  display:grid;
+  grid-template-columns:minmax(205px,1.45fr) 92px minmax(165px,1.05fr) minmax(215px,1.35fr) 135px 138px;
+  gap:14px;align-items:center
+}
+.table-head{
+  padding:11px 16px;background:var(--surface2);color:var(--muted);
+  font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:700
+}
+.row{padding:14px 16px;border-top:1px solid var(--line)}
+.person strong{display:block;margin-bottom:2px;font-size:13px}
+.person span{display:block;color:var(--muted);font-size:11px}
+.role{font-size:11px;color:var(--muted)}
+.methods strong{display:block;font-size:12px;font-weight:600}
+.methods span{display:block;margin-top:2px;font-size:10px;color:var(--muted)}
+.proof{font-size:11px;color:var(--muted)}
+.proof-line{display:flex;align-items:center;gap:5px;margin:2px 0}
+.proof-line:first-child{margin-top:0}
+.mark{width:13px;display:inline-block;font-weight:800}
+.good{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)} .unknown{color:var(--unknown)}
+.history{color:var(--bad);font-size:10px}
+.status{
+  display:inline-flex;align-items:center;gap:7px;width:max-content;
+  font-size:11px;font-weight:600;white-space:nowrap
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted2)}
+.status.ready .dot{background:var(--good)}
+.status.prove .dot{background:var(--warn)}
+.status.setup .dot{background:var(--bad)}
+.status.unknown .dot{background:var(--unknown)}
+.action{font-size:11px}
+.action a{font-weight:600;white-space:nowrap}
+.action .recommended{color:var(--muted);font-weight:500}
+.action .rec-label{display:block;color:var(--muted2);font-size:9px;margin-top:2px}
+.empty{display:none;padding:30px;text-align:center;color:var(--muted)}
+
+.footer-note{
+  display:flex;justify-content:space-between;gap:14px;align-items:center;
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px
+}
+
+/* Secondary detail is deliberately one level deep. */
+dialog{
+  width:min(620px,calc(100% - 28px));border:1px solid var(--line2);border-radius:12px;
+  background:var(--surface);color:var(--text);padding:0;box-shadow:var(--shadow)
+}
+dialog::backdrop{background:rgba(4,8,10,.64)}
+.dialog-head{
+  display:flex;justify-content:space-between;gap:16px;align-items:flex-start;
+  padding:17px 18px 15px;border-bottom:1px solid var(--line)
+}
+.dialog-head h2{
+  font:600 22px/1.15 "IBM Plex Serif",Georgia,serif;letter-spacing:-.015em;margin:3px 0 0
+}
+.close{
+  border:1px solid var(--line);background:var(--surface2);border-radius:8px;
+  padding:7px 9px;color:var(--muted);cursor:pointer;font-size:11px
+}
+.dialog-body{padding:17px 18px 18px}
+.detail-block + .detail-block{margin-top:15px;padding-top:15px;border-top:1px solid var(--line)}
+.detail-block h3{
+  margin:0 0 5px;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.08em
+}
+.detail-block p{margin:0;font-size:12px;color:var(--muted)}
+.detail-block p strong{color:var(--text)}
+.detail-action{
+  border-left:2px solid var(--teal);padding-left:10px;color:var(--text)!important;font-weight:600
+}
+
+@media(max-width:940px){
+  .summary{grid-template-columns:1fr 1fr}
+  .summary-main{grid-column:1/-1}
+  .summary-stat{border-top:1px solid var(--line)}
+  .summary-stat:nth-child(3){border-left:1px solid var(--line)}
+  .table-head,.row{grid-template-columns:minmax(190px,1.4fr) 85px 150px minmax(190px,1.25fr) 125px}
+  .table-head div:nth-child(6),.row>div:nth-child(6){display:none}
+}
+@media(max-width:720px){
+  .page{width:min(100% - 24px,1200px)}
+  .nav{display:none}.meta span:first-child{display:none}
+  h1{font-size:32px}
+  .summary{grid-template-columns:1fr}
+  .summary-main{grid-column:auto}
+  .summary-stat{border-left:0;border-top:1px solid var(--line)}
+  .progress-strip{grid-template-columns:1fr}
+  .progress-item + .progress-item{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:10px;margin-left:0;margin-top:10px}
+  .table-head{display:none}
+  .row{grid-template-columns:1fr;gap:8px}
+  .row>div{display:block!important}
+  .footer-note{align-items:flex-start;flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <div class="brand">IAMAI</div>
+    <nav class="nav">
+      <span>Connect</span>
+      <span>Plan</span>
+      <span class="active">MFA Readiness</span>
+      <span>Export</span>
+      <span>How</span>
+    </nav>
+    <div class="meta">
+      <span>Contoso</span><span>Scanned 8 min ago</span>
+      <button class="theme" id="theme" aria-label="Toggle theme">◐</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="eyebrow">Tenant evidence</div>
+    <h1>MFA Readiness</h1>
+    <p class="intro">See who can meet phishing-resistant MFA and what each person needs next.</p>
+
+    <section class="summary" aria-label="MFA readiness summary">
+      <div class="summary-main">
+        <div class="eyebrow">Active people</div>
+        <div class="headline">7 of 18 are Ready.</div>
+        <div class="sub">Ready = qualifying proof on every platform IAMAI has seen them use.</div>
+      </div>
+
+      <button class="summary-stat" data-summary-filter="prove" aria-label="Show people who need proof">
+        <div class="n">5</div>
+        <div class="k">Need proof</div>
+        <div class="hint">Qualifying method, incomplete proof</div>
+      </button>
+
+      <button class="summary-stat" data-summary-filter="setup" aria-label="Show people who need setup">
+        <div class="n">4</div>
+        <div class="k">Need setup</div>
+        <div class="hint">No current qualifying method</div>
+      </button>
+
+      <button class="summary-stat" data-summary-filter="unknown" aria-label="Show people with unknown readiness">
+        <div class="n">2</div>
+        <div class="k">Unknown</div>
+        <div class="hint">Evidence is incomplete</div>
+      </button>
+    </section>
+
+    <section class="progress-strip" aria-label="Plan and passkey progress">
+      <div class="progress-item">
+        <div class="progress-label">
+          <strong>Plan gate</strong>
+          <span>17 of 18 must be Ready</span>
+        </div>
+        <div class="progress-value">10 more · <a href="#">View step →</a></div>
+      </div>
+
+      <div class="progress-item">
+        <div class="progress-label">
+          <strong>Passkey rollout</strong>
+          <span>9 of 18 have a passkey</span>
+        </div>
+        <div class="progress-value"><a href="#" id="show-no-passkey">Show 9 without →</a></div>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <input class="search" id="search" aria-label="Search people or methods" placeholder="Search people or methods">
+      <button class="filter active" data-filter="attention">Needs action</button>
+      <button class="filter" data-filter="admins">Admins</button>
+      <button class="filter" data-filter="nopasskey">No passkey</button>
+      <button class="filter" data-filter="ready">Ready</button>
+      <button class="filter" data-filter="all">All</button>
+    </div>
+
+    <section class="table-wrap" aria-label="MFA readiness by person">
+      <div class="table-head">
+        <div>Person</div>
+        <div>Role</div>
+        <div>Methods</div>
+        <div>Proof</div>
+        <div>Readiness</div>
+        <div>Action</div>
+      </div>
+
+      <div class="row" data-state="prove" data-admin="true" data-passkey="true" data-search="Priya Shah priya@contoso.com Admin Passkey iOS Windows">
+        <div class="person"><strong>Priya Shah</strong><span>priya@contoso.com</span></div>
+        <div class="role">Admin</div>
+        <div class="methods"><strong>Passkey</strong><span>Registered</span></div>
+        <div class="proof">
+          <div class="proof-line"><span class="mark good">✓</span>Passkey · iOS</div>
+          <div class="proof-line"><span class="mark warn">?</span>Windows</div>
+        </div>
+        <div><span class="status prove"><span class="dot"></span>Needs proof</span></div>
+        <div class="action"><a href="#" data-detail="priya">Test Windows →</a></div>
+      </div>
+
+      <div class="row" data-state="setup" data-admin="false" data-passkey="false" data-search="Morgan Reed morgan@contoso.com User Authenticator">
+        <div class="person"><strong>Morgan Reed</strong><span>morgan@contoso.com</span></div>
+        <div class="role">User</div>
+        <div class="methods"><strong>Authenticator</strong><span>No phishing-resistant method</span></div>
+        <div class="proof"><div class="proof-line"><span class="mark bad">×</span>No qualifying method</div></div>
+        <div><span class="status setup"><span class="dot"></span>Needs setup</span></div>
+        <div class="action"><a href="#" data-detail="morgan">Set up passkey →</a></div>
+      </div>
+
+      <div class="row" data-state="setup" data-admin="false" data-passkey="false" data-search="Jordan Lee jordan@contoso.com User none">
+        <div class="person"><strong>Jordan Lee</strong><span>jordan@contoso.com</span></div>
+        <div class="role">User</div>
+        <div class="methods"><strong>None</strong><span>No qualifying method</span></div>
+        <div class="proof"><div class="proof-line"><span class="mark bad">×</span>No phishing-resistant method</div></div>
+        <div><span class="status setup"><span class="dot"></span>Needs setup</span></div>
+        <div class="action"><a href="#" data-detail="jordan">Set up passkey →</a></div>
+      </div>
+
+      <div class="row" data-state="setup" data-admin="false" data-passkey="false" data-search="Taylor Kim taylor@contoso.com User Authenticator passkey missing">
+        <div class="person"><strong>Taylor Kim</strong><span>taylor@contoso.com</span></div>
+        <div class="role">User</div>
+        <div class="methods"><strong>Authenticator</strong><span>Passkey no longer present</span></div>
+        <div class="proof"><div class="proof-line"><span class="mark bad">!</span><span class="history">Passkey missing since last scan</span></div></div>
+        <div><span class="status setup"><span class="dot"></span>Needs setup</span></div>
+        <div class="action"><a href="#" data-detail="taylor">Restore passkey →</a></div>
+      </div>
+
+      <div class="row" data-state="unknown" data-admin="false" data-passkey="unknown" data-search="Sam Ortega sam@contoso.com User unknown">
+        <div class="person"><strong>Sam Ortega</strong><span>sam@contoso.com</span></div>
+        <div class="role">User</div>
+        <div class="methods"><strong>Unknown</strong><span>Method read incomplete</span></div>
+        <div class="proof"><div class="proof-line"><span class="mark unknown">?</span>Not enough evidence</div></div>
+        <div><span class="status unknown"><span class="dot"></span>Unknown</span></div>
+        <div class="action"><a href="#" data-detail="sam">Retry scan →</a></div>
+      </div>
+
+      <div class="row" data-state="ready" data-admin="true" data-passkey="true" data-search="Alex Wilkins alex@contoso.com Admin Passkey Windows Hello">
+        <div class="person"><strong>Alex Wilkins</strong><span>alex@contoso.com</span></div>
+        <div class="role">Admin</div>
+        <div class="methods"><strong>Passkey + Windows Hello</strong><span>Registered</span></div>
+        <div class="proof">
+          <div class="proof-line"><span class="mark good">✓</span>Windows Hello · Windows</div>
+          <div class="proof-line"><span class="mark good">✓</span>Passkey · iOS</div>
+        </div>
+        <div><span class="status ready"><span class="dot"></span>Ready</span></div>
+        <div class="action">—</div>
+      </div>
+
+      <div class="row" data-state="ready" data-admin="false" data-passkey="false" data-search="Devon Park devon@contoso.com User Windows Hello no passkey">
+        <div class="person"><strong>Devon Park</strong><span>devon@contoso.com</span></div>
+        <div class="role">User</div>
+        <div class="methods"><strong>Windows Hello</strong><span>No passkey</span></div>
+        <div class="proof"><div class="proof-line"><span class="mark good">✓</span>Windows Hello · Windows</div></div>
+        <div><span class="status ready"><span class="dot"></span>Ready</span></div>
+        <div class="action"><a class="recommended" href="#" data-detail="devon">Add passkey →</a><span class="rec-label">Recommended</span></div>
+      </div>
+
+      <div class="row" data-state="ready" data-admin="false" data-passkey="true" data-search="Maya Chen maya@contoso.com User Passkey macOS iOS">
+        <div class="person"><strong>Maya Chen</strong><span>maya@contoso.com</span></div>
+        <div class="role">User</div>
+        <div class="methods"><strong>Passkey</strong><span>Registered</span></div>
+        <div class="proof">
+          <div class="proof-line"><span class="mark good">✓</span>Passkey · macOS</div>
+          <div class="proof-line"><span class="mark good">✓</span>Passkey · iOS</div>
+        </div>
+        <div><span class="status ready"><span class="dot"></span>Ready</span></div>
+        <div class="action">—</div>
+      </div>
+
+      <div class="empty" id="empty">No people match this view.</div>
+    </section>
+
+    <div class="footer-note">
+      <span>Emergency-access and non-person accounts do not count toward the 18 active people.</span>
+      <a href="#">Export filtered list →</a>
+    </div>
+  </main>
+</div>
+
+<dialog id="detail-dialog">
+  <div class="dialog-head">
+    <div>
+      <div class="eyebrow">Readiness detail</div>
+      <h2 id="detail-title"></h2>
+    </div>
+    <button class="close" id="close-detail">Close</button>
+  </div>
+  <div class="dialog-body">
+    <div class="detail-block">
+      <h3>Why</h3>
+      <p id="detail-why"></p>
+    </div>
+    <div class="detail-block">
+      <h3>Next</h3>
+      <p class="detail-action" id="detail-next"></p>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const detailData={
+  priya:{
+    title:"Priya Shah · Needs proof",
+    why:"Passkey proof exists on iOS. IAMAI has also seen Priya use Windows, but not with phishing-resistant proof.",
+    next:"Complete one phishing-resistant sign-in from Windows, then rescan."
+  },
+  morgan:{
+    title:"Morgan Reed · Needs setup",
+    why:"Authenticator is registered, but Morgan has no current method that meets the phishing-resistant target.",
+    next:"Set up a passkey, use it once, then rescan."
+  },
+  jordan:{
+    title:"Jordan Lee · Needs setup",
+    why:"IAMAI does not see a registered method that meets the phishing-resistant target.",
+    next:"Set up a passkey, use it once, then rescan."
+  },
+  taylor:{
+    title:"Taylor Kim · Needs setup",
+    why:"A passkey was present on an earlier scan and is missing now.",
+    next:"Restore the passkey, use it once, then rescan."
+  },
+  sam:{
+    title:"Sam Ortega · Unknown",
+    why:"The current method read is incomplete, so IAMAI cannot make a readiness decision.",
+    next:"Retry the tenant scan."
+  },
+  devon:{
+    title:"Devon Park · Ready",
+    why:"Windows Hello has phishing-resistant proof on the Windows platform IAMAI has seen Devon use.",
+    next:"No baseline action. Add a passkey for portable sign-in."
+  }
+};
+
+const dialog=document.getElementById("detail-dialog");
+document.querySelectorAll("[data-detail]").forEach(link=>{
+  link.addEventListener("click",e=>{
+    e.preventDefault();
+    const d=detailData[link.dataset.detail];
+    document.getElementById("detail-title").textContent=d.title;
+    document.getElementById("detail-why").textContent=d.why;
+    document.getElementById("detail-next").textContent=d.next;
+    dialog.showModal();
+  });
+});
+document.getElementById("close-detail").addEventListener("click",()=>dialog.close());
+
+let activeFilter="attention";
+const rows=[...document.querySelectorAll(".row")];
+const filters=[...document.querySelectorAll(".filter")];
+const search=document.getElementById("search");
+const summaryStats=[...document.querySelectorAll(".summary-stat")];
+
+function filterMatches(row){
+  const state=row.dataset.state;
+  if(activeFilter==="attention") return state!=="ready";
+  if(activeFilter==="admins") return row.dataset.admin==="true";
+  if(activeFilter==="nopasskey") return row.dataset.passkey==="false";
+  if(activeFilter==="ready") return state==="ready";
+  if(activeFilter==="prove"||activeFilter==="setup"||activeFilter==="unknown") return state===activeFilter;
+  return true;
+}
+function apply(){
+  const q=search.value.trim().toLowerCase();
+  let shown=0;
+  rows.forEach(row=>{
+    const visible=filterMatches(row) && (!q || row.dataset.search.toLowerCase().includes(q));
+    row.style.display=visible?"grid":"none";
+    if(visible) shown++;
+  });
+  document.getElementById("empty").style.display=shown?"none":"block";
+}
+function setFilter(value,sourceButton=null){
+  activeFilter=value;
+  filters.forEach(x=>x.classList.toggle("active",x===sourceButton || (!sourceButton&&x.dataset.filter===value)));
+  summaryStats.forEach(x=>x.classList.toggle("active",x.dataset.summaryFilter===value));
+  apply();
+}
+filters.forEach(btn=>btn.addEventListener("click",()=>setFilter(btn.dataset.filter,btn)));
+summaryStats.forEach(btn=>btn.addEventListener("click",()=>setFilter(btn.dataset.summaryFilter)));
+search.addEventListener("input",apply);
+document.getElementById("show-no-passkey").addEventListener("click",e=>{
+  e.preventDefault();
+  const btn=filters.find(x=>x.dataset.filter==="nopasskey");
+  setFilter("nopasskey",btn);
+  document.querySelector(".toolbar").scrollIntoView({behavior:"smooth",block:"center"});
+});
+apply();
+
+document.getElementById("theme").addEventListener("click",()=>{
+  const root=document.documentElement;
+  const current=root.getAttribute("data-theme");
+  root.setAttribute("data-theme",current==="light"?"dark":"light");
+});
+</script>
+</body>
+</html>

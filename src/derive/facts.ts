@@ -1,32 +1,35 @@
 // One fact, one function. Every count a surface shows about the tenant comes
 // from here, from the snapshot and the mapping: the accounts, the active
-// people, the not active, the four kinds that are not people, the five rungs;
-// and, from the computed plan, the steps and how many are done. Connect (its
-// Plan tile and the sample facts built at build time), the Plan strip, Today's
-// ledger and rungs, the campaign step, the print, the CSV and the bundle read
-// these; no surface computes a count of its own. Pure: no DOM, no network.
+// people, the not active, the four kinds that are not people, the four
+// readiness states; and, from the computed plan, the steps and how many are
+// done. Connect (its Plan tile and the sample facts built at build time), the
+// Plan strip, MFA Readiness's ledger and counts, the campaign step, the print,
+// the CSV and the bundle read these; no surface computes a count of its own.
+// Pure: no DOM, no network.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { Step } from '../roadmap/types.ts'
 import type { CleanupPhase } from '../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../roadmap/cleanupDone.ts'
-import { KINDS, RUNGS, ladder } from './ladder.ts'
-import type { Kind, Ladder, LadderMapping, Rung } from './ladder.ts'
+import { READINESS_STATES } from '../scoring/phishingResistant.ts'
+import type { ReadinessState } from '../scoring/phishingResistant.ts'
+import { KINDS, ladder } from './ladder.ts'
+import type { Kind, Ladder, LadderMapping } from './ladder.ts'
 import { doneSteps, trackableSteps } from './sets.ts'
 
-/** The tenant's people counts: the accounts, and the parts that sum to them; the five rungs sum to the active people. */
+/** The tenant's people counts: the accounts, and the parts that sum to them; the four states sum to the active people. */
 export type Facts = {
   accounts: number
   active: number
   notActive: number
   kinds: Record<Kind, number>
-  rungs: Record<Rung, number>
+  states: Record<ReadinessState, number>
 }
 
-/** The facts a ladder carries (derive/ladder.ts): the one place the counting happens. */
+/** The facts a partition carries (derive/ladder.ts): the one place the counting happens. */
 export function factsOf(l: Ladder): Facts {
   const kinds = Object.fromEntries(KINDS.map((k) => [k, l.kinds[k].length])) as Record<Kind, number>
-  const rungs = Object.fromEntries(RUNGS.map((r) => [r, l.rungs[r].length])) as Record<Rung, number>
-  return { accounts: l.accounts, active: l.active, notActive: l.notActive.length, kinds, rungs }
+  const states = Object.fromEntries(READINESS_STATES.map((s) => [s, l.states[s].length])) as Record<ReadinessState, number>
+  return { accounts: l.accounts, active: l.active, notActive: l.notActive.length, kinds, states }
 }
 
 /** The tenant's facts from the snapshot and the mapping; the scan's moment is the clock. */
@@ -61,21 +64,13 @@ export function stepFacts(steps: readonly Step[], cleanup: CleanupPhase | null |
 }
 
 /**
- * The active people who have no MFA method they have been seen to use: rung 1
- * (nothing set up) and rung 2 (a method registered, and no sign-in record that
- * names it). The population the registration and verification window exists
- * for, and the one the printed plan states beside it.
- *
- * It is a count over the ladder and never a second readiness score: the rungs
- * are derive/ladder.ts's and this only adds two of them. It deliberately does
- * NOT include rung 3 (Windows Hello on one PC) or rung 4 (an Authenticator app,
- * proven) — both of those people can already pass MFA, so asking them to set
- * something up in this window would be asking for work nobody needs. Whether
- * they hold a *passkey* is a different question, and MFA Readiness's three
- * groups are the answer to it (derive/mfaReadiness.ts).
- *
- * This lived in Export.tsx as `rungs[1] + rungs[2]` inline in JSX (task 042).
+ * The active people who are not Ready yet: Needs proof, Needs setup and
+ * Unknown. The population the registration and verification window exists
+ * for, and the one the printed plan states beside it. A count over the one
+ * readiness derivation, never a second score: the campaign's pace, the manager
+ * line and this all count the same people (Step 7 unified three definitions of
+ * "to set up").
  */
-export function toSetUp(f: Facts): number {
-  return f.rungs[1] + f.rungs[2]
+export function notReady(f: Facts): number {
+  return f.active - f.states.ready
 }

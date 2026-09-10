@@ -1,21 +1,21 @@
-// MFA remediation guidance and content deduplication (task 014).
+// MFA method guidance, content deduplication, and the action a person is offered
+// (task 014; Step 7).
 //
 // Two things are being protected here.
 //
 // One source. The passkey, security-key, Windows Hello and Temporary Access
 // Pass instructions are written once, in shared.methodGuides, and read through
-// content/methodGuides.ts by MFA Readiness's panel, by the text the help desk
-// copies out of it, by the campaign step's What-to-do and by the campaign
-// email. Four hand-written versions of the same flow is the failure this file
-// exists to catch, so the assertions are on the shared keys and the material
-// actions, not on the prose word for word.
+// content/methodGuides.ts by the text the help desk copies, by the campaign
+// step's What-to-do and by the campaign email. Four hand-written versions of the
+// same flow is the failure this file exists to catch, so the assertions are on
+// the shared keys and the material actions, not on the prose word for word.
 //
-// One evidence authority. Remediation follows the group task 002's evidence put
-// a person in (derive/mfaReadiness.ts) and nothing else: somebody with a
-// registered passkey is asked to use it, not to register a second one; somebody
-// whose methods this scan could not read is asked for nothing; Windows Hello
-// and a Temporary Access Pass are offered without being called the target; and
-// no remediation moves a rung, a proof, a lifecycle or an emergency-access
+// One evidence authority. What a person is asked to do follows their readiness
+// (scoring/phishingResistant.ts, worded by surfaces/readinessCells.ts) and
+// nothing else: somebody with a qualifying method is asked to prove it, never
+// to register another; somebody whose evidence could not be read is asked to
+// scan again; somebody Ready with Windows Hello is only recommended a passkey;
+// and no guidance moves a state, a proof, a count or an emergency-access
 // classification.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -24,25 +24,14 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
-import type { ReadinessGroup } from '../../derive/mfaReadiness.ts'
-import { hasPortablePhishingResistant, methodsOf, rungOf, windowsHelloOnly } from '../../derive/ladder.ts'
+import type { ReadinessState } from '../../scoring/phishingResistant.ts'
+import { classOfKind } from '../../scoring/phishingResistant.ts'
 import { content, shared } from '../../content/content.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import {
-  GUIDE_POINTER,
-  METHOD_GUIDES,
-  PASSKEY_TARGET,
-  TENANT_PREREQUISITE,
-  USER_INSTRUCTION,
-  guideText,
-  guidesOf,
-  methodGuide,
-  reachesTarget,
-  remediationFor,
-} from '../../content/methodGuides.ts'
+import { GUIDE_POINTER, METHOD_GUIDES, PASSKEY_TARGET, TENANT_PREREQUISITE, USER_INSTRUCTION, guideText, methodGuide, reachesTarget } from '../../content/methodGuides.ts'
 import type { MethodGuideId } from '../../content/methodGuides.ts'
-import { nextStateWord } from './readinessCells.ts'
+import { actionOf, detailOf, methodsCell } from './readinessCells.ts'
 import { copyBoxes, stepLines } from './stepExport.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -65,6 +54,7 @@ const ctxFor = (name: FixtureName): StepVarContext => {
   return { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start) }
 }
 const campaignOf = (name: FixtureName) => runFixture(fixture(name)).steps.find((s) => s.id === CAMPAIGN)!
+const SURFACE = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
 
 // ---- A. one content source ----------------------------------------------------
 
@@ -96,11 +86,11 @@ test('every guide resolves from the content file, and a line two guides share is
   }
 })
 
-test('the help-desk text is the guidance on screen, not a second version of it', () => {
+test('the help-desk text is the guidance, not a second version of it', () => {
   for (const g of METHOD_GUIDES) {
     const text = guideText(g.id)
     assert.ok(text.includes(g.title), `${g.id}: the copy names the method`)
-    for (const l of g.lines) assert.ok(text.includes(l), `${g.id}: the copy carries the line the panel shows`)
+    for (const l of g.lines) assert.ok(text.includes(l), `${g.id}: the copy carries the guide's line`)
     assert.ok(text.includes(g.learn.url), `${g.id}: and the Microsoft page`)
     // Nothing about a person travels with it: the operator hands somebody the
     // steps, never a name from the table.
@@ -130,92 +120,110 @@ test('the Plan and the campaign email reference the shared lines rather than rep
 
 // ---- B. the action follows the evidence ---------------------------------------
 
-test('the remediation a person is offered is the group their evidence put them in, and nothing else', () => {
-  const seen = new Set<ReadinessGroup>()
+test('the action a person is offered follows their readiness, the detail agrees with it, and nothing else decides it', () => {
+  const seen = new Set<ReadinessState>()
   for (const name of TENANTS) {
     const f = fixture(name)
     const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     for (const row of v.rows) {
-      const r = remediationFor(row.group, row)
-      if (row.group === null) {
-        assert.equal(r.kind, 'none', `${name}/${row.user.id}: an account the campaign does not count is asked for nothing`)
-        assert.deepEqual(guidesOf(r), [])
+      const a = actionOf(row)
+      const where = `${name}/${row.user.id}`
+      if (row.state === null) {
+        assert.equal(a, null, `${where}: an account the page does not count is asked for nothing`)
         continue
       }
-      seen.add(row.group)
-      if (row.group === 'ready') {
-        // Proven rung 5: the page-level target is met and no setup is offered.
-        assert.equal(row.rung, 5, `${name}/${row.user.id}: passkey-ready is rung 5`)
-        assert.equal(r.kind, 'none', `${name}/${row.user.id}: nothing to set up`)
-        assert.deepEqual(guidesOf(r), [])
-        assert.equal(nextStateWord(row), '', 'and nothing is asked in the row')
-      } else if (row.group === 'needsProof') {
-        // A passkey or security key is in the inventory. The action is to use
-        // it, never to register another one.
-        assert.ok(hasPortablePhishingResistant(methodsOf(f.snapshot, row.user.id)), `${name}/${row.user.id}: the method is registered`)
-        assert.equal(r.kind, 'prove', `${name}/${row.user.id}: prove, not register`)
-        assert.deepEqual(guidesOf(r), ['prove'])
-        for (const id of guidesOf(r)) assert.notEqual(id, 'authenticator-iphone')
-      } else if (row.group === 'needsPasskey') {
-        // Nothing of the kind in the inventory: registration guidance applies.
-        assert.equal(hasPortablePhishingResistant(methodsOf(f.snapshot, row.user.id)), false, `${name}/${row.user.id}: none registered`)
-        assert.equal(r.kind, 'setUp')
-        assert.ok(guidesOf(r).includes('authenticator-iphone') && guidesOf(r).includes('security-key'))
+      seen.add(row.state)
+      const rd = row.readiness!
+      const d = detailOf(row)!
+      if (row.state === 'ready') {
+        assert.ok(rd.qualifying.length > 0 && rd.proof.length > 0, `${where}: Ready holds a qualifying method and its proof`)
+        if (rd.hasPasskey) assert.equal(a, null, `${where}: nothing to do`)
+        else assert.deepEqual([a?.text, a?.recommended], ['Add passkey', true], `${where}: a passkey is only recommended`)
+        assert.equal(d.next[0], 'No baseline action.', `${where}: the baseline asks for nothing`)
+      } else if (row.state === 'needsProof') {
+        // A qualifying method is registered. The action is to prove it, never to register another one.
+        assert.ok(rd.qualifying.length > 0, `${where}: the method is registered`)
+        assert.notEqual(a?.text, 'Set up passkey', `${where}: prove, not register`)
+        if (rd.missing.length > 0) {
+          assert.equal(a?.text, `Test ${rd.missing[0]}`, `${where}: test the platform in use`)
+          // The detail's Next is the same action as the row's, with or without proof elsewhere.
+          assert.match(d.next[0], new RegExp(`from ${rd.missing[0]}`), `${where}: the detail's Next disagrees with the row ("${d.next[0]}")`)
+        } else {
+          assert.match(a?.text ?? '', /^Sign in with /, `${where}: use it once`)
+          assert.match(d.next[0], /^Sign in once with /, `${where}: the detail's Next disagrees with the row`)
+        }
+      } else if (row.state === 'needsSetup') {
+        assert.equal(rd.qualifying.length, 0, `${where}: no qualifying method`)
+        assert.match(a?.text ?? '', /^(Set up passkey|Restore )/, `${where}: set up, or restore what disappeared`)
       } else {
-        // Unreadable methods: the state stays unknown and no setup path is
-        // guessed at. The page's own scan is the action.
-        assert.equal(r.kind, 'unknown', `${name}/${row.user.id}: unknown stays unknown`)
-        assert.deepEqual(guidesOf(r), [], 'no guessed setup guidance over evidence nobody could read')
+        // The evidence could not be read: no setup path is guessed at; the action is to read it.
+        assert.equal(a?.text, 'Retry scan', `${where}: unknown stays unknown`)
+        assert.equal(d.rescan, true)
       }
     }
   }
-  assert.deepEqual([...seen].sort(), ['needsPasskey', 'needsProof', 'ready', 'unknown'], 'the sweep saw all four states')
+  assert.deepEqual([...seen].sort(), ['needsProof', 'needsSetup', 'ready', 'unknown'], 'the sweep saw all four states')
 })
 
-test('the surface offers the action only where the evidence earns one', () => {
-  const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  // The cell decides from the remediation, which decides from the group.
-  assert.match(src, /remediationFor\(r\.group, r\)/, 'the row control reads the one remediation authority, person and all')
-  assert.match(src, /kind === 'none' \|\| kind === 'unknown'/, 'ready and unknown get the state word and no control')
-  // The panel is not on screen until a person's Next step is pressed.
-  assert.match(src, /useState<OpenGuide \| null>\(null\)/, 'the panel is closed by default')
-  assert.match(src, /remediationFor\(row\.group, row\)/, 'the panel reads the same authority as the row')
+test('a qualifying method with platforms in use and no proof anywhere is asked to test a platform, in the row and in the detail', () => {
+  let seen = 0
+  for (const name of TENANTS) {
+    const f = fixture(name)
+    for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
+      const rd = row.readiness
+      if (row.state !== 'needsProof' || !rd || rd.proof.length > 0 || rd.missing.length === 0) continue
+      seen++
+      assert.equal(actionOf(row)?.text, `Test ${rd.missing[0]}`)
+      const d = detailOf(row)!
+      assert.match(d.why[0], /No phishing-resistant sign-in is in the records IAMAI holds/)
+      assert.match(d.next[0], /^Complete one phishing-resistant sign-in from /, `the detail says "${d.next[0]}"`)
+    }
+  }
+  assert.ok(seen > 0, 'the fixtures hold somebody with a qualifying method, platforms in use and no proof')
 })
 
-// ---- C. Windows Hello is not the passkey target -------------------------------
+test('a row holding two qualifying methods names both the way the reference does', () => {
+  const f = fixture('demo')
+  const both = readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows.find((r) => r.readiness?.qualifying.includes('passkey') && r.readiness.qualifying.includes('windowsHello'))
+  assert.ok(both, 'the demo has somebody with a passkey and Windows Hello')
+  assert.equal(methodsCell(both).main, 'Passkey + Windows Hello')
+})
 
-test('Windows Hello is offered and is never the passkey target', () => {
+test('the surface offers the action only where readiness earns one, and the detail reads the same row', () => {
+  assert.match(SURFACE, /const a = actionOf\(r\)/, 'the row control reads the one action authority')
+  assert.match(SURFACE, /if \(!a\) return <span className="no-action" aria-hidden="true">&mdash;<\/span>/, 'nothing to do is a mark, not a control')
+  assert.match(SURFACE, /useState<string \| null>\(null\)/, 'the detail is closed by default')
+  assert.match(SURFACE, /const detail = openRow \? detailOf\(openRow\) : null/, 'the detail reads the same row the action was on')
+})
+
+// ---- C. Windows Hello is phishing-resistant; the passkey stays a recommendation
+
+test('Windows Hello satisfies the baseline where it was proven, and the passkey guide and recommendation are unchanged', () => {
+  // The guide's own target is the portable passkey, which Windows Hello is not.
   assert.equal(reachesTarget('windows-hello'), false)
-  const set = remediationFor('needsPasskey', { guest: false })
-  assert.equal(set.kind, 'setUp')
-  if (set.kind !== 'setUp') return
-  assert.ok(!set.guides.includes('windows-hello'), 'not among the methods that reach the target')
-  assert.ok(set.other.includes('windows-hello'), 'and still reachable, under its own line')
   const hello = methodGuide('windows-hello')
-  // It must not end on the sentence that says a scan will read it as proven:
-  // it never reaches rung 5, so that ending would be a false promise.
   assert.ok(!hello.lines.includes(MG.common.scanAgain), 'no "scan again and you are passkey-ready" ending')
   assert.ok(hello.lines.some((l) => /does not reach the passkey target/.test(l)), 'the guide says so in words')
-  // And the person: Windows Hello only is rung 3, never passkey-ready.
   const f = fixture('demo')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  const helloOnly = v.rows.filter((r) => r.active && windowsHelloOnly(r.viability!))
-  assert.ok(helloOnly.length > 0, 'the demo has a Windows Hello only person')
-  for (const row of helloOnly) {
-    assert.equal(row.rung, 3, 'the canonical rung is untouched')
-    assert.notEqual(row.group, 'ready', 'and they are not complete for the page target')
-    assert.equal(remediationFor(row.group, row).kind, 'setUp', 'they are asked for a passkey or key')
+  // Ready with Windows Hello and no passkey: nothing required, a passkey recommended.
+  const helloReady = v.rows.filter((r) => r.state === 'ready' && r.readiness?.hasPasskey === false && r.readiness.qualifying.includes('windowsHello'))
+  assert.ok(helloReady.length > 0, 'the demo has somebody Ready with Windows Hello and no passkey')
+  for (const row of helloReady) {
+    assert.equal(actionOf(row)?.recommended, true)
+    assert.equal(detailOf(row)?.next[0], 'No baseline action.')
   }
+  // Windows Hello proven on Windows and a phone in use: asked to prove the phone, never told they hold nothing.
+  const helloElsewhere = v.rows.filter((r) => r.state === 'needsProof' && r.readiness?.qualifying.length === 1 && r.readiness.qualifying[0] === 'windowsHello' && r.readiness.missing.length > 0)
+  assert.ok(helloElsewhere.length > 0, 'the demo has a Windows Hello person seen on another platform')
+  for (const row of helloElsewhere) assert.match(actionOf(row)?.text ?? '', /^Test /)
 })
 
 // ---- D. a Temporary Access Pass is a way in, not the end state ----------------
 
-test('a Temporary Access Pass bootstraps and never becomes passkey-ready', () => {
+test('a Temporary Access Pass bootstraps and is never a readiness method', () => {
   assert.equal(reachesTarget('temporary-access-pass'), false)
-  const set = remediationFor('needsPasskey', { guest: false })
-  if (set.kind !== 'setUp') throw new Error('needs a passkey offers setup')
-  assert.ok(!set.guides.includes('temporary-access-pass'), 'not among the methods that reach the target')
-  assert.ok(set.other.includes('temporary-access-pass'), 'offered as the way in')
+  assert.equal(classOfKind('temporaryAccessPass'), null, 'a pass is not a method readiness weighs')
   const tap = methodGuide('temporary-access-pass')
   // It ends by returning the person to the real target: register, use it, scan.
   assert.ok(tap.lines.some((l) => /registers the passkey or security key/.test(l)), 'it leads to the target method')
@@ -241,45 +249,23 @@ test('the pass guide tells the operator to make it one-time, and names the role 
   assert.ok(roles.some((l) => /Privileged Authentication Administrator/.test(l)), 'the privileged role is named')
   assert.ok(roles.some((l) => /administrator needs Privileged/.test(l)), 'and it is the one an administrator needs')
   assert.ok(roles.some((l) => /ordinary user needs the Authentication Administrator/.test(l)), 'the ordinary role is scoped to ordinary users')
-  // A pass changes no rung: the ladder reads registered methods and records, and
-  // a pass is neither.
-  const f = fixture('demo')
-  for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
-    if (!row.active) continue
-    assert.equal(row.rung, rungOf(row.viability!), `${row.user.id}: the rung is the ladder's, before and after any guidance`)
-  }
 })
 
-test('a guest is offered no Temporary Access Pass, and is told why', () => {
+test('a guest is told, in one shared sentence, why this tenant issues them no Temporary Access Pass', () => {
   // This tenant cannot issue a guest a pass: their authentication methods are
-  // their home tenant's. The campaign has always said so in words; the panel
-  // now behaves that way, from the row's own guest classification.
-  const guest = remediationFor('needsPasskey', { guest: true })
-  if (guest.kind !== 'setUp') throw new Error('a guest who needs a passkey is still offered setup')
-  assert.ok(!guidesOf(guest).includes('temporary-access-pass'), 'no pass to issue, so no guide to issue one')
-  assert.ok(guest.guides.includes('authenticator-iphone') && guest.guides.includes('authenticator-android') && guest.guides.includes('security-key'), 'the target methods stay: a guest registers them at home')
-  assert.equal(guest.note, MG.guest, 'and the panel says why, in the shared sentence')
-  assert.match(MG.guest, /own tenant|home tenant/, 'which sends the operator to the home tenant that owns the guest')
-  // The member's offer is untouched.
-  assert.ok(guidesOf(remediationFor('needsPasskey', { guest: false })).includes('temporary-access-pass'))
-  // Real guests, from the tenants that have them: same answer, from the row.
-  let seen = 0
-  for (const name of TENANTS) {
-    const f = fixture(name)
-    for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
-      if (!row.guest || row.group !== 'needsPasskey') continue
-      seen++
-      const r = remediationFor(row.group, row)
-      assert.ok(!guidesOf(r).includes('temporary-access-pass'), `${name}/${row.user.id}: a guest is offered no pass`)
-      assert.ok(guidesOf(r).includes('security-key'), `${name}/${row.user.id}: and still has a way to the target`)
-    }
-  }
-  assert.ok(seen > 0, 'the fixtures have an active guest who needs a passkey')
-  // The sentence is written once: the campaign's risk line references it.
+  // their home tenant's. The campaign says so in words.
+  assert.match(MG.guest, /own tenant|home tenant/, 'the sentence sends the operator to the home tenant that owns the guest')
   const risks = (contentStepFor(campaignOf('demo')) as Record<string, any>).more.risks as { text: string }[]
   assert.ok(risks.some((r) => r.text === '{guestNoTap}'), 'the campaign references the shared sentence rather than retyping it')
   assert.equal(fillText('{guestNoTap}', {}), MG.guest, 'and it fills to that sentence')
   assert.ok(whole('{guestNoTap}', {}), 'a shared reference is not a hole')
+  // A guest who needs a method is asked for a passkey, never handed a pass.
+  for (const name of TENANTS) {
+    const f = fixture(name)
+    for (const row of readinessView(f.snapshot, f.snapshot.asOf, f.mapping).rows) {
+      if (row.guest && row.state === 'needsSetup') assert.doesNotMatch(actionOf(row)?.text ?? '', /Temporary Access Pass/, `${name}/${row.user.id}: a guest is offered no pass`)
+    }
+  }
 })
 
 // ---- E / F. the platforms, and the security key --------------------------------
@@ -327,9 +313,9 @@ test('the campaign step hands person-level setup to MFA Readiness and keeps its 
     assert.ok(lines.includes(GUIDE_POINTER), `${name}: the step points at MFA Readiness`)
     // The policy consequence and the counts that decide it are still there.
     assert.ok(text.includes('Enforcement should change nothing for anyone'), `${name}: the consequence stands`)
-    assert.ok(/\d+ people at /.test(text), `${name}: the people the campaign has to reach, counted`)
+    assert.ok(/\d+ (?:people|person) with /.test(text), `${name}: the people the campaign has to reach, counted`)
     assert.ok(/Require Phishing-Resistant MFA for Admins waits on each/.test(text), `${name}: what waits on it`)
-    assert.ok(text.includes('Every admin has a passkey or a security key registered.'), `${name}: and the admin completion gate`)
+    assert.ok(text.includes('Every admin is Ready for phishing-resistant MFA.'), `${name}: and the admin completion gate`)
     // The readiness the plan waits on, where this scan measured one at all.
     if (name !== 'messy') {
       assert.ok(/readiness \d+%/.test(text), `${name}: the readiness the plan waits on`)
@@ -390,43 +376,43 @@ test('the help-desk lines the campaign keeps are exceptions, not a setup manual'
 
 // ---- I. the official source ----------------------------------------------------
 
-test('every guide ends on one official Microsoft page', () => {
+test('every guide ends on one official Microsoft page, and the page renders no guide of its own', () => {
   for (const g of METHOD_GUIDES) {
     assert.match(g.learn.url, /^https:\/\/learn\.microsoft\.com\//, `${g.id}: an official Microsoft page`)
     assert.doesNotMatch(g.learn.url, /blog|medium|github\.io/, `${g.id}: not a vendor blog`)
   }
-  // The panel offers the link and does not write the address itself.
-  const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(src, /href=\{guide\.learn\.url\}/, 'the link is the content file\'s')
+  // MFA Readiness's detail is Why and Next (Step 7): no bibliography, no guide panel.
+  assert.doesNotMatch(SURFACE, /methodGuide\(|guideText\(|learn\.url|RemediationPanel/, 'the page renders a guide of its own')
 })
 
 // ---- J. no new authority, and no way to write ----------------------------------
 
-test('remediation changes no rung, no proof, no group and no emergency-access classification', () => {
+test('guidance changes no readiness, no count and no emergency-access classification', () => {
   for (const name of TENANTS) {
     const f = fixture(name)
     const before = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-    // Ask for every remediation, every guide and every copy: none of it touches
-    // the evidence, because none of it is evidence.
+    // Ask for every action, every detail and every guide: none of it touches the
+    // evidence, because none of it is evidence.
     for (const row of before.rows) {
-      const r = remediationFor(row.group, row)
-      for (const id of guidesOf(r)) guideText(id)
+      actionOf(row)
+      detailOf(row)
     }
+    for (const g of METHOD_GUIDES) guideText(g.id)
     const after = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     assert.deepEqual(
-      after.rows.map((r) => [r.user.id, r.rung, r.group, r.active, r.kind]),
-      before.rows.map((r) => [r.user.id, r.rung, r.group, r.active, r.kind]),
+      after.rows.map((r) => [r.user.id, r.state, r.active, r.kind]),
+      before.rows.map((r) => [r.user.id, r.state, r.active, r.kind]),
       `${name}: the evidence is unmoved`,
     )
-    assert.deepEqual(after.groups, before.groups, `${name}: and so are the counts`)
+    assert.deepEqual(after.counts, before.counts, `${name}: and so are the counts`)
     // A confirmed emergency-access account is not an employee passkey campaign
-    // target and is offered no bulk remediation (task 001).
+    // target and is offered no action (task 001).
     for (const id of f.mapping.breakGlassUserIds) {
       const row = before.rows.find((x) => x.user.id === id)
       if (!row) continue
       assert.equal(row.kind, 'emergency', `${name}/${id}: still classified emergency access`)
-      assert.equal(row.group, null)
-      assert.deepEqual(guidesOf(remediationFor(row.group, row)), [], `${name}/${id}: no campaign guidance attached`)
+      assert.equal(row.state, null)
+      assert.equal(actionOf(row), null, `${name}/${id}: no campaign action attached`)
     }
   }
 })
@@ -435,17 +421,13 @@ test('the guidance layer reads the tenant and writes nothing', () => {
   const src = readFileSync('src/content/methodGuides.ts', 'utf8')
   // No Graph client, no store, no mutation: it is content and a lookup.
   assert.doesNotMatch(src, /graph\/|msal|fetch\(|idb|localStorage/, 'the guidance module reaches nothing outside the content file')
-  const panel = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.doesNotMatch(panel, /POST|PATCH|DELETE|graphFetch/, 'the panel submits nothing to a tenant')
-  // The one thing the panel does with a guide is put its text on the clipboard,
-  // through the export guard every other copy goes through.
-  assert.match(panel, /exportClipboard\(guideText\(guide\.id\), REDACTED\)/, 'the copy goes through the export guard')
+  assert.doesNotMatch(SURFACE, /POST|PATCH|DELETE|graphFetch/, 'the page submits nothing to a tenant')
   // And the guidance says what a person does in Microsoft's own portals, never
   // what IAMAI will do for them.
   for (const g of METHOD_GUIDES) assert.doesNotMatch(guideText(g.id), /IAMAI (issues|registers|creates|sets) (?!nothing)/, `${g.id}: IAMAI performs nothing`)
 })
 
-test('the panel says the target and the tenant prerequisite once, and not inside each guide', () => {
+test('the target and the tenant prerequisite are said once, outside every guide', () => {
   assert.equal(PASSKEY_TARGET, MG.target)
   assert.equal(TENANT_PREREQUISITE, MG.prereq)
   // The one-line explanation lives outside the guides, so no guide carries a
@@ -454,10 +436,10 @@ test('the panel says the target and the tenant prerequisite once, and not inside
     assert.ok(!g.lines.includes(PASSKEY_TARGET), `${g.id}: the target is stated once, above`)
     assert.ok(!g.lines.includes(TENANT_PREREQUISITE), `${g.id}: and so is the prerequisite`)
   }
-  // The surface renders both once, above the choices.
-  const src = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.equal(src.split('PASSKEY_TARGET').length - 1, 2, 'imported and rendered once')
-  assert.equal(src.split('TENANT_PREREQUISITE').length - 1, 2)
+  // The target is phishing-resistant MFA, not a passkey (Step 7).
+  assert.match(MG.target, /phishing-resistant/)
+  // MFA Readiness's page carries neither: its summary sub-line says what Ready means.
+  assert.doesNotMatch(SURFACE, /PASSKEY_TARGET|TENANT_PREREQUISITE/)
 })
 
 test('the step content the guidance replaced is gone, and its meaning is not', () => {

@@ -372,7 +372,7 @@ test('the tab strip scrolls sideways without clipping the ring on its end tabs',
   assert.match(strip, /padding:\s*0 2px/, 'the scroll box reserves the 2px the ring needs')
 })
 
-test('closing the readiness guidance puts focus back on the control that opened it', () => {
+test('closing the readiness detail puts focus back on the control that opened it', () => {
   assert.match(readiness, /trigger\.current = e\.currentTarget/)
   assert.match(readiness, /trigger\.current\?\.focus\(\)/)
 })
@@ -480,7 +480,9 @@ test('every expanded/collapsed state sits on a control a keyboard reaches, and n
     }
   }
   assert.deepEqual(offenders, [], 'aria-expanded on something that is not a control')
-  assert.match(readiness, /aria-controls=\{GUIDE_PANEL_ID\}/)
+  // A person's action opens the one detail dialog (Step 7) and says so: what it opens, and that it is a dialog.
+  assert.match(readiness, /aria-haspopup="dialog"\s+aria-controls=\{DETAIL_ID\}/)
+  assert.match(readiness, /id=\{DETAIL_ID\}/)
   assert.match(read('src/ui/surfaces/Plan.tsx'), /aria-expanded=\{showSettings\} aria-controls=\{PLAN_SETTINGS_ID\}/)
   assert.match(read('src/ui/surfaces/Connect.tsx'), /aria-expanded=\{open\} aria-controls=\{BASELINE_CHOICES_ID\}/)
 })
@@ -572,17 +574,25 @@ test('an active filter says so in shape as well as colour', () => {
   // one pressed rule above governs them too; the boxed counts that carried a
   // pressed treatment of their own are gone with the tiles.
   assert.doesNotMatch(css, /\.group-tile|\.group-count/, 'a dead pressed rule for a control the page no longer draws')
-  assert.match(readiness, /aria-pressed=\{show === k\}/, 'a Show filter says whether it is pressed')
-  assert.match(readiness, /aria-pressed=\{on\}/)
-  assert.match(readiness, /aria-pressed=\{adminsOnly\}/)
+  assert.match(readiness, /aria-pressed=\{show === k\}/, 'a filter says whether it is pressed')
+  // A summary count is a filter too (Step 7): pressed, it says so, and its
+  // pressed treatment is an underline as well as a tint.
+  assert.match(readiness, /className="summary-stat" aria-pressed=\{show === s\}/, 'a summary count says whether it is pressed')
+  assert.match(css, /\.readiness-summary \.summary-stat\[aria-pressed='true'\] \{[^}]*border-bottom-color:/, 'a pressed count is a tint alone')
 })
 
 test("Connect's progression marks the current stage with a word", () => {
   assert.match(read('src/ui/surfaces/Connect.tsx'), /stage === 'current' && <span className="next">\{W\.next\}<\/span>/)
 })
 
-test('the readiness rung badge carries its title where assistive technology can read it', () => {
-  assert.match(readiness, /role=\{rung \? 'img' : undefined\} title=\{rung \? rungWords\(rung\)\.title : undefined\} aria-label=/)
+test('a readiness state is a word beside its dot, and a proof mark is a glyph beside the words it marks', () => {
+  // The state is the shared `.status` role: its dot is `::before`, and the word is the element's own text.
+  assert.match(readiness, /<span className=\{`status status-\$\{STATUS_TONE\[r\.state\]\}`\}>\{stateTitle\(r\.state\)\}<\/span>/)
+  // The mark is decoration over a line of words, so it is hidden from assistive technology.
+  assert.match(readiness, /<span className=\{`proof-mark proof-mark-\$\{l\.mark\}`\} aria-hidden="true">/)
+  assert.match(readiness, /<span>\{l\.text\}<\/span>/, 'the proof line carries its words beside the mark')
+  // Nothing to do is the em rule, a mark and not a word: a screen reader hears the cell as empty, which is the fact.
+  assert.match(readiness, /<span className="no-action" aria-hidden="true">&mdash;<\/span>/)
 })
 
 // ------------------------------------------------------------- F. reflow / width
@@ -636,12 +646,13 @@ test('the wide regions scroll inside themselves, and JSON and PowerShell wrap ra
 
 test('the narrow layouts collapse rather than compress', () => {
   const narrow = (max: number): string => css.match(new RegExp(`@media \\(max-width: ${max}px\\) \\{[\\s\\S]*?\\n\\}`, 'g'))?.join('\n') ?? ''
-  // MFA Readiness collapses at its own pack's two breakpoints (task 037): the
-  // integrated summary halves at 900 with the main cell spanning both tracks,
-  // and becomes one column at 620.
-  assert.match(narrow(900), /\.readiness-summary \{[\s\S]*grid-template-columns:\s*1fr 1fr/, 'the readiness summary does not halve')
-  assert.match(narrow(900), /\.readiness-summary \.summary-main \{[\s\S]*grid-column:\s*1 \/ -1/, 'and its main cell does not span the row')
-  assert.match(narrow(620), /\.readiness-summary \{[\s\S]*grid-template-columns:\s*1fr/, 'the readiness summary does not become one column')
+  // MFA Readiness collapses at its final reference's two breakpoints (Step 7):
+  // the summary halves at 940 with the main cell spanning both tracks, and the
+  // summary and the Plan gate strip become one column at 720.
+  assert.match(narrow(940), /\.readiness-summary \{[\s\S]*grid-template-columns:\s*1fr 1fr/, 'the readiness summary does not halve')
+  assert.match(narrow(940), /\.readiness-summary \.summary-main \{[\s\S]*grid-column:\s*1 \/ -1/, 'and its main cell does not span the row')
+  assert.match(narrow(720), /\.readiness-summary \{[\s\S]*grid-template-columns:\s*1fr/, 'the readiness summary does not become one column')
+  assert.match(narrow(720), /\.progress-strip \{[\s\S]*grid-template-columns:\s*1fr/, 'the Plan gate and passkey strip does not become one column')
   // The Plan row collapses at the pack's own breakpoint: four zones become two,
   // and who and when drop under the state and the title rather than being
   // squeezed into slivers of one line (task 033).
@@ -669,8 +680,8 @@ test('a data table stays a table, and its labels are DOM structure rather than C
   assert.doesNotMatch(dataTable, /role=\{c\.sortValue \? 'button' : undefined\}/, 'the header role is not replaced by the sort control')
   assert.match(dataTable, /aria-sort=/)
   // Nothing turns a cell's label into pseudo-content, which no screen reader
-  // reads. MFA Readiness stacks its rows below the approved pack's breakpoint
-  // (task 037), and the label it shows there is a real element with real text.
+  // reads. MFA Readiness stacks its rows below its final reference's 720
+  // (Step 7), and the label it shows there is a real element with real text.
   assert.doesNotMatch(css, /td::before\s*\{[^}]*content:\s*attr\(/)
   assert.doesNotMatch(css, /data-label/)
   assert.doesNotMatch(css, /\.cell-key::before\s*\{[^}]*content:/, "the stacked cell's key is text, not generated content")
@@ -690,7 +701,7 @@ test('a data table stays a table, and its labels are DOM structure rather than C
   }
   // The head goes out of sight and stays in the accessibility tree: it is the
   // element the stacked cell is still associated with.
-  const stacked = css.match(/@media \(max-width: 900px\) \{[\s\S]*?\n\}/g)?.join('\n') ?? ''
+  const stacked = css.match(/@media \(max-width: 720px\) \{[\s\S]*?\n\}/g)?.join('\n') ?? ''
   assert.match(stacked, /table\.datatable thead \{[\s\S]*clip-path:\s*inset\(50%\)/, 'the stacked head is hidden by display:none rather than clipped')
   assert.doesNotMatch(stacked, /table\.datatable thead \{[\s\S]*display:\s*none/)
   assert.match(stacked, /\.surface\.readiness \.cell-key \{[\s\S]*display:\s*block/, 'the stacked cell key never becomes visible')

@@ -1,6 +1,6 @@
-// One definition of enough (E7): admin readiness is Passkey or security key,
-// proven (derive/ladder.ts rung 5, the rung the lockout list reads), and the
-// campaign and step 12 say "or"; the
+// One definition of enough (E7; Step 7): admin readiness is the share of admins
+// who are Ready for phishing-resistant MFA (scoring/phishingResistant.ts, the
+// state the admin lists read), and the campaign and step 12 say "or"; the
 // campaign email fills {mfaEnforceLong} and {enrolWindowDays}, the managed-device
 // email {personalDevicesClause}, and firstEnforce is gone from the variables.
 import { test } from 'node:test'
@@ -15,7 +15,6 @@ import { enforcementHeld } from '../../roadmap/operations.ts'
 import { engine, stepById } from '../../content/content.ts'
 import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { adminUserIds } from '../../roles.ts'
-import { rungOf } from '../../derive/ladder.ts'
 
 const setUp = (curated = false) => {
   const f = curated ? curatedFixture('demo-week2') : fixture('demo-week2')
@@ -25,16 +24,16 @@ const setUp = (curated = false) => {
   return { f, r, dates, ctx }
 }
 
-test('admin readiness is the share of admins at Passkey or security key, proven', () => {
+test('admin readiness is the share of admins who are Ready for phishing-resistant MFA', () => {
   const { f, r } = setUp()
   const admins = [...adminUserIds(f.snapshot.roles)]
   const rows = r.viability.filter((v) => admins.includes(v.userId))
-  const withPr = rows.filter((v) => rungOf(v) === 5).length
+  const ready = rows.filter((v) => v.readiness.state === 'ready').length
   const step = r.steps.find((s) => s.goalId === 'admins-phishing-resistant')!
   assert.equal(step.readiness.family, 'admin')
-  assert.equal(step.readiness.percent, Math.round((withPr / rows.length) * 100))
+  assert.equal(step.readiness.percent, Math.round((ready / rows.length) * 100))
   const camp = stepById['s-verify-mfa'] as unknown as { doneWhen: string[]; whatToDo: { steps: string[] } }
-  assert.ok(camp.doneWhen.some((l) => l === 'Every admin has a passkey or a security key registered.'))
+  assert.ok(camp.doneWhen.some((l) => l === 'Every admin is Ready for phishing-resistant MFA.'))
   assert.ok(camp.whatToDo.steps.some((l) => l.includes('Admins: a passkey or a hardware security key; either is phishing-resistant.')))
   const op = stepById['s-ladder-operator-passkey'] as unknown as { whatToDo: { steps: string[] } }
   assert.ok(op.whatToDo.steps[0].includes('or a hardware security key'), 'step 12 says or')

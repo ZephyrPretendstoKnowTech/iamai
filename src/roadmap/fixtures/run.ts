@@ -138,5 +138,15 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
  * (derive/ladder.ts rungOf).
  */
 export function adminsAtRung5(viability: MfaViability[], at: string): MfaViability[] {
-  return viability.map((v) => (v.isAdmin ? { ...v, kinds: [...new Set([...v.kinds, 'passkey' as const])], evidence: { at, method: 'Passkey' } } : v))
+  // Step 7: an admin is ready when Ready (scoring/phishingResistant.ts) — a passkey held and proven on the platform they use.
+  return viability.map((v) =>
+    v.isAdmin
+      ? {
+          ...v,
+          kinds: [...new Set([...v.kinds, 'passkey' as const])],
+          evidence: { at, method: 'Passkey' },
+          readiness: { ...v.readiness, state: 'ready', unknown: null, methods: [...new Set([...(v.readiness.methods ?? []), 'passkey' as const])], qualifying: ['passkey'], hasPasskey: true, proof: [{ cls: 'passkey', os: 'Windows', at, retained: false }], platforms: ['Windows'], missing: [], lost: [], next: { kind: 'none' }, recommended: null },
+        }
+      : v,
+  )
 }

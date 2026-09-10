@@ -157,11 +157,13 @@ export function personScenarios(r: ReadinessRow): PersonScenario[] {
   if (r.kind !== 'person') out.push('notAPerson')
   else if (!r.active) out.push('notActive')
   if (r.admin) out.push('admin')
-  if (r.group === 'ready') out.push('strongProven')
-  if (r.group === 'needsProof') out.push('registeredNotProven')
-  if (r.group === 'needsPasskey') out.push('needsPasskey')
-  if (r.group === 'unknown') out.push('methodsUnknown')
-  if (r.active && r.rung === 4) out.push('weakerProven')
+  // The readiness state (scoring/phishingResistant.ts), under the corpus's scenario names.
+  if (r.state === 'ready') out.push('strongProven')
+  if (r.state === 'needsProof') out.push('registeredNotProven')
+  if (r.state === 'needsSetup') out.push('needsPasskey')
+  if (r.state === 'unknown') out.push('methodsUnknown')
+  // Proven with a method that is not phishing-resistant, and no qualifying method.
+  if (r.active && r.state === 'needsSetup' && r.readiness?.other != null) out.push('weakerProven')
   return out
 }
 

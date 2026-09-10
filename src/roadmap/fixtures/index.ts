@@ -19,6 +19,8 @@ import { pinnedPackage } from '../../baseline/pinned.ts'
 import interpretation from '../../../baselines/jhope188-conditionalaccesspolicies.interpretation.json' with { type: 'json' }
 import { baselineStrength } from '../resolvePolicy.ts'
 import { withCleanupDone } from '../cleanupDone.ts'
+import { classOfProofMethod } from '../../scoring/phishingResistant.ts'
+import type { MethodClass, MfaHistory, Platform } from '../../scoring/phishingResistant.ts'
 
 export type FixtureName = 'micro' | 'small' | 'getiamai' | 'mid' | 'large' | 'huge' | 'messy' | 'midflight' | 'hostile' | 'demo' | 'demo-week2'
 
@@ -263,7 +265,25 @@ export function buildFixture(spec: Spec): Fixture {
     if (lastDays < 90 && !spec.hostile) {
       // The records name the method the person proved: the passkey when they hold one, the app otherwise, a text for a phone.
       const provenWith = methods.includes('passKeyDeviceBound') ? 'Passkey (device-bound)' : methods.includes('microsoftAuthenticatorPush') ? 'Mobile app notification' : 'Text message'
-      signInEvidence[id] = { signInCount: 1 + Math.floor(rand() * 20), lastSignIn: daysAgo(lastDays), lastMfaSuccess: methods.length > 0 && rand() < 0.65 ? { at: daysAgo(lastDays), method: provenWith } : null, countries: rand() < 0.04 ? ['AU', 'NZ'] : ['AU'] }
+      // The draws stay in the order they always were (count, proof, countries), so every fixture keeps its people.
+      const signInCount = 1 + Math.floor(rand() * 20)
+      const proven = methods.length > 0 && rand() < 0.65
+      const countries = rand() < 0.04 ? ['AU', 'NZ'] : ['AU']
+      // Where they sign in from (Step 7), without a draw of its own: a Windows PC,
+      // and an iPhone for every third person. A passkey is proven on each, except
+      // for every fifth person, whose only passkey sign-in was from the iPhone.
+      const at = daysAgo(lastDays)
+      const platforms: Platform[] = i % 3 === 0 ? ['Windows', 'iOS'] : ['Windows']
+      const provenOn: Platform[] = provenWith.startsWith('Passkey') && i % 5 === 0 ? ['iOS'] : platforms
+      const cls = classOfProofMethod(provenWith)
+      signInEvidence[id] = {
+        signInCount,
+        lastSignIn: at,
+        lastMfaSuccess: proven ? { at, method: provenWith } : null,
+        countries,
+        proofs: proven && cls ? provenOn.map((os) => ({ cls, os, at, method: provenWith })) : [],
+        platforms: platforms.map((os) => ({ os, at })),
+      }
     }
   }
   // The demo's reception printer: an account nobody signs in with, which sends
@@ -312,7 +332,7 @@ export function buildFixture(spec: Spec): Fixture {
       const i = ids.indexOf(id)
       registrationDetails[i] = { ...registrationDetails[i], isMfaCapable: true, isMfaRegistered: true, methodsRegistered: ['microsoftAuthenticatorPush'] }
       authMethods[id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
-      signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: null }
+      signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: null, proofs: [] }
     }
     // The two break-glass accounts share one Authenticator device: bg.separateDevices fails (item 9).
     for (const id of bgIds) authMethods[id] = [{ kind: 'microsoftAuthenticator', displayName: 'SM-S918U', phoneAppVersion: '6.2508.0' }]
@@ -325,6 +345,10 @@ export function buildFixture(spec: Spec): Fixture {
     const shared = users.find((x) => x.id === sharedId(ids))
     if (shared) shared.skuIds = ['295a8eb0-f78d-45c7-8b5b-1eed5ed02dff']
   }
+  // What an earlier scan kept (scoring/mfaHistory.ts), and a person whose
+  // methods could not be read at all: the demo carries one of each (Step 7).
+  let mfaHistory: MfaHistory | null = null
+  let unreadRegistration: string | null = null
   // The demo tenant, built to show the finished product (prompt 50 Part 2).
   if (spec.demo) {
     const at = (i: number): string => ids[i]
@@ -355,7 +379,8 @@ export function buildFixture(spec: Spec): Fixture {
     for (const id of ids.slice(spec.admins + 5, spec.admins + 8)) {
       setReg(id, { isMfaCapable: false, isMfaRegistered: false, isPasswordlessCapable: false, methodsRegistered: [] })
       authMethods[id] = []
-      signInEvidence[id] = { ...(signInEvidence[id] ?? { signInCount: 5, lastSignIn: daysAgo(3), countries: ['AU'] }), lastMfaSuccess: null }
+      const was = signInEvidence[id]
+      signInEvidence[id] = { ...(was ?? { signInCount: 5, lastSignIn: daysAgo(3), countries: ['AU'] }), lastMfaSuccess: null, proofs: [], platforms: was?.platforms ?? [{ os: 'Windows', at: daysAgo(3) }] }
     }
     // Five registered-but-unproven active people (the campaign; scenario 12).
     // They are made active and registered here so exactly three can flip to
@@ -364,18 +389,53 @@ export function buildFixture(spec: Spec): Fixture {
     for (const id of unproven) {
       setReg(id, { isMfaCapable: true, isMfaRegistered: true, methodsRegistered: ['microsoftAuthenticatorPush'] })
       authMethods[id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
-      signInEvidence[id] = { signInCount: 8, lastSignIn: daysAgo(3), lastMfaSuccess: null, countries: ['AU'] }
+      signInEvidence[id] = { signInCount: 8, lastSignIn: daysAgo(3), lastMfaSuccess: null, countries: ['AU'], proofs: [], platforms: [{ os: 'Windows', at: daysAgo(3) }] }
     }
     // One person has not typed a password in 30 days (passwordless).
     setUser(at(spec.admins + 11), { displayName: users.find((u) => u.id === at(spec.admins + 11))?.displayName ?? 'Kaladin Stormblood' })
     // One active person holds Windows Hello for Business and nothing that
-    // travels (derive/ladder.ts rung 3): MFA proven on that PC, and phone
-    // sign-ins in the records (scenarioRows.ts), so a phone is where it bites.
+    // travels: proven on Windows, and phone sign-ins in the records
+    // (scenarioRows.ts) with no phishing-resistant proof there, so they Need
+    // proof on iOS (scoring/phishingResistant.ts).
     const helloOnly = at(spec.admins + 13)
     setUser(helloOnly, { lastSuccessfulSignIn: daysAgo(2) })
     setReg(helloOnly, { isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: true, methodsRegistered: ['windowsHelloForBusiness'] })
-    authMethods[helloOnly] = [{ kind: 'windowsHelloForBusiness', displayName: 'DESKTOP-7Q2', deviceLastSignIn: daysAgo(2) }]
-    signInEvidence[helloOnly] = { signInCount: 14, lastSignIn: daysAgo(2), lastMfaSuccess: { at: daysAgo(2), method: 'Windows Hello for Business' }, countries: ['AU'] }
+    authMethods[helloOnly] = [{ kind: 'windowsHelloForBusiness', displayName: 'DESKTOP-7Q2' }]
+    signInEvidence[helloOnly] = { signInCount: 14, lastSignIn: daysAgo(2), lastMfaSuccess: { at: daysAgo(2), method: 'Windows Hello for Business' }, countries: ['AU'], proofs: [{ cls: 'windowsHello', os: 'Windows', at: daysAgo(2), method: 'Windows Hello for Business' }], platforms: [{ os: 'Windows', at: daysAgo(2) }, { os: 'iOS', at: daysAgo(4) }] }
+    // MFA Readiness's other cases (Step 7), on people the sample does not
+    // otherwise tell a story about: Ready with a passkey and Windows Hello (the
+    // first admin), Ready with Windows Hello and no passkey, Ready with a passkey
+    // proven on macOS, a person whose methods could not be read, and a person
+    // whose passkey an earlier scan saw and this one does not.
+    const spare = ids.slice(spec.admins + 14).filter((id) => id !== printerId && id !== sharedId(ids))
+    const proven = (id: string, reg: string[], methods: TenantSnapshot['authMethods'][string], proofs: { cls: MethodClass; os: Platform; method: string }[], platforms: Platform[]): void => {
+      setUser(id, { lastSuccessfulSignIn: daysAgo(1), userType: 'member', externalUserState: null })
+      setReg(id, { isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: true, methodsRegistered: reg, userType: 'member' })
+      authMethods[id] = methods
+      const last = proofs[0]
+      signInEvidence[id] = { signInCount: 20, lastSignIn: daysAgo(1), lastMfaSuccess: last ? { at: daysAgo(1), method: last.method } : null, countries: ['AU'], proofs: proofs.map((p) => ({ ...p, at: daysAgo(1) })), platforms: platforms.map((os) => ({ os, at: daysAgo(1) })) }
+    }
+    proven(at(0), ['microsoftAuthenticatorPush', 'passKeyDeviceBound', 'windowsHelloForBusiness'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey', id: 'demo-passkey-admin', displayName: 'iPhone' }, { kind: 'windowsHelloForBusiness', id: 'demo-hello-admin', displayName: 'LAPTOP-ADMIN' }], [{ cls: 'passkey', os: 'iOS', method: 'Passkey (device-bound)' }, { cls: 'windowsHello', os: 'Windows', method: 'Windows Hello for Business' }], ['Windows', 'iOS'])
+    const helloReady = spare[0]
+    const macPasskey = spare[1]
+    const unread = spare[2]
+    const passkeyGone = spare[3]
+    if (helloReady) proven(helloReady, ['microsoftAuthenticatorPush', 'windowsHelloForBusiness'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'windowsHelloForBusiness', id: 'demo-hello-1', displayName: 'DESKTOP-4KD' }], [{ cls: 'windowsHello', os: 'Windows', method: 'Windows Hello for Business' }], ['Windows'])
+    if (macPasskey) proven(macPasskey, ['microsoftAuthenticatorPush', 'passKeyDeviceBound'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey', id: 'demo-passkey-mac', displayName: 'MacBook' }], [{ cls: 'passkey', os: 'macOS', method: 'Passkey (device-bound)' }, { cls: 'passkey', os: 'iOS', method: 'Passkey (device-bound)' }], ['macOS', 'iOS'])
+    if (passkeyGone) {
+      proven(passkeyGone, ['microsoftAuthenticatorPush'], [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }], [], ['iOS'])
+      mfaHistory = {
+        schema: 1,
+        asOf: daysAgo(9),
+        people: { [passkeyGone]: { methods: [{ key: 'demo-passkey-gone', cls: 'passkey', firstSeen: daysAgo(60), lastSeen: daysAgo(9), present: true }], proofs: [{ cls: 'passkey', os: 'iOS', at: daysAgo(12), method: 'Passkey (device-bound)' }], platforms: [{ os: 'iOS', at: daysAgo(12) }] } },
+      }
+    }
+    if (unread) {
+      setUser(unread, { lastSuccessfulSignIn: daysAgo(2), userType: 'member', externalUserState: null })
+      authMethods[unread] = 'unknown'
+      signInEvidence[unread] = { signInCount: 6, lastSignIn: daysAgo(2), lastMfaSuccess: null, countries: ['AU'], proofs: [], platforms: [{ os: 'Windows', at: daysAgo(2) }] }
+      unreadRegistration = unread
+    }
     // A Teams Room shared-device account (scenario 8): the reserved last id.
     const shared = users.find((x) => x.id === sharedId(ids))
     if (shared) {
@@ -387,9 +447,16 @@ export function buildFixture(spec: Spec): Fixture {
       setReg(shared.id, { methodsRegistered: ['microsoftAuthenticatorPush'], isPasswordlessCapable: false })
       authMethods[shared.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
     }
-    // Week two: three of the unproven are now proven (prompt 50 Part 4 item 14).
+    // Week two: three of the people who had only Authenticator have set up a
+    // passkey and signed in with it from the PC they use (prompt 50 Part 4 item
+    // 14; Step 7), so they are Ready.
     if (spec.week2) {
-      for (const id of unproven.slice(0, 3)) if (signInEvidence[id]) signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: { at: daysAgo(2), method: 'Mobile app notification' } }
+      for (const id of unproven.slice(0, 3)) {
+        if (!signInEvidence[id]) continue
+        setReg(id, { isPasswordlessCapable: true, methodsRegistered: ['microsoftAuthenticatorPush', 'passKeyDeviceBound'] })
+        authMethods[id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey', id: `demo-passkey-${id.slice(-4)}`, createdDateTime: daysAgo(4) }]
+        signInEvidence[id] = { ...signInEvidence[id], lastMfaSuccess: { at: daysAgo(2), method: 'Passkey (device-bound)' }, proofs: [{ cls: 'passkey', os: 'Windows', at: daysAgo(2), method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: daysAgo(2) }] }
+      }
     }
   }
   const bgGroup = guid(seed, 1_000_500)
@@ -548,7 +615,7 @@ export function buildFixture(spec: Spec): Fixture {
       users: ok(),
       devices: hostile ? { status: 'disabled', coveredWindow: null, reason: 'access denied (403)', asOf: NOW } : ok(),
       spActivity: ok(),
-      authMethods: ok(),
+      authMethods: unreadRegistration ? { ...ok(), status: 'partial' as const, reason: "1 users' methods unavailable" } : ok(),
       appSignInSummary: ok(),
       signInEvidence: hostile || !p1 ? { status: 'insufficient', coveredWindow: null, reason: hostile ? 'no sign-in records could be read' : 'not available on this licence', asOf: NOW } : ok({ coveredWindow: { from: daysAgo(30), to: NOW } }),
     },
@@ -569,7 +636,8 @@ export function buildFixture(spec: Spec): Fixture {
       organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${seed}.example.com`, isInitial: false }, { name: `${seed}.onmicrosoft.com`, isInitial: true }] }]),
       meMemberOf: section([]),
     },
-    registrationDetails: hostile ? [] : registrationDetails,
+    // The person whose methods could not be read is not in the registration report either: nothing says what they hold.
+    registrationDetails: hostile ? [] : registrationDetails.filter((r) => r.id !== unreadRegistration),
     users,
     devices: hostile
       ? []
@@ -578,6 +646,7 @@ export function buildFixture(spec: Spec): Fixture {
     authMethods: hostile ? Object.fromEntries(Object.keys(authMethods).map((k) => [k, 'unknown' as const])) : authMethods,
     appSignInSummary: [{ appId: '00000003-0000-0ff1-ce00-000000000000', appDisplayName: 'Office 365 SharePoint Online', signInCount: spec.users * 12 }],
     signInEvidence: hostile ? {} : signInEvidence,
+    mfaHistory,
     evidencePolicyResults: week2Results,
     blockedToday: [],
     evidenceUsage: hostile ? null : { legacyAuth: { count: svcIds.length * 40, userIds: svcIds, byDetail: { 'IMAP4': svcIds.length * 40 } }, deviceCode: { count: 0, userIds: [], byDetail: {} }, authTransfer: { count: 0, userIds: [], byDetail: {} }, riskHigh: { count: 0, userIds: [], byDetail: {} }, riskMedium: { count: 0, userIds: [], byDetail: {} } },

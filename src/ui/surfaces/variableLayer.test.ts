@@ -64,11 +64,12 @@ test('the campaign lists and the special-care picker derive from Today', () => {
   const run = runFixture(f)
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf, now: f.snapshot.asOf })
-  // Today's ladder over the same people: the campaign's groups are its rungs (derive/ladder.ts).
+  // MFA Readiness over the same people: the campaign's groups are its states (Step 7).
   const tv = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
-  assert.equal(cl.noMethod.length, tv.ladder.rungs[1].length, 'Nothing set up matches Today')
-  assert.equal(cl.unproven.length, tv.ladder.rungs[2].length, 'Set up, not proven matches Today')
-  assert.ok(cl.noMethod.length > 0 && cl.unproven.length > 0, 'the demo has people in these buckets')
+  assert.equal(cl.noMethod.length + cl.needsSetup.length, tv.counts.needsSetup, 'Needs setup matches MFA Readiness')
+  assert.equal(cl.needsProof.length, tv.counts.needsProof, 'Needs proof matches MFA Readiness')
+  assert.equal(cl.readinessUnknown.length, tv.counts.unknown, 'Unknown matches MFA Readiness')
+  assert.ok(cl.noMethod.length > 0 && cl.needsProof.length > 0, 'the demo has people in these buckets')
   assert.ok(cl.specialCare.length > 0, 'the special-care picker has people')
   for (const row of cl.specialCare) {
     assert.match(row, /\S · \S/, `"${row}" has a name and a state, not an empty "·"`)

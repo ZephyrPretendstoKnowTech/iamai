@@ -90,6 +90,8 @@ export function bigFixtureSnapshot(opts: BigFixtureOptions = {}): TenantSnapshot
         signInCount: count,
         lastSignIn: daysAgo(lastDays),
         lastMfaSuccess: mfa ? { at: daysAgo(lastDays), method: 'Mobile app notification' } : null,
+        proofs: mfa ? [{ cls: 'authenticator', os: 'Windows', at: daysAgo(lastDays), method: 'Mobile app notification' }] : [],
+        platforms: [{ os: 'Windows', at: daysAgo(lastDays) }],
       }
     }
   }

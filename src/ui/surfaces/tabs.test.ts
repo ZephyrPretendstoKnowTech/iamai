@@ -7,7 +7,7 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { readinessTable } from './inventoryTables.ts'
-import { methodWord, nextStateWord, readinessWord, roleWord, rowEvidenceText } from './readinessCells.ts'
+import { actionOf, methodsCell, proofLines, readinessWord, roleWord, rowCells } from './readinessCells.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { stepVars } from './stepVars.ts'
@@ -29,21 +29,22 @@ import { fillText } from '../../content/render.ts'
 
 const FIXTURES = ['demo', 'getiamai'] as const
 
-test('MFA Readiness as CSV writes the readiness word, the method word, the proof line and the next state the table renders', () => {
+test('MFA Readiness as CSV writes the role, the methods, the proof lines, the readiness word and the action the worklist renders', () => {
   for (const name of FIXTURES) {
     const f = fixture(name)
     const view = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
     const table = readinessTable(f.snapshot, f.mapping)
-    // The approved pack's six person zones, in its order (task 037).
-    assert.deepEqual(table.header, ['Account', 'Role', 'Strongest method', 'Proof', 'Readiness', 'Next step'])
+    // The final reference's six zones, in its order (Step 7).
+    assert.deepEqual(table.header, ['Person', 'Role', 'Methods', 'Proof', 'Readiness', 'Action'])
     assert.equal(table.csvName, 'iamai-mfa-readiness.csv')
     assert.equal(table.rows.length, view.rows.length, `${name}: one CSV row per table row`)
     view.rows.forEach((r, i) => {
       assert.equal(table.rows[i][1], roleWord(r), `${name} row ${i}: the role word`)
-      assert.equal(table.rows[i][2], methodWord(r.method), `${name} row ${i}: the method word`)
-      assert.equal(table.rows[i][3], rowEvidenceText(r), `${name} row ${i}: the proof line`)
+      assert.equal(table.rows[i][2], methodsCell(r).main, `${name} row ${i}: the methods`)
+      assert.equal(table.rows[i][3], proofLines(r).map((l) => l.text).join('; '), `${name} row ${i}: the proof lines`)
       assert.equal(table.rows[i][4], readinessWord(r), `${name} row ${i}: the readiness word`)
-      assert.equal(table.rows[i][5], nextStateWord(r), `${name} row ${i}: the next state`)
+      assert.equal(table.rows[i][5], actionOf(r)?.text ?? '', `${name} row ${i}: the action`)
+      assert.deepEqual(table.rows[i].slice(1), rowCells(r), `${name} row ${i}: one set of cells`)
     })
   }
 })

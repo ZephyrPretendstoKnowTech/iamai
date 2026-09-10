@@ -24,16 +24,12 @@ test('a collapsed tip survives a reload, and the ? reopens it', () => {
   assert.equal(tipCollapsed('plan', null), false, 'no store: open')
 })
 
-test('MFA Readiness and Export render their tip once, from their own content key; the Plan and the step render none', () => {
-  const surfaces: [string, string, string][] = [
-    ['src/ui/surfaces/MfaReadiness.tsx', 'readiness', String((pages.readiness as Record<string, unknown>).tip)],
-    ['src/ui/surfaces/Export.tsx', 'export', String((pages.export as Record<string, unknown>).tip)],
-  ]
-  for (const [file, page, tip] of surfaces) {
-    assert.ok(tip.length > 0, `${page}: the content file has a tip`)
-    const src = readFileSync(file, 'utf8')
-    const renders = src.match(new RegExp(`<PageTip page="${page}"`, 'g')) ?? []
-    assert.equal(renders.length, 1, `${file} renders its tip once`)
-  }
-  for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/ContentStep.tsx']) assert.ok(!/<PageTip/.test(readFileSync(file, 'utf8')), `${file} renders no tip`)
+test('Export renders its tip once, from its own content key; MFA Readiness, the Plan and the step render none', () => {
+  const tip = String((pages.export as Record<string, unknown>).tip)
+  assert.ok(tip.length > 0, 'export: the content file has a tip')
+  const renders = readFileSync('src/ui/surfaces/Export.tsx', 'utf8').match(/<PageTip page="export"/g) ?? []
+  assert.equal(renders.length, 1, 'src/ui/surfaces/Export.tsx renders its tip once')
+  // MFA Readiness's final reference has no tip: the summary's sub-line says what Ready means (Step 7).
+  assert.ok(!('tip' in (pages.readiness as Record<string, unknown>)), 'pages.readiness carries no tip')
+  for (const file of ['src/ui/surfaces/MfaReadiness.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/ContentStep.tsx']) assert.ok(!/<PageTip/.test(readFileSync(file, 'utf8')), `${file} renders no tip`)
 })

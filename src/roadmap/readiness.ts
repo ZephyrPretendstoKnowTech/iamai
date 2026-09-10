@@ -5,7 +5,6 @@ import type { Readiness } from './types.ts'
 import { deviceScopeOf } from './answers.ts'
 import type { DeviceScope } from './answers.ts'
 import { isPhoneOs } from '../derive/platforms.ts'
-import { rungOf } from '../derive/ladder.ts'
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
@@ -22,28 +21,36 @@ const BLOCK_GOALS = new Set(['block-legacy-auth', 'block-device-code', 'block-au
 const LOCATION_GOALS = new Set(['geo-restriction'])
 
 /**
- * The one reading of "this person can already meet an ordinary MFA
- * requirement": an active person the scoring has seen pass MFA, or holds a
- * method it can say will work. It is deliberately *not* rung 5.
- *
- * MFA Readiness asks the organisation to get everyone to a proven passkey. A
- * policy that requires ordinary MFA is not held back because somebody has not
- * got there yet, and this predicate is why: the percentage below and the
- * roadmap's own count of who is not ready (roadmap/generate.ts) both read it,
- * so a step is measured against its own requirement and nothing else.
+ * The one reading of ready the MFA gate counts (Step 7, owner decision): an
+ * active person who is Ready — a current method that satisfies the
+ * phishing-resistant strength, with qualifying proof on every platform IAMAI
+ * has seen them use (scoring/phishingResistant.ts). Needs proof is not ready,
+ * Unknown is not ready, and registration metadata (a current app version, a
+ * method registered recently) is never ready. The percentage below, the
+ * roadmap's count of who is not ready, MFA Readiness's summary and its table all
+ * read this one state.
  */
-export function mfaReady(v: Pick<MfaViability, 'activity' | 'mfa'>): boolean {
-  return v.activity === 'active' && (v.mfa === 'verified' || v.mfa === 'likelyViable')
+export function mfaReady(v: Pick<MfaViability, 'activity' | 'readiness'>): boolean {
+  return v.activity === 'active' && v.readiness.state === 'ready'
 }
 
 /**
- * The one reading of "this admin already meets a phishing-resistant
- * requirement" (E7): Passkey or security key, proven — derive/ladder.ts rung 5,
- * the same rung the lockout list reads. A policy that asks for the stronger
- * method may legitimately wait for it.
+ * The same state for the admin gate (E7): an admin is ready when they are Ready.
+ * Windows Hello for Business proven on the platforms an admin uses satisfies a
+ * phishing-resistant policy as fully as a passkey does.
  */
-export function adminReady(v: MfaViability): boolean {
-  return rungOf(v) === 5
+export function adminReady(v: Pick<MfaViability, 'readiness'>): boolean {
+  return v.readiness.state === 'ready'
+}
+
+/**
+ * The fewest Ready people out of `active` that the gate accepts, under the same
+ * rounding `readinessFor` states the percentage with — so "N of M must be Ready"
+ * and the Plan's "reaches 90% (now X%)" can never disagree about the line.
+ */
+export function readyNeeded(active: number, thresholdPercent: number): number {
+  for (let n = 0; n <= active; n++) if (Math.round((n / active) * 100) >= thresholdPercent) return n
+  return active
 }
 
 export function goalFamily(goalId: string): Readiness['family'] {
@@ -78,6 +85,13 @@ export function readinessFor(
   if ((family === 'mfa' || family === 'guest' || family === 'admin') && registration && registration.status !== 'ok' && registration.status !== 'partial') {
     return { family, percent: null, unmeasured: 'unreadable', lines: [] }
   }
+  // Readiness is proof, and proof is read from the sign-in records: records the
+  // scan could not read are not a tenant where nobody is ready (Step 7). The
+  // percentage is not stated rather than stated as 0%.
+  const signIns = snapshot.sources?.signInEvidence
+  if ((family === 'mfa' || family === 'guest' || family === 'admin') && signIns && signIns.status !== 'ok' && signIns.status !== 'partial') {
+    return { family, percent: null, unmeasured: 'unreadable', lines: [] }
+  }
   const devicesSource = snapshot.sources?.devices
   if (family === 'device' && devicesSource && devicesSource.status !== 'ok' && devicesSource.status !== 'partial') {
     return { family, percent: null, unmeasured: 'unreadable', lines: [] }
@@ -94,7 +108,7 @@ export function readinessFor(
     return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }
   }
   if (family === 'admin') {
-    // One definition of enough (E7): an admin is ready at Passkey or security key, proven (derive/ladder.ts rung 5), the same rung the lockout list reads.
+    // One definition of enough (E7): an admin is ready when Ready (scoring/phishingResistant.ts), the state the admin lists read.
     const ready = rows.filter(adminReady).length
     const percent = rows.length > 0 ? Math.round((ready / rows.length) * 100) : null
     return { family, percent, ...(percent === null ? { unmeasured: 'no-population' as const } : {}), lines: [] }

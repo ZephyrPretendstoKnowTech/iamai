@@ -44,6 +44,8 @@ import { activePeopleIds } from '../derive/population.ts'
 import { notPeopleIds } from '../derive/sets.ts'
 import type { PolicyOperation } from './types.ts'
 import type { Step, StepStatus } from './types.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
 
 const fixtures = allFixtures()
 /** Every fixture's plan, derived once through the wiring the Plan page uses. */
@@ -1123,7 +1125,18 @@ type PairRow = Record<string, unknown>
 function pairPlan(): { bare: typeof W2.snapshot; run: ReturnType<typeof runFixture> } {
   const ca = W2.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const bare = { ...W2.snapshot, config: { ...W2.snapshot.config, caPolicies: { ...ca, rows: [] } } }
-  return { bare, run: runFixture({ ...W2, snapshot: bare }, { snapshot: bare } as never) }
+  // The pair cases are about how members aggregate, not about the guest readiness
+  // prerequisite (roadmap/operations.ts readinessGate), so the tenant's guests are
+  // Ready first (Step 7: a passkey proven on the platform they use). Without it the
+  // guests gate holds the step and every case would be testing the hold.
+  const viability = guestsReady(runFixture({ ...W2, snapshot: bare }, { snapshot: bare } as never).viability, bare)
+  return { bare, run: runFixture({ ...W2, snapshot: bare }, { snapshot: bare, viability } as never) }
+}
+
+const READY_GUEST = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })
+function guestsReady(viability: MfaViability[], snapshot: typeof W2.snapshot): MfaViability[] {
+  const guests = new Set(snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+  return viability.map((v) => (guests.has(v.userId) ? { ...v, readiness: READY_GUEST } : v))
 }
 
 const pairScope = (): Parameters<typeof applyProgress>[7] => ({

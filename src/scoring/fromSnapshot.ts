@@ -32,6 +32,11 @@ export function buildViabilityInputs(
   const evidenceSource = snapshot.sources.signInEvidence
   const evidenceStatus: EvidenceStatus =
     evidenceSource.status === 'error' ? 'disabled' : evidenceSource.status
+  // Proof per method and platform is recorded from Step 7 on. A snapshot whose
+  // records carry none of it was read before then: its proof is not read, which
+  // is Unknown and never "no proof". A snapshot with no records at all has none.
+  const records = Object.values(snapshot.signInEvidence)
+  const proofsRecorded = records.length === 0 || records.some((e) => Array.isArray(e.proofs))
   // One definition of admin (roles.ts): the directory's role holders. The
   // registration report carries its own admin flag, refreshed on Microsoft's
   // schedule and over Microsoft's role list, so Today's line and its Admin tags
@@ -46,6 +51,8 @@ export function buildViabilityInputs(
       covered: evidenceSource.coveredWindow,
       // The records alone: the signed-in account's sign-in for this scan is never evidence.
       lastMfaSuccess: userEvidence?.lastMfaSuccess ?? null,
+      proofs: proofsRecorded ? (userEvidence?.proofs ?? []) : null,
+      platforms: userEvidence?.platforms ?? [],
     }
     return {
       userId: u.id,
@@ -68,6 +75,7 @@ export function buildViabilityInputs(
       lastSuccessfulSignIn: u.lastSuccessfulSignIn,
       accountCreated: u.createdDateTime,
       evidence,
+      history: snapshot.mfaHistory?.people?.[u.id] ?? null,
       tenant: { now, newestAuthenticatorVersionByPlatform },
     }
   })

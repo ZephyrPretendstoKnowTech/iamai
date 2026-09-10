@@ -707,9 +707,14 @@ test("the demo's week two: the tenant switched its own policy on, so the row rea
 function everybodyProven(name: Parameters<typeof fixture>[0]): { f: Fixture; run: ReturnType<typeof runFixture> } {
   const base = fixture(name)
   const snapshot = structuredClone(base.snapshot)
-  const evidence = (snapshot as unknown as { signInEvidence: Record<string, { lastSignIn: string | null; lastMfaSuccess: unknown }> }).signInEvidence
-  for (const [id, row] of Object.entries(evidence)) {
-    evidence[id] = { ...row, lastMfaSuccess: { at: row.lastSignIn ?? snapshot.asOf, method: 'Mobile app notification' } }
+  // Ready is phishing-resistant (Step 7): each person with records holds a
+  // passkey and has signed in with it on every platform the records show.
+  for (const [id, row] of Object.entries(snapshot.signInEvidence)) {
+    const at = row.lastSignIn ?? snapshot.asOf
+    const platforms = row.platforms && row.platforms.length > 0 ? row.platforms : [{ os: 'Windows' as const, at }]
+    snapshot.signInEvidence[id] = { ...row, lastMfaSuccess: { at, method: 'Passkey (device-bound)' }, proofs: platforms.map((p) => ({ cls: 'passkey' as const, os: p.os, at, method: 'Passkey (device-bound)' })), platforms }
+    const held = snapshot.authMethods[id]
+    snapshot.authMethods[id] = [...(Array.isArray(held) ? held : []), { kind: 'passkey' }]
   }
   const f: Fixture = { ...base, snapshot }
   return { f, run: runFixture(f) }

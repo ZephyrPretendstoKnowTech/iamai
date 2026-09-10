@@ -12,6 +12,8 @@ import { SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
+import { GENERIC_MFA, PLATFORMS, latestProofs, readSignIn } from '../../scoring/phishingResistant.ts'
+import type { ProofRecord } from '../../scoring/phishingResistant.ts'
 import type {
   BlockedTodayEntry,
   EvidenceAggregates,
@@ -235,27 +237,20 @@ export function riskLevelOf(row: StoredSignIn): 'none' | 'low' | 'medium' | 'hig
   return top === 3 ? 'high' : top === 2 ? 'medium' : top === 1 ? 'low' : 'none'
 }
 
-/** The record that says MFA happened and names no method: mfaSuccessOf's fallback. */
-export const GENERIC_MFA = 'MFA'
+/** The record that says MFA happened and names no method. */
+export { GENERIC_MFA }
 
-function mfaSuccessOf(row: StoredSignIn): string | null {
-  if (row.status?.errorCode !== 0) return null
-  const step = (row.authenticationDetails ?? [])?.find(
-    (d) =>
-      d?.succeeded === true &&
-      typeof d.authenticationMethod === 'string' &&
-      !/^password$|^previously satisfied$/i.test(d.authenticationMethod),
-  )
-  // A blank method field names nothing: on a record that says MFA was required
-  // it is the generic fact (MFA happened), never a method and never silence.
-  const named = ((row.mfaDetail?.authMethod || step?.authenticationMethod) ?? '').trim()
-  if (row.authenticationRequirement === 'multiFactorAuthentication') return named || GENERIC_MFA
-  return named || null
-}
-
-// Per-user evidence (lastMfaSuccess etc.) — the table §10 consumes.
+// Per-user evidence (lastMfaSuccess, the proof per method and platform, the
+// platforms seen) — the table §10 consumes. What one record proves is
+// scoring/phishingResistant.ts readSignIn's answer, so a single-factor sign-in
+// with a named step is not an MFA success, and a sign-in proves the method it
+// used and no other.
 export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvidence> {
   const perUser: Record<string, UserEvidence> = {}
+  // Proof is kept per method class and platform family, never in one slot: a
+  // later Authenticator sign-in cannot hide an earlier passkey one.
+  const proofs = new Map<string, ProofRecord[]>()
+  const platforms = new Map<string, Map<string, string>>()
   // The latest record of each kind, kept apart while the rows are read: a
   // record that names a method is proof of that method, a generic one is
   // proof only that MFA happened. Graph returns the newest row first, so one
@@ -271,17 +266,28 @@ export function aggregate(rows: Iterable<StoredSignIn>): Record<string, UserEvid
     if (row.country && !u.countries?.includes(row.country)) (u.countries ??= []).push(row.country)
     const at = row.createdDateTime
     if (u.lastSignIn === null || at > u.lastSignIn) u.lastSignIn = at
-    const method = mfaSuccessOf(row)
-    if (method) {
-      const into = method === GENERIC_MFA ? generic : named
+    const read = readSignIn(row)
+    if (read.mfa) {
+      const into = read.mfa === GENERIC_MFA ? generic : named
       const held = into.get(row.userId)
-      if (held === undefined || at > held.at) into.set(row.userId, { at, method })
+      if (held === undefined || at > held.at) into.set(row.userId, { at, method: read.mfa })
+    }
+    if (read.proof) proofs.set(row.userId, [...(proofs.get(row.userId) ?? []), read.proof])
+    if (read.platform) {
+      const seen = platforms.get(row.userId) ?? new Map<string, string>()
+      if (!seen.has(read.platform) || at > (seen.get(read.platform) as string)) seen.set(read.platform, at)
+      platforms.set(row.userId, seen)
     }
   }
   // The method the person proved outlives every later record that names none,
   // in whatever order the rows arrived; a generic record stands alone only when
   // no record in the window named a method.
-  for (const [id, u] of Object.entries(perUser)) u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
+  for (const [id, u] of Object.entries(perUser)) {
+    u.lastMfaSuccess = named.get(id) ?? generic.get(id) ?? null
+    u.proofs = latestProofs(proofs.get(id) ?? []).sort((a, b) => (a.cls < b.cls ? -1 : a.cls > b.cls ? 1 : (a.os ?? '') < (b.os ?? '') ? -1 : 1))
+    const seen = platforms.get(id)
+    u.platforms = PLATFORMS.filter((os) => seen?.has(os)).map((os) => ({ os, at: seen?.get(os) as string }))
+  }
   return perUser
 }
 

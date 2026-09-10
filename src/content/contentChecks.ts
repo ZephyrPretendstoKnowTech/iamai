@@ -45,19 +45,13 @@ export const AUTHORITIES = [
   'pages.app.shell.tabs.readiness',
   'pages.app.shell.tabs.export',
   'pages.app.shell.tabs.how',
-  // The ladder's five rung titles: a person's badge and Connect's Plan tile.
-  'pages.ladder.rungs.r5.title',
-  'pages.ladder.rungs.r4.title',
-  'pages.ladder.rungs.r3.title',
-  'pages.ladder.rungs.r2.title',
-  'pages.ladder.rungs.r1.title',
-  // MFA Readiness: the summary sentence, its empty-tenant form, the three groupings.
+  // MFA Readiness: the summary sentence, its empty-tenant form, the Ready state and the three summary counts.
   'pages.readiness.summary',
   'pages.readiness.summaryNone',
-  'pages.readiness.unknownMethods',
-  'pages.readiness.groups.ready.title',
-  'pages.readiness.groups.needsProof.title',
-  'pages.readiness.groups.needsPasskey.title',
+  'pages.readiness.states.ready.title',
+  'pages.readiness.states.needsProof.stat',
+  'pages.readiness.states.needsSetup.stat',
+  'pages.readiness.states.unknown.stat',
   // The two completion gates a report-only policy renders under Done when.
   'shared.policyDoneWhenTracked[]',
   'shared.engine.tracking.windowCloses',
@@ -84,12 +78,10 @@ export const RE = {
   gateReadyNow: /ready now: 0 failures in \d+ days/,
   /** The date column of a report-only row. */
   rowWhen: /^(ready now|held until the records clear|ready \S.*\d{4})$/,
-  /** The readiness summary, in either tense: pluralise() bends the verb to the count. */
-  readinessSummary: /(\d+) of (\d+) active (?:person|people) (?:have|has) proven/,
+  /** The readiness summary, in either tense: pluralise() may bend the verb to the count. */
+  readinessSummary: /(\d+) of (\d+) (?:is|are) Ready\./,
   /** A tenant with nobody active says so instead, and has no numbers to state. */
   readinessSummaryNone: /No active people to count/,
-  /** The accounts whose registered methods the scan could not read. */
-  readinessUnknown: /could not be read for (\d+) active people/,
 }
 
 /**
@@ -107,19 +99,12 @@ export function headerTabsLine(): string {
   return HEADER_TAB_KEYS.map((k) => textAt(`pages.app.shell.tabs.${k}`)).join(' · ')
 }
 
-/** The ladder's rung titles, top rung first (derive/ladder.ts RUNGS through pages.ladder). */
-export function rungTitles(): string[] {
-  return (readinessModel.COMPAT_SHOW_KEYS ?? [])
-    .filter((k) => k.startsWith('rung-'))
-    .map((k) => textAt(`pages.ladder.rungs.r${k.slice(5)}.title`))
+/** The three counts MFA Readiness's summary shows beside Ready, in page order (derive/mfaReadiness.ts SUMMARY_STATES). */
+export function readinessStatTitles(): string[] {
+  return (readinessModel.SUMMARY_STATES ?? []).map((k) => textAt(`pages.readiness.states.${k}.stat`))
 }
 
-/** The three groupings MFA Readiness counts over the active people, in page order. */
-export function readinessGroupTitles(): string[] {
-  return ['ready', 'needsProof', 'needsPasskey'].map((k) => textAt(`pages.readiness.groups.${k}.title`))
-}
-
-/** The word on MFA Readiness's unfiltered filter, so the walk can clear one it pressed. */
+/** The word on MFA Readiness's every-active-person filter, so the walk can clear one it pressed. */
 export function readinessAllWord(): string {
   return textAt('pages.readiness.show.all')
 }
@@ -193,16 +178,10 @@ export function staticFindings(): Finding[] {
   const tabs = headerTabsLine()
   if (tabs.split(' · ').filter(Boolean).length !== HEADER_TAB_KEYS.length) add(`content pages.app.shell.tabs: the header line reads "${tabs}"; ${HEADER_TAB_KEYS.length} tabs are named`)
 
-  // The ladder gives five rung titles, all distinct.
-  const rungs = rungTitles()
-  if (rungs.length !== 5 || rungs.some((t) => !t) || new Set(rungs).size !== 5) {
-    add(`content pages.ladder.rungs: the rung titles read ${JSON.stringify(rungs)}; five distinct titles are named`)
-  }
-
-  // MFA Readiness counts three groups, all distinct.
-  const groups = readinessGroupTitles()
+  // MFA Readiness's summary counts three states beside Ready, all distinct.
+  const groups = readinessStatTitles()
   if (groups.length !== 3 || groups.some((t) => !t) || new Set(groups).size !== 3) {
-    add(`content pages.readiness.groups: the counts read ${JSON.stringify(groups)}; three distinct titles are named`)
+    add(`content pages.readiness.states: the summary counts read ${JSON.stringify(groups)}; three distinct titles are named`)
   }
 
   // The readiness summary reads in either tense, and its empty and unknown forms
@@ -219,9 +198,6 @@ export function staticFindings(): Finding[] {
   }
   if (!RE.readinessSummaryNone.test(textAt('pages.readiness.summaryNone'))) {
     add(`content pages.readiness.summaryNone: reads "${textAt('pages.readiness.summaryNone')}", which the readiness check cannot read`)
-  }
-  if (!RE.readinessUnknown.test(fillText(textAt('pages.readiness.unknownMethods'), { n: 3 }))) {
-    add(`content pages.readiness.unknownMethods: reads "${fillText(textAt('pages.readiness.unknownMethods'), { n: 3 })}", which the readiness check cannot read`)
   }
 
   // The two completion gates, filled the way the engine fills them.

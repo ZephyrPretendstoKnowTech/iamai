@@ -40,7 +40,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 import { adminUserIds, learnRoleNames, roleListSummary } from '../roles.ts'
 import { policyPairNames, proposedPolicyName } from '../coverage/naming.ts'
-import { rolloutBucket, summarizeTenant } from '../scoring/mfaViability.ts'
+import { rolloutBucket } from '../scoring/mfaViability.ts'
 import type { NameDirectory } from '../names.ts'
 import { collidingGuestIds } from '../names.ts'
 import { isAllowlistGeoPolicy, tenantCountryLocation } from '../mapping/countries.ts'
@@ -1680,7 +1680,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         if (semantics.guestsOnly) return MANAGER.guest(cohortActive.length)
         const notReady = cohortActive.filter((id) => {
           const v = viabilityById.get(id)
-          return v === undefined || !(v.mfa === 'verified' || v.mfa === 'likelyViable')
+          return v === undefined || !mfaReady(v)
         }).length
         return MANAGER.mfa(cohortActive.length, notReady)
       }
@@ -1784,7 +1784,9 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // Required whenever anyone enabled still has to be set up (ux-review-04 §2):
     // the Overview sentence, the blocked-step reasons and the pace all read
     // from this one number.
-    const toSetUp = summarizeTenant(viability).rollout.toSetUp
+    // The active people not Ready yet (scoring/phishingResistant.ts): the one
+    // count MFA Readiness and the MFA gate read, not a second "to set up".
+    const toSetUp = viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state !== 'ready').length
     const verifyDone = toSetUp === 0
     steps.push({
       ...prereq('s-verify-mfa'),
@@ -2006,7 +2008,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // The registration window is sized by who still needs a proven method: five
   // a working day, at most twenty working days, alongside the first soak
   // (target-state §9). Never by the size of the tenant.
-  const toSetUpIds = viability.filter((v) => rolloutBucket(v) === 'noMethod' || rolloutBucket(v) === 'unproven').map((v) => v.userId)
+  const toSetUpIds = viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state !== 'ready').map((v) => v.userId)
   const registration = registrationWindow(toSetUpIds)
   // A step the person said does not apply here leaves its phase for the footer:
   // it takes no slot and nothing waits on it.
@@ -2084,7 +2086,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // The campaign names its registered-but-unproven and no-method active people (prompt 48.1 item 6).
     if (s2.kind === 'verify') {
       const bgSet = new Set(mapping.breakGlassUserIds)
-      const unproven = viability.filter((v) => rolloutBucket(v) === 'unproven' && !bgSet.has(v.userId)).map((v) => v.userId)
+      // Needs proof (scoring/phishingResistant.ts): a qualifying method not yet proven everywhere the person signs in.
+      const unproven = viability.filter((v) => rolloutBucket(v) !== null && v.readiness.state === 'needsProof' && !bgSet.has(v.userId)).map((v) => v.userId)
       const noMethod = viability.filter((v) => rolloutBucket(v) === 'noMethod' && !bgSet.has(v.userId)).map((v) => v.userId)
       const date = absoluteDate(s2.events?.enforce.at ?? schedule.targetEnd)
       s2.scenarioLines = [

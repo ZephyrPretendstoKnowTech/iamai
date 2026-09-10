@@ -7,14 +7,14 @@
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
-import { rolloutBucket } from '../scoring/mfaViability.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
+import { READINESS_STATES } from '../scoring/phishingResistant.ts'
+import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { adminUserIds, ROLE_TEMPLATES } from '../roles.ts'
 import { CORE_ADMIN_ROLE_IDS } from '../coverage/classify.ts'
 import { sharedDeviceIds } from './sharedDevices.ts'
 import { notActiveUsers, notPeopleIds } from './sets.ts'
-import { RUNGS, ladder, rungOf } from './ladder.ts'
-import type { Rung } from './ladder.ts'
+import { ladder } from './ladder.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { pages } from '../content/content.ts'
 
@@ -27,10 +27,12 @@ export type ListContext = {
   mfaInPlace?: boolean
 }
 
-// The readiness word for the special-care picker: the rung's title (pages.ladder), or Not active (pages.readiness.show).
-type LadderWords = { rungs: Record<`r${Rung}`, { title: string }> }
-const rungTitle = (rung: Rung): string => (pages.ladder as unknown as LadderWords).rungs[`r${rung}`].title
-const stateWord = (v: MfaViability): string => (v.activity === 'active' ? rungTitle(rungOf(v)) : (pages.readiness as { show: { notActive: string } }).show.notActive)
+// The readiness word for the special-care picker: the state's title (pages.readiness.states), or Not active (pages.readiness.show).
+type ReadinessWords = { states: Record<ReadinessState, { title: string }>; show: { notActive: string } }
+const stateWord = (v: MfaViability): string => {
+  const W = pages.readiness as unknown as ReadinessWords
+  return v.activity === 'active' ? W.states[v.readiness.state].title : W.show.notActive
+}
 
 const roleName = (id: string): string => ROLE_TEMPLATES.find((r) => r.templateId.toLowerCase() === id.toLowerCase())?.name ?? id
 const people = (ev: { people: string[] } | undefined | null): string[] => ev?.people ?? []
@@ -44,23 +46,28 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const { snapshot, mapping, nameOf, now } = ctx
   // The emergency and service accounts are not people (sets.ts notPeopleIds): the one population.
   const svc = notPeopleIds(mapping)
-  // The ladder (derive/ladder.ts) scores the people once and counts the
-  // campaign's population on its rungs: the groups here are its rungs, so the
-  // campaign step's numbers are the facts every surface shows (derive/facts.ts).
+  // The partition (derive/ladder.ts) scores the people once and counts the
+  // campaign's population by readiness state, so the campaign step's numbers are
+  // the facts MFA Readiness shows (derive/facts.ts).
   const l = ladder(snapshot, mapping, now)
   const viability = [...l.viability.values()]
   const bg = new Set(mapping.breakGlassUserIds)
-  const active = RUNGS.flatMap((r) => l.rungs[r].map((p) => p.viability))
+  const active = READINESS_STATES.flatMap((s) => l.states[s].map((p) => p.viability))
   const names = (ids: readonly string[]): string[] => ids.map(nameOf)
   const scen = snapshot.scenarioEvidence ?? null
 
-  // The registration campaign's groups are the ladder's rungs: each person
-  // once, on their rung. With Require MFA for Everyone in place every sign-in
-  // completes MFA, so nobody is asked for one MFA sign-in: the rung-2 group is
-  // empty under the policy (Today keeps stating the records' fact).
-  const onRung = (rung: Rung): MfaViability[] => l.rungs[rung].map((p) => p.viability)
-  const noMethod = onRung(1)
-  const unproven = ctx.mfaInPlace === true ? [] : onRung(2)
+  // The registration campaign's groups are MFA Readiness's states: each person
+  // once. Needs setup splits in two, because somebody with no method at all
+  // needs a way in before they can register anything.
+  const inState = (s: ReadinessState): MfaViability[] => l.states[s].map((p) => p.viability)
+  const noMethod = active.filter((v) => v.readiness.state === 'needsSetup' && !v.mfaCapable)
+  const needsSetup = inState('needsSetup').filter((v) => v.mfaCapable)
+  const needsProof = inState('needsProof')
+  const readinessUnknown = inState('unknown')
+  // Ordinary MFA, for the policy that requires it: a method, and no MFA sign-in
+  // in the records. With Require MFA for Everyone in place every sign-in
+  // completes MFA, so nobody is in it.
+  const unproven = ctx.mfaInPlace === true ? [] : active.filter((v) => v.mfaCapable && v.mfa !== 'verified')
   const smsOnly = active.filter((v) => v.signals.smsVoiceOnly || (v.methodTiers.length > 0 && v.methodTiers.every((t) => t === 'smsVoice')))
   const bucketName = (rows: MfaViability[]): string[] => rows.map((v) => nameOf(v.userId))
 
@@ -88,16 +95,16 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const specialCareIds = [...careIds]
 
   // The readiness lists these steps name (E8): who among a set of people is not
-  // yet at Passkey or security key, proven (derive/ladder.ts rung 5), by name
+  // yet Ready for phishing-resistant MFA (scoring/phishingResistant.ts), by name
   // when three or fewer and as a count otherwise. A question about people and
-  // the rung they are on — never a reading of what a policy does. What a step's
-  // own policies would stop rather than prompt is a different question with a
+  // their readiness — never a reading of what a policy does. What a step's own
+  // policies would stop rather than prompt is a different question with a
   // different answer, and only the operation answers it (roadmap/lockout.ts
   // lockoutCount, the row's own count).
   const notYetAtTopRung = (ids: readonly string[]): { names: string[]; count: number | undefined; total: number } => {
     const below = ids.filter((id) => {
       const v = byId.get(id)
-      return v !== undefined && v.activity === 'active' && !bg.has(id) && rungOf(v) !== 5
+      return v !== undefined && v.activity === 'active' && !bg.has(id) && v.readiness.state !== 'ready'
     })
     return { names: below.length <= NAMES_UP_TO ? names(below) : [], count: below.length > NAMES_UP_TO ? below.length : undefined, total: below.length }
   }
@@ -123,11 +130,12 @@ export function contentLists(ctx: ListContext): Record<string, string[]> {
   const azureNonAdmins = (scen?.azureSignIns?.people ?? []).filter((id) => byId.has(id) && !admins.has(id) && !bg.has(id))
 
   return {
-    // The campaign's groups, by rung (derive/ladder.ts).
+    // The campaign's groups, by readiness state (derive/ladder.ts), and the ordinary-MFA list.
     noMethod: bucketName(noMethod),
+    needsSetup: bucketName(needsSetup),
+    needsProof: bucketName(needsProof),
+    readinessUnknown: bucketName(readinessUnknown),
     unproven: bucketName(unproven),
-    rung3: bucketName(onRung(3)),
-    rung4: bucketName(onRung(4)),
     // Lockout-scenario people (scenarioEvidence, from the sign-in rows).
     legacyUsers: names(people(scen?.legacyClients)),
     serverUsers: names(people(scen?.serverSignIns)),

@@ -70,8 +70,10 @@ test('goal counts: Findings tiles sum to the scored goals and match the Roadmap'
 })
 
 test('percentages: the MFA-ready share reads the same on Findings and on the all-users step', () => {
+  // Ready is phishing-resistant readiness (Step 7): the one state the MFA gate counts, never likelyViable metadata.
   const active = summary.activityCounts.active
-  const readyPct = active > 0 ? Math.round(((summary.counts.verified + summary.counts.likelyViable) / active) * 100) : 0
+  const ready = viability.filter((v) => v.activity === 'active' && v.readiness.state === 'ready').length
+  const readyPct = active > 0 ? Math.round((ready / active) * 100) : 0
   const allUsers = steps.find((s) => s.goalId === 'mfa-all-users')
   assert.ok(allUsers, 'the all-users MFA step exists')
   assert.equal(allUsers.readiness.percent, readyPct)

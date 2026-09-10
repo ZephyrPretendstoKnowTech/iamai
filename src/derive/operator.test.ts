@@ -35,14 +35,14 @@ test("the operator is the scan's /me row, read in one place; the plan and the va
   assert.equal(reportOperatorIdOf(noMe), null)
 })
 
-test('a second signed-in account produces identical facts: Today, the ladder and the campaign read the same numbers whoever ran the scan', () => {
+test('a second signed-in account produces identical facts: MFA Readiness, the partition and the campaign read the same numbers whoever ran the scan', () => {
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
     const ids = f.snapshot.users.map((u) => u.id)
     const runs = [f.operatorId, ids[ids.length - 1], null].map((id) => signedInAs(f.snapshot, id))
     const [first, ...rest] = runs.map((s) => facts(s, f.mapping))
     for (const other of rest) assert.deepEqual(other, first, `${name}: the facts change with the signed-in account`)
-    const rows = runs.map((s) => readinessView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r.kind, r.active, r.rung, r.evidence.kind]))
+    const rows = runs.map((s) => readinessView(s, s.asOf, f.mapping).rows.map((r) => [r.user.id, r.kind, r.active, r.state, r.readiness?.state ?? null, JSON.stringify(r.readiness?.proof ?? null)]))
     for (const other of rows.slice(1)) assert.deepEqual(other, rows[0], `${name}: Today's rows change with the signed-in account`)
     const care = runs.map((s) => contentLists({ snapshot: s, mapping: f.mapping, nameOf: (id) => id, now: s.asOf }).specialCareIds)
     for (const other of care.slice(1)) assert.deepEqual(other, care[0], `${name}: the special-care default changes with the signed-in account`)
@@ -60,8 +60,8 @@ test('the operator is a person like any other: a stale directory sign-in reads N
   assert.ok(notActiveUsers(s, s.asOf).some((u) => u.id === 'u-1'))
   const row = readinessView(s, s.asOf, MAPPING).rows.find((r) => r.user.id === 'u-1')!
   assert.equal(row.active, false)
-  assert.equal(row.evidence.kind, 'inactive')
-  assert.ok(row.rung !== null && row.rung >= 2, 'the passkey and the app set up: the badge stays')
+  assert.equal(row.state, null, 'not active is not counted in a readiness state')
+  assert.ok(row.readiness?.methods?.includes('passkey') && row.readiness.methods.includes('authenticator'), 'the passkey and the app set up: the methods are still read')
   // The same shape on the operator as on anyone else: a mailbox is not a person.
   me.lastSuccessfulSignIn = null
   me.assignedPlans = []
