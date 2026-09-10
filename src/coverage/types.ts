@@ -43,6 +43,13 @@ export type PolicyFacts = {
   userRisk: Set<string>
   spRisk: Set<string>
   deviceFilter: { mode: string; rule: string } | null
+  /**
+   * The conditions the policy carries with a value that this reading does not
+   * interpret, by path ("conditions.insiderRiskLevels"). Every Conditional Access
+   * condition confines a policy to fewer sign-ins, so one IAMAI cannot read is
+   * never read as though it were absent (Foundation A: unknown is conservative).
+   */
+  unreadConditions: string[]
   workload: { sps: Set<string>; filterRule: string | null } | null
   grant: {
     operator: 'AND' | 'OR'

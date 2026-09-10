@@ -14,6 +14,28 @@ function has(v: Set<string>, token: string): boolean {
   return lower(v).has(token.toLowerCase())
 }
 
+/** The condition keys this reading interprets; `devices` only through its filter. */
+const READ_CONDITIONS = new Set(['users', 'applications', 'clientApplications', 'clientAppTypes', 'locations', 'platforms', 'devices', 'signInRiskLevels', 'userRiskLevels', 'servicePrincipalRiskLevels', 'authenticationFlows'])
+
+/** A value that says something: not null, empty, or an object of nothing but empties. Annotations say nothing. */
+function carries(v: unknown): boolean {
+  if (v === null || v === undefined || v === '') return false
+  if (Array.isArray(v)) return v.length > 0
+  if (typeof v === 'object') return Object.entries(v as Record<string, unknown>).some(([k, x]) => !k.startsWith('@') && carries(x))
+  return true
+}
+
+function unreadConditions(c: Record<string, unknown>, users: Record<string, unknown>, devices: Record<string, unknown> | null): string[] {
+  const out = Object.entries(c)
+    .filter(([k, v]) => !k.startsWith('@') && !READ_CONDITIONS.has(k) && carries(v))
+    .map(([k]) => `conditions.${k}`)
+  for (const [k, v] of Object.entries(devices ?? {})) if (!k.startsWith('@') && k !== 'deviceFilter' && carries(v)) out.push(`conditions.devices.${k}`)
+  // Guests of named tenants only: the population reading counts every guest.
+  const tenants = ((users.includeGuestsOrExternalUsers ?? null) as Record<string, unknown> | null)?.externalTenants as Record<string, unknown> | null | undefined
+  if (tenants && String(tenants.membershipKind ?? '').toLowerCase() !== 'all') out.push('conditions.users.includeGuestsOrExternalUsers.externalTenants')
+  return out
+}
+
 export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoftManaged = false): PolicyFacts {
   const p = raw as Record<string, unknown>
   const c = (p.conditions ?? {}) as Record<string, unknown>
@@ -124,6 +146,7 @@ export function policyFacts(raw: unknown, strengths: StrengthLookup, isMicrosoft
         ? { mode: typeof f.mode === 'string' ? f.mode : 'include', rule: f.rule }
         : null
     })(),
+    unreadConditions: unreadConditions(c, users, devices),
     workload:
       workloadSps.size > 0 || typeof spFilter === 'string'
         ? { sps: workloadSps, filterRule: typeof spFilter === 'string' ? spFilter : null }

@@ -17,7 +17,8 @@
 // policy member*: each one resolves at most one tenant artifact, keeps its own
 // history and its own gates, and the step's single lifecycle is derived from all
 // of them conservatively — never taken from whichever member came first.
-import type { CoverageReport } from '../coverage/types.ts'
+import type { CoverageReport, GoalResult } from '../coverage/types.ts'
+import { list } from '../copy/statements.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
@@ -954,7 +955,7 @@ export function trackExecution(
 
     if (!memberTracking.some((m) => m.policyId !== null)) {
       if (result?.verdict === 'inPlace') {
-        advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: result?.candidates.find((c) => c.contribution === 'strong')?.policyName ?? 'an existing policy' }), now)
+        advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: satisfierOf(result) ?? 'an existing policy' }), now)
       }
       continue
     }
@@ -1015,8 +1016,20 @@ export function trackExecution(
     // one half of a pair has never finished a two-policy goal, whatever the
     // coverage of the goal as a whole adds up to.
     if (goalStatus === 'enforced' && (memberTracking.length === 1 || observed.every((x) => x === 'enforced'))) {
-      advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: first.displayName ?? step.title }), now)
+      advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: satisfierOf(result) ?? 'an existing policy' }), now)
     }
   }
   return steps
+}
+
+/**
+ * The policy the goal's coverage says delivers it, in words: the one that does it
+ * alone, else the set that does it together (coverage/types.ts Satisfaction).
+ * Never the first strong candidate, and never the step's own policy, which on
+ * this branch is the one that is *not* enforced.
+ */
+function satisfierOf(result: GoalResult | undefined): string | null {
+  const by = result?.satisfaction
+  if (!by || by.policyNames.length === 0) return null
+  return by.sufficientName ?? list(by.policyNames)
 }
