@@ -158,15 +158,21 @@ test('T10: methods unknown (inner 403), capable per registration, evidence pendi
   assert.equal(r.signals.methodsUnknown, true)
 })
 
-test('T11: Windows Hello with bound device active 3 days ago, no evidence → likelyViable', () => {
+// T11 used to read a Windows Hello device's recent sign-in as "likely viable".
+// The collector never gathers that sign-in, so the signal could not fire on a
+// real scan, and Step 7 removed it: a Windows Hello method with no evidence is
+// unverified and its readiness is Unknown (no records to prove it), never ready.
+test('T11: Windows Hello registered, no evidence → unverified; no device signal stands in for proof', () => {
   const r = scoreMfaViability(
     input({
-      methods: [{ kind: 'windowsHelloForBusiness', deviceLastSignIn: daysAgo(3) }],
+      methods: [{ kind: 'windowsHelloForBusiness', createdDateTime: daysAgo(200) }],
       evidence: { status: 'pending', covered: null, lastMfaSuccess: null },
     }),
   )
-  assert.equal(r.mfa, 'likelyViable')
-  assert.ok(r.signals.whfbDeviceActive)
+  assert.equal(r.mfa, 'unverified')
+  assert.equal('whfbDeviceActive' in r.signals, false, 'the device signal is gone')
+  assert.notEqual(r.readiness.state, 'ready', 'a registration is not readiness')
+  assert.equal(r.readiness.state, 'unknown', 'no readable records: Unknown, not Needs setup')
 })
 
 test('T12: single-device platform (no baseline), old registration, outside window → unverified', () => {

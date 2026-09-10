@@ -38,11 +38,11 @@ import { rowReason, rowWhen } from './ui/surfaces/rowWhen.ts'
 import { statusOf, cleanupStatusOf } from './ui/surfaces/statusWord.ts'
 import { stepVars } from './ui/surfaces/stepVars.ts'
 import { contentStepFor } from './content/stepTitle.ts'
-import { actionable, READINESS_GROUPS, shows } from './derive/mfaReadiness.ts'
-import { rungOf, windowsHelloOnly } from './derive/ladder.ts'
+import { shows } from './derive/mfaReadiness.ts'
+import { READINESS_STATES } from './scoring/phishingResistant.ts'
 import { stepPopulation, reached } from './derive/population.ts'
-import { factsOf, stepFacts, toSetUp } from './derive/facts.ts'
-import { readinessWord, nextStateWord, roleWord, methodWord, rowEvidenceText } from './ui/surfaces/readinessCells.ts'
+import { factsOf, notReady, stepFacts } from './derive/facts.ts'
+import { actionOf, methodsCell, proofLines, readinessWord, roleWord } from './ui/surfaces/readinessCells.ts'
 import { readinessTable } from './ui/surfaces/inventoryTables.ts'
 import { firstMfaDependency, stepMfaHold } from './derive/stepMfaReadiness.ts'
 import { cleanupComplete } from './roadmap/cleanupDone.ts'
@@ -102,22 +102,22 @@ test('042.1: a step is the same object everywhere, and identity is never a displ
 
 test('042.2: every count reconciles with the rows it claims to be about', () => {
   for (const c of corpus()) {
-    const { rows, groups, ladder, facts } = c.readiness
-    // The three groups plus unknown partition the active people, and the four
-    // are exactly the rows the view marked with a group.
-    for (const g of [...READINESS_GROUPS, 'unknown'] as const) {
-      assert.equal(groups[g], rows.filter((r) => r.group === g).length, `${c.label}: the ${g} count is not the ${g} rows`)
+    const { rows, counts, ladder, facts } = c.readiness
+    // The four readiness states partition the active people, and each count is
+    // exactly the rows the view marked with that state.
+    for (const s of READINESS_STATES) {
+      assert.equal(counts[s], rows.filter((r) => r.state === s).length, `${c.label}: the ${s} count is not the ${s} rows`)
     }
-    assert.equal(groups.ready + groups.needsProof + groups.needsPasskey + groups.unknown, facts.active, `${c.label}: the groups do not sum to the active people`)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + counts[s], 0), facts.active, `${c.label}: the states do not sum to the active people`)
     // The ledger's own parts sum to every account once.
     assert.equal(facts.active + facts.notActive + facts.kinds.emergency + facts.kinds.service + facts.kinds.shared + facts.kinds.disabled, facts.accounts, `${c.label}: the ledger's parts do not sum to the accounts`)
     assert.equal(rows.length, facts.accounts, `${c.label}: the table shows a different number of accounts from the ledger above it`)
     assert.deepEqual(factsOf(ladder), facts, `${c.label}: the view's facts are not the ladder's`)
-    // Needs action is the wider set on purpose: the two settled groups plus the
-    // people whose methods could not be read. The page states both numbers.
-    assert.equal(rows.filter((r) => shows(r, 'needsAction')).length, actionable(groups) + groups.unknown, `${c.label}: the needs-action filter and the needs-action count describe different people`)
-    // Still to set up is a subset of the active people and never a second score.
-    assert.ok(toSetUp(facts) <= facts.active, `${c.label}: more people to set up than there are active people`)
+    // Needs action is every active person who is not Ready: the three counts
+    // beside Ready, the people whose evidence could not be read among them.
+    assert.equal(rows.filter((r) => shows(r, 'needsAction')).length, counts.needsProof + counts.needsSetup + counts.unknown, `${c.label}: the needs-action filter and the three counts describe different people`)
+    // Not Ready yet is a subset of the active people and never a second score.
+    assert.ok(notReady(facts) <= facts.active, `${c.label}: more people not Ready than there are active people`)
     // A step's count is the ids behind it, and a step whose reach is unknown has
     // no count at all.
     for (const step of c.steps) {
@@ -327,27 +327,28 @@ test('042.8: the four channels serialise the same operations, or none of them do
 
 // ---- 9. registration is not proof ----
 
-test('042.9: no rung above 3 without a sign-in record that names the method', () => {
+test('042.9: nobody is Ready without a qualifying method and phishing-resistant proof on every platform seen', () => {
   for (const c of corpus()) {
     for (const r of c.readiness.rows) {
-      if (!r.active || r.rung === null) continue
-      if (r.rung >= 4) {
-        assert.ok(r.viability?.evidence != null, `${c.label}: rung ${r.rung} with no sign-in record behind it`)
-      }
-      // The page's own grouping is a label on the rung and never a second reading.
-      if (r.group === 'ready') assert.equal(r.rung, 5, `${c.label}: passkey-ready at rung ${r.rung}`)
-      if (r.group === 'needsProof') assert.notEqual(r.rung, 5, `${c.label}: needs proof at rung 5`)
+      if (r.state !== 'ready') continue
+      const rd = r.readiness!
+      assert.ok(rd.qualifying.length > 0, `${c.label}: Ready with no qualifying method`)
+      assert.ok(rd.proof.length > 0, `${c.label}: Ready with no phishing-resistant proof behind it`)
+      assert.deepEqual(rd.missing, [], `${c.label}: Ready with a platform that has no proof`)
     }
   }
-  // A registered passkey and no record is "needs proof" and never "ready": the
-  // corpus has the case, and it stays on the unproven side.
+  // A qualifying method whose proof is missing somewhere is "needs proof" and
+  // never "ready": the corpus has the case, and it stays on the unproven side
+  // with something left to do.
   for (const { c, row } of peopleIn('registeredNotProven')) {
-    assert.notEqual(row.rung, 5, `${c.label}: a registration was read as proof`)
-    assert.equal(nextStateWord(row).length > 0, true, `${c.label}: an unproven passkey with nothing left to do`)
+    assert.notEqual(row.state, 'ready', `${c.label}: a registration was read as proof`)
+    assert.ok((row.readiness?.qualifying.length ?? 0) > 0, `${c.label}: needs proof with no qualifying method to prove`)
+    assert.ok(actionOf(row) !== null, `${c.label}: an unproven method with nothing left to do`)
   }
-  // Windows Hello stands at 3 whatever the records show: it works on one PC.
+  // Needs setup holds no qualifying method, whatever the records show: an
+  // Authenticator or text-message sign-in is never phishing-resistant proof.
   for (const { c, row } of peopleIn('needsPasskey')) {
-    if (row.viability && windowsHelloOnly(row.viability)) assert.equal(rungOf(row.viability), 3, `${c.label}: Windows Hello moved off rung 3`)
+    assert.deepEqual(row.readiness?.qualifying, [], `${c.label}: needs setup while holding a qualifying method`)
   }
 })
 
@@ -360,10 +361,10 @@ test('042.10: every readiness cell is the row it was rendered from, on screen an
     c.readiness.rows.forEach((r, i) => {
       const row = table.rows[i]
       assert.equal(row[1], roleWord(r), `${c.label}: the exported role is not the rendered role`)
-      assert.equal(row[2], methodWord(r.method), `${c.label}: the exported method is not the rendered method`)
-      assert.equal(row[3], rowEvidenceText(r), `${c.label}: the exported proof is not the rendered proof`)
+      assert.equal(row[2], methodsCell(r).main, `${c.label}: the exported methods are not the rendered methods`)
+      assert.equal(row[3], proofLines(r).map((l) => l.text).join('; '), `${c.label}: the exported proof is not the rendered proof`)
       assert.equal(row[4], readinessWord(r), `${c.label}: the exported readiness is not the rendered readiness`)
-      assert.equal(row[5], nextStateWord(r), `${c.label}: the exported next state is not the rendered next state`)
+      assert.equal(row[5], actionOf(r)?.text ?? '', `${c.label}: the exported action is not the rendered action`)
     })
     // A Plan step's handoff names the people the same scoring named, and never a
     // set of its own: the ids are always rows on this page.
@@ -387,19 +388,19 @@ test('042.11: an unmeasured fact is stated as unmeasured, never as a zero or a p
     assert.equal(stepPopulation(step), null, `${c.label}/${step.id}: an unsettled reach produced a population`)
   }
   for (const c of corpus()) {
-    // A tenant whose registration report could not be read has no active person
-    // asserted to be without a passkey.
-    if (!c.readiness.methodsRead) {
-      assert.equal(c.readiness.groups.needsPasskey, 0, `${c.label}: an unreadable inventory produced settled findings`)
+    // A person whose methods could not be read is Unknown, never a settled
+    // finding that they need to set something up.
+    for (const r of c.readiness.rows) {
+      if (r.state !== null && r.methods === null) assert.equal(r.state, 'unknown', `${c.label}: an unreadable inventory produced a settled finding`)
     }
     // A hold whose people could not be settled is named as unknown, and never
     // stepped over in favour of "nothing is waiting".
     const anyUnknown = c.steps.some((s) => stepMfaHold(s, c.viability)?.ids === null)
     if (anyUnknown) assert.notEqual(firstMfaDependency(c.steps, c.viability).kind, 'none', `${c.label}: an unknown hold reported as nothing waiting`)
     // The printed plan's verification note has a population behind it or says
-    // nothing: toSetUp is a count over the ladder and never a claim about people
-    // the scan did not read.
-    assert.ok(toSetUp(c.readiness.facts) >= 0)
+    // nothing: notReady is a count over the partition and never a claim about
+    // people the scan did not read.
+    assert.ok(notReady(c.readiness.facts) >= 0)
   }
 })
 

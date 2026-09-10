@@ -68,6 +68,7 @@
     "mfa-readiness": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512"
   },
   "files": {
+    "iamai-mfa-readiness-final.html": "2621993a15c1174bfa463032eb0b78e62770c709f7c055390e5944d935c24a75",
     "iamai-plan-step-variants-final.html": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
     "iamai-plan-organization-final.html": "39cfc0b33c592dc25aa91552b736ad3c2df8c65e8b854793adef3ea21e80d0a7",
     "iamai-approved-visual-system-comparison-reference.html": "9ee6c601e7091fee1193203dedf9b9fffa83ec020035fa9b08c398d9bbc305a1",
@@ -170,6 +171,40 @@
       ]
     },
     "implementedBy": "plan shared step frame + policy rollout family pass; remaining families migrated by the final expanded-step pass"
+  },
+  "mfaReadiness": {
+    "$comment": "The final MFA Readiness visual and interaction authority (Step 7). Recorded as its own block, like the two Plan authorities, so a later task can read what it owns as a value. It supersedes docs/design/approved/anatomy/mfa-readiness-v2.html and iamai-mfa-readiness-approved-comparison-reference.html for the page presentation; neither file is deleted or re-hashed, and both remain the record of what the page looked like before.",
+    "file": "iamai-mfa-readiness-final.html",
+    "sha256": "2621993a15c1174bfa463032eb0b78e62770c709f7c055390e5944d935c24a75",
+    "owns": [
+      "page hierarchy",
+      "the summary anatomy: one answer and three counts that filter",
+      "the Plan gate and passkey rollout strip",
+      "search and filters",
+      "worklist organisation: Person / Role / Methods / Proof / Readiness / Action",
+      "the understated Role column",
+      "separate Methods and Proof columns",
+      "the compact status vocabulary",
+      "the Action column, including a recommended action",
+      "the minimal detail: Why and Next",
+      "responsive behaviour at 940px and 720px"
+    ],
+    "doesNotOwn": [
+      "production copy",
+      "tenant facts",
+      "readiness calculation",
+      "proof calculation",
+      "population calculation",
+      "Plan gate calculation",
+      "Graph collection",
+      "evidence history"
+    ],
+    "supersedes": [
+      "docs/design/approved/anatomy/mfa-readiness-v2.html (presentation)",
+      "iamai-mfa-readiness-approved-comparison-reference.html (presentation)"
+    ],
+    "exampleDataNote": "The file carries example people, counts and tenant names. None of it is production data and none may be copied into production: docs/design/content.json remains the copy authority and scoring/phishingResistant.ts the readiness authority.",
+    "implementedBy": "Step 7 - implement evidence-based MFA readiness"
   },
   "logo": {
     "name": "Threshold",

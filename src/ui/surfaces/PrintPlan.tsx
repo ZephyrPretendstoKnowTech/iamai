@@ -18,7 +18,7 @@ import { cleanupStatusOf } from './statusWord.ts'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
-import { stepFacts, toSetUp } from '../../derive/facts.ts'
+import { notReady, stepFacts } from '../../derive/facts.ts'
 import type { Facts } from '../../derive/facts.ts'
 import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
@@ -134,7 +134,7 @@ export function PrintPlan({
   // count (derive/facts.ts) and the content's own two sentences. Nothing is
   // claimed where the counts are absent: an empty cell, never "everyone is
   // ready" (task 042).
-  const verificationNote = facts === null ? '' : toSetUp(facts) > 0 ? fillText(C.verificationNote, { n: toSetUp(facts), active: facts.active }) : C.verificationNoteReady
+  const verificationNote = facts === null ? '' : notReady(facts) > 0 ? fillText(C.verificationNote, { n: notReady(facts), active: facts.active }) : C.verificationNoteReady
   const weeks = planWeeks(finish, schedule)
   // What holds the plan, as the Plan header names it: a readiness number where one
   // does, else the held steps and the step each waits on (derive/finish.ts).

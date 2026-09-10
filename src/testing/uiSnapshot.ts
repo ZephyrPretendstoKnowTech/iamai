@@ -158,8 +158,9 @@ export function fixtureSnapshot(): TenantSnapshot {
       { appId: '00000003-0000-0ff1-ce00-000000000000', appDisplayName: 'Office 365 SharePoint Online', signInCount: 1207 },
     ],
     signInEvidence: {
-      'u-1': { signInCount: 40, lastSignIn: daysAgo(2), lastMfaSuccess: { at: daysAgo(2), method: 'Mobile app notification' } },
-      'u-2': { signInCount: 12, lastSignIn: daysAgo(5), lastMfaSuccess: null },
+      // The records' proof per method and platform (Step 7): an Authenticator approval proves no passkey.
+      'u-1': { signInCount: 40, lastSignIn: daysAgo(2), lastMfaSuccess: { at: daysAgo(2), method: 'Mobile app notification' }, proofs: [{ cls: 'authenticator', os: 'Windows', at: daysAgo(2), method: 'Mobile app notification' }], platforms: [{ os: 'Windows', at: daysAgo(2) }] },
+      'u-2': { signInCount: 12, lastSignIn: daysAgo(5), lastMfaSuccess: null, proofs: [], platforms: [{ os: 'iOS', at: daysAgo(5) }] },
     },
     evidencePolicyResults: [
       {

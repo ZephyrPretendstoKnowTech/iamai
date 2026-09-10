@@ -16,7 +16,8 @@ import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './co
 import type { PlanTile, ScanTile } from './connectView.ts'
 import type { PolicyChange } from '../../derive/baselineDiff.ts'
 import { absoluteDate } from '../../copy/dates.ts'
-import { RUNGS, ladder } from '../../derive/ladder.ts'
+import { ladder } from '../../derive/ladder.ts'
+import { READINESS_STATES } from '../../scoring/phishingResistant.ts'
 import { factsOf } from '../../derive/facts.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -318,17 +319,17 @@ test('the Plan stage routes to the plan and to nothing before it', () => {
   )
   assert.ok(!('ladder' in t), 'no readiness ladder on the Plan stage')
   const words = JSON.stringify(pages.connect)
-  for (const rung of RUNGS) assert.ok(!words.includes(`rung-${rung}`), 'Connect names no readiness rung')
+  assert.ok(!/rung-\d|#\/readiness\//.test(words), 'Connect names no readiness rung or state filter')
   assert.ok(!words.includes('MFA Readiness'), 'Connect does not send the operator to MFA Readiness before the plan')
-  // The counts the ladder drew are the same fact, on the surface that owns it.
+  // The counts are the same fact, on the surface that owns it (Step 7: readiness states, not rungs).
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
     const counted = factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf))
     assert.deepEqual(counted, readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts, `${name}: MFA Readiness still counts them`)
     assert.equal(
-      RUNGS.reduce((n, r) => n + counted.rungs[r], 0),
+      READINESS_STATES.reduce((n, s) => n + counted.states[s], 0),
       counted.active,
-      `${name}: the rungs sum to the active people`,
+      `${name}: the readiness states sum to the active people`,
     )
   }
 })

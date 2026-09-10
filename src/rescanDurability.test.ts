@@ -33,8 +33,7 @@ import { stepExportView } from './ui/surfaces/stepExport.ts'
 import { statusOf } from './ui/surfaces/statusWord.ts'
 import { breakGlassFindings } from './validation/report.ts'
 import { implementationOffered, unavailableReason } from './roadmap/operations.ts'
-import { rungOf } from './derive/ladder.ts'
-import { READINESS_GROUPS } from './derive/mfaReadiness.ts'
+import { READINESS_STATES } from './scoring/phishingResistant.ts'
 import { INACTIVE_DAYS } from './scoring/mfaViability.ts'
 import { PINNED } from './baseline/pinned.ts'
 import type { Step } from './roadmap/types.ts'
@@ -49,7 +48,7 @@ function semanticsById(scan: Scan): Record<string, string> {
 /** Every person's readiness in one scan, keyed by the account's immutable id. */
 function readinessById(scan: Scan): Record<string, string> {
   const out: Record<string, string> = {}
-  for (const r of scan.readiness.rows) out[r.user.id] = `${r.kind}/${r.active}/${r.rung}/${r.group}/${r.admin}/${r.method}`
+  for (const r of scan.readiness.rows) out[r.user.id] = `${r.kind}/${r.active}/${r.state}/${r.readiness?.state ?? null}/${r.admin}/${(r.methods ?? ['unread']).join('+')}`
   return out
 }
 
@@ -122,8 +121,8 @@ test('043.1: a repeat scan with no material change moves nothing', () => {
     'the plan gained, lost or reordered a step on a scan that found nothing new',
   )
   assert.deepEqual(semanticsById(t.b), semanticsById(t.a), 'a step changed lifecycle, condition or status with nothing behind it')
-  assert.deepEqual(readinessById(t.b), readinessById(t.a), 'a person moved rung, group or category with nothing behind it')
-  assert.deepEqual(t.b.readiness.groups, t.a.readiness.groups, 'the readiness summary moved with no evidence')
+  assert.deepEqual(readinessById(t.b), readinessById(t.a), 'a person moved readiness, methods or category with nothing behind it')
+  assert.deepEqual(t.b.readiness.counts, t.a.readiness.counts, 'the readiness summary moved with no evidence')
   // The operator's decisions are the record's, and a scan is not an author.
   assert.deepEqual(t.b.fixture.mapping.breakGlassUserIds, t.a.fixture.mapping.breakGlassUserIds, 'a scan rewrote the emergency-access set')
   assert.equal(exclusionsIn(t.b).actionableId, exclusionsIn(t.a).actionableId, 'a scan rewrote the exclusions-group choice')
@@ -344,11 +343,11 @@ test('043.8: proof ages by the clock and registration survives it', () => {
   assert.ok(since > INACTIVE_DAYS, 'the clock did not pass the boundary the case is about')
   assert.equal(a.active, true, 'the person was not counted before the clock moved')
   assert.equal(b.active, false, 'a person past the inactivity boundary is still counted among the active')
-  assert.equal(b.group, null, 'a person the ladder does not count still carries a readiness group')
+  assert.equal(b.state, null, 'a person the page does not count still carries a readiness state')
   // What they hold has not changed, and the page still says so.
   assert.deepEqual(b.viability?.registered, a.viability?.registered, 'a registered method expired with the clock')
-  assert.equal(b.method, a.method, 'the method column changed because time passed')
-  assert.equal(b.rung, a.rung, 'the badge a person’s methods and records give them moved with nobody’s evidence')
+  assert.deepEqual(b.methods, a.methods, 'the methods column changed because time passed')
+  assert.equal(b.readiness?.state, a.readiness?.state, 'the readiness a person’s methods and records give them moved with nobody’s evidence')
   // Nobody else moved except by the same rule.
   for (const row of t.b.readiness.rows) {
     const was = rowIn(t.a, row.user.id)
@@ -356,31 +355,33 @@ test('043.8: proof ages by the clock and registration survives it', () => {
     const last = row.user.lastSuccessfulSignIn
     assert.ok(last !== null && (Date.parse(t.b.fixture.snapshot.asOf) - Date.parse(last)) / 86_400_000 > INACTIVE_DAYS, `${row.user.id}: left the active population without passing the boundary`)
   }
-  // The three groups plus unknown still partition the people the ladder counts.
-  assert.equal(READINESS_GROUPS.reduce((n, g) => n + t.b.readiness.groups[g], 0) + t.b.readiness.groups.unknown, t.b.readiness.facts.active, 'the readiness groups no longer sum to the active people')
+  // The four readiness states still partition the people the page counts.
+  assert.equal(READINESS_STATES.reduce((n, s) => n + t.b.readiness.counts[s], 0), t.b.readiness.facts.active, 'the readiness states no longer sum to the active people')
 })
 
-// ---- 9. the strongest proof is this scan's strongest proof ----
+// ---- 9. proof is kept per method and platform ----
 
-test('043.9: a stronger proof raises the rung and a weaker record lowers it', () => {
+test('043.9: a phishing-resistant proof makes a person Ready, and a later weaker record does not take it away', () => {
   const up = transition('strongerProof')
   const upId = up.focus.userId!
   const before = rowIn(up.a, upId)!
   const after = rowIn(up.b, upId)!
-  assert.ok(after.rung! > before.rung!, 'a phishing-resistant method proved in the records did not raise the rung')
-  assert.equal(after.rung, 5, 'a portable phishing-resistant method with a record naming it is not the top rung')
-  assert.equal(after.rung, rungOf({ registered: after.viability!.registered, kinds: after.viability!.kinds, mfaCapable: after.viability!.mfaCapable, evidence: after.viability!.evidence ?? null }), 'the row and the ladder disagree about the rung')
-  assert.equal(up.b.readiness.groups.ready, up.a.readiness.groups.ready + 1, 'the summary did not follow the person who became ready')
+  assert.notEqual(before.state, 'ready', 'the case starts from somebody already Ready: it is testing something else')
+  assert.equal(after.state, 'ready', 'a passkey proved on every platform the person uses did not make them Ready')
+  assert.equal(after.state, after.viability!.readiness.state, 'the row and the scoring disagree about readiness')
+  assert.equal(up.b.readiness.counts.ready, up.a.readiness.counts.ready + 1, 'the summary did not follow the person who became Ready')
 
+  // Step 7: proof is kept per method and platform, so a newer record that names
+  // no method never erases the passkey proof the records still hold.
   const down = transition('weakerLaterEvidence')
   const downId = down.focus.userId!
   const was = rowIn(down.a, downId)!
   const now = rowIn(down.b, downId)!
-  assert.equal(was.rung, 5, 'the case does not start from a proven passkey: it is testing something else')
+  assert.equal(was.state, 'ready', 'the case does not start from a Ready person: it is testing something else')
   assert.deepEqual(now.viability?.registered, was.viability?.registered, 'the case took the method away too: it is testing something else')
-  assert.ok(now.rung! < was.rung!, 'a record that names no method kept the rung a passkey record had earned')
-  assert.notEqual(now.group, 'ready', 'a person is ready on proof the records no longer carry')
-  assert.equal(down.b.readiness.groups.ready, down.a.readiness.groups.ready - 1, 'the summary kept counting a person whose proof it no longer holds')
+  assert.equal(now.viability?.evidence?.method, 'Multifactor authentication', 'the newest record names no method')
+  assert.equal(now.state, 'ready', 'a later record that names no method erased the phishing-resistant proof the records hold')
+  assert.equal(down.b.readiness.counts.ready, down.a.readiness.counts.ready, 'the summary stopped counting a person whose proof the records still hold')
 })
 
 // ---- 10. an account's category is what the directory says today ----

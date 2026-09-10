@@ -112,9 +112,9 @@ export function showFromReadinessHash(hash: string): string | null {
   return m ? m[1] : null
 }
 
-/** The MFA Readiness hash for a Show key; the whole table for `all`. */
+/** The MFA Readiness hash for a Show key; the bare page for the default, Needs action (derive/mfaReadiness.ts DEFAULT_SHOW). */
 export function readinessHref(show: string): string {
-  return show === 'all' ? READINESS_HREF : `${READINESS_HREF}/${show}`
+  return show === 'needsAction' ? READINESS_HREF : `${READINESS_HREF}/${show}`
 }
 
 /**

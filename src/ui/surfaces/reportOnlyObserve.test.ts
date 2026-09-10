@@ -57,6 +57,7 @@ import { rowWhen } from './rowWhen.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { personReadiness } from '../../scoring/phishingResistant.ts'
 
 /** The one canonical case, named here so a change to it is a change to this test. */
 const FIXTURE = 'demo-week2'
@@ -227,11 +228,13 @@ function observingWithAPrerequisite(days = 2): { due: Case; observing: Case } {
   const members = f.mapping.serviceAccountUserIds ?? []
   const groups = new Map([...f.groups, [SERVICE_ACCOUNTS_GROUP_ID, { ...anyGroup, memberIds: members, memberCount: members.length, displayName: 'Core - Service accounts' }]])
   const mapping = { ...f.mapping, serviceAccountsGroupId: SERVICE_ACCOUNTS_GROUP_ID }
-  // The tenant's own viability rows with its active people ready on MFA: the
-  // readiness percentage is derived from these (roadmap/readiness.ts), so this
-  // is a tenant whose people can pass the policy, not a gate switched off.
+  // The tenant's own viability rows with its active people Ready (Step 7: a
+  // passkey proven on the platform they use): the readiness percentage is derived
+  // from these (roadmap/readiness.ts), so this is a tenant whose people can pass
+  // the policy, not a gate switched off.
   const scored = runFixture({ ...f, groups, mapping }, { snapshot: withStrength })
-  const viability = scored.viability.map((v) => (v.activity === 'active' ? { ...v, mfa: 'likelyViable' as const } : v))
+  const ready = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: f.snapshot.asOf, method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: f.snapshot.asOf }] }, history: null })
+  const viability = scored.viability.map((v) => (v.activity === 'active' ? { ...v, readiness: ready } : v))
   const asCase = (r: ReturnType<typeof runFixture>, snapshot: TenantSnapshot): Case => {
     const step = r.steps.find((x) => x.id === PREREQ_STEP_ID)
     assert.ok(step, `${FIXTURE} no longer carries ${PREREQ_STEP_ID}`)

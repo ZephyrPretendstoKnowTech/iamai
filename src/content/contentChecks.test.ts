@@ -14,7 +14,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { contentFindings } from '../../scripts/walkContent.mjs'
-import { AUTHORITIES, RE, headerTabsLine, readinessGroupTitles, rungTitles, staticFindings, textAt } from './contentChecks.ts'
+import { AUTHORITIES, RE, headerTabsLine, readinessStatTitles, staticFindings, textAt } from './contentChecks.ts'
 import { content } from './content.ts'
 import { fillText } from './render.ts'
 
@@ -53,20 +53,17 @@ test('the header names the five destinations, the plan before the readiness diag
   assert.ok(!tabs.includes('Today'), 'the header still names the retired Today tab')
 })
 
-test('the readiness summary bends its verb to the count', () => {
+test('the readiness summary reads in the shape the walk reads, at a count of one and above', () => {
   const one = fillText(textAt('pages.readiness.summary'), { ready: 1, active: 1 })
   const many = fillText(textAt('pages.readiness.summary'), { ready: 2, active: 3 })
   assert.match(one, RE.readinessSummary)
   assert.match(many, RE.readinessSummary)
-  assert.match(one, /1 of 1 active person has proven/)
-  assert.match(many, /2 of 3 active people have proven/)
+  assert.match(many, /^2 of 3 are Ready\.$/)
   assert.match(textAt('pages.readiness.summaryNone'), RE.readinessSummaryNone)
-  assert.match(fillText(textAt('pages.readiness.unknownMethods'), { n: 3 }), RE.readinessUnknown)
 })
 
-test('the three readiness counts and the five rungs are named', () => {
-  assert.deepEqual(readinessGroupTitles().filter(Boolean).length, 3, `the counts read ${JSON.stringify(readinessGroupTitles())}`)
-  assert.equal(rungTitles().filter(Boolean).length, 5, `the rungs read ${JSON.stringify(rungTitles())}`)
+test('the three readiness counts beside Ready are named', () => {
+  assert.deepEqual(readinessStatTitles(), ['Need proof', 'Need setup', 'Unknown'], `the counts read ${JSON.stringify(readinessStatTitles())}`)
 })
 
 test("a report-only step's two gates render in the shape the walk reads", () => {

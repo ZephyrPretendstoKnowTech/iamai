@@ -89,27 +89,27 @@ test('the problematic-accounts check lists the dormant accounts with their state
   assert.equal((ex.accountsWithStateIds as string[]).length, rows.length)
 })
 
-test("MFA Readiness's Show list is the smallest useful set, and every filter a link arrives with still has a word (task 012)", async () => {
+test("MFA Readiness's filters are the final reference's five, and every filter a link arrives with still has a word (task 012; Step 7)", async () => {
   const { COMPAT_SHOW_KEYS, SHOW_KEYS } = await import('../../derive/mfaReadiness.ts')
   const { showWord } = await import('./readinessCells.ts')
-  assert.deepEqual(SHOW_KEYS.map(showWord), ['All accounts', 'Needs action', 'Needs a passkey', 'Needs proof', 'Passkey-ready'])
-  // Not on the list, still nameable: the select shows the arriving filter's own
-  // word, so the control always says what is on screen.
-  assert.deepEqual(
-    COMPAT_SHOW_KEYS.map(showWord),
-    ['Not known', 'Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'],
-  )
+  assert.deepEqual(SHOW_KEYS.map(showWord), ['Needs action', 'Admins', 'No passkey', 'Ready', 'All'])
+  // Not on the toolbar, still nameable: a filter a link or a summary count
+  // arrives with keeps its own word, so the control always says what is on screen.
+  assert.deepEqual(COMPAT_SHOW_KEYS.map(showWord), ['Needs proof', 'Needs setup', 'Unknown', 'Not active', 'Emergency access', 'Service accounts', 'Shared devices', 'Sign-in disabled', 'Guests'])
   assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the four tiles are gone')
 })
 
-test("the Boardroom room is a shared device on MFA Readiness: listed, not placed, its method never a passkey (walk-51 item 11)", async () => {
+test("the Boardroom room is a shared device on MFA Readiness: listed, not counted, its method never a passkey (walk-51 item 11)", async () => {
   const { readinessView } = await import('../../derive/mfaReadiness.ts')
+  const { readinessWord } = await import('./readinessCells.ts')
   const f = fixture('demo')
   const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')
   assert.ok(room, 'the demo has the Boardroom room')
   assert.equal(room.kind, 'shared')
-  assert.equal(room.active, false, 'a shared device is never counted on a rung')
-  assert.notEqual(room.method, 'passkey', 'a room holds no passkey')
-  assert.equal(room.evidence.kind, 'sharedDevice', 'its evidence is why it counts as a shared device')
+  assert.equal(room.active, false, 'a shared device is never counted')
+  assert.equal(room.state, null, 'and has no readiness state')
+  assert.equal(room.readiness, null, 'it is not scored as a person')
+  assert.ok(!(room.methods ?? []).includes('passkey'), 'a room holds no passkey')
+  assert.equal(readinessWord(room), 'not a person')
 })

@@ -11,7 +11,9 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
-import { adminsAtRung5, runFixture } from '../../roadmap/fixtures/run.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { personReadiness } from '../../scoring/phishingResistant.ts'
+import type { MfaViability } from '../../scoring/mfaViability.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { holdOf } from '../../roadmap/holds.ts'
@@ -19,6 +21,10 @@ import { stepExportView } from './stepExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 
 const BG = 's-prereq-break-glass'
+
+/** The admins at the readiness their own policy asks for (Step 7): Ready, a passkey proven on the platform they use. */
+const READY_ADMIN = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })
+const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability.map((v) => (v.isAdmin ? { ...v, readiness: READY_ADMIN } : v))
 
 test('emergency access is on every plan: Ready with one failing check on the demo, In place on week two, present on GetIAMAI, never removed', () => {
   const day1 = runFixture(fixture('demo'))
@@ -54,15 +60,16 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     // step has left to submit is `{"state":"enabled"}` — the enforcement. Its
     // window has not closed, so the days it states are the ones it has.
     //
-    // Except that enforcing it would leave the signed-in account no safe way in,
-    // which holds it (roadmap/holds.ts): a held step states no dates and books
-    // nothing, however far its window has run.
+    // Step 7: the signed-in account is the demo's first admin, who now holds a
+    // passkey and Windows Hello, so enforcing the policy leaves them a safe way in
+    // and nothing holds the step: it states its observation dates and is booked.
+    // (The held counterpart — no dates, no calendar entry — is
+    // roadmap/readinessGate.test.ts.)
     {
       name: 'demo-week2',
       stepId: 's-goal-admins-phishing-resistant',
       dates: /^Report-only since .+ · Review .+ · Enforcement is dated once the observation window closes and the sign-in records are clear and complete$/,
       adminsReady: true,
-      held: true,
       snapshot: (f) => {
         const ca = f.snapshot.config.caPolicies!
         const rows = (ca.rows as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
@@ -88,7 +95,7 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     const f = fixture(c.name)
     const snapshot = c.snapshot ? c.snapshot(f) : f.snapshot
     const first = c.snapshot ? runFixture({ ...f, snapshot }, { snapshot } as Partial<RoadmapInput>) : runFixture(f)
-    const over = { ...(c.snapshot ? { snapshot } : {}), ...(c.adminsReady ? { viability: adminsAtRung5(first.viability, f.snapshot.asOf) } : {}) }
+    const over = { ...(c.snapshot ? { snapshot } : {}), ...(c.adminsReady ? { viability: withAdminsReady(first.viability) } : {}) }
     const r = Object.keys(over).length > 0 ? runFixture({ ...f, snapshot }, over as Partial<RoadmapInput>) : first
     const step = r.steps.find((s) => s.id === c.stepId)!
     assert.equal(step.kind, 'adjust', `${c.name}: a change step`)

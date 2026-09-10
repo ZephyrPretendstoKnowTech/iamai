@@ -22,7 +22,9 @@ import { powershellFor } from '../ui/surfaces/stepPowerShell.ts'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { adminsAtRung5, runFixture } from './fixtures/run.ts'
+import { runFixture } from './fixtures/run.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -182,15 +184,24 @@ test('a step the plan cannot write is not scheduled, and the rest of the plan is
 
 // ---- A + B: an open policy with nothing valid to run is unavailable everywhere ----
 
+/**
+ * The admins at the readiness their own policy asks for (Step 7): Ready, a
+ * passkey proven on the platform they use (scoring/phishingResistant.ts).
+ */
+const READY_ADMIN = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })
+const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability.map((v) => (v.isAdmin ? { ...v, readiness: READY_ADMIN } : v))
+
 /** The demo's week two, with the tenant's own policies replaced and the mapping overridden. */
-function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<string, unknown> = {}, snapshotOver: (f: ReturnType<typeof fixture>) => Record<string, unknown> = () => ({}), opts: { adminsReady?: boolean } = {}) {
+function demoRun(rows: Record<string, unknown>[] = [], mappingOver: Record<string, unknown> = {}, snapshotOver: (f: ReturnType<typeof fixture>) => Record<string, unknown> = () => ({}), opts: { adminsReady?: boolean; guestsReady?: boolean } = {}) {
   const f = fixture('demo-week2')
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } }, ...snapshotOver(f) } as typeof f.snapshot
   const mapping = { ...f.mapping, ...mappingOver } as typeof f.mapping
-  // A case about the admins policy meets the readiness prerequisite the plan
-  // names for it first; otherwise the hold is what it would be testing.
-  const viability = opts.adminsReady ? adminsAtRung5(runFixture({ ...f, snapshot, mapping }, { snapshot, mapping } as never).viability, f.snapshot.asOf) : undefined
+  // A case about the admins (or guests) policy meets the readiness prerequisite
+  // the plan names for it first; otherwise the hold is what it would be testing.
+  const guests = new Set(f.snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+  const scored = opts.adminsReady || opts.guestsReady ? runFixture({ ...f, snapshot, mapping }, { snapshot, mapping } as never).viability : null
+  const viability = scored ? (opts.adminsReady ? withAdminsReady(scored) : scored).map((v) => (opts.guestsReady && guests.has(v.userId) ? { ...v, readiness: READY_ADMIN } : v)) : undefined
   const r = runFixture({ ...f, snapshot, mapping }, { snapshot, mapping, ...(viability ? { viability } : {}) } as never)
   const ctx: StepVarContext = { snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
   return { f, r, ctx, snapshot, mapping }
@@ -304,7 +315,9 @@ test('E: report-only → enabled is enabled in the body, in the target, in the i
     grantControls: { operator: 'OR', builtInControls: ['mfa'] },
     sessionControls: null,
   }
-  const { r, ctx } = demoRun([memberA])
+  // The tenant's guests are Ready first (Step 7): turning the policy on is an
+  // enforcement, and the guest readiness gate would otherwise hold it.
+  const { r, ctx } = demoRun([memberA], {}, () => ({}), { guestsReady: true })
   const step = r.steps.find((s) => s.goalId === 'guests-mfa' && s.kind !== 'verify')!
   assert.equal(implementationOffered(step), true)
   const update = stepOperations(step).find((o) => o.mode === 'update')

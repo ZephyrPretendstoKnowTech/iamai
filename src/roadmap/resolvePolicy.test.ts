@@ -16,7 +16,9 @@ import { PREREQ_STEP_ID } from './stepIds.ts'
 // reaches the four channels. What this baseline's own unsettled source groups do
 // to a policy is roadmap/sourceIdentity.test.ts, and the direct cases here.
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { adminsAtRung5, runFixture } from './fixtures/run.ts'
+import { runFixture } from './fixtures/run.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -93,15 +95,26 @@ function bareSteps(name: Parameters<typeof fixture>[0], mappingOver: Partial<Map
   return { f, r, ctx, of }
 }
 
+/**
+ * The admins at the readiness their own policy asks for (Step 7): Ready, a
+ * passkey proven on the platform they use (scoring/phishingResistant.ts).
+ */
+const READY_ADMIN = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })
+const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability.map((v) => (v.isAdmin ? { ...v, readiness: READY_ADMIN } : v))
+/** The tenant's guests Ready too, for a case about the guests pair rather than the guest readiness prerequisite. */
+const withGuestsReady = (viability: MfaViability[], guests: ReadonlySet<string>): MfaViability[] => viability.map((v) => (guests.has(v.userId) ? { ...v, readiness: READY_ADMIN } : v))
+
 /** The demo's week two with the tenant's own policies replaced, so a goal can be partly covered. */
-function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p, opts: { adminsReady?: boolean } = {}) {
+function withTenantPolicies(rows: Record<string, unknown>[], edit: (p: Record<string, unknown>) => Record<string, unknown> = (p) => p, opts: { adminsReady?: boolean; guestsReady?: boolean } = {}) {
   const f = fixture('demo-week2')
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: rows.map(edit) } } }
-  // A case about the admins policy meets the readiness prerequisite the plan
-  // names for it first (roadmap/operations.ts readinessGate); otherwise the hold
-  // is what it would be testing rather than the update boundary.
-  const viability = opts.adminsReady ? adminsAtRung5(runFixture({ ...f, snapshot }, { snapshot } as never).viability, f.snapshot.asOf) : undefined
+  // A case about the admins (or guests) policy meets the readiness prerequisite
+  // the plan names for it first (roadmap/operations.ts readinessGate); otherwise
+  // the hold is what it would be testing rather than the update boundary.
+  const guests = new Set(f.snapshot.users.filter((u) => u.userType === 'guest').map((u) => u.id))
+  const scored = opts.adminsReady || opts.guestsReady ? runFixture({ ...f, snapshot }, { snapshot } as never).viability : null
+  const viability = scored ? withGuestsReady(opts.adminsReady ? withAdminsReady(scored) : scored, opts.guestsReady ? guests : new Set()) : undefined
   const r = runFixture({ ...f, snapshot }, { snapshot, ...(viability ? { viability } : {}) } as never)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
@@ -633,7 +646,9 @@ test('a single-policy change is one update operation, and every channel carries 
 test('a partly-built pair is one update and one create, each on its own policy, in the baseline’s order', () => {
   const f = fixture('demo-week2')
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
-  const { of } = withTenantPolicies([guestsMemberA('CA - Require - MFA for guests and external users', exclusions)])
+  // The tenant's guests are Ready first (Step 7): the update enforces the half the
+  // tenant has on run, and the guest readiness gate would otherwise hold it.
+  const { of } = withTenantPolicies([guestsMemberA('CA - Require - MFA for guests and external users', exclusions)], (p) => p, { guestsReady: true })
   const { step, portal } = of('guests-mfa')
   assert.equal(implementationOffered(step), true)
   const ops = stepOperations(step)

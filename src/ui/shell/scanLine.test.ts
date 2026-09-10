@@ -60,11 +60,15 @@ test('each surface reads at its approved width; the diagnostic above the table k
     assert.match(widths, new RegExp(`\\.shell\\[data-route='${route}'\\] \\{\\s*\\n\\s*--route-width: var\\(--${token}\\);`), `${route} has no column of its own`)
   }
   const today = readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8')
-  assert.match(today, /<div className="page-head">[\s\S]*<h1 className="display">\{T\.h1\}<\/h1>[\s\S]*CONNECT_WORDS\.scan\.complete\.again/, 'Scan again sits beside the heading')
-  // The three counts are the approved integrated summary's stats (task 037), not
-  // three cards and not five equal rung tiles.
-  assert.match(today, /<section className="readiness-summary panel">/, 'the three readiness counts sit in one panel')
-  assert.match(today, /className="summary-stat">/, 'and each count is a cell of it')
+  // The final reference (Step 7) puts nothing beside the heading; the scan the
+  // evidence asks for is the Next of a person whose evidence could not be read.
+  assert.match(today, /<h1 className="display">\{T\.h1\}<\/h1>/, 'the heading')
+  assert.doesNotMatch(today, /className="page-head"/, 'no control beside the heading')
+  assert.match(today, /detail\.rescan && \([\s\S]{0,200}again\.run\(scan\(readinessHref\(show\)\)\)/, 'Scan again is where a person needs it, in the detail')
+  // The three counts are the summary panel's stats, not three cards and not
+  // five equal rung tiles.
+  assert.match(today, /<section className="readiness-summary panel"/, 'the three readiness counts sit in one panel')
+  assert.match(today, /className="summary-stat"/, 'and each count is a cell of it')
   const css = readFileSync('src/ui/app.css', 'utf8')
   assert.match(css, /\.surface \.page-head \{[^}]*justify-content: space-between/)
   assert.match(css, /\.scan-line \{/)

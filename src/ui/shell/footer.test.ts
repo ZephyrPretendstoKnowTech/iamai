@@ -39,7 +39,7 @@ test('"people" on Today, the Plan and Connect; "user" only for an Entra user obj
   // The consent rows are Microsoft's own wording and live with the permission
   // authority (src/copy/permissions.ts), not in the page's words (task 016), so
   // the page's words carry no "user" at all.
-  const words = JSON.stringify({ today: pages.readiness, ladder: pages.ladder, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })
+  const words = JSON.stringify({ today: pages.readiness, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })
   assert.ok(!/\busers?\b/i.test(words), `no "user" outside Microsoft's scope names: ${(words.match(/[^"]{0,40}\busers?\b[^"]{0,40}/i) ?? [''])[0]}`)
   // Microsoft's consent rows name the user object, as Microsoft does.
   assert.ok(JSON.stringify(consentRows()).includes("Read all users' basic profiles"))

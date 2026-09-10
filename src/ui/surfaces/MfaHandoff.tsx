@@ -27,7 +27,7 @@ import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessStepHref } from '../shell/routes.ts'
-import { methodWord, nextStateWord, readinessWord, roleWord } from './readinessCells.ts'
+import { actionOf, methodsCell, readinessWord, roleWord } from './readinessCells.ts'
 
 const P = app.plan
 
@@ -49,7 +49,7 @@ const PREVIEW = 3
  * The words for the preview's own two labels.
  *
  * Everything a preview ROW says already has a content-backed projection —
- * `roleWord`, `methodWord`, `readinessWord`, `nextStateWord` are the same four
+ * `roleWord`, `methodsCell`, `readinessWord`, `actionOf` are the same four
  * MFA Readiness's own table and CSV read, so the Plan and the page cannot
  * describe one person differently. These two are the frame around them, and
  * they live here for the same reason the board's control vocabulary lives in
@@ -89,10 +89,10 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
               {/* What they have, and what they need. Two facts, labelled, so
                   neither is mistaken for the other at a glance. */}
               <span className="state">
-                <span className="k">{PREVIEW_WORDS.has}</span> {methodWord(r.method)} · {readinessWord(r)}
+                <span className="k">{PREVIEW_WORDS.has}</span> {methodsCell(r).main} · {readinessWord(r)}
               </span>
               <span className="next">
-                <span className="k">{PREVIEW_WORDS.needs}</span> {nextStateWord(r)}
+                <span className="k">{PREVIEW_WORDS.needs}</span> {actionOf(r)?.text ?? ''}
               </span>
             </li>
           ))}

@@ -6,7 +6,7 @@
 // enforcement event and a calendar entry — everything an operator would use to
 // require a compliant device that afternoon on a tenant where 29% of people have
 // one. The same shape held the phishing-resistant admins step: one update
-// submitting `{ state: "enabled" }` with 33% of admins at a passkey.
+// submitting `{ state: "enabled" }` with a third of admins at a passkey.
 //
 // The correction is `Action.readinessGate` (roadmap/generate.ts), read by the
 // implementation authority (`policyResult`) and by everything that dates a
@@ -20,7 +20,9 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { adminsAtRung5, runFixture } from './fixtures/run.ts'
+import { runFixture } from './fixtures/run.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
 import { enforcesOnRun, enforcementHeld, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from './operations.ts'
 import { readinessFor } from './readiness.ts'
 import { READINESS_THRESHOLD_DEVICES_PERCENT } from './constants.ts'
@@ -28,6 +30,10 @@ import { stepExportView } from '../ui/surfaces/stepExport.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { buildIcs } from './ics.ts'
 import type { Step } from './types.ts'
+
+/** The admins at the readiness their own policy asks for (Step 7): Ready, a passkey proven on the platform they use. */
+const READY_ADMIN = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })
+const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability.map((v) => (v.isAdmin ? { ...v, readiness: READY_ADMIN } : v))
 
 const DEVICE = 's-goal-require-managed-device'
 const ADMINS = 's-goal-admins-phishing-resistant'
@@ -175,14 +181,14 @@ test('4: a readiness the scan could not measure holds the enforcement; nobody to
 test('5: a material change to an already-enabled policy is held while its readiness is unmet', () => {
   // The demo's admins step, with its policy back in report-only, submits exactly
   // `{ state: "enabled" }`: running it turns on a phishing-resistant requirement
-  // for admins of whom one in three holds a passkey.
+  // for admins of whom two in three are Ready (Step 7: the first demo admin holds a passkey and Windows Hello, both proven).
   const f = fixture('demo-week2')
   const ca = f.snapshot.config.caPolicies!
   const rows = (ca.rows as Row[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
   const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } } as typeof f.snapshot
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const step = r.steps.find((s) => s.id === ADMINS) as Step
-  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '33%' })
+  assert.deepEqual(step.action.readinessGate, { measure: 'admin readiness', threshold: '100%', value: '67%' })
   const op = step.action.resolution!.policies[0]
   assert.deepEqual(op.body, { state: 'enabled' }, 'the operation is the enforcement')
   assert.equal(enforcesOnRun(op), true)
@@ -192,10 +198,10 @@ test('5: a material change to an already-enabled policy is held while its readin
 
   // The step says why, in its own words, rather than going quiet.
   const view = stepExportView(step, ctxFor(f, r, snapshot))
-  assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 33%') && l.includes('100%')), view.whatToDo.join(' | '))
+  assert.ok(view.whatToDo.some((l) => l.includes('admin readiness is 67%') && l.includes('100%')), view.whatToDo.join(' | '))
 
   // With the prerequisite met, the readiness gate releases the same operation.
-  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: adminsAtRung5(r.viability, f.snapshot.asOf) } as never)
+  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: withAdminsReady(r.viability) } as never)
   const met = ready.steps.find((s) => s.id === ADMINS) as Step
   assert.equal(met.readiness.percent, 100)
   assert.equal(unavailableReason(met), null, 'the readiness gate has released')

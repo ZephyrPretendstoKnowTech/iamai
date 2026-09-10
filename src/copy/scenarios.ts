@@ -40,9 +40,9 @@ export const SCENARIO = {
   // 11 — service provider (GDAP).
   serviceProvider: (n: number, tenants: number, date: string | null) =>
     `${count(n, 'service-provider account')} from ${count(tenants, 'partner tenant')} signed in this month, so exclude "Service provider users" or they lose access.${by(date)}`,
-  // 12 — the campaign's registered-but-unproven and no-method active people (prompt 48.1 item 6).
+  // 12 — the campaign's Needs proof and no-method active people (prompt 48.1 item 6; Step 7).
   campaignUnproven: (people: string[], date: string) =>
-    `${count(people.length, 'person', 'people')} registered but unproven (${names(people)}), so ask each for one MFA sign-in before ${date}.`,
+    `${count(people.length, 'person', 'people')} ${people.length === 1 ? 'holds' : 'hold'} a phishing-resistant method not yet proven on every platform they use (${names(people)}), so ask each to sign in with it from each before ${date}.`,
   campaignNoMethod: (people: string[], date: string) =>
     `${count(people.length, 'person', 'people')} with no method (${names(people)}), so register each and issue a Temporary Access Pass when off a trusted network, before ${date}.`,
   // 12 (48) — verification campaign, password-not-typed.

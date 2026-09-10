@@ -1,22 +1,22 @@
 // MFA Readiness's rows and facts (derive/mfaReadiness.ts over derive/ladder.ts
-// and derive/facts.ts): every account in the directory is one row; an active
-// person is counted on one rung and grouped under exactly one of the page's
-// three labels; every account with a method carries its rung's badge, counted or
-// not; the facts sum to the accounts, a kind at zero is left off the ledger line;
-// the Windows-Hello-only person's evidence names the one PC and the phone
-// sign-ins.
+// and derive/facts.ts; Step 7): every account in the directory is one row; an
+// active person is counted in exactly one readiness state; an account that is
+// not counted carries no state; the facts sum to the accounts; a kind at zero is
+// left out of the footer; the Windows-Hello-only person who also signs in from
+// a phone is proven on Windows and not on the phone.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { bigFixtureSnapshot } from '../testing/bigFixture.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { COMPAT_SHOW_KEYS, SHOW_KEYS, showKeyOf, shows, readinessView } from './mfaReadiness.ts'
-import { KINDS, RUNGS } from './ladder.ts'
-import { groupWords, ledgerText, readinessWord, rungWords, rowEvidenceText } from '../ui/surfaces/readinessCells.ts'
+import { KINDS } from './ladder.ts'
+import { READINESS_STATES } from '../scoring/phishingResistant.ts'
+import { actionOf, footerParts, methodsCell, proofLines, readinessWord, stateTitle } from '../ui/surfaces/readinessCells.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
-test('every account is one row; the active people are counted on the rungs; every account with a method carries a badge; the facts sum', () => {
+test('every account is one row; the active people are counted in the states; an uncounted account carries none; the facts sum', () => {
   for (const snapshot of [fixtureSnapshot(), bigFixtureSnapshot(), fixture('demo').snapshot]) {
     const v = readinessView(snapshot, snapshot.asOf)
     assert.equal(v.rows.length, snapshot.users.length, 'one row per account in the directory')
@@ -29,62 +29,62 @@ test('every account is one row; the active people are counted on the rungs; ever
     for (const k of KINDS) assert.equal(v.rows.filter((r) => r.kind === k).length, f.kinds[k], k)
     for (const r of v.rows) {
       if (r.active) {
-        assert.ok(r.kind === 'person' && r.rung !== null && r.group !== null && r.viability && r.viability.activity === 'active', `${r.user.id}: counted means an active person on a rung, in one group`)
+        assert.ok(r.kind === 'person' && r.state !== null && r.viability && r.viability.activity === 'active', `${r.user.id}: counted means an active person in one state`)
+        assert.equal(r.state, r.readiness?.state, `${r.user.id}: the row's state is its readiness`)
       } else {
-        // Not counted, so not grouped: an emergency account, a service account
-        // and a person outside the window are none of them a failed adoption.
-        assert.equal(r.group, null, `${r.user.id}: only an active person is grouped`)
-        if (r.method !== 'none') assert.ok(r.rung !== null && r.rung >= 2, `${r.user.id}: an account with a method carries its rung`)
-        else assert.equal(r.rung, null, `${r.user.id}: nothing set up on an uncounted account shows no rung`)
+        // Not counted, so no state: an emergency account, a service account and a
+        // person outside the window are none of them a failed adoption.
+        assert.equal(r.state, null, `${r.user.id}: only an active person has a state`)
+        assert.equal(actionOf(r), null, `${r.user.id}: nothing is asked of an uncounted account`)
+        if (r.kind !== 'person') assert.equal(r.readiness, null, `${r.user.id}: an account that is not a person is not scored`)
       }
-      if (r.active && (r.rung === 5 || r.rung === 4)) assert.equal(r.evidence.kind, 'mfa', `${r.user.id}: proven means seen`)
-      if (r.active && r.rung === 3) assert.equal(r.evidence.kind, 'windowsHello')
-      assert.ok(readinessWord(r).length > 0 && rowEvidenceText(r).length > 0, `${r.user.id}: words in every cell`)
+      assert.ok(readinessWord(r).length > 0 && methodsCell(r).main.length > 0, `${r.user.id}: words in every cell`)
+      if (r.active) assert.ok(proofLines(r).length > 0, `${r.user.id}: a counted person always has a proof line`)
     }
-    for (const rung of RUNGS) assert.equal(v.rows.filter((r) => shows(r, `rung-${rung}`)).length, f.rungs[rung], `clicking rung ${rung} filters to the people counted on it`)
+    for (const s of READINESS_STATES) assert.equal(v.rows.filter((r) => shows(r, s)).length, f.states[s], `the ${s} filter shows the people counted in it`)
     assert.equal(v.rows.filter((r) => shows(r, 'notActive')).length, f.notActive)
-    assert.equal(v.rows.filter((r) => shows(r, 'all')).length, v.rows.length)
-    // The four groups partition the active people: the summary's denominator is
-    // the ladder's, and nobody is counted twice or dropped.
-    assert.equal(v.groups.ready + v.groups.needsProof + v.groups.needsPasskey + v.groups.unknown, f.active, 'the groups sum to the active people')
-    for (const g of ['ready', 'needsProof', 'needsPasskey', 'unknown'] as const) assert.equal(v.rows.filter((r) => shows(r, g)).length, v.groups[g], g)
-    assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, f.active - v.groups.ready, 'needs action is every active person who is not passkey-ready')
+    assert.equal(v.rows.filter((r) => shows(r, 'all')).length, f.active, 'All is every active person')
+    // The four states partition the active people: the summary's denominator is
+    // the partition's, and nobody is counted twice or dropped.
+    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), f.active, 'the states sum to the active people')
+    assert.deepEqual(v.counts, f.states)
+    assert.equal(v.rows.filter((r) => shows(r, 'needsAction')).length, f.active - v.counts.ready, 'needs action is every active person who is not Ready')
   }
 })
 
-test('the ledger line: every kind that is not zero, in order, and a kind at zero left off', () => {
+test('the footer names every uncounted kind that is not zero, in order, and leaves a kind at zero off', () => {
   const T = pages.readiness as { ledger: Record<string, string> }
-  const rungs = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
-  assert.equal(ledgerText({ accounts: 42, active: 33, notActive: 5, kinds: { emergency: 2, service: 0, shared: 1, disabled: 1 }, rungs }), '42 accounts: 33 active people · 5 not active · 2 emergency access · 1 shared device · 1 sign-in disabled')
-  assert.equal(ledgerText({ accounts: 1, active: 1, notActive: 0, kinds: { emergency: 0, service: 0, shared: 0, disabled: 0 }, rungs }), '1 account: 1 active person')
+  const states = { ready: 0, needsProof: 0, needsSetup: 0, unknown: 0 }
+  assert.deepEqual(
+    footerParts({ accounts: 42, active: 33, notActive: 5, kinds: { emergency: 2, service: 0, shared: 1, disabled: 1 }, states }).map((p) => p.text),
+    ['5 not active', '2 emergency access', '1 shared device', '1 sign-in disabled'],
+  )
+  assert.deepEqual(footerParts({ accounts: 1, active: 1, notActive: 0, kinds: { emergency: 0, service: 0, shared: 0, disabled: 0 }, states }), [], 'nothing to say when everyone is counted')
   assert.equal(fillText(T.ledger.service, { n: 1 }), '1 service account')
   const d = fixture('demo')
   const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  const line = ledgerText(v.facts)
-  assert.ok(line.startsWith(`${v.facts.accounts} accounts: ${v.facts.active} active people`), line)
-  assert.ok(!/·\s*·|·\s*$/.test(line), 'no empty value on the line')
-  const numbers = [...line.matchAll(/(\d+)/g)].map((m) => Number(m[1]))
-  assert.equal(numbers[0], numbers.slice(1).reduce((a, b) => a + b, 0), `the kinds on the line sum to the accounts: ${line}`)
+  const parts = footerParts(v.facts)
+  // Each part is a filter of its own, and the parts and the active people are the accounts.
+  for (const p of parts) assert.equal(showKeyOf(p.show), p.show)
+  const numbers = parts.map((p) => Number(p.text.match(/^(\d+)/)?.[1]))
+  assert.ok(numbers.every((n) => n > 0), 'no kind at zero')
+  assert.equal(v.facts.active + numbers.reduce((a, b) => a + b, 0), v.facts.accounts, 'the footer and the active people account for everyone')
 })
 
-test('the Windows-Hello-only person: rung 3, the method word Windows Hello, the evidence the one PC and the phone sign-ins', () => {
+test('the Windows-Hello-only person who also uses a phone: proven on Windows, Needs proof on the phone, and no passkey', () => {
   const d = fixture('demo')
   const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
-  const hello = v.rows.find((r) => r.method === 'windowsHello')
+  const hello = v.rows.find((r) => r.active && JSON.stringify(r.readiness?.methods) === '["windowsHello"]')
   assert.ok(hello, 'the demo has a Windows-Hello-only person')
-  assert.equal(hello.rung, 3)
-  assert.equal(rungWords(3).title, 'Windows Hello only', 'the rung keeps its own name, on the badge and in its tooltip')
-  // Windows Hello on one PC is not a passkey, and the page says what is missing
-  // rather than repeating the rung: the rung is still the badge beside it.
-  assert.equal(hello.group, 'needsPasskey')
-  assert.equal(readinessWord(hello), groupWords('needsPasskey').title)
-  assert.equal(readinessWord(hello), 'Needs a passkey')
-  assert.equal(rowEvidenceText(hello), 'Windows Hello on one PC · 2 phone sign-ins in the window')
-  const T = pages.readiness as { evidence: Record<string, string> }
-  assert.equal(`${T.evidence.windowsHello} · ${T.evidence.noPhones}`, 'Windows Hello on one PC · no phone sign-ins seen')
+  assert.equal(hello.state, 'needsProof')
+  assert.equal(readinessWord(hello), stateTitle('needsProof'))
+  assert.deepEqual(hello.readiness?.missing, ['iOS'])
+  assert.deepEqual(proofLines(hello), [{ mark: 'good', text: 'Windows Hello · Windows' }, { mark: 'warn', text: 'iOS' }])
+  assert.equal(methodsCell(hello).note, 'No passkey')
+  assert.equal(actionOf(hello)?.text, 'Test iOS')
 })
 
-test('the accounts that are not people read not a person, with their kind and their own evidence', () => {
+test('the accounts that are not people read not a person, with their kind, and are never counted or asked for anything', () => {
   const d = fixture('demo')
   const v = readinessView(d.snapshot, d.snapshot.asOf, d.mapping)
   const T = pages.readiness as { notAPerson: string; kinds: Record<string, string> }
@@ -92,22 +92,21 @@ test('the accounts that are not people read not a person, with their kind and th
     const row = v.rows.find((r) => r.user.id === id)!
     assert.equal(row.kind, 'emergency')
     assert.equal(row.active, false, 'never counted')
+    assert.equal(row.state, null)
     assert.equal(readinessWord(row), T.notAPerson)
-    if (row.method !== 'none') assert.ok(row.rung !== null && row.rung >= 2, 'an emergency account with a method carries its rung, uncounted')
-    assert.ok(row.evidence.kind === 'lastSignIn' || row.evidence.kind === 'neverSignedIn')
+    assert.equal(actionOf(row), null)
+    assert.deepEqual(proofLines(row), [], 'no proof is claimed for an account the page does not count')
   }
   const room = v.rows.find((r) => r.user.displayName === 'Boardroom')!
   assert.equal(room.kind, 'shared')
-  assert.equal(room.evidence.kind, 'sharedDevice')
-  assert.match(rowEvidenceText(room), /licence/)
+  assert.equal(room.state, null)
   assert.equal(T.kinds.shared, 'Shared device')
-  // The Show list the page offers: every account, the people who need something,
-  // and the three groups. The rungs and the separate populations are not on it —
-  // they are what a link from Connect or from the quiet line arrives filtered to,
-  // and they still resolve.
-  assert.deepEqual([...SHOW_KEYS], ['all', 'needsAction', 'needsPasskey', 'needsProof', 'ready'])
-  assert.deepEqual([...COMPAT_SHOW_KEYS], ['unknown', 'rung-5', 'rung-4', 'rung-3', 'rung-2', 'rung-1', 'notActive', 'emergency', 'service', 'shared', 'disabled', 'guests'])
-  assert.equal(showKeyOf('rung-3'), 'rung-3', "Connect's rung tile still filters this page")
+  // The filters the page offers are the reference's five; the three summary
+  // counts and the separate populations are what a count or a link from the
+  // footer arrives filtered to, and they still resolve. The rungs are gone.
+  assert.deepEqual([...SHOW_KEYS], ['needsAction', 'admins', 'noPasskey', 'ready', 'all'])
+  assert.deepEqual([...COMPAT_SHOW_KEYS], ['needsProof', 'needsSetup', 'unknown', 'notActive', 'emergency', 'service', 'shared', 'disabled', 'guests'])
+  assert.equal(showKeyOf('rung-3'), null, 'the rung filters are gone')
   assert.equal(showKeyOf('needsProof'), 'needsProof')
   assert.equal(showKeyOf('nonsense'), null)
 })

@@ -1,5 +1,5 @@
 // Lockout lists (E8): steps 15 and 33 show in Who how many people in scope are
-// not yet at Passkey or security key, proven (derive/ladder.ts rung 5), by name
+// not yet Ready for phishing-resistant MFA (scoring/phishingResistant.ts), by name
 // when three or fewer and as a count otherwise; step 35 counts the people with
 // only Authenticator approval, and when that list is not empty the high-risk sign-in policy
 // offers the plain-MFA rung as the first enforcement, with the baseline's
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict'
 // policy that can be written, not about the source groups this baseline has not
 // settled (roadmap/sourceIdentity.test.ts).
 import { curatedFixture as fixture } from './fixtures/index.ts'
-import { adminsAtRung5, runFixture } from './fixtures/run.ts'
+import { runFixture } from './fixtures/run.ts'
 import { contentLists, NAMES_UP_TO } from '../derive/contentLists.ts'
 import { adminUserIds } from '../roles.ts'
 import { stepById } from '../content/content.ts'
@@ -22,7 +22,12 @@ import { answerKey, questionLabels } from './answers.ts'
 import { plainMfaFirst } from './deviations.ts'
 import { stepIdForGoal } from './stepIds.ts'
 import { listCountVars, whole } from '../content/render.ts'
-import { rungOf } from '../derive/ladder.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
+import type { MfaViability } from '../scoring/mfaViability.ts'
+
+/** The admins at the readiness their own policy asks for (Step 7): Ready, a passkey proven on the platform they use. */
+const READY_ADMIN = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null })
+const withAdminsReady = (viability: MfaViability[]): MfaViability[] => viability.map((v) => (v.isAdmin ? { ...v, readiness: READY_ADMIN } : v))
 
 const ctxFor = (f: ReturnType<typeof fixture>, r: ReturnType<typeof runFixture>, over: Partial<StepVarContext> = {}): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...over })
 
@@ -33,32 +38,32 @@ function adminsInReportOnly(f: ReturnType<typeof fixture>): typeof f.snapshot {
   return { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
 }
 
-test('step 15 names the admins not yet at Passkey or security key, proven on the demo (three or fewer), and counts them past that', () => {
+test('step 15 names the admins not yet Ready for phishing-resistant MFA on the demo (three or fewer), and counts them past that', () => {
   const f = fixture('demo-week2')
   const snapshot = adminsInReportOnly(f)
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   const ex = stepVars(s, ctxFor(f, r)) as { adminsWithout: string[]; adminsWithoutCount?: number }
   const admins = [...adminUserIds(f.snapshot.roles)].filter((id) => !f.mapping.breakGlassUserIds.includes(id))
-  // The ladder's rung, not the registration alone: a passkey never used, or Windows Hello on one PC, is not the rung the policy needs.
-  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && rungOf(v) !== 5)
-  assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins not yet at rung 5`)
+  // Readiness, not the registration alone: a passkey never used is not what the policy needs (Step 7).
+  const without = r.viability.filter((v) => admins.includes(v.userId) && v.activity === 'active' && v.readiness.state !== 'ready')
+  assert.ok(without.length > 0 && without.length <= NAMES_UP_TO, `the demo has ${without.length} admins not yet Ready`)
   assert.equal(ex.adminsWithout.length, without.length, 'named, not counted')
   assert.equal(ex.adminsWithoutCount, undefined)
   // The line names a day to register before, and there is no such day while the
   // plan is holding the enforcement behind the very readiness these admins are
-  // short of (roadmap/operations.ts readinessGate): the demo's admins are 33% of
+  // short of (roadmap/operations.ts readinessGate): the demo's admins are 67% of
   // the way to the 100% the step asks for, so nothing about it is dated and the
   // line does not render. The list itself is unchanged, and the row says what it
   // is waiting for.
   const lines = stepLines(s, ctxFor(f, r))
-  assert.equal(s.action.readinessGate?.value, '33%', 'the step waits on admin readiness')
+  assert.equal(s.action.readinessGate?.value, '67%', 'the step waits on admin readiness')
   assert.ok(!s.events, 'so nothing about it is dated')
-  assert.deepEqual(lines.filter((l) => /Passkey or security key/.test(l)), [], 'and a line that names a deadline does not invent one')
-  assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 33%)'), JSON.stringify(s.blockers))
+  assert.deepEqual(lines.filter((l) => /not yet Ready for phishing-resistant MFA/.test(l)), [], 'and a line that names a deadline does not invent one')
+  assert.ok(s.blockers.some((b) => b.binding === 'when admin readiness reaches 100% (now 67%)'), JSON.stringify(s.blockers))
   // With the prerequisite met the enforcement is dated again, and the line comes
   // back counting whatever list is left.
-  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: adminsAtRung5(r.viability, f.snapshot.asOf) } as never)
+  const ready = runFixture({ ...f, snapshot }, { snapshot, viability: withAdminsReady(r.viability) } as never)
   const dated = ready.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
   // The readiness hold is released, so the plan dates the change again. Where it
   // holds that date is Foundation B's: this policy is in report-only and the one
@@ -75,7 +80,7 @@ test('step 15 names the admins not yet at Passkey or security key, proven on the
 test('step 33 lists the eligible role holders with no passkey or key yet', () => {
   const f = fixture('mid')
   const r = runFixture(f)
-  const eligibleId = r.viability.find((v) => v.activity === 'active' && rungOf(v) !== 5 && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
+  const eligibleId = r.viability.find((v) => v.activity === 'active' && v.readiness.state !== 'ready' && !f.mapping.breakGlassUserIds.includes(v.userId))!.userId
   const snapshot = { ...f.snapshot, roles: { ...f.snapshot.roles, eligible: { [eligibleId]: ['62e90394-69f5-4237-9190-012177145e10'] } } }
   const lists = contentLists({ snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
   assert.deepEqual(lists.eligibleWithout, [eligibleId])

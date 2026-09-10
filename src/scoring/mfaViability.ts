@@ -5,11 +5,12 @@
 // (active / dormant / neverSignedIn) and MFA state — evidence rules apply only
 // to active users.
 import { releasesBehind } from './platform.ts'
+import { personReadiness } from './phishingResistant.ts'
+import type { PersonHistory, PersonReadiness, PlatformSeen, ProofRecord } from './phishingResistant.ts'
 
 // §10.1 constants
 export const INACTIVE_DAYS = 90
 export const RECENT_REGISTRATION_DAYS = 30
-export const WHFB_DEVICE_ACTIVE_DAYS = 30
 export const STALE_METHOD_DAYS = 180
 export const AUTHENTICATOR_VERSION_LAG = 3
 
@@ -27,13 +28,14 @@ export type MethodKind =
 
 export type AuthMethodSummary = {
   kind: MethodKind
+  /** The method's own id, kept for the qualifying methods so a later scan can tell one that disappeared (scoring/mfaHistory.ts). */
+  id?: string
   createdDateTime?: string
   displayName?: string
   phoneAppVersion?: string
   deviceTag?: string
   platform?: string
   model?: string
-  deviceLastSignIn?: string
   phoneType?: 'mobile' | 'alternateMobile' | 'office'
   isUsable?: boolean
 }
@@ -61,7 +63,13 @@ export type MfaViabilityInput = {
     status: EvidenceStatus
     covered: { from: string; to: string } | null
     lastMfaSuccess: { at: string; method: string } | null
+    /** The proof per method and platform in the records; null where the snapshot predates it being recorded. Absent reads as none. */
+    proofs?: ProofRecord[] | null
+    /** The platform families the records show the person signing in from. */
+    platforms?: PlatformSeen[]
   }
+  /** What earlier scans kept about this person (scoring/mfaHistory.ts). */
+  history?: PersonHistory | null
   tenant: {
     now: string
     newestAuthenticatorVersionByPlatform: Record<string, string>
@@ -120,10 +128,15 @@ export type MfaViability = {
   kinds: MethodKind[]
   reasons: string[]
   evidence?: { at: string; method: string }
+  /**
+   * Phishing-resistant readiness (scoring/phishingResistant.ts): the one answer
+   * MFA Readiness, the Plan's MFA, guest and admin gates and the campaign read.
+   * `mfa` is the ordinary-MFA picture beside it and is never readiness.
+   */
+  readiness: PersonReadiness
   signals: {
     recentRegistration?: string
     authenticatorVersion?: { seen: string; newest: string; releasesBehind: number }
-    whfbDeviceActive?: string
     smsVoiceOnly?: boolean
     methodsUnknown?: boolean
     observableInWindow?: boolean
@@ -186,6 +199,12 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
     methodTiers,
     registered: registration?.methodsRegistered ?? [],
     kinds: capable.map((m) => m.kind),
+    readiness: personReadiness({
+      methods,
+      registered: registration?.methodsRegistered ?? null,
+      signIns: { read: evidenceUsable, proofs: evidence.proofs === undefined ? [] : evidence.proofs, platforms: evidence.platforms ?? [] },
+      history: input.history ?? null,
+    }),
     signals,
   }
 
@@ -232,16 +251,9 @@ export function scoreMfaViability(input: MfaViabilityInput): MfaViability {
       }
     }
   }
-  for (const m of capable) {
-    if (
-      m.kind === 'windowsHelloForBusiness' &&
-      m.deviceLastSignIn &&
-      daysBetween(m.deviceLastSignIn, tenant.now) <= WHFB_DEVICE_ACTIVE_DAYS
-    ) {
-      signals.whfbDeviceActive = m.deviceLastSignIn
-      return { ...base, mfa: 'likelyViable', reasons: ['Windows Hello device recently active'] }
-    }
-  }
+  // (A third signal, "Windows Hello device recently active", read a device
+  // sign-in the collector never gathers, so it could not fire on a real scan. It
+  // is gone rather than left as evidence nobody can produce — Step 7.)
 
   // 4 — notChallenged: active users only.
   if (activity === 'active' && evidenceUsable && observable && !evidence.lastMfaSuccess) {

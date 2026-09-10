@@ -16,15 +16,14 @@ import type { StepVarContext } from './stepVars.ts'
 import { commsFor, stepLines } from './stepExport.ts'
 import { fillText } from '../../content/render.ts'
 import { app, pages, stepById } from '../../content/content.ts'
-import { RUNGS } from '../../derive/ladder.ts'
-import { rungWords, showWord } from './readinessCells.ts'
+import { SUMMARY_STATES } from '../../derive/mfaReadiness.ts'
+import { showWord, stateTitle } from './readinessCells.ts'
 import { rowWhen } from './rowWhen.ts'
 import { holdOf } from '../../roadmap/holds.ts'
 import { enforcementUnearned } from '../../roadmap/forecast.ts'
 import { rowWho } from './rowWho.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
-import { rungOf } from '../../derive/ladder.ts'
 import { adminUserIds } from '../../roles.ts'
 import { whoLine } from '../../derive/whoLine.ts'
 import { longDate } from '../../copy/dates.ts'
@@ -92,7 +91,7 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   assert.equal(fillText('{admins} people hold an admin role', { admins: 1 }), '1 person holds an admin role')
   assert.equal(fillText('{admins} people hold an admin role', { admins: 3 }), '3 people hold an admin role')
   assert.equal(fillText('{n} of them have no passkey or key yet.', { n: 1 }), '1 of them has no passkey or key yet.')
-  assert.equal(fillText('{n} admins are not yet at Passkey or security key, proven; register before {enforce}: {list:x}', { n: 1, enforce: 'Sep 7', x: ['Kai'] }), '1 admin is not yet at Passkey or security key, proven; register before Sep 7: Kai')
+  assert.equal(fillText('{n} admins are not yet Ready for phishing-resistant MFA; get each Ready before {enforce}: {list:x}', { n: 1, enforce: 'Sep 7', x: ['Kai'] }), '1 admin is not yet Ready for phishing-resistant MFA; get each Ready before Sep 7: Kai')
   assert.equal(fillText('{n} people hold a directory role and use that same account for mail or Teams since {from}:', { n: 1, from: 'Aug 1' }), '1 person holds a directory role and uses that same account for mail or Teams since Aug 1:')
   assert.equal(fillText('{n} people signed in from outside', { n: 1 }), '1 person signed in from outside', 'a past tense stays')
   const g = fixture('getiamai')
@@ -104,7 +103,7 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   // names a day for is one the plan will make. GetIAMAI's admin readiness is 0%
   // against the 100% the step asks for, so held it has no day to name at all.
   assert.equal(s.action.readinessGate?.value, '0%')
-  assert.deepEqual(lines.filter((l) => /Passkey or security key/.test(l)), [], 'no deadline is invented while the enforcement is held')
+  assert.deepEqual(lines.filter((l) => /not yet Ready for phishing-resistant MFA; get each Ready before/.test(l)), [], 'no deadline is invented while the enforcement is held')
   // With the admins at the rung met, the signed-in account still has no safe way
   // in, and that holds the enforcement too (roadmap/holds.ts): still no day.
   const ready = runFixture(g, { viability: adminsAtRung5(r.viability, g.snapshot.asOf) } as never)
@@ -112,12 +111,12 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   assert.ok(s2.blockers.some((b) => b.kind === 'readiness' && b.label === 'operator'), 'the premise: the operator’s own way in')
   assert.equal(holdOf(s2)?.kind, 'readiness')
   assert.equal(s2.events, null, 'a held enforcement is not dated')
-  assert.deepEqual(stepLines(s2, ctxFor(g, ready)).filter((l) => /Passkey or security key, proven; register before/.test(l)), [], 'and no deadline is written')
+  assert.deepEqual(stepLines(s2, ctxFor(g, ready)).filter((l) => /not yet Ready for phishing-resistant MFA; get each Ready before/.test(l)), [], 'and no deadline is written')
 })
 
-test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {
-  assert.deepEqual(RUNGS.map((r) => rungWords(r).title), ['Passkey or security key, proven', 'Authenticator app, proven', 'Windows Hello only', 'Set up, not proven', 'Nothing set up'])
-  for (const r of RUNGS) assert.equal(showWord(`rung-${r}`), rungWords(r).title, `rung ${r} in the Show list`)
+test("(3) MFA Readiness's states are the table's words, and a summary count's filter is named by the same word", () => {
+  assert.deepEqual(['ready', 'needsProof', 'needsSetup', 'unknown'].map((s) => stateTitle(s as 'ready')), ['Ready', 'Needs proof', 'Needs setup', 'Unknown'])
+  for (const s of SUMMARY_STATES) assert.equal(showWord(s), stateTitle(s), `${s}: the filter and the state read one word`)
   const show = (pages.readiness as { show: Record<string, string> }).show
   assert.equal(showWord('all'), show.all)
   assert.ok(!('tiles' in (pages.readiness as Record<string, unknown>)), 'the tiles carry no words of their own')
@@ -146,23 +145,24 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   const snapshot = adminsInReportOnly(f)
   const r = runFixture({ ...f, snapshot }, { snapshot } as never)
   const s = r.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
-  // The step's own answer, and the tenant fact behind it: the admins the policy
-  // reaches who are not yet at Passkey or security key, proven. The step reads
-  // its own policy for both the count and the names (roadmap/lockout.ts).
+  // The step's own answer (roadmap/lockout.ts): who its own policy would stop,
+  // the admins it reaches with no method its strength accepts. They are never
+  // more than the admins who are not yet Ready for phishing-resistant MFA —
+  // somebody who needs only proof holds a method the policy accepts (Step 7).
   const admins = adminUserIds(f.snapshot.roles)
   const bg = new Set(f.mapping.breakGlassUserIds)
-  const without = r.viability.filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && rungOf(v) !== 5).map((v) => v.userId)
-  assert.ok(without.length > 0)
-  assert.equal(s.lockout, without.length)
+  const notReady = r.viability.filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && v.readiness.state !== 'ready').map((v) => v.userId)
+  assert.ok(typeof s.lockout === 'number' && s.lockout > 0, 'the premise: the policy would stop somebody')
+  assert.ok(s.lockout <= notReady.length, `${s.lockout} stopped and ${notReady.length} not Ready`)
   const nameOf = (id: string): string => r.input.names!.label(id)
   const who = rowWho(s, nameOf)
   // The who-line, its gap clause when the row has one, then the lockout count. A
   // gap that only restates the state ("report-only, not enforced") is not impact:
   // the row's status word already says it (rowWho.ts).
   const gap = s.gapShort ?? s.gap ?? null
-  assert.equal(who, `${whoLine(s.population, nameOf, gap === REPORT_ONLY_GAP ? null : gap)} · ${without.length} not yet at Passkey or security key, proven`)
+  assert.equal(who, `${whoLine(s.population, nameOf, gap === REPORT_ONLY_GAP ? null : gap)} · ${s.lockout} would be stopped`)
   assert.ok(!who.includes(REPORT_ONLY_GAP), 'the Impact column restates the state')
-  assert.match(who, new RegExp(`^${s.population.active} people · .*${without.length} not yet at Passkey or security key, proven$`))
+  assert.match(who, new RegExp(`^${s.population.active} people · .*${s.lockout} would be stopped$`))
   // Zero: no suffix. The block policies carry none.
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!
   assert.equal(block.lockout, undefined)

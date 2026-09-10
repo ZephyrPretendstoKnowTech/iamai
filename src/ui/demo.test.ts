@@ -26,7 +26,8 @@ import { isHeld } from '../roadmap/holds.ts'
 import { generateRoadmap } from '../roadmap/generate.ts'
 import { floorRows, floorGroupIds } from './surfaces/planRows.ts'
 import { FLOOR_GOAL_IDS } from '../roadmap/floor.ts'
-import { hasPortablePhishingResistant, ladder, methodsOf, rungIds, windowsHelloOnly } from '../derive/ladder.ts'
+import { ladder, stateIds } from '../derive/ladder.ts'
+import type { ReadinessState } from '../scoring/phishingResistant.ts'
 import { scoredPeople } from '../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../derive/stepMfaReadiness.ts'
 import { notPeopleIds } from '../derive/sets.ts'
@@ -227,40 +228,38 @@ test('B: the sample Plan shows a useful mix, and every part of it is derived', (
 // C. One readiness ladder
 // ---------------------------------------------------------------------------
 
-test('C: the sample people are scored by the ladder, with the mix MFA Readiness is for', () => {
+test('C: the sample people are scored by readiness, with the mix MFA Readiness is for', () => {
   const f = fixture('demo')
   const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
   assert.ok(l.active >= 20, `the sample has ${l.active} active people`)
-  // Proven phishing-resistant, and an administrator: the top of the page.
-  assert.ok(rungIds(l, 5).length >= 1, 'no sample person has proven a passkey or a security key')
-  assert.ok(l.rungs[5].some((p) => p.admin), 'the sample passkey holder is not an administrator')
-  // A strong method configured whose proof does not travel: Windows Hello alone.
-  assert.ok(rungIds(l, 3).length >= 1, 'no sample person holds a strong method that is not portable')
-  // People who still need the target method.
-  assert.ok(rungIds(l, 1).length >= 1, 'every sample person already has a method')
+  // Ready, and an administrator: the top of the page.
+  assert.ok(stateIds(l, 'ready').length >= 1, 'no sample person is Ready for phishing-resistant MFA')
+  assert.ok(l.states.ready.some((p) => p.admin), 'no sample administrator is Ready')
+  // A qualifying method proven on one platform family and not on another the person uses.
+  assert.ok(l.states.needsProof.some((p) => p.viability.readiness.missing.length > 0), 'no sample person needs proof on a platform they use')
+  // People who still need a qualifying method.
+  assert.ok(stateIds(l, 'needsSetup').length >= 1, 'every sample person already has a qualifying method')
   // Emergency access and the non-person accounts are beside the denominator, never in it.
   const notPeople = notPeopleIds(f.mapping)
   assert.ok(l.kinds.emergency.length >= 1 && l.kinds.service.length >= 1)
-  const scoredIds = new Set(Object.values(l.rungs).flat().map((p) => p.id))
+  const scoredIds = new Set(Object.values(l.states).flat().map((p) => p.id))
   for (const id of notPeople) assert.equal(scoredIds.has(id), false, `${id} is not a person and is counted as one`)
 })
 
-test('C: generic MFA evidence does not prove a passkey, and Windows Hello keeps its meaning', () => {
+test('C: generic MFA evidence proves no qualifying method, and Windows Hello proves only where it was used', () => {
   const f = fixture('demo')
   const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
-  const proven = new Set(rungIds(l, 5))
-  // Read through the ladder's own predicates: this is a claim about the sample's
-  // facts, not a second rule about what a method proves.
-  for (const id of l.viability.keys()) {
-    const m = methodsOf(f.snapshot, id)
-    if (!hasPortablePhishingResistant(m)) assert.equal(proven.has(id), false, `${id} reads as passkey-proven without a portable phishing-resistant method`)
+  // Read through the one derivation: this is a claim about the sample's facts,
+  // not a second rule about what a method proves.
+  for (const [id, v] of l.viability) {
+    const rd = v.readiness
+    if (rd.state === 'ready') assert.ok(rd.qualifying.length > 0 && rd.proof.length > 0, `${id} is Ready without a qualifying method and its proof`)
+    assert.ok(rd.proof.every((p) => rd.qualifying.includes(p.cls)), `${id} carries proof for a method it does not hold`)
   }
-  assert.ok([...proven].every((id) => hasPortablePhishingResistant(methodsOf(f.snapshot, id))), 'a sample person is proven without the method behind it')
-  // Windows Hello alone does not travel: the sample's Hello-only person sits
-  // where the ladder puts them, below the portable methods.
-  const helloOnly = [...l.viability.keys()].filter((id) => windowsHelloOnly(methodsOf(f.snapshot, id)))
+  // Windows Hello alone does not travel: a Hello-only person seen on another platform is not Ready.
+  const helloOnly = [...l.viability.values()].filter((v) => v.readiness.qualifying.length === 1 && v.readiness.qualifying[0] === 'windowsHello')
   assert.ok(helloOnly.length >= 1, 'the sample has nobody holding Windows Hello alone')
-  for (const id of helloOnly) assert.equal(proven.has(id), false, `${id} holds Windows Hello alone and reads as passkey-proven`)
+  for (const v of helloOnly) if (v.readiness.platforms.some((os) => os !== 'Windows')) assert.notEqual(v.readiness.state, 'ready', `${v.userId} holds Windows Hello alone, uses another platform and reads as Ready`)
 })
 
 test('C: a sample Plan step hands off to MFA Readiness by step id, and the people come from the same scoring', () => {
@@ -526,18 +525,22 @@ test('a person\'s readiness rises on the follow-up scan only because new proof a
   const b = fixture('demo-week2')
   const before = ladder(a.snapshot, a.mapping, a.snapshot.asOf)
   const after = ladder(b.snapshot, b.mapping, b.snapshot.asOf)
-  const rungOf = (l: typeof before, id: string): number => Number(Object.entries(l.rungs).find(([, ps]) => ps.some((p) => p.id === id))?.[0] ?? 0)
-  const moved = [...before.viability.keys()].filter((id) => rungOf(after, id) > rungOf(before, id))
+  // Needs setup, then Needs proof, then Ready; Unknown is not a step on the way.
+  const RANK: Record<ReadinessState, number> = { unknown: 0, needsSetup: 1, needsProof: 2, ready: 3 }
+  const rankOf = (l: typeof before, id: string): number => {
+    const state = (Object.entries(l.states) as [ReadinessState, { id: string }[]][]).find(([, ps]) => ps.some((p) => p.id === id))?.[0]
+    return state === undefined ? -1 : RANK[state]
+  }
+  const moved = [...before.viability.keys()].filter((id) => rankOf(after, id) > rankOf(before, id))
   assert.ok(moved.length >= 1, 'nobody improved on the follow-up scan')
   for (const id of moved) {
-    const was = a.snapshot.signInEvidence[id]?.lastMfaSuccess ?? null
-    const now = b.snapshot.signInEvidence[id]?.lastMfaSuccess ?? null
+    const proofChanged = JSON.stringify(a.snapshot.signInEvidence[id]?.proofs ?? []) !== JSON.stringify(b.snapshot.signInEvidence[id]?.proofs ?? [])
     const methodsChanged = JSON.stringify(a.snapshot.authMethods?.[id] ?? []) !== JSON.stringify(b.snapshot.authMethods?.[id] ?? [])
-    assert.ok((was === null && now !== null) || methodsChanged, `${id} moved up a rung with no new method and no new proof`)
+    assert.ok(proofChanged || methodsChanged, `${id} became more ready with no new method and no new proof`)
   }
   // And the people whose facts did not move did not move either.
   const still = [...before.viability.keys()].filter((id) => !moved.includes(id))
-  for (const id of still) assert.equal(rungOf(after, id), rungOf(before, id), `${id} changed rung with no change in its facts`)
+  for (const id of still) assert.equal(rankOf(after, id), rankOf(before, id), `${id} changed readiness with no change in its facts`)
 })
 
 test('a policy advances on the follow-up scan only where the evidence the product asks for is there', () => {

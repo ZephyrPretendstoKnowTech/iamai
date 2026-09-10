@@ -774,13 +774,10 @@ export function renderPages(): string {
   )
   const pl = P.plan
   const s = pl.settings
-  const ld = P.ladder
   sec(
     'Plan header, settings, blocked reasons, footer',
     `<h2 class="h1">${esc(pl.h1)}</h2>` +
       p(pl.line1, exT) +
-      // The MFA readiness ladder's five tiles (pages.ladder, drawn in full under Today), then the start date and the two controls.
-      `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })} — ${['r5', 'r4', 'r3', 'r2', 'r1'].map((k) => esc(ld.rungs[k].title)).join(' · ')}</p>` +
       kv(s.start, '[date]') +
       btn(pl.startControl, true) +
       p('After starting: ' + fill(pl.line1Started, { ...exT, done: 4, start: 'Mon Sep 7' }), exT, 'sub') +
@@ -802,69 +799,60 @@ export function renderPages(): string {
       ul([pl.footer.inPlace, pl.footer.doesntApply + ' — ' + pl.footer.doesntApplyRow, pl.footer.notLicensed + ' — ' + pl.footer.notLicensedRow + ' — ' + pl.footer.notLicensedNote, pl.footer.housekeeping + ' — ' + pl.footer.notInBaseline + ' · ' + pl.footer.rename], exT),
   )
   const td = P.readiness
-  // The ladder (pages.ladder): the header, the five rungs with their tooltips and descriptions, the rule before the three to prioritise.
-  const rungRows = ['r5', 'r4', 'r3', 'r2', 'r1']
-    .map((k, i) => {
-      const r = ld.rungs[k]
-      return (i === 2 ? `<li class="sub">${esc(ld.prioritise)}</li>` : '') + `<li><b>${esc(r.title)}</b> — ${esc(r.desc)} <span class="sub">(ⓘ ${esc(r.tip)})</span></li>`
-    })
+  // MFA Readiness (Step 7): the summary and its three counts, the strip, the
+  // filters, the worklist's words and the detail's Why and Next.
+  const stateRows = ['ready', 'needsProof', 'needsSetup', 'unknown']
+    .map((k) => `<li><b>${esc(td.states[k].title)}</b>${td.states[k].stat ? ` — ${esc(td.states[k].stat)} — ${esc(td.states[k].hint)} <span class="sub">(${esc(td.states[k].aria)})</span>` : ''}</li>`)
     .join('')
-  // A Show option is one of the content's words; a rung's title where a link arrived filtered to one (derive/mfaReadiness.ts SHOW_KEYS).
-  const showWords = [...SHOW_KEYS, ...COMPAT_SHOW_KEYS].map((k) => (k.startsWith('rung-') ? ld.rungs[`r${k.slice(5)}`].title : td.show[k]))
-  const ledgerParts = ['active', 'notActive', 'emergency', 'service', 'shared', 'disabled'].map((k) => fill(td.ledger[k], { n: 3 })).join(' · ')
-  // The three groupings the page counts (derive/mfaReadiness.ts): a view over the rungs above, never a second reading of them.
-  const groupRows = ['ready', 'needsProof', 'needsPasskey', 'unknown']
-    .map((k) => `<li><b>${esc(td.groups[k].title)}</b> — ${esc(td.groups[k].hint)} — ${esc(td.groups[k].tip)}${td.groups[k].next ? ` <span class="sub">Next: ${esc(td.groups[k].next)}</span>` : ''}</li>`)
-    .join('')
+  const showWords = [...SHOW_KEYS, ...COMPAT_SHOW_KEYS].map((k) => td.show[k])
+  const ledgerParts = ['notActive', 'emergency', 'service', 'shared', 'disabled'].map((k) => fill(td.ledger[k], { n: 3 })).join(' · ')
+  const dt = td.detail as Record<string, string>
+  const sampleVars = { proof: 'Passkey on iOS', name: 'Shallan Davar', missing: 'Windows', methods: 'passkey', method: 'passkey', platform: 'Windows', date: 'Sep 2' }
   sec(
     'MFA Readiness',
     `<p class="sub">${esc(td.eyebrow)}</p>` +
       `<h2 class="h1">${esc(td.h1)}</h2>` +
       p(td.lead, {}) +
-      h('The integrated summary') +
-      `<p class="sub">${esc(td.summaryEyebrow)}</p>` +
-      p(fill(td.summary, { ready: 4, active: 12 }), {}) +
-      p(fill(td.summarySub, { n: 8 }), {}) +
+      h('The summary') +
+      `<p class="sub">${esc(td.summaryEyebrow)} · ${esc(td.summaryLabel)}</p>` +
+      p(fill(td.summary, { ready: 7, active: 18 }), {}) +
+      p(td.summarySub, {}) +
       p(td.summaryNone, {}) +
-      p(td.summarySubNone, {}) +
-      p(td.summarySubUnknown, {}) +
-      h('The three groupings') +
-      `<ul>${groupRows}</ul>` +
-      p(fill(td.unknownMethods, { n: 3 }), {}) +
-      h('Opened from a Plan step, and the plan dependency the page states on its own') +
-      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back, td.planContext.dependencyTitle, fill(td.planContext.dependency, { n: 6, step: 'Require MFA for everyone' }), td.planContext.dependencyLink, td.planContext.dependencyNoneTitle, td.planContext.dependencyNone, td.planContext.dependencyPending, td.planContext.planLink], {}) +
-      h('The ladder behind the groupings') +
-      `<p class="sub">${esc(ld.header)} · ${fill(ld.of, { n: 12 })}</p>` +
-      `<ul>${rungRows}</ul>` +
-      `<p class="sub">Show: ${showWords.join(' · ')} · ${esc(td.adminsOnly)}</p>` +
-      `<p class="sub">Columns: ${(td.columns as string[]).join(' · ')}</p>` +
+      `<ul>${stateRows}</ul>` +
+      h('The Plan gate and passkey rollout strip') +
+      ul([td.strip.label, td.strip.gate, fill(td.strip.gateLine, { required: 17, active: 18 }), fill(td.strip.gateMore, { n: 10 }), td.strip.gateMet, td.strip.gateNotMeasured, td.strip.gateLink, td.strip.rollout, fill(td.strip.rolloutLine, { have: 9, active: 18 }), fill(td.strip.rolloutWithout, { n: 9 }), td.strip.rolloutNone], {}) +
+      h('Opened from a Plan step') +
+      ul([fill(td.planContext.filtered, { n: 6, step: 'Require MFA for everyone' }), fill(td.planContext.unknown, { step: 'Require MFA for everyone' }), td.planContext.back], {}) +
+      `<p class="sub">${esc(td.search)} · Filters: ${showWords.map(esc).join(' · ')}</p>` +
+      `<p class="sub">Columns: ${(td.columns as string[]).join(' · ')} · ${esc(td.signInAddress)}</p>` +
+      h('Methods') +
+      `<p class="sub">${['passkey', 'windowsHello', 'certificate', 'authenticator', 'oath', 'phone', 'none', 'unknown'].map((k) => esc(td.methods[k])).join(` ${esc(td.methods.join)} `)}</p>` +
+      `<p class="sub">${Object.values(td.methodsInSentence as Record<string, string>).map(esc).join(' · ')}</p>` +
+      ul(Object.values(td.methodNotes as Record<string, string>), { method: 'Passkey' }) +
+      h('Proof lines') +
+      ul(Object.values(td.proof as Record<string, string>), { method: 'Passkey', platform: 'iOS', date: 'Sep 2' }) +
+      h('Actions') +
+      ul(Object.values(td.actions as Record<string, string>), { platform: 'Windows', method: 'passkey' }) +
+      h('The detail: Why and Next') +
+      ul([dt.eyebrow, fill(dt.title, { name: 'Shallan Davar', state: td.states.needsProof.title }), dt.why, dt.next, dt.close, dt.scanAgain, dt.and], {}) +
+      ul(Object.entries(dt).filter(([k]) => /^(why|next)[A-Z]/.test(k)).map(([, v]) => v), sampleVars) +
       h('Under the table') +
-      p(`${fill(td.ledger.lead, { accounts: 18 })} ${ledgerParts} · ${td.separate}`, {}) +
-      h('Kinds (an account that is not a person)') +
+      p(`${fill(td.footerLead, { active: 18 })} ${ledgerParts}`, {}) +
+      `<p><a>${esc(td.inventory)}</a></p>` +
+      `<p class="sub">${esc(td.empty)}</p>` +
+      h('Roles, and kinds (an account that is not a person)') +
+      `<p class="sub">${esc(td.roles.admin)} · ${esc(td.roles.person)} · ${esc(td.guest)}</p>` +
       '<ul>' +
       Object.values(td.kinds as Record<string, string>).map((v) => `<li>${esc(v)} — ${esc(td.notAPerson)}</li>`).join('') +
-      '</ul>' +
-      h('Method words') +
-      `<p class="sub">${Object.values(td.methods as Record<string, string>).map(esc).join(' · ')}</p>` +
-      h('Evidence lines') +
-      ul([`${td.evidence.windowsHello} · ${td.evidence.phones}`, `${td.evidence.windowsHello} · ${td.evidence.phonesSome}`, `${td.evidence.windowsHello} · ${td.evidence.noPhones}`, td.evidence.lastSignIn], { n: 12, when: '41 days ago' }) +
-      btn(td.export) +
-      `<p><a>${esc(td.inventory)}</a></p>` +
-      `<div class="tip">${esc(td.tip)}<span class="q">?</span></div>`,
+      '</ul>',
   )
-  // The remediation guidance (task 014), which is one source and not four: the
-  // panel a row's Next step opens, the text the help desk copies out of it, and
-  // the campaign step's pointer are all these lines. Drawn here so the words are
-  // reviewed where every other sentence is.
-  const rem = td.remediation
+  // The method guidance (task 014), one source and not four: the text the help
+  // desk copies and the campaign step's pointer are these lines. Drawn here so
+  // the words are reviewed where every other sentence is.
   sec(
-    'MFA Readiness — the person panel and the method guides',
-    p(fill(rem.heading, { name: 'Shallan Davar' }), {}) +
-      p(MG.target, {}) +
+    'MFA method guides',
+    p(MG.target, {}) +
       p(MG.prereq, {}) +
-      h('Choosing') +
-      ul([rem.choose, rem.other], {}) +
-      `<p class="sub">${[rem.copy, rem.copied, rem.close, rem.learn].map(esc).join(' · ')}</p>` +
       METHOD_GUIDES.map(
         (g) =>
           `<h4>${esc(g.title)}${g.reachesTarget ? '' : ` <span class="sub">(short of the passkey target)</span>`}</h4>` +

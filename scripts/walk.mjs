@@ -27,7 +27,7 @@ import { isFloorGoal } from '../src/roadmap/floor.ts'
 import { cleanup as cleanupContent, pages, steps as contentSteps } from '../src/content/content.ts'
 import goalsData from '../data/goals.json' with { type: 'json' }
 import { contentFindings, contentLearnUrls, probe } from './walkContent.mjs'
-import { RE, beforeLines, headerTabsLine, readinessAllWord, readinessGroupTitles, rungTitles, staticFindings } from '../src/content/contentChecks.ts'
+import { RE, beforeLines, headerTabsLine, readinessAllWord, readinessStatTitles, staticFindings, textAt } from '../src/content/contentChecks.ts'
 import { RETIRED_OPENER } from './build-home.ts'
 import { TOOL_PATH } from './toolPath.ts'
 
@@ -37,7 +37,8 @@ import { TOOL_PATH } from './toolPath.ts'
 // walk's browser-free expectations and `npm test` runs it, so a renamed content
 // key fails before a push instead of in this job — MFA Readiness replaced Today
 // in task 012 and the walk cannot hold a name the header has stopped using.
-const RUNG_TITLES = rungTitles()
+/** MFA Readiness's Ready filter word (pages.readiness.show.ready). */
+const READY_WORD = textAt('pages.readiness.show.ready')
 const HEADER_TABS = headerTabsLine()
 /** The unfiltered filter's word, so a pressed count can be cleared by the control that set it. */
 const ALL_ACCOUNTS = readinessAllWord()
@@ -450,12 +451,11 @@ async function walkFixture(fx) {
   let exclusionBody = null
   let sawExistingCoverage = false
   let planHeaderCounts = null
-  // The campaign step's own rung counts, read where the decision is made, for the
-  // ladder to agree with once both have been walked.
-  let campaignRungs = null
-  // The five rung counts by title, read from MFA Readiness filtered to each rung,
-  // for Connect's tiles and the campaign step to agree with.
-  let ladderCounts = null
+  // The campaign step's own group counts, read where the decision is made, for
+  // MFA Readiness's counts to agree with once both have been walked (Step 7).
+  let campaignGroups = null
+  // MFA Readiness's four state counts, read from its summary.
+  let readinessCounts = null
   for (const width of WIDTHS) {
     await setWidth(width)
     const wdir = join(dir, String(width))
@@ -559,12 +559,17 @@ async function walkFixture(fx) {
       // display only): with its directory sign-in 200 days stale it reads not
       // active on Today, like anyone else's would, and never "signed in now".
       if (fx.mock === 'operator' && route === 'readiness') {
+        // Not active is not in the default worklist (Needs action); its own filter shows it.
+        await evaluate(`location.hash = '#/readiness/notActive'`)
+        await sleep(400)
         const row = await evaluate(`(() => { const tr = [...document.querySelectorAll('main.page table.datatable tbody tr')].find((r) => /Alex Morgan/.test(r.innerText)); if (!tr) return null; const tds = [...tr.querySelectorAll('td')].map((td) => (td.innerText || '').replace(/\\s+/g, ' ').trim()); return { state: tds[4] || '', evidence: tds[3] || '', text: tr.innerText.replace(/\\s+/g, ' ') } })()`)
         if (!row) add('P0', `${label}: MFA Readiness has no row for the signed-in account`)
         else {
           if (!/not active/i.test(row.state)) add('P0', `${label}: MFA Readiness reads the signed-in account's stale directory sign-in as "${row.state}"; not active, like anyone else's`)
           if (/signed in now/.test(row.evidence)) add('P0', `${label}: the signed-in account's evidence reads "${row.evidence}"; the population never depends on who is signed in`)
         }
+        await evaluate(`location.hash = '#/readiness'`)
+        await sleep(300)
       }
       const overflow = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
       if (overflow > 0) {
@@ -577,77 +582,67 @@ async function walkFixture(fx) {
       // line counts every account once, its kinds summing to the accounts; the
       // three group counts sum to the active people, and each filters the table to
       // exactly the rows it counts (task 012).
+      // MFA Readiness (Step 7): one derivation over the active people. The summary
+      // says how many are Ready; the three counts beside it are filters, and each
+      // narrows the worklist to exactly the rows it counts; Ready and the three sum
+      // to the active people; and the Plan gate and passkey strips count the same
+      // people.
       if (route === 'readiness') {
-        const ledger = text.match(/(\d+) accounts?: (.*?)\s*(?:sign-ins [A-Z][a-z]{2} \d+ → |no sign-in records)/)
-        if (!ledger) add('P0', `${label}: the ledger line is missing`)
-        else {
-          const parts = [...ledger[2].matchAll(/(\d+) /g)].map((m) => Number(m[1]))
-          if (parts.reduce((a, b) => a + b, 0) !== Number(ledger[1])) add('P0', `${label}: the ledger's kinds sum to ${parts.reduce((a, b) => a + b, 0)} and it counts ${ledger[1]} accounts ("${ledger[0].slice(0, 80)}")`)
-          if (/\b0 /.test(ledger[2])) add('P0', `${label}: the ledger names a kind at zero ("${ledger[2].slice(0, 80)}")`)
-        }
-        // The three counts the page shows over the active people. They are a view
-        // of the rungs, so they share the ladder's denominator, and each one filters
-        // the table to exactly the rows it counts.
-        const active = Number((text.match(/of (\d+) active (?:person|people)/i) || [])[1] ?? NaN)
-        // The counts moved into the approved integrated summary panel (task
-        // 037): each stat is `.summary-stat` with its number and its name, and
-        // the filter that selects it is the toolbar pill of the same name.
-        const groups = await evaluate(`[...document.querySelectorAll('main.page .readiness-summary .summary-stat')].map((b) => ({ title: ((b.querySelector('.stat-title') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.stat-n') || {}).textContent || '').trim()) }))`)
-        const GROUP_TITLES = readinessGroupTitles()
-        if (groups.length !== 3 || groups.some((g, k) => g.title !== GROUP_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(groups.map((g) => g.title))}; ${JSON.stringify(GROUP_TITLES)}`)
-        else {
-          // The verb follows the count: content/render.ts pluralise() writes
-          // "1 … has proven" for a count of one and "2 … have proven" above it,
-          // so the sentence is read in either tense rather than one of them.
-          const summary = text.match(RE.readinessSummary)
-          // A tenant with nobody active says so instead, and has no numbers to state.
-          if (!summary && !RE.readinessSummaryNone.test(text)) add('P0', `${label}: the readiness summary line is missing`)
-          else if (!summary) void 0
-          else {
-            if (Number(summary[1]) !== groups[0].n) add('P0', `${label}: the summary says ${summary[1]} passkey-ready and the count says ${groups[0].n}`)
-            const total = groups.reduce((x, g) => x + g.n, 0)
-            const notKnown = Number((text.match(RE.readinessUnknown) || [])[1] ?? 0)
-            if (total + notKnown !== Number(summary[2])) add('P0', `${label}: the groups sum to ${total + notKnown} and the summary counts ${summary[2]} active people`)
-          }
-          // Each count has a filter of the same name in the approved toolbar, and
-          // pressing it narrows the table to exactly the rows the count counts
-          // (task 037 moved the control from the count to the pill).
+        const summary = text.match(RE.readinessSummary)
+        // A tenant with nobody active says so instead, and has no numbers to state.
+        if (!summary && !RE.readinessSummaryNone.test(text)) add('P0', `${label}: the readiness summary line is missing`)
+        const stats = await evaluate(`[...document.querySelectorAll('main.page .readiness-summary .summary-stat')].map((b) => ({ title: ((b.querySelector('.stat-k') || {}).textContent || '').replace(/\\s+/g, ' ').trim(), n: Number(((b.querySelector('.stat-n') || {}).textContent || '').trim()) }))`)
+        const STAT_TITLES = readinessStatTitles()
+        if (stats.length !== 3 || stats.some((g, k) => g.title !== STAT_TITLES[k])) add('P0', `${label}: the counts read ${JSON.stringify(stats.map((g) => g.title))}; ${JSON.stringify(STAT_TITLES)}`)
+        else if (summary) {
+          const ready = Number(summary[1])
+          const active = Number(summary[2])
+          const total = ready + stats.reduce((x, g) => x + g.n, 0)
+          if (total !== active) add('P0', `${label}: Ready and the three counts sum to ${total} and the summary counts ${active} active people`)
           const rowsShown = () => evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+          // Each count is a filter of its own: pressed, the worklist shows exactly the rows it counts.
+          for (let k = 0; k < stats.length; k++) {
+            await evaluate(`(() => { const b = document.querySelectorAll('main.page .readiness-summary .summary-stat')[${k}]; b.scrollIntoView({ block: 'center' }); b.click() })()`)
+            await sleep(200)
+            const shown = await rowsShown()
+            if (shown !== stats[k].n) add('P0', `${label}: "${stats[k].title}" counts ${stats[k].n} and the worklist filtered to it shows ${shown} rows`)
+            await evaluate(`(() => { const b = document.querySelectorAll('main.page .readiness-summary .summary-stat')[${k}]; if (b.getAttribute('aria-pressed') === 'true') b.click() })()`)
+            await sleep(150)
+          }
+          // Ready and All are toolbar filters over the same rows.
           const pill = (title) => `(() => { const b = [...document.querySelectorAll('main.page .toolbar .btn')].find((x) => (x.textContent || '').trim() === ${JSON.stringify(title)}); if (!b) return false; b.scrollIntoView({ block: 'center' }); b.click(); return true })()`
-          for (let k = 0; k < groups.length; k++) {
-            if (!(await evaluate(pill(groups[k].title)))) {
-              add('P0', `${label}: the toolbar has no "${groups[k].title}" filter beside the count of the same name`)
+          for (const [word, want] of [[READY_WORD, ready], [ALL_ACCOUNTS, active]]) {
+            if (!(await evaluate(pill(word)))) {
+              add('P0', `${label}: the toolbar has no "${word}" filter`)
               continue
             }
             await sleep(200)
             const shown = await rowsShown()
-            if (shown !== groups[k].n) add('P0', `${label}: "${groups[k].title}" counts ${groups[k].n} and the table filtered to it shows ${shown} rows`)
-            if (!(await evaluate(pill(ALL_ACCOUNTS)))) add('P0', `${label}: the toolbar has no "${ALL_ACCOUNTS}" filter to clear a narrowed table`)
-            await sleep(150)
+            if (shown !== want) add('P0', `${label}: "${word}" shows ${shown} rows and the page counts ${want}`)
           }
-        }
-        // The rungs are still the truth under the groups, and Connect's tiles link
-        // to them: each rung hash filters the table to the people counted on it.
-        const rungCounts = {}
-        for (let r = 5; r >= 1; r--) {
-          await evaluate(`location.hash = '#/readiness/rung-${r}'`)
-          await sleep(400)
-          rungCounts[RUNG_TITLES[5 - r]] = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
+          // The Plan gate strip counts the same active people, and what is short is what the gate still needs.
+          const gateLine = text.match(/(\d+) of (\d+) must be Ready/)
+          if (active > 0 && !gateLine) add('P0', `${label}: the Plan gate strip does not say how many must be Ready`)
+          if (gateLine && Number(gateLine[2]) !== active) add('P0', `${label}: the Plan gate counts ${gateLine[2]} people and the summary ${active}`)
+          const more = text.match(/(\d+) more · /)
+          if (gateLine && more && Number(more[1]) !== Math.max(0, Number(gateLine[1]) - ready)) add('P0', `${label}: the gate says ${more[1]} more with ${ready} of ${gateLine[1]} Ready`)
+          // The passkey strip counts the same people, and its link shows exactly the people without one.
+          const passkeys = text.match(/(\d+) of (\d+) (?:has|have) a passkey/)
+          if (passkeys && Number(passkeys[2]) !== active) add('P0', `${label}: the passkey strip counts ${passkeys[2]} people and the summary ${active}`)
+          const without = text.match(/Show (\d+) without →/)
+          if (without) {
+            await evaluate(`(() => { const a = [...document.querySelectorAll('main.page .progress-strip a')].find((x) => /without/.test(x.textContent || '')); if (a) a.click() })()`)
+            await sleep(250)
+            const shown = await rowsShown()
+            if (shown !== Number(without[1])) add('P0', `${label}: "Show ${without[1]} without" shows ${shown} rows`)
+          }
+          readinessCounts = { ready, needsProof: stats[0].n, needsSetup: stats[1].n, unknown: stats[2].n }
         }
         await evaluate(`location.hash = '#/readiness'`)
         await sleep(400)
-        if (!Number.isNaN(active) && Object.values(rungCounts).reduce((x, n) => x + n, 0) !== active) {
-          add('P0', `${label}: the five rungs filter to ${Object.values(rungCounts).reduce((x, n) => x + n, 0)} rows and the page counts ${active} active people`)
-        }
-        ladderCounts = rungCounts
-        // The accounts that are not people read "not a person"; with a method set
-        // up they carry their rung's badge (every account with a method gets a rung),
-        // with nothing set up a grey dash; the rungs' counts never include them.
-        const notPeople = await evaluate(`[...document.querySelectorAll('main.page table.datatable tbody tr')].filter((tr) => /not a person/.test(tr.innerText)).map((tr) => ({ cls: (tr.querySelector('.rung-badge') || {}).className || '', method: (([...tr.querySelectorAll('td')][2] || {}).innerText || '').trim() }))`)
-        for (const r of notPeople) {
-          if (r.method === 'None' && !/rung-0/.test(r.cls)) add('P0', `${label}: an account that is not a person, with nothing set up, carries a rung badge (${r.cls})`)
-          if (r.method !== 'None' && /rung-0/.test(r.cls)) add('P0', `${label}: an account that is not a person holds ${r.method} and shows no rung`)
-        }
+        // The accounts the page does not count are named under the worklist, never at zero.
+        const footer = await evaluate(`((document.querySelector('main.page .footer-note .ledger') || {}).innerText || '').replace(/\\s+/g, ' ')`)
+        if (/\b0 (not active|emergency|service|shared|sign-in disabled)/.test(footer)) add('P0', `${label}: the footer names an account kind at zero ("${footer.slice(0, 80)}")`)
       }
       // The Inventory policies table carries an Exclusions column, the groups and users by name (E5).
       if (route === 'inventory') {
@@ -1037,7 +1032,9 @@ async function walkFixture(fx) {
       }
       // The page tips: MFA Readiness and Export keep theirs; the Plan has none.
       const tips = await evaluate(`document.querySelectorAll('main.page .page-tip').length`)
-      if ((route === 'readiness' || route === 'export') && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
+      if (route === 'export' && tips !== 1) add('P0', `${label}: the page renders ${tips} tips; it keeps one`)
+      // MFA Readiness's final reference has no tip: its summary sub-line says what Ready means (Step 7).
+      if (route === 'readiness' && tips !== 0) add('P0', `${label}: the page renders ${tips} tips; the final reference has none`)
       if (route === 'plan' && tips !== 0) add('P0', `${label}: the Plan still renders a page tip`)
       // The MFA readiness ladder left the Plan (task 011) and Connect (task 016):
       // a tenant-wide diagnostic on the page whose job is the rollout, and a
@@ -1204,10 +1201,12 @@ async function walkFixture(fx) {
           // the campaign's email said so too, but it moved into More with the
           // names (task 011) and a tenant whose email is not whole carries none.
           const mfaWord = await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ((x.querySelector('.step-title') || {}).textContent || '').trim() === 'Require MFA for Everyone'); return r ? ((r.querySelector('.status') || {}).textContent || '').trim() : '' })()`)
-          campaignRungs = {
+          // The campaign's groups are MFA Readiness's states (Step 7).
+          campaignGroups = {
             label: slabel,
-            noMethod: group(/^(\d+) (?:people|person) at Nothing set up;/m) ?? 0,
-            unproven: group(/^(\d+) (?:people|person) at Set up, not proven;/m) ?? 0,
+            noMethod: group(/^(\d+) (?:people|person) with no sign-in method;/m) ?? 0,
+            needsSetup: group(/^(\d+) (?:people|person) with no phishing-resistant method;/m) ?? 0,
+            needsProof: group(/^(\d+) (?:people|person) with a phishing-resistant method not yet proven/m) ?? 0,
             mfaInPlace: /^(In place|Enforced)$/.test(mfaWord),
           }
         }
@@ -1252,8 +1251,8 @@ async function walkFixture(fx) {
           // The lockout list (E8): the demo's admins not yet at Passkey or security
           // key, proven are named (three or fewer), and the line counts the names it lists.
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet) {
-            const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet at Passkey or security key, proven; register before .+:\s*$/m)
-            if (!m) add('P0', `${slabel}: the step does not say how many admins are not yet at Passkey or security key, proven today`)
+            const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet Ready for phishing-resistant MFA; get each Ready before .+:\s*$/m)
+            if (!m) add('P0', `${slabel}: the step does not say how many admins are not yet Ready for phishing-resistant MFA today`)
             else {
               const at = bodyText.indexOf(m[0])
               const names = bodyText.slice(at + m[0].length).split('\n').map((x) => x.trim()).filter(Boolean)
@@ -1313,7 +1312,7 @@ async function walkFixture(fx) {
           const mfaRowAt = rowTitles.findIndex((t) => /^Require MFA for Everyone$/.test(t))
           const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
           const planDated = rowWhens.some((w) => DAY_ONLY.test(w || ''))
-          const campaignDated = DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignRungs?.mfaInPlace && planDated)
+          const campaignDated = DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignGroups?.mfaInPlace && planDated)
           // While the plan dates nothing the email is its undated form (stepExport.ts
           // commsFor): the day and the window are asked of it only where the plan has them.
           if (/MFA Registration Campaign/.test(title) && (campaignDated || emailText.trim() !== '')) {
@@ -1331,18 +1330,20 @@ async function walkFixture(fx) {
             // does not exclude the chosen exclusions group, so it is partly in place
             // and the email dates its enforcement instead (Step 3 correction); the
             // row word is the one read above for the campaign's rungs.
-            if (campaignRungs?.mfaInPlace && (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText))) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
+            if (campaignGroups?.mfaInPlace && (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText))) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
             if (!week2) campaignEmail = emailText
           }
           // A strength policy's row carries its lockout count in the who-column
           // when it is not zero, and the count is the step's own.
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title)) {
-            const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet at Passkey or security key, proven/m)
+            // Who the policy would stop (the row's lockout count) are people with no
+            // method it accepts, so they are never more than the admins the step
+            // says are not yet Ready (Step 7: two answers, one never exceeding the other).
+            const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet Ready for phishing-resistant MFA/m)
             const who = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
-            const suffix = who.match(/· (\d+) not yet at Passkey or security key, proven$/)
-            if (m && !suffix) add('P0', `${slabel}: ${m[1]} admins are not yet at rung 5 and the row's who-column does not say so`)
-            else if (m && suffix && suffix[1] !== m[1]) add('P0', `${slabel}: the row says ${suffix[1]} not yet at rung 5 and the step says ${m[1]}`)
-            else if (!m && suffix) add('P0', `${slabel}: the row carries a lockout count the step does not`)
+            const suffix = who.match(/· (\d+) would be stopped$/)
+            if (m && suffix && Number(suffix[1]) > Number(m[1])) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step says only ${m[1]} admins are not yet Ready`)
+            else if (!m && suffix) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step names no admin who is not Ready`)
           }
           // The email states the day the change lands ("From {enforceLong}, …"),
           // so a step with no such day writes none: the plan cannot write the
@@ -1559,11 +1560,10 @@ async function walkFixture(fx) {
   }
   // The ladder's numbers are the campaign step's for the same rung, wherever each
   // is drawn: the campaign is a Plan step and the five rung tiles are Connect's.
-  if (campaignRungs && ladderCounts) {
-    const { label, noMethod, unproven, mfaInPlace } = campaignRungs
-    if (noMethod !== ladderCounts['Nothing set up']) add('P0', `${label}: the campaign lists ${noMethod} at Nothing set up and the ladder counts ${ladderCounts['Nothing set up']}`)
-    if (mfaInPlace && unproven !== 0) add('P0', `${label}: the campaign lists ${unproven} at Set up, not proven although Require MFA for Everyone is in place`)
-    if (!mfaInPlace && unproven !== ladderCounts['Set up, not proven']) add('P0', `${label}: the campaign lists ${unproven} at Set up, not proven and the ladder counts ${ladderCounts['Set up, not proven']}`)
+  if (campaignGroups && readinessCounts) {
+    const { label, noMethod, needsSetup, needsProof } = campaignGroups
+    if (noMethod + needsSetup !== readinessCounts.needsSetup) add('P0', `${label}: the campaign lists ${noMethod + needsSetup} people needing setup and MFA Readiness counts ${readinessCounts.needsSetup}`)
+    if (needsProof !== readinessCounts.needsProof) add('P0', `${label}: the campaign lists ${needsProof} people needing proof and MFA Readiness counts ${readinessCounts.needsProof}`)
   }
   for (const t of rowTitles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name}: plan row "${t}" is a goal the baseline does not hold`)
   // The exclusions-group step is on every plan (In place in the footer, or Ready in

@@ -1,6 +1,7 @@
 // Types for the collection service (docs/design/collection.md §4). Types
 // only — no runtime imports beyond the pure scoring types.
 import type { AuthMethodSummary } from '../../scoring/mfaViability.ts'
+import type { MfaHistory, PlatformSeen, ProofRecord } from '../../scoring/phishingResistant.ts'
 import type { Capability } from './registry.ts'
 
 export type SourceKey =
@@ -101,6 +102,14 @@ export type UserEvidence = {
   /** Countries this account signed in from in the window; the allowed-countries
    * and emergency-access checks need them per account, not only per tenant. */
   countries?: string[]
+  /**
+   * The methods seen succeeding, latest per method class and platform family
+   * (scoring/phishingResistant.ts readSignIn). Absent on a snapshot taken before
+   * proof was recorded, which readiness reads as proof not read, never as none.
+   */
+  proofs?: ProofRecord[]
+  /** The platform families this account signed in from successfully, latest per family. */
+  platforms?: PlatformSeen[]
 }
 
 // The raw sign-in subset Lane B keeps: lives only in the worker and the
@@ -225,6 +234,8 @@ export type TenantSnapshot = {
   evidenceAggregates?: EvidenceAggregates | null
   /** The lockout-scenario derivations (prompt 48 item 3), from the rows; null until Lane B has run. */
   scenarioEvidence?: import('../../derive/evidence.ts').ScenarioEvidence | null
+  /** What earlier scans established about each person's qualifying methods and proof (scoring/mfaHistory.ts), merged with this scan. */
+  mfaHistory?: MfaHistory | null
   // Tenant licence capabilities derived from subscribedSkus (SPEC §12).
   capabilities: Record<Capability, { enabled: boolean; seats: number; consumed: number }>
   // CA policies that Microsoft manages (display-name prefix or templateId).

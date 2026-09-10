@@ -9,7 +9,8 @@ import { readFileSync } from 'node:fs'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { facts, factsOf, stepFacts } from './facts.ts'
-import { KINDS, RUNGS, ladder } from './ladder.ts'
+import { KINDS, ladder } from './ladder.ts'
+import { READINESS_STATES } from '../scoring/phishingResistant.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { contentLists } from './contentLists.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
@@ -17,17 +18,21 @@ import { appliedMapping } from '../ui/surfaces/pickerRows.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { BREAK_GLASS_STEP_ID } from '../roadmap/stepIds.ts'
 
-test("every surface's facts are identical on both fixtures: Today, the ladder, the campaign step and the sample facts read one function", () => {
+test("every surface's facts are identical on both fixtures: MFA Readiness, the partition, the campaign step and the sample facts read one function", () => {
   for (const name of ['demo', 'getiamai'] as const) {
     const f = fixture(name)
     const F = facts(f.snapshot, f.mapping)
     assert.equal(F.accounts, f.snapshot.users.length, `${name}: every account once`)
     assert.equal(F.accounts, F.active + F.notActive + KINDS.reduce((n, k) => n + F.kinds[k], 0), `${name}: the parts sum to the accounts`)
-    assert.equal(F.active, RUNGS.reduce((n, r) => n + F.rungs[r], 0), `${name}: the rungs sum to the active people`)
-    assert.deepEqual(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts, F, `${name}: Today's ledger and rungs`)
+    assert.equal(F.active, READINESS_STATES.reduce((n, s) => n + F.states[s], 0), `${name}: the readiness states sum to the active people`)
+    assert.deepEqual(readinessView(f.snapshot, f.snapshot.asOf, f.mapping).facts, F, `${name}: MFA Readiness's counts`)
     assert.deepEqual(factsOf(ladder(f.snapshot, f.mapping, f.snapshot.asOf)), F, `${name}: the Plan strip and Connect's tile`)
     const cl = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf })
-    assert.deepEqual({ 1: cl.noMethod.length, 2: cl.unproven.length, 3: cl.rung3.length, 4: cl.rung4.length }, { 1: F.rungs[1], 2: F.rungs[2], 3: F.rungs[3], 4: F.rungs[4] }, `${name}: the campaign step's groups`)
+    assert.deepEqual(
+      { needsSetup: cl.noMethod.length + cl.needsSetup.length, needsProof: cl.needsProof.length, unknown: cl.readinessUnknown.length },
+      { needsSetup: F.states.needsSetup, needsProof: F.states.needsProof, unknown: F.states.unknown },
+      `${name}: the campaign step's groups`,
+    )
     const run = runFixture(f)
     const sf = stepFacts(run.steps, run.schedule.cleanup, f.mapping.breakGlassAnswers ?? null)
     assert.ok(sf.steps > 0 && sf.done <= sf.steps, `${name}: the plan's steps and done`)
@@ -43,8 +48,8 @@ test('no surface computes a count: the three surfaces, the print, the sample fac
     assert.ok(/derive\/facts\.ts/.test(src) || file.endsWith('LadderTiles.tsx') || file.endsWith('Today.tsx'), `${file} reads derive/facts.ts`)
     assert.doesNotMatch(src, /ladderCounts|peopleCounts|planCounts|rolloutBucket|activePeopleIds|campaignIdsFor/, `${file} computes no count of its own`)
   }
-  assert.doesNotMatch(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /ladder\(|\.rungs\[r\]\.length/, 'Today reads the facts, never the ladder')
-  assert.match(readFileSync('src/derive/contentLists.ts', 'utf8'), /ladder\(snapshot, mapping, now\)/, 'the campaign lists are the ladder\'s rungs')
+  assert.doesNotMatch(readFileSync('src/ui/surfaces/MfaReadiness.tsx', 'utf8'), /ladder\(|\.states\[[a-z]+\]\.length/, 'MFA Readiness reads the facts, never the partition')
+  assert.match(readFileSync('src/derive/contentLists.ts', 'utf8'), /ladder\(snapshot, mapping, now\)/, "the campaign lists are the partition's states")
   assert.doesNotMatch(readFileSync('src/derive/planHeader.ts', 'utf8'), /planCounts/, 'the header has no count of its own')
 })
 

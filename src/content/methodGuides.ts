@@ -8,17 +8,16 @@
 //
 // Two things it deliberately does not do.
 //
-// It scores nobody. The group a person is in is task 002's answer through
-// derive/mfaReadiness.ts; this reads that group and nothing else. A remediation
-// action can never move somebody's rung, prove a method, or turn `unknown` into
-// a state worth acting on.
+// It scores nobody. What a person needs next is scoring/phishingResistant.ts's
+// `next`, and MFA Readiness words it (surfaces/readinessCells.ts actionOf); a
+// guide can never move somebody's readiness, prove a method, or turn Unknown
+// into a state worth acting on.
 //
 // It claims nothing about the tenant. Setup guidance describes what an operator
 // or a person does in Microsoft's own portals and apps. IAMAI issues no
 // Temporary Access Pass, registers no method and writes nothing.
 //
 // Pure: no DOM, no network.
-import type { ReadinessGroup } from '../derive/mfaReadiness.ts'
 import { shared } from './content.ts'
 
 export type MethodGuideId =
@@ -109,52 +108,6 @@ export function methodGuide(id: MethodGuideId): MethodGuide {
   const g = BY_ID.get(id)
   if (!g) throw new Error(`no method guide ${id}`)
   return g
-}
-
-/**
- * What a person's row offers, from the group task 002's evidence put them in
- * and from nothing else:
- *
- *   ready         nothing. They are already where the page is asking everyone
- *                 to be; a policy-specific step may still reach them, and that
- *                 stays the Plan's business.
- *   needsProof    prove the method they already hold. Not "register another
- *                 one": the inventory already shows a passkey or security key,
- *                 and what is missing is a sign-in record naming it.
- *   needsPasskey  the setup paths, the three that reach the target kept apart
- *                 from the two that do not.
- *   unknown       this scan could not read their registered methods. No setup
- *                 guidance, because IAMAI has not established that anything is
- *                 missing — the action is to read the methods.
- */
-export type Remediation =
-  | { kind: 'none' }
-  | { kind: 'prove'; guides: MethodGuideId[] }
-  | { kind: 'setUp'; guides: MethodGuideId[]; other: MethodGuideId[]; note?: string }
-  | { kind: 'unknown' }
-
-/**
- * The half of the person a guide can be unavailable to. It is the row's own
- * `guest` (derive/mfaReadiness.ts reads `userType`), passed in rather than
- * re-derived, so the panel and the table cannot disagree about who a guest is.
- */
-export type RemediationSubject = { guest: boolean }
-
-export function remediationFor(group: ReadinessGroup | null, subject: RemediationSubject): Remediation {
-  if (group === null || group === 'ready') return { kind: 'none' }
-  if (group === 'needsProof') return { kind: 'prove', guides: ['prove'] }
-  if (group === 'unknown') return { kind: 'unknown' }
-  // A guest's authentication methods belong to their home tenant: this tenant
-  // cannot issue them a Temporary Access Pass, so the guide is not offered and
-  // the sentence the campaign already carries says what happens instead. The
-  // target methods stay, because a guest registers them at home.
-  const other: MethodGuideId[] = subject.guest ? ['windows-hello'] : ['temporary-access-pass', 'windows-hello']
-  return { kind: 'setUp', guides: ['authenticator-iphone', 'authenticator-android', 'security-key'], other, note: subject.guest ? GUEST_NOTE : undefined }
-}
-
-/** Every guide a remediation offers, in the order the panel lists them; empty where it offers none. */
-export function guidesOf(r: Remediation): MethodGuideId[] {
-  return r.kind === 'prove' ? r.guides : r.kind === 'setUp' ? [...r.guides, ...r.other] : []
 }
 
 /**

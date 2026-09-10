@@ -60,16 +60,17 @@ test('someone to set up: the campaign is a live step, the pace includes it, the 
 
 test('everyone proven: the campaign is done, the pace skips it, and the Overview says so', () => {
   const s = fixtureSnapshot()
-  // Every enabled user has a method and an MFA success inside the window.
+  // Every enabled user is Ready (Step 7): a passkey, and a sign-in with it on the
+  // one platform they use, inside the window.
   for (const u of s.users) {
-    s.signInEvidence[u.id] = { signInCount: 5, lastSignIn: s.asOf, lastMfaSuccess: { at: s.asOf, method: 'Mobile app notification' } }
+    s.signInEvidence[u.id] = { signInCount: 5, lastSignIn: s.asOf, lastMfaSuccess: { at: s.asOf, method: 'Passkey (device-bound)' }, proofs: [{ cls: 'passkey', os: 'Windows', at: s.asOf, method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: s.asOf }] }
     u.lastSuccessfulSignIn = s.asOf
-    s.authMethods[u.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }]
+    s.authMethods[u.id] = [{ kind: 'microsoftAuthenticator', phoneAppVersion: '6.2508.0' }, { kind: 'passkey' }]
   }
   for (const r of s.registrationDetails) {
     r.isMfaCapable = true
     r.isMfaRegistered = true
-    r.methodsRegistered = ['microsoftAuthenticatorPush']
+    r.methodsRegistered = ['microsoftAuthenticatorPush', 'passKeyDeviceBound']
   }
   const p = plan(s)
   assert.equal(p.rollout.toSetUp, 0)

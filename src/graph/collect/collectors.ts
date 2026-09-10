@@ -282,6 +282,8 @@ function mapMethod(raw: unknown): AuthMethodSummary {
   const type = String(m['@odata.type'] ?? '').replace('#microsoft.graph.', '')
   const kind = KIND_BY_TYPE[type] ?? 'other'
   const out: AuthMethodSummary = { kind }
+  // The qualifying methods keep their id, so a later scan can tell one that disappeared from one that did not (scoring/mfaHistory.ts).
+  if ((kind === 'passkey' || kind === 'fido2' || kind === 'windowsHelloForBusiness') && typeof m.id === 'string') out.id = m.id
   if (typeof m.createdDateTime === 'string') out.createdDateTime = m.createdDateTime
   if (kind === 'microsoftAuthenticator') {
     if (typeof m.displayName === 'string') out.displayName = m.displayName

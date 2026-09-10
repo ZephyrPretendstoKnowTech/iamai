@@ -12,6 +12,7 @@ import { coreGaps, unreadSources } from '../graph/collect/coreSections.ts'
 import { RoleGapError } from '../graph/collect/tokenRoles.ts'
 import type { SectionEvent, WorkerOutMessage } from '../graph/collect/types.ts'
 import { forgetTenant as forgetStored, loadBaselineRecord, loadSnapshotRecord, saveBaselineRecord, saveSnapshotRecord } from '../graph/collect/cache.ts'
+import { mergeMfaHistory } from '../scoring/mfaHistory.ts'
 import * as auth from '../graph/auth.ts'
 import { app } from '../content/content.ts'
 import { isDemo } from './demoMode.ts'
@@ -110,6 +111,12 @@ export async function scan(returnTo: string | null = null): Promise<void> {
     const found = coreGaps(result)
     setScan({ state: 'done', gaps: found, unread: found.length > 0 ? unreadSources(result) : [] })
     if (found.length > 0) return
+    // MFA Readiness's evidence history (Step 7, scoring/mfaHistory.ts): what the
+    // last saved scan established, folded forward into this one. A saved scan
+    // that cannot be read starts the history afresh; it never invents a loss.
+    const prior = await storeLib.loadSnapshotRecord<ScanRecord>(account.tenantId).catch(() => null)
+    if (!stillThisTurn(turn)) return
+    result.mfaHistory = mergeMfaHistory(prior?.snapshot?.mfaHistory ?? null, result)
     const record: ScanRecord = { snapshot: result, at: new Date().toISOString() }
     setSession({ lastScan: record })
     void storeLib.saveSnapshotRecord(account.tenantId, record)

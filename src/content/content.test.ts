@@ -148,8 +148,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[6].who.none',
   '.steps[10].who.match',
   '.steps[16].who.groups.noMethod',
-  '.steps[16].who.groups.rung3',
-  '.steps[16].who.groups.rung4',
+  // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
+  '.steps[16].who.groups.needsSetup',
+  '.steps[16].who.groups.readinessUnknown',
   '.steps[16].who.groups.holdouts',
   '.steps[16].who.adminsNote',
   '.steps[17].who.evidence[1]',

@@ -9,6 +9,7 @@ import type { MappingState } from '../mapping/types.ts'
 import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
 import { generateRoadmap } from './generate.ts'
 import type { RoadmapInput } from './generate.ts'
 import { observationsFrom } from './observation.ts'
@@ -97,6 +98,13 @@ function mkPolicy(over: P = {}): P {
   }
 }
 
+// Ready is phishing-resistant readiness (Step 7, scoring/phishingResistant.ts):
+// the first `readyCount` people hold a passkey proven on the one platform they
+// use; the rest hold only Authenticator, which the MFA gate never counts.
+const AT = '2026-08-20T00:00:00Z'
+const READY = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: AT, method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: AT }] }, history: null })
+const NOT_READY = personReadiness({ methods: [{ kind: 'microsoftAuthenticator' }], registered: null, signIns: { read: true, proofs: [], platforms: [{ os: 'Windows', at: AT }] }, history: null })
+
 function viabilityRows(readyCount: number, total = 10): MfaViability[] {
   return Array.from({ length: total }, (_, i) => ({
     userId: `u${i}`,
@@ -108,6 +116,7 @@ function viabilityRows(readyCount: number, total = 10): MfaViability[] {
     strongestMethod: 'push' as const,
     methodTiers: ['push' as const],
     reasons: [],
+    readiness: i < readyCount ? READY : NOT_READY,
     signals: {},
   }))
 }

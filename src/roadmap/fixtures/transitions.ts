@@ -482,7 +482,7 @@ const BUILDERS: Builder[] = [
     base: PEOPLE,
     days: 1,
     build: (f, a) => {
-      const target = activePeople(a.readiness).find((r) => r.rung !== null && r.rung < 5)
+      const target = activePeople(a.readiness).find((r) => r.state !== null && r.state !== 'ready' && r.state !== 'unknown')
       if (!target) return null
       const id = target.user.id
       const at = new Date(Date.parse(f.snapshot.asOf) + DAY).toISOString()
@@ -492,9 +492,11 @@ const BUILDERS: Builder[] = [
       const existing = f.snapshot.authMethods[id]
       const authMethods = { ...f.snapshot.authMethods, [id]: [...(Array.isArray(existing) ? existing : []), { kind: 'passkey' as const }] }
       const evidence = f.snapshot.signInEvidence[id]
+      // The passkey proven on every platform the person signs in from (Step 7): proof is per platform.
+      const platforms = evidence?.platforms && evidence.platforms.length > 0 ? evidence.platforms.map((p) => ({ os: p.os, at })) : [{ os: 'Windows' as const, at }]
       const signInEvidence = {
         ...f.snapshot.signInEvidence,
-        [id]: { ...(evidence ?? { signInCount: 1, lastSignIn: at }), lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (device-bound)' } },
+        [id]: { ...(evidence ?? { signInCount: 1, lastSignIn: at }), lastSignIn: at, lastMfaSuccess: { at, method: 'Passkey (device-bound)' }, proofs: [...(evidence?.proofs ?? []), ...platforms.map((p) => ({ cls: 'passkey' as const, os: p.os, at, method: 'Passkey (device-bound)' }))], platforms },
       }
       const users = f.snapshot.users.map((u) => (u.id === id ? { ...u, lastSuccessfulSignIn: at } : u))
       return { fixture: { ...f, snapshot: { ...f.snapshot, users, registrationDetails, authMethods, signInEvidence } }, focus: { userId: id } }
@@ -506,7 +508,7 @@ const BUILDERS: Builder[] = [
     base: PEOPLE,
     days: 1,
     build: (f, a) => {
-      const target = activePeople(a.readiness).find((r) => r.rung === 5)
+      const target = activePeople(a.readiness).find((r) => r.state === 'ready')
       if (!target) return null
       const id = target.user.id
       const at = new Date(Date.parse(f.snapshot.asOf) + DAY).toISOString()

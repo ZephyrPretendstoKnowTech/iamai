@@ -7,19 +7,18 @@
 // an ordinary step with no readiness hold get no MFA callout, because none of
 // them is waiting on anybody's authentication method.
 //
-// The rule this reads is the step's own goal family (roadmap/readiness.ts), not
-// the page's target:
+// The rule this reads is the step's own goal family (roadmap/readiness.ts):
 //
-//   mfa, guest   ready is `mfaReady` — the person can already meet an ordinary
-//                MFA requirement. A policy that asks for MFA is never held back
-//                because somebody has not reached a passkey.
-//   admin        ready is `adminReady` — rung 5, because that policy asks for
-//                the phishing-resistant method rung 5 is.
+//   mfa, guest   ready is `mfaReady` — an active person who is Ready
+//                (scoring/phishingResistant.ts), the one state the 90% gate
+//                counts (Step 7, owner decision).
+//   admin        ready is `adminReady` — the same Ready state, over everyone
+//                the admin policy reaches.
 //
-// So the page-level passkey target is never a gate on a policy. It cannot be:
-// nothing here decides whether a step may advance. `enforcementHeld` is
-// Foundation A's answer, already made, and this only names the people behind a
-// hold that already exists.
+// A passkey is never the gate: Ready is phishing-resistant proof with any
+// qualifying method. Nothing here decides whether a step may advance either.
+// `enforcementHeld` is Foundation A's answer, already made, and this only names
+// the people behind a hold that already exists.
 //
 // Who the step reaches is not decided here either. It is derive/population.ts's
 // `reached`, the one answer the row's who-line and every count already read: an
@@ -44,7 +43,7 @@ export type MfaHoldFamily = 'mfa' | 'guest' | 'admin'
 const MFA_FAMILIES = new Set<string>(['mfa', 'guest', 'admin'])
 
 export type StepMfaHold = {
-  /** The step's own measure. `admin` asks for rung 5; `mfa` and `guest` ask only that the person can pass MFA. */
+  /** The step's own measure: Ready for phishing-resistant MFA, over the active people (`mfa`, `guest`) or everyone in reach (`admin`). */
   family: MfaHoldFamily
   /**
    * The people the step reaches who cannot meet its own requirement yet. Null
