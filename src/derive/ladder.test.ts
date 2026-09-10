@@ -128,7 +128,9 @@ test('Require MFA for Everyone in place empties the campaign\'s rung 2 and nothi
   const { statusOf } = await import('../ui/surfaces/statusWord.ts')
   const { planDates } = await import('../ui/surfaces/stepVars.ts')
   const { readFileSync } = await import('node:fs')
-  for (const [name, inPlace] of [['demo', true], ['getiamai', false]] as const) {
+  // Week two: the demo's MFA policy carves out the chosen exclusions group and is in
+  // place. Day one it does not, so it is partly in place and rung 2 stands (Step 3 correction).
+  for (const [name, inPlace] of [['demo-week2', true], ['demo', false], ['getiamai', false]] as const) {
     const f = fixture(name)
     const r = runFixture(f)
     const l = ladder(f.snapshot, f.mapping, f.snapshot.asOf)
@@ -140,7 +142,7 @@ test('Require MFA for Everyone in place empties the campaign\'s rung 2 and nothi
     assert.equal(['In place', 'Enforced'].includes(statusOf(mfa).word), inPlace, `${name}: the row reads "${statusOf(mfa).word}"`)
     const under = contentLists({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => id, now: f.snapshot.asOf, mfaInPlace: dates.mfaInPlace })
     assert.ok(l.rungs[2].length > 0, `${name}: the records hold somebody at Set up, not proven`)
-    assert.deepEqual(under.unproven, inPlace ? [] : l.rungs[2].map((p) => p.id).sort(), `${name}: rung 2 under the policy`)
+    assert.deepEqual([...under.unproven].sort(), inPlace ? [] : l.rungs[2].map((p) => p.id).sort(), `${name}: rung 2 under the policy`)
     // Only that group: the other three are the ladder's rungs either way.
     assert.deepEqual(under.noMethod.sort(), l.rungs[1].map((p) => p.id).sort(), `${name}: Nothing set up is rung 1 under the policy too`)
     assert.deepEqual(under.rung3.sort(), l.rungs[3].map((p) => p.id).sort(), `${name}: Windows Hello only is rung 3 under the policy too`)

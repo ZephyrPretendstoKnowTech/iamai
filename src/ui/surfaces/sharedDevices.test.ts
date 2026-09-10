@@ -15,7 +15,8 @@ import { stepContract } from './stepContract.ts'
 import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 
 const HOLE = /\{[a-zA-Z:]+\}/
-const f = fixture('demo')
+// Week two: on day one Require MFA for Everyone lacks the chosen exclusions group, so its step is a held change whose effects are unread (Step 3 correction).
+const f = fixture('demo-week2')
 const r = runFixture(f)
 const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
 const step = r.steps.find((s) => s.id === 's-shared-devices')!

@@ -138,8 +138,9 @@ test('the active baseline lacking a goal and the tenant already delivering it ar
   // The demo tenant already blocks legacy authentication. Take the goal out of
   // the active baseline and the recommendation becomes the floor's — but the
   // tenant's own policy still delivers it, so nothing offers to create a second
-  // one, and the row is not drawn in the floor group.
-  const r = runFixture(fixture('demo'), { goalMap: without('block-legacy-auth') })
+  // one, and the row is not drawn in the floor group. Week two: the block carves
+  // out the chosen exclusions group, which on day one it does not (Step 3 correction).
+  const r = runFixture(fixture('demo-week2'), { goalMap: without('block-legacy-auth') })
   const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')!
   assert.equal(legacy.floor, true, 'provenance survives: the active baseline does not carry it')
   assert.equal(legacy.status, 'done', 'the tenant\'s own policy delivers it')
@@ -187,8 +188,9 @@ test('every step the Plan draws is drawn exactly once, over every fixture', () =
 test('a floor step already delivered is in the footer, not the floor group and not a phase', () => {
   // The demo tenant blocks legacy authentication; take the goal out of the
   // active baseline and the step is the floor's and done at once. Done rows are
-  // the footer's, so neither the group nor a numbered phase draws it.
-  const r = runFixture(fixture('demo'), { goalMap: without('block-legacy-auth') })
+  // the footer's, so neither the group nor a numbered phase draws it. Week two,
+  // where the block carves out the chosen exclusions group and is delivered.
+  const r = runFixture(fixture('demo-week2'), { goalMap: without('block-legacy-auth') })
   const legacy = r.steps.find((s) => s.goalId === 'block-legacy-auth')!
   assert.equal(legacy.floor, true)
   assert.equal(legacy.status, 'done')

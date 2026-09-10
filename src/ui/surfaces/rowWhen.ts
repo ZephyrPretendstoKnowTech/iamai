@@ -68,7 +68,11 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // used to read "ready since Aug 29" — the one sentence that told an operator a
   // policy with unread or failing records was theirs to turn on.
   if (ready && step.status !== 'ready-to-enforce') {
-    if (ready.kind === 'now') return PLAN.readyNow
+    // Gates that closed on a policy the plan cannot write — held on a missing
+    // object such as an exclusions group nobody has confirmed — earn no "ready":
+    // the policy is not Ready to enforce, and like any unwritable policy its row
+    // has no date of its own (below).
+    if (ready.kind === 'now') return unavailableReason(step) !== null ? '' : PLAN.readyNow
     return ready.kind === 'since' ? PLAN.heldForEvidence : fillText(PLAN.readyOn, { date: absoluteDate(ready.date) })
   }
   if (step.kind === 'prerequisite' || step.kind === 'check') return PLAN.now

@@ -382,10 +382,9 @@ test('14: guests excluded from the all-users policy plus a separate guests polic
       conditions: mergeConditions({ users: { includeUsers: ['All'], excludeUsers: ['GuestsOrExternalUsers'] } }),
     }),
     mkPolicy({
+      // Every guest type: a policy for two of them leaves the rest out (policyTruth.test.ts guest types).
       displayName: 'MFA Guests',
-      conditions: mergeConditions({
-        users: { includeUsers: [], includeGuestsOrExternalUsers: { guestOrExternalUserTypes: 'b2bCollaborationGuest,b2bCollaborationMember' } },
-      }),
+      conditions: mergeConditions({ users: { includeUsers: ['GuestsOrExternalUsers'] } }),
     }),
   ])
   const g = goal(r, 'mfa-all-users')

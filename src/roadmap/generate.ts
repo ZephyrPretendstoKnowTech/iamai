@@ -360,6 +360,10 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], Cha
   'apps-narrower': 'applications',
   'apps-excluded': 'applications',
   'report-only': 'state',
+  'exclusion-missing': 'users',
+  'guest-types-narrower': 'users',
+  // 'conditions-narrower' has no section: an update does not carry conditions, so
+  // a goal short only by a condition is partly in place with nothing to submit.
 }
 
 /**
@@ -1291,7 +1295,13 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       kind = 'adjust'
       // An adjust step edits the tenant's own policy: its name, its id, its
       // current state — never a second policy named after the baseline.
+      // Where the only thing short is an enforced policy of the goal's own that
+      // falls short of it (no exclusions group, a narrower condition, fewer apps),
+      // that policy is the one to correct — not a report-only policy for a few of
+      // the same people. Otherwise the weaker or report-only policy is.
+      const onlyShort = !result.reasons.some((r) => r.kind === 'weaker-control' || r.kind === 'session-weaker' || r.kind === 'report-only')
       existing =
+        (onlyShort ? result.candidates.find((c) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))) : undefined) ??
         result.candidates.find((c) => c.contribution === 'weak') ??
         result.candidates.find((c) => c.contribution === 'reportOnly') ??
         result.candidates.find((c) => c.contribution !== 'disabled') ??
@@ -1334,6 +1344,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         }
       }
       if (action.kind === 'create') namingNote = uniqueName(goal)
+    }
+
+    // No usable, owner-confirmed exclusions group, and the goal's own policy needs
+    // one (owner decision, Step 3 correction). The policy the tenant has is partly
+    // in place, and its correction waits on Create or Correct Exclusions Group.
+    // Nothing is written until that group exists: no body or target names a group
+    // nobody chose, a stored one this scan could not verify, or one proved gone, so
+    // the step carries no operation at all — only what it is missing, and the step
+    // that makes it.
+    if (kind === 'adjust' && policyUsableExclusionsGroupId === null && result.candidates.some((c) => c.caveats.includes('exclusion-unresolved'))) {
+      action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [{ token: '{exclusionsGroup}', stepId: PLACEHOLDER_STEP['{exclusionsGroup}'] }] }
+      existingRaw = null
+      blockPlaceholder('{exclusionsGroup}')
     }
 
     // The tenant objects the resolution used travel with the result, so an

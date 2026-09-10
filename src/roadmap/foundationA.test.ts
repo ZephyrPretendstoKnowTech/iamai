@@ -63,7 +63,7 @@ import { jsonOffered, stepOperations } from '../ui/surfaces/stepJson.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
 import { buildContext, exclusionGroupPolicySafety, reportFor } from '../validation/report.ts'
 import type { SubjectReport } from '../validation/report.ts'
-import { fixture } from './fixtures/index.ts'
+import { fixture, withBreakGlassCarveOut } from './fixtures/index.ts'
 import type { DirectoryEvidence, ObjectEvidence } from '../mapping/safetyChoice.ts'
 import type { Fixture } from './fixtures/index.ts'
 import type { FixtureRun } from './fixtures/run.ts'
@@ -1044,15 +1044,19 @@ test('a policy IAMAI cannot read in full waits on everything, is watched in full
   assert.ok(stepEffects(held).some((e) => e.unknown.length > 0), 'the policy is held unknown')
   assert.equal(unavailableReason(held), null, 'but the plan can still write it')
   const plan = r.steps.map((s) => (s.id === held.id ? held : s))
-  const reasons = new Set((dependencyGraph(plan)[held.id] ?? []).map((d) => d.reason))
+  const deps = dependencyGraph(plan)[held.id] ?? []
+  const reasons = new Set(deps.map((d) => d.reason))
   const ids = new Set(plan.map((s) => s.id))
+  // Waiting on the step is the fact. Where the generator already named that step
+  // as the gate, the graph keeps the one hard edge under its first label, blocked-by.
+  const waitsOn = (reason: string, id: string): boolean => reasons.has(reason) || deps.some((d) => d.stepId === id && d.kind === 'hard')
   for (const [reason, id] of [
     ['break-glass', 's-prereq-break-glass'],
     ['registration', 's-verify-mfa'],
     ['named-location', 's-prereq-trusted-location'],
   ] as const) {
     if (!ids.has(id)) continue
-    assert.ok(reasons.has(reason), `${f.name} ${held.id}: waits on ${reason} (${[...reasons].join(', ') || 'nothing'})`)
+    assert.ok(waitsOn(reason, id), `${f.name} ${held.id}: waits on ${reason} (${[...reasons].join(', ') || 'nothing'})`)
   }
   assert.equal(nobodyAffected(held), false, 'it is no zero')
   assert.notEqual(batchClassOf(held), 'zero')
@@ -1230,9 +1234,19 @@ type TenantPolicy = { id?: string; conditions?: { users?: { excludeGroups?: stri
  */
 function withoutTenantExclusions(f: Fixture, policyIds: Set<string>): Fixture {
   const snapshot = structuredClone(f.snapshot)
-  for (const raw of snapshot.config.caPolicies?.rows ?? []) {
-    const p = raw as TenantPolicy
-    if (p.id !== undefined && policyIds.has(String(p.id)) && p.conditions?.users) delete p.conditions.users.excludeGroups
+  const ca = snapshot.config.caPolicies
+  // Each named policy on its own copy. The fixture builds policies from shared
+  // condition objects, and a clone keeps that sharing, so deleting through one
+  // row stripped every policy built from the same template — enforced copies the
+  // step does not adjust included, which the plan then rightly corrects.
+  if (ca) {
+    ca.rows = ca.rows.map((raw) => {
+      const p = raw as TenantPolicy
+      if (p.id === undefined || !policyIds.has(String(p.id)) || !p.conditions?.users) return raw
+      const copy = JSON.parse(JSON.stringify(p)) as TenantPolicy
+      delete copy.conditions!.users!.excludeGroups
+      return copy
+    })
   }
   return { ...f, snapshot }
 }
@@ -1549,7 +1563,9 @@ test('an existing tenant policy that excludes an emergency account directly is p
 
 /** A tenant whose exclusions group passes every intrinsic check and is excluded from too few policies. */
 function usedInconsistently(name: 'midflight'): Fixture {
-  const f = fixture(name)
+  // The emergency accounts stay out through the break-glass group, so the only
+  // thing wrong is that the chosen group is excluded from too few policies.
+  const f = withBreakGlassCarveOut(fixture(name))
   const group = (f.mapping.records['__globalExclusion'].resolvedId as string).toLowerCase()
   const snapshot = structuredClone(f.snapshot)
   for (const raw of snapshot.config.caPolicies?.rows ?? []) {
@@ -1599,7 +1615,9 @@ test('a consistency check that could not run holds it too: unknown on a blocker 
   // exclusion-group check goes unknown, consistency included, and an unknown on a
   // blocker blocks. Nothing that needs the carve-out is offered, and nothing that
   // would turn a policy on is either.
-  const f = fixture('midflight')
+  // The policies carve out the break-glass group, which this scan reads, so what
+  // goes unknown is the exclusions group's checks and not who the policies reach.
+  const f = withBreakGlassCarveOut(fixture('midflight'))
   const group = f.mapping.records['__globalExclusion'].resolvedId as string
   const partial: GroupMembersMap = new Map([...f.groups])
   partial.delete(group)

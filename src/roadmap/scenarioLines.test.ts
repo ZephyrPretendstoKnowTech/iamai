@@ -52,8 +52,16 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   // By week two the admins phishing-resistant policy is enforced, the second
   // emergency account is excluded from the MFA policy, and the tenant's policies
   // carve out the group its technician chose rather than the break-glass group:
-  // three more steps are in place.
-  assert.equal(inPlace(week2), inPlace(day1) + 3, 'phishing-resistant enforced, emergency access and the exclusions group In place by week two')
+  // three more steps are in place — and so is every goal whose tenant policy
+  // lacked only that group on day one (Step 3 correction).
+  const exclusionOnly = day1.steps.filter((s) => {
+    if (!s.id.startsWith('s-goal-') || s.status === 'done') return false
+    const kinds = (day1.coverage.results.find((x) => x.goal.id === s.goalId)?.reasons ?? []).filter((x) => !x.expected).map((x) => x.kind)
+    return kinds.length > 0 && kinds.every((k) => k === 'exclusion-missing')
+  })
+  assert.ok(exclusionOnly.length > 0, 'day one has policies short only of the exclusions group')
+  for (const s of exclusionOnly) assert.equal(week2.steps.find((x) => x.id === s.id)?.status, 'done', `${s.id} is in place once the chosen group is carved out`)
+  assert.equal(inPlace(week2), inPlace(day1) + 3 + exclusionOnly.length, 'phishing-resistant enforced, emergency access and the exclusions group In place by week two, with the policies that lacked only that group')
   assert.equal(reportOnly(week2), 2, 'two Wave 1 policies are in report-only in week two')
   // The step is on every plan. Day one: the group its technician chose is not
   // the one the tenant's policies carve out, so the step has a check to fix; by

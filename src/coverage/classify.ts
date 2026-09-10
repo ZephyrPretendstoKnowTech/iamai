@@ -214,6 +214,34 @@ export function goalsMatching(facts: PolicyFacts, goals: Goal[]): Goal[] {
   return goals.filter((g) => g.implementations.some((impl) => impl.kind === 'ca' && matchesSignature(facts, impl.signature)))
 }
 
+/** The guest and external user kinds a policy can name (Graph's conditionalAccessGuestOrExternalUserTypes, less unknownFutureValue), lower-cased. */
+export const GUEST_KINDS: ReadonlySet<string> = new Set(['internalguest', 'b2bcollaborationguest', 'b2bcollaborationmember', 'b2bdirectconnectuser', 'otherexternaluser', 'serviceprovider'])
+
+/**
+ * The guest and external user kinds a policy reaches in every external tenant,
+ * read from its assignments: every kind for All users or a guest include that
+ * names none, the kinds it names otherwise, less the kinds it excludes. A policy
+ * scoped to named partner tenants reaches no kind in every tenant. `unknown`
+ * where a guest assignment carries a kind or a tenant scope IAMAI does not read.
+ *
+ * The directory cannot say which kind a guest is, so this is the only reading of
+ * a policy that covers some kinds and not others.
+ */
+export function guestKindsReached(f: PolicyFacts): Set<string> | 'unknown' {
+  if (f.who.guests === null) return new Set()
+  if (f.who.guestTenants === 'unknown') return 'unknown'
+  const kinds = (list: string[]): Set<string> => new Set(list.map((k) => k.trim().toLowerCase()).filter((k) => k.length > 0))
+  const included = f.who.guests.length === 0 ? new Set(GUEST_KINDS) : kinds(f.who.guests)
+  if ([...included].some((k) => !GUEST_KINDS.has(k))) return 'unknown'
+  if (f.whoNot.guests) {
+    const excluded = kinds(f.whoNot.guestTypes ?? [])
+    if (excluded.size === 0) return new Set()
+    if ([...excluded].some((k) => !GUEST_KINDS.has(k))) return 'unknown'
+    for (const k of excluded) included.delete(k)
+  }
+  return f.who.guestTenants === 'named' ? new Set() : included
+}
+
 /**
  * How much of a goal's population class a policy's assignments reach, read from
  * who it includes and who it excludes, never from its name. `whole`: it includes
@@ -230,11 +258,12 @@ export function goalsMatching(facts: PolicyFacts, goals: Goal[]): Goal[] {
 export function populationReach(f: PolicyFacts, kind: PopulationSpec['kind']): 'whole' | 'part' | 'none' {
   const named = f.who.roles.size > 0 || f.who.groups.size > 0 || f.who.users.size > 0
   switch (kind) {
-    case 'guests':
+    case 'guests': {
       if (f.who.guests === null) return 'none'
-      // An exclusion naming no type excludes every guest; one naming types narrows them.
-      if (f.whoNot.guests) return (f.whoNot.guestTypes ?? []).length === 0 ? 'none' : 'part'
-      return 'whole'
+      const kinds = guestKindsReached(f)
+      if (kinds === 'unknown' || f.who.guestTenants === 'named') return 'part'
+      return kinds.size === GUEST_KINDS.size ? 'whole' : kinds.size > 0 ? 'part' : 'none'
+    }
     case 'coreAdmins': {
       const isCore = (r: string): boolean => CORE_ADMIN_ROLE_IDS.has(r.toLowerCase())
       const excluded = [...f.whoNot.roles].filter(isCore)

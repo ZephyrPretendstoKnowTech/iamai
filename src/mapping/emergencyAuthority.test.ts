@@ -8,7 +8,7 @@
 // (roadmap/operations.ts) are dependencies here, not subjects.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, allFixtures } from '../roadmap/fixtures/index.ts'
+import { fixture, allFixtures, withBreakGlassCarveOut } from '../roadmap/fixtures/index.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { emergencySelection, migrateEmergencySelection } from './emergencyChoice.ts'
@@ -56,7 +56,10 @@ function unconfirmed(f: Fixture): Fixture {
 }
 
 test('3+9. before confirmation the recommendation is inert; after it, the confirmed set is exactly what the prerequisite and the exclusions group consume', () => {
-  const f = fixture('small')
+  // The small tenant whose policies carve out its break-glass group: the plan's
+  // gate is then the exclusions group, and what waits on the emergency
+  // prerequisite is what that prerequisite itself holds.
+  const f = withBreakGlassCarveOut(fixture('small'))
   const chosen = f.mapping.breakGlassUserIds
   assert.ok(chosen.length >= 2, 'the fixture has emergency accounts to confirm')
   const before = unconfirmed(f)
@@ -91,7 +94,8 @@ test('3+9. before confirmation the recommendation is inert; after it, the confir
 })
 
 test('7. a confirmed account that this scan cannot read: the choice stands, the step does not, and no candidate inherits it', () => {
-  const f = fixture('small')
+  // As above: the gate is the exclusions group, so the emergency prerequisite holds only what it holds itself.
+  const f = withBreakGlassCarveOut(fixture('small'))
   const chosen = [...f.mapping.breakGlassUserIds]
   const gone = chosen[0]
   // The same tenant with one confirmed account no longer in the directory, and a

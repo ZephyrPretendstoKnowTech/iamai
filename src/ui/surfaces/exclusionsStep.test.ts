@@ -5,7 +5,7 @@
 // qualifies gets the create instructions.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, noExclusionsAnswer } from '../../roadmap/fixtures/index.ts'
+import { fixture, noExclusionsAnswer, withBreakGlassCarveOut } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 import { planDates, stepVars } from './stepVars.ts'
@@ -17,7 +17,8 @@ import type { SafetyStatus } from '../../mapping/safetyChoice.ts'
 const linesOn = (name: 'demo' | 'small'): { lines: string[]; ex: Record<string, unknown>; status: SafetyStatus; stored: string | null } => {
   // The demo answers the question like any other tenant, so the unanswered case
   // is the same tenant with the answer taken out.
-  const f = name === 'demo' ? noExclusionsAnswer(fixture(name)) : fixture(name)
+  // The small tenant whose policies carve out its break-glass group, so the chosen group has checks to fail.
+  const f = name === 'demo' ? noExclusionsAnswer(fixture(name)) : withBreakGlassCarveOut(fixture(name))
   const r = runFixture(f, { mapping: f.mapping })
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming, ...planDates(r.steps, r.schedule.start, r.coverage.organisation.naming) }
   const step = r.steps.find((s) => s.id === PREREQ_STEP_ID.exclusionsGroup)!

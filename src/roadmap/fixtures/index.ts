@@ -404,9 +404,12 @@ export function buildFixture(spec: Spec): Fixture {
   // The demo is the tenant that tells that story: on day one its policies still
   // carve out the break-glass group, so the exclusions-group step has a check to
   // fix ("Correct"), and by week two they carve out the confirmed group and the
-  // step is In place (prompt 50 Part 2 item 10, Part 4). The other fixtures keep
-  // the older arrangement their own tests were written against.
-  const carveOut = spec.demo && spec.week2 === true ? exclusionGroup : bgGroup
+  // step is In place (prompt 50 Part 2 item 10, Part 4). Every other fixture
+  // tenant carves out the group its technician chose: a policy without that group
+  // is not in place (Step 3 correction), so a fixture that kept carving out the
+  // break-glass group was a tenant with nothing in place, not the tenant its tests
+  // describe.
+  const carveOut = spec.demo && spec.week2 !== true ? bgGroup : exclusionGroup
 
   // ---- policies ----
   const policies: unknown[] = []
@@ -696,6 +699,27 @@ export function asCuratedBaseline(pkg: BaselinePackage): BaselinePackage {
 export function curatedFixture(name: FixtureName): Fixture {
   const f = fixture(name)
   return { ...f, baseline: asCuratedBaseline(f.baseline) }
+}
+
+/**
+ * The same tenant with its policies carving out its break-glass group wherever
+ * they carve out the group its technician chose. That is the tenant the
+ * exclusions-group and escape-hatch cases are about: a chosen group that is
+ * intrinsically safe and is not the one the policies use, while the emergency
+ * accounts stay excluded through a group this scan reads. Every policy then
+ * lacks the required exclusions group (Step 3 correction), which is what those
+ * cases need to be true.
+ */
+export function withBreakGlassCarveOut(f: Fixture): Fixture {
+  const seed = f.name === 'demo' || f.name === 'demo-week2' ? 'demo' : f.name
+  const breakGlass = guid(seed, 1_000_500)
+  const chosen = guid(seed, 1_000_501).toLowerCase()
+  const snapshot = structuredClone(f.snapshot)
+  for (const raw of snapshot.config.caPolicies?.rows ?? []) {
+    const users = (raw as { conditions?: { users?: { excludeGroups?: string[] } } }).conditions?.users
+    if (users?.excludeGroups) users.excludeGroups = users.excludeGroups.map((g) => (g.toLowerCase() === chosen ? breakGlass : g))
+  }
+  return { ...f, snapshot }
 }
 
 /** Every fixture on its curated baseline, for a sweep that needs a policy to be writable at all. */

@@ -162,10 +162,13 @@ test('contract 5: a step whose status has run ahead of Foundation A offers no im
   const r = runFixture(f)
   const step = r.steps.find((candidate) => candidate.id === 's-goal-token-protection')!
   const token = { step, c: stepContract(step, ctxFor(f, r, step)) }
-  assert.equal(token.step.status, 'ready-to-enforce', 'the status word has run ahead')
-  assert.equal(token.c.state.lifecycle, 'ready-to-enforce', 'and so has the lifecycle')
-  assert.equal(token.c.milestone.kind, 'enforce', 'and the milestone says enforce')
-  assert.equal(token.c.implementation.offered, false, 'yet no implementation is offered')
+  // The exclusions group the policy carves out has no usable, owner-confirmed
+  // object, so the lifecycle is held too (Step 3 correction, owner decision): the
+  // status no longer runs ahead on this cause, and Foundation A still decides.
+  assert.equal(token.step.status, 'in-report-only', 'the status word is held with the policy')
+  assert.equal(token.c.state.lifecycle, 'report-only', 'and so is the lifecycle')
+  assert.notEqual(token.c.milestone.kind, 'enforce', 'and the milestone does not say enforce')
+  assert.equal(token.c.implementation.offered, false, 'no implementation is offered')
   assert.equal(token.c.whatToDo.kind, 'resolve', 'and the action is not to enforce anything')
   assert.notEqual(token.c.whatToDo.text, token.c.milestone.label, 'the action is the reason it is held, not the milestone')
   // Across every plan: the contract's implementation answer is Foundation A's, always.

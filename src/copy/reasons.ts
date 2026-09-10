@@ -2,10 +2,19 @@
 // Findings page shows under "Why not fully". Built here, not in the engine, so
 // every branch (0, 1, all, none) is explicit and lint-checked.
 import { count, list } from './statements.ts'
-import { pages } from '../content/content.ts'
+import { engine, pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
+const COVERAGE = engine.coverage
+
 export const REASON = {
+  /** The goal's own policy carves out the exclusions group and this policy does not. */
+  exclusionMissing: (policy: string): string => fillText(COVERAGE.reason.exclusionMissing, { policy }),
+  /** Conditions confine the policy to fewer sign-ins than the baseline's (coverage/classify.ts narrowerConditions), in words. */
+  conditionsNarrower: (policy: string, dimensions: string[]): string =>
+    fillText(COVERAGE.reason.conditionsNarrower, { policy, conditions: list([...new Set(dimensions.map((d) => COVERAGE.conditions[d] ?? COVERAGE.conditions.unread))]) }),
+  /** The goal's satisfiers between them reach fewer guest and external user kinds than its baseline policies. */
+  guestTypes: (reached: number, required: number): string => fillText(COVERAGE.reason.guestTypes, { reached, required }),
   /** People the goal expects that no enabled policy includes. */
   notTargeted: (n: number, expected: number): string =>
     n > 0 && n === expected
