@@ -1534,9 +1534,13 @@ async function walkFixture(fx) {
           // finish reads what holds it in that place instead, started or not
           // (derive/planHeader.ts, roadmap/startPlan.test.ts), so the start is asked
           // of the header only where the plan finishes.
-          const holding = /cannot finish until \S/.test(await mainText())
-          const started = holding || (await waitFor(`/started \\S.*\\d{4}/.test((document.querySelector('main.page') || {}).innerText || '')`, 8000))
-          if (!started) add('P0', `${slabel}: the plan does not read started <date> after Start the plan`)
+          // Pressing Start redraws the plan, so the header is read once it is back
+          // in one of its two forms rather than the instant after the click.
+          const settled = await waitFor(`/started \\S.*\\d{4}|cannot finish until \\S/.test((document.querySelector('main.page') || {}).innerText || '')`, 8000)
+          const header = ((await mainText()) ?? '').match(/[^\n]*\d+ steps ·[^\n]*/)?.[0] ?? '(no header line)'
+          const holding = /cannot finish until \S/.test(header)
+          const started = settled && (holding || /started \S.*\d{4}/.test(header))
+          if (!started) add('P0', `${slabel}: the plan does not read started <date> after Start the plan (header: ${JSON.stringify(header)})`)
           const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
           if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
           const after = await mainText()
