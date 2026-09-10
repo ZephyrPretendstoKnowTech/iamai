@@ -1734,7 +1734,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // The goal's own coverage, not a broad all-users match that belongs to
       // another goal (walk-51 item 15): prefer the policies scoped to this goal.
       deliveredBy: (() => {
-        const strong = result.candidates.filter((c) => c.contribution === 'strong')
+        // A step that corrects an enforced policy of the goal's own keeps that
+        // policy as the goal's delivery: nothing beside it is superseded, and a
+        // policy another goal owns is not this step's to retire. Naming them here
+        // said the step creates the baseline's version beside its own policy and
+        // put the policies being corrected on the consolidation row. A step that
+        // brings a report-only or weaker policy up to the baseline still names the
+        // enforced overlaps it makes redundant — never the policy it changes.
+        if (existing?.contribution === 'strong') return []
+        const strong = result.candidates.filter((c) => c.contribution === 'strong' && c.policyId !== existing?.policyId)
         const own = strong.filter((c) => c.ownScope)
         return (own.length > 0 ? own : strong).map((c) => `${c.policyName} (${INVENTORY.policies.state[c.state] ?? c.state})`)
       })(),

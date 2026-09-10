@@ -1311,10 +1311,12 @@ async function walkFixture(fx) {
             if (!passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
             if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
             if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
-            // Require MFA for Everyone is in place on the demo: the email is the
-            // passkey version, and on day one it names the admins policy as the
-            // first one that needs a passkey (enforced by week two, so no line then).
-            if (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText)) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
+            // Where the Plan's row reads Require MFA for Everyone In place (the demo
+            // in week two), the email is the passkey version. On day one that policy
+            // does not exclude the chosen exclusions group, so it is partly in place
+            // and the email dates its enforcement instead (Step 3 correction); the
+            // row word is the one read above for the campaign's rungs.
+            if (campaignRungs?.mfaInPlace && (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText))) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
             if (!week2) campaignEmail = emailText
           }
           // A strength policy's row carries its lockout count in the who-column
