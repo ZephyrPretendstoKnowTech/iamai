@@ -11,7 +11,7 @@ import type { CoverageInput } from './coverage.ts'
 import { buildStrengthLookup } from './strength.ts'
 import type { GoalResult } from './types.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
-import { fixture, noExclusionsAnswer } from '../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture, noExclusionsAnswer } from '../roadmap/fixtures/index.ts'
 import { PREREQ_STEP_ID } from '../roadmap/stepIds.ts'
 import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
@@ -206,7 +206,9 @@ test('no usable exclusions group: the step is partly in place, held on the exclu
   // The week-two tenant, whose policies carve out the group its technician chose,
   // with that answer taken away: every policy still excludes the group, and none
   // of that is an owner-confirmed exclusions group any more.
-  const answered = fixture('demo-week2')
+  // On the curated baseline: the token policy's window is earned there and nothing
+  // else holds it, so the exclusions group is the one thing the answer takes away.
+  const answered = curatedFixture('demo-week2')
   const f = noExclusionsAnswer(answered)
   const run = runFixture(f, { mapping: f.mapping })
   assert.equal(actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') }), null)

@@ -199,11 +199,15 @@ export function workTypeOf(stepId: string, contentKind: string | null): WorkType
  * can clear. What DOES go there is the condition set that says the answer is on
  * this row.
  */
-export function statusGroupOf(step: StatusFacts, isNext: boolean): StatusGroup {
+export function statusGroupOf(step: StatusFacts, isNext: boolean, held = false): StatusGroup {
   if (step.status === 'done') return 'complete'
   const c = step.state.condition
   if (c === 'needs-decision' || c === 'review-required' || c === 'baseline-conflict') return 'attention'
   if (step.operatorSafe === false) return 'attention'
+  // Work something holds is waiting, whatever its own status word says: it is not
+  // Ready and not the next thing (roadmap/holds.ts, handed in by the surface). A
+  // policy already being watched stays under In progress.
+  if (held && step.status !== 'in-report-only') return 'waiting'
   // The one place Up next is decided, and it reads the marker rather than the
   // status. A step can be ready without being next; that is the whole point.
   if (isNext) return 'upnext'

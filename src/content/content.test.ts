@@ -98,6 +98,11 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.shared.datesReview',
   // The row's date column for that same step, for the same reason.
   '.pages.plan.heldForReview',
+  // The Plan's length tip and Connect's sample tile for a plan that cannot finish
+  // yet: the length is the rollout's estimate (derive/finish.ts planWeeks), a
+  // state the review page's example plan is not in.
+  '.pages.plan.lengthTipEstimate',
+  '.pages.connect.plan.sample.weeksEstimate',
   // And the same column for a policy whose observation window closed on records
   // that have not cleared it (rowWhen.ts, derive/readyWhen.ts kind `since`):
   // also a reading of a scan, which the review page does not have.

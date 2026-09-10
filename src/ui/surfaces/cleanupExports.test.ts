@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
+import { isHeld } from '../../roadmap/holds.ts'
 import { groundingBundle, promptPack } from '../../roadmap/prompts.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { doneSteps, trackableSteps } from '../../derive/sets.ts'
@@ -26,7 +27,12 @@ const setUp = () => {
 test('every Cleanup row is a calendar entry on its day, with what the row says', () => {
   const { f, r, view, cleanup } = setUp()
   assert.ok(cleanup.length >= 2, 'the demo has Cleanup rows')
-  const ics = buildIcs(r.steps, 'Contoso', f.planId, view, cleanup)
+  // Cleanup follows the last enforcement. While the plan holds work it requires,
+  // that end has no date, and neither has anything after it (roadmap/holds.ts).
+  assert.ok(r.steps.some((s) => !s.floor && isHeld(s)), 'the premise: the demo holds work')
+  assert.ok(!buildIcs(r.steps, 'Contoso', f.planId, view, cleanup).includes('-cleanup-'), 'a plan that cannot finish books no Cleanup')
+  // The same plan with nothing held books each row on its day.
+  const ics = buildIcs(r.steps.filter((s) => !isHeld(s)), 'Contoso', f.planId, view, cleanup)
   for (const c of cleanup) {
     const uid = `UID:${f.planId}-cleanup-${c.kind}@iamai`
     assert.ok(ics.includes(uid), `${c.kind} has an entry`)
@@ -34,9 +40,10 @@ test('every Cleanup row is a calendar entry on its day, with what the row says',
     assert.ok(block.includes(`DTSTART;VALUE=DATE:${c.day.slice(0, 10).replace(/-/g, '')}`), `${c.kind} sits on its day`)
     assert.ok(block.replace(/\r\n /g, '').includes(`SUMMARY:${c.title}`), `${c.kind} carries its title`)
   }
-  assert.ok(!buildIcs(r.steps, 'Contoso', f.planId, view).includes('-cleanup-'), 'no rows given, no entries')
+  const open = r.steps.filter((s) => !isHeld(s))
+  assert.ok(!buildIcs(open, 'Contoso', f.planId, view).includes('-cleanup-'), 'no rows given, no entries')
   const done = cleanup.map((c, i) => (i === 0 ? { ...c, done: '2026-09-03T12:00:00.000Z' } : c))
-  assert.ok(!buildIcs(r.steps, 'Contoso', f.planId, view, done).includes(`-cleanup-${cleanup[0].kind}@`), 'a row marked done is finished, like a done step')
+  assert.ok(!buildIcs(open, 'Contoso', f.planId, view, done).includes(`-cleanup-${cleanup[0].kind}@`), 'a row marked done is finished, like a done step')
 })
 
 test("the print cover's step count is the Plan header's: the steps and the Cleanup rows", () => {

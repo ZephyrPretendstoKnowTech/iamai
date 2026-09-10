@@ -6,6 +6,7 @@ import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { heldByReadiness, planFinish } from './finish.ts'
 import { unavailableReason } from '../roadmap/operations.ts'
+import { isHeld } from '../roadmap/holds.ts'
 import { FINISH } from '../copy/statements.ts'
 
 test('every outstanding step is either dated by the calendar or held by a named readiness threshold', () => {
@@ -15,9 +16,16 @@ test('every outstanding step is either dated by the calendar or held by a named 
     const outstanding = r.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped')
     // A policy the plan cannot write waits on the thing it names, not on a
     // readiness number, so it is in neither bucket (roadmap/operations.ts).
-    const held = outstanding.filter((s) => unavailableReason(s) === null && heldByReadiness(s))
+    const held = outstanding.filter((s) => !s.floor && unavailableReason(s) === null && heldByReadiness(s) && isHeld(s))
     assert.equal(p.waitingCount, held.length, `${f.name}: the held count is the held steps`)
     for (const w of p.waiting) assert.match(w.measure, /readiness$/, `${f.name}: ${w.measure}`)
+    // Anything the plan requires that is held leaves the plan with no finish at
+    // all: a date measured to the rest assumes the hold clears (roadmap/holds.ts).
+    if (outstanding.some((s) => !s.floor && isHeld(s))) {
+      assert.equal(p.held, true, `${f.name}: held work, so the plan says it cannot finish`)
+      assert.equal(p.finish, null, `${f.name}: and dates no finish`)
+      continue
+    }
     // The finish is the last planned end among the steps the calendar dates: no dated step runs past it.
     const dated = outstanding.filter((s) => !heldByReadiness(s) && s.rings.length > 0)
     if (dated.length > 0) {

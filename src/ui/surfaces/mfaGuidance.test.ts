@@ -116,9 +116,11 @@ test('the Plan and the campaign email reference the shared lines rather than rep
   for (const key of ['body', 'bodyMfaInPlace']) {
     assert.ok(comms[key].includes('{registerPasskeyLine}'), `comms.${key}: references the one end-user sentence`)
   }
-  // Rendered, both come out as the shared line itself.
-  const ctx = ctxFor('demo')
-  const step = campaignOf('demo')
+  // Rendered, both come out as the shared line itself. On a tenant whose plan
+  // dates the enforcement the email warns of: the demo's is held
+  // (roadmap/holds.ts), and an email with no day to name is not written.
+  const ctx = ctxFor('mid')
+  const step = campaignOf('mid')
   const lines = stepLines(step, ctx)
   assert.ok(lines.includes(GUIDE_POINTER), 'the Plan step renders the pointer')
   assert.ok(lines.some((l) => l.includes(USER_INSTRUCTION)), 'the email renders the shared end-user sentence')
@@ -314,7 +316,9 @@ test('the security-key guide is concise, and carries no vendor or raw identifier
 // ---- G. the Plan keeps its own job ---------------------------------------------
 
 test('the campaign step hands person-level setup to MFA Readiness and keeps its policy work', () => {
-  for (const name of ['demo', 'mid', 'messy'] as FixtureName[]) {
+  // GetIAMAI for the tenant whose MFA waits on readiness: on the demo nothing the
+  // plan dates gives the readiness line its enrol-by day (roadmap/holds.ts).
+  for (const name of ['getiamai', 'mid', 'messy'] as FixtureName[]) {
     const step = campaignOf(name)
     const ctx = ctxFor(name)
     const lines = stepLines(step, ctx)

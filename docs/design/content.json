@@ -523,6 +523,7 @@
           "weeks": "to finish",
           "weeksValue": "{n} weeks",
           "weeksOne": "{n} week",
+          "weeksEstimate": "estimated rollout",
           "open": "Open the sample plan"
         }
       },
@@ -533,6 +534,7 @@
       "line1": "{steps} steps · {inPlace} in place · finishes {finish} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
       "lengthTip": "The plan is {weeks} because {constraint}.",
+      "lengthTipEstimate": "Once nothing is held, the plan is about {weeks} because {constraint}.",
       "next": "next",
       "now": "now",
       "readyOn": "ready {date}",

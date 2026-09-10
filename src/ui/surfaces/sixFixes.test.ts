@@ -19,6 +19,7 @@ import { app, pages, stepById } from '../../content/content.ts'
 import { RUNGS } from '../../derive/ladder.ts'
 import { rungWords, showWord } from './readinessCells.ts'
 import { rowWhen } from './rowWhen.ts'
+import { holdOf } from '../../roadmap/holds.ts'
 import { enforcementUnearned } from '../../roadmap/forecast.ts'
 import { rowWho } from './rowWho.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
@@ -103,9 +104,14 @@ test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line
   // against the 100% the step asks for, so held it has no day to name at all.
   assert.equal(s.action.readinessGate?.value, '0%')
   assert.deepEqual(lines.filter((l) => /Passkey or security key/.test(l)), [], 'no deadline is invented while the enforcement is held')
+  // With the admins at the rung met, the signed-in account still has no safe way
+  // in, and that holds the enforcement too (roadmap/holds.ts): still no day.
   const ready = runFixture(g, { viability: adminsAtRung5(r.viability, g.snapshot.asOf) } as never)
   const s2 = ready.steps.find((x) => x.goalId === 'admins-phishing-resistant')!
-  assert.ok(s2.events, 'with the prerequisite met the change is dated')
+  assert.ok(s2.blockers.some((b) => b.kind === 'readiness' && b.label === 'operator'), 'the premise: the operator’s own way in')
+  assert.equal(holdOf(s2)?.kind, 'readiness')
+  assert.equal(s2.events, null, 'a held enforcement is not dated')
+  assert.deepEqual(stepLines(s2, ctxFor(g, ready)).filter((l) => /Passkey or security key, proven; register before/.test(l)), [], 'and no deadline is written')
 })
 
 test("(3) Today's rungs are the ladder's titles, and the Show list offers each by the same title", () => {

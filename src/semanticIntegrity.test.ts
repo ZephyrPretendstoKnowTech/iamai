@@ -422,7 +422,7 @@ test('042.12: the sample tenant runs the production path and states the producti
   assert.equal(shown.people, facts(d.snapshot, d.mapping).active, 'the sample tile counts people its own way')
   assert.equal(shown.steps, counts.steps, 'the sample tile counts steps its own way')
   assert.equal(shown.inPlace, counts.done, 'the sample tile counts what is in place its own way')
-  assert.equal(shown.weeks, planWeeks(planFinish(run.steps, cleanup?.end ?? null), run.schedule.start, run.schedule.weeks), 'the sample tile computes weeks its own way')
+  assert.equal(shown.weeks, planWeeks(planFinish(run.steps, cleanup?.end ?? null), run.schedule), 'the sample tile computes weeks its own way')
 })
 
 // ---- the Cleanup row: one completion, one word, on every surface ----

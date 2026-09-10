@@ -96,6 +96,13 @@ export type Schedule = {
    */
   forecastOnly?: Record<string, import('./forecast.ts').ForecastPlacement>
   /**
+   * The rollout's length as the generator drew it, before `settleForecast`
+   * withdrew anything held or unearned: an estimate, never a date a step has.
+   * Connect's sample tile and a plan that cannot finish yet read its weeks
+   * (derive/finish.ts planWeeks). Filled on the finished plan.
+   */
+  estimate?: { weeks: number; targetEnd: string; reason: string }
+  /**
    * Where every step landed, and what put it there: the one input every field
    * the placement decides is read back from (`readBackPlacement`).
    *

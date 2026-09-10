@@ -31,6 +31,7 @@ import type { Step, StepEvents } from './types.ts'
 import type { Schedule } from './schedule.ts'
 import { readBackPlacement } from './schedule.ts'
 import { policyHold } from './operations.ts'
+import { isHeld } from './holds.ts'
 
 /** What a step's enforcement date is worth. */
 export type EnforcementBasis =
@@ -240,16 +241,29 @@ export type ForecastPlacement = {
  * (ui/surfaces/stepExport.ts `commsFor`). An email is the one artifact IAMAI
  * writes that leaves the tenant, and this step has no day to give it.
  *
+ * A step something holds (roadmap/holds.ts) is withdrawn the same way, and more
+ * of it goes: its rings and its report-only day as well, because both are the
+ * rollout of work that cannot start. A blocked policy dated into a phase, or given
+ * the day it would be created, reads as a schedule it is still on — and the plan's
+ * end measured to it assumes the thing holding it clears on time.
+ *
  * Runs once, on the finished plan, after tracking has settled every lifecycle
  * and before the state reasons read them.
  */
 export function settleForecast(steps: readonly Step[], schedule: Schedule): Schedule {
   const forecastOnly: Record<string, ForecastPlacement> = { ...(schedule.forecastOnly ?? {}) }
+  // The rollout as the generator drew it, before anything is withdrawn: its length
+  // if nothing held any of it. An estimate, never a step's date (derive/finish.ts planWeeks).
+  schedule.estimate ??= { weeks: schedule.weeks, targetEnd: schedule.targetEnd, reason: schedule.derivation.reason }
   for (const step of steps) {
-    if (!enforcementUnearned(step)) continue
+    const held = isHeld(step)
+    if (!held && !enforcementUnearned(step)) continue
+    // A held step the generator never placed has no rollout to keep: there is
+    // nothing to withdraw, only dates to make sure it does not carry.
+    const placed = schedule.placement ? schedule.placement.placed[step.id] !== undefined : schedule.waveOf[step.id] !== undefined
     // Called twice on one plan, the second pass finds the projection already
     // taken off and must not record its own absence over it.
-    forecastOnly[step.id] ??= {
+    if (!held || placed) forecastOnly[step.id] ??= {
       wave: schedule.waveOf[step.id] ?? null,
       events: step.events,
       startAt: schedule.startAt[step.id] ?? null,
@@ -258,6 +272,11 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
     }
     step.events = null
     step.comms = null
+    // A watched policy keeps its rings: the calendar books its review on them.
+    if (held) {
+      step.rings = []
+      step.reportOnlyAt = null
+    }
   }
   schedule.forecastOnly = forecastOnly
   const withdrawn = new Set(Object.keys(forecastOnly))

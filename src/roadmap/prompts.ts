@@ -6,6 +6,7 @@
 import { GROUNDING, PROMPTS } from '../copy/comms.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { forecastEnforcement, statedEnforcement } from './forecast.ts'
+import { planFinish } from '../derive/finish.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { CoverageReport } from '../coverage/types.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
@@ -258,12 +259,17 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
       implementation: v.implementation,
     }
   })
+  // The plan's end as the Plan header states it (derive/finish.ts): while work the
+  // plan requires is held there is no end and no length to export, because the
+  // schedule drawn for the rest assumes the hold clears inside it.
+  const finish = planFinish(args.steps, args.schedule.cleanup?.end ?? null)
+  const held = finish.held
   const bundle = {
     _readme: GROUNDING.header(args.redacted ? '[the tenant]' : args.tenant, args.redacted, args.generated),
     tenant: args.redacted ? { name: '[the tenant]' } : { name: args.tenant, id: snapshot.tenantId },
     profile,
     // The Cleanup rows under their own key (E4), as the screen says them.
-    plan: { start: args.schedule.start, targetEnd: args.schedule.targetEnd, weeks: args.schedule.weeks, criticalPath: args.schedule.derivation.criticalPath, steps, cleanup: args.cleanup ?? [] },
+    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: args.schedule.derivation.criticalPath, steps, cleanup: args.cleanup ?? [] },
     findings,
   }
   return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle

@@ -23,7 +23,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { allFixtures } from './fixtures/index.ts'
+import { allFixtures, curatedFixture } from './fixtures/index.ts'
+import { isHeld } from './holds.ts'
 import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { cleanReportOnly } from './fixtures/records.ts'
@@ -123,7 +124,10 @@ test('the lifecycle belongs to a policy: a step that deploys none has no stage',
   assert.deepEqual(wrong, [], 'supporting steps are not stages of a policy nobody is deploying')
   // All four stages are reachable from the fixtures, so the assertions above are
   // about a lifecycle that is actually being used.
-  const seen = new Set(everyStep().map(({ s }) => s.state.lifecycle))
+  // Ready to enforce is reached on the curated baseline: on the pinned one every
+  // report-only policy the fixtures deploy is held, and a held policy is never
+  // Ready to enforce (roadmap/holds.ts).
+  const seen = new Set([...everyStep().map(({ s }) => s.state.lifecycle), ...runFixture(curatedFixture('demo-week2')).steps.map((s) => s.state.lifecycle)])
   for (const stage of ['not-deployed', 'report-only', 'ready-to-enforce', 'enforced']) assert.ok(seen.has(stage as Lifecycle), `no fixture reaches ${stage}`)
 })
 
@@ -415,8 +419,14 @@ test('a policy watched for its whole window is ready to enforce; the same policy
   const kept = runFixture(DEMO)
   applyProgress(kept.steps, watchedClean(), kept.coverage, DEMO.planId, undefined, null, demoObservation(), demoScope())
   const watched = kept.steps.find((s) => s.id === ADMINS)!
-  assert.equal(watched.state.lifecycle, 'ready-to-enforce')
-  assert.equal(watched.status, 'ready-to-enforce', 'the word follows the stage')
+  // Both gates close on the window it served. The demo's admins policy names an
+  // object this baseline has not settled, so something holds it, and a held
+  // policy is not Ready to enforce however clean its window (roadmap/holds.ts).
+  // These continuity cases are about the window, so they read its gates.
+  assert.equal(watched.tracking?.readyNow, true, 'the window it served closes both gates')
+  assert.ok(isHeld(watched), 'the premise: the demo holds this policy')
+  assert.equal(watched.state.lifecycle, 'report-only', 'and a held policy is not ready to enforce')
+  assert.equal(watched.status, 'in-report-only', 'the word follows the stage')
   assert.equal(watched.state.observation?.changed, 'none')
 
   // The record says the policy used to mean something else. Whatever it meant,
@@ -466,7 +476,7 @@ test('a rename between two scans changes nothing the plan is waiting on', () => 
   assert.equal(after.state.observation?.changed, 'none')
   assert.equal(after.state.observation?.continuity, 'continues')
   assert.equal(after.state.observation?.reviewRequired, false)
-  assert.equal(after.state.lifecycle, 'ready-to-enforce', 'the window a rename cannot touch')
+  assert.equal(after.tracking?.readyNow, true, 'the window a rename cannot touch')
 })
 
 test('a record written before this contract loads, and cannot vouch for a policy it never named', () => {
@@ -558,7 +568,7 @@ test('1: a policy replaced by a different object meaning the same thing inherits
   assert.equal(s.state.observation?.latest.evidenceAt, null, 'and carries none of the old one’s evidence')
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf)
   assert.equal(s.tracking?.reportOnlyAtSource, 'first-seen-by-iamai')
-  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'ten days on another object enforce nothing')
+  assert.equal(s.tracking?.readyNow, false, 'ten days on another object enforce nothing')
   // The record now names the object it is about.
   assert.equal(soleOf(observationsOf([s]), ADMINS).artifact, artifactIdOf(B_ID))
   assert.notEqual(soleOf(observationsOf([s]), ADMINS).artifact, watched.artifact)
@@ -579,7 +589,7 @@ test('2: a rename of the same object keeps the window it earned', () => {
   assert.equal(s.state.observation?.reviewRequired, false)
   assert.equal(s.state.observation?.latest.artifact, soleOf(prior, ADMINS).artifact, 'the same object')
   assert.equal(s.state.observation?.latest.firstSeenAt, soleOf(prior, ADMINS).firstSeenAt, 'the window survives')
-  assert.equal(s.state.lifecycle, 'ready-to-enforce', 'and the rename moved nothing backwards')
+  assert.equal(s.tracking?.readyNow, true, 'and the rename moved nothing backwards')
 })
 
 test('3: the same object materially rewritten is watched from the rewrite, not from before it', () => {
@@ -594,7 +604,7 @@ test('3: the same object materially rewritten is watched from the rewrite, not f
   assert.equal(s.state.observation?.latest.firstSeenAt, DEMO.snapshot.asOf, 'the clock restarts at the rewrite')
   assert.equal(s.state.observation?.latest.evidenceAt, null, 'records from before it are about what the policy used to be')
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf)
-  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'the new semantics have not been watched')
+  assert.equal(s.tracking?.readyNow, false, 'the new semantics have not been watched')
   // And the other axis: the grant moved and this step's operation submits no
   // grant, so nothing about the plan accounts for it. Re-deriving the plan from
   // the drifted tenant does not change that — the update's target now contains
@@ -632,7 +642,7 @@ test('5: a legacy record loads, explains itself, and closes no gate — unless t
   const s = rescan(() => {}, legacy)
   assert.equal(s.state.observation?.continuity, 'unknown', 'so it cannot be shown to be about this policy')
   assert.equal(s.state.observation?.prior?.firstSeenAt, seenAt, 'the date it holds is still there to show')
-  assert.notEqual(s.state.lifecycle, 'ready-to-enforce')
+  assert.equal(s.tracking?.readyNow, false)
   assert.notEqual(s.state.condition, 'review-required', 'and an unproven window is not a fault')
 
   // Microsoft's own record of *this* policy in report-only is a different thing
@@ -646,7 +656,7 @@ test('5: a legacy record loads, explains itself, and closes no gate — unless t
   }, legacy, demoScope())
   assert.equal(proven.tracking?.reportOnlyAt, seenAt)
   assert.equal(proven.tracking?.reportOnlyAtSource, 'sign-in-evidence', 'and it says whose evidence it is')
-  assert.equal(proven.state.lifecycle, 'ready-to-enforce')
+  assert.equal(proven.tracking?.readyNow, true)
 })
 
 test('6: the history follows the policy the step matched, never the step id', () => {
@@ -749,7 +759,7 @@ test('10: with the matched policy’s scope unresolved nothing is seen, and noth
   const seeing = rescan((row, snapshot) => {
     snapshot.evidencePolicyResults = [cleanRecords(String(row.id), demoPeople())] as typeof snapshot.evidencePolicyResults
   }, prior, demoScope())
-  assert.equal(seeing.state.lifecycle, 'ready-to-enforce')
+  assert.equal(seeing.tracking?.readyNow, true)
 })
 
 // ---- a saved word is not a lifecycle ----
@@ -781,7 +791,7 @@ test('a saved "ready to enforce" cannot make a policy ready whose window this sc
   // window starts today and nothing is ready.
   const s = withSaved(savedWord('ready-to-enforce'))
   assert.equal(s.state.lifecycle, 'report-only', 'the current scan decides where the policy is')
-  assert.notEqual(s.status, 'ready-to-enforce')
+  assert.equal(s.tracking?.readyNow, false)
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf, 'watched from this scan, not from a word')
 })
 
@@ -806,7 +816,7 @@ test('a saved "ready to enforce" cannot outlive the policy it was about', () => 
   applyProgress(steps, snapshot, fresh.coverage, DEMO.planId, undefined, null, prior)
   const s = steps.find((x) => x.id === ADMINS) as Step
   assert.equal(s.state.observation?.continuity, 'reset')
-  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'the reset wins over the saved projection')
+  assert.equal(s.tracking?.readyNow, false, 'the reset wins over the saved projection')
   void run
 })
 
@@ -814,7 +824,7 @@ test('a saved "ready to enforce" beside a legacy observation still proves nothin
   const seenAt = new Date(Date.parse(DEMO.snapshot.asOf) - TEN_DAYS).toISOString()
   const s = withSaved(savedWord('ready-to-enforce'), observationsFrom({ reportOnlySeen: { [ADMINS]: seenAt } }))
   assert.equal(s.state.observation?.continuity, 'unknown', 'the record names no object')
-  assert.notEqual(s.state.lifecycle, 'ready-to-enforce', 'and neither of the two can advance it alone')
+  assert.equal(s.tracking?.readyNow, false, 'and neither of the two can advance it alone')
 })
 
 test('a policy whose window this scan can prove is still ready, with or without a saved word', () => {
@@ -822,9 +832,11 @@ test('a policy whose window this scan can prove is still ready, with or without 
   // artifact, its semantics and a continuous observation establish readiness, the
   // step is ready — and it gets there without the record ever naming a status.
   const earned = withSaved({}, demoObservation())
-  assert.equal(earned.state.lifecycle, 'ready-to-enforce', 'the engine reaches it on its own')
+  assert.equal(earned.tracking?.readyNow, true, 'the engine reaches it on its own')
   const alsoSaved = withSaved(savedWord('blocked'), demoObservation())
-  assert.equal(alsoSaved.state.lifecycle, 'ready-to-enforce', 'and a stale word does not hold it back either')
+  assert.equal(alsoSaved.tracking?.readyNow, true, 'and a stale word does not hold it back either')
+  // Whether it may be turned on is the hold's question, and the saved word is not asked it (roadmap/holds.ts).
+  assert.equal(alsoSaved.state.lifecycle, earned.state.lifecycle)
 })
 
 test('the operator’s own decision survives, through its own authority', () => {
@@ -1061,11 +1073,15 @@ test('every step ends in one next thing, and none of them invents a date', () =>
     if (s.state.condition === 'baseline-conflict' && (m.at !== null || m.kind !== 'resolve')) wrong.push(`${where}: a baseline conflict with a date or an action`)
     // A step in report-only names the day its window closes, from the tracking
     // and never from anywhere else.
-    if (s.state.lifecycle === 'report-only' && !s.state.satisfied && m.at !== (s.tracking?.readyOn ?? null)) wrong.push(`${where}: watched until a date the tracking does not hold`)
+    if (s.state.lifecycle === 'report-only' && !s.state.satisfied && !isHeld(s) && m.at !== (s.tracking?.readyOn ?? null)) wrong.push(`${where}: watched until a date the tracking does not hold`)
+    // A held step's next thing is what holds it, and it has no date (roadmap/holds.ts).
+    if (isHeld(s) && m.at !== null) wrong.push(`${where}: a held step with a next date`)
     if (s.status === 'blocked' && s.state.condition !== 'baseline-conflict' && m.gatedBy !== s.blockedReason) wrong.push(`${where}: a milestone gated by something other than the reason the row shows`)
   }
   assert.deepEqual(wrong, [])
-  const kinds = new Set(everyStep().map(({ s }) => nextMilestone(s).kind))
+  // An open observation window is reached on the curated baseline: on the pinned
+  // one every report-only policy the fixtures deploy is held (roadmap/holds.ts).
+  const kinds = new Set([...everyStep().map(({ s }) => nextMilestone(s).kind), ...runFixture(curatedFixture('demo-week2')).steps.map((s) => nextMilestone(s).kind)])
   for (const kind of ['resolve', 'deploy', 'observe', 'preserve']) assert.ok(kinds.has(kind as ReturnType<typeof nextMilestone>['kind']), `no fixture step is waiting to ${kind}`)
 })
 
@@ -1535,7 +1551,7 @@ test('single 15: a stored observation from before members belongs to a one-polic
   }, loaded, demoScope())
   assert.equal(s.state.observation?.prior?.firstSeenAt, seenAt, 'the window it earned carries over')
   assert.equal(s.state.observation?.continuity, 'continues', 'because it names the object this step is delivered by')
-  assert.equal(s.state.lifecycle, 'ready-to-enforce')
+  assert.equal(s.tracking?.readyNow, true)
   // And it is written back in the member shape, so the next scan reads it there.
   assert.equal(observationsOf([s])[ADMINS].unattributed, null)
   assert.equal(soleOf(observationsOf([s]), ADMINS).firstSeenAt, seenAt)

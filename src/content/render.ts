@@ -221,7 +221,10 @@ const SINGULAR_VERB: Record<string, string> = {
 const VERB_RE = new RegExp(`(?<![\\w-])(${Object.keys(SINGULAR_VERB).join('|')})(?![\\w-])`, 'g')
 // The subject a count of one governs: "of them", a singular noun with one
 // adjective at most ("active person"), or one word; never the verb after it.
-const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${[...new Set(Object.values(SINGULAR))].join('|')})|[A-Za-z-]+)(?= )([^.;:]*)`, 'g')
+// Its clause ends at a full stop, a semicolon, a colon or a middle dot: "1 in
+// place · cannot finish until 16 steps wait" is two clauses, and the count in the
+// first does not conjugate the verb of the second.
+const SUBJECT_RE = new RegExp(`(?<![\\d,.])\\b1 (?:of them|(?:[A-Za-z-]+ )?(?:${[...new Set(Object.values(SINGULAR))].join('|')})|[A-Za-z-]+)(?= )([^.;:·]*)`, 'g')
 
 function pluralise(text: string): string {
   // The noun a count governs is the word after it, or the word after one

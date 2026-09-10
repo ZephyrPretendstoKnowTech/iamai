@@ -8,6 +8,7 @@ import { allFixtures } from './index.ts'
 import { runFixture } from './run.ts'
 import { batchClassOf } from '../schedule.ts'
 import { enforcementHeld, unavailableReason } from '../operations.ts'
+import { holdOf, isHeld } from '../holds.ts'
 import { analysisUnknown, canDenyAccess, effectsOf, wouldStrand } from '../strand.ts'
 import { rolloutCohort } from '../rings.ts'
 import { localHour } from '../timing.ts'
@@ -255,6 +256,11 @@ for (const f of fixtures) {
       // the promise that it lands (roadmap/operations.ts enforcementHeld).
       if (enforcementHeld(s)) {
         assert.deepEqual(rings, [], `${s.id}: ${s.action.readinessGate?.measure} is ${s.action.readinessGate?.value}, so nothing is rolled out`)
+        continue
+      }
+      // Nor anything else that holds the step: its rollout is withdrawn with its dates (roadmap/holds.ts).
+      if (isHeld(s)) {
+        assert.deepEqual(rings, [], `${s.id} (${holdOf(s)?.kind}) is held, so nothing is rolled out`)
         continue
       }
       if (!canDenyAccess(s) || s.status === 'done' || s.status === 'skipped') {

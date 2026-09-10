@@ -308,7 +308,8 @@ test('the marker is handed in, never re-derived: the projection cannot invent a 
   // in the roadmap's order, which is also the row that draws the "next" pill.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const isNext = !nextMarked && step\.status === 'ready'/, 'the next marker moved or changed its rule')
-  assert.match(plan, /statusGroupOf\(step, isNext\)/, 'the board no longer groups by the marker')
+  // With the one hold reading beside it (roadmap/holds.ts), handed in the same way.
+  assert.match(plan, /statusGroupOf\(step, isNext, isHeld\(step\)\)/, 'the board no longer groups by the marker')
   assert.match(plan, /nextLabel=\{isNext \? PP\.next : null\}/, 'the pill and the group no longer read the same boolean')
 })
 
