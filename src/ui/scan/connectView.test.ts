@@ -15,6 +15,7 @@ import { app, pages } from '../../content/content.ts'
 import { accountTile, baselineTile, planTile, scanTile, tileStrings } from './connectView.ts'
 import type { PlanTile, ScanTile } from './connectView.ts'
 import type { PolicyChange } from '../../derive/baselineDiff.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { RUNGS, ladder } from '../../derive/ladder.ts'
 import { factsOf } from '../../derive/facts.ts'
 import { readinessView } from '../../derive/mfaReadiness.ts'
@@ -79,6 +80,29 @@ test('tile 2, Baseline: the nested card carries name, size and version; the step
   assert.match(t.card.paragraphs[1], /^Its aim is layered protection for a small organisation: /)
   assert.equal(t.source?.summary, 'Source and version')
   assert.match(t.source?.text ?? '', /^IAMAI pins a reviewed version of it/)
+  // Source and version, said usefully (task Step 1 C): a disclosure headed
+  // "Source and version" that names neither is not a disclosure. With the
+  // package's own provenance it names the repository a reader can open and the
+  // revision IAMAI holds; without it, it claims nothing it cannot show.
+  assert.equal(t.source?.link, null, 'no provenance, no source claim')
+  assert.equal(t.source?.version, null, 'no provenance, no version claim')
+  const pinned = baselineTile({
+    name: 'Jon Hope — Defense in Depth',
+    policyCount: 46,
+    pin: { repo: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies', commit: '90d9b890c4b9af2ac4bc02d97c06bf8900064b4c', readAt: '2026-09-08T04:02:40.518Z' },
+    loading: null,
+    update: null,
+    stepsFor,
+  })
+  assert.deepEqual(pinned.source?.link, { label: 'Jhope188/ConditionalAccessPolicies', url: 'https://github.com/Jhope188/ConditionalAccessPolicies' })
+  // The date is the pin timestamp in the display zone, like every other date the product shows.
+  assert.equal(pinned.source?.version, `Commit 90d9b89, read from that repository on ${absoluteDate('2026-09-08T04:02:40.518Z')}.`)
+  assert.match(pinned.source?.version ?? '', /^Commit [0-9a-f]{7}, read from that repository on [A-Z][a-z]{2} \d+, \d{4}\.$/)
+  // An uploaded package has no source IAMAI can name and no update it can watch
+  // for, and the disclosure says exactly that rather than the pinned sentence.
+  const uploaded = baselineTile({ name: 'Uploaded package', policyCount: 3, version: 'uploaded', loading: null, update: null, stepsFor })
+  assert.equal(uploaded.source?.link, null, 'an uploaded package is not given a source link')
+  assert.match(uploaded.source?.version ?? '', /^This package came from files you uploaded/)
   // An MVP is a person's credential. Nothing here may read as Microsoft
   // endorsing, certifying, approving or supporting IAMAI or this baseline.
   assert.doesNotMatch(said, /Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie|approved by Microsoft/i, said)

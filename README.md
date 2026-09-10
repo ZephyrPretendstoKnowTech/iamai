@@ -16,7 +16,7 @@ Predicted impact, confirmed in report-only. Never "risk accepted".
 ## What it never does
 
 - **Never writes to your tenant.** Read-only delegated Graph scopes only; there is no code path that creates, edits, or deletes anything — not even a report-only policy.
-- **Never leaves your browser.** No server, no telemetry, no CDN. Everything ships in the bundle; tenant data lives in your browser's IndexedDB and "Forget this tenant" deletes it.
+- **Your tenant's data never leaves your browser.** No server, no telemetry of ours, no CDN. Everything ships in the bundle; tenant data lives in your browser's IndexedDB and "Forget this tenant" deletes it. (getiamai.com is served through Cloudflare, which injects its own page-load beacon at the edge — not part of this repository or the build, and it never sees the tenant. See SECURITY.md.)
 - **Never needs an account with us.** The source is public so anyone can verify all of the above.
 
 ## The journey

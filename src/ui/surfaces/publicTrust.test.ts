@@ -263,3 +263,77 @@ test("the wording review's example operator is admin@contoso.com", () => {
   assert.match(render, /upn: 'admin@contoso\.com'/, 'the review renders a generic operator')
   assert.ok(!render.includes('Lachlan@getiamai.com'), "the owner's own sign-in address is not the example")
 })
+
+// ---- Analytics truth ----
+//
+// The bundle carries no analytics: src/network.test.ts holds every host in the
+// source to the three the product needs, and nothing in `dist/` references a
+// beacon. The public site is not the bundle. Cloudflare injects its Web
+// Analytics beacon into the HTML at the edge, so page-load telemetry *is*
+// collected for getiamai.com, by the host, outside anything this repository can
+// change. The product may say IAMAI collects nothing; it may not say nothing is
+// collected.
+test('no public surface claims a blanket absence of analytics that the host contradicts', () => {
+  // A bare "no analytics" / "no telemetry" reads as a claim about the page, and
+  // the page is not IAMAI's to make that claim about. Qualified forms ("no
+  // analytics of its own", "no telemetry in the bundle") are what the evidence
+  // supports.
+  const BARE = /\bno (analytics|telemetry|tracking)\b(?!\s+(of (its|our) own|in the bundle|of ours))/i
+  for (const [what, words] of [
+    ['the home page', JSON.stringify(pages.home)],
+    ['Connect', JSON.stringify(pages.connect)],
+    ['How', JSON.stringify(app.how)],
+  ] as const) {
+    assert.doesNotMatch(words, BARE, `${what} makes an unqualified no-analytics claim`)
+  }
+})
+
+test('How discloses the page telemetry the host collects, and keeps it apart from the tenant', () => {
+  const hosting = (app.how as Record<string, string>).hostingBody
+  // Named, so a reader who opens the network tab is not surprised by it.
+  assert.match(hosting, /beacon|page load|page-load/i, 'the hosting statement does not mention the host-injected beacon')
+  // And bounded: it is about the page, and IAMAI cannot remove it from here.
+  assert.match(hosting, /\btenant\b/, 'it does not say what the beacon does not carry')
+  assert.match(hosting, /cannot be removed|not in IAMAI/i, 'it does not say the beacon is outside the bundle')
+})
+
+// The home page's own short claim is about the tenant's data, which is the
+// claim the product can keep: the beacon is not the tenant's data.
+test("the home page's browser claim is about the tenant's data, and admits the host counts page loads", () => {
+  const trust = pages.home.trust as { title: string; body: string }[]
+  const row = trust.find((t) => /browser/i.test(t.title) || /browser/i.test(t.body))
+  assert.ok(row, 'the trust row about the browser is gone')
+  assert.match(row.title + ' ' + row.body, /tenant/i, 'the claim is not narrowed to the tenant’s data')
+  assert.match(row.body, /host/i, 'the row does not admit that the web host counts page loads')
+  // Said without naming Cloudflare: that sentence lives on How, once.
+  assert.ok(!row.body.includes('Cloudflare'), 'the hosting sentence is repeated on the home page')
+})
+
+// The claim rests on the build, so the build is what the test reads: no
+// analytics host may appear in any source file the bundle is made from.
+test('no analytics host is referenced anywhere in the source the bundle is built from', () => {
+  const HOSTS = /cloudflareinsights|google-analytics|googletagmanager|plausible\.io|segment\.(io|com)|mixpanel|sentry\.io|posthog/i
+  for (const path of ['index.html', 'vite.config.ts', 'scripts/assemble-site.mjs', 'scripts/build-home.ts']) {
+    assert.doesNotMatch(read(path), HOSTS, `${path} references an analytics host`)
+  }
+  // SECURITY.md is the one place that names the beacon, because naming it is
+  // the disclosure; it is prose, not a script tag.
+  assert.match(read('SECURITY.md'), /cloudflareinsights/, 'SECURITY.md no longer discloses the host-injected beacon')
+})
+
+// ---- Baseline source and version ----
+//
+// "Source and version" has to answer both. The version is the commit of the
+// package actually loaded and the repository is the one it was loaded from, so
+// the two can never name different things and no version is stated anywhere but
+// in the package's own origin.
+test('Connect renders the baseline source and version from the loaded package, not from a second authority', () => {
+  assert.match(CONNECT, /t2\.source\.link/, 'the disclosure does not render the source')
+  assert.match(CONNECT, /t2\.source\.version/, 'the disclosure does not render the version')
+  const pin = CONNECT.slice(CONNECT.indexOf('function baselinePin'), CONNECT.indexOf('function baselineStrings'))
+  assert.match(pin, /baseline\.origin\.kind !== 'github'/, 'an uploaded package is given a source it does not have')
+  assert.match(pin, /\bcommit\b/, 'the version is not the loaded package’s own commit')
+  // No commit, repository or date written into the component by hand.
+  assert.doesNotMatch(pin, /[0-9a-f]{7,40}/, 'a revision is hardcoded beside the one the package carries')
+  assert.doesNotMatch(pin, /\d{4}-\d{2}-\d{2}/, 'a date is hardcoded beside the pinned index’s own')
+})
