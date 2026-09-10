@@ -22,27 +22,82 @@ import { useMemo } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { LadderMapping } from '../../derive/ladder.ts'
-import { scoredPeople } from '../../derive/mfaReadiness.ts'
+import { readinessView, scoredPeople } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessStepHref } from '../shell/routes.ts'
+import { methodWord, nextStateWord, readinessWord, roleWord } from './readinessCells.ts'
 
 const P = app.plan
 
+/**
+ * How many people the Plan previews before handing off.
+ *
+ * The Plan's job is to say who is holding this step up and hand over; MFA
+ * Readiness owns the person-by-person diagnostic and the remediation for every
+ * one of them. Three is enough to make the hold concrete — a name, a role, what
+ * they have and what they need — without the step quietly becoming a second
+ * readiness table that would then have to be kept in step with the real one.
+ *
+ * The TOTAL is never this number: it is `hold.ids.length`, and the line under
+ * the preview carries it.
+ */
+const PREVIEW = 3
+
+/**
+ * The words for the preview's own two labels.
+ *
+ * Everything a preview ROW says already has a content-backed projection —
+ * `roleWord`, `methodWord`, `readinessWord`, `nextStateWord` are the same four
+ * MFA Readiness's own table and CSV read, so the Plan and the page cannot
+ * describe one person differently. These two are the frame around them, and
+ * they live here for the same reason the board's control vocabulary lives in
+ * planBoard.ts: the task that specified them holds content.json out of scope.
+ */
+const PREVIEW_WORDS = { has: 'Has', needs: 'Needs' } as const
+
 export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: TenantSnapshot; mapping: LadderMapping }) {
   const scored = useMemo(() => scoredPeople(snapshot, mapping, snapshot.asOf), [snapshot, mapping])
+  const view = useMemo(() => readinessView(snapshot, snapshot.asOf, mapping), [snapshot, mapping])
   const hold = stepMfaHold(step, scored)
   if (!hold) return null
   const n = hold.ids === null ? null : hold.ids.length
   // Nobody to hand off: the hold is on a number, and this line is about people.
   if (n === 0) return null
+  // The first few of the people the hold already named, described with the same
+  // four projections MFA Readiness's own table uses. Nothing is recomputed: the
+  // ids are `stepMfaHold`'s, the rows are `readinessView`'s, and the words are
+  // `readinessCells.ts`'s. A row the view does not hold is simply not previewed
+  // rather than filled in from somewhere else.
+  const held = new Set(hold.ids ?? [])
+  const preview = held.size === 0 ? [] : view.rows.filter((r) => held.has(r.user.id)).slice(0, PREVIEW)
   // Its own ruled section of the opened step (task 035): the pack divides an
   // opened step into sections, and a line that renders on some steps and not
   // others has to carry its own division or it reads as a loose sentence
   // trailing the section above it.
   return (
     <section className="step-section">
+      {preview.length > 0 && (
+        <ul className="mfa-preview">
+          {preview.map((r) => (
+            <li key={r.user.id}>
+              <span className="who">
+                <span className="name">{r.user.displayName}</span>
+                <span className="role">{roleWord(r)}</span>
+              </span>
+              {/* What they have, and what they need. Two facts, labelled, so
+                  neither is mistaken for the other at a glance. */}
+              <span className="state">
+                <span className="k">{PREVIEW_WORDS.has}</span> {methodWord(r.method)} · {readinessWord(r)}
+              </span>
+              <span className="next">
+                <span className="k">{PREVIEW_WORDS.needs}</span> {nextStateWord(r)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       <p className="line mfa-handoff">
         {n === null ? P.mfaReadinessHoldUnknown : fillText(P.mfaReadinessHold, { n })}{' '}
         <a className="no-print" href={readinessStepHref(step.id)}>

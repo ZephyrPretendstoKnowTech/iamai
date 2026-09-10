@@ -92,6 +92,30 @@ const WEEK2_COMPLETED = `${WEEK2}
        const finished = [...document.querySelectorAll('main.page .plan-controls .focus')].find((b) => /Show completed/.test(b.textContent || ''))
        if (finished && finished.getAttribute('aria-pressed') !== 'true') { finished.click(); await wait(600) }`
 
+/**
+ * Reveal the board's Complete group, which is where a finished step's row lives,
+ * and fold the groups above it.
+ *
+ * Both halves are controls an operator presses. The fold matters for the plate
+ * rather than for the product: a full-page capture is clipped at MAX_HEIGHT, and
+ * with every phase open the Complete group's opened step runs past the clip and
+ * its footer — the thing the plate is evidence FOR — is not in the picture.
+ * Folding the other groups puts the step near the top without touching a fixture
+ * or a row.
+ */
+const SHOW_COMPLETED = `const finished = [...document.querySelectorAll('main.page .plan-controls .focus')].find((b) => /Show completed/.test(b.textContent || ''))
+       if (finished && finished.getAttribute('aria-pressed') !== 'true') { finished.click(); await wait(600) }
+       await wait(300)
+       for (const g of document.querySelectorAll('main.page .plan-group')) {
+         const head = g.querySelector('h2')
+         const toggle = g.querySelector('.plan-group-toggle')
+         if (!head || !toggle) continue
+         const isComplete = /^Complete$/.test((head.textContent || '').trim())
+         const open = toggle.getAttribute('aria-expanded') === 'true'
+         if (isComplete !== open) { toggle.click(); await wait(120) }
+       }
+       await wait(300)`
+
 const PRESS = (label) =>
   `(async () => { ${RESET} const want = ${JSON.stringify(label)}; const b = [...document.querySelectorAll('main.page .plan-controls [role=tab], main.page .plan-controls .focus')].find((x) => (x.textContent || '').trim().startsWith(want)); if (!b) return false; b.click(); await wait(320); window.scrollTo(0, 0); await wait(120); return true })()`
 
@@ -230,10 +254,23 @@ const PRODUCTION_SHOTS = [
   //
   // `pre` is what the driver does before it starts opening rows.
   ...[
-    ['plan-step-inplace', `!!s.querySelector('.step-side .metric-name')`],
+    // A goal the tenant already delivers. Its row is the board's Complete group
+    // now (the Plan board pass), which is collapsed until Show completed is
+    // pressed — so the driver presses it, the way an operator reaches those
+    // rows, and then opens the first row that is actually in that state.
+    //
+    // The predicate is the STATE and not a step id: an in-place step's footer
+    // offers Close alone, because there is no tenant change to verify. Nothing
+    // about the fixture is touched to produce it.
+    ['plan-step-inplace', `/^In place$/.test(((s.querySelector('.step-head .status') || {}).textContent || '').trim()) && !s.querySelector('.track') && !s.querySelector('.tabs.action-tabs, .single-channel-label') && [...s.querySelectorAll('.step-footer button')].every((b) => (b.textContent || '').trim() === 'Close')`, SHOW_COMPLETED],
     ['plan-step-blocked', `!!s.querySelector('.callout') && !!s.querySelector('.blocking') && !s.querySelector('.decision .dlabel')`],
     ['plan-step-conflict', `!!s.querySelector('.callout-danger, .callout.danger') && !s.querySelector('.blocking')`],
     ['plan-step-decision', `!!s.querySelector('.decision .dlabel')`],
+    // The MFA handoff and its bounded person preview: the one step whose own
+    // enforcement is held because the people it reaches cannot meet its
+    // sign-in requirement (derive/stepMfaReadiness.ts). Found by the preview it
+    // draws, so the plate cannot be a step that merely mentions MFA.
+    ['plan-step-mfa', `!!s.querySelector('.mfa-preview li')`],
     // The review-required variant (the approved pack's V3), which is the one
     // state no single scan produces: a policy is held for review because what
     // it MEANS is no longer what the plan asked for, and that is a comparison
@@ -302,7 +339,24 @@ const PRODUCTION_SHOTS = [
       for (const r of document.querySelectorAll('main.page .plan-row')) {
         r.click(); await wait(180)
         const s = r.parentElement && r.parentElement.querySelector('.step') || document.querySelector('main.page .step')
-        if (s && (${test})) { r.scrollIntoView({ block: 'start' }); await wait(120); return true }
+        if (s && (${test})) {
+          // Fold every group but the one holding the open step. A full-page
+          // capture is clipped at MAX_HEIGHT, and with a dozen phases open above
+          // it the step's own footer — often the thing the plate is evidence FOR
+          // — falls past the clip. Folding is a control an operator presses; it
+          // changes no row and no fixture.
+          const mine = r.closest('.plan-group')
+          for (const g of document.querySelectorAll('main.page .plan-group')) {
+            const toggle = g.querySelector('.plan-group-toggle')
+            if (!toggle) continue
+            const open = toggle.getAttribute('aria-expanded') === 'true'
+            if ((g === mine) !== open) { toggle.click(); await wait(120) }
+          }
+          await wait(250)
+          window.scrollTo(0, 0)
+          await wait(120)
+          return true
+        }
         r.click(); await wait(60)
       }
       return false
