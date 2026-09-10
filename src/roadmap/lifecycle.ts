@@ -30,6 +30,7 @@ import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { historyReset } from './observation.ts'
+import { holdOf } from './holds.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 
 const MILESTONE = engine.milestone
@@ -280,6 +281,16 @@ export function nextMilestone(step: Step): Milestone {
   // no date on which a person looks, so it carries none. What has to clear first
   // is the observation itself, in Foundation B's own words.
   if (heldForReview(step)) return { kind: 'resolve', label: MILESTONE.review, at: null, gatedBy: s.observation?.note ?? null }
+  // Anything else that holds the step comes before the stage's own next move too
+  // (roadmap/holds.ts): a policy being watched while a prerequisite, a missing
+  // object or a decision holds it is not observing towards a day it may be turned
+  // on, and one nothing may turn on has no enforcement to name. What it waits on
+  // is the next thing, and it has no date.
+  const hold = holdOf(step)
+  if (hold?.kind === 'decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
+  // Held on its records, it is still being watched: until they are clear, with no date.
+  if (hold?.kind === 'evidence') return { kind: 'observe', label: MILESTONE.observeRecords, at: null, gatedBy: null }
+  if (hold !== null) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
   if (s.lifecycle === 'ready-to-enforce') return { kind: 'enforce', label: MILESTONE.enforce, at: step.events?.enforce.at ?? null, gatedBy: null }
   if (s.lifecycle === 'report-only') {
     // A policy this scan found rewritten is being watched from here, and the

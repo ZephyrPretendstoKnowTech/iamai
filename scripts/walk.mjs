@@ -1001,7 +1001,8 @@ async function walkFixture(fx) {
           if (wantPlan === 'waiting' && (t4.buttons.length !== 0 || /\d+ people/.test(t4.text))) add('P0', `${label}: the waiting Plan tile carries buttons or facts: ${JSON.stringify(t4.buttons)} "${t4.text}"`)
           if (wantPlan === 'sample') {
             const facts = await evaluate(`[...document.querySelectorAll('main.page .connect-destination .facts li')].map((l) => ({ value: ((l.querySelector('b') || {}).textContent || '').trim(), label: (l.textContent || '').replace((l.querySelector('b') || {}).textContent || '', '').replace(/\\s+/g, ' ').trim() }))`)
-            if (facts.map((f) => f.label).join(' · ') !== 'active people · steps · already in place · to finish') add('P0', `${label}: the sample tile's facts read ${JSON.stringify(facts)}; active people · steps · already in place · to finish`)
+            // A sample plan that cannot finish yet states its length as the estimate it is (ui/demoFacts.ts `estimated`).
+            if (!/^active people · steps · already in place · (to finish|estimated rollout)$/.test(facts.map((f) => f.label).join(' · '))) add('P0', `${label}: the sample tile's facts read ${JSON.stringify(facts)}; active people · steps · already in place · to finish (or estimated rollout)`)
             else if (!facts.slice(0, 3).every((f) => /^\d+$/.test(f.value) && Number(f.value) > 0) || !/^\d+ weeks?$/.test(facts[3].value)) add('P0', `${label}: the sample tile's facts are not computed numbers: ${JSON.stringify(facts)}`)
             else if (Number(facts[2].value) > Number(facts[1].value)) add('P0', `${label}: more already in place than steps: ${JSON.stringify(facts)}`)
             if (!/What the sample tenant produced:/.test(t4.text)) add('P0', `${label}: the sample tile lacks its lead`)
@@ -1151,7 +1152,9 @@ async function walkFixture(fx) {
         // already — and never about readiness on its own.
         // A policy the plan cannot write yet has nothing to enforce, so it carries
         // no completion gates; what it must carry is what it waits on.
-        if (rowStatuses[i] === 'Report-only' && !cannotWriteYet) {
+        // Nor does one a readiness threshold holds: it is not being watched towards
+        // a day it may be turned on (roadmap/holds.ts), and its row says Held.
+        if (rowStatuses[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld) {
           if (!RE.rowWhen.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say where it stands against its gates (ready <date> · ready now · held until the records clear)`)
           if (!RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           // The evidence half reads records: with none read for this policy it says
@@ -1301,7 +1304,12 @@ async function walkFixture(fx) {
           // One definition of enough (E7): the campaign email dates the MFA
           // enforcement day and the window; the managed-device email says what a
           // personal device can still do; step 12 asks for a passkey or a key.
-          if (/MFA Registration Campaign/.test(title)) {
+          // The email states the day MFA is enforced, so while the plan dates no such
+          // day — Require MFA for Everyone is held (roadmap/holds.ts) and in place it is
+          // not — there is no email to check: it is written once the day is.
+          const mfaRowAt = rowTitles.findIndex((t) => /^Require MFA for Everyone$/.test(t))
+          const campaignDated = /\d{4}$/.test(rowWhens[mfaRowAt] || '') || campaignRungs?.mfaInPlace || emailText.trim() !== ''
+          if (/MFA Registration Campaign/.test(title) && campaignDated) {
             if (!/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
             // The email dates the enforcement it warns of: the MFA policy's day while
             // MFA is not yet in place; the first passkey policy's while one remains
@@ -1594,7 +1602,11 @@ async function walkFixture(fx) {
       // are taken by title rather than by index (the rows move under a decision).
       const reasonByTitle = Object.fromEntries(rowTitlesOpen.map((t, k) => [t, rowReasonsOpen[k] ?? '']))
       const ready = rowStatuses.map((s, i) => (s === 'Ready to enforce' ? i : -1)).filter((i) => i >= 0)
-      if (ready.length === 0) add('P0', `${fx.name}: no plan row reads Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
+      // A policy something holds is never Ready to enforce, however clean its
+      // records (roadmap/holds.ts): the row it would be is Report-only, and says
+      // what holds it. The check stands wherever a writable Report-only row's
+      // gates have closed and it still reads Report-only.
+      if (ready.length === 0 && reportOnlyWritable.includes('ready now')) add('P0', `${fx.name}: no plan row reads Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
       for (const i of ready.filter(writable)) {
         if (!/^\S.*\d{4}$/.test(rowWhens[i] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" reads "${rowWhens[i]}" in its date column; it must read the day the enforcement lands`)
         if (!/ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" carries no evidence on its reason line; the row says a change is due and nothing about what earned it`)

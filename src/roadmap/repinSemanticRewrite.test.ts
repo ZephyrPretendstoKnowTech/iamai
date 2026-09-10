@@ -153,9 +153,12 @@ function deployed(strengthId: string) {
   return runFixture({ ...f, snapshot }, { snapshot }).steps.find((s) => s.id === STEP)!
 }
 
-test('a tenant deployed with what the baseline now asks reaches ready to enforce', () => {
+test('a tenant deployed with what the baseline now asks earns its window', () => {
   const step = deployed(TENANT_MODERN())
-  assert.equal(step.state?.lifecycle, 'ready-to-enforce')
+  // Both gates close on it. Whether it may then be turned on is the hold's
+  // question, and on this baseline the policy names objects it has not settled
+  // (roadmap/holds.ts): the window is what a re-pin must carry, so it is read here.
+  assert.equal(step.tracking?.readyNow, true)
   assert.equal(step.action.resolution?.policies?.[0]?.mode, 'update', 'the one change left is turning on the policy the tenant has')
   assert.equal(step.tracking?.policyId, PID)
 })

@@ -535,12 +535,12 @@ test('006.11: every artifact says Report-only, held for review, review-and-scan-
   assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
   assert.deepEqual(b.whatToDo, [action])
   assert.equal(b.dates, v.dates)
+  // A held step books nothing (roadmap/holds.ts): there is no day on which a
+  // person looks at a change nobody has explained, and the calendar is for days.
   const entry = buildIcs(c.run.steps, 'Tenant', 'plan-006', c.view)
     .split('BEGIN:VEVENT')
     .find((x) => x.includes(`-${c.step.id}@iamai`))
-  assert.ok(entry, 'the step has a calendar entry')
-  assert.match(entry!, /Held until/i, 'the calendar entry states the hold')
-  assert.match(entry!, /DTSTART;VALUE=DATE:20260831/, 'and it is due the day IAMAI saw the change, not the day the window would have closed')
+  assert.equal(entry, undefined, 'a step held for review has no calendar entry')
   // Nothing anywhere claims the step is ready, or tells anyone to enforce.
   const said = everythingSaid(c)
   assert.doesNotMatch(said, /ready to enforce/i, `an artifact claims the step is ready: ${said}`)

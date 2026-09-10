@@ -500,7 +500,7 @@ try {
   check('Plan renders at #/plan', __planOk, __planOk ? '' : `hash=${await evaluate('location.hash')} main=${(await evaluate(`(document.querySelector('main.page')||{}).innerText||'(no main)'`)).slice(0, 140).replace(/\s+/g, ' ')}`)
   // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
-  check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
+  check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish|cannot finish until \S)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
   // The second header line left with docs/design/mockups/plan-top-v2.html; the tenant and the scan age live on Connect alone.
   check('Plan: no second header line; the tenant and the scan age live on Connect alone', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
   // Task 011: the Plan is the rollout board and nothing above it. The readiness

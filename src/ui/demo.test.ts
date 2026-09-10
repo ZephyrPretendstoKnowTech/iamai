@@ -22,6 +22,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
+import { isHeld } from '../roadmap/holds.ts'
 import { generateRoadmap } from '../roadmap/generate.ts'
 import { floorRows, floorGroupIds } from './surfaces/planRows.ts'
 import { FLOOR_GOAL_IDS } from '../roadmap/floor.ts'
@@ -546,9 +547,13 @@ test('a policy advances on the follow-up scan only where the evidence the produc
   // Report-only with a window still open: observing, not ready.
   const observing = after.steps.filter((s) => s.state.lifecycle === 'report-only')
   assert.ok(observing.length >= 1, 'no sample policy is in report-only on the follow-up scan')
-  // A window that closed on clean records: ready to enforce, and only then.
-  const ready = after.steps.filter((s) => s.state.lifecycle === 'ready-to-enforce')
-  assert.ok(ready.length >= 1, 'no sample policy is ready to enforce on the follow-up scan')
+  // A window that closed on clean records: the gates close, and only then. On the
+  // sample the policy that earned it is still held — it names a group this
+  // baseline has not settled — so it stays Report-only and nothing offers the
+  // change (roadmap/holds.ts): a held policy is never Ready to enforce.
+  const ready = after.steps.filter((s) => s.tracking?.readyNow === true)
+  assert.ok(ready.length >= 1, 'no sample policy closed its window on the follow-up scan')
+  for (const s of after.steps.filter((x) => x.state.lifecycle === 'ready-to-enforce')) assert.equal(isHeld(s), false, `${s.id} is ready to enforce while something holds it`)
   for (const s of ready) {
     assert.notEqual(stateOf(before, s.id)?.lifecycle, 'ready-to-enforce', `${s.id} was already ready to enforce on the initial scan`)
     const records = (after.input.snapshot.evidencePolicyResults ?? []).filter((r) => (r.displayName ?? '').length > 0)

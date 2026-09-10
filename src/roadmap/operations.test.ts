@@ -33,6 +33,7 @@ import { stepContract } from '../ui/surfaces/stepContract.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
 import { rowWhen } from '../ui/surfaces/rowWhen.ts'
 import { planFinish } from '../derive/finish.ts'
+import { isHeld } from './holds.ts'
 import { buildIcs } from './ics.ts'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -171,7 +172,8 @@ test('a step the plan cannot write is not scheduled, and the rest of the plan is
     assert.equal(stepPortalLines(s, portalNamesFor(ctx, stepVars(s, ctx) as Record<string, unknown>, s.title)), null, `${s.id}: no instructions`)
   }
   // The rest of the plan is still placed and dated.
-  const running = r.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && implementationOffered(s))
+  // Less anything else that holds a step (roadmap/holds.ts): a readiness threshold dates nothing either.
+  const running = r.steps.filter((s) => (s.kind === 'create' || s.kind === 'adjust') && implementationOffered(s) && !isHeld(s))
   assert.ok(running.length >= 4, `the plan still has policies to write (${running.length})`)
   for (const s of running) assert.ok(typeof r.schedule.startAt[s.id] === 'string', `${s.id}: dated`)
   assert.ok(r.schedule.waves.length > 0, 'the plan still has waves')

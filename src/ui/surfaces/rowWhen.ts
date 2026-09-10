@@ -1,14 +1,17 @@
 // The plan row's date column, once, for the row and the tests: a readiness hold
-// reads its reason; a policy in report-only reads when it may be enforced (ready
-// <date> · ready now · ready since <date>, from the tracking's two gates); a
-// prerequisite or check is now; a policy that is not deployed reads the day it
-// is created in report-only; another dated step reads its enforcement instant; a
-// blocked step with no date of its own reads its wave's start, so a row reads
-// Blocked · <date>, Report-only · ready <date> or Ready · now, never Blocked · now.
+// reads its reason; a step anything else holds reads nothing, and never a date
+// or "now" (roadmap/holds.ts); a policy in report-only reads when it may be
+// enforced (ready <date> · ready now · held until the records clear, from the
+// tracking's two gates); a prerequisite or check nothing holds is now; a policy
+// that is not deployed reads the day it is created in report-only; another dated
+// step reads its own dated milestone; a step with no date of its own reads
+// nothing. A row reads Report-only · ready <date> or Ready · now, never
+// Blocked · now and never Blocked · <date>.
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
 import { existingOf } from './stepContract.ts'
 import { list } from '../../copy/statements.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
+import { holdOf, isHeld } from '../../roadmap/holds.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
@@ -54,6 +57,14 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // (roadmap/lifecycle.ts heldForReview). The gates' own numbers are still true
   // and still read, under Done when; this column is what happens next.
   if (heldForReview(step)) return PLAN.heldForReview
+  // Records that do not clear the policy hold it, and the column says so: no day
+  // is coming on which they complete themselves.
+  if (holdOf(step)?.kind === 'evidence') return PLAN.heldForEvidence
+  // Anything else that holds the step leaves the column empty (roadmap/holds.ts):
+  // no wave date it borrows, no report-only day it cannot reach, no "ready" for a
+  // policy nothing may turn on, and never "now". The reason line under the row
+  // says what it waits on (rowReason below).
+  if (isHeld(step)) return ''
   const ready = readyWhen(step)
   // A policy still being watched reads the day its window closes: that is the
   // next thing that happens to it. One whose gates have closed is not waiting on
@@ -68,11 +79,7 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // used to read "ready since Aug 29" — the one sentence that told an operator a
   // policy with unread or failing records was theirs to turn on.
   if (ready && step.status !== 'ready-to-enforce') {
-    // Gates that closed on a policy the plan cannot write — held on a missing
-    // object such as an exclusions group nobody has confirmed — earn no "ready":
-    // the policy is not Ready to enforce, and like any unwritable policy its row
-    // has no date of its own (below).
-    if (ready.kind === 'now') return unavailableReason(step) !== null ? '' : PLAN.readyNow
+    if (ready.kind === 'now') return PLAN.readyNow
     return ready.kind === 'since' ? PLAN.heldForEvidence : fillText(PLAN.readyOn, { date: absoluteDate(ready.date) })
   }
   if (step.kind === 'prerequisite' || step.kind === 'check') return PLAN.now
@@ -91,8 +98,13 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // in roadmap/forecast.ts — instead of handing a projection over as a date
   // something has earned.
   if (awaitingDeployment(step)) return step.reportOnlyAt ? absoluteDate(step.reportOnlyAt) : ''
-  const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? (step.status === 'blocked' ? waveStart : null)
-  return at ? absoluteDate(at) : PLAN.now
+  // A step nothing holds reads its own dated milestone. It borrows no wave's date
+  // (`waveStart` is the group's, kept for the callers). With no date of its own it
+  // reads "now" only when it is Ready — work a person can do today — and nothing
+  // otherwise: unknown is better than a "now" nothing has made true.
+  void waveStart
+  const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null
+  return at ? absoluteDate(at) : step.status === 'ready' ? PLAN.now : ''
 }
 
 /**
@@ -101,7 +113,7 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
  * and a step held for review says it is held.
  */
 export function rowWhenWraps(step: Step): boolean {
-  return readsThreshold(step) || heldForReview(step) || (step.status !== 'ready-to-enforce' && readyWhen(step)?.kind === 'since')
+  return readsThreshold(step) || heldForReview(step) || holdOf(step)?.kind === 'evidence' || (step.status !== 'ready-to-enforce' && readyWhen(step)?.kind === 'since')
 }
 
 /**
@@ -139,6 +151,16 @@ export function rowReason(step: Step): string | null {
   if (existing !== null) return existing.together ? fillText(PLAN.satisfiedTogether, { policies: list(existing.names) }) : fillText(PLAN.satisfiedBy, { policies: existing.names[0] })
   if (isPreserved(step)) return null
   if (heldForReview(step)) return step.state.observation?.note ?? null
+  // A step something else holds says what holds it, whatever its stage: a policy
+  // being watched while the way back in is unverified reads that, and never the
+  // evidence that would otherwise offer the change (roadmap/holds.ts).
+  if (isHeld(step) && step.blockedReason && !readsThreshold(step)) return step.blockedReason
+  // Held on its records: what they show, which is what decides whether the
+  // operator waits or goes and looks at somebody's sign-ins.
+  if (holdOf(step)?.kind === 'evidence') {
+    const held = readyWhen(step)
+    return held ? readyBasis(held) : null
+  }
   // What earned the enforcement, beside the word that offers it: the two gates'
   // own numbers, in the one reading the step's Done-when also uses
   // (derive/readyWhen.ts readyBasis). Without it the row says a change is due

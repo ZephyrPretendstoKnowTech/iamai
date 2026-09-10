@@ -4,10 +4,11 @@
 // to say does not exist; the header's finish is the end of the last phase.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures, fixture } from './fixtures/index.ts'
+import { allFixtures, curatedFixture, fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import { planFinish } from '../derive/finish.ts'
+import { isHeld } from './holds.ts'
 import { isWorkingDay } from './timing.ts'
 import { cleanup as cleanupContent } from '../content/content.ts'
 
@@ -42,10 +43,17 @@ test('the demo has a Cleanup phase: dated after the last enforcement, one workin
 test('the finish date is the end of the last phase, Cleanup included; a held plan stays undated', () => {
   // Week two: its policies name nothing the tenant lacks, so they are on the
   // calendar. A tenant whose Preparation work is still to do has nothing dated.
-  const r = runFixture(fixture('demo-week2'))
+  // On the curated baseline, where the week-two plan has policies the calendar dates.
+  const r = runFixture(curatedFixture('demo-week2'))
   const c = r.schedule.cleanup!
-  const without = planFinish(r.steps)
-  const withCleanup = planFinish(r.steps, c.end)
+  // The week-two plan still holds work it requires, so it finishes on no date,
+  // and Cleanup — which follows that work — gives it none (roadmap/holds.ts).
+  assert.equal(planFinish(r.steps, c.end).finish, null, 'a plan holding required work has no finish')
+  assert.equal(planFinish(r.steps, c.end).held, true)
+  // The same plan without the held work: what the calendar dates, then Cleanup.
+  const dated = r.steps.filter((s) => !isHeld(s))
+  const without = planFinish(dated)
+  const withCleanup = planFinish(dated, c.end)
   assert.ok(without.finish, 'the demo enforces something on the calendar')
   assert.equal(withCleanup.finish, c.end, 'Cleanup ends the plan')
   assert.ok(withCleanup.finish! > without.finish!, 'later than the last enforcement')

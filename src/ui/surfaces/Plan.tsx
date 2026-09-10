@@ -20,6 +20,7 @@ import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { waveLabels } from '../../derive/phases.ts'
 import { floorRows, phaseRows, undatedRows } from './planRows.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
+import { isHeld } from '../../roadmap/holds.ts'
 import { headerLine1, startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { FINISH } from '../../copy/statements.ts'
@@ -134,7 +135,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // policy cannot be written yet and the step each waits on.
   const waiting = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id))
   // Weeks derive from the finish date, not the last blocked wave (item 15); one derivation, shared with the print and the sample tile (derive/finish.ts).
-  const weeks = planWeeks(finish, c.schedule.start, c.schedule.weeks)
+  const weeks = planWeeks(finish, c.schedule)
+  // Held work dates no end (derive/finish.ts): Cleanup, which follows it, is undated with it.
+  const cannotFinish = finish.held
   const P = pages.plan as Record<string, string>
   const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
   // Until Start the plan is pressed (or a date is set in Plan settings), every
@@ -143,7 +146,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const line1 = headerLine1({ steps: total, inPlace, finish: finish.finish, weeks: weeksText, constraint: waiting, startedFrom: data.startedFrom })
   const start = startControl()
   // Filled once: one because, one full stop; the clause names steps by their content titles.
-  const lengthTip = c.schedule.derivation.reason ? fillText(P.lengthTip, { weeks: weeksText, constraint: c.schedule.derivation.reason }) : engine.critical.sentenceDone
+  // A plan that cannot finish explains its estimate, from the rollout the schedule
+  // drew before anything held was withdrawn (roadmap/schedule.ts `estimate`).
+  const lengthReason = cannotFinish ? (c.schedule.estimate?.reason ?? null) : c.schedule.derivation.reason
+  const lengthTip = lengthReason ? fillText(cannotFinish ? P.lengthTipEstimate : P.lengthTip, { weeks: weeksText, constraint: lengthReason }) : engine.critical.sentenceDone
 
   // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
   // its wave, marked Skipped, so it can be found and put back (prompt 49.1 item 10).
@@ -176,7 +182,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // "next" pill on the row — and it is what puts a row in Up next. Nothing
     // re-derives it: a step can be Ready without being the recommendation, and
     // Up next saying otherwise is what this correction fixes.
-    const status = statusGroupOf(step, isNext)
+    const status = statusGroupOf(step, isNext, isHeld(step))
     items.push({
       id: step.id,
       title: contentTitle(step),
@@ -193,7 +199,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // otherwise imply a held step is still on schedule.
     const when = boardWhen(rowWhen(step, group.start), {
       genericNow: rowWhen(step, group.start) === PP.now,
-      held: status === 'waiting',
+      held: status === 'waiting' || isHeld(step),
       carriesReason: rowWhenWraps(step),
     })
     renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} when={when} waveStart={group.start} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} />)
@@ -202,7 +208,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   for (const [wi, w] of waveRows.entries()) {
     const group: RoadmapGroup = { key: `wave-${w.wave.wave}`, label: waveNames[wi], date: w.dates, secondary: false, start: w.wave.start }
     for (const step of w.steps) {
-      const isNext = !nextMarked && step.status === 'ready'
+      const isNext = !nextMarked && step.status === 'ready' && !isHeld(step)
       if (isNext) nextMarked = true
       addStep(step, group, isNext)
     }
@@ -217,7 +223,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   for (const step of floor) addStep(step, floorGroup, false)
 
   if (cleanupPhase) {
-    const group: RoadmapGroup = { key: 'cleanup', label: phases.last, date: dateRange(cleanupPhase.start, cleanupPhase.end), secondary: false, start: null }
+    const group: RoadmapGroup = { key: 'cleanup', label: phases.last, date: cannotFinish ? null : dateRange(cleanupPhase.start, cleanupPhase.end), secondary: false, start: null }
     for (const r of cleanupPhase.rows) {
       const entry = cleanupEntry(r.kind)
       if (!entry) continue
@@ -236,7 +242,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         isNext: false,
         order: order++,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} />)
     }
   }
   // Finished work. It was the footer's first `<details>` and is now the board's
@@ -428,7 +434,7 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
 }
 
 /** A Cleanup row (§5): the content title, one status word, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant }: {
+function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant, undated }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   /** The emergency-access attestations, the second fact that can complete the alerting row (roadmap/cleanupDone.ts). */
@@ -441,6 +447,8 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
   notes: NotAssessedNotes
   onNote: (policy: string, reason: string | null) => void
   tenant: string
+  /** The plan cannot finish while work it requires is held, so its Cleanup day is no date (derive/finish.ts). */
+  undated: boolean
 }) {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
@@ -455,7 +463,7 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
-      <PlanRow word={status.word} tone={status.tone} title={entry.title} who={who} when={cleanupWhen(row)} open={open} onToggle={onToggle} />
+      <PlanRow word={status.word} tone={status.tone} title={entry.title} who={who} when={cleanupWhen(row, undated)} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )

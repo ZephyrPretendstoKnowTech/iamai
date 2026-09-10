@@ -3,8 +3,8 @@
 // file is built in the browser.
 import { awaitingDeployment, enforcementUnearned } from './forecast.ts'
 import { readyWhen } from '../derive/readyWhen.ts'
-import { unavailableReason } from './operations.ts'
-import { heldForReview } from './lifecycle.ts'
+import { isHeld } from './holds.ts'
+import { planFinish } from '../derive/finish.ts'
 import { cleanupArtifactLines, stepArtifactLines } from './artifactLines.ts'
 import type { CleanupExport, Step, StepView } from './types.ts'
 
@@ -33,9 +33,11 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
   const stamp = (): string => `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`
   for (const s of steps) {
     if (s.status === 'done' || s.status === 'skipped') continue
-    // A policy the plan cannot write has no entry, whatever dates a step loaded
-    // from an older plan file still carries (roadmap/operations.ts).
-    if (unavailableReason(s) !== null) continue
+    // A held step has no entry, whatever dates a step loaded from an older plan
+    // file still carries: a policy the plan cannot write, one a prerequisite, a
+    // decision or a readiness threshold holds, a baseline conflict, a policy held
+    // for review (roadmap/holds.ts). None of them is work for a day.
+    if (isHeld(s)) continue
     // A change to an existing policy has no ring: its enforcement instant is its day.
     const planned = s.rings[0]?.plannedStart ?? s.events?.enforce.at ?? null
     // A policy that is not deployed has one day in the calendar and it is not an
@@ -53,18 +55,12 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     // enforcement wave of a window that has not closed — and whose evidence has
     // not been collected — in a person's calendar as the day the change lands.
     const reviewing = !deploying && enforcementUnearned(s) ? readyWhen(s) : null
-    // A policy held for review is due a look now, not on the day its window
-    // would have closed: that window was counted on a policy that is not the one
-    // deployed today, and booking the entry on it would tell a person there is
-    // nothing to do until then. Its day is the day IAMAI saw the change
-    // (Foundation B, roadmap/lifecycle.ts heldForReview).
-    const held = heldForReview(s) ? (s.state.observation?.latest.firstSeenAt ?? null) : null
     // A review whose day has already passed is due now, not on the day it was
     // due: the window closed and the records did not clear it, so the entry goes
     // on the scan rather than into last week (derive/readyWhen.ts, kind `since`).
     const review = reviewing === null ? null : reviewing.kind === 'since' ? (s.tracking?.noticedAt ?? reviewing.date) : reviewing.date
-    const start = planned === null ? null : held ? held : deploying ? (s.reportOnlyAt ?? null) : review ? review : planned
-    const single = deploying || reviewing !== null || held !== null
+    const start = planned === null ? null : deploying ? (s.reportOnlyAt ?? null) : review ? review : planned
+    const single = deploying || reviewing !== null
     const end = start === null ? null : single ? start : (s.rings.at(-1)?.plannedEnd ?? start)
     if (!start || !end) continue
     const endExclusive = new Date(Date.parse(end) + 86_400_000).toISOString()
@@ -87,8 +83,11 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push('END:VEVENT')
   }
   // Cleanup rows are calendar entries on their day (E4); a row marked done is finished, like a done step.
+  // Cleanup follows the last enforcement, so while work the plan requires is held
+  // its days are dated after a rollout that cannot finish, and it books nothing.
+  const cleanupUndated = planFinish(steps).held
   for (const c of cleanup) {
-    if (c.done) continue
+    if (c.done || cleanupUndated) continue
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${planId}-cleanup-${c.kind}@iamai`)
     lines.push(stamp())

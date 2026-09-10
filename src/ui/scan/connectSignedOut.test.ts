@@ -154,7 +154,7 @@ test("tile 4 signed out: Plan after the scan, the sample tenant's four facts com
   assert.equal(t.lead, 'What the sample tenant produced:')
   assert.deepEqual(
     t.facts?.map((f) => f.label),
-    ['active people', 'steps', 'already in place', 'to finish'],
+    ['active people', 'steps', 'already in place', facts.estimated ? 'estimated rollout' : 'to finish'],
   )
   assert.deepEqual(t.facts?.slice(0, 3).map((f) => f.value), [String(facts.people), String(facts.steps), String(facts.inPlace)])
   assert.match(t.facts?.[3].value ?? '', /^\d+ weeks?$/)

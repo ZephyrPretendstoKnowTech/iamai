@@ -317,9 +317,13 @@ const CASES: Record<string, (v: Variant) => boolean> = {
   'multi-policy': (v) => v.c.multiPolicy,
   'multi-policy-split': (v) => v.c.multiPolicy && new Set(v.c.members.map((m) => m.lifecycle)).size > 1,
   'multi-policy-review': (v) => v.c.multiPolicy && v.c.members.some((m) => m.reviewRequired),
-  // The sparse end and the dense end of the same grammar.
+  // The sparse end of the grammar. The dense end — findings, a fix list and a
+  // rail at once — was a held report-only policy whose rail held the day its
+  // window closed. A held step has no next date (roadmap/holds.ts, Step 4), a
+  // step with a fix list is waiting on something, and a step waiting on
+  // something is not healthy enough for the implementation block: the shape is
+  // no longer one the product can render, and its rail was the defect.
   'sparse': (v) => v.c.found.length === 0 && v.c.fix.length === 0 && !hasRail(v.c),
-  'dense': (v) => v.c.found.length > 0 && v.c.fix.length > 0 && hasRail(v.c),
 }
 
 /**
@@ -366,8 +370,11 @@ const INVENTORY: string[] = [
   'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // getiamai/s-prereq-exclusion-group
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
-  'policy · adjust · report-only · blocked · open · do:observe · track · implementation · rail · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · rail · found · fix · one-policy · who-unknown', // large+unanswered/s-goal-require-managed-device
+  // Step 4: a report-only policy something holds has no next date, so the rail
+  // that held only the day its window closes is gone, and its next thing is what
+  // holds it rather than the watching (roadmap/holds.ts).
+  'policy · adjust · report-only · blocked · open · do:resolve · track · implementation · no-rail · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · rail · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-rail · no-found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
@@ -376,8 +383,6 @@ const INVENTORY: string[] = [
   'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
-  'policy · adjust · ready-to-enforce · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-token-protection
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · rail · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
   // Step 3 correction: the report-only policy whose required exclusions group has
   // no usable, owner-confirmed object stays report-only instead of reading Ready to
   // enforce; an existing policy short of the group is a change, held on the
@@ -392,7 +397,7 @@ const INVENTORY: string[] = [
   'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · rail · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-rail · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · members · who-unknown', // demo-week2+half-pair/s-goal-guests-mfa
   'policy · adjust · not-deployed · review-required · open · do:observe · track · implementation · no-rail · found · no-fix · members · who-unknown', // demo-week2+half-pair+rescan/s-goal-guests-mfa
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-block-auth-transfer

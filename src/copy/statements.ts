@@ -295,9 +295,14 @@ export const FINISH = {
     const word = (family: string): string => (family === 'mfa' || family === 'guest' ? 'MFA' : family === 'admin' ? 'admin' : family === 'device' ? 'device' : family)
     return waiting.map((w) => `${w.count} ${word(w.family)} ${w.count === 1 ? 'step waits' : 'steps wait'} for ${w.measure}`).join(' · ')
   },
-  /** "9 steps wait on Create or Correct Exclusions Group": what holds a plan the calendar cannot date and no readiness number holds. */
+  /**
+   * "9 steps wait on Create or Correct Exclusions Group": what holds a plan the
+   * calendar cannot date and no readiness number holds. Where no step of the plan
+   * is what they wait on — a decision, a baseline conflict, records that do not
+   * clear a policy (roadmap/holds.ts) — the clause names no object it cannot know.
+   */
   unwritable: (count: number, titles: string[]): string =>
-    count === 0 ? '' : `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${titles.length > 0 ? list(titles) : 'an object this plan does not have yet'}`,
+    count === 0 ? '' : titles.length > 0 ? `${count} ${count === 1 ? 'step waits' : 'steps wait'} on ${list(titles)}` : `${count} held ${count === 1 ? 'step is' : 'steps are'} cleared`,
   line: (date: string | null, waiting: { measure: string; count: number; family: string }[]): string => {
     const head = date ? `finishes ${date}` : 'nothing is dated'
     return waiting.length === 0 ? head : `${head} · ${FINISH.waiting(waiting)}`

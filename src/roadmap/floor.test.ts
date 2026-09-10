@@ -155,16 +155,20 @@ test('a floor step a wave dates renders once, in the floor group, and in no numb
   const r = runFixture(fixture('demo-week2'))
   const reg = r.steps.find((s) => s.goalId === 'register-info-protected')!
   assert.equal(reg.floor, true)
-  // The premise this test exists for: the schedule does carry the id, so the
-  // rows a phase draws have to drop it rather than never see it.
-  assert.ok(r.schedule.waves.some((w) => w.stepIds.includes(reg.id)), 'a wave dates the floor step')
+  // The premise this test exists for: a schedule that carries the id, so the rows
+  // a phase draws have to drop it rather than never see it. On this tenant a
+  // readiness threshold holds the step and the schedule withdraws it
+  // (roadmap/holds.ts), so the id is put back into a wave here: a plan file or a
+  // step that is not held carries it, and the rule has to hold either way.
+  const waves = r.schedule.waves.some((w) => w.stepIds.includes(reg.id)) ? r.schedule.waves : r.schedule.waves.map((w, i) => (i === r.schedule.waves.length - 1 ? { ...w, stepIds: [...w.stepIds, reg.id] } : w))
+  assert.ok(waves.some((w) => w.stepIds.includes(reg.id)), 'a wave dates the floor step')
   // Once, in the group named for what it is.
   assert.deepEqual(floorRows(r.steps).filter((s) => s.id === reg.id).map((s) => s.id), [reg.id])
   // And nowhere else: no numbered phase, and not the undated group either.
-  for (const w of r.schedule.waves) {
+  for (const w of waves) {
     assert.equal(phaseRows(r.steps, w).some((s) => s.id === reg.id), false, `phase ${w.wave} draws the floor step`)
   }
-  assert.equal(undatedRows(r.steps, r.schedule.waves).some((s) => s.id === reg.id), false, 'the undated group draws the floor step')
+  assert.equal(undatedRows(r.steps, waves).some((s) => s.id === reg.id), false, 'the undated group draws the floor step')
 })
 
 test('every step the Plan draws is drawn exactly once, over every fixture', () => {

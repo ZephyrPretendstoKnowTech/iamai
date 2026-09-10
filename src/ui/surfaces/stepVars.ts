@@ -29,6 +29,7 @@ import type { NamingConvention } from '../../coverage/naming.ts'
 import { initialDomain, policiesNotExcludingGroup } from '../../validation/rules.ts'
 import { observationDaysFor } from '../../roadmap/schedule.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
+import { isHeld } from '../../roadmap/holds.ts'
 import { engine, shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
@@ -453,7 +454,11 @@ const EMPTY_SCAN = { config: {} } as unknown as TenantSnapshot
 export function planDates(steps: readonly Step[], scheduleStart: string, naming?: NamingConvention, snapshot?: TenantSnapshot): Pick<StepVarContext, 'firstEnforce' | 'mfaEnforce' | 'enrolWindowDays' | 'unmanagedBrowserOnPlan' | 'mfaInPlace' | 'passkeyPolicy' | 'passkeyEnforce' | 'proposed' | 'peoplePolicies'> {
   const firstEnforce = steps.map((s) => s.events?.enforce?.at).filter((x): x is string => typeof x === 'string').sort()[0] ?? null
   const mfa = steps.find((s) => s.goalId === 'mfa-all-users' && s.kind !== 'verify')
-  const mfaEnforce = mfa?.events?.enforce?.at ?? firstEnforce
+  // The MFA policy's own day, and only its own: while something holds it there is
+  // no day on which people will be asked for MFA, and another policy's is not one
+  // (roadmap/holds.ts). The first enforcement stands in only where there is no MFA
+  // step to have a day.
+  const mfaEnforce = mfa && isHeld(mfa) ? null : (mfa?.events?.enforce?.at ?? firstEnforce)
   const enrolWindowDays = firstEnforce ? Math.max(1, Math.ceil((Date.parse(firstEnforce) - Date.parse(scheduleStart)) / 86_400_000)) : null
   const unmanagedBrowserOnPlan = steps.some((s) => (s.goalId === 'block-downloads-unmanaged' || s.goalId === 'byod-session-controls') && s.status !== 'skipped')
   // Require MFA for Everyone in place: the campaign's email is the passkey version,

@@ -34,6 +34,7 @@ import { allCuratedFixtures as allFixtures, curatedFixture as fixture } from '..
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { cleanReportOnly } from '../../roadmap/fixtures/records.ts'
 import { readBackPlacement } from '../../roadmap/schedule.ts'
+import { planFinish } from '../../derive/finish.ts'
 import { enforcesOnRun, implementationOffered, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { enforcementTiming, enforcementUnearned, settleForecast, statedEnforcement } from '../../roadmap/forecast.ts'
 import { artifactIdOf } from '../../roadmap/observation.ts'
@@ -724,7 +725,11 @@ test('005.13: a healthy Report-only policy with an email to send states no enfor
   // this step's: with no dated draft left on it, it cannot be the one picked.
   assert.equal(step.comms, null)
   const draft = announcementDraft(run.steps)
-  if (draft !== null) assert.ok(!draft.includes(forecastDay), `the draft announcement states it: ${draft}`)
+  // Another step's own dated change may land the same day; the draft may state
+  // that day for that step, and never as this one's.
+  const theirs = run.steps.some((s) => s.id !== step.id && s.events !== null && absoluteDate(s.events.enforce.at) === forecastDay)
+  if (draft !== null && !theirs) assert.ok(!draft.includes(forecastDay), `the draft announcement states it: ${draft}`)
+  if (draft !== null) assert.ok(!draft.includes(String(contentStepFor(step)?.title ?? step.title)), 'the draft is this step’s')
 })
 
 // ---- 14. the opened step instructs nothing while the window is open ----
@@ -868,8 +873,12 @@ test('005.17: the grounding bundle’s plan end, length and critical path are re
   // The three conclusions the bundle exports are the read-back of a placement
   // the step is not in — not the build's, patched afterwards.
   const without = readBackPlacement(run.steps, run.schedule.placement!, withdrawn)
-  assert.equal(bundle.plan.targetEnd, without.targetEnd)
-  assert.equal(bundle.plan.weeks, without.weeks)
+  // While the plan holds work it requires there is no end and no length to
+  // export at all (derive/finish.ts): the read-back is the rest of the plan, and
+  // a finish measured to it assumes the hold clears.
+  const finish = planFinish(run.steps, run.schedule.cleanup?.end ?? null)
+  assert.equal(bundle.plan.targetEnd, finish.held ? null : without.targetEnd)
+  assert.equal(bundle.plan.weeks, finish.held ? null : without.weeks)
   assert.equal(bundle.plan.criticalPath, without.derivation.criticalPath)
   // And they are not the step's own: the day the schedule had it enforcing on
   // ends nothing, and the sentence about what sets the plan's length does not

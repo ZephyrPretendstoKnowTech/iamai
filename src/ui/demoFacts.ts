@@ -8,7 +8,8 @@ import { facts, stepFacts } from '../derive/facts.ts'
 import { planFinish, planWeeks } from '../derive/finish.ts'
 import { demoTenant } from './demo.ts'
 
-export type DemoFacts = { people: number; steps: number; inPlace: number; weeks: number }
+/** `estimated`: the sample plan cannot finish yet, so `weeks` is the rollout's estimate (derive/finish.ts planWeeks), never a finish. */
+export type DemoFacts = { people: number; steps: number; inPlace: number; weeks: number; estimated: boolean }
 
 let cached: DemoFacts | null = null
 
@@ -20,8 +21,9 @@ export function demoFacts(): DemoFacts {
   const { steps, done: inPlace } = stepFacts(run.steps, cleanup, d.mapping.breakGlassAnswers ?? null)
   const finish = planFinish(run.steps, cleanup?.end ?? null)
   // Weeks derive from the finish date, as the Plan header does, from the Plan header's own derivation (derive/finish.ts).
-  const weeks = planWeeks(finish, run.schedule.start, run.schedule.weeks)
+  // A sample plan that cannot finish yet states its estimate, and says it is one: the Plan it opens says it cannot finish.
+  const weeks = planWeeks(finish, run.schedule)
   // The active people, as the Plan tile and Today count them (derive/facts.ts); never the directory's row count.
-  cached = { people: facts(d.snapshot, d.mapping).active, steps, inPlace, weeks }
+  cached = { people: facts(d.snapshot, d.mapping).active, steps, inPlace, weeks, estimated: finish.held }
   return cached
 }

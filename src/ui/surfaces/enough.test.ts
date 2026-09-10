@@ -5,7 +5,7 @@
 // email {personalDevicesClause}, and firstEnforce is gone from the variables.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -17,8 +17,8 @@ import { absoluteDate, longDate } from '../../copy/dates.ts'
 import { adminUserIds } from '../../roles.ts'
 import { rungOf } from '../../derive/ladder.ts'
 
-const setUp = () => {
-  const f = fixture('demo-week2')
+const setUp = (curated = false) => {
+  const f = curated ? curatedFixture('demo-week2') : fixture('demo-week2')
   const r = runFixture(f)
   const dates = planDates(r.steps, r.schedule.start)
   const ctx = (over: Partial<StepVarContext> = {}): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, ...dates, ...over })
@@ -41,7 +41,9 @@ test('admin readiness is the share of admins at Passkey or security key, proven'
 })
 
 test('the campaign email fills the MFA enforcement day and the window; firstEnforce is gone', () => {
-  const { r, dates, ctx } = setUp()
+  // On the curated baseline, where week two's plan dates policies: on the pinned
+  // one every policy is held and the email has no day to fill (roadmap/holds.ts).
+  const { r, dates, ctx } = setUp(true)
   const camp = r.steps.find((s) => s.id === 's-verify-mfa')!
   const ex = stepVars(camp, ctx()) as Record<string, unknown>
   assert.ok(!('firstEnforce' in ex) && !('firstEnforceLong' in ex), 'firstEnforce and firstEnforceLong are deleted')

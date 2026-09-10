@@ -19,6 +19,7 @@
 // of them conservatively — never taken from whichever member came first.
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { list } from '../copy/statements.ts'
+import { isHeld } from './holds.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
@@ -869,12 +870,12 @@ export function trackExecution(
       // the reasons that have nothing to do with the window or the records and
       // takes nothing away from them: there is one place where a member becomes
       // ready, and it needs every gate.
-      // Nor while the exclusions group this goal's policy carves out has no usable,
-      // owner-confirmed object to be (Step 3 correction). A report-only policy may
-      // go on being watched without it — it enforces nothing — but turning it on
-      // waits on the exclusions prerequisite, so it is not ready to enforce.
-      const exclusionUnresolved = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id && c.caveats.includes('exclusion-unresolved'))
-      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && memberGates.readyNow && !exclusionUnresolved
+      // Nor while anything holds the step (roadmap/holds.ts): a prerequisite it
+      // waits on, an object its policy names that is not there — an exclusions
+      // group nobody has confirmed among them — a decision, a readiness threshold
+      // or a baseline that contradicts itself. A report-only policy goes on being
+      // watched through a hold, and is not ready to turn on.
+      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && memberGates.readyNow && !isHeld(step)
       memberTracking.push({
         key: m.key,
         sourceName: m.sourceName,

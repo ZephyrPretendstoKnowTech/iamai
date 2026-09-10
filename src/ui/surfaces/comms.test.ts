@@ -3,7 +3,9 @@
 // all, and never on a step already in place.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from '../../roadmap/fixtures/index.ts'
+// On the curated baseline: an email renders only on a step the plan dates, and on
+// the pinned one every week-two policy is held (roadmap/holds.ts).
+import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { planDates, stepVars } from './stepVars.ts'

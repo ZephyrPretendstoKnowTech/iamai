@@ -135,9 +135,15 @@ export function PrintPlan({
   // claimed where the counts are absent: an empty cell, never "everyone is
   // ready" (task 042).
   const verificationNote = facts === null ? '' : toSetUp(facts) > 0 ? fillText(C.verificationNote, { n: toSetUp(facts), active: facts.active }) : C.verificationNoteReady
-  const weeks = planWeeks(finish, schedule.start, schedule.weeks)
+  const weeks = planWeeks(finish, schedule)
+  // What holds the plan, as the Plan header names it: a readiness number where one
+  // does, else the held steps and the step each waits on (derive/finish.ts).
+  const titleOf = (id: string): string => steps.find((s) => s.id === id)?.title ?? id
+  const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf))
+  // Held work dates no end: the cover, the Cleanup heading and the header all say so.
+  const cannotFinish = finish.held
   // The same header line the Plan shows (derive/planHeader.ts), without the anchored start.
-  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint: FINISH.waiting(finish.waiting), startedFrom: null })
+  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.
@@ -157,8 +163,8 @@ export function PrintPlan({
           <dd>{baselineLabel}</dd>
           <dt>{C.cover.dates}</dt>
           <dd>
-            {dateRange(schedule.start, finish.finish ?? schedule.targetEnd)}
-            {finish.waiting.length > 0 && ` · ${FINISH.waiting(finish.waiting)}`}
+            {cannotFinish ? absoluteDate(schedule.start) : dateRange(schedule.start, finish.finish ?? schedule.targetEnd)}
+            {cannotFinish && constraint && ` · ${constraint}`}
           </dd>
         </dl>
         <p className="print-statement">{headerLine}</p>
@@ -271,7 +277,7 @@ export function PrintPlan({
       )}
       {schedule.cleanup && (
         <section className="print-page">
-          <h2>{fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
+          <h2>{cannotFinish ? phases.last : fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
           {schedule.cleanup.rows.map((r) => (
             <article key={r.kind} className="print-step">
               <CleanupBody phase={schedule.cleanup!} row={r} status={cleanupStatusOf(cleanupComplete(r, answers))} notes={notes} />

@@ -70,7 +70,7 @@ type Words = {
     ready: { state: string; stateCounted: string; lead: string; open: string }
     last: { state: string; open: string }
     waiting: { state: string }
-    sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksValue: string; weeksOne: string; open: string }
+    sample: { lead: string; people: string; steps: string; inPlace: string; weeks: string; weeksEstimate: string; weeksValue: string; weeksOne: string; open: string }
   }
 }
 export const W = pages.connect as unknown as Words
@@ -485,7 +485,8 @@ export function planTile(input: PlanInput): PlanTile {
               { value: String(f.people), label: S.people },
               { value: String(f.steps), label: S.steps },
               { value: String(f.inPlace), label: S.inPlace },
-              { value: fillText(f.weeks === 1 ? S.weeksOne : S.weeksValue, { n: f.weeks }), label: S.weeks },
+              // The Plan's own length (derive/finish.ts planWeeks); where the sample plan cannot finish yet it is the estimate, and labelled so.
+              { value: fillText(f.weeks === 1 ? S.weeksOne : S.weeksValue, { n: f.weeks }), label: f.estimated ? S.weeksEstimate : S.weeks },
             ]
           : undefined,
         actions: [{ label: S.open, weight: 'secondary' }],

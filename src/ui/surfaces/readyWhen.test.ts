@@ -21,6 +21,8 @@ import { SOLE_MEMBER, observationsOf } from '../../roadmap/tracking.ts'
 import { observationsFrom } from '../../roadmap/observation.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { rowReason, rowWhen } from './rowWhen.ts'
+import { isHeld } from '../../roadmap/holds.ts'
+import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { implementationOffered, unavailableReason } from '../../roadmap/operations.ts'
 import { statusOf } from './statusWord.ts'
 import { stepVars } from './stepVars.ts'
@@ -94,7 +96,7 @@ const ADMINS = stepIdForGoal('admins-phishing-resistant')
 const TOKEN = stepIdForGoal('token-protection')
 const TRANSFER = stepIdForGoal('block-auth-transfer')
 
-test('week one: a policy the scan first sees in report-only is ready on the scan date plus its observation window; the row reads Report-only · ready <date>', () => {
+test('week one: a policy the scan first sees in report-only is watched from the scan date for its observation window; held, its row reads no ready day', () => {
   const f = fixture('demo')
   const run = runFixture(f)
   const step = run.steps.find((s) => s.id === ADMINS)!
@@ -105,7 +107,13 @@ test('week one: a policy the scan first sees in report-only is ready on the scan
   assert.equal(step.tracking?.readyNow, false, 'no records of this policy yet: the evidence gate is not met')
   assert.equal(readyWhen(step)?.kind, 'on')
   assert.equal(statusOf(step).word, 'Report-only')
-  assert.equal(rowWhen(step), `ready ${absoluteDate(readyOn)}`)
+  // Day one's admins policy is held — the way back in is not verified — so its
+  // window closing makes it ready for nothing: the row states no ready day and
+  // the step names no review date (roadmap/holds.ts). Week two's transfer
+  // policy, which nothing holds, is the one that reads ready <date> (below).
+  assert.ok(isHeld(step), 'the premise: something holds it')
+  assert.equal(rowWhen(step), '')
+  assert.equal(nextMilestone(step).at, null)
   // The observation the plan record keeps, so the next scan continues the clock.
   const kept = observationsOf(run.steps)[ADMINS].members[SOLE_MEMBER]
   assert.equal(kept.state, 'report-only')
@@ -160,7 +168,7 @@ test('week two: the report-only policy with clean, complete records is ready now
   assert.ok(untracked.some((l) => l.startsWith('Time: ')) && untracked.some((l) => l.endsWith(`today 0 failing or interrupted, ${seen}`)), untracked.join('\n'))
 })
 
-test('rescan: a policy whose window closed on clean records reads Ready to enforce, and a Foundation-A blocker still offers it no date', () => {
+test('rescan: a policy whose window closed on clean records while a Foundation-A blocker holds it stays Report-only, and is offered no date', () => {
   const f = fixture('demo')
   const run = runFixture(f)
   const seenAt = new Date(Date.parse(f.snapshot.asOf) - 10 * DAY).toISOString()
@@ -177,16 +185,15 @@ test('rescan: a policy whose window closed on clean records reads Ready to enfor
   applyProgress(run.steps, snapshot, run.coverage, f.planId, undefined, null, watched, scopeOf(f))
   const step = run.steps.find((s) => s.id === ADMINS)!
   assert.equal(step.tracking?.reportOnlyAt, seenAt, 'the record own observation wins over this scan')
-  assert.equal(step.status, 'ready-to-enforce')
   assert.ok(Date.parse(step.tracking!.readyOn!) <= Date.parse(step.tracking!.noticedAt!), 'the window closed')
   assert.equal(step.tracking?.readyNow, true, 'and the records cleared it')
   assert.equal(readyWhen(step)?.kind, 'now')
-  assert.equal(statusOf(step).word, 'Ready to enforce')
-  assert.equal(step.history.at(-1)?.note, `ready now: 0 failures in ${step.tracking!.daysInReportOnly} days`)
-  // The demo's admins policy is the Ready-but-withheld case: Foundation B has
-  // carried the lifecycle, and Foundation A will not hand the enforcement over
-  // while the way back in is unverified. So the row offers no date at all --
-  // a Ready lifecycle never manufactures one on its own (task 007).
+  // The demo's admins policy was the Ready-but-withheld case (task 007). A policy
+  // something holds is never Ready to enforce (Step 4): the way back in is not
+  // verified, so it stays Report-only, and the row offers no date at all.
+  assert.ok(isHeld(step))
+  assert.equal(step.status, 'in-report-only')
+  assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(unavailableReason(step), 'escape-hatch-unverified')
   assert.equal(implementationOffered(step), false)
   assert.equal(rowWhen(step), '')
@@ -212,8 +219,10 @@ test('rescan: the same ten days with no records read is not ready, and the row s
   assert.equal(step.status, 'in-report-only')
   assert.equal(statusOf(step).word, 'Report-only')
   assert.equal(readyWhen(step)?.kind, 'since', 'the window closed and the records did not')
-  assert.equal(rowWhen(step), 'held until the records clear')
-  assert.match(rowWhen(step), WALK_ROW)
+  // Held besides — the way back in is not verified — so the column states nothing
+  // at all, and the step is not waiting on the records alone (roadmap/holds.ts).
+  assert.ok(isHeld(step))
+  assert.equal(rowWhen(step), '')
   // And the Done-when says which gate closed and which did not: the window has a
   // past date, the records have no count of failures to show at all.
   const held = doneWhenOf(step, f)
@@ -241,27 +250,31 @@ test('rescan: the same ten days in a record that never named a policy carries no
   assert.equal(statusOf(step).word, 'Report-only')
 })
 
-test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (Ready to enforce / ready <date>) and the admins policy reads In place', () => {
+test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (held Report-only / ready <date>) and the admins policy reads In place', () => {
   const f = fixture('demo-week2')
   const d = demoTenant(true)
   const planId = planIdFor(DEMO_TENANT_ID)
   assert.ok(findTaggedPolicy(d.snapshot, planId, TOKEN), 'the token protection policy carries the app\'s plan tag')
   const run = runFixture({ ...f, snapshot: d.snapshot, mapping: d.mapping, planId })
   const token = run.steps.find((s) => s.id === TOKEN)!
-  assert.equal(statusOf(token).word, 'Ready to enforce')
-  // The app's own demo has not confirmed its exclusions group, so this is the
-  // Ready-but-withheld case again on the tenant a visitor actually sees:
-  // Foundation B has carried the lifecycle and Foundation A hands nothing over,
-  // so the row carries the evidence and no date, and the step is in no wave
-  // (task 007). Nothing invents an enforcement day from a Ready word.
-  assert.equal(unavailableReason(token), 'escape-hatch-unverified')
+  // The token policy's window has closed on clean records, and something still
+  // holds it on the tenant a visitor actually sees: Foundation A hands nothing
+  // over. It was the Ready-but-withheld case (task 007); a held policy is never
+  // Ready to enforce (Step 4), so it reads Report-only, with no date, in no wave,
+  // and its row does not offer the evidence that would earn the change.
+  assert.equal(token.tracking?.readyNow, true)
+  assert.ok(isHeld(token))
+  assert.equal(statusOf(token).word, 'Report-only')
+  assert.notEqual(unavailableReason(token), null)
   assert.equal(implementationOffered(token), false)
   assert.equal(token.events, null)
   assert.equal(rowWhen(token), '')
-  assert.equal(rowReason(token), readyBasis(readyWhen(token)!))
+  assert.notEqual(rowReason(token), readyBasis(readyWhen(token)!))
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
   assert.equal(statusOf(transfer).word, 'Report-only')
-  assert.match(rowWhen(transfer), /^ready \S.*\d{4}$/)
+  // Held on the app's own tenant too, so it reads no ready day either.
+  assert.ok(isHeld(transfer))
+  assert.equal(rowWhen(transfer), '')
   // And the tenant's own admins policy, which no tag of this plan's touches,
   // reads as what it is: a control already in place, not one the plan enforced.
   assert.equal(statusOf(run.steps.find((s) => s.id === ADMINS)!).word, 'In place')
@@ -278,6 +291,12 @@ test("the walk's reading: every report-only step of the app's demo says where it
   const rows = run.steps.filter((s) => statusOf(s).word === 'Report-only' && readyWhen(s) !== null)
   assert.ok(rows.length > 0, 'the app\'s demo week two has a policy in report-only')
   for (const step of rows) {
+    // A held one states nothing in its column: it is not watched towards a day it
+    // may be turned on (roadmap/holds.ts), and the walk reads it as held.
+    if (isHeld(step)) {
+      assert.equal(rowWhen(step), '', step.id)
+      continue
+    }
     assert.match(rowWhen(step), WALK_ROW, step.id)
     const lines = doneWhenOf(step, demo, run.schedule.reportOnlyAt[step.id] ?? null)
     assert.match(lines, WALK_TIME, step.id)

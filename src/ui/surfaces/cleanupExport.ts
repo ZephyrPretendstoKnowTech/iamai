@@ -28,9 +28,14 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
   return { ...lists, ...(phase.convention ? { convention: phase.convention } : {}) }
 }
 
-/** The row's date column: the day it was marked done, else its planned day. */
-export function cleanupWhen(row: CleanupPhase['rows'][number]): string {
-  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done) }) : absoluteDate(row.day)
+/**
+ * The row's date column: the day it was marked done, else its planned day — and
+ * nothing while the plan cannot finish (`undated`, derive/finish.ts heldRequired):
+ * Cleanup follows the last enforcement, and a day after work that is held is a
+ * date nothing has made true.
+ */
+export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false): string {
+  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done) }) : undated ? '' : absoluteDate(row.day)
 }
 
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */

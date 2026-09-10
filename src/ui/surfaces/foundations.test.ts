@@ -14,6 +14,7 @@ import { curatedFixture as fixture } from '../../roadmap/fixtures/index.ts'
 import { adminsAtRung5, runFixture } from '../../roadmap/fixtures/run.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
+import { holdOf } from '../../roadmap/holds.ts'
 import { stepExportView } from './stepExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -42,7 +43,7 @@ test('emergency access is on every plan: Ready with one failing check on the dem
 })
 
 test('a change step carries a Dates line and a calendar entry, on the demo and GetIAMAI', () => {
-  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; dates: RegExp; adminsReady?: boolean; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
+  const cases: { name: 'demo-week2' | 'getiamai'; stepId: string; dates: RegExp; adminsReady?: boolean; held?: true; snapshot?: (f: ReturnType<typeof fixture>) => ReturnType<typeof fixture>['snapshot'] }[] = [
     // Week two, with its admins policy back in report-only: a change the plan can
     // write, so it is dated. A policy naming an object the tenant lacks is not —
     // and neither is one whose readiness prerequisite is unmet, which is why the
@@ -52,11 +53,16 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     // The policy is in report-only and meets the baseline, so the only thing the
     // step has left to submit is `{"state":"enabled"}` — the enforcement. Its
     // window has not closed, so the days it states are the ones it has.
+    //
+    // Except that enforcing it would leave the signed-in account no safe way in,
+    // which holds it (roadmap/holds.ts): a held step states no dates and books
+    // nothing, however far its window has run.
     {
       name: 'demo-week2',
       stepId: 's-goal-admins-phishing-resistant',
       dates: /^Report-only since .+ · Review .+ · Enforcement is dated once the observation window closes and the sign-in records are clear and complete$/,
       adminsReady: true,
+      held: true,
       snapshot: (f) => {
         const ca = f.snapshot.config.caPolicies!
         const rows = (ca.rows as Record<string, unknown>[]).map((p) => (/Admins phishing-resistant/.test(String(p.displayName)) ? { ...p, state: 'enabledForReportingButNotEnforced' } : p))
@@ -96,8 +102,14 @@ test('a change step carries a Dates line and a calendar entry, on the demo and G
     assert.ok(events.announce && events.announce.at < events.enforce.at, `${c.name}: announce, then change`)
     const ctx: StepVarContext = { snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
     const view = stepExportView(step, ctx)
-    assert.ok(view.dates && c.dates.test(view.dates), `${c.name}: the Dates line (${view.dates})`)
     const ics = buildIcs(r.steps, 'Tenant', 'plan-1', (s) => stepExportView(s, ctx))
+    if (c.held) {
+      assert.equal(holdOf(step)?.kind, 'readiness', `${c.name}: held on the signed-in account's way in`)
+      assert.equal(view.dates, null, `${c.name}: a held step has no Dates line`)
+      assert.ok(!ics.includes(`UID:plan-1-${step.id}@iamai`), `${c.name}: and no calendar entry`)
+      continue
+    }
+    assert.ok(view.dates && c.dates.test(view.dates), `${c.name}: the Dates line (${view.dates})`)
     assert.ok(ics.includes(`UID:plan-1-${step.id}@iamai`), `${c.name}: in the calendar`)
   }
 })
