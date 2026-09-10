@@ -329,6 +329,9 @@ test('no analytics host is referenced anywhere in the source the bundle is built
 // in the package's own origin.
 test('Connect renders the baseline source and version from the loaded package, not from a second authority', () => {
   assert.match(CONNECT, /t2\.source\.link/, 'the disclosure does not render the source')
+  // Connect has no bare links: every anchor in a step is a text link or a
+  // button in one of the three weights (the walk fails the build otherwise).
+  assert.match(CONNECT, /<a className="lnk" href=\{t2\.source\.link\.url\}/, 'the source link is not classed as a text link')
   assert.match(CONNECT, /t2\.source\.version/, 'the disclosure does not render the version')
   const pin = CONNECT.slice(CONNECT.indexOf('function baselinePin'), CONNECT.indexOf('function baselineStrings'))
   assert.match(pin, /baseline\.origin\.kind !== 'github'/, 'an uploaded package is given a source it does not have')

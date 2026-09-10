@@ -710,7 +710,7 @@ function BaselineTile({ baseline, restoreError, locked, authorUpdate, stage }: {
               IAMAI holds of it. Both are the loaded package's own facts. */}
           {t2.source.link && (
             <p className="quiet">
-              <a href={t2.source.link.url} target="_blank" rel="noopener noreferrer">
+              <a className="lnk" href={t2.source.link.url} target="_blank" rel="noopener noreferrer">
                 {t2.source.link.label}
               </a>
             </p>
