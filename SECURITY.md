@@ -91,8 +91,20 @@ tenant data. The plan itself is built from the reviewed baseline copy bundled in
 `src/network.test.ts` fails the build if the source (`src/`, `home/`, `index.html`) makes a
 request-shaped reference to any other host, or if the built bundle names a host that is
 neither on this list nor on its documented list of inert strings. It is a static check of
-the source and the build output. The site does not currently send a
-Content-Security-Policy.
+the source and the build output.
+
+Both published pages carry a Content-Security-Policy as a `<meta>` element written at
+build (`scripts/csp.ts`; `src/csp.test.ts` asserts it). The planner may run only its own
+scripts and worker, connect only to its own origin and the four hosts above, and frame
+only `login.microsoftonline.com` (MSAL's silent token renewal). The home page runs its
+own inline theme script by hash and fetches nothing. Neither page allows `unsafe-eval` or
+inline script. Both also allow Cloudflare's beacon hosts, because Cloudflare injects that
+script (below) and whether it runs is a setting on the Cloudflare account, not the page's.
+
+GitHub Pages sends no custom response headers, so what only a header can carry is not
+set: `frame-ancestors` (framing by other sites), `report-to`, and
+`X-Content-Type-Options`. Setting them needs a response-header rule on the Cloudflare
+account.
 
 The app has no backend, no analytics or error reporting of its own, and no fonts, scripts
 or stylesheets from a CDN.
