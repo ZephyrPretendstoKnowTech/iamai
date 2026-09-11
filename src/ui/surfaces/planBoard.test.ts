@@ -315,12 +315,17 @@ test('the marker is handed in, never re-derived: the projection cannot invent a 
 
 // -------------------------------------------------- the board's timing column
 
-test('the generic now is blank on the board, and nothing else is dropped with it', () => {
-  // Every prerequisite and check carries the same `now`. It is true and it is
-  // useless repeated down nine Preparation rows, so the board drops it — and
-  // only it. A real date and a real reason both survive.
-  assert.equal(boardWhen('now', { genericNow: true, held: false, carriesReason: false }), '')
-  assert.equal(boardWhen('now', { genericNow: true, held: true, carriesReason: false }), '', 'the generic now wins over Held: there is no date to mislead with')
+test('the generic now reads the day its phase begins, or Not scheduled, and the column is never blank', () => {
+  // Every prerequisite and check carries the same `now`. Repeated down nine
+  // Preparation rows it said nothing, and blank said less (owner, 2026-09-11):
+  // the board reads the day the row's phase begins. A real date and a real
+  // reason both survive.
+  assert.equal(boardWhen('now', { genericNow: true, held: false, carriesReason: false, groupDay: 'Sep 11, 2026' }), 'Sep 11, 2026')
+  assert.equal(boardWhen('now', { genericNow: true, held: false, carriesReason: false }), 'Not scheduled', 'a group with no first day of its own dates nothing')
+  assert.equal(boardWhen('now', { genericNow: true, held: true, carriesReason: false }), 'Not scheduled', 'the generic now wins over Held: there is no date to mislead with')
+  assert.equal(boardWhen('', { genericNow: false, held: false, carriesReason: false, complete: true }), 'Complete')
+  assert.equal(boardWhen('', { genericNow: false, held: false, carriesReason: false }), 'Not scheduled', 'no value is never a blank cell')
+  assert.equal(boardWhen('', { genericNow: false, held: false, carriesReason: false, waitsOn: 'After prerequisites' }), 'After prerequisites')
   assert.equal(boardWhen('Sep 22, 2026', { genericNow: false, held: false, carriesReason: false }), 'Sep 22, 2026')
   assert.equal(boardWhen('ready Sep 17, 2026', { genericNow: false, held: false, carriesReason: false }), 'ready Sep 17, 2026')
   assert.equal(boardWhen('ready now', { genericNow: false, held: false, carriesReason: false }), 'ready now', 'a policy that may be enforced now is not the generic now')
@@ -328,6 +333,8 @@ test('the generic now is blank on the board, and nothing else is dropped with it
 
 test('a held row reads Held instead of borrowing its wave\u2019s date, unless it already says why', () => {
   assert.equal(boardWhen('Sep 10, 2026', { genericNow: false, held: true, carriesReason: false }), BOARD.held)
+  // …or the step it waits on, where the hold names one.
+  assert.equal(boardWhen('', { genericNow: false, held: true, carriesReason: false, waitsOn: 'After Exclusions Group' }), 'After Exclusions Group')
   // A column that already carries a REASON keeps it: it is more specific than
   // Held, and it is the fact the operator needs.
   assert.equal(boardWhen('when MFA readiness reaches 90% (now 42%)', { genericNow: false, held: true, carriesReason: true }), 'when MFA readiness reaches 90% (now 42%)')

@@ -99,10 +99,10 @@ test('Step 5: the Impact column says who a step reaches, never the state, and no
       const impact = rowWho(s, nameOf)
       assert.ok(!impact.includes(REPORT_ONLY_GAP), `${where}: "${impact}" restates the state`)
       if (reached(s) === null) {
-        assert.equal(impact, '', `${where}: "${impact}" stands in for a reach nobody settled`)
+        assert.equal(impact, 'Not established', `${where}: "${impact}" stands in for a reach nobody settled`)
         unknown += 1
       } else {
-        assert.match(impact, /^(nobody affected|\d+ (person|people)|[^·]+)( · .+)?$/, `${where}: "${impact}"`)
+        assert.match(impact, /^(No user impact|Configuration only|\d+ (person|people)|[^·]+)( · .+)?$/, `${where}: "${impact}"`)
       }
     }
   }

@@ -99,6 +99,25 @@ export function whenAt(iso: string, nowMs = Date.now()): string {
   return `${relative(iso, nowMs)} · ${absolute(iso)}`
 }
 
+/**
+ * "Sep 11–16", "Sep 29–Oct 3", "Sep 11": a phase's span as the Plan's group heads
+ * read it (owner, 2026-09-11), in the display time zone; a year only where the
+ * span crosses one.
+ */
+export function dateSpan(fromIso: string, toIso: string): string {
+  const f = formatter('spanParts', 'en', { year: 'numeric', month: 'short', day: 'numeric' })
+  const parts = (iso: string): { year: string; month: string; day: string } => {
+    const out = { year: '', month: '', day: '' }
+    for (const p of f.formatToParts(new Date(iso))) if (p.type === 'year' || p.type === 'month' || p.type === 'day') out[p.type] = p.value
+    return out
+  }
+  const a = parts(fromIso)
+  const b = parts(toIso)
+  if (a.year !== b.year) return `${a.month} ${a.day}, ${a.year}–${b.month} ${b.day}, ${b.year}`
+  if (a.month !== b.month) return `${a.month} ${a.day}–${b.month} ${b.day}`
+  return a.day === b.day ? `${a.month} ${a.day}` : `${a.month} ${a.day}–${b.day}`
+}
+
 /** "Sep 1 → Sep 8, 2026" for a phase. */
 export function dateRange(fromIso: string, toIso: string): string {
   return `${absoluteDate(fromIso)} → ${absoluteDate(toIso)}`

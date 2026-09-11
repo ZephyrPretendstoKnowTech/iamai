@@ -46,6 +46,12 @@ export type PlanDecisions = {
   startDate?: string
   /** When Start the plan was pressed (target-state §5): the anchored dates hold from here. */
   startedAt?: string
+  /**
+   * The first deployment day the operator set in Plan settings, or the one Start
+   * the plan anchored (owner, 2026-09-11). Absent: the eligible workday after the
+   * start (derive/planStart.ts effectiveFirstDeployment).
+   */
+  firstDeployment?: string
   /** The size band override, when set. */
   band?: SizeBand
   /** The change freeze, when set. */

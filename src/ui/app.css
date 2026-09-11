@@ -1592,6 +1592,63 @@ footer.app a {
    The controls, then the groups. The strip is NOT sticky: the shell's header
    already is on the Plan, and a second fixed bar under it would take another
    ~60px from every opened step, which is the surface that needs the height. */
+/* ---- the Plan's progress tiles (owner, 2026-09-11) ----
+   Four counts in the readiness tile's face, replacing the generated status
+   sentence; the plan-length tip sits beside them. The value is the tile's
+   emphasis and the label its caption, so the value reads first although the
+   label comes first for a screen reader. */
+.plan-progress {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin: 14px 0 8px;
+}
+.plan-progress-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  flex: 1 1 520px;
+  max-width: 680px;
+  margin: 0;
+}
+.plan-progress-tile {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+}
+.plan-progress-tile dt {
+  font-size: var(--t-1);
+  color: var(--quiet-text);
+}
+.plan-progress-tile dd {
+  margin: 0;
+  font-size: var(--t-6);
+  font-weight: var(--weight-strong);
+  line-height: 1.1;
+  color: var(--primary-text);
+}
+.surface .plan-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.plan-how {
+  margin: 4px 0 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+}
+.plan-how ul {
+  margin: 0;
+  padding-left: 18px;
+}
 .plan-controls {
   display: grid;
   grid-template-columns: auto minmax(240px, 1fr) auto;
@@ -1614,20 +1671,43 @@ footer.app a {
 }
 /* The lens strip is the shared tab role wearing a segmented face: one bordered
    group rather than three loose chips, because the three are one choice. */
+/* One control family with the search box and the focus toggles: the same
+   --control height, border, radius and type size. The shared `.tabs` strip's gap,
+   inline padding and bottom margin are reset here, because inside a bordered
+   group they left an unfilled sliver before the first segment, a gap between
+   segments and a strip sitting above the row's centre line. The segments share
+   the width equally and centre their labels; the selected one fills its whole
+   cell. */
 .plan-controls .tabs.view-tabs {
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  height: var(--control);
+  box-sizing: border-box;
   border: 1px solid var(--strong-line);
   border-radius: var(--radius-control);
   overflow: hidden;
   background: var(--secondary-surface);
 }
 .plan-controls .tabs.view-tabs .tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 100%;
+  min-width: 88px;
+  padding: 0 14px;
+  font-size: var(--t-2);
+  line-height: 1;
+  text-align: center;
   border: 0;
   border-right: 1px solid var(--line);
   border-radius: 0;
   background: transparent;
   color: var(--quiet-text);
-  padding: 8px 13px;
 }
 .plan-controls .tabs.view-tabs .tab:last-child {
   border-right: 0;
@@ -1635,6 +1715,12 @@ footer.app a {
 .plan-controls .tabs.view-tabs .tab[aria-selected='true'] {
   background: var(--brand-soft);
   color: var(--brand-soft-text);
+}
+/* The group clips its corners, which clips the outer ring at the group's edge:
+   the segment also draws its focus indicator inside its own cell. */
+.plan-controls .tabs.view-tabs .tab:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: -2px;
 }
 .plan-search {
   min-width: 0;
@@ -2028,6 +2114,15 @@ footer.app a {
 .step-main {
   min-width: 0;
   padding: 4px 27px 26px;
+}
+/* The main column is the measure: Why, Done when and the Implementation copy
+   run to the rail, not to the site-wide 72ch prose cap, which stopped them near
+   the middle of the column (owner, 2026-09-11). The column itself is bounded by
+   the route width and the 290px rail, so a line never spans the browser. */
+.step .step-main p,
+.step .step-main ul,
+.step .step-main ol {
+  max-width: none;
 }
 /* The rail belongs to this step: it is inside the frame, on the quieter of the
    two surfaces task 031 named, divided from the main column by the frame's own
@@ -3898,8 +3993,10 @@ td .not-person {
   .plan-controls .tabs.view-tabs {
     width: 100%;
   }
-  .plan-controls .tabs.view-tabs .tab {
-    flex: 1;
+  /* The four progress tiles become two rows of two. */
+  .plan-progress-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-basis: 100%;
   }
   /* The focus row WRAPS. It used to scroll sideways, which put "Show completed"
      half off the edge of a 390px screen with nothing to say it was there — a

@@ -288,12 +288,18 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   const p = planOf(curatedFixture('demo'))
   const held = stepOf(p, 's-goal-service-accounts-trusted-network')
   assert.ok(isHeld(held), 'the premise: it waits on an object the tenant does not have')
-  assert.equal(boardWhenOf(held), BOARD.held, 'the board says Held')
+  assert.match(boardWhenOf(held), /^(After |Held$)/, 'the board says what it waits on, or Held')
   assert.ok(undatedRows(p.r.steps, p.r.schedule.waves).some((s) => s.id === held.id), 'under Waiting on something else')
   nothingIsDated(p, held)
   assert.ok((rowReason(held) ?? '').length > 0, 'and says what it waits on')
   // Over every plan: Held on the board exactly where the step is held.
-  for (const q of plans()) for (const s of q.r.steps.filter(open)) assert.equal(boardWhenOf(s) === BOARD.held, isHeld(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
+  // Over every plan: Held — or what the hold waits on — on the board exactly where the step is held.
+  for (const q of plans()) {
+    for (const s of q.r.steps.filter(open)) {
+      const board = boardWhenOf(s)
+      assert.equal(board === BOARD.held || (isHeld(s) && /^After /.test(board)), isHeld(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
+    }
+  }
 })
 
 // ---- final correction 2: a held step never reads Ready ----
@@ -361,7 +367,9 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   assert.deepEqual(b.rings, [], 'and no rollout')
   assert.equal(phased({ ...g }).has(b.id), false, 'and sits in no numbered phase')
   assert.equal(b.blockedReason, BLOCKED_REASON.after(a.plainTitle || a.title), 'its reason names the held step it waits on')
-  assert.equal(boardWhenOf(b), BOARD.held)
+  // The board names what the hold waits on: the step itself where its title fits the column.
+  assert.equal(boardWhenOf(b), 'After prerequisites')
+  assert.equal(boardWhenOf(b, null, (id) => (id === a.id ? 'Emergency access' : null)), 'After Emergency access')
   // And the mark is the hold's, not a record of it: clear A and B is sequenced again.
   a.blockers.pop()
   a.state = { ...a.state, condition: 'healthy' }

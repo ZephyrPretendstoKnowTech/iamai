@@ -357,13 +357,14 @@ function diffContract(label, c, d) {
   for (const s of d.longSentences) add('P1', `${label}: sentence over ${RULES.sentenceMaxWords} words: "${s.slice(0, 90)}…"`)
 }
 
-/** The people a row or a lead counts: a leading number; a row may also read nobody affected (0) or two short names; null otherwise. */
+/** The people a row or a lead counts: a leading number; a row may also read No user impact or Configuration only (0) or two short names; null otherwise (Not established is no count). */
 function countOf(text, { names = false } = {}) {
   const t = (text || '').trim()
   const m = /^(\d+)\b/.exec(t)
   if (m) return Number(m[1])
   if (!names) return null
-  if (/^nobody affected/i.test(t)) return 0
+  if (/^(no user impact|configuration only)/i.test(t)) return 0
+  if (/^not established/i.test(t)) return null
   // A row names people only when two or fewer fit in 28 characters; a sentence is not a name list.
   const head = t.split(' · ')[0]
   if (!head || /[:.]$/.test(head) || head.length > 28) return null
@@ -508,7 +509,7 @@ async function walkFixture(fx) {
       // control as Plan settings' inputs with its label spaced from it.
       if (route === 'plan' && !fx.week2) {
         const field = await evaluate(`(() => { const l = document.querySelector('main.page .plan-start label.rows'); const i = l && l.querySelector('input[type=date]'); if (!i) return null; const cs = getComputedStyle(l); const ci = getComputedStyle(i); return { value: i.value, display: cs.display, gap: cs.columnGap, borderBottom: ci.borderBottomWidth, padTop: ci.paddingTop } })()`)
-        const startedLine = /\bstarted [A-Z][a-z]{2} \d/.test(text)
+        const startedLine = /\bStarted [A-Z][a-z]{2} \d/.test(text)
         if (!field && !startedLine) add('P0', `${label}: no Start date field on an unstarted plan`)
         if (field) {
           const zone = await evaluate(`(async () => { try { const req = indexedDB.open('iamai'); const db = await new Promise((r, j) => { req.onsuccess = () => r(req.result); req.onerror = () => j(req.error) }); if (!db.objectStoreNames.contains('mapping')) { db.close(); return null } const rows = await new Promise((r) => { const q = db.transaction('mapping').objectStore('mapping').getAll(); q.onsuccess = () => r(q.result) }); db.close(); const m = rows.filter((x) => x && ((x.tenantId === 'demo-sample-tenant') === ${inDemo})).find((x) => x.displayTimeZone); return m ? m.displayTimeZone : null } catch { return null } })()`)
@@ -652,7 +653,7 @@ async function walkFixture(fx) {
       }
       // The Plan header's counts, for the print cover to agree with (E4).
       if (route === 'plan') {
-        const m = text.match(/(\d+) steps · (\d+) (?:in place|done)/)
+        const m = text.match(/Steps\s*(\d+)\s*In place\s*(\d+)/)
         if (m) planHeaderCounts = { steps: m[1], inPlace: m[2] }
       }
       // Connect's refusals: the scan line never renders an empty window and says
@@ -971,8 +972,8 @@ async function walkFixture(fx) {
             if (planHeaderCounts) {
               await evaluate(`location.hash = '#/plan'`)
               const onPlan = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 15000)
-              const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page p.line') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
-              const hm = headerNow.match(/(\d+) steps · (\d+) (?:in place|done)/)
+              const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page .plan-progress') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
+              const hm = headerNow.match(/Steps\s*(\d+)\s*In place\s*(\d+)/)
               if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
               else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} done; the Plan header ${hm[1]} · ${hm[2]}`)
               await evaluate(`location.hash = '#/connect'`)
@@ -1557,8 +1558,8 @@ async function walkFixture(fx) {
         // above asserts exactly that. Reading it here as well made two checks
         // demand opposite things of one row, so neither could pass.
         const doneRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
-        const dated = doneRows.filter((r) => r.when !== '' && !CLEANUP_TITLES.has(r.title))
-        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} done step row(s) carry a date word ("${dated[0].when}" on "${dated[0].title}"); a done row is blank`)
+        const dated = doneRows.filter((r) => r.when !== 'Complete' && !CLEANUP_TITLES.has(r.title))
+        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} done step row(s) read "${dated[0].when}" on "${dated[0].title}"; a done row reads Complete`)
       }
       // A started plan (E5), on day one: Start the plan locks the dates; the
       // Start date field and its note go, and "started <date>" stands in their
@@ -1574,18 +1575,16 @@ async function walkFixture(fx) {
           // of the header only where the plan finishes.
           // Pressing Start redraws the plan, so the header is read once it is back
           // in one of its two forms rather than the instant after the click.
-          const settled = await waitFor(`/started \\S.*\\d{4}|cannot finish until \\S/.test((document.querySelector('main.page') || {}).innerText || '')`, 8000)
-          const header = ((await mainText()) ?? '').match(/[^\n]*\d+ steps ·[^\n]*/)?.[0] ?? '(no header line)'
-          const holding = /cannot finish until \S/.test(header)
-          const started = settled && (holding || /started \S.*\d{4}/.test(header))
-          if (!started) add('P0', `${slabel}: the plan does not read started <date> after Start the plan (header: ${JSON.stringify(header)})`)
+          // The progress tiles carry no sentence; the start is its own line under them
+          // (Plan.tsx `plan-started`), whether or not the plan can finish.
+          const settled = await waitFor(`/Started \\S.*\\d{4}/.test(((document.querySelector('main.page .plan-started') || {}).textContent || ''))`, 8000)
+          if (!settled) add('P0', `${slabel}: the plan does not read Started <date> after Start the plan`)
           const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
           if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
           const after = await mainText()
           if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
-          const times = (after.match(/started \S+ \d{1,2}, \d{4}/g) ?? []).length
-          if (!holding && times !== 1) add('P0', `${slabel}: "started <date>" appears ${times} times; once, in the header line`)
-          if (!holding && !/^\d+ steps · \d+ done · started \S+ \d{1,2}, \d{4}/m.test(after)) add('P0', `${slabel}: the header line does not carry the start`)
+          const times = (after.match(/Started \S+ \d{1,2}, \d{4}/g) ?? []).length
+          if (settled && times !== 1) add('P0', `${slabel}: "Started <date>" appears ${times} times; once, under the progress tiles`)
           checkText(slabel, after)
         }
       }

@@ -174,6 +174,7 @@ export function decisionsOf(
     skips,
     startDate: rec?.startDate,
     ...(typeof rec?.startedAt === 'string' ? { startedAt: rec.startedAt } : {}),
+    ...(typeof rec?.firstDeployment === 'string' ? { firstDeployment: rec.firstDeployment } : {}),
     band: rec?.band,
     freeze: rec?.freeze ?? null,
     checkpoints: rec?.checkpoints ?? [],

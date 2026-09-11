@@ -550,10 +550,48 @@
       "heldForReview": "held until reviewed",
       "satisfiedBy": "Satisfied by {policies} — no change needed",
       "satisfiedTogether": "Satisfied by {policies} together — no change needed",
+      "impact": {
+        "$comment": "The Impact column's words that are not a count (derive/whoLine.ts IMPACT). Unknown is never zero.",
+        "notEstablished": "Not established",
+        "noUserImpact": "No user impact",
+        "configurationOnly": "Configuration only"
+      },
+      "when": {
+        "$comment": "The board's When column where a row carries no date or reason of its own (planBoard.ts boardWhen): never blank (owner, 2026-09-11).",
+        "complete": "Complete",
+        "notScheduled": "Not scheduled",
+        "after": "After {step}",
+        "afterPrerequisites": "After prerequisites"
+      },
+      "progress": {
+        "$comment": "The Plan header's progress tiles (Plan.tsx), which replaced the generated status sentence (owner, 2026-09-11).",
+        "label": "Plan progress",
+        "steps": "Steps",
+        "inPlace": "In place",
+        "waiting": "Waiting",
+        "remaining": "Remaining",
+        "started": "Started {date}"
+      },
+      "howTo": {
+        "link": "How to use this plan →",
+        "items": [
+          "Preparation comes first: it makes the groups, accounts and answers later steps rely on.",
+          "Work is scheduled onto eligible workdays, from the plan start and the first deployment day.",
+          "A step that waits on another step is held until that step is done.",
+          "Open a step to review its readiness, its implementation and when it is done.",
+          "Plan settings sets the start, the first deployment and the change freeze."
+        ]
+      },
       "settingsLink": "Plan settings",
       "settings": {
         "h3": "Plan settings",
         "start": "Start date",
+        "planStarts": "Plan starts",
+        "firstDeployment": "First deployment",
+        "firstDeploymentNote": "Preparation begins on the start date; policies are first created, in report-only, on the first deployment day.",
+        "workdays": "Eligible workdays",
+        "workdaysWeek": "Monday to Friday",
+        "workdaysWith": "Monday to Friday and {days}",
         "freeze": "Change freeze",
         "freezeFrom": "from",
         "freezeTo": "to",

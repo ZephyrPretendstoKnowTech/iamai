@@ -23,8 +23,15 @@
 // mis-files the first step somebody renames.
 import type { Step } from '../../roadmap/types.ts'
 import { isHeld } from '../../roadmap/holds.ts'
+import { holdWaitsOn } from '../../roadmap/stateReason.ts'
 import { pages } from '../../content/content.ts'
-import { rowWhen, rowWhenWraps } from './rowWhen.ts'
+import { fillText } from '../../content/render.ts'
+import { absoluteDate as dayLabel } from '../../copy/dates.ts'
+import { BLOCKED_REASON } from '../../copy/reasons.ts'
+import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
+
+/** The When column's words where a row has no date or reason of its own (owner, 2026-09-11): the column is never blank. */
+export const WHEN = (pages.plan as unknown as { when: { complete: string; notScheduled: string; after: string; afterPrerequisites: string } }).when
 
 /**
  * The three facts the Status projection reads, and no more. Named as a type so
@@ -226,33 +233,74 @@ export function statusGroupOf(step: StatusFacts, isNext: boolean, held = false):
  * timing value says. The value itself is `rowWhen`'s and is not touched: this
  * decides what the BOARD does with it, and nothing outside the board asks.
  *
- * Two rules, and both exist because a date is a promise:
+ * The column is never blank (owner, 2026-09-11), and a date is a promise:
  *
- *   * the generic `now` that every prerequisite and check carries is dropped.
- *     It is true and it is useless: repeated down nine Preparation rows it says
- *     nothing that separates one row from the next, and the column stops being
- *     read at all. The row's own state already says the work is available.
- *   * a row production is holding back shows `Held` in place of the wave date it
- *     would otherwise borrow. That date belongs to the wave, not to the step,
- *     and printed beside a blocked row it reads as a schedule the step is still
- *     on. A row whose column already carries a REASON — a readiness threshold,
- *     "held until reviewed" — keeps it: that is more specific than `Held`.
+ *   * a finished step reads Complete;
+ *   * the generic `now` every prerequisite and check carries reads the day its
+ *     phase begins — the day the work is scheduled — or Not scheduled where the
+ *     row's group has none;
+ *   * a row production is holding back never borrows its wave's date: it names
+ *     the step it waits on (After …, or After prerequisites), else reads Held. A
+ *     row whose column already carries a REASON — a readiness threshold, "held
+ *     until reviewed" — keeps it: that is more specific;
+ *   * anything else with no value of its own names what it waits on, or reads
+ *     Not scheduled.
  */
-export function boardWhen(when: string, o: { genericNow: boolean; held: boolean; carriesReason: boolean }): string {
-  if (o.genericNow) return ''
-  if (o.held && !o.carriesReason) return BOARD.held
-  return when
+export function boardWhen(when: string, o: { genericNow: boolean; held: boolean; carriesReason: boolean; complete?: boolean; groupDay?: string | null; waitsOn?: string | null }): string {
+  if (o.complete) return WHEN.complete
+  if (o.genericNow) return o.groupDay ?? WHEN.notScheduled
+  if (o.held && !o.carriesReason) return o.waitsOn ?? BOARD.held
+  if (when !== '') return when
+  return o.waitsOn ?? WHEN.notScheduled
+}
+
+/** Titles longer than this make the column a paragraph; the row's reason line names the step instead. */
+const AFTER_TITLE_CHARS = 32
+
+/** "After {step}" for one step waited on whose title fits the column, "After prerequisites" otherwise; null when nothing is waited on. */
+function waitsOnLabel(ids: readonly string[], titleOf: (id: string) => string | null): string | null {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return null
+  const title = unique.length === 1 ? titleOf(unique[0]) : null
+  return title !== null && title.length <= AFTER_TITLE_CHARS ? fillText(WHEN.after, { step: title }) : WHEN.afterPrerequisites
 }
 
 /**
  * The board's timing column for one step: the row's own value (rowWhen.ts), with
- * Held exactly where roadmap/holds.ts says the step is held. A step sequenced
- * after another is not held and keeps its date; the board infers nothing about
- * holds from a step's status word or the group it sits in.
+ * the step a hold waits on exactly where roadmap/holds.ts says the step is held
+ * (stateReason.ts holdWaitsOn). A step sequenced after another is not held and
+ * keeps its date; the board infers nothing about holds from a step's status word
+ * or the group it sits in. `waveStart` is the row's roadmap group's first day.
  */
-export function boardWhenOf(step: Step, waveStart: string | null = null): string {
+export function boardWhenOf(step: Step, waveStart: string | null = null, titleOf: (id: string) => string | null = () => null): string {
   const when = rowWhen(step, waveStart)
-  return boardWhen(when, { genericNow: when === (pages.plan as { now: string }).now, held: isHeld(step), carriesReason: rowWhenWraps(step) })
+  const held = isHeld(step)
+  const waits = held ? holdWaitsOn(step) : step.status === 'blocked' ? step.blockers.flatMap((b) => (b.kind === 'step' ? [b.stepId] : [])) : []
+  return boardWhen(when, {
+    complete: step.status === 'done',
+    genericNow: when === (pages.plan as { now: string }).now,
+    held,
+    carriesReason: rowWhenWraps(step),
+    groupDay: waveStart ? dayLabel(waveStart) : null,
+    waitsOn: waitsOnLabel(waits, titleOf),
+  })
+}
+
+/** A When cell that is words rather than a date wraps inside its column rather than widening it. */
+export function boardWhenWraps(step: Step, when: string): boolean {
+  return rowWhenWraps(step) || when === WHEN.afterPrerequisites || when.startsWith(WHEN.after.split('{')[0])
+}
+
+/**
+ * The reason under a row (rowWhen.ts rowReason), unless the When cell already
+ * names the one step it comes after: "after: Create X" under "After Create X"
+ * said the same thing twice on one row.
+ */
+export function boardReasonOf(step: Step, when: string): string | null {
+  const reason = rowReason(step)
+  const lead = WHEN.after.split('{')[0]
+  if (reason !== null && when !== WHEN.afterPrerequisites && when.startsWith(lead) && reason === BLOCKED_REASON.after(when.slice(lead.length))) return null
+  return reason
 }
 
 /**

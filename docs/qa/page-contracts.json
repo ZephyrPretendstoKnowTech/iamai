@@ -513,7 +513,8 @@
         ],
         "links": [
           "Plan settings",
-          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, not proven|Nothing set up)\\s*\\d+$"
+          "re:^(Passkey or security key, proven|Authenticator app, proven|Windows Hello only|Set up, not proven|Nothing set up)\\s*\\d+$",
+          "How to use this plan →"
         ]
       },
       "budget": {

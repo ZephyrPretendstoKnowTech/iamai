@@ -205,6 +205,8 @@ export type RoadmapInput = {
   viability: MfaViability[]
   strengths: StrengthLookup
   startDate?: string
+  /** The first day deployment-capable work may land (Plan settings); absent, the start (roadmap/schedule.ts ScheduleOptions). */
+  firstDeployment?: string | null
   /** Size-band override; null or absent = detected from active users. */
   band?: SizeBand | null
   operatorUserId?: string | null
@@ -2034,6 +2036,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     freeze: input.changeFreeze ?? null,
     rhythm,
     registrationDays: registration.workingDays,
+    firstDeployment: input.firstDeployment ?? null,
   })
   schedule.rhythm = rhythm
   // Cleanup (target-state §5, §9): dated after the last enforcement window, one

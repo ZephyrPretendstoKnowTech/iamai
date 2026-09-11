@@ -30,7 +30,7 @@ import { settleForecast } from '../../roadmap/forecast.ts'
 import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
-import { proposedStart } from '../../derive/planStart.ts'
+import { effectiveFirstDeployment, proposedStart } from '../../derive/planStart.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
@@ -69,6 +69,10 @@ export type PlanData = {
   computed: PlanComputed | null
   mapping: MappingState | null
   startDate: string | null
+  /** The first day deployment-capable work lands (derive/planStart.ts effectiveFirstDeployment); null before a start exists. */
+  firstDeployment: string | null
+  /** Set the first deployment day (Plan settings); null returns it to the eligible workday after the start. */
+  setFirstDeployment: (iso: string | null) => void
   band: SizeBand | null
   freeze: ChangeFreeze | null
   /** Save a new mapping (an assumptions edit) and regenerate. */
@@ -252,6 +256,11 @@ export function usePlanData(
   // proposed again on every visit until Start the plan anchors a date; the
   // schedule clamps a weekend to the working day after it.
   const startDate = saved?.startDate ?? (snapshot ? proposedStart(mapping?.displayTimeZone ?? null) : null)
+  // The first deployment (owner, 2026-09-11): preparation begins on the start,
+  // deployment-capable work on the eligible workday after it unless a day was
+  // saved; a plan started before the setting existed keeps deploying from its
+  // start, so its dates do not move.
+  const firstDeployment = startDate ? effectiveFirstDeployment(startDate, saved) : null
   // Every date the pages format reads the stored zone.
   useEffect(() => {
     setDisplayTimeZone(mapping?.displayTimeZone ?? null)
@@ -289,6 +298,7 @@ export function usePlanData(
       viability,
       strengths,
       startDate,
+      firstDeployment,
       band,
       operatorUserId: null,
       names,
@@ -318,7 +328,7 @@ export function usePlanData(
     annotateStateReasons(steps)
     return { steps, schedule, coverage, viability, names, staticViolations: result.housekeeping.staticViolations, goalMap: baseline.goalMap ?? PINNED_GOAL_MAP }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor])
+  }, [snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor])
 
   // Persist the decisions only, so a Skip and the start/freeze survive a reload;
   // the plan itself is regenerated, never stored. Writing here also completes the
@@ -347,7 +357,8 @@ export function usePlanData(
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
+    if (saved.firstDeployment) decisions.firstDeployment = saved.firstDeployment
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, firstDeployment: decisions.firstDeployment, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)
@@ -371,10 +382,22 @@ export function usePlanData(
       void saveMappingState(next)
       bump()
     },
+    firstDeployment,
     setStart: (iso) => {
       // A date set here anchors the start (a deliberate re-plan, §5); clearing
       // it returns the plan to proposals from today, and it is no longer started.
-      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: iso ?? undefined, ...(iso === null ? { startedAt: undefined } : {}) }))
+      // A saved first deployment the new start would put before it goes back to
+      // the default: deployment never lands before the plan starts.
+      setSaved((p) => ({
+        ...(p ?? { planId, skips: {}, checkpoints: [] }),
+        startDate: iso ?? undefined,
+        firstDeployment: iso !== null && p?.firstDeployment && p.firstDeployment >= iso ? p.firstDeployment : undefined,
+        ...(iso === null ? { startedAt: undefined } : {}),
+      }))
+      bump()
+    },
+    setFirstDeployment: (iso) => {
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), firstDeployment: iso ?? undefined }))
       bump()
     },
     // Started means Start the plan was pressed: a start date alone is an anchor
@@ -382,7 +405,9 @@ export function usePlanData(
     startedFrom: saved?.startedAt ? (saved.startDate ?? null) : null,
     startedAt: saved?.startedAt ?? null,
     startPlan: (effectiveStart) => {
-      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: effectiveStart, startedAt: new Date().toISOString() }))
+      // Starting anchors the first deployment with the start, so a later visit
+      // (or a change to the default) never moves the dates of a started plan.
+      setSaved((p) => ({ ...(p ?? { planId, skips: {}, checkpoints: [] }), startDate: effectiveStart, firstDeployment: effectiveFirstDeployment(effectiveStart, p), startedAt: new Date().toISOString() }))
       bump()
     },
     setBand: (b) => {

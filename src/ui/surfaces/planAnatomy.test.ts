@@ -238,10 +238,12 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   // generic `now` and says `Held` exactly where roadmap/holds.ts holds the step.
   // It takes the VALUE and chooses what to show; it computes no date, and every
   // other surface still calls `rowWhen` directly.
-  assert.match(PLAN, /const when = boardWhenOf\(step, group\.start\)/, 'the timing zone no longer reads the one when authority')
+  assert.match(PLAN, /const when = boardWhenOf\(step, group\.start, titleOf\)/, 'the timing zone no longer reads the one when authority')
   assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
-  assert.match(PLAN, /reason=\{rowReason\(step\)\}/, 'the quiet line no longer reads the one reason authority')
-  assert.match(PLAN, /whenReason=\{rowWhenWraps\(step\)\}/)
+  // The reason and the wrap are the board's readings of the same two authorities
+  // (planBoard.ts boardReasonOf over rowReason, boardWhenWraps over rowWhenWraps).
+  assert.match(PLAN, /reason=\{boardReasonOf\(step, when\)\}/, 'the quiet line no longer reads the one reason authority')
+  assert.match(PLAN, /whenReason=\{boardWhenWraps\(step, when\)\}/)
 })
 
 test('the roadmap order and grouping are still the plan\'s, not the row\'s', () => {
