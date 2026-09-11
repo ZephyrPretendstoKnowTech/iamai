@@ -1,80 +1,184 @@
 # Implementation content: package → Plan step
 
 One pipeline turns an authored implementation-content package into the
-Implementation viewer, the Readiness tiles, the Troubleshooting dialog and the
-source line of a Plan step. Only `s-goal-device-registration-mfa` is active.
+Implementation viewer, the Readiness tiles, the owner confirmations, the
+Troubleshooting dialog and the source line of a Plan step.
+
+Registered: `s-goal-device-registration-mfa`. **Active in this build: none.**
+The pilot was authored against baseline pin `8461e0f2`, and this build pins
+`90d9b890` (`baselines/*.pinned.json`). A package whose
+`baselineAuthority.pinCommit` names another commit describes another baseline's
+policy, so the Plan does not activate it (`stepPackage.ts packageApplies`).
+The step keeps the channels the engine builds from the pinned baseline.
 
 ## 1. Package (authored, not edited for integration)
 
 `docs/implementation-content/<step-id>/`
 
 - `STEP.md` owns intent.
-- `META.json` owns projection per semantic state, the bindings, the outputs,
-  `verifiedSources` and `supportBlocks`.
+- `META.json` owns the projection per semantic state, the bindings, the
+  outputs, `verifiedSources`, `supportBlocks` and `prerequisites`.
 - `CONTENT.md` owns the blocks (`@@IAMAI-BEGIN {json}` … `@@IAMAI-END`).
 
-## 2. Compile (existing CLI, extended)
+The prose (`when`, `appliesWhen`, every rule line and block body) is the
+author's. It is never read as logic. What the runtime evaluates is the
+structured fields below.
 
-`scripts/compile-implementation-content.mjs` parses and validates packages with
-the shared protocol module (`protocol.ts`: `parseBlocks`, `validatePackage`,
-`compilePackage`). The same checks run in the tests, so the CLI and the runtime
-cannot disagree.
+## 2. Runtime contract
 
-Validation fails on a nested, duplicate, unterminated or orphan block; invalid
-block metadata; an unsupported channel; an undeclared binding; unparseable
-JSON or JSON template; an unknown projection key; a projected block that does
-not exist, is in another channel or does not declare the state; or a missing
-support block.
+A package that passes `validatePackage` is one the runtime can project safely.
+Everything the runtime reads is validated, and a feature it does not implement
+is an error (`protocol.ts`). A feature the guide allows but the runtime never
+reaches, such as a custom state, is a warning.
 
-Emit the runtime registry (only the packages named on the command line):
+### States
+
+The runtime enters `missing`, `partial`, `reportOnly`, `readyToEnforce`,
+`inPlace`, `blocked`, `needsDecision`, `sourceConflict` and `notLicensed`
+(`stepPackage.ts packageStateOf`). Order:
+
+1. Set aside gives no state.
+2. `sourceConflict`.
+3. `needsDecision`.
+4. `blocked` when nothing is to be implemented now. The exception is the owner's
+   held report-only creation (`stepContract.ts implementationIsCurrent`).
+5. `inPlace`.
+6. `partial` whenever an update changes material fields of the tenant's policy,
+   whatever the lifecycle.
+7. `readyToEnforce`, `reportOnly`.
+8. `missing` for a create.
+
+A state with no projection shows no implementation. It does not throw.
+
+### Machine conditions (`conditions.ts`)
+
+The operators are:
+
+- `state`, `present`, `absent`, `equals`, `in`
+- `confirmed` (a prerequisite satisfied now)
+- `baselineCommit`
+- `all`, `any`, `not`
+
+Each condition object has exactly one operator. Bindings, prerequisites and
+states must be declared.
+
+### Readiness (`supportBlocks.readiness`, JSON or JSON template)
+
+- `tiles[]`: `id`, `label` or `gate`, `rules[]`.
+  - Each rule has `if` (a condition), `result` (Ready | Review required |
+    Unknown | Blocked | Not applicable) and `line`.
+  - The first rule whose `if` holds is the tile. A tile none of whose rules
+    holds is not shown.
+- `gateKey`: the runtime tile that states the same fact, which answers instead.
+- `confirms[]`: the prerequisites a person confirms from this tile.
+- `conclusionByState`: `{ state: conclusionKey }` into `conclusions`.
+
+### Prerequisites and owner confirmations
+
+`META.prerequisites[]`: `id`, `class`, `requiredBefore: "<state>-><state>"`,
+plus two optional fields:
+
+- `evidence`: a condition, the tenant fact that satisfies the prerequisite
+  without anybody's word.
+- `invalidatedBy[]`: the bindings a confirmation is given against.
+
+A prerequisite gates the artifacts of its `requiredBefore` state. They are held
+until every one of them is satisfied, by evidence or by a confirmation whose
+basis (a hash of the `invalidatedBy` values) still matches.
+
+Confirmations persist in the plan record and the plan file
+(`PlanDecisions.confirmations`, `roadmap/decisions.ts`). They stop counting
+when their values change, and are never asked again for unchanged facts.
+
+### Partial composition
+
+- `mode: "composeByMismatch"` (the guide's `compose` + `modules` is normalised
+  into it, `protocol.ts normalizeProjection`).
+- `mismatches.<id>` carries its channel refs and one of:
+  - `facts[]`: policy field paths under `conditions`, `grantControls` or
+    `sessionControls`;
+  - `select` (a condition), optionally `alongside: true`.
+- IAMAI supplies `policy.current.changedFields`: the leaf fields its update
+  changes (`roadmap/changedFields.ts`).
+- A module is selected when one of its facts covers a changed field, or when
+  its `select` holds (beside another selected module, if `alongside`).
+- A changed field no module covers holds the whole projection.
+- The selected module ids are bound to the projection's `mismatchBinding`.
+
+### PowerShell invocation
+
+A `deployableAfterBinding` PowerShell block declares
+`invocation: { modeParameter, correctionsParameter?, parameters: { Name: { binding | switch + prerequisite, modes[] } } }`.
+It is validated against the script's own `param()` block (`invocation.ts`).
+
+The artifact the viewer shows and Copy copies is the script, defined once as a
+function, then called once per projected run with IAMAI's values. A switch is
+passed only for a satisfied prerequisite.
+
+### JSON requests
+
+Blocks that send to the same method and endpoint are merged into one request
+body. Two blocks setting one field, or bodies for different requests, hold the
+projection.
+
+### Email
+
+Email blocks declare `audience` and `communicationTrigger` (on the block or
+`META.email`).
+
+### Troubleshooting
+
+`scenarios[]` declare `id`, `title` and `states[]`.
+
+## 3. Compile and validate
+
+The existing CLI and the runtime share `protocol.ts`:
 
 ```
+node scripts/compile-implementation-content.mjs <package-dir> --lint
+node scripts/compile-implementation-content.mjs --validate-library docs/implementation-content [--json out.json]
 node scripts/compile-implementation-content.mjs --registry src/content/implementation/registry.generated.json docs/implementation-content/s-goal-device-registration-mfa
 ```
 
-`pilot.test.ts` fails when `registry.generated.json` differs from a fresh
-compile of the package, or when it holds any other package.
+`--validate-library` runs production validation over every package without
+registering or activating any of them, and groups the failures by feature.
+`pilot.test.ts` fails when the registry drifts from its sources or registers
+another package.
 
-## 3. Runtime adapter (`src/ui/surfaces/stepPackage.ts`)
+## 4. Runtime adapter (`src/ui/surfaces/stepPackage.ts`)
 
-- `implementationPackageFor(step.id)`: the package is found by step id only.
-- `packageStateOf(step, contract)`: the package state comes from the lifecycle
-  engine (Step.state, the Step Contract, Foundation A operations). The package
-  never decides the state.
-- `packageBindings(step, ctx, contract)`: only values IAMAI already holds, with
-  no new tenant read. Anything it cannot bind is absent.
-- `mergeReadiness(runtime, packageReadiness)`: runtime tiles keep their place.
-  Package tiles fill the remaining room.
+- `implementationPackageFor(stepId)` returns a registered package that applies
+  to this build's baseline pin.
+- `packageStateOf(step, contract, snapshot)` maps the lifecycle engine's truth
+  to a package state. The package never decides the state.
+- `packageBindings(...)` binds only values IAMAI already holds, including
+  `policy.current.changedFields` and
+  `tenant.deviceRegistration.multiFactorAuthConfiguration` (read with
+  `Policy.Read.All`; unknown where the role cannot read it).
+- `packageRuntime(...)` reports every prerequisite's standing.
+- `mergeReadiness(...)`: runtime tiles keep their places, `gateKey` tiles give
+  way, and a confirmation the next transition waits on is shown first.
 
-## 4. Projection (`project.ts`, pure, no clock)
+## 5. Projection (`project.ts`, pure, no clock)
 
-- `projectImplementation(pkg, state, bindings)` reads the META projection for
-  the state. Partial composes sharedBefore, then the blocks for each id in
-  `policy.current.semanticMismatches`, then sharedAfter, deduped by block id.
-- Bindings are resolved per line. An absent optional value drops its line. An
-  absent required value, an unknown mismatch id or an invalid artifact holds
-  the whole projection, so there is no deployable content. No raw placeholder
-  survives.
-- `packageReadiness` evaluates `readiness.model`. A tile is Ready only when its
-  authored rule has its evidence (a required input present, a single baseline
-  rule). An unobserved input is Unknown, and a state-scoped human check is
-  Review required.
-- `troubleshootingFor` returns `troubleshooting.model` scenarios for the state.
-- `sourceUpdatedOn` returns the latest `verifiedSources[].checkedOn` of the
-  user-facing sources, never the build, deploy or browser time.
+`projectSafely`, `readinessSafely` and `troubleshootingSafely` never throw. A
+fault holds the implementation, and the step still renders its lifecycle,
+readiness and a truthful no-action box. The fault is reported to the console.
 
-## 5. Viewer (`ContentStep.tsx` `Implementation`)
+## 6. Viewer (`ContentStep.tsx` `Implementation`)
 
-The tabs follow the projected channels in the order Entra | PowerShell | JSON |
-AI Info | Email. Preview, Expand and Copy all read the same artifact text.
-Copy goes through the existing export/redaction guard. The AI warning shows on
-AI Info. The support row under the viewer holds the channel note (PowerShell
-mode, JSON request), Troubleshooting and the source line. A step without a
-package renders exactly as before.
+- Tabs, in order: Entra | PowerShell | JSON | AI Info | Email.
+- Preview, Expand and Copy all read the same artifact text.
+- Copy uses the `implementation-artifact` disposition (`exportGuard.ts`), so a
+  copied body or script keeps its tenant ids and Microsoft constants.
+- The AI warning shows on AI Info.
+- A held projection shows a no-action box for its reason: confirmations
+  pending, correction not covered, package fault, or missing value.
 
 ## Review harness (dev server only; not a build input)
 
-`dev-pilot.html?state=readyToEnforce|reportOnly|missing|fixture[&print=1]`
-renders the real fixture step moved to a state (`src/testing/pilotFixture.ts`)
-through ContentStep. The fixture supplies state and bindings. The package
-supplies every word.
+`/planner/dev/pilot.html?state=readyToEnforce|reportOnly|missing|fixture[&print=1]`
+renders the real fixture step, moved to a state
+(`src/testing/pilotFixture.ts`), through ContentStep. It is rendered as a build
+pinned to the pilot's own baseline would render it, and says so on the page.
+Confirmations recorded there live only in that page.

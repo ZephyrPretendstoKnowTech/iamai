@@ -50,7 +50,8 @@
           "people.affected.count",
           "evidence.deviceRegistration",
           "evidence.enrollmentWorkflows",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "tenant.deviceRegistration.multiFactorAuthConfiguration"
         ],
         "projection": {
           "missing": {
@@ -77,6 +78,7 @@
           },
           "partial": {
             "mode": "composeByMismatch",
+            "mismatchBinding": "policy.current.semanticMismatches",
             "requires": [
               "policy.current.id",
               "policy.current.semanticMismatches",
@@ -90,6 +92,12 @@
             "mismatches": {
               "users.include-all": {
                 "appliesWhen": "included population is not exactly All users",
+                "facts": [
+                  "conditions.users.includeUsers",
+                  "conditions.users.includeGroups",
+                  "conditions.users.includeRoles",
+                  "conditions.users.includeGuestsOrExternalUsers"
+                ],
                 "entra": [
                   "entra.correct.users.include-all"
                 ],
@@ -108,6 +116,12 @@
               },
               "users.exclusions-canonical": {
                 "appliesWhen": "exclusion set differs from IAMAI's canonical target",
+                "facts": [
+                  "conditions.users.excludeUsers",
+                  "conditions.users.excludeGroups",
+                  "conditions.users.excludeRoles",
+                  "conditions.users.excludeGuestsOrExternalUsers"
+                ],
                 "entra": [
                   "entra.correct.users.exclusions-canonical"
                 ],
@@ -126,6 +140,9 @@
               },
               "target.register-or-join-devices": {
                 "appliesWhen": "target resource/user action differs from Register or join devices only",
+                "facts": [
+                  "conditions.applications"
+                ],
                 "entra": [
                   "entra.correct.target.register-or-join-devices"
                 ],
@@ -144,6 +161,18 @@
               },
               "conditions.remove-noncanonical": {
                 "appliesWhen": "one or more noncanonical conditions are present",
+                "facts": [
+                  "conditions.clientAppTypes",
+                  "conditions.locations",
+                  "conditions.platforms",
+                  "conditions.devices",
+                  "conditions.signInRiskLevels",
+                  "conditions.userRiskLevels",
+                  "conditions.servicePrincipalRiskLevels",
+                  "conditions.authenticationFlows",
+                  "conditions.insiderRiskLevels",
+                  "conditions.clientApplications"
+                ],
                 "entra": [
                   "entra.correct.conditions.remove-noncanonical"
                 ],
@@ -162,6 +191,9 @@
               },
               "grant.authentication-strength": {
                 "appliesWhen": "grant or authentication strength differs from retained pinned target",
+                "facts": [
+                  "grantControls"
+                ],
                 "entra": [
                   "entra.correct.grant.authentication-strength"
                 ],
@@ -180,6 +212,13 @@
               },
               "lifecycle.report-only": {
                 "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
+                "select": {
+                  "equals": [
+                    "policy.current.state",
+                    "enabled"
+                  ]
+                },
+                "alongside": true,
                 "entra": [
                   "entra.correct.lifecycle.report-only"
                 ],
@@ -318,17 +357,33 @@
           {
             "id": "legacy-device-mfa-toggle",
             "class": "human-validation",
-            "requiredBefore": "readyToEnforce->inPlace"
+            "requiredBefore": "readyToEnforce->inPlace",
+            "evidence": {
+              "equals": [
+                "tenant.deviceRegistration.multiFactorAuthConfiguration",
+                "notRequired"
+              ]
+            },
+            "invalidatedBy": [
+              "policy.current.id"
+            ]
           },
           {
             "id": "enrollment-workflows",
             "class": "human-validation",
-            "requiredBefore": "readyToEnforce->inPlace"
+            "requiredBefore": "readyToEnforce->inPlace",
+            "invalidatedBy": [
+              "policy.current.id",
+              "policy.target.excludeGroups"
+            ]
           },
           {
             "id": "external-auth-methods",
             "class": "human-validation",
-            "requiredBefore": "readyToEnforce->inPlace"
+            "requiredBefore": "readyToEnforce->inPlace",
+            "invalidatedBy": [
+              "policy.current.id"
+            ]
           }
         ],
         "sharedTechnicalPrimitives": [
@@ -788,7 +843,57 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "deployableAfterBinding"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "correctionsParameter": "Corrections",
+              "parameters": {
+                "PolicyDisplayName": {
+                  "binding": "policy.target.displayName",
+                  "modes": [
+                    "Create"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "Correct",
+                    "Verify",
+                    "Enforce"
+                  ]
+                },
+                "ExcludeGroupIds": {
+                  "binding": "policy.target.excludeGroups",
+                  "modes": [
+                    "Create",
+                    "Correct",
+                    "Verify",
+                    "Enforce"
+                  ]
+                },
+                "LegacyDeviceMfaToggleConfirmedNo": {
+                  "switch": true,
+                  "prerequisite": "legacy-device-mfa-toggle",
+                  "modes": [
+                    "Enforce"
+                  ]
+                },
+                "EnrollmentWorkflowsValidated": {
+                  "switch": true,
+                  "prerequisite": "enrollment-workflows",
+                  "modes": [
+                    "Enforce"
+                  ]
+                },
+                "ExternalAuthenticationCompatibilityResolved": {
+                  "switch": true,
+                  "prerequisite": "external-auth-methods",
+                  "modes": [
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
           "text": "# IAMAI compact implementation script — Require MFA to Register a Device\n# Required module: Microsoft.Graph.Authentication\n# Create/Correct/Enforce delegated scopes: Policy.Read.All, Policy.ReadWrite.ConditionalAccess\n# Verify delegated scope: Policy.Read.All\n# Mutation role: Conditional Access Administrator or Security Administrator\n\n[CmdletBinding()]\nparam(\n    [Parameter(Mandatory)]\n    [ValidateSet('Create','Correct','Verify','Enforce')]\n    [string] $Mode,\n\n    [string] $PolicyDisplayName,\n    [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]\n    [string] $PolicyId,\n    [string[]] $ExcludeGroupIds,\n\n    [ValidateSet('Conditions','Grant','ReportOnly')]\n    [string[]] $Corrections,\n\n    [switch] $LegacyDeviceMfaToggleConfirmedNo,\n    [switch] $EnrollmentWorkflowsValidated,\n    [switch] $ExternalAuthenticationCompatibilityResolved\n)\n\nSet-StrictMode -Version Latest\n$ErrorActionPreference = 'Stop'\n$StrengthId = '00000000-0000-0000-0000-000000000002'\n$BaseUri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'\n$GuidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'\n\nfunction Assert-ExcludeIds {\n    param([string[]] $Ids)\n    if (-not $Ids -or $Ids.Count -lt 1) { throw 'IAMAI must supply the complete canonical exclusion group ID set.' }\n    $invalid = @($Ids | Where-Object { $_ -notmatch $GuidPattern })\n    if ($invalid.Count -gt 0) { throw 'One or more exclusion group IDs are invalid.' }\n}\n\nfunction Connect-IAMAIContext {\n    param([string[]] $Scopes)\n    Import-Module Microsoft.Graph.Authentication -ErrorAction Stop\n    $context = Get-MgContext\n    $missing = if ($context) { @($Scopes | Where-Object { $_ -notin @($context.Scopes) }) } else { @($Scopes) }\n    if (-not $context -or $missing.Count -gt 0) {\n        Connect-MgGraph -Scopes $Scopes -NoWelcome\n    }\n}\n\nfunction Get-PolicyById {\n    param([string] $Id)\n    if (-not $Id) { throw 'This mode requires the IAMAI-resolved stable policy ID.' }\n    $p = Invoke-MgGraphRequest -Method GET -Uri \"$BaseUri/$Id\"\n    if (-not $p.id -or $p.id -ne $Id) { throw 'Stable-ID policy read-back failed.' }\n    return $p\n}\n\nfunction Assert-CanonicalPolicy {\n    param(\n        $Policy,\n        [string[]] $ExpectedExcludeGroupIds,\n        [ValidateSet('enabledForReportingButNotEnforced','enabled')]\n        [string] $ExpectedState\n    )\n    Assert-ExcludeIds $ExpectedExcludeGroupIds\n    $errors = [System.Collections.Generic.List[string]]::new()\n    if ($Policy.state -ne $ExpectedState) { $errors.Add(\"Policy state is '$($Policy.state)', expected '$ExpectedState'.\") }\n    if (@($Policy.conditions.users.includeUsers).Count -ne 1 -or @($Policy.conditions.users.includeUsers)[0] -ne 'All') { $errors.Add('Included users are not exactly All.') }\n    if ((@($Policy.conditions.users.excludeGroups | Sort-Object) -join '|') -ne (@($ExpectedExcludeGroupIds | Sort-Object) -join '|')) { $errors.Add('Exclusion group set differs from IAMAI canonical target.') }\n    if (@($Policy.conditions.applications.includeUserActions).Count -ne 1 -or @($Policy.conditions.applications.includeUserActions)[0] -ne 'urn:user:registerdevice') { $errors.Add('User Action is not urn:user:registerdevice.') }\n    if (@($Policy.conditions.applications.includeApplications).Count -ne 0 -or @($Policy.conditions.applications.excludeApplications).Count -ne 0) { $errors.Add('Cloud application scope is present.') }\n    if (@($Policy.conditions.clientAppTypes).Count -ne 1 -or @($Policy.conditions.clientAppTypes)[0] -ne 'all') { $errors.Add('clientAppTypes differs from canonical Graph representation.') }\n    if (@($Policy.conditions.signInRiskLevels).Count -ne 0 -or @($Policy.conditions.userRiskLevels).Count -ne 0 -or @($Policy.conditions.servicePrincipalRiskLevels).Count -ne 0) { $errors.Add('A noncanonical risk condition is present.') }\n    foreach ($name in @('locations','platforms','devices','authenticationFlows','insiderRiskLevels')) {\n        if ($null -ne $Policy.conditions.$name) { $errors.Add(\"Noncanonical condition is present: $name\") }\n    }\n    if ($Policy.grantControls.authenticationStrength.id -ne $StrengthId) { $errors.Add('Authentication strength differs from pinned Multifactor authentication.') }\n    if (@($Policy.grantControls.builtInControls).Count -ne 0) { $errors.Add('A built-in grant is present in addition to authentication strength.') }\n    if ($null -ne $Policy.sessionControls) { $errors.Add('Session controls are present.') }\n    if ($errors.Count -gt 0) {\n        $errors | ForEach-Object { Write-Error $_ }\n        throw 'Canonical policy verification failed.'\n    }\n}\n\nswitch ($Mode) {\n    'Create' {\n        if ([string]::IsNullOrWhiteSpace($PolicyDisplayName)) { throw 'Create requires PolicyDisplayName.' }\n        Assert-ExcludeIds $ExcludeGroupIds\n        Connect-IAMAIContext @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')\n\n        $escapedName = $PolicyDisplayName.Replace(\"'\", \"''\")\n        $encodedFilter = [uri]::EscapeDataString(\"displayName eq '$escapedName'\")\n        $matches = @((Invoke-MgGraphRequest -Method GET -Uri \"$BaseUri?`$filter=$encodedFilter\").value)\n        if ($matches.Count -gt 0) { throw 'A Conditional Access policy already has this exact display name. Rescan IAMAI; do not create a duplicate.' }\n\n        $body = @{\n            displayName = $PolicyDisplayName\n            state = 'enabledForReportingButNotEnforced'\n            conditions = @{\n                users = @{ includeUsers=@('All'); excludeUsers=@(); includeGroups=@(); excludeGroups=@($ExcludeGroupIds); includeRoles=@(); excludeRoles=@() }\n                applications = @{ includeApplications=@(); excludeApplications=@(); includeUserActions=@('urn:user:registerdevice') }\n                clientAppTypes=@('all'); signInRiskLevels=@(); userRiskLevels=@(); servicePrincipalRiskLevels=@()\n            }\n            grantControls = @{ operator='OR'; builtInControls=@(); customAuthenticationFactors=@(); termsOfUse=@(); authenticationStrength=@{id=$StrengthId} }\n        }\n        $created = Invoke-MgGraphRequest -Method POST -Uri $BaseUri -Body ($body | ConvertTo-Json -Depth 20) -ContentType 'application/json'\n        if (-not $created.id) { throw 'Microsoft Graph did not return a policy ID.' }\n        $after = Get-PolicyById $created.id\n        Assert-CanonicalPolicy -Policy $after -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabledForReportingButNotEnforced'\n        Write-Host \"Created policy ID $($created.id) in Report-only. Rescan IAMAI.\"\n    }\n\n    'Correct' {\n        if (-not $Corrections -or $Corrections.Count -lt 1) { throw 'Correct requires at least one Corrections value.' }\n        if ($Corrections -contains 'Conditions') { Assert-ExcludeIds $ExcludeGroupIds }\n        Connect-IAMAIContext @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')\n        $current = Get-PolicyById $PolicyId\n        $body = @{}\n\n        if ($Corrections -contains 'Conditions') {\n            $body.conditions = @{\n                users = @{ includeUsers=@('All'); excludeUsers=@(); includeGroups=@(); excludeGroups=@($ExcludeGroupIds); includeRoles=@(); excludeRoles=@() }\n                applications = @{ includeApplications=@(); excludeApplications=@(); includeUserActions=@('urn:user:registerdevice'); applicationFilter=$null }\n                clientAppTypes=@('all'); signInRiskLevels=@(); userRiskLevels=@(); servicePrincipalRiskLevels=@()\n                locations=$null; platforms=$null; devices=$null; authenticationFlows=$null; insiderRiskLevels=$null\n            }\n        }\n        if ($Corrections -contains 'Grant') {\n            $body.grantControls = @{ operator='OR'; builtInControls=@(); customAuthenticationFactors=@(); termsOfUse=@(); authenticationStrength=@{id=$StrengthId} }\n        }\n        if ($Corrections -contains 'ReportOnly') {\n            $body.state = 'enabledForReportingButNotEnforced'\n        }\n\n        Invoke-MgGraphRequest -Method PATCH -Uri \"$BaseUri/$PolicyId\" -Body ($body | ConvertTo-Json -Depth 20) -ContentType 'application/json' | Out-Null\n        $after = Get-PolicyById $PolicyId\n        if ($Corrections -contains 'Conditions') {\n            if (@($after.conditions.users.includeUsers).Count -ne 1 -or @($after.conditions.users.includeUsers)[0] -ne 'All') { throw 'Verification failed: All users is not canonical.' }\n            if ((@($after.conditions.users.excludeGroups | Sort-Object) -join '|') -ne (@($ExcludeGroupIds | Sort-Object) -join '|')) { throw 'Verification failed: exclusions differ from canonical target.' }\n            if (@($after.conditions.applications.includeUserActions).Count -ne 1 -or @($after.conditions.applications.includeUserActions)[0] -ne 'urn:user:registerdevice') { throw 'Verification failed: User Action target differs.' }\n        }\n        if ($Corrections -contains 'Grant' -and $after.grantControls.authenticationStrength.id -ne $StrengthId) { throw 'Verification failed: authentication strength differs.' }\n        if ($Corrections -contains 'ReportOnly' -and $after.state -ne 'enabledForReportingButNotEnforced') { throw 'Verification failed: policy is not Report-only.' }\n        Write-Host \"Correction verified on policy ID $PolicyId. Rescan IAMAI.\"\n    }\n\n    'Verify' {\n        Assert-ExcludeIds $ExcludeGroupIds\n        Connect-IAMAIContext @('Policy.Read.All')\n        $p = Get-PolicyById $PolicyId\n        Assert-CanonicalPolicy -Policy $p -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabledForReportingButNotEnforced'\n        Write-Host 'Canonical Report-only configuration verified. User Actions are not evaluated by Report-only; complete direct workflow validation before enforcement.'\n    }\n\n    'Enforce' {\n        if (-not $LegacyDeviceMfaToggleConfirmedNo) { throw 'Enforcement stopped: confirm the legacy device-registration MFA toggle is No.' }\n        if (-not $EnrollmentWorkflowsValidated) { throw 'Enforcement stopped: enrollment workflows are not validated.' }\n        if (-not $ExternalAuthenticationCompatibilityResolved) { throw 'Enforcement stopped: external-authentication-method compatibility is unresolved.' }\n        Assert-ExcludeIds $ExcludeGroupIds\n        Connect-IAMAIContext @('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')\n        $current = Get-PolicyById $PolicyId\n        Assert-CanonicalPolicy -Policy $current -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabledForReportingButNotEnforced'\n        Invoke-MgGraphRequest -Method PATCH -Uri \"$BaseUri/$PolicyId\" -Body (@{state='enabled'} | ConvertTo-Json) -ContentType 'application/json' | Out-Null\n        $after = Get-PolicyById $PolicyId\n        Assert-CanonicalPolicy -Policy $after -ExpectedExcludeGroupIds $ExcludeGroupIds -ExpectedState 'enabled'\n        Write-Host \"Policy ID $PolicyId is enabled. Perform controlled registration/enrollment tests and rescan IAMAI.\"\n    }\n}\n"
         },
@@ -873,7 +978,7 @@
             "format": "json",
             "kind": "sourceOnly"
           },
-          "text": "{\n  \"version\": \"1.0\",\n  \"stepId\": \"s-goal-device-registration-mfa\",\n  \"tiles\": [\n    {\n      \"id\": \"readiness.exclusions\",\n      \"gate\": \"Exclusions\",\n      \"sourceType\": \"tenant-evidence\",\n      \"requiredInput\": \"policy.target.excludeGroups\",\n      \"rules\": [\n        {\n          \"when\": \"canonical exclusion set is resolved and nonempty\",\n          \"result\": \"Ready\",\n          \"line\": \"IAMAI has the canonical exclusions this policy must preserve.\"\n        },\n        {\n          \"when\": \"canonical exclusion set is unresolved\",\n          \"result\": \"Blocked\",\n          \"line\": \"Resolve the policy exclusions before creating or correcting it.\"\n        }\n      ]\n    },\n    {\n      \"id\": \"readiness.authentication-strength\",\n      \"gate\": \"Authentication strength\",\n      \"sourceType\": \"baseline-requirement\",\n      \"rules\": [\n        {\n          \"when\": \"retained pinned baseline is authoritative\",\n          \"result\": \"Ready\",\n          \"line\": \"Use built-in Multifactor authentication (00000000-0000-0000-0000-000000000002).\"\n        }\n      ]\n    },\n    {\n      \"id\": \"readiness.enrollment-workflows\",\n      \"gate\": \"Enrollment workflows\",\n      \"sourceType\": \"tenant-evidence\",\n      \"optionalInput\": \"evidence.enrollmentWorkflows\",\n      \"rules\": [\n        {\n          \"when\": \"all known affected workflows have validated resolution\",\n          \"result\": \"Ready\",\n          \"line\": \"Known device-registration and enrollment workflows are validated.\"\n        },\n        {\n          \"when\": \"a known workflow is unvalidated or incompatible\",\n          \"result\": \"Review required\",\n          \"line\": \"Validate the identified registration/enrollment workflow before enforcement.\"\n        },\n        {\n          \"when\": \"IAMAI has no usable workflow evidence\",\n          \"result\": \"Unknown\",\n          \"line\": \"IAMAI cannot prove unobserved enrollment workflows are safe.\"\n        }\n      ]\n    },\n    {\n      \"id\": \"readiness.enforcement-settings\",\n      \"gate\": \"Enforcement checks\",\n      \"sourceType\": \"microsoft-rule\",\n      \"rules\": [\n        {\n          \"when\": \"state is missing, partial, or reportOnly\",\n          \"result\": \"Review required\",\n          \"line\": \"Before enforcement, confirm the legacy device-registration MFA toggle is No and resolve external-authentication-method compatibility.\"\n        },\n        {\n          \"when\": \"human enforcement checks are recorded complete by the existing workflow\",\n          \"result\": \"Ready\",\n          \"line\": \"Mandatory pre-enforcement checks are complete.\"\n        }\n      ]\n    }\n  ],\n  \"conclusions\": {\n    \"safeToCreateOrCorrect\": \"Ready to create or correct in Report-only when canonical exclusions and stable identity requirements are resolved.\",\n    \"safeToObserve\": \"Continue direct workflow validation; Report-only does not evaluate this User Action.\",\n    \"safeToEnforce\": \"Enforce only after enrollment workflows pass, external-authentication compatibility is resolved, and the legacy device-registration MFA toggle is confirmed No.\"\n  },\n  \"whyIamAISaysThis\": {\n    \"id\": \"why-iamai-says-this\",\n    \"sections\": {\n      \"currentConclusion\": \"Render the conclusion for the current state only.\",\n      \"confirmed\": [\n        \"Use tenant evidence for resolved exclusions/current policy and the retained pinned baseline for the MFA strength.\"\n      ],\n      \"stillNeedsAttention\": [\n        \"Render unresolved enrollment-workflow evidence and the mandatory human pre-enforcement checks only when applicable.\"\n      ],\n      \"unknownCannotProve\": [\n        \"Report-only cannot prove User Action impact; unobserved enrollment workflows remain unknown.\"\n      ],\n      \"whyItMatters\": \"Enforcement can block device registration or break enrollment flows that cannot satisfy MFA.\",\n      \"nextSafeAction\": \"Use the state-specific projection in META.json.\",\n      \"readyWhen\": \"All state-specific blockers and human enforcement gates required for the next transition are complete.\",\n      \"microsoftReferences\": [\n        \"ms-device-registration\",\n        \"ms-report-only\",\n        \"ms-bulk-enrollment\"\n      ]\n    }\n  }\n}\n"
+          "text": "{\n  \"version\": \"1.0\",\n  \"stepId\": \"s-goal-device-registration-mfa\",\n  \"tiles\": [\n    {\n      \"id\": \"readiness.exclusions\",\n      \"gate\": \"Exclusions\",\n      \"gateKey\": \"exclusions\",\n      \"sourceType\": \"tenant-evidence\",\n      \"requiredInput\": \"policy.target.excludeGroups\",\n      \"rules\": [\n        {\n          \"if\": { \"present\": \"policy.target.excludeGroups\" },\n          \"when\": \"canonical exclusion set is resolved and nonempty\",\n          \"result\": \"Ready\",\n          \"line\": \"IAMAI has the canonical exclusions this policy must preserve.\"\n        },\n        {\n          \"if\": { \"absent\": \"policy.target.excludeGroups\" },\n          \"when\": \"canonical exclusion set is unresolved\",\n          \"result\": \"Blocked\",\n          \"line\": \"Resolve the policy exclusions before creating or correcting it.\"\n        }\n      ]\n    },\n    {\n      \"id\": \"readiness.authentication-strength\",\n      \"gate\": \"Authentication strength\",\n      \"sourceType\": \"baseline-requirement\",\n      \"rules\": [\n        {\n          \"if\": { \"baselineCommit\": \"8461e0f2fd10167bf034e7c20ed8ea293827d890\" },\n          \"when\": \"retained pinned baseline is authoritative\",\n          \"result\": \"Ready\",\n          \"line\": \"Use built-in Multifactor authentication (00000000-0000-0000-0000-000000000002).\"\n        }\n      ]\n    },\n    {\n      \"id\": \"readiness.enrollment-workflows\",\n      \"gate\": \"Enrollment workflows\",\n      \"sourceType\": \"tenant-evidence\",\n      \"optionalInput\": \"evidence.enrollmentWorkflows\",\n      \"confirms\": [\"enrollment-workflows\"],\n      \"rules\": [\n        {\n          \"if\": { \"confirmed\": \"enrollment-workflows\" },\n          \"when\": \"all known affected workflows have validated resolution\",\n          \"result\": \"Ready\",\n          \"line\": \"Known device-registration and enrollment workflows are validated.\"\n        },\n        {\n          \"if\": { \"present\": \"evidence.enrollmentWorkflows\" },\n          \"when\": \"a known workflow is unvalidated or incompatible\",\n          \"result\": \"Review required\",\n          \"line\": \"Validate the identified registration/enrollment workflow before enforcement.\"\n        },\n        {\n          \"if\": { \"absent\": \"evidence.enrollmentWorkflows\" },\n          \"when\": \"IAMAI has no usable workflow evidence\",\n          \"result\": \"Unknown\",\n          \"line\": \"IAMAI cannot prove unobserved enrollment workflows are safe.\"\n        }\n      ]\n    },\n    {\n      \"id\": \"readiness.enforcement-settings\",\n      \"gate\": \"Enforcement checks\",\n      \"sourceType\": \"microsoft-rule\",\n      \"confirms\": [\"legacy-device-mfa-toggle\", \"external-auth-methods\"],\n      \"rules\": [\n        {\n          \"if\": { \"all\": [{ \"state\": [\"missing\", \"partial\", \"reportOnly\", \"readyToEnforce\"] }, { \"not\": { \"all\": [{ \"confirmed\": \"legacy-device-mfa-toggle\" }, { \"confirmed\": \"external-auth-methods\" }] } }] },\n          \"when\": \"state is missing, partial, or reportOnly\",\n          \"result\": \"Review required\",\n          \"line\": \"Before enforcement, confirm the legacy device-registration MFA toggle is No and resolve external-authentication-method compatibility.\"\n        },\n        {\n          \"if\": { \"all\": [{ \"confirmed\": \"legacy-device-mfa-toggle\" }, { \"confirmed\": \"external-auth-methods\" }] },\n          \"when\": \"human enforcement checks are recorded complete by the existing workflow\",\n          \"result\": \"Ready\",\n          \"line\": \"Mandatory pre-enforcement checks are complete.\"\n        }\n      ]\n    }\n  ],\n  \"conclusions\": {\n    \"safeToCreateOrCorrect\": \"Ready to create or correct in Report-only when canonical exclusions and stable identity requirements are resolved.\",\n    \"safeToObserve\": \"Continue direct workflow validation; Report-only does not evaluate this User Action.\",\n    \"safeToEnforce\": \"Enforce only after enrollment workflows pass, external-authentication compatibility is resolved, and the legacy device-registration MFA toggle is confirmed No.\"\n  },\n  \"conclusionByState\": {\n    \"missing\": \"safeToCreateOrCorrect\",\n    \"partial\": \"safeToCreateOrCorrect\",\n    \"reportOnly\": \"safeToObserve\",\n    \"readyToEnforce\": \"safeToEnforce\"\n  },\n  \"whyIamAISaysThis\": {\n    \"id\": \"why-iamai-says-this\",\n    \"sections\": {\n      \"currentConclusion\": \"Render the conclusion for the current state only.\",\n      \"confirmed\": [\n        \"Use tenant evidence for resolved exclusions/current policy and the retained pinned baseline for the MFA strength.\"\n      ],\n      \"stillNeedsAttention\": [\n        \"Render unresolved enrollment-workflow evidence and the mandatory human pre-enforcement checks only when applicable.\"\n      ],\n      \"unknownCannotProve\": [\n        \"Report-only cannot prove User Action impact; unobserved enrollment workflows remain unknown.\"\n      ],\n      \"whyItMatters\": \"Enforcement can block device registration or break enrollment flows that cannot satisfy MFA.\",\n      \"nextSafeAction\": \"Use the state-specific projection in META.json.\",\n      \"readyWhen\": \"All state-specific blockers and human enforcement gates required for the next transition are complete.\",\n      \"microsoftReferences\": [\n        \"ms-device-registration\",\n        \"ms-report-only\",\n        \"ms-bulk-enrollment\"\n      ]\n    }\n  }\n}\n"
         },
         "troubleshooting.model": {
           "meta": {
