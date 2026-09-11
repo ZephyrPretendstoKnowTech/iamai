@@ -1282,6 +1282,7 @@
             },
             "bar": {
               "deploy": "Ready now",
+              "attention": "Needs attention",
               "observe": "Continue observation",
               "enforce": "Ready to enforce",
               "verify": "Ready to check",
@@ -2626,7 +2627,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Both halves are answered; Require a Managed Device Outside the Office shows the platforms it covers beside the baseline's version."
+        "Phones and computers are answered; Require a Managed Device Outside the Office shows the platforms it covers beside the baseline's version."
       ],
       "ifWrong": null,
       "comms": null,

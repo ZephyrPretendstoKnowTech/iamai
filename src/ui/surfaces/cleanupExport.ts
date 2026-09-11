@@ -6,7 +6,7 @@
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import type { CleanupExport } from '../../roadmap/types.ts'
-import { app, cleanup as cleanupContent } from '../../content/content.ts'
+import { app, cleanup as cleanupContent, pages } from '../../content/content.ts'
 import { fillText, missingVars } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
@@ -35,7 +35,8 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
  * date nothing has made true.
  */
 export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false): string {
-  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done) }) : undated ? '' : absoluteDate(row.day)
+  // Never blank (owner, 2026-09-11): an undated row says it is not scheduled.
+  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done) }) : undated ? (pages.plan as unknown as { when: { notScheduled: string } }).when.notScheduled : absoluteDate(row.day)
 }
 
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */
