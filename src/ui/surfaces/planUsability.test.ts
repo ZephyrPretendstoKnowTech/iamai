@@ -18,7 +18,7 @@ import { holdWaitsOn } from '../../roadmap/stateReason.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { CONTRACT, nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
 import { cleanupWhen } from './cleanupExport.ts'
-import type { StepVarContext } from './stepVars.ts'
+import { planDates, type StepVarContext } from './stepVars.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, plannedPackageStateOf, planningPreview } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { pilotStepAt } from '../../testing/pilotFixture.ts'
@@ -340,6 +340,17 @@ test('the opened emergency step agrees with its row: no Ready now with fixes out
   const row = { ...runFixture(fixture('small'), { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: runFixture(fixture('small')).steps.find((s) => s.id === EMERGENCY)!.emergency!.basis } }).schedule.cleanup!.rows[0], done: null }
   assert.equal(cleanupWhen(row, true), 'Not scheduled')
   assert.notEqual(cleanupWhen(row, false).trim(), '')
+})
+
+test('a day-0 row borrowing its phase day is not an enforcement date: the campaign window waits for one, and the walk reads it that way', () => {
+  const f = fixture('demo-week2')
+  const r = runFixture(f)
+  assert.equal(planDates(r.steps, r.schedule.start).enrolWindowDays, null, 'the premise: nothing enforces on a date')
+  const day0 = r.schedule.waves.find((w) => w.wave === 0)!
+  const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+  assert.ok(r.steps.some((s) => DAY_ONLY.test(boardWhenOf(s, day0.start))), 'the premise: a day-0 row reads the phase day')
+  // The walk asks the email for its window only where a row outside day 0 is dated.
+  assert.match(readFileSync('scripts/walk.mjs', 'utf8'), /e\.closest\('#plan-group-wave-0'\) !== null/)
 })
 
 test('user-facing content spells enrollment the US way', () => {
