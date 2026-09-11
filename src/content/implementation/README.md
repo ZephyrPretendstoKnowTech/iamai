@@ -4,12 +4,17 @@ One pipeline turns an authored implementation-content package into the
 Implementation viewer, the Readiness tiles, the owner confirmations, the
 Troubleshooting dialog and the source line of a Plan step.
 
-Registered: `s-goal-device-registration-mfa`. **Active in this build: none.**
-The pilot was authored against baseline pin `8461e0f2`, and this build pins
-`90d9b890` (`baselines/*.pinned.json`). A package whose
-`baselineAuthority.pinCommit` names another commit describes another baseline's
-policy, so the Plan does not activate it (`stepPackage.ts packageApplies`).
-The step keeps the channels the engine builds from the pinned baseline.
+Registered and active: **every package in `docs/implementation-content/` that
+describes a Plan content step** (44 of 46; the two `cleanup-*` packages describe
+Cleanup rows, which are not content steps). Each is compiled with the parts the
+runtime cannot project safely withheld (§3).
+
+The library was authored against baseline pin `8461e0f2`; this build pins
+`90d9b890` (`baselines/*.pinned.json`). The packages apply anyway (owner
+decision, 2026-09-11): the source line names the authored pin beside the build's
+(`stepPackage.ts packageSourceLine`), the request bodies bind the policy
+Foundation A resolved from the build's pin, and a block the author scoped with a
+`baselineCommit` condition stays scoped to its own pin.
 
 ## 1. Package (authored, not edited for integration)
 
@@ -48,7 +53,15 @@ The runtime enters `missing`, `partial`, `reportOnly`, `readyToEnforce`,
 7. `readyToEnforce`, `reportOnly`.
 8. `missing` for a create.
 
-A state with no projection shows no implementation. It does not throw.
+`inPlace`, `blocked`, `needsDecision`, `sourceConflict` and `notLicensed` have
+nothing to implement now: their projection is empty whatever the package
+authors for them (`project.ts NO_ACTION_STATES`), and the step shows its own
+no-action box. A package state the runtime never enters (`verificationRequired`,
+`campaignRunning`, …) is never shown.
+
+A state the package projects nothing for does not throw, and the step keeps the
+channels the engine builds (`stepPackage.ts packageDrawsImplementation`). A held
+projection is the package's and shows its hold.
 
 ### Machine conditions (`conditions.ts`)
 
@@ -93,7 +106,8 @@ when their values change, and are never asked again for unchanged facts.
 ### Partial composition
 
 - `mode: "composeByMismatch"` (the guide's `compose` + `modules` is normalised
-  into it, `protocol.ts normalizeProjection`).
+  into it, `protocol.ts normalizeProjection`). A Partial that is not composed
+  cannot choose the corrections that apply, and is an error.
 - `mismatches.<id>` carries its channel refs and one of:
   - `facts[]`: policy field paths under `conditions`, `grantControls` or
     `sessionControls`;
@@ -137,22 +151,42 @@ The existing CLI and the runtime share `protocol.ts`:
 ```
 node scripts/compile-implementation-content.mjs <package-dir> --lint
 node scripts/compile-implementation-content.mjs --validate-library docs/implementation-content [--json out.json]
-node scripts/compile-implementation-content.mjs --registry src/content/implementation/registry.generated.json docs/implementation-content/s-goal-device-registration-mfa
+node scripts/compile-implementation-content.mjs --registry src/content/implementation/registry.generated.json
 ```
 
-`--validate-library` runs production validation over every package without
-registering or activating any of them, and groups the failures by feature.
-`pilot.test.ts` fails when the registry drifts from its sources or registers
-another package.
+`--validate-library` runs strict validation over every package and groups the
+failures by feature: the list of authored gaps.
+
+`--registry` compiles the whole library (`library.ts`). A package is registered
+when its step id reaches a content entry the way a plan step does
+(`stepTitle.ts contentStepForPackage`), so a merged goal or an aliased step
+reaches the package its entry names. Every validation issue names the smallest
+part it belongs to (`protocol.ts packageIssues`), and the build takes that part
+out, round after round, until the package validates (`withholdInvalid`):
+
+- a block, and with it every channel that projects it;
+- one channel of one state (an Email with no audience, a script with no mode);
+- a correction module IAMAI cannot select, so the change it would have covered
+  holds Partial;
+- a projection key the runtime does not read: alone where it is a channel the
+  viewer does not render (`manual`), otherwise the whole state;
+- a prerequisite it cannot read, with the state whose transition it gates;
+- a readiness tile, a troubleshooting scenario, a conclusion, or a support model
+  that is prose.
+
+Taking a part out only ever takes away what a step shows. The package files are
+never edited; the compiler prints what it withheld per package.
+`library.test.ts` fails when the registry drifts from the library.
 
 ## 4. Runtime adapter (`src/ui/surfaces/stepPackage.ts`)
 
-- `implementationPackageFor(stepId)` returns a registered package that applies
-  to this build's baseline pin.
+- `implementationPackageFor(step)` returns the package for the content entry the
+  step's title comes from.
 - `packageStateOf(step, contract, snapshot)` maps the lifecycle engine's truth
   to a package state. The package never decides the state.
-- `packageBindings(...)` binds only values IAMAI already holds, including
-  `policy.current.changedFields` and
+- `packageBindings(...)` binds only values IAMAI already holds, including the
+  resolved target's `policy.target.conditions`, `grantControls`,
+  `sessionControls` and `authStrength.target.id`, `policy.current.changedFields` and
   `tenant.deviceRegistration.multiFactorAuthConfiguration` (read with
   `Policy.Read.All`; unknown where the role cannot read it).
 - `packageRuntime(...)` reports every prerequisite's standing.

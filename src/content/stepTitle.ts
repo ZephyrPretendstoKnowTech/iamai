@@ -26,6 +26,15 @@ export function contentStepFor(step: StepLike): ContentStep | undefined {
 }
 
 /**
+ * The content entry an implementation-content package describes: the step id it
+ * is named for, or the goal an `s-goal-` id names. A plan step and a package meet
+ * at this entry, so a package reaches every step that shows its title.
+ */
+export function contentStepForPackage(stepId: string): ContentStep | undefined {
+  return contentStepFor({ id: stepId, goalId: stepId.startsWith('s-goal-') ? stepId.slice('s-goal-'.length) : '' })
+}
+
+/**
  * The title a step shows, from content.json. A step the content file has no
  * entry for keeps the title the engine gave it — its plain title where it has
  * one (the free-tier ladder steps carry their own), else its technical title.

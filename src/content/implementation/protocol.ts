@@ -13,6 +13,11 @@
 // error, never a best guess. What the guide allows but the runtime cannot reach
 // (a state IAMAI never enters) is a warning.
 //
+// The library build keeps that invariant part by part (`withholdInvalid`): every
+// issue names the smallest part of the package it belongs to, and that part is
+// taken out of the compiled package until what remains validates. Nothing is
+// repaired and no source file is edited.
+//
 // Pure: no DOM, no network, no file system.
 import type { Condition } from './conditions.ts'
 import { conditionErrors } from './conditions.ts'
@@ -98,6 +103,8 @@ const END = '@@IAMAI-END'
 /** `{{binding}}` for prose and `{{json:binding}}` for a whole JSON value (guide §4.3). */
 export const BINDING = /\{\{(json:)?([A-Za-z0-9_.-]+)\}\}/g
 
+const JSON_BINDING = /\{\{json:[A-Za-z0-9_.-]+\}\}/g
+
 /**
  * Every block in a CONTENT.md, by id, in file order. Delimiters start at column
  * one on their own line, carry JSON metadata, never nest, and every id is
@@ -141,7 +148,7 @@ export function bindingsUsed(text: string): string[] {
 
 /** A JSON template with each whole-value binding masked to null: for syntax lint only, never deployable (guide §9.5). */
 export function maskJsonTemplate(text: string): string {
-  return text.replace(/\{\{json:[A-Za-z0-9_.-]+\}\}/g, 'null')
+  return text.replace(JSON_BINDING, 'null')
 }
 
 /**
@@ -239,10 +246,41 @@ function projectionRefs(p: Record<string, unknown>): { channel: string; ref: Pro
 
 const asStrings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [])
 
+const isObject = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v)
+
 /** A support block's JSON model: the JSON as written, or a JSON template's shape with its whole-value bindings masked. */
 export function supportModelText(block: Block): string {
   return block.meta.format === 'json-template' ? maskJsonTemplate(block.text) : block.text
 }
+
+/**
+ * The smallest part of a package an issue belongs to: the part the library build
+ * takes out (`withholdInvalid`) so that what remains means what it meant.
+ *
+ * - `block`: the block, and so every channel that projects it;
+ * - `prerequisite`: the prerequisite, with the state whose transition it gates;
+ * - `state`: the state's whole projection;
+ * - `key`: a projection key the runtime does not read;
+ * - `module`: one correction module of a composed Partial;
+ * - `channel`: one channel of one state, wherever in that state it is named;
+ * - `support`: a support block, or a support channel's whole list (`block: null`);
+ * - `entry`: one readiness tile or troubleshooting scenario;
+ * - `entryState`: one state a scenario names that the runtime never enters;
+ * - `conclusion`: one `conclusionByState` entry.
+ */
+export type IssueLocus =
+  | { kind: 'block'; block: string }
+  | { kind: 'prerequisite'; index: number }
+  | { kind: 'state'; state: string }
+  | { kind: 'key'; state: string; key: string }
+  | { kind: 'module'; state: string; module: string }
+  | { kind: 'channel'; state: string; channel: string }
+  | { kind: 'support'; channel: string; block: string | null }
+  | { kind: 'entry'; block: string; list: 'tiles' | 'scenarios'; index: number }
+  | { kind: 'entryState'; block: string; index: number; value: string }
+  | { kind: 'conclusion'; block: string; state: string }
+
+export type PackageIssue = { at: IssueLocus; message: string }
 
 /**
  * Everything wrong with a package, as sentences; empty when the runtime can
@@ -250,32 +288,41 @@ export function supportModelText(block: Block): string {
  * the runtime reads.
  */
 export function validatePackage(pkg: CompiledPackage): string[] {
-  const errors: string[] = []
+  return packageIssues(pkg).map((i) => i.message)
+}
+
+/** Everything wrong with a package, each with the part it belongs to. */
+export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
+  const issues: PackageIssue[] = []
+  const add = (at: IssueLocus, ...messages: string[]): void => {
+    for (const message of messages) issues.push({ at, message })
+  }
   const { meta, blocks } = pkg
-  const declared = new Set([...(meta.requiredBindings ?? []), ...(meta.optionalBindings ?? []), CHANGED_FIELDS_BINDING])
+  const declared = new Set([...asStrings(meta.requiredBindings), ...asStrings(meta.optionalBindings), CHANGED_FIELDS_BINDING])
   const prerequisites = Array.isArray(meta.prerequisites) ? meta.prerequisites : []
   const prerequisiteIds = new Set(prerequisites.map((p) => p?.id).filter((id): id is string => typeof id === 'string'))
   const vocab: ConditionVocabulary = { bindings: declared, prerequisites: prerequisiteIds, states: new Set(PACKAGE_STATES) }
 
   // ---- blocks ----
   for (const [id, b] of Object.entries(blocks)) {
-    if (!(BLOCK_CHANNELS as readonly string[]).includes(b.meta.channel)) errors.push(`${id}: unsupported channel ${b.meta.channel} (not a channel the runtime renders)`)
-    for (const used of bindingsUsed(b.text)) if (!declared.has(used)) errors.push(`${id}: undeclared binding ${used}`)
+    const at: IssueLocus = { kind: 'block', block: id }
+    if (!(BLOCK_CHANNELS as readonly string[]).includes(b.meta.channel)) add(at, `${id}: unsupported channel ${b.meta.channel} (not a channel the runtime renders)`)
+    for (const used of bindingsUsed(b.text)) if (!declared.has(used)) add(at, `${id}: undeclared binding ${used}`)
     if (typeof b.meta.endpoint === 'string') {
-      for (const m of b.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) if (!declared.has(m[1])) errors.push(`${id}: endpoint names undeclared binding ${m[1]}`)
+      for (const m of b.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) if (!declared.has(m[1])) add(at, `${id}: endpoint names undeclared binding ${m[1]}`)
     }
     if (b.meta.format === 'json') {
       try {
         JSON.parse(b.text)
       } catch (e) {
-        errors.push(`${id}: invalid JSON: ${(e as Error).message}`)
+        add(at, `${id}: invalid JSON: ${(e as Error).message}`)
       }
     }
     if (b.meta.format === 'json-template') {
       try {
         JSON.parse(maskJsonTemplate(b.text))
       } catch (e) {
-        errors.push(`${id}: template is not JSON-shaped after masking: ${(e as Error).message}`)
+        add(at, `${id}: template is not JSON-shaped after masking: ${(e as Error).message}`)
       }
     }
   }
@@ -283,149 +330,179 @@ export function validatePackage(pkg: CompiledPackage): string[] {
   // ---- prerequisites ----
   const seen = new Set<string>()
   prerequisites.forEach((p, i) => {
+    const locus: IssueLocus = { kind: 'prerequisite', index: i }
     const at = `prerequisites[${i}]`
-    if (!p || typeof p.id !== 'string' || typeof p.class !== 'string') return errors.push(`${at}: an id and a class`)
-    if (seen.has(p.id)) errors.push(`${at}: duplicate id ${p.id}`)
+    if (!p || typeof p.id !== 'string' || typeof p.class !== 'string') return add(locus, `${at}: an id and a class`)
+    if (seen.has(p.id)) add(locus, `${at}: duplicate id ${p.id}`)
     seen.add(p.id)
     if (p.requiredBefore !== undefined) {
       const [from, to] = String(p.requiredBefore).split('->')
-      if (!(PACKAGE_STATES as readonly string[]).includes(from) || !(PACKAGE_STATES as readonly string[]).includes(to)) errors.push(`${at}.requiredBefore: <state>-><state>`)
+      if (!(PACKAGE_STATES as readonly string[]).includes(from) || !(PACKAGE_STATES as readonly string[]).includes(to)) add(locus, `${at}.requiredBefore: <state>-><state>`)
     }
-    if (p.evidence !== undefined) errors.push(...conditionErrors(p.evidence, vocab, `${at}.evidence`))
-    for (const b of asStrings(p.invalidatedBy)) if (!declared.has(b)) errors.push(`${at}.invalidatedBy: undeclared binding ${b}`)
+    if (p.evidence !== undefined) add(locus, ...conditionErrors(p.evidence, vocab, `${at}.evidence`))
+    for (const b of asStrings(p.invalidatedBy)) if (!declared.has(b)) add(locus, `${at}.invalidatedBy: undeclared binding ${b}`)
   })
 
   // ---- projections ----
   for (const [state, p] of Object.entries(meta.projection ?? {})) {
-    for (const key of Object.keys(p)) if (!PROJECTION_KEYS.has(key)) errors.push(`projection.${state}: unsupported key ${key}`)
-    if (p.mode !== undefined && p.mode !== 'composeByMismatch') errors.push(`projection.${state}: mode ${JSON.stringify(p.mode)} is not a composition the runtime implements (authoring guide v2.5 defines composeByMismatch and compose)`)
-    for (const r of asStrings(p.requires)) if (!declared.has(r)) errors.push(`projection.${state}.requires: undeclared binding ${r}`)
+    const whole: IssueLocus = { kind: 'state', state }
+    if (!isObject(p)) {
+      add(whole, `projection.${state}: an object`)
+      continue
+    }
+    for (const key of Object.keys(p)) if (!PROJECTION_KEYS.has(key)) add({ kind: 'key', state, key }, `projection.${state}: unsupported key ${key}`)
+    if (p.mode !== undefined && p.mode !== 'composeByMismatch') add(whole, `projection.${state}: mode ${JSON.stringify(p.mode)} is not a composition the runtime implements (authoring guide v2.5 defines composeByMismatch and compose)`)
+    for (const r of asStrings(p.requires)) if (!declared.has(r)) add(whole, `projection.${state}.requires: undeclared binding ${r}`)
+    if (state === 'partial' && p.mode === undefined) add(whole, `projection.partial: a correction is composed from the engine's changed fields (composeByMismatch, or compose with modules), so only the corrections that apply are shown`)
     if (p.mode === 'composeByMismatch') {
       const binding = mismatchBindingOf(p)
-      if (binding === null) errors.push(`projection.${state}: a composed projection names the binding its selected modules are bound to (mismatchBinding, or one requires entry ending .semanticMismatches)`)
-      else if (!declared.has(binding)) errors.push(`projection.${state}.mismatchBinding: undeclared binding ${binding}`)
-      const table = (p.mismatches ?? {}) as Record<string, Record<string, unknown>>
-      if (typeof table !== 'object' || Object.keys(table).length === 0) errors.push(`projection.${state}: a composed projection has at least one mismatch module`)
-      for (const [id, m] of Object.entries(table)) {
+      if (binding === null) add(whole, `projection.${state}: a composed projection names the binding its selected modules are bound to (mismatchBinding, or one requires entry ending .semanticMismatches)`)
+      else if (!declared.has(binding)) add(whole, `projection.${state}.mismatchBinding: undeclared binding ${binding}`)
+      const table = p.mismatches
+      if (!isObject(table) || Object.keys(table).length === 0) add(whole, `projection.${state}: a composed projection has at least one mismatch module`)
+      for (const [id, m] of Object.entries(isObject(table) ? table : {})) {
+        const mod: IssueLocus = { kind: 'module', state, module: id }
         const at = `projection.${state}.mismatches.${id}`
-        for (const key of Object.keys(m ?? {})) if (!MISMATCH_KEYS.has(key)) errors.push(`${at}: unsupported key ${key}`)
-        const facts = m?.facts
-        if (facts !== undefined && (!Array.isArray(facts) || facts.some((f) => typeof f !== 'string' || !MATERIAL_ROOTS.some((root) => f === root || f.startsWith(`${root}.`))))) {
-          errors.push(`${at}.facts: policy field paths under ${MATERIAL_ROOTS.join(', ')}`)
+        if (!isObject(m)) {
+          add(mod, `${at}: an object`)
+          continue
         }
-        if (m?.select !== undefined) errors.push(...conditionErrors(m.select, vocab, `${at}.select`))
-        if (m?.alongside !== undefined && typeof m.alongside !== 'boolean') errors.push(`${at}.alongside: true or false`)
-        if (facts === undefined && m?.select === undefined) errors.push(`${at}: IAMAI cannot select this module (it declares no facts and no select condition)`)
-        for (const r of asStrings(m?.requires)) if (!declared.has(r)) errors.push(`${at}.requires: undeclared binding ${r}`)
+        for (const key of Object.keys(m)) if (!MISMATCH_KEYS.has(key)) add(mod, `${at}: unsupported key ${key}`)
+        const facts = m.facts
+        if (facts !== undefined && (!Array.isArray(facts) || facts.some((f) => typeof f !== 'string' || !MATERIAL_ROOTS.some((root) => f === root || f.startsWith(`${root}.`))))) {
+          add(mod, `${at}.facts: policy field paths under ${MATERIAL_ROOTS.join(', ')}`)
+        }
+        if (m.select !== undefined) add(mod, ...conditionErrors(m.select, vocab, `${at}.select`))
+        if (m.alongside !== undefined && typeof m.alongside !== 'boolean') add(mod, `${at}.alongside: true or false`)
+        if (facts === undefined && m.select === undefined) add(mod, `${at}: IAMAI cannot select this module (it declares no facts and no select condition)`)
+        for (const r of asStrings(m.requires)) if (!declared.has(r)) add(mod, `${at}.requires: undeclared binding ${r}`)
       }
     }
     for (const { channel, ref, at } of projectionRefs(p)) {
+      const locus: IssueLocus = { kind: 'channel', state, channel }
       const b = blocks[ref.block]
       if (!b) {
-        errors.push(`projection.${state}${at}: missing block ${ref.block}`)
+        add(locus, `projection.${state}${at}: missing block ${ref.block}`)
         continue
       }
-      if (b.meta.channel !== channel) errors.push(`projection.${state}${at}: ${ref.block} is a ${b.meta.channel} block`)
-      if (!(b.meta.states ?? []).includes(state)) errors.push(`projection.${state}${at}: ${ref.block} does not declare state ${state}`)
+      if (b.meta.channel !== channel) add(locus, `projection.${state}${at}: ${ref.block} is a ${b.meta.channel} block`)
+      if (!(b.meta.states ?? []).includes(state)) add(locus, `projection.${state}${at}: ${ref.block} does not declare state ${state}`)
       if (channel === 'powershell' && b.meta.kind === 'deployableAfterBinding') {
-        if (typeof ref.mode !== 'string') errors.push(`projection.${state}${at}: a deployable script is projected in a mode`)
-        if ((ref.corrections ?? []).length > 0 && typeof b.meta.invocation?.correctionsParameter !== 'string') errors.push(`projection.${state}${at}: corrections need the invocation's correctionsParameter`)
+        if (typeof ref.mode !== 'string') add(locus, `projection.${state}${at}: a deployable script is projected in a mode`)
+        if ((ref.corrections ?? []).length > 0 && typeof b.meta.invocation?.correctionsParameter !== 'string') add(locus, `projection.${state}${at}: corrections need the invocation's correctionsParameter`)
       }
       if (channel === 'email') {
         const own = typeof b.meta.audience === 'string' && typeof b.meta.communicationTrigger === 'string'
         const declaredInMeta = meta.email?.block === ref.block && typeof meta.email.audience === 'string' && typeof meta.email.communicationTrigger === 'string'
-        if (!own && !declaredInMeta) errors.push(`projection.${state}${at}: an Email declares its audience and communicationTrigger (guide §26.6)`)
+        if (!own && !declaredInMeta) add(locus, `projection.${state}${at}: an Email declares its audience and communicationTrigger (guide §26.6)`)
       }
     }
   }
   // Every deployable script declares how it is run, and that declaration agrees with the script (invocation.ts).
   for (const [id, b] of Object.entries(blocks)) {
     if (b.meta.channel !== 'powershell' || b.meta.kind !== 'deployableAfterBinding') continue
-    errors.push(...invocationErrors(`${id}.invocation`, b.meta.invocation, b.text, vocab))
+    add({ kind: 'block', block: id }, ...invocationErrors(`${id}.invocation`, b.meta.invocation, b.text, vocab))
   }
 
   // ---- support models ----
   for (const [channel, ids] of Object.entries(meta.supportBlocks ?? {})) {
+    if (!Array.isArray(ids)) {
+      add({ kind: 'support', channel, block: null }, `supportBlocks.${channel}: a list of block ids`)
+      continue
+    }
     for (const id of ids) {
+      const whole: IssueLocus = { kind: 'support', channel, block: id }
       const b = blocks[id]
       if (!b) {
-        errors.push(`supportBlocks.${channel}: missing block ${id}`)
+        add(whole, `supportBlocks.${channel}: missing block ${id}`)
         continue
       }
       if (b.meta.channel !== channel) {
-        errors.push(`supportBlocks.${channel}: ${id} is a ${b.meta.channel} block`)
+        add(whole, `supportBlocks.${channel}: ${id} is a ${b.meta.channel} block`)
         continue
       }
       if (b.meta.format !== 'json' && b.meta.format !== 'json-template') {
-        errors.push(`${id}: a support model is JSON the runtime reads, not ${b.meta.format ?? 'prose'}`)
+        add(whole, `${id}: a support model is JSON the runtime reads, not ${b.meta.format ?? 'prose'}`)
         continue
       }
-      let model: Record<string, unknown>
+      let model: unknown
       try {
-        model = JSON.parse(supportModelText(b)) as Record<string, unknown>
+        model = JSON.parse(supportModelText(b))
       } catch (e) {
-        errors.push(`${id}: does not parse as JSON: ${(e as Error).message}`)
+        add(whole, `${id}: does not parse as JSON: ${(e as Error).message}`)
         continue
       }
-      if (channel === 'readiness') errors.push(...readinessModelErrors(id, model, vocab))
-      if (channel === 'troubleshooting') errors.push(...troubleshootingModelErrors(id, model))
+      if (!isObject(model)) {
+        add(whole, `${id}: a support model is a JSON object`)
+        continue
+      }
+      if (channel === 'readiness') issues.push(...readinessModelIssues(id, whole, model, vocab))
+      if (channel === 'troubleshooting') issues.push(...troubleshootingModelIssues(id, whole, model))
     }
   }
-  return errors
+  return issues
 }
 
-function readinessModelErrors(id: string, model: Record<string, unknown>, vocab: ConditionVocabulary): string[] {
-  const errors: string[] = []
+function readinessModelIssues(id: string, whole: IssueLocus, model: Record<string, unknown>, vocab: ConditionVocabulary): PackageIssue[] {
+  const issues: PackageIssue[] = []
   const tiles = model.tiles
-  if (!Array.isArray(tiles)) return [`${id}.tiles: a list`]
+  if (!Array.isArray(tiles)) return [{ at: whole, message: `${id}.tiles: a list` }]
   tiles.forEach((t, i) => {
+    const locus: IssueLocus = { kind: 'entry', block: id, list: 'tiles', index: i }
+    const add = (message: string): void => void issues.push({ at: locus, message })
     const at = `${id}.tiles[${i}]`
     const tile = (t ?? {}) as Record<string, unknown>
-    if (typeof tile.id !== 'string') errors.push(`${at}: an id`)
-    if (typeof tile.label !== 'string' && typeof tile.gate !== 'string') errors.push(`${at}: a label or gate`)
-    if (tile.gateKey !== undefined && typeof tile.gateKey !== 'string') errors.push(`${at}.gateKey: a runtime tile key`)
+    if (typeof tile.id !== 'string') add(`${at}: an id`)
+    if (typeof tile.label !== 'string' && typeof tile.gate !== 'string') add(`${at}: a label or gate`)
+    if (tile.gateKey !== undefined && typeof tile.gateKey !== 'string') add(`${at}.gateKey: a runtime tile key`)
     for (const c of tile.confirms === undefined ? [] : Array.isArray(tile.confirms) ? tile.confirms : [null]) {
-      if (typeof c !== 'string' || !vocab.prerequisites.has(c)) errors.push(`${at}.confirms: ${JSON.stringify(c)} is not a declared prerequisite`)
+      if (typeof c !== 'string' || !vocab.prerequisites.has(c)) add(`${at}.confirms: ${JSON.stringify(c)} is not a declared prerequisite`)
     }
     const rules = tile.rules
-    if (!Array.isArray(rules) || rules.length === 0) return errors.push(`${at}.rules: at least one rule`)
+    if (!Array.isArray(rules) || rules.length === 0) return add(`${at}.rules: at least one rule`)
     rules.forEach((r, j) => {
       const rule = (r ?? {}) as Record<string, unknown>
-      if (!(READINESS_RESULTS as readonly string[]).includes(String(rule.result))) errors.push(`${at}.rules[${j}].result: one of ${READINESS_RESULTS.join(', ')}`)
-      if (typeof rule.line !== 'string') errors.push(`${at}.rules[${j}].line: the authored line`)
-      if (rule.if === undefined) errors.push(`${at}.rules[${j}]: no machine condition (if), so the runtime can never select it`)
-      else errors.push(...conditionErrors(rule.if, vocab, `${at}.rules[${j}].if`))
+      if (!(READINESS_RESULTS as readonly string[]).includes(String(rule.result))) add(`${at}.rules[${j}].result: one of ${READINESS_RESULTS.join(', ')}`)
+      if (typeof rule.line !== 'string') add(`${at}.rules[${j}].line: the authored line`)
+      if (rule.if === undefined) add(`${at}.rules[${j}]: no machine condition (if), so the runtime can never select it`)
+      else for (const e of conditionErrors(rule.if, vocab, `${at}.rules[${j}].if`)) add(e)
     })
   })
   const conclusions = (model.conclusions ?? {}) as Record<string, unknown>
   const byState = model.conclusionByState
   if (byState !== undefined) {
-    if (!byState || typeof byState !== 'object') errors.push(`${id}.conclusionByState: an object`)
+    if (!isObject(byState)) issues.push({ at: whole, message: `${id}.conclusionByState: an object` })
     else
       for (const [state, key] of Object.entries(byState)) {
-        if (!(PACKAGE_STATES as readonly string[]).includes(state)) errors.push(`${id}.conclusionByState.${state}: not a runtime state`)
-        if (typeof key !== 'string' || typeof conclusions[key] !== 'string') errors.push(`${id}.conclusionByState.${state}: ${JSON.stringify(key)} is not a conclusion`)
+        const at: IssueLocus = { kind: 'conclusion', block: id, state }
+        if (!(PACKAGE_STATES as readonly string[]).includes(state)) issues.push({ at, message: `${id}.conclusionByState.${state}: not a runtime state` })
+        if (typeof key !== 'string' || typeof conclusions[key] !== 'string') issues.push({ at, message: `${id}.conclusionByState.${state}: ${JSON.stringify(key)} is not a conclusion` })
       }
   }
-  return errors
+  return issues
 }
 
-function troubleshootingModelErrors(id: string, model: Record<string, unknown>): string[] {
-  const errors: string[] = []
+function troubleshootingModelIssues(id: string, whole: IssueLocus, model: Record<string, unknown>): PackageIssue[] {
+  const issues: PackageIssue[] = []
   const scenarios = model.scenarios
-  if (!Array.isArray(scenarios)) return [`${id}.scenarios: a list`]
+  if (!Array.isArray(scenarios)) return [{ at: whole, message: `${id}.scenarios: a list` }]
   scenarios.forEach((s, i) => {
+    const locus: IssueLocus = { kind: 'entry', block: id, list: 'scenarios', index: i }
+    const add = (message: string): void => void issues.push({ at: locus, message })
     const at = `${id}.scenarios[${i}]`
     const sc = (s ?? {}) as Record<string, unknown>
-    if (typeof sc.id !== 'string') errors.push(`${at}: an id`)
-    if (typeof sc.title !== 'string') errors.push(`${at}: a title`)
-    if (!Array.isArray(sc.states) || sc.states.length === 0) errors.push(`${at}.states: the states it applies to (guide §30.5)`)
-    else for (const st of sc.states) if (!(PACKAGE_STATES as readonly string[]).includes(String(st))) errors.push(`${at}.states: ${JSON.stringify(st)} is not a runtime state`)
+    if (typeof sc.id !== 'string') add(`${at}: an id`)
+    if (typeof sc.title !== 'string') add(`${at}: a title`)
+    if (!Array.isArray(sc.states) || sc.states.length === 0) add(`${at}.states: the states it applies to (guide §30.5)`)
+    else
+      for (const st of sc.states) {
+        if (!(PACKAGE_STATES as readonly string[]).includes(String(st))) issues.push({ at: { kind: 'entryState', block: id, index: i, value: String(st) }, message: `${at}.states: ${JSON.stringify(st)} is not a runtime state` })
+      }
     for (const key of ['likelyCauses', 'check', 'fix', 'doNot', 'then', 'sources']) {
-      if (sc[key] !== undefined && !Array.isArray(sc[key])) errors.push(`${at}.${key}: a list`)
+      if (sc[key] !== undefined && !Array.isArray(sc[key])) add(`${at}.${key}: a list`)
     }
   })
-  return errors
+  return issues
 }
 
 /** What the guide allows and the runtime will never reach: reported, not refused. */
@@ -440,20 +517,181 @@ export function packageWarnings(pkg: CompiledPackage): string[] {
   return warnings
 }
 
+// ---- withholding ----
+
+/** Stands in for a whole-value `{{json:x}}` binding while a JSON template's model is edited as JSON. */
+const TEMPLATE_TOKEN = '@@iamai-json-binding-'
+
+type ModelEdit = { entries: Set<number>; entryStates: Map<number, Set<string>>; conclusions: Set<string> }
+
+/**
+ * A support model with tiles or scenarios taken out, states a scenario names
+ * that the runtime never enters dropped from it, and conclusions taken out. A
+ * JSON template keeps its whole-value bindings exactly where they were.
+ */
+function editSupportModel(block: Block, list: 'tiles' | 'scenarios' | null, edit: ModelEdit): Block {
+  const bindings: string[] = []
+  const source = block.meta.format === 'json-template' ? block.text.replace(JSON_BINDING, (m) => JSON.stringify(`${TEMPLATE_TOKEN}${bindings.push(m) - 1}`)) : block.text
+  const model = JSON.parse(source) as Record<string, unknown>
+  if (list !== null && Array.isArray(model[list])) {
+    const entries = model[list] as unknown[]
+    for (const [index, drop] of edit.entryStates) {
+      const entry = entries[index]
+      if (isObject(entry) && Array.isArray(entry.states)) entry.states = entry.states.filter((s) => !drop.has(String(s)))
+    }
+    model[list] = entries.filter((_, i) => !edit.entries.has(i))
+  }
+  if (isObject(model.conclusionByState)) for (const state of edit.conclusions) delete model.conclusionByState[state]
+  const text = JSON.stringify(model, null, 2).replace(new RegExp(`"${TEMPLATE_TOKEN}(\\d+)"`, 'g'), (_m, i: string) => bindings[Number(i)])
+  return { meta: block.meta, text: `${text}\n` }
+}
+
+/**
+ * One round of withholding: every part an issue names is taken out. Taking a
+ * part out never widens what the rest allows: a module that cannot be selected
+ * leaves the changes it would have covered uncovered, so Partial holds; a
+ * prerequisite that cannot be read takes the transition it gates with it; and a
+ * projection key the runtime does not read is dropped alone only where it is a
+ * channel the runtime does not render, otherwise the state goes.
+ */
+function withholdOnce(pkg: CompiledPackage, issues: PackageIssue[]): CompiledPackage {
+  const meta = structuredClone(pkg.meta)
+  const blocks = { ...pkg.blocks }
+  const projection: Record<string, Record<string, unknown>> = isObject(meta.projection) ? meta.projection : {}
+  const states = new Set<string>()
+  let allStates = false
+  const keys: { state: string; key: string }[] = []
+  const modules: { state: string; module: string }[] = []
+  const channels: { state: string; channel: string }[] = []
+  const prerequisites = new Set<number>()
+  const support: { channel: string; block: string | null }[] = []
+  const edits = new Map<string, { list: 'tiles' | 'scenarios' | null; edit: ModelEdit }>()
+  const editOf = (block: string): { list: 'tiles' | 'scenarios' | null; edit: ModelEdit } => {
+    let e = edits.get(block)
+    if (!e) edits.set(block, (e = { list: null, edit: { entries: new Set(), entryStates: new Map(), conclusions: new Set() } }))
+    return e
+  }
+  for (const { at } of issues) {
+    switch (at.kind) {
+      case 'block':
+        delete blocks[at.block]
+        break
+      case 'prerequisite': {
+        prerequisites.add(at.index)
+        const gate = (meta.prerequisites ?? [])[at.index]?.requiredBefore
+        const from = typeof gate === 'string' ? gate.split('->')[0] : null
+        if (from !== null && (PACKAGE_STATES as readonly string[]).includes(from)) states.add(from)
+        else if (gate !== undefined) allStates = true
+        break
+      }
+      case 'state':
+        states.add(at.state)
+        break
+      case 'key': {
+        const refs = refsOf(projection[at.state]?.[at.key])
+        if (refs.length > 0 && refs.every((r) => pkg.blocks[r.block]?.meta.channel === at.key)) keys.push(at)
+        else states.add(at.state)
+        break
+      }
+      case 'module':
+        modules.push(at)
+        break
+      case 'channel':
+        channels.push(at)
+        break
+      case 'support':
+        support.push(at)
+        break
+      case 'entry': {
+        const e = editOf(at.block)
+        e.list = at.list
+        e.edit.entries.add(at.index)
+        break
+      }
+      case 'entryState': {
+        const e = editOf(at.block)
+        e.list = 'scenarios'
+        const drop = e.edit.entryStates.get(at.index) ?? new Set<string>()
+        drop.add(at.value)
+        e.edit.entryStates.set(at.index, drop)
+        break
+      }
+      case 'conclusion':
+        editOf(at.block).edit.conclusions.add(at.state)
+        break
+    }
+  }
+  for (const { state, key } of keys) delete projection[state]?.[key]
+  for (const { state, module } of modules) {
+    const table = projection[state]?.mismatches
+    if (isObject(table)) delete table[module]
+  }
+  for (const { state, channel } of channels) {
+    const p = projection[state]
+    if (!isObject(p)) continue
+    const table = isObject(p.mismatches) ? Object.values(p.mismatches) : []
+    for (const holder of [p, p.sharedBefore, p.sharedAfter, ...table]) if (isObject(holder)) delete holder[channel]
+  }
+  for (const state of states) delete projection[state]
+  meta.projection = allStates ? {} : projection
+  if (prerequisites.size > 0) meta.prerequisites = (meta.prerequisites ?? []).filter((_, i) => !prerequisites.has(i))
+  for (const { channel, block } of support) {
+    if (!meta.supportBlocks) continue
+    const list = meta.supportBlocks[channel]
+    if (block === null || !Array.isArray(list)) delete meta.supportBlocks[channel]
+    else meta.supportBlocks[channel] = list.filter((id) => id !== block)
+  }
+  for (const [id, { list, edit }] of edits) if (blocks[id]) blocks[id] = editSupportModel(blocks[id], list, edit)
+  return { meta, blocks }
+}
+
+/**
+ * A library package the runtime can project safely, and what was withheld to
+ * make it so: every issue's part is taken out, round after round, until the
+ * package validates. A part taken out can only take away what the step shows —
+ * a channel, a state, a correction, a tile, a scenario — never add to it or
+ * release an artifact a check was holding.
+ */
+export function withholdInvalid(pkg: CompiledPackage): { pkg: CompiledPackage; withheld: string[] } {
+  let current: CompiledPackage = { meta: structuredClone(pkg.meta), blocks: { ...pkg.blocks } }
+  const withheld: string[] = []
+  for (let round = 0; round < 32; round++) {
+    const issues = packageIssues(current)
+    if (issues.length === 0) return { pkg: current, withheld }
+    withheld.push(...issues.map((i) => i.message))
+    current = withholdOnce(current, issues)
+  }
+  throw new PackageError(`${pkg.meta.stepId ?? 'package'}: its invalid parts could not be withheld`)
+}
+
+function parseMeta(metaJson: string): PackageMeta {
+  try {
+    return JSON.parse(metaJson) as PackageMeta
+  } catch (e) {
+    throw new PackageError(`META.json does not parse: ${(e as Error).message}`)
+  }
+}
+
 /**
  * A package from its META.json and CONTENT.md text, normalised and validated; a
  * package with any error is refused whole.
  */
 export function compilePackage(metaJson: string, contentMd: string): CompiledPackage {
-  let meta: PackageMeta
-  try {
-    meta = JSON.parse(metaJson) as PackageMeta
-  } catch (e) {
-    throw new PackageError(`META.json does not parse: ${(e as Error).message}`)
-  }
+  const meta = parseMeta(metaJson)
   const blocks = parseBlocks(contentMd)
   const pkg: CompiledPackage = { meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks }
   const errors = validatePackage(pkg)
   if (errors.length > 0) throw new PackageError(`${meta.stepId ?? 'package'}:\n${errors.join('\n')}`)
   return pkg
+}
+
+/**
+ * A package as the library registers it: normalised, with every part the runtime
+ * cannot project safely withheld (`withholdInvalid`). Only a package whose files
+ * do not parse at all is refused.
+ */
+export function compileLibraryPackage(metaJson: string, contentMd: string): { pkg: CompiledPackage; withheld: string[] } {
+  const meta = parseMeta(metaJson)
+  const blocks = parseBlocks(contentMd)
+  return withholdInvalid({ meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks })
 }

@@ -62,8 +62,8 @@ import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, implementationPackageFor, mergeReadiness, packageBindings, packageRuntime, packageStateOf } from './stepPackage.ts'
-import { prerequisiteBasis, projectSafely, readinessSafely, sourceUpdatedOn, troubleshootingSafely } from '../../content/implementation/project.ts'
+import { BASELINE_COMMIT, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf } from './stepPackage.ts'
+import { prerequisiteBasis, projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -302,7 +302,7 @@ export function ContentStep({
   // (stepPackage.ts): IAMAI's state and bindings in, the package's own blocks
   // out. A package state with nothing to implement projects no channel; a
   // required value IAMAI does not hold projects nothing at all.
-  const pkg = implementationPackageFor(step.id, baselineCommit)
+  const pkg = implementationPackageFor(step)
   const pkgState = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
   const pkgBindings = pkg && pkgState ? packageBindings(step, ctx, contract) : null
   // What the runtime knows beside the bindings: which prerequisites a tenant fact
@@ -313,7 +313,9 @@ export function ContentStep({
   const projection = pkg && pkgState && pkgBindings && pkgRuntime ? projectSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
   const pkgReadiness = pkg && pkgState && pkgBindings && pkgRuntime ? readinessSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
   const scenarios: TroubleshootingScenario[] = pkg && pkgState && pkgBindings ? troubleshootingSafely(pkg, pkgState, pkgBindings) : []
-  const sourceOn = pkg ? sourceUpdatedOn(pkg) : null
+  // Whether the package's projection or the step's own channels draw the
+  // Implementation region (stepPackage.ts packageDrawsImplementation).
+  const packaged = packageDrawsImplementation(pkg, projection)
   // Who this touches (whoBlocks.ts), in the Readiness evidence: each line whole,
   // with the names it ends in. Whether the reach is knowable at all is the
   // contract's answer (Foundation A) — a scope this scan could not settle says so
@@ -331,7 +333,7 @@ export function ContentStep({
   const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies]))
   const createIfNeeded = truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string'
   const creates = (truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)
-  const implementing = pkg ? (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
+  const implementing = packaged ? (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
   const ownSteps = !implementing && (hasSteps || before.length > 0)
   const showWhatToDo = decides || createIfNeeded || creates || ownSteps
   // The one next action (stepContract.ts actionOf), drawn once: under the
@@ -352,14 +354,14 @@ export function ContentStep({
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.
-  const artifacts: Artifact[] = pkg
+  const artifacts: Artifact[] = packaged
     ? (projection?.channels ?? []).map(packageArtifact)
     : channels.map((ch) => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   const W = CONTRACT.implementation
   // A held projection says why, by the reason it holds: a check to confirm first,
   // a difference no correction covers, content the runtime could not project, or
   // a value IAMAI does not hold. None of them is ever offered an artifact.
-  const hold = projection?.hold ?? null
+  const hold = packaged ? (projection?.hold ?? null) : null
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
   const empty: ImplementationEmpty =
     hold === null
@@ -368,7 +370,7 @@ export function ContentStep({
         ? heldBox('confirmationsPending')
         : hold.unknownMismatches.length > 0
           ? heldBox('correctionUnknown')
-          : hold.noProjection || hold.invalid.length > 0
+          : hold.invalid.length > 0
             ? heldBox('packageFault')
             : heldBox('bindingMissing')
   // The check a person is confirming, from the Readiness tile that states it.
@@ -388,9 +390,9 @@ export function ContentStep({
     const given = (pkg.meta.prerequisites ?? []).filter((pr) => tile.confirm!.prerequisites.includes(pr.id) && !byEvidence.has(pr.id))
     onConfirm(Object.fromEntries(given.map((pr) => [pr.id, { basis: prerequisiteBasis(pr, pkgBindings) }])))
   }
-  // The package's verified-source date (project.ts sourceUpdatedOn), set at
-  // midday UTC so no display time zone moves it across a day.
-  const sourceLine = sourceOn ? fillText(W.sourceUpdated, { date: absoluteDate(`${sourceOn}T12:00:00Z`) }) : null
+  // The package's verified-source date and the baseline pin it was authored
+  // against beside this build's (stepPackage.ts packageSourceLine).
+  const sourceLine = pkg ? packageSourceLine(pkg, W, baselineCommit) : null
   // The footer's rollout exception: the existing skip, offered only where the
   // step's content entry marks it excludable, and Doesn't apply here where the
   // step is flagged for it. A step already set aside offers the way back.

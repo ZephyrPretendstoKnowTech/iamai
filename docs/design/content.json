@@ -1308,6 +1308,7 @@
             },
             "email": "Email",
             "sourceUpdated": "Source updated {date}",
+            "sourcePins": "Authored against baseline {authored} · plan pins {pinned}",
             "troubleshooting": "Troubleshooting",
             "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
           },

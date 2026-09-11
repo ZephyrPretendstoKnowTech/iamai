@@ -65,6 +65,14 @@ export type Projection = { state: PackageState; hold: Hold | null; channels: Cha
 
 const emptyHold = (): Hold => ({ missingBindings: [], unknownMismatches: [], pendingPrerequisites: [], noProjection: false, invalid: [] })
 
+/**
+ * The states in which a step has nothing to implement now: delivered, held, a
+ * question for a person, a source that contradicts itself, a licence the tenant
+ * lacks. Their projection is empty whatever a package authors for them, so the
+ * step shows its own no-action box.
+ */
+export const NO_ACTION_STATES: ReadonlySet<PackageState> = new Set<PackageState>(['inPlace', 'blocked', 'needsDecision', 'sourceConflict', 'notLicensed'])
+
 /** The authored marker on a line that disappears when its optional value is unavailable. */
 const OMIT = /\s*\[omit (?:this line )?when unavailable\]/g
 
@@ -162,6 +170,7 @@ export function selectMismatches(p: Record<string, unknown>, ctx: ConditionConte
  * reach the page.
  */
 export function projectImplementation(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext = NO_RUNTIME): Projection {
+  if (NO_ACTION_STATES.has(state)) return { state, hold: null, channels: [] }
   const hold = emptyHold()
   const p = pkg.meta.projection[state] as Record<string, unknown> | undefined
   if (!p) return { state, hold: { ...hold, noProjection: true }, channels: [] }

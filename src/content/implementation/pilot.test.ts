@@ -19,9 +19,11 @@ import { PILOT_IDS, PILOT_PIN, PILOT_PREREQUISITES, PILOT_STEP_ID, pilotBindings
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
-import { readinessOf, stepContract } from '../../ui/surfaces/stepContract.ts'
+import { CONTRACT, readinessOf, stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { ACTIVE_PACKAGE_STEP_IDS, BASELINE_COMMIT, INACTIVE_PACKAGES, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, mergeReadiness, packageBindings, packageRuntime, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
+import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, mergeReadiness, packageBindings, packageRuntime, packageSourceLine, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
+import { fillText } from '../render.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 
 const DIR = `docs/implementation-content/${PILOT_STEP_ID}`
 const read = (p: string): string => readFileSync(p, 'utf8')
@@ -41,21 +43,15 @@ test('the pilot package compiles under the strict contract: every projected bloc
   assert.deepEqual(Object.keys(PKG.meta.projection).sort(), [...PACKAGE_STATES].sort())
 })
 
-test('the registry is the compiled pilot; the build does not activate it, because it was authored against another baseline pin', () => {
-  const packages = (registry as unknown as { packages: Record<string, unknown> }).packages
-  assert.deepEqual(Object.keys(packages), [PILOT_STEP_ID], 'another implementation-content package was registered')
+test('the registry holds the pilot exactly as compiled, and the build renders it though it was authored against another baseline pin', () => {
+  const packages = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
   assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(PKG)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
-  assert.deepEqual([...REGISTERED_PACKAGE_STEP_IDS], [PILOT_STEP_ID])
-  // The pinned baseline wins (CLAUDE.md): the build pins baselines/*.pinned.json, and the pilot names 8461e0f2.
+  assert.ok(REGISTERED_PACKAGE_STEP_IDS.includes(PILOT_STEP_ID))
+  // The build still pins baselines/*.pinned.json; the pilot names 8461e0f2, and the step names both (owner decision, 2026-09-11).
   assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
   assert.equal(PILOT_PIN, '8461e0f2fd10167bf034e7c20ed8ea293827d890')
   assert.notEqual(BASELINE_COMMIT, PILOT_PIN)
-  assert.deepEqual([...ACTIVE_PACKAGE_STEP_IDS], [], 'a package authored against another baseline is active')
-  assert.equal(INACTIVE_PACKAGES.length, 1)
-  assert.match(INACTIVE_PACKAGES[0].reason, new RegExp(`${PILOT_PIN}.*${BASELINE_COMMIT}`))
-  assert.equal(implementationPackageFor(PILOT_STEP_ID), null, 'the product renders the pilot against a baseline it was not authored for')
-  assert.equal(implementationPackageFor(PILOT_STEP_ID, PILOT_PIN), (registry as unknown as { packages: Record<string, CompiledPackage> }).packages[PILOT_STEP_ID])
-  assert.equal(implementationPackageFor('s-goal-block-legacy-auth'), null, 'a step without an active package gained one')
+  assert.equal(implementationPackageFor({ id: PILOT_STEP_ID, goalId: 'device-registration-mfa' }), packages[PILOT_STEP_ID])
 })
 
 test('a duplicate, nested, unterminated or unknown block fails, and so does an unsupported channel', () => {
@@ -261,7 +257,9 @@ test('the source date comes from the package’s verified sources, never a clock
   assert.equal(sourceUpdatedOn(later), '2026-10-01', 'the latest user-facing source is not the date, or a research-only source moved it')
   const code = read('src/content/implementation/project.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
-  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = sourceOn \? fillText\(W\.sourceUpdated, \{ date: absoluteDate\(`\$\{sourceOn\}T12:00:00Z`\) \}\) : null/)
+  const W = CONTRACT.implementation
+  assert.equal(packageSourceLine(PKG, W), `${fillText(W.sourceUpdated, { date: absoluteDate('2026-09-10T12:00:00Z') })} · ${fillText(W.sourcePins, { authored: '8461e0f2', pinned: BASELINE_COMMIT.slice(0, 8) })}`)
+  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = pkg \? packageSourceLine\(pkg, W, baselineCommit\) : null/)
 })
 
 // --------------------------------------------------------------- troubleshooting
@@ -342,7 +340,7 @@ test('the viewer draws every package channel through the one Implementation regi
   assert.match(step, /onClick=\{\(\) => copy\('implementation', active\?\.text\(\) \?\? ''\)\}/)
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
-  assert.match(step, /const artifacts: Artifact\[\] = pkg\n\s*\? \(projection\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
+  assert.match(step, /const artifacts: Artifact\[\] = packaged\n\s*\? \(projection\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
   // The projection, the readiness and the troubleshooting never throw through the step.
   for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
   for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)
