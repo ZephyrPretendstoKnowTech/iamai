@@ -1141,6 +1141,10 @@ async function walkFixture(fx) {
         // (roadmap/operations.ts `escape-hatch-unverified`).
         const cannotWriteYet =
           / first: this policy names an object /.test(bodyText) ||
+          // A policy waiting on an answer about one of the baseline's own groups:
+          // not an object the tenant lacks, and nothing to write until it is
+          // answered (ui/surfaces/stepJson.ts waitKindOf, jsonWaitsDecision).
+          / first: the baseline names a group of its author's, and IAMAI does not yet know /.test(bodyText) ||
           // The same fact for a source object no settled reading of the baseline
           // explains: nothing this tenant does ends the wait, so the step names
           // no step and says what it is waiting on in words
@@ -1330,7 +1334,10 @@ async function walkFixture(fx) {
           // A day-0 row with no date of its own reads its phase's day (planBoard.ts
           // boardWhen): preparation is dated, enforcement is not. Only a row in an
           // enforcement wave, or after one, dates what the email warns of.
-          const inDayZero = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-wave-0') !== null)`)
+          // Nor does a create the plan makes in report-only while a readiness
+          // threshold gates its enforcement: its day is the creation, and its reason
+          // line names the threshold (roadmap/stepSchedule.ts, owner 2026-09-11).
+          const inDayZero = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-wave-0') !== null || /^when .+ reaches \\d+%/.test(((e.querySelector('.plan-row-reason') || {}).textContent || '').trim()))`)
           const enforcementDated = (i) => DAY_ONLY.test(rowWhens[i] || '') && !inDayZero[i]
           const planDated = rowWhens.some((_, i) => enforcementDated(i))
           const campaignDated = (mfaRowAt >= 0 && enforcementDated(mfaRowAt)) || (campaignGroups?.mfaInPlace && planDated)
