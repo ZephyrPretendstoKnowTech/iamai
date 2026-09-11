@@ -337,6 +337,9 @@ test('the viewer draws every package channel through the one Implementation regi
   assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'], 'Email is not the fifth member of the one selector')
   assert.match(step, /const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = \{ entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' \}/)
   assert.equal(step.split('<Implementation\n').length - 1, 1)
+  // The region says who drew it, so a check of the translator's portal lines reads only the steps the translator drew.
+  assert.match(step, /<section className="step-section implementation-section" data-implementation=\{drawnBy\}>/)
+  assert.match(step, /drawnBy=\{packaged \? 'package' : 'translator'\}/)
   assert.match(step, /onClick=\{\(\) => copy\('implementation', active\?\.text\(\) \?\? ''\)\}/)
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
