@@ -121,7 +121,21 @@ export type StepResolution = {
  * policies name; on the source-references step, every one the plan's open
  * policies name, with the steps that name it (`stepIds`).
  */
-export type SourceReference = { id: string; kind: 'group' | 'namedLocation'; answer: 'pending' | 'mapped' | 'omitted'; stepIds?: string[] }
+export type SourceReference = {
+  id: string
+  kind: 'group' | 'namedLocation'
+  answer: 'pending' | 'mapped' | 'omitted'
+  stepIds?: string[]
+  /**
+   * The part the reference plays in the baseline (interpretation.ts referenceUsage):
+   * an exception to who its policies reach, who they reach, or both. What leaving
+   * it out does depends on it, so the answer is asked with it.
+   */
+  role?: 'exclude' | 'include' | 'both'
+  /** How many of the baseline's policies name it, and how many policies the baseline has. */
+  baselinePolicies?: number
+  baselineTotal?: number
+}
 
 export type Action = {
   kind: StepKind
