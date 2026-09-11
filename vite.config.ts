@@ -61,13 +61,16 @@ function demoFactsModule(): Plugin {
   }
 }
 
-// The page title, from content.json's pages.home.planner (prompt 47.1 Part 4): the name
-// and the descriptor, joined the way a browser tab expects.
+// The page title, from content.json's pages.app.shell.product (prompt 47.1 Part 4): the
+// wordmark and the descriptor, joined the way a browser tab expects ("IAMAI — Microsoft
+// Entra Planner"). The product name, IAMAI Planner, stays the registered application's.
+// The same pass fills the tool folder into the canonical link and og:url from TOOL_PATH,
+// so index.html does not hold a second copy of the path.
 function productTitle(): Plugin {
   return {
     name: 'product-title',
     transformIndexHtml(html) {
-      return html.replace('__PRODUCT_TITLE__', `${planner.name} — ${planner.descriptor}`)
+      return html.replaceAll('__PRODUCT_TITLE__', `${planner.wordmark} — ${planner.descriptor}`).replaceAll('__TOOL_PATH__', TOOL_PATH)
     },
   }
 }

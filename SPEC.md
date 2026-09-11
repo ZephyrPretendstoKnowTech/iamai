@@ -1,5 +1,13 @@
 # IAMAI Planner — Specification (v0.1, 2026-08-25)
 
+> **Status (2026-09-10).** This is the working specification, kept for its decisions and
+> their reasons; parts of it are a record of how the product got here. Where it and the
+> product disagree, `README.md` and `SECURITY.md` describe what ships today. In
+> particular: the surfaces are Connect → Plan → MFA Readiness → Export, with How IAMAI
+> works and Inventory as references (MFA Readiness replaced Today); the default baseline
+> ships as a reviewed copy pinned at a commit and bundled in the build; and design
+> documents cited below by `docs/design/…` paths now live under `archive/design/`.
+
 Read-only, browser-only Microsoft Entra Conditional Access **rollout planner**.
 It does not report "what's wrong" for its own sake; it produces the journey from a
 tenant's current state to a chosen baseline without lockouts.
@@ -21,19 +29,18 @@ tenant's current state to a chosen baseline without lockouts.
 | Write access | **None.** Read-only delegated Graph, forever in v1. No policy creation, no report-only creation. |
 | Runtime | Static SPA. No server, no telemetry in the bundle, no CDN dependencies (bundle everything). "Review the code, then connect." The public host injects its own page-load beacon at the edge; SECURITY.md says so. |
 | Consent | **One** admin-consent screen with the full read scope set. No staged consent, no opt-out checkbox. |
-| Baseline v1 | Jon Hope's repo `Jhope188/ConditionalAccessPolicies` as the shipped default, loaded live from GitHub at a pinned commit. Upload of a package is the second path. Custom repo URL later. |
+| Baseline v1 | Jon Hope's repo `Jhope188/ConditionalAccessPolicies` as the shipped default: a reviewed copy of its policy JSON, pinned at a commit and bundled in the build (`baselines/*.pinned.json`), credited to the author. The author's newer commits are offered for review and never adopted silently. Upload of a package is the second path. Custom repo URL later. |
 | Diff priority | 1) actual security gaps (intent coverage, exclusion-aware) 2) naming/organization as a secondary report. |
 | Output | In-browser roadmap. Print → PDF via a dedicated print document. "Save plan" writes a JSON plan file (v1) that re-imports, carrying Setup answers, pace and start date; the self-contained HTML wrapper is planned. |
 | Persistence | None server-side. Plan file + IndexedDB cache. |
-| Old project | `ZephyrPretendstoKnowTech/iamai` (installer-based) is being retired: salvage, then make private. Nothing from it is a dependency here. |
+| Repository | `ZephyrPretendstoKnowTech/iamai`, public, MIT. The earlier installer-based project that used this name is not a dependency. |
 
 ## 3. Flow
 
-The flow, the surfaces and their maximum are defined in `docs/design/target-state.md`
-(Connect → Today → Plan → a step; assumptions detected at scan time and edited on the Plan;
-nothing asked before the plan exists) and measured by `docs/qa/page-contracts.json`.
-Neither file is edited to make a violation pass. The engine rules the flow rests on are in
-the same document: one denominator (§8.1), one verdict (§8.2), the schedule rules (§9).
+The flow is Connect → Plan → MFA Readiness → Export, with How IAMAI works and Inventory as
+references. Assumptions are detected at scan time and edited on the Plan; nothing is asked
+before the plan exists. The strings each surface may render are measured by
+`docs/qa/page-contracts.json`, which is not edited to make a violation pass.
 The mechanics below this heading — baseline sources, MSAL, intent coverage, replay,
 re-scan — remain as decided in §2 and §4–§12.
 
@@ -111,7 +118,7 @@ What it does, in order:
 
 Source `state` is the author's lab state. Consumers treat every baseline policy as **intended enforced** unless a manifest says otherwise.
 
-Findings about the default source to hand to Jon when ready: one file with a JSON syntax error; agent-identity policies exported without conditions; two custom auth strengths with no `allowedCombinations`; named locations and group names absent. Three exports would make the repo self-sufficient: `namedLocations.json`, `authenticationStrengths.json`, `lookup.json` (id → displayName/type). The repo has no LICENSE file: fetch live, do not bundle policy content, and get his okay before quoting Intent text in the UI.
+Findings about the default source to hand to Jon when ready: one file with a JSON syntax error; agent-identity policies exported without conditions; two custom auth strengths with no `allowedCombinations`; named locations and group names absent. Three exports would make the repo self-sufficient: `namedLocations.json`, `authenticationStrengths.json`, `lookup.json` (id → displayName/type). The repo has no LICENSE file. This section first said to fetch live and never bundle policy content; the product now bundles a reviewed, pinned copy of the policy JSON with attribution, by the owner's decision. Get his okay before quoting Intent text in the UI.
 
 ## 7. Package format (upload path) — "what is sufficient"
 
@@ -125,9 +132,9 @@ Findings about the default source to hand to Jon when ready: one file with a JSO
 ## 8. Tool deployment
 
 - Vite + TypeScript + React. `@azure/msal-browser` (auth-code + PKCE, redirect). Graph via fetch + `$batch`. Web Worker for the engine. IndexedDB (idb) cache. Print stylesheet. No CDN imports.
-- Hosting: GitHub Pages first (public repo, same trust model as Jon's). Azure Static Web Apps if a custom domain needs it. Redirect URIs must match exactly (`http://localhost:5173` for dev, the prod URL).
+- Hosting: GitHub Pages (public repo, same trust model as Jon's), served through Cloudflare at getiamai.com: the home page at `/`, the planner at `/planner/`. Redirect URIs must match exactly (`http://localhost:5173` for dev, the prod URL).
 - App registration in the **GetIAMAI** tenant: multi-tenant (`AzureADMultipleOrgs`), SPA platform, scopes in §4, no secrets. Set publisher domain; pursue verified publisher (Partner Center / MPN ID) so consent doesn't show "unverified."
-- CI: build + deploy, CodeQL, pinned deps, versioned releases carrying the plan-file schema version.
+- CI: `ci` (typecheck, unit tests, site build, smoke) on every push and pull request; `deploy-pages` (walk → build → deploy) on `main`; `external-health` daily. Dependabot is configured. Not in place yet: CodeQL, versioned releases carrying the plan-file schema version.
 - Test tenants: GetIAMAI (P1/P2/Intune present) plus one large tenant for the sign-in sizing spike.
 
 ## 9. Week-1 spikes (find out now, not halfway)
@@ -147,7 +154,7 @@ src/baseline/        adapter (done)         src/graph/    MSAL + Graph client + 
 src/coverage/        policy → goals (intents.md)   src/roadmap/  steps, waves, print   (sign-in replay engine / What If: not built)
 src/mapping/         reference resolution   src/roadmap/  phases, steps, plan file
 src/scoring/         MFA viability (done)   src/licensing/ capability derivation
-src/ui/              React                  baselines/    pinned indexes (paths only)
+src/ui/              React                  baselines/    pinned snapshot, index, interpretation
 scripts/             analyze-local, build-index, spec-scopes, refresh-first-party-apps
 data/                first-party apps, service plans, licence catalog
 ```

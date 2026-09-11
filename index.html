@@ -33,12 +33,19 @@
     <link rel="preload" href="/fonts/IBMPlexSans-Medium-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/IBMPlexSans-SemiBold-Latin1.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/IBMPlexMono-Regular-Latin1.woff2" as="font" type="font/woff2" crossorigin />
-    <!-- Filled from content.json's pages.home.planner at build (vite.config.ts): the name lives in one place. -->
+    <!-- The title is filled from content.json's pages.app.shell.product at build, and the tool folder from
+         scripts/toolPath.ts, by the product-title plugin in vite.config.ts: each lives in one place. The
+         canonical link is root-relative because src/network.test.ts reads an absolute link href as a request;
+         vite-ignore keeps Vite from resolving it as an asset. og:url carries the absolute address. -->
     <title>__PRODUCT_TITLE__</title>
-    <meta name="description" content="IAMAI reads a Microsoft 365 tenant's Conditional Access policies, people and sign-in records, compares them with a proven baseline, and produces a dated rollout plan. Read-only; nothing leaves the browser." />
-    <meta property="og:title" content="IAMAI: Microsoft Entra Conditional Access rollout planner" />
-    <meta property="og:description" content="A dated Conditional Access rollout plan for Microsoft Entra ID and Microsoft 365, built from your own tenant. Read-only; nothing leaves the browser." />
+    <meta name="description" content="IAMAI reads a Microsoft Entra tenant with read-only permissions, compares its Conditional Access policies with a reviewed baseline, and writes a dated rollout plan. It runs in your browser, with no IAMAI server." />
+    <link rel="canonical" href="/__TOOL_PATH__/" vite-ignore />
     <meta property="og:type" content="website" />
+    <meta property="og:title" content="__PRODUCT_TITLE__" />
+    <meta property="og:description" content="IAMAI reads a Microsoft Entra tenant with read-only permissions, compares its Conditional Access policies with a reviewed baseline, and writes a dated rollout plan. It runs in your browser, with no IAMAI server." />
+    <meta property="og:url" content="https://getiamai.com/__TOOL_PATH__/" />
+    <meta property="og:image" content="https://getiamai.com/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <div id="root"></div>

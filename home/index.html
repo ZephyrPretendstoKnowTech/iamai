@@ -7,10 +7,12 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>IAMAI: tools for Microsoft Entra identity work</title>
-    <meta name="description" content="Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
-    <meta property="og:title" content="IAMAI: tools for Microsoft Entra identity work" />
-    <meta property="og:description" content="Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
+    <title>IAMAI — Microsoft Entra Conditional Access planner</title>
+    <meta name="description" content="Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
+    <!-- Root-relative: src/network.test.ts reads an absolute link href as a request. og:url carries the absolute address. -->
+    <link rel="canonical" href="/" />
+    <meta property="og:title" content="IAMAI — Microsoft Entra Conditional Access planner" />
+    <meta property="og:description" content="Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://getiamai.com/" />
     <meta property="og:image" content="https://getiamai.com/og.png" />
@@ -51,7 +53,7 @@
       <div class="hero">
         <p class="eyebrow">Microsoft identity security</p>
         <h1>Strengthen identity security without guessing what will break.</h1>
-        <p class="site-line">IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. The plan is ordered so nobody is locked out on the way.</p>
+        <p class="site-line">IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each policy runs in report-only first, to confirm its predicted impact before enforcement.</p>
         <p class="actions">
           <a class="btn btn-primary" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a>
           <a class="btn btn-secondary" href="/{{TOOL_PATH}}/?demo=1#/plan">Try it with sample data</a>
