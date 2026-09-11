@@ -180,16 +180,16 @@ test('the implementation control follows the capability: none, one, or a real ta
   // AI Info joins any channel that exists, so the strip always holds a choice,
   // and a step with none draws the one no-action box instead of a strip.
   assert.match(fn, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info is offered alone, or not beside the channels')
-  assert.match(CONTENT_STEP, /channels\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'no channel draws an empty strip')
+  assert.match(CONTENT_STEP, /artifacts\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'no channel draws an empty strip')
 })
 
-test('the channel order is Entra, PowerShell, JSON, then AI Info, among the channels that exist', () => {
+test('the channel order is Entra, PowerShell, JSON, AI Info, then Email, among the channels that exist', () => {
   const list = CONTENT_STEP.slice(CONTENT_STEP.indexOf('const CHANNEL_TABS'), CONTENT_STEP.indexOf('const CHANNEL_TABS') + 400)
   const ids = [...list.matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai'], 'the canonical channel order moved')
+  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'], 'the canonical channel order moved')
   // The strip is the canonical order FILTERED by what is available, so removing
   // a channel can never reorder the ones that remain.
-  assert.match(CONTENT_STEP, /CHANNEL_TABS\.filter\(\(t\) => channels\.includes\(t\.id as Channel\)\)/, 'the strip is built from something other than the canonical order')
+  assert.match(CONTENT_STEP, /CHANNEL_TABS\.filter\(\(t\) => ids\.includes\(t\.id as Channel\)\)/, 'the strip is built from something other than the canonical order')
 })
 
 test('every policy step in the fixtures offers a channel count the rule can draw', () => {

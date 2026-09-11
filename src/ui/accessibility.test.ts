@@ -408,9 +408,9 @@ test("the Plan step's implementation channels are one tab set over one panel, an
   // internal and deliberately unchanged — `portal` is the channel that renders
   // stepPortal.ts's lines, whatever Microsoft calls its console.
   const ids = [...(contentStep.match(/const CHANNEL_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai'])
+  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'])
   assert.match(contentStep, /label: CONTRACT\.railChannels\.portal/, 'the strip writes its own channel label')
-  assert.deepEqual([CONTRACT.railChannels.portal, CONTRACT.railChannels.powershell, CONTRACT.railChannels.json, CONTRACT.implementation.ai], ['Entra', 'PowerShell', 'JSON', 'AI Info'], 'the operator-facing channel labels moved')
+  assert.deepEqual([CONTRACT.railChannels.portal, CONTRACT.railChannels.powershell, CONTRACT.railChannels.json, CONTRACT.implementation.ai, CONTRACT.implementation.email], ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'], 'the operator-facing channel labels moved')
   assert.match(contentStep, /<TabList base=\{base\}[\s\S]*?panelId=\{\(\) => `\$\{base\}-panel`\}/)
   // One panel, labelled by whichever tab is selected, and reachable: a scrolling
   // code block holds nothing else a keyboard can land on.

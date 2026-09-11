@@ -1,0 +1,564 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-device-registration-mfa",
+  "title": "Require MFA to Register a Device",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-device-registration-mfa/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "authenticationStrength": {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "displayName": "Multifactor authentication"
+    },
+    "userAction": "urn:user:registerdevice",
+    "initialState": "enabledForReportingButNotEnforced"
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.displayName",
+    "policy.current.state",
+    "people.affected.count",
+    "evidence.deviceRegistration",
+    "evidence.enrollmentWorkflows",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches",
+        "policy.target.excludeGroups"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.include-all": {
+          "appliesWhen": "included population is not exactly All users",
+          "entra": [
+            "entra.correct.users.include-all"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "Conditions"
+              ]
+            }
+          ]
+        },
+        "users.exclusions-canonical": {
+          "appliesWhen": "exclusion set differs from IAMAI's canonical target",
+          "entra": [
+            "entra.correct.users.exclusions-canonical"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "Conditions"
+              ]
+            }
+          ]
+        },
+        "target.register-or-join-devices": {
+          "appliesWhen": "target resource/user action differs from Register or join devices only",
+          "entra": [
+            "entra.correct.target.register-or-join-devices"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "Conditions"
+              ]
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "appliesWhen": "one or more noncanonical conditions are present",
+          "entra": [
+            "entra.correct.conditions.remove-noncanonical"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "Conditions"
+              ]
+            }
+          ]
+        },
+        "grant.authentication-strength": {
+          "appliesWhen": "grant or authentication strength differs from retained pinned target",
+          "entra": [
+            "entra.correct.grant.authentication-strength"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "Grant"
+              ]
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
+          "entra": [
+            "entra.correct.lifecycle.report-only"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly"
+              ]
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.users.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "block": "email.users.pre-enforcement",
+    "audience": "affected-users",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice"
+  },
+  "prerequisites": [
+    {
+      "id": "canonical-exclusions",
+      "class": "IAMAI-confirmed",
+      "binding": "policy.target.excludeGroups"
+    },
+    {
+      "id": "stable-policy-id",
+      "class": "IAMAI-confirmed-for-existing-object-states",
+      "binding": "policy.current.id"
+    },
+    {
+      "id": "legacy-device-mfa-toggle",
+      "class": "human-validation",
+      "requiredBefore": "readyToEnforce->inPlace"
+    },
+    {
+      "id": "enrollment-workflows",
+      "class": "human-validation",
+      "requiredBefore": "readyToEnforce->inPlace"
+    },
+    {
+      "id": "external-auth-methods",
+      "class": "human-validation",
+      "requiredBefore": "readyToEnforce->inPlace"
+    }
+  ],
+  "sharedTechnicalPrimitives": [
+    "ca.graph.policy-v1",
+    "graph.powershell.invoke-v1",
+    "ca.license-p1"
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-device-registration",
+      "authority": "Microsoft Learn",
+      "title": "Require multifactor authentication for device registration",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-registration",
+      "purpose": "Primary portal procedure, built-in MFA authentication strength, external-auth-method warning, legacy device-setting warning.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-target-resources",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access: Target resources",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+      "purpose": "User Action limitations: only MFA/auth strength access controls; Client apps, device filters, and Device state unavailable; WHfB/device-bound passkeys unsupported for first registration.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": [
+        "step",
+        "entra",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-report-only",
+      "authority": "Microsoft Learn",
+      "title": "Analyze Conditional Access Policy Impact",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only",
+      "purpose": "Report-only excludes User Actions from evaluation.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "troubleshooting",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-device-settings",
+      "authority": "Microsoft Learn",
+      "title": "Manage devices in Microsoft Entra ID using the Microsoft Entra admin center",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/devices/manage-device-identities",
+      "purpose": "Legacy device-registration MFA tenant setting must be No when Conditional Access user action is used.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "step",
+        "entra",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-bulk-enrollment",
+      "authority": "Microsoft Learn",
+      "title": "Bulk enrollment for Windows devices",
+      "url": "https://learn.microsoft.com/en-us/intune/intune-service/enrollment/windows-bulk-enroll",
+      "purpose": "Windows Configuration Designer package_{GUID} bulk enrollment cannot satisfy MFA and needs deliberate workflow handling.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "troubleshooting",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-ca-licensing",
+      "authority": "Microsoft Learn",
+      "title": "Microsoft Entra licensing",
+      "url": "https://learn.microsoft.com/en-us/entra/fundamentals/licensing",
+      "purpose": "Conditional Access requires Entra ID P1; Business Premium includes Conditional Access rights.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "researchOnly",
+      "audience": [
+        "step"
+      ]
+    },
+    {
+      "id": "ms-ca-condition-set",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessConditionSet resource type",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 required condition-set properties and supported clientAppTypes enum.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-ca-grant-controls",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessGrantControls resource type",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 grant-controls shape and authenticationStrength relationship.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-ca-policy",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessPolicy resource type",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 policy properties and lifecycle enum.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-graph-create",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+      "purpose": "POST endpoint, least delegated permissions, supported admin roles.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-graph-update",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+      "purpose": "PATCH endpoint, permissions, roles, omitted-root-property preservation.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-auth-strength-list",
+      "authority": "Microsoft Graph",
+      "title": "List authenticationStrengthPolicies",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthroot-list-policies?view=graph-rest-1.0",
+      "purpose": "Confirms built-in Multifactor authentication ID 00000000-0000-0000-0000-000000000002 and requirementsSatisfied=mfa.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-powershell-request",
+      "authority": "Microsoft Learn",
+      "title": "Invoke-MgGraphRequest",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.authentication/invoke-mggraphrequest?view=graph-powershell-1.0",
+      "purpose": "Supported Microsoft.Graph.Authentication REST request cmdlet; Body required for POST/PATCH.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": [
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-graph-get",
+      "authority": "Microsoft Graph",
+      "title": "Get conditionalAccessPolicy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
+      "purpose": "Stable-ID read-back endpoint and Policy.Read.All read permission.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-auth-strength-troubleshoot",
+      "authority": "Microsoft Learn",
+      "title": "Troubleshoot Conditional Access authentication strengths",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/troubleshoot-authentication-strengths",
+      "purpose": "User method must be registered and enabled to satisfy the required authentication strength; supports rollout troubleshooting.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "troubleshooting",
+      "audience": [
+        "aiInfo",
+        "troubleshooting"
+      ]
+    }
+  ],
+  "validation": {
+    "jsonTemplateConvention": "{{json:<binding>}} is whole-value JSON substitution; mask to null only for authoring syntax lint.",
+    "powershellParser": "not-run-in-authoring-environment-no-pwsh",
+    "liveTenantExecution": false
+  },
+  "unresolvedIssues": [],
+  "verificationStatus": "self-verified"
+}

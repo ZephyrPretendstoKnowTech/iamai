@@ -57,14 +57,45 @@ import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard } from '../exportGuard.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty } from './stepContract.ts'
-import { DoneWhen, FixBeforeContinuing, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, FixBeforeContinuing, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
+import { implementationPackageFor, mergeReadiness, packageBindings, packageStateOf } from './stepPackage.ts'
+import { packageReadiness, projectImplementation, sourceUpdatedOn, troubleshootingFor } from '../../content/implementation/project.ts'
+import type { ChannelArtifact, OutputChannel, TroubleshootingScenario } from '../../content/implementation/project.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 
 type Ex = Record<string, unknown>
-type Channel = 'portal' | 'ps' | 'json' | 'ai'
+type Channel = 'portal' | 'ps' | 'json' | 'ai' | 'email'
+
+/**
+ * One channel as the Implementation region draws it: the tab it sits under, how
+ * its text is set, the text itself (read when shown, so a long artifact is not
+ * built for a tab nobody opens), and the one line of support under the preview
+ * that says how it is run.
+ */
+type Artifact = { id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null }
+
+/** A package's output channels under the viewer's own tab ids. */
+const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = { entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' }
+
+/**
+ * A package channel as an artifact. The words are the package's, bound; the
+ * support line is its own metadata — the mode a mode-based script is run in, the
+ * request a JSON body is sent with — and never a sentence written here.
+ */
+function packageArtifact(a: ChannelArtifact): Artifact {
+  const W = CONTRACT.implementation
+  const note =
+    a.channel === 'powershell' && a.mode !== null
+      ? fillText(a.corrections.length > 0 ? W.powershellCorrections : W.powershellMode, { mode: a.mode, corrections: a.corrections.join(',') })
+      : a.channel === 'json' && a.requests.length > 0
+        ? a.requests.map((r) => `${r.method} ${r.endpoint}`).join(' · ')
+        : null
+  return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => a.text, note }
+}
 
 /**
  * Which implementation channels this step actually has, in the approved order.
@@ -91,16 +122,18 @@ function channelsFor(hasPortal: boolean, machineOffered: boolean): Channel[] {
 
 /**
  * The channels under the labels an operator reads on the page, in the approved
- * order — Entra, PowerShell, JSON, AI Info. The first three are
- * `CONTRACT.railChannels`, the words those channels have always had; the ids are
- * the internal ones and do not move (`portal` renders the portal translator's
- * lines, whatever the console is called this year).
+ * order — Entra, PowerShell, JSON, AI Info — with Email appended, the fifth
+ * member the owner authorised for a package that projects one. The first three
+ * are `CONTRACT.railChannels`, the words those channels have always had; the ids
+ * are the internal ones and do not move (`portal` renders the Entra portal
+ * instructions, whatever the console is called this year).
  */
 const CHANNEL_TABS: TabItem[] = [
   { id: 'portal', label: CONTRACT.railChannels.portal },
   { id: 'ps', label: CONTRACT.railChannels.powershell },
   { id: 'json', label: CONTRACT.railChannels.json },
   { id: 'ai', label: CONTRACT.implementation.ai },
+  { id: 'email', label: CONTRACT.implementation.email },
 ]
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
@@ -141,7 +174,7 @@ function Line({ s, ex, cls }: { s: unknown; ex: Ex; cls?: string }) {
   return <p className={cls}><T s={s} ex={ex} /></p>
 }
 
-type Dialog = 'readiness' | 'implementation' | 'rollout' | 'doesnt-apply' | null
+type Dialog = 'readiness' | 'implementation' | 'troubleshooting' | 'rollout' | 'doesnt-apply' | null
 
 export function ContentStep({
   step,
@@ -229,6 +262,17 @@ export function ContentStep({
   const channels = deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
   const portalLines = hasPortal ? [...before, ...(portal ?? [])] : []
   const hasSteps = instructions.steps.length > 0
+  // The step's implementation-content package, where one is active
+  // (stepPackage.ts): IAMAI's state and bindings in, the package's own blocks
+  // out. A package state with nothing to implement projects no channel; a
+  // required value IAMAI does not hold projects nothing at all.
+  const pkg = implementationPackageFor(step.id)
+  const pkgState = pkg ? packageStateOf(step, contract) : null
+  const pkgBindings = pkg && pkgState ? packageBindings(step, ctx, contract) : null
+  const projection = pkg && pkgState && pkgBindings ? projectImplementation(pkg, pkgState, pkgBindings) : null
+  const pkgReadiness = pkg && pkgState && pkgBindings ? packageReadiness(pkg, pkgState, pkgBindings) : null
+  const scenarios: TroubleshootingScenario[] = pkg && pkgState ? troubleshootingFor(pkg, pkgState) : []
+  const sourceOn = pkg ? sourceUpdatedOn(pkg) : null
   // Who this touches (whoBlocks.ts), in the Readiness evidence: each line whole,
   // with the names it ends in. Whether the reach is knowable at all is the
   // contract's answer (Foundation A) — a scope this scan could not settle says so
@@ -237,15 +281,17 @@ export function ContentStep({
   const lead = whoLeadLine(who, ex as Record<string, unknown>, [...whoInline, ...whoHeld])
   const showWho = lead !== null || whoInline.length > 0 || (contract.who !== null && !contract.who.known)
   const whoFull = [...whoInline.map((b) => whoHeld.find((h) => h.key === b.key) ?? b), ...whoHeld.filter((h) => !whoInline.some((b) => b.key === h.key))]
-  const hasEvidence = contract.found.length > 0 || showWho
-  const readiness = readinessOf(step, contract)
+  const pkgEvidence = pkgReadiness !== null && (pkgReadiness.conclusion !== null || pkgReadiness.whyItMatters !== null || pkgReadiness.unknowns.length > 0 || pkgReadiness.references.length > 0)
+  const hasEvidence = contract.found.length > 0 || showWho || pkgEvidence
+  const readiness = mergeReadiness(readinessOf(step, contract), pkgReadiness)
   // What to do, where the step has instructions of its own. On a step whose
   // action IS the implementation the approved design draws no What to do: the
   // action is the Readiness bar's line and the instructions are the channels.
   const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies]))
   const createIfNeeded = truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string'
   const creates = (truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)
-  const ownSteps = !(portal && channels.length > 0) && (hasSteps || before.length > 0)
+  const implementing = pkg ? (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
+  const ownSteps = !implementing && (hasSteps || before.length > 0)
   const showWhatToDo = decides || createIfNeeded || creates || ownSteps
   // The one next action (stepContract.ts actionOf), drawn once: under the
   // Readiness bar where the step has no instructions of its own, and at the head
@@ -262,6 +308,17 @@ export function ContentStep({
         : ch === 'json'
           ? policyJsonText(step)
           : stepContext(step, (s) => stepExportView(s, ctx))
+  // The channels the Implementation region draws: the package's projected
+  // channels where a package is active, and otherwise the ones this step always
+  // had. Never both.
+  const artifacts: Artifact[] = pkg
+    ? (projection?.channels ?? []).map(packageArtifact)
+    : channels.map((ch) => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
+  const W = CONTRACT.implementation
+  const empty: ImplementationEmpty = projection?.hold ? { key: 'bindingMissing', tone: 'warn', title: W.empty.bindingMissing[0], text: W.empty.bindingMissing[1] } : implementationEmptyOf(contract)
+  // The package's verified-source date (project.ts sourceUpdatedOn), set at
+  // midday UTC so no display time zone moves it across a day.
+  const sourceLine = sourceOn ? fillText(W.sourceUpdated, { date: absoluteDate(`${sourceOn}T12:00:00Z`) }) : null
   // The footer's rollout exception: the existing skip, offered only where the
   // step's content entry marks it excludable, and Doesn't apply here where the
   // step is flagged for it. A step already set aside offers the way back.
@@ -356,11 +413,11 @@ export function ContentStep({
           )}
 
           <Implementation
-            channels={channels}
-            textOf={textOf}
-            portalLines={portalLines}
+            artifacts={artifacts}
             title={title}
-            empty={implementationEmptyOf(contract)}
+            empty={empty}
+            source={sourceLine}
+            onTroubleshooting={scenarios.length > 0 && !printing ? () => setDialog('troubleshooting') : null}
             open={dialog === 'implementation'}
             onOpen={() => setDialog('implementation')}
             onClose={closeDialog}
@@ -433,7 +490,46 @@ export function ContentStep({
                   {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
                 </>
               )}
+              {/* The package's own evidence for this state (project.ts
+                  packageReadiness): its conclusion for the next transition, why
+                  the gate matters, what IAMAI cannot prove, and the Microsoft
+                  references behind it. Each is the package's sentence. */}
+              {pkgReadiness?.conclusion && (
+                <>
+                  <h4>{CONTRACT.readiness.package.conclusion}</h4>
+                  <p>{pkgReadiness.conclusion}</p>
+                </>
+              )}
+              {pkgReadiness?.whyItMatters && (
+                <>
+                  <h4>{CONTRACT.readiness.package.whyItMatters}</h4>
+                  <p>{pkgReadiness.whyItMatters}</p>
+                </>
+              )}
+              {pkgReadiness && pkgReadiness.unknowns.length > 0 && (
+                <>
+                  <h4>{CONTRACT.readiness.package.unknown}</h4>
+                  {pkgReadiness.unknowns.map((u, i) => <p key={i}>{u}</p>)}
+                </>
+              )}
+              {pkgReadiness && pkgReadiness.references.length > 0 && (
+                <>
+                  <h4>{CONTRACT.readiness.package.references}</h4>
+                  <ul className="source-links">
+                    {pkgReadiness.references.map((s) => (
+                      <li key={s.id}>
+                        <a href={s.url} target="_blank" rel="noopener noreferrer">
+                          {s.title} ↗
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
+          </StepDialog>
+          <StepDialog open={dialog === 'troubleshooting'} onClose={closeDialog} eyebrow={CONTRACT.troubleshooting.eyebrow} title={title} closeLabel={CONTRACT.troubleshooting.close}>
+            <Troubleshooting scenarios={scenarios} />
           </StepDialog>
           <StepDialog open={dialog === 'rollout'} onClose={closeDialog} eyebrow={RO.eyebrow} title={RO.title} closeLabel={RO.cancel}>
             <ReasonForm body={RO.body} label={RO.reason} placeholder={RO.placeholder} cancel={RO.cancel} confirm={RO.control} multiline onCancel={closeDialog} onConfirm={(r) => { closeDialog(); onSkip(r) }} />
@@ -454,16 +550,18 @@ export function ContentStep({
  * implementation dialog. A step with no channel shows the one truthful no-action
  * box instead (stepContract.ts implementationEmptyOf) and never an artifact.
  *
- * The artifacts are their own modules' — the portal translator's lines,
- * stepPowerShell.ts, stepJson.ts and the prompts' step context — and nothing is
- * composed here.
+ * The artifacts are their own modules' — the package's bound blocks
+ * (project.ts), or the portal translator's lines, stepPowerShell.ts, stepJson.ts
+ * and the prompts' step context — and nothing is composed here. The preview,
+ * the expanded viewer and Copy read the same text.
  */
-function Implementation({ channels, textOf, portalLines, title, empty, open, onOpen, onClose, copy, copied }: {
-  channels: Channel[]
-  textOf: (ch: Channel) => string
-  portalLines: string[]
+function Implementation({ artifacts, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
+  artifacts: Artifact[]
   title: string
   empty: ImplementationEmpty
+  /** "Source updated <date>", from the package's verified sources; null where there is no truthful date. */
+  source: string | null
+  onTroubleshooting: (() => void) | null
   open: boolean
   onOpen: () => void
   onClose: () => void
@@ -474,25 +572,32 @@ function Implementation({ channels, textOf, portalLines, title, empty, open, onO
   const base = useId()
   const dialogBase = useId()
   const W = CONTRACT.implementation
+  const ids = artifacts.map((a) => a.id)
   // The chosen tab is clamped to what is available, so a step that offers only
   // some channels cannot be left showing another's panel — the frame is reused
   // across rows and the state is not.
-  const tab: Channel = channels.includes(chosen) ? chosen : (channels[0] ?? 'portal')
-  const tabs = CHANNEL_TABS.filter((t) => channels.includes(t.id as Channel))
+  const tab: Channel = ids.includes(chosen) ? chosen : (ids[0] ?? 'portal')
+  const active = artifacts.find((a) => a.id === tab) ?? null
+  const tabs = CHANNEL_TABS.filter((t) => ids.includes(t.id as Channel))
   const body = (cls: string) =>
-    tab === 'portal' ? (
+    active === null ? null : active.form === 'list' ? (
       <ol className={cls}>
-        {portalLines.map((l, i) => (
+        {active.lines.map((l, i) => (
           <li key={i}>{l}</li>
         ))}
       </ol>
+    ) : active.form === 'markdown' ? (
+      <div className={`${cls} authored`}>
+        <AuthoredText text={active.text()} />
+      </div>
     ) : (
-      <pre className={`${cls} mono`}>{textOf(tab)}</pre>
+      <pre className={`${cls} mono`}>{active.text()}</pre>
     )
+  const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null
   return (
     <section className="step-section implementation-section">
       <h4>{W.heading}</h4>
-      {channels.length === 0 ? (
+      {artifacts.length === 0 ? (
         <ImplementationEmptyBox empty={empty} />
       ) : (
         <>
@@ -504,7 +609,7 @@ function Implementation({ channels, textOf, portalLines, title, empty, open, onO
           )}
           <div className="impl-preview" {...onePanelProps(base, tab)}>
             <div className="preview-actions no-print">
-              <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', textOf(tab))}>
+              <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', active?.text() ?? '')}>
                 <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
               </button>
               <button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}>
@@ -520,11 +625,68 @@ function Implementation({ channels, textOf, portalLines, title, empty, open, onO
                 <Callout kind="warning">{W.aiWarning}</Callout>
               </div>
             )}
+            {active?.note && <p className="impl-dialog-note">{active.note}</p>}
             <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
           </StepDialog>
         </>
       )}
+      {support && (
+        <div className="impl-support">
+          {artifacts.length > 0 && active?.note && <span className="impl-support-note">{active.note}</span>}
+          {onTroubleshooting && (
+            <button type="button" className="inline-link" onClick={onTroubleshooting}>
+              {W.troubleshooting}
+            </button>
+          )}
+          {source && <span>{source}</span>}
+        </div>
+      )}
     </section>
+  )
+}
+
+/**
+ * The package's troubleshooting scenarios for the step's state, under the
+ * guide's six labels (§30.3). Every sentence is the package author's; a label
+ * with nothing under it is left out.
+ */
+function Troubleshooting({ scenarios }: { scenarios: TroubleshootingScenario[] }) {
+  const L = CONTRACT.troubleshooting
+  const part = (label: string, items: string[]) =>
+    items.length === 0 ? null : (
+      <>
+        <h5 className="key-label">{label}</h5>
+        {items.length === 1 ? <p>{items[0]}</p> : <ul>{items.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+      </>
+    )
+  return (
+    <div className="dialog-prose troubleshooting">
+      {scenarios.map((s) => (
+        <section key={s.id} className="troubleshooting-scenario">
+          <h4>{s.title}</h4>
+          {part(L.seeing, s.symptom ? [s.symptom] : [])}
+          {part(L.cause, s.likelyCauses)}
+          {part(L.check, s.check)}
+          {part(L.fix, s.fix)}
+          {part(L.doNot, s.doNot)}
+          {part(L.then, s.then)}
+          {s.sources.length > 0 && (
+            <>
+              <h5 className="key-label">{L.sources}</h5>
+              <ul className="source-links">
+                {s.sources.map((src) => (
+                  <li key={src.id}>
+                    <a href={src.url} target="_blank" rel="noopener noreferrer">
+                      {src.title} ↗
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      ))}
+    </div>
   )
 }
 

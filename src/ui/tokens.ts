@@ -476,6 +476,27 @@ export const SOFT_TINTS: Record<string, string> = {
   '--danger-tint': '--danger',
 }
 
+/**
+ * The soft edge of a semantic role: the border of a panel that states a role at
+ * a lower weight than the role colour itself — the approved Plan design's
+ * semantic no-action boxes and attention panels
+ * (docs/design/approved/anatomy/plan-step-v1.html `.implementation-empty.warn`,
+ * `.attention`: the state colour at about a third over the panel). Composed from
+ * the theme's own values like the tints, so it follows light, dark and print.
+ */
+export const STATE_LINES: Record<string, string> = {
+  '--success-line': '--success',
+  '--attention-line': '--attention',
+  '--danger-line': '--danger',
+}
+
+/**
+ * The layer behind a modal dialog: the canvas at three quarters, as the
+ * approved Plan design draws it (plan-step-v1.html `::backdrop{background:
+ * rgba(3,7,9,.75)}`), composed from the theme's canvas so it follows the theme.
+ */
+export const SCRIM = 'color-mix(in srgb, var(--canvas) 75%, transparent)'
+
 /** The MFA readiness ladder's colour per rung (derive/ladder.ts), each an alias of a palette colour so it follows the theme. */
 export const RUNG_COLOURS: Record<string, string> = {
   '--rung-5': '--success-text',
@@ -545,9 +566,11 @@ export function renderTokensCss(): string {
     .filter(([k]) => k !== 'default')
     .map(([k, v]) => `  --w-${k}: ${v}px;`)
     .join('\n')
-  const tints = Object.entries(SOFT_TINTS)
-    .map(([name, role]) => `  ${name}: color-mix(in srgb, var(${role}) 12%, var(--canvas));`)
-    .join('\n')
+  const tints = [
+    ...Object.entries(SOFT_TINTS).map(([name, role]) => `  ${name}: color-mix(in srgb, var(${role}) 12%, var(--canvas));`),
+    ...Object.entries(STATE_LINES).map(([name, role]) => `  ${name}: color-mix(in srgb, var(${role}) 36%, var(--line));`),
+    `  --scrim: ${SCRIM};`,
+  ].join('\n')
   return `/* GENERATED from src/ui/tokens.ts by scripts/gen-tokens.mjs. Do not edit by hand:
    tokens.test.ts fails when this file and tokens.ts disagree. */
 

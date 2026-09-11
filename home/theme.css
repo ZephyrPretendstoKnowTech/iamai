@@ -274,4 +274,8 @@
   --success-tint: color-mix(in srgb, var(--success) 12%, var(--canvas));
   --attention-tint: color-mix(in srgb, var(--attention) 12%, var(--canvas));
   --danger-tint: color-mix(in srgb, var(--danger) 12%, var(--canvas));
+  --success-line: color-mix(in srgb, var(--success) 36%, var(--line));
+  --attention-line: color-mix(in srgb, var(--attention) 36%, var(--line));
+  --danger-line: color-mix(in srgb, var(--danger) 36%, var(--line));
+  --scrim: color-mix(in srgb, var(--canvas) 75%, transparent);
 }

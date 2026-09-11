@@ -98,18 +98,25 @@ type ContractWords = {
     close: string
     tiles: Record<string, string>
     bar: Record<string, string>
+    package: { conclusion: string; whyItMatters: string; unknown: string; references: string }
   }
   implementation: {
     heading: string
     tabsLabel: string
     ai: string
+    email: string
     aiWarning: string
     copy: string
     expand: string
     dialogEyebrow: string
     close: string
+    sourceUpdated: string
+    troubleshooting: string
+    powershellMode: string
+    powershellCorrections: string
     empty: Record<string, [string, string]>
   }
+  troubleshooting: { eyebrow: string; close: string; seeing: string; cause: string; check: string; fix: string; doNot: string; then: string; sources: string }
   rail: Record<string, string>
   rollout: Record<string, string>
 }

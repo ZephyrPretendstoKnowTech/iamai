@@ -246,7 +246,8 @@ test('the step gates the display and never the artifact', () => {
   // JSON and the commands are still built by the modules that built them.
   assert.match(CONTENT_STEP, /const deployNow = implementationIsCurrent\(step\)/, 'the step decides for itself when to deploy')
   assert.match(CONTENT_STEP, /const channels = deployNow \? channelsFor\(/, 'the gate is not applied to the channel list')
-  assert.match(CONTENT_STEP, /<Implementation\n\s*channels=\{channels\}/, 'the implementation region is not handed the gated channel list')
+  assert.match(CONTENT_STEP, /: channels\.map\(\(ch\) => \(\{ id: ch,/, 'the implementation region is not built from the gated channel list')
+  assert.match(CONTENT_STEP, /<Implementation\n\s*artifacts=\{artifacts\}/, 'the implementation region is not handed the artifacts')
   // Nothing writes to the capability.
   assert.equal(CONTENT_STEP.includes('implementation.offered ='), false, 'the step mutates Foundation A’s answer')
   // And no title decides any of it.
@@ -434,5 +435,5 @@ test('the corpus reaches 0 and 3 channels, and a strip never has one tab', () =>
   // AI Info joins any channel set and never stands alone, so a strip always holds
   // a choice; a step with no channel draws the no-action box, never an empty strip.
   assert.match(rule, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info can stand alone or is never offered')
-  assert.match(CONTENT_STEP, /channels\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'a step with no channel draws an empty strip')
+  assert.match(CONTENT_STEP, /artifacts\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'a step with no channel draws an empty strip')
 })

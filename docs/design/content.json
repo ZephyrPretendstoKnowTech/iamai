@@ -1228,6 +1228,12 @@
               "conflict": "Deferred",
               "restore": "Set aside",
               "none": "Nothing left to do"
+            },
+            "package": {
+              "conclusion": "Current conclusion",
+              "whyItMatters": "Why it matters",
+              "unknown": "Unknown / cannot prove",
+              "references": "Microsoft references"
             }
           },
           "implementation": {
@@ -1276,8 +1282,17 @@
               "none": [
                 "No generated implementation",
                 "This step describes no policy for IAMAI to generate."
+              ],
+              "bindingMissing": [
+                "Nothing to submit yet",
+                "IAMAI does not yet hold every value this change needs, so no artifact is produced."
               ]
-            }
+            },
+            "email": "Email",
+            "sourceUpdated": "Source updated {date}",
+            "troubleshooting": "Troubleshooting",
+            "powershellMode": "Run with -Mode {mode}",
+            "powershellCorrections": "Run with -Mode {mode} -Corrections {corrections}"
           },
           "rail": {
             "$comment": "The Next milestone rail's metric where Foundation B holds no date for the milestone (docs/design/approved/anatomy/plan-step-v1.html V3–V5 `.metric`). The sub-line under it is the milestone's own words.",
@@ -1297,6 +1312,18 @@
             "reason": "Reason",
             "placeholder": "Record why this step is being excluded.",
             "cancel": "Cancel"
+          },
+          "troubleshooting": {
+            "$comment": "The labels a package troubleshooting scenario is drawn under (authoring guide v2.5 §30.3). Every scenario itself is the package author's (docs/implementation-content/<step-id>/CONTENT.md troubleshooting.model).",
+            "eyebrow": "Troubleshooting",
+            "close": "Minimize",
+            "seeing": "What you're seeing",
+            "cause": "Likely cause",
+            "check": "Check",
+            "fix": "Fix",
+            "doNot": "Do not",
+            "then": "Then",
+            "sources": "Microsoft references"
           }
         },
         "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",
