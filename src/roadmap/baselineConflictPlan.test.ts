@@ -363,7 +363,8 @@ test('the collapsed row reads the baseline conflict and no rollout date', () => 
   // the removal of the readiness hold.
   const { r } = run(fixture('demo-week2'))
   assert.ok(
-    r.steps.some((s) => /readiness reaches/.test(rowWhen(s))),
+    // In its date column, or — a create the plan still makes while the threshold gates its enforcement — on its reason line.
+    r.steps.some((s) => /readiness reaches/.test(rowWhen(s)) || /readiness reaches/.test(rowReason(s) ?? '')),
     'no row reads its readiness threshold any more',
   )
 })

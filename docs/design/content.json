@@ -248,6 +248,8 @@
         "resolve": "Clear what this step is waiting on.",
         "prepareHeld": "Create the policy in report-only now; turning it on waits for {measure} to reach {threshold}.",
         "prepareHeldOther": "Create the policy in report-only now; it is not turned on while this step is held.",
+        "prepareScheduled": "Create the policy in report-only on {date}; turning it on waits for {measure} to reach {threshold}.",
+        "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
         "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
@@ -1517,6 +1519,12 @@
             "undated": "Not scheduled",
             "resolveSub": "Resolve prerequisites",
             "decideSub": "Make the decision"
+          },
+          "railTransition": {
+            "$comment": "The rail's sub-line under a day the plan schedules (roadmap/stepSchedule.ts transition): what that day is for. Preparation, verification and review read the milestone's own words instead.",
+            "createReportOnly": "Create in report-only",
+            "change": "Change the existing policy",
+            "enforce": "Turn the policy on"
           },
           "rollout": {
             "$comment": "The footer's rollout exception (docs/design/approved/anatomy/plan-step-v1.html `#rollout-dialog`). It is the existing skip (roadmap/sets.ts): the step leaves the rollout with the operator's reason recorded, and it never counts as implemented.",

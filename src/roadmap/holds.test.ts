@@ -36,7 +36,8 @@ import { rowReason, rowWhen, rowWhenWraps } from '../ui/surfaces/rowWhen.ts'
 import { datesLineFor, stepExportView, stepLines } from '../ui/surfaces/stepExport.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
-import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
+import { floorRows, phaseRows, planPhases, undatedRows } from '../ui/surfaces/planRows.ts'
+import { scheduleOf } from './stepSchedule.ts'
 import { BOARD, boardWhenOf, statusGroupOf } from '../ui/surfaces/planBoard.ts'
 import { cleanupExportViews } from '../ui/surfaces/cleanupExport.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
@@ -67,16 +68,32 @@ const stepOf = (p: Plan, id: string): Step => {
   return s!
 }
 const booked = (p: Plan, id: string): boolean => p.ics.includes(`-${id}@iamai`)
-const phased = (p: Plan): Set<string> => new Set(p.r.schedule.waves.flatMap((w) => phaseRows(p.r.steps, w).map((s) => s.id)))
+const phased = (p: Plan): Set<string> => new Set(planPhases(p.r.schedule).flatMap((w) => phaseRows(p.r.steps, w).map((s) => s.id)))
 const open = (s: Step): boolean => s.status !== 'done' && s.status !== 'skipped' && !s.doesntApply
 const YEAR = /\b\d{4}\b/
+/** Held with nothing scheduled: a create only a readiness threshold holds keeps its creation day (owner decision, 2026-09-11; roadmap/stepSchedule.ts). */
+const waiting = (s: Step): boolean => isHeld(s) && scheduleOf(s).class === 'waiting'
+
+/** A held create the plan still makes in report-only: its creation day in Preparation, and nothing of its enforcement. */
+function createdOnly(p: Plan, s: Step): void {
+  const where = `${p.f.name}/${s.id}`
+  const sch = scheduleOf(s)
+  assert.equal(sch.transition, 'createReportOnly', where)
+  assert.equal(sch.enforcement, 'gated', where)
+  assert.equal(sch.at, s.reportOnlyAt, `${where}: the day is its report-only day`)
+  assert.equal(rowWhen(s), absoluteDate(sch.at!), `${where}: the row reads that day`)
+  assert.ok(planPhases(p.r.schedule).some((w) => w.wave === 0 && w.stepIds.includes(s.id)), `${where}: in Preparation`)
+  assert.equal(s.events, null, `${where}: an enforcement or an announcement`)
+  assert.deepEqual(s.rings, [], `${where}: rollout rings`)
+  assert.equal(booked(p, s.id), false, `${where}: a calendar entry`)
+}
 
 /** Everything a held step must not carry, on every surface that could date it. */
 function nothingIsDated(p: Plan, s: Step): void {
   const where = `${p.f.name}/${s.id}`
   assert.ok(isHeld(s), `${where}: the premise, something holds it`)
   assert.equal(phased(p).has(s.id), false, `${where}: a held step sits in no numbered phase`)
-  assert.ok(undatedRows(p.r.steps, p.r.schedule.waves).some((x) => x.id === s.id) || floorRows(p.r.steps).some((x) => x.id === s.id), `${where}: it renders under Waiting on something else`)
+  assert.ok(undatedRows(p.r.steps, planPhases(p.r.schedule)).some((x) => x.id === s.id) || floorRows(p.r.steps).some((x) => x.id === s.id), `${where}: it renders under Waiting on something else`)
   assert.doesNotMatch(rowWhen(s), YEAR, `${where}: the row dates it (${rowWhen(s)})`)
   assert.notEqual(rowWhen(s), 'now', `${where}: the row says now`)
   if (!heldForReview(s)) {
@@ -196,10 +213,11 @@ const plans = (): Plan[] => (CORPUS ??= corpus())
 test('Step 4: the row, the group, the step, the print and the calendar read one projection', () => {
   for (const p of plans()) {
     const inPhase = phased(p)
-    const undated = new Set(undatedRows(p.r.steps, p.r.schedule.waves).map((s) => s.id))
+    const undated = new Set(undatedRows(p.r.steps, planPhases(p.r.schedule)).map((s) => s.id))
     for (const s of p.r.steps.filter(open)) {
       const where = `${p.f.name}/${s.id}`
-      if (isHeld(s)) nothingIsDated(p, s)
+      if (waiting(s)) nothingIsDated(p, s)
+      else if (isHeld(s)) createdOnly(p, s)
       else if (!s.floor) assert.ok(inPhase.has(s.id) !== undated.has(s.id), `${where}: drawn in a phase and undated at once, or in neither`)
       // A calendar entry exactly where the step has a day of its own.
       assert.equal(booked(p, s.id), !isHeld(s) && (s.rings.length > 0 || s.events !== null), `${where}: the calendar and the step disagree about its day`)
@@ -289,7 +307,7 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   const held = stepOf(p, 's-goal-service-accounts-trusted-network')
   assert.ok(isHeld(held), 'the premise: it waits on an object the tenant does not have')
   assert.match(boardWhenOf(held), /^(After |Held$)/, 'the board says what it waits on, or Held')
-  assert.ok(undatedRows(p.r.steps, p.r.schedule.waves).some((s) => s.id === held.id), 'under Waiting on something else')
+  assert.ok(undatedRows(p.r.steps, planPhases(p.r.schedule)).some((s) => s.id === held.id), 'under Waiting on something else')
   nothingIsDated(p, held)
   assert.ok((rowReason(held) ?? '').length > 0, 'and says what it waits on')
   // Over every plan: Held on the board exactly where the step is held.
@@ -298,7 +316,7 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
     for (const s of q.r.steps.filter(open)) {
       const board = boardWhenOf(s)
       // A baseline that contradicts itself reads Deferred, the rail's own word for it (planBoard.ts boardWhenOf).
-      assert.equal(board === BOARD.held || (isHeld(s) && /^(After |Deferred$)/.test(board)), isHeld(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
+      assert.equal(board === BOARD.held || (waiting(s) && /^(After |Deferred$)/.test(board)), waiting(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
     }
   }
 })
@@ -314,7 +332,7 @@ test('Step 4 correction 2: a held, unwritable step not yet deployed reads Blocke
     assert.equal(s.state.lifecycle, 'not-deployed', `${id}: the lifecycle is unchanged`)
     assert.equal(holdOf(s)?.kind, 'unavailable', `${id}: the premise, Foundation A will not write it`)
     assert.equal(statusOf(s).word, 'Blocked', `${id}: the row word`)
-    assert.ok(undatedRows(p.r.steps, p.r.schedule.waves).some((x) => x.id === id), `${id}: under Waiting on something else`)
+    assert.ok(undatedRows(p.r.steps, planPhases(p.r.schedule)).some((x) => x.id === id), `${id}: under Waiting on something else`)
     assert.equal(rowWhen(s), '', `${id}: no date`)
   }
   for (const q of plans()) for (const s of q.r.steps.filter(open)) if (isHeld(s)) assert.ok(!['Ready', 'Ready to enforce'].includes(statusOf(s).word), `${q.f.name}/${s.id}: a held step reads ${statusOf(s).word}`)

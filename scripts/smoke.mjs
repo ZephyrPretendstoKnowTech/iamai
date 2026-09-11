@@ -514,7 +514,9 @@ try {
   // and names what it comes after (roadmap/holds.ts). A date is never shown on a
   // Blocked row without that.
   const blockedWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').map((r) => ({ when: ((r.querySelector('.when') || {}).textContent || '').trim(), reason: ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim() }))`)
-  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === 'Held' || when === 'Not scheduled' || /^After /.test(when) || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^after: /.test(reason))))
+  // A dated Blocked row is sequenced after something (after: …) or is a create the
+  // plan schedules while a threshold holds its enforcement (when …): roadmap/stepSchedule.ts.
+  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === 'Held' || when === 'Not scheduled' || /^After /.test(when) || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^(after|when) /.test(reason))))
   check('Plan: a Blocked row reads what it waits on or Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
   const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)

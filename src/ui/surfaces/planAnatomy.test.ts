@@ -250,7 +250,7 @@ test('the roadmap order and grouping are still the plan\'s, not the row\'s', () 
   // planRows.ts decides which rows each group draws; the restoration changed
   // where a row's facts sit, not which rows exist or what order they come in.
   assert.match(PLAN, /const floor = floorRows\(c\.steps\)/)
-  assert.match(PLAN, /const heldRows = undatedRows\(c\.steps, c\.schedule\.waves\)/)
+  assert.match(PLAN, /const heldRows = undatedRows\(c\.steps, phaseList\)/)
   assert.match(PLAN, /steps: phaseRows\(c\.steps, w\)/)
   // No sorting, filtering or grouping in the row component.
   for (const forbidden of ['.sort(', '.filter(', '.slice(']) {
