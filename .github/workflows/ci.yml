@@ -20,6 +20,10 @@ on:
     branches: ['**']
   pull_request:
 
+# The job reads the checkout and writes nothing back to the repository.
+permissions:
+  contents: read
+
 jobs:
   # The job is the status check main requires ("ci", the repository rule), so it carries that name.
   ci:
