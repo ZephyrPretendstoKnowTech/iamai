@@ -1,0 +1,320 @@
+{
+  "relationship": "baseline-goal-composite-prerequisite",
+  "family": "policy",
+  "validationComplexity": "high",
+  "recommendedBatch": "1",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicy"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "Intune compliance settings prerequisite"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "660ab461-0de5-4b00-baea-ec7325280f60",
+    "sourceDisplayName": "IAC - INTUNE - GRANT - RequireCompliantDevice",
+    "sourceState": "enabledForReportingButNotEnforced",
+    "canonicalSemantics": {
+      "users": "All users with IAMAI-resolved canonical exclusions/service-account treatment after saved device decision",
+      "resources": "All resources",
+      "clientAppTypes": [
+        "all"
+      ],
+      "locations": {
+        "include": [
+          "All"
+        ],
+        "exclude": [
+          "AllTrusted"
+        ]
+      },
+      "grantControls": {
+        "operator": "OR",
+        "builtInControls": [
+          "compliantDevice",
+          "domainJoinedDevice"
+        ]
+      },
+      "sessionControls": null,
+      "intunePrerequisite": "in-scope devices have real compliance policy coverage; devices with no compliance policy are treated Not compliant; IAMAI source asks for a 3-day Mark device non-compliant grace action where applicable"
+    },
+    "rule": "Preserve the pinned OR grant: compliant device OR Microsoft Entra hybrid joined device, outside trusted locations. Current generic Microsoft compliant-device examples do not replace the pinned baseline. Device-plan choices must already be resolved and reflected in canonical scope."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.conditions",
+    "policy.target.grantControls",
+    "policy.target.sessionControls",
+    "policy.current.id",
+    "policy.current.semanticMismatches",
+    "intune.compliance.prerequisiteState",
+    "decision.devicePlan"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "evidence.reportOnly",
+    "evidence.deviceReadiness",
+    "evidence.serverSignIns",
+    "evidence.autopilotImpact",
+    "dependencies.blockers",
+    "signature"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.intune-prerequisite",
+        "entra.create"
+      ],
+      "json": [
+        "json.target-policy"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "mode": "compose",
+      "modules": [
+        {
+          "id": "conditions.canonical",
+          "entra": "entra.correct-conditions",
+          "json": "json.correct-conditions",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        {
+          "id": "grant.canonical",
+          "entra": "entra.correct-grant",
+          "json": "json.correct-grant",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        {
+          "id": "session.canonical",
+          "entra": "entra.correct-session",
+          "json": "json.correct-session",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        {
+          "id": "name.canonical",
+          "entra": "entra.correct-name",
+          "json": "json.correct-name",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectName"
+          }
+        }
+      ],
+      "sharedAfter": [
+        "entra.correct-verify"
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "sharedBefore": [
+        "entra.intune-prerequisite"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.intune-prerequisite",
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "sources": [
+    {
+      "id": "ms-graph-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-device-compliance-ca",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance"
+    },
+    {
+      "id": "ms-intune-compliance",
+      "url": "https://learn.microsoft.com/en-us/intune/device-security/compliance/overview"
+    },
+    {
+      "id": "ms-intune-noncompliance",
+      "url": "https://learn.microsoft.com/en-us/intune/intune-service/protect/actions-for-noncompliance"
+    },
+    {
+      "id": "ms-device-filter",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-condition-filters-for-devices"
+    }
+  ],
+  "caveats": [
+    {
+      "id": "intune-separate-prerequisite",
+      "status": "service-boundary",
+      "detail": "Intune compliance configuration is not contained in Conditional Access JSON. The CA policy is only actionable when IAMAI says the compliance prerequisite is real for the in-scope platforms."
+    },
+    {
+      "id": "grace-period-scope",
+      "status": "tenant-resolved",
+      "detail": "IAMAI source calls for a 3-day Mark device non-compliant grace action in each applicable compliance policy. This package does not blind-bulk-edit unknown Intune policy IDs; the prerequisite must be resolved against the tenant compliance-policy set."
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-require-managed-device",
+  "title": "Require a Managed Device Outside the Office",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-require-managed-device/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

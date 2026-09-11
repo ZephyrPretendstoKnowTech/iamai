@@ -1,0 +1,450 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-user-risk",
+  "title": "Remediate High-Risk Users",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-user-risk/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "memberStableId": "544cd9ef-5e37-4568-9ad8-b8e151be1814",
+    "initialState": "enabled",
+    "population": "All users with the exact tenant-resolved exclusions represented by the retained member",
+    "targetResources": [
+      "All"
+    ],
+    "clientAppTypes": [
+      "all"
+    ],
+    "userRiskLevels": [
+      "high"
+    ],
+    "grantControl": "riskRemediation",
+    "grantOperator": "AND",
+    "authenticationStrengthSemantic": "tenant-resolved retained-baseline authentication strength; source evidence names Modern MFA + TAP, but its source-tenant ID is not portable",
+    "signInFrequency": "everyTime",
+    "authoringCorrection": "The workbook described SSPR as a prerequisite. Current Microsoft guidance says the Conditional Access risk-remediation password-change flow does not use SSPR. MFA registration remains required; hybrid users require password writeback."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches",
+    "authStrength.target.id",
+    "authStrength.target.displayName"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "authStrength.target.allowedCombinations",
+    "people.affected.count",
+    "evidence.atRiskUsers",
+    "evidence.mfaRegistration",
+    "evidence.hybridWriteback",
+    "evidence.guestExternalScope",
+    "evidence.riskInvestigation",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "prerequisiteRequired": {
+      "entra": [
+        "entra.prerequisites"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.prerequisites"
+      ],
+      "email": []
+    },
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "policy.target.excludeGroups",
+        "authStrength.target.id",
+        "authStrength.target.displayName"
+      ],
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.scope-or-exclusions": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.users"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "target.all-resources": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.target"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "risk.high-only": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.risk"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.conditions"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "grant.risk-remediation-strength": {
+          "requires": [
+            "policy.current.id",
+            "authStrength.target.id",
+            "authStrength.target.displayName"
+          ],
+          "entra": [
+            "entra.correct.grant"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        "session.every-time": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.session"
+          ],
+          "json": [
+            "json.correct.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.lifecycle"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups",
+        "authStrength.target.id"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups",
+        "authStrength.target.id",
+        "authStrength.target.displayName"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.users.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "recommendation": "recommended",
+    "audience": "affected-users-help-desk-client-contact",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice",
+    "blocks": [
+      "email.users.pre-enforcement"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "ms-user-risk-policy",
+      "authority": "Microsoft Learn",
+      "title": "Require remediation for risky users",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-risk-based-user",
+      "purpose": "Current portal configuration for Require risk remediation at High user risk and mandatory Every-time reauthentication.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-risk-policy",
+      "authority": "Microsoft Learn",
+      "title": "Configure and enable risk policies",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
+      "purpose": "P2 requirement, MFA registration prerequisite, hybrid password-writeback prerequisite, guest/external limitation, and Report-only rollout.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-risk-concept",
+      "authority": "Microsoft Learn",
+      "title": "Risk-based access policies",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
+      "purpose": "Adaptive risk-remediation behavior, precedence, guest/external limitation, and secure remediation flow.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-risk-remediation",
+      "authority": "Microsoft Learn",
+      "title": "Remediate risks and unblock users",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-remediate-unblock",
+      "purpose": "Distinguishes Conditional Access password-change remediation from SSPR recovery.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-writeback",
+      "authority": "Microsoft Learn",
+      "title": "Enable Microsoft Entra password writeback",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/tutorial-enable-sspr-writeback",
+      "purpose": "Hybrid password-writeback configuration when on-premises-synced users are in scope.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-grant-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessGrantControls resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
+      "purpose": "v1.0 riskRemediation enum and requirement to pair riskRemediation with authenticationStrength using AND.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-condition-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessConditionSet resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
+      "purpose": "v1.0 userRiskLevels and condition schema.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-create-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+      "purpose": "v1.0 create endpoint and least-privileged permissions/roles.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+      "purpose": "v1.0 update semantics and stable-ID PATCH endpoint.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-get-v1",
+      "authority": "Microsoft Graph",
+      "title": "Get conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
+      "purpose": "v1.0 stable-ID verification readback.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "integrationGaps": [
+    "IAMAI integration must map its existing guest/external population evidence to an enforcement-safe prerequisite. Do not add a new tenant read solely for this content package."
+  ],
+  "mechanicalValidation": {
+    "status": "PASS_WITH_LIMITATION",
+    "jsonParse": "pass-after-sample-binding",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "pass",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell AST parsing must run in an environment with PowerShell installed."
+    ]
+  }
+}

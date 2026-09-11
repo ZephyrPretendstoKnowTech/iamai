@@ -1,0 +1,185 @@
+{
+  "relationship": "prerequisite",
+  "family": "supporting",
+  "outputs": {
+    "entra": true,
+    "json": false,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "none",
+      "kind": "none"
+    },
+    "powershell": {
+      "availability": "partial",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "interactive passkey/security-key registration",
+      "role-governance review"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "productContract": "People who perform directory administration should use a dedicated admin account for privileged work and keep everyday mail/Teams/files on their standard account.",
+    "microsoftCurrent": "Microsoft privileged-access guidance recommends separate administrative and standard accounts/workflows and avoiding productivity activity such as email and arbitrary browsing with privileged accounts."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "admin.peopleToSeparate"
+  ],
+  "optionalBindings": [
+    "admin.currentAccountId",
+    "admin.newAdminAccountId",
+    "admin.directRoleAssignments",
+    "admin.pimAssignments",
+    "admin.namingConvention",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "actionRequired": {
+      "entra": [
+        "entra.create-and-stage"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "StageDirectAssignments"
+        }
+      ],
+      "aiInfo": [
+        "ai.stage"
+      ],
+      "email": [
+        "email.admin"
+      ]
+    },
+    "credentialProofRequired": {
+      "entra": [
+        "entra.register-and-prove"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.prove"
+      ],
+      "email": []
+    },
+    "roleCutoverRequired": {
+      "entra": [
+        "entra.cutover"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "ReviewAssignments"
+        }
+      ],
+      "aiInfo": [
+        "ai.cutover"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "ReviewAssignments"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.admin",
+      "audience": "Affected administrator",
+      "state": "actionRequired",
+      "trigger": "before dedicated admin-account cutover",
+      "purpose": "explain account separation and test sequence"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-privileged-accounts",
+      "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-accounts"
+    },
+    {
+      "id": "ms-rapid-modernization",
+      "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/security-rapid-modernization-plan"
+    },
+    {
+      "id": "ms-zero-trust-privileged",
+      "url": "https://learn.microsoft.com/en-us/security/zero-trust/security-adoption-discipline-identity-access-privileged-strategy"
+    },
+    {
+      "id": "ms-identity-best-practices",
+      "url": "https://learn.microsoft.com/en-us/azure/security/fundamentals/identity-management-best-practices"
+    },
+    {
+      "id": "ms-role-assignment",
+      "url": "https://learn.microsoft.com/en-us/graph/api/rbacapplication-post-roleassignments?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-check-separate-admin-accounts",
+  "title": "Use Separate Accounts for Admin Work",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-check-separate-admin-accounts/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED",
+    "compactLint": "PASS: 13 blocks; 13 projected/support references; 6 bindings used; PowerShell AST not available.",
+    "boundJson": "passed",
+    "staticSafety": "passed"
+  },
+  "unresolvedIssues": []
+}

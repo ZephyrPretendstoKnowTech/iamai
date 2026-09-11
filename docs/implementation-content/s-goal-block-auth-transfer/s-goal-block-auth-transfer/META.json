@@ -1,0 +1,335 @@
+{
+  "relationship": "baseline-goal",
+  "family": "policy",
+  "validationComplexity": "medium",
+  "recommendedBatch": "1-2",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicy"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "fa005ec2-4940-49c8-b4e7-b58e66ef481c",
+    "sourceDisplayName": "IAC - GLOBAL - BLOCK - Authentication Transfer",
+    "sourceState": "enabledForReportingButNotEnforced",
+    "canonicalSemantics": {
+      "users": "All users with tenant-resolved canonical exclusions",
+      "resources": "All resources",
+      "clientAppTypes": [
+        "all"
+      ],
+      "authenticationFlows": "authenticationTransfer",
+      "grant": "block / OR",
+      "sessionControls": null,
+      "lifecycle": "Report-only first"
+    },
+    "rule": "Pinned/source semantics define destination; source-tenant object IDs are never copied into a client tenant. Tenant-resolved conditions/grant controls are the one implementation authority."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.conditions",
+    "policy.target.grantControls",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "people.affected.count",
+    "policy.current.state",
+    "evidence.reportOnly",
+    "dependencies.blockers",
+    "signature",
+    "evidence.authenticationTransfer",
+    "evidence.originalTransferMethod"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.target-policy"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "mode": "compose",
+      "modules": [
+        {
+          "id": "conditions.canonical",
+          "entra": "entra.correct-conditions",
+          "json": "json.correct-conditions",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        {
+          "id": "grant.canonical",
+          "entra": "entra.correct-grant",
+          "json": "json.correct-grant",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        {
+          "id": "session.none",
+          "entra": "entra.correct-session",
+          "json": "json.correct-session",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        {
+          "id": "name.canonical",
+          "entra": "entra.correct-name",
+          "json": "json.correct-name",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectName"
+          }
+        }
+      ],
+      "sharedAfter": [
+        "entra.correct-verify"
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "correctionModules": [
+    {
+      "id": "conditions.canonical",
+      "appliesWhen": "population, exclusions, resources, or policy conditions differ from the canonical tenant-resolved target",
+      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+    },
+    {
+      "id": "grant.canonical",
+      "appliesWhen": "grant controls differ from canonical target",
+      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+    },
+    {
+      "id": "session.none",
+      "appliesWhen": "session controls are present even though this goal owns none",
+      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+    },
+    {
+      "id": "name.canonical",
+      "appliesWhen": "display name differs; stable tenant ID remains update identity"
+    }
+  ],
+  "emailArtifacts": [
+    {
+      "block": "email.rollout",
+      "audience": "Primary affected audience / client contact",
+      "state": "missing",
+      "trigger": "before report-only rollout",
+      "purpose": "announce impact and remediation path",
+      "recommendation": "Recommended"
+    },
+    {
+      "block": "email.enforce",
+      "audience": "Primary affected audience / client contact",
+      "state": "readyToEnforce",
+      "trigger": "before enforcement",
+      "purpose": "confirm enforcement timing and support path",
+      "recommendation": "Recommended"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-condition-set",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-auth-transfer",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-transfer"
+    },
+    {
+      "id": "ms-auth-flows",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-authentication-flows"
+    },
+    {
+      "id": "ms-block-auth-flows",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows"
+    },
+    {
+      "id": "ms-ca-authflows-graph",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0"
+    }
+  ],
+  "implementationCaveats": [
+    {
+      "id": "authentication-transfer-preview",
+      "status": "documented-platform-behavior",
+      "detail": "Microsoft still documents authentication transfer as preview in 2026. The Conditional Access authenticationFlows condition is available in Graph v1.0; the package remains pinned to the retained baseline and uses Report-only validation."
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-block-auth-transfer",
+  "title": "Block Authentication Transfer",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-block-auth-transfer/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

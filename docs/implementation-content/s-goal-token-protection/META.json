@@ -1,0 +1,257 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-token-protection",
+  "title": "Require Token Protection on Windows",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-token-protection/",
+  "sourceFiles": ["META.json", "STEP.md", "CONTENT.md"],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "8bb25c6a-ed35-4556-bed4-b3aaa14e192b",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "initialState": "enabledForReportingButNotEnforced",
+    "includeApplications": [
+      "00000002-0000-0ff1-ce00-000000000000",
+      "00000003-0000-0ff1-ce00-000000000000",
+      "0af06dc6-e4b5-4f28-818e-e78e62d137a5",
+      "9cdead84-a844-4324-93f2-b2e6bb768d07",
+      "cc15fd57-2c6c-4117-a88c-83b1d56b4bbe"
+    ],
+    "platform": "windows",
+    "clientAppTypes": ["mobileAppsAndDesktopClients"],
+    "deviceFilter": {
+      "mode": "exclude",
+      "rule": "device.systemLabels -contains \"CloudPC\" -and device.trustType -eq \"AzureAD\""
+    },
+    "sessionControl": {
+      "secureSignInSession": {"isEnabled": true}
+    }
+  },
+  "apiException": {
+    "surface": "Microsoft Graph beta",
+    "reason": "As checked on 2026-09-10, secureSignInSession is exposed by conditionalAccessSessionControls in Graph beta but not in the v1.0 resource schema. The portal feature is supported; JSON/PowerShell mutation for this field therefore uses an isolated beta endpoint.",
+    "ownerBaselineChanged": false
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.displayName",
+    "policy.current.state",
+    "people.affected.count",
+    "evidence.windowsRegistration",
+    "evidence.tokenProtectionCompatibility",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "missing": {
+      "requires": ["policy.target.displayName", "policy.target.excludeGroups"],
+      "entra": ["entra.create"],
+      "json": ["json.create"],
+      "powershell": [{"block": "powershell.run", "mode": "Create"}],
+      "aiInfo": ["ai.create"],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": ["policy.current.id", "policy.current.semanticMismatches", "policy.target.excludeGroups"],
+      "sharedBefore": {"entra": ["entra.correct.open"]},
+      "mismatches": {
+        "users.include-all": {
+          "appliesWhen": "included population is not exactly All users",
+          "entra": ["entra.correct.users.include-all"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "users.exclusions-canonical": {
+          "appliesWhen": "exclusion set differs from IAMAI's canonical target",
+          "entra": ["entra.correct.users.exclusions-canonical"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "target.resources-pinned": {
+          "appliesWhen": "target resources differ from the retained five-resource baseline set",
+          "entra": ["entra.correct.target.resources-pinned"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "conditions.windows-platform": {
+          "appliesWhen": "Windows is not the exact included platform",
+          "entra": ["entra.correct.conditions.windows-platform"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "conditions.mobile-desktop-clients": {
+          "appliesWhen": "client app scope differs from Mobile apps and desktop clients only",
+          "entra": ["entra.correct.conditions.mobile-desktop-clients"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "conditions.cloudpc-device-filter": {
+          "appliesWhen": "device filter differs from the retained CloudPC exclusion rule",
+          "entra": ["entra.correct.conditions.cloudpc-device-filter"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "conditions.remove-noncanonical": {
+          "appliesWhen": "risk, location, authentication-flow, or other noncanonical conditions are present",
+          "entra": ["entra.correct.conditions.remove-noncanonical"],
+          "json": ["json.correct.conditions"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
+        },
+        "grant.none": {
+          "appliesWhen": "a grant control is present even though the retained target uses only a session control",
+          "entra": ["entra.correct.grant.none"],
+          "json": ["json.correct.grant-none"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["GrantNone"]}]
+        },
+        "session.token-protection": {
+          "appliesWhen": "Require token protection for sign-in sessions is missing or disabled",
+          "entra": ["entra.correct.session.token-protection"],
+          "json": ["json.correct.session"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Session"]}]
+        },
+        "lifecycle.report-only": {
+          "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
+          "entra": ["entra.correct.lifecycle.report-only"],
+          "json": ["json.correct.report-only"],
+          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["ReportOnly"]}]
+        }
+      },
+      "sharedAfter": {"entra": ["entra.correct.save-verify"]},
+      "aiInfo": ["ai.correct"],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": ["policy.current.id", "policy.target.excludeGroups"],
+      "entra": ["entra.observe"],
+      "json": [],
+      "powershell": [{"block": "powershell.run", "mode": "Verify"}],
+      "aiInfo": ["ai.observe"],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": ["policy.current.id", "policy.target.excludeGroups"],
+      "entra": ["entra.enforce"],
+      "json": ["json.enforce"],
+      "powershell": [{"block": "powershell.run", "mode": "Enforce"}],
+      "aiInfo": ["ai.enforce"],
+      "email": ["email.users.pre-enforcement"]
+    },
+    "inPlace": {"entra": [], "json": [], "powershell": [], "aiInfo": [], "email": []},
+    "blocked": {"entra": [], "json": [], "powershell": [], "aiInfo": [], "email": []},
+    "needsDecision": {"entra": [], "json": [], "powershell": [], "aiInfo": [], "email": []},
+    "sourceConflict": {"entra": [], "json": [], "powershell": [], "aiInfo": [], "email": []},
+    "notLicensed": {"entra": [], "json": [], "powershell": [], "aiInfo": [], "email": []}
+  },
+  "supportBlocks": {
+    "readiness": ["readiness.model"],
+    "troubleshooting": ["troubleshooting.model"]
+  },
+  "email": {
+    "block": "email.users.pre-enforcement",
+    "recommendation": "recommended",
+    "audience": "affected-windows-users",
+    "applicableStates": ["readyToEnforce"],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice"
+  },
+  "sharedTechnicalPrimitives": [
+    "graph.powershell.invoke-v1",
+    "ca.license-p1",
+    "ca.token-protection.beta-session-control"
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-token-protection-windows",
+      "authority": "Microsoft Learn",
+      "title": "Token Protection Deployment Guide - Windows",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/deployment-guide-token-protection-windows",
+      "purpose": "Supported Windows resources/clients, known limitations, device-filter examples, report-only rollout, sign-in log status codes, and portal procedure.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": ["step", "entra", "aiInfo", "email", "readiness", "troubleshooting"]
+    },
+    {
+      "id": "ms-ca-session-controls-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessSessionControls resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
+      "purpose": "Confirms secureSignInSession is not present in the current v1.0 session-controls schema.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": ["json", "powershell"]
+    },
+    {
+      "id": "ms-ca-session-controls-beta",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessSessionControls resource type - beta",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-beta",
+      "purpose": "Confirms secureSignInSession is exposed in the beta session-controls schema and that beta APIs are not supported for production use.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": ["step", "json", "powershell", "troubleshooting"]
+    },
+    {
+      "id": "ms-secure-sign-in-session-beta",
+      "authority": "Microsoft Graph",
+      "title": "secureSignInSessionControl resource type - beta",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/securesigninsessioncontrol?view=graph-rest-beta",
+      "purpose": "Confirms the secure sign-in session control shape and isEnabled property.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": ["json", "powershell"]
+    },
+    {
+      "id": "ms-graph-ca-create-beta",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy - beta",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-beta",
+      "purpose": "Beta POST endpoint, permissions, roles, response, and production-support warning.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": ["json", "powershell", "troubleshooting"]
+    },
+    {
+      "id": "ms-graph-ca-update-beta",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy - beta",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-beta",
+      "purpose": "Beta PATCH endpoint, permissions, roles, omitted-property preservation, and production-support warning.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": ["json", "powershell", "troubleshooting"]
+    }
+  ],
+  "validation": {
+    "jsonTemplateConvention": "{{json:<binding>}} is whole-value JSON substitution; mask to null only for authoring syntax lint.",
+    "powershellParser": "not-run-in-authoring-environment-no-pwsh",
+    "liveTenantExecution": false,
+    "betaExceptionReviewed": true
+  },
+  "unresolvedIssues": [],
+  "verificationStatus": "self-verified"
+}

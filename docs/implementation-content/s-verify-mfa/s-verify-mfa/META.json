@@ -1,0 +1,214 @@
+{
+  "relationship": "prerequisite",
+  "family": "campaign",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "partial",
+      "kind": "graphPatch"
+    },
+    "powershell": {
+      "availability": "partial",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "per-person registration/TAP/help-desk workflow"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "productContract": "Use IAMAI readiness evidence and an Authenticator-targeted registration campaign to reduce MFA enrollment risk before enforcement; admins still receive passkey/security-key remediation separately.",
+    "currentDocsDifference": "Microsoft registration campaigns now support either Microsoft Authenticator or passkeys, and Microsoft-managed campaign behavior is changing during a rollout expected to finish by end of September 2026. This package preserves IAMAI's existing Authenticator-targeted campaign contract rather than silently changing the target method.",
+    "targetCampaign": {
+      "state": "enabled",
+      "includeId": "all_users",
+      "targetType": "group",
+      "targetedAuthenticationMethod": "microsoftAuthenticator",
+      "enforceRegistrationAfterAllowedSnoozes": true
+    }
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "campaign.snoozeDurationInDays",
+    "readiness.activeCount",
+    "readiness.percent",
+    "readiness.specialCare",
+    "readiness.adminsNeedingPasskey"
+  ],
+  "optionalBindings": [
+    "campaign.current",
+    "campaign.excludeTargets",
+    "campaign.enrollBy",
+    "campaign.mfaEnforceDate",
+    "signature",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "setupRequired": {
+      "entra": [
+        "entra.configure"
+      ],
+      "json": [
+        "json.configure"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Configure"
+        }
+      ],
+      "aiInfo": [
+        "ai.configure"
+      ],
+      "email": [
+        "email.everyone",
+        "email.admins"
+      ]
+    },
+    "campaignRunning": {
+      "entra": [
+        "entra.run-workflow"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.running"
+      ],
+      "email": []
+    },
+    "holdoutReview": {
+      "entra": [
+        "entra.holdouts"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.holdouts"
+      ],
+      "email": [
+        "email.holdout"
+      ]
+    },
+    "ready": {
+      "entra": [
+        "entra.verify-ready"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.ready"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.everyone",
+      "audience": "Active people in campaign scope",
+      "state": "setupRequired",
+      "trigger": "campaign launch",
+      "purpose": "set enrollment expectation"
+    },
+    {
+      "block": "email.admins",
+      "audience": "Administrators",
+      "state": "setupRequired",
+      "trigger": "campaign launch",
+      "purpose": "call out phishing-resistant admin requirement"
+    },
+    {
+      "block": "email.holdout",
+      "audience": "Manager / help desk",
+      "state": "holdoutReview",
+      "trigger": "enrollment deadline passed",
+      "purpose": "review remaining lockout risk"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-registration-campaign",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign"
+    },
+    {
+      "id": "ms-authmethods-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationmethodspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-registration-resource",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodsregistrationcampaign?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-registration-target",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/authenticationmethodsregistrationcampaignincludetarget?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-combined-registration",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-registration-mfa-sspr-combined"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-verify-mfa",
+  "title": "Create and Enforce the MFA Registration Campaign",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-verify-mfa/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED",
+    "compactLint": "PASS: 16 blocks; 16 projected/support references; 9 bindings used; PowerShell AST not available.",
+    "boundJson": "passed",
+    "staticSafety": "passed"
+  },
+  "unresolvedIssues": []
+}

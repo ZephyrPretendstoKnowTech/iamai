@@ -1,0 +1,159 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "cleanup-notAssessed",
+  "title": "Review Baseline Policies IAMAI Did Not Assess",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-source-review",
+  "packagePath": "docs/implementation-content/cleanup-notAssessed/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": "sourceOnly",
+    "powershell": false,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "inventory": {
+      "totalPolicies": 38,
+      "mappedPolicyKeys": 23,
+      "mappedGoals": 22,
+      "recordedVariants": 1,
+      "unassessedCleanupRows": 14
+    },
+    "sourceRule": "The exact pinned source artifact is authoritative for each unassessed policy. IAMAI must not infer semantic equivalence for fields it does not assess.",
+    "automationBoundary": "Source JSON is reference-only. No synthetic deployable JSON or PowerShell is authored for this cleanup step."
+  },
+  "requiredBindings": [
+    "baseline.unassessedPolicies.summary",
+    "baseline.unassessedPolicies.sourceBundle"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "baseline.unassessedPolicies.count",
+    "review.decisions.summary",
+    "tenant.licensingContext",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "reviewRequired": {
+      "requires": [
+        "baseline.unassessedPolicies.summary",
+        "baseline.unassessedPolicies.sourceBundle"
+      ],
+      "entra": [
+        "entra.review"
+      ],
+      "json": [
+        "json.source"
+      ],
+      "powershell": [],
+      "aiInfo": [
+        "ai.review"
+      ],
+      "email": [
+        "email.review-request"
+      ]
+    },
+    "complete": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "jon-pinned-source",
+      "authority": "Jon Hope pinned baseline",
+      "title": "Jhope188/ConditionalAccessPolicies retained pin",
+      "url": "https://github.com/Jhope188/ConditionalAccessPolicies/tree/8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "purpose": "Exact source authority for each unassessed baseline policy.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-report-only",
+      "authority": "Microsoft Learn",
+      "title": "Analyze Conditional Access policy impact",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-report-only",
+      "purpose": "Report-only behavior and validation before enforcement.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-what-if",
+      "authority": "Microsoft Learn",
+      "title": "The Conditional Access What If tool",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/what-if-tool",
+      "purpose": "Additional policy evaluation for supported policy conditions; not a substitute for unsupported semantic review.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "authoringReviewNotes": [
+    "This cleanup row exists specifically because IAMAI cannot safely assess some source semantics. The package must never turn that uncertainty into a synthetic implementation.",
+    "The source-only JSON block is intentionally not deployable. It preserves the exact pinned source bundle supplied by IAMAI for human review.",
+    "A per-policy 'does not apply' decision requires an operator-supplied reason; absence of evidence is not a non-applicability decision."
+  ],
+  "email": {
+    "recommendation": "optional",
+    "audience": "client-contact-senior-administrator",
+    "applicableStates": [
+      "reviewRequired"
+    ],
+    "communicationTrigger": "manual-review-request",
+    "purpose": "request-policy-applicability-review",
+    "blocks": [
+      "email.review-request"
+    ]
+  },
+  "integrationGaps": [
+    "The renderer must supply the exact current unassessed-policy list and exact pinned source objects from IAMAI's already-loaded baseline package. This is a presentation/binding integration of existing baseline truth, not a new tenant read.",
+    "If IAMAI does not currently expose the unsupported semantic field/reason per policy, display the policy as unassessed without inventing a reason and preserve the source artifact for human review."
+  ],
+  "mechanicalValidation": {
+    "status": "PASS",
+    "jsonParse": "pass-after-sample-binding",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "not-applicable-no-powershell",
+    "powershellAst": "not-applicable-no-powershell",
+    "notes": [
+      "No live tenant mutation performed.",
+      "The exact unassessed source bundle remains a runtime binding to retained baseline truth."
+    ]
+  },
+  "verificationStatus": "self-verified"
+}

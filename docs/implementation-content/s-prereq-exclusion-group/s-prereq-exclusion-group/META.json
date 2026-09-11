@@ -1,0 +1,257 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-prereq-exclusion-group",
+  "title": "Create or Correct Exclusions Group",
+  "baseline": "jon-hope-pinned",
+  "relationship": "prerequisite",
+  "packagePath": "docs/implementation-content/s-prereq-exclusion-group/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "graphObject/graphPatch"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "productContract": "One canonical owner-confirmed group carries emergency exclusions; no candidate/stale group substitution.",
+    "microsoftCurrent": "Dedicated emergency-access security group excluded from Conditional Access policies that block or restrict sign-in; Report-only does not itself require an exclusion."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "group.target.displayName",
+    "group.target.mailNickname",
+    "group.target.memberODataBindings",
+    "group.current.id",
+    "group.target.memberId",
+    "policy.current.id",
+    "policy.target.conditionsWithExclusion"
+  ],
+  "optionalBindings": [
+    "group.target.memberIds",
+    "group.current.members",
+    "group.evidence.type",
+    "policy.current.displayName",
+    "policy.evidence.missingExclusions",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "groupMissing": {
+      "requires": [
+        "group.target.displayName",
+        "group.target.mailNickname",
+        "group.target.memberODataBindings"
+      ],
+      "entra": [
+        "entra.create-group"
+      ],
+      "json": [
+        "json.group.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "CreateGroup"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open-group"
+        ]
+      },
+      "mismatches": {
+        "group.type-assigned-security": {
+          "entra": [
+            "entra.correct.type"
+          ]
+        },
+        "membership.missing": {
+          "requires": [
+            "group.current.id",
+            "group.target.memberId"
+          ],
+          "entra": [
+            "entra.correct.add-member"
+          ],
+          "json": [
+            "json.member.add"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "AddMember"
+            }
+          ]
+        },
+        "membership.unexpected": {
+          "requires": [
+            "group.current.id",
+            "group.target.memberId"
+          ],
+          "entra": [
+            "entra.correct.remove-member"
+          ],
+          "json": [
+            "json.member.remove"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "RemoveMember"
+            }
+          ]
+        },
+        "policy.exclusion-missing": {
+          "requires": [
+            "group.current.id",
+            "policy.current.id",
+            "policy.target.conditionsWithExclusion"
+          ],
+          "entra": [
+            "entra.correct.policy-exclusion"
+          ],
+          "json": [
+            "json.policy.patch-conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "AddPolicyExclusion"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.verify-rescan"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "VerifyGroup"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": [
+        "email.admins.exclusion-change"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.admins.exclusion-change",
+      "audience": "tenant administrators",
+      "state": "verificationRequired",
+      "trigger": "after exclusions-group membership or policy-exclusion changes when operator coordination is useful",
+      "purpose": "record the exact security boundary changed without exposing secrets"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-emergency",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access"
+    },
+    {
+      "id": "ms-group-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/group-post-groups?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-group-add",
+      "url": "https://learn.microsoft.com/en-us/graph/api/group-post-members?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-group-remove",
+      "url": "https://learn.microsoft.com/en-us/graph/api/group-delete-members?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-users",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups"
+    }
+  ],
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

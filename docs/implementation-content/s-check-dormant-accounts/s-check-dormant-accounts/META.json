@@ -1,0 +1,176 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-check-dormant-accounts",
+  "title": "Disable or Confirm Dormant Accounts",
+  "baseline": "jon-hope-pinned",
+  "relationship": "remediation-prerequisite",
+  "packagePath": "docs/implementation-content/s-check-dormant-accounts/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": false,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "none",
+      "kind": "none"
+    },
+    "powershell": {
+      "availability": "partial",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "manager/owner confirmation"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "productContract": "Dormant detection creates a candidate for review, never authority to disable. Every account needs an explicit owner disposition before mutation.",
+    "microsoftCurrent": "Use sign-in activity as evidence, prefer lastSuccessfulSignInDateTime for actual access, consider legitimate inactivity, and disable only after investigation."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "account.current.id",
+    "account.current.displayName",
+    "account.decision.disposition"
+  ],
+  "optionalBindings": [
+    "account.current.upn",
+    "account.current.accountEnabled",
+    "account.evidence.lastSuccessfulSignInDateTime",
+    "account.evidence.lastSignInDateTime",
+    "account.evidence.activitySummary",
+    "account.owner",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.review"
+      ],
+      "email": [
+        "email.owner.confirm"
+      ]
+    },
+    "disableConfirmed": {
+      "requires": [
+        "account.current.id",
+        "account.decision.disposition"
+      ],
+      "entra": [
+        "entra.disable"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Disable"
+        }
+      ],
+      "aiInfo": [
+        "ai.disable"
+      ],
+      "email": []
+    },
+    "keepConfirmed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.keep"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "VerifyDisabled"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.review",
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.owner.confirm",
+      "audience": "client contact / account owner",
+      "state": "needsDecision",
+      "trigger": "before any dormant candidate is disabled",
+      "purpose": "obtain explicit per-account disposition"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-inactive",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
+    },
+    {
+      "id": "ms-signinactivity",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinactivity?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-user-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/user-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-revoke-access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/users/users-revoke-access"
+    }
+  ],
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

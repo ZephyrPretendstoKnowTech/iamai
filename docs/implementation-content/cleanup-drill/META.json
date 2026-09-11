@@ -1,0 +1,151 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "cleanup-drill",
+  "title": "Run the Emergency Access Drill",
+  "baseline": "jon-hope-pinned",
+  "relationship": "rollout-proof",
+  "packagePath": "docs/implementation-content/cleanup-drill/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": false,
+    "json": false,
+    "powershell": false,
+    "manual": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "proofRule": "Emergency access functionality is human operational proof. No machine artifact may pretend to perform the sign-in or administrative validation.",
+    "recurrence": "Validate at least every 90 days.",
+    "monitoringRule": "Review sign-in/audit evidence for every drill. Confirm configured alerting when an alert path exists."
+  },
+  "requiredBindings": [
+    "emergencyAccounts.summary"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "emergencyAccounts.lastDrill",
+    "emergencyAccounts.lastProof",
+    "monitoring.alertPath",
+    "monitoring.status",
+    "drill.failureReason",
+    "drill.proofDate"
+  ],
+  "projection": {
+    "due": {
+      "requires": [
+        "emergencyAccounts.summary"
+      ],
+      "manual": [
+        {
+          "block": "manual.run"
+        }
+      ],
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.run"
+      ],
+      "email": []
+    },
+    "failed": {
+      "requires": [
+        "emergencyAccounts.summary"
+      ],
+      "manual": [
+        {
+          "block": "manual.recover"
+        }
+      ],
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.failure"
+      ],
+      "email": [
+        "email.admins.failure"
+      ]
+    },
+    "current": {
+      "manual": [],
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "manual": [],
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "ms-emergency-access",
+      "authority": "Microsoft Learn",
+      "title": "Manage emergency access admin accounts",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
+      "purpose": "Emergency-account guardrails, monitoring, secure workstation guidance, and validation at least every 90 days.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "authoringReviewNotes": [
+    "Use a designated secure workstation or Privileged Access Workstation for the drill; do not instruct administrators to use an intentionally untrusted or unmanaged endpoint.",
+    "The drill proves real sign-in and administrative access. A recent unrelated emergency-account sign-in is not automatically a recorded drill.",
+    "Alert confirmation is conditional on a configured alert path; lack of alerting is a separate hardening gap, not fabricated proof."
+  ],
+  "email": {
+    "recommendation": "optional",
+    "audience": "client-contact-tenant-administrators",
+    "applicableStates": [
+      "failed"
+    ],
+    "communicationTrigger": "drill-failure",
+    "purpose": "escalate-broken-emergency-access",
+    "blocks": [
+      "email.admins.failure"
+    ]
+  },
+  "integrationGaps": [
+    "IAMAI can store the operator-entered proof date/result, but the drill itself remains interactive human evidence.",
+    "If IAMAI cannot distinguish a scheduled drill from an unrelated emergency-account sign-in, it must not infer the drill is complete from sign-in logs alone."
+  ],
+  "mechanicalValidation": {
+    "status": "PASS",
+    "jsonParse": "pass",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "not-applicable-no-powershell",
+    "powershellAst": "not-applicable-no-powershell",
+    "notes": [
+      "No live tenant mutation performed.",
+      "The human emergency-access drill was not executed during authoring."
+    ]
+  },
+  "verificationStatus": "self-verified"
+}

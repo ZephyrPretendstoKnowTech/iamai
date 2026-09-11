@@ -1,0 +1,299 @@
+{
+  "relationship": "prerequisite",
+  "family": "supporting-policy",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "compositeBundle"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "owner confirmation of shared-device accounts"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain current pin; no baseline change.",
+    "productContract": "Confirmed shared-device accounts receive their own Conditional Access path and are removed from person-interactive policy scope.",
+    "microsoftCurrent": "Microsoft recommends dedicated Conditional Access policies for Teams Rooms/shared-device resource accounts and excluding those accounts from user-interactive MFA/registration policies."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "policy.target.displayName",
+    "policy.target.includeUsers",
+    "policy.target.excludeGroups",
+    "policy.target.trustedLocationId",
+    "policy.current.id",
+    "peoplePolicies.resolvedPatches"
+  ],
+  "optionalBindings": [
+    "shared.confirmedAccounts",
+    "shared.deviceEvidence",
+    "policy.current.displayName",
+    "policy.current.state",
+    "policy.current.semanticMismatches",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision"
+      ],
+      "email": [
+        "email.confirm"
+      ]
+    },
+    "missing": {
+      "entra": [
+        "entra.create",
+        "entra.people-exclusions"
+      ],
+      "json": [
+        "json.create",
+        "json.people-patches"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.shared-devices": {
+          "entra": [
+            "entra.correct.population"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "target.all-resources": {
+          "entra": [
+            "entra.correct.apps"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "conditions.trusted-network-boundary": {
+          "entra": [
+            "entra.correct.location"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "grant.block": {
+          "entra": [
+            "entra.correct.grant"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "entra": [
+            "entra.correct.lifecycle"
+          ],
+          "json": [
+            "json.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        },
+        "people-policy-exclusions": {
+          "entra": [
+            "entra.people-exclusions"
+          ],
+          "json": [
+            "json.people-patches"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "PeopleExclusions"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.change"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.confirm",
+      "audience": "device/application owner",
+      "state": "needsDecision",
+      "trigger": "before shared-device identities are exempted from people policies",
+      "purpose": "confirm resource accounts and device ownership"
+    },
+    {
+      "block": "email.change",
+      "audience": "help desk / collaboration owner",
+      "state": "readyToEnforce",
+      "trigger": "before enforcement",
+      "purpose": "prepare for shared-device sign-in issues"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-teams-ca",
+      "url": "https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices"
+    },
+    {
+      "id": "ms-teams-auth",
+      "url": "https://learn.microsoft.com/en-us/microsoftteams/devices/authentication-best-practices-for-android-devices"
+    },
+    {
+      "id": "ms-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-shared-devices",
+  "title": "Give Shared Devices Their Own Policy",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-shared-devices/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

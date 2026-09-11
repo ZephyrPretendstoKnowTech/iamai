@@ -1,0 +1,6057 @@
+{
+  "schemaVersion": "1.0-compact",
+  "authoringGuide": "IAMAI-Implementation-Content-Authoring-Guide-v2.5-Compact.md",
+  "libraryRevision": "2026-09-10-full-workbook",
+  "coverage": {
+    "expectedPackageCount": 46,
+    "packageCount": 46,
+    "complete": true
+  },
+  "packages": [
+    {
+      "stepId": "cleanup-drill",
+      "title": "Run the Emergency Access Drill",
+      "packagePath": "docs/implementation-content/cleanup-drill/",
+      "relationship": "rollout-proof",
+      "status": "SELF-VERIFIED",
+      "validationResult": "self-verified",
+      "sourceFiles": 3,
+      "contentBlocks": 7,
+      "outputs": {
+        "entra": false,
+        "json": false,
+        "powershell": false,
+        "manual": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "due",
+        "failed",
+        "current",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 1,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 1,
+      "packageSpecificMicrosoftSources": 1,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 2
+    },
+    {
+      "stepId": "cleanup-notAssessed",
+      "title": "Review Baseline Policies IAMAI Did Not Assess",
+      "packagePath": "docs/implementation-content/cleanup-notAssessed/",
+      "relationship": "baseline-source-review",
+      "status": "SELF-VERIFIED",
+      "validationResult": "self-verified",
+      "sourceFiles": 3,
+      "contentBlocks": 6,
+      "outputs": {
+        "entra": true,
+        "json": "sourceOnly",
+        "powershell": false,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "reviewRequired",
+        "complete",
+        "blocked",
+        "sourceConflict"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 2,
+      "optionalBindings": 5,
+      "verifiedSourceCount": 3,
+      "packageSpecificMicrosoftSources": 2,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 2
+    },
+    {
+      "stepId": "s-check-dormant-accounts",
+      "title": "Disable or Confirm Dormant Accounts",
+      "packagePath": "docs/implementation-content/s-check-dormant-accounts/",
+      "relationship": "remediation-prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 12,
+      "outputs": {
+        "entra": true,
+        "json": false,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "disableConfirmed",
+        "keepConfirmed",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 4,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 4,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-check-separate-admin-accounts",
+      "title": "Use Separate Accounts for Admin Work",
+      "packagePath": "docs/implementation-content/s-check-separate-admin-accounts/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 13,
+      "outputs": {
+        "entra": true,
+        "json": false,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "actionRequired",
+        "credentialProofRequired",
+        "roleCutoverRequired",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 2,
+      "optionalBindings": 6,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "supporting"
+    },
+    {
+      "stepId": "s-goal-admin-portals-protected",
+      "title": "Block the Admin Portals for Non-Admins",
+      "packagePath": "docs/implementation-content/s-goal-admin-portals-protected/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 3,
+      "outputs": {
+        "entra": false,
+        "json": false,
+        "powershell": false,
+        "aiInfo": true,
+        "email": false,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "sourceConflict",
+        "blocked",
+        "inPlace"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 1,
+      "optionalBindings": 3,
+      "verifiedSourceCount": 3,
+      "packageSpecificMicrosoftSources": 3,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 1,
+      "family": "policy-resolution"
+    },
+    {
+      "stepId": "s-goal-admin-session",
+      "title": "Shorten Admin Sessions",
+      "packagePath": "docs/implementation-content/s-goal-admin-session/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 7,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-admins-phishing-resistant",
+      "title": "Require Phishing-Resistant MFA for Admins",
+      "packagePath": "docs/implementation-content/s-goal-admins-phishing-resistant/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 26,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 5,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-azure-management-mfa",
+      "title": "Require MFA for Azure Management",
+      "packagePath": "docs/implementation-content/s-goal-azure-management-mfa/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 7,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-block-auth-transfer",
+      "title": "Block Authentication Transfer",
+      "packagePath": "docs/implementation-content/s-goal-block-auth-transfer/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 5,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-block-device-code",
+      "title": "Block Device Code Sign-in",
+      "packagePath": "docs/implementation-content/s-goal-block-device-code/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 5,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-block-legacy-auth",
+      "title": "Block Legacy Authentication",
+      "packagePath": "docs/implementation-content/s-goal-block-legacy-auth/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 5,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-block-unsupported-platforms",
+      "title": "Block Unsupported Device Platforms",
+      "packagePath": "docs/implementation-content/s-goal-block-unsupported-platforms/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 6,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-device-registration-mfa",
+      "title": "Require MFA to Register a Device",
+      "packagePath": "docs/implementation-content/s-goal-device-registration-mfa/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "self-verified",
+      "sourceFiles": 3,
+      "contentBlocks": 24,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 6,
+      "requiredBindings": 4,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 15,
+      "packageSpecificMicrosoftSources": 15,
+      "sharedPrimitivesReused": 3,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-goal-geo-restriction",
+      "title": "Block Sign-ins From Countries Not Allowed",
+      "packagePath": "docs/implementation-content/s-goal-geo-restriction/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 7,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-guests-mfa",
+      "title": "Require MFA for Guests",
+      "packagePath": "docs/implementation-content/s-goal-guests-mfa/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 21,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "partnerTrustRequired",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 3,
+      "requiredBindings": 8,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 8,
+      "packageSpecificMicrosoftSources": 8,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-intune-enrollment-reauth",
+      "title": "Require a Fresh Sign-in for Intune Enrollment",
+      "packagePath": "docs/implementation-content/s-goal-intune-enrollment-reauth/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS_WITH_LIMITATION",
+      "sourceFiles": 3,
+      "contentBlocks": 28,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "resourceMissing",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 6,
+      "requiredBindings": 4,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 8,
+      "packageSpecificMicrosoftSources": 8,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 1
+    },
+    {
+      "stepId": "s-goal-mfa-all-users",
+      "title": "Require MFA for Everyone",
+      "packagePath": "docs/implementation-content/s-goal-mfa-all-users/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 26,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 4,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-mobile-app-protection",
+      "title": "Require App Protection on Phones",
+      "packagePath": "docs/implementation-content/s-goal-mobile-app-protection/",
+      "relationship": "baseline-goal-composite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 27,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed",
+        "configurePrerequisite"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 7,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 9,
+      "packageSpecificMicrosoftSources": 9,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-pim-activation-reauth",
+      "title": "Require MFA at Every Role Activation",
+      "packagePath": "docs/implementation-content/s-goal-pim-activation-reauth/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS",
+      "sourceFiles": 3,
+      "contentBlocks": 34,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "contextMissing",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "pimSettingsPending",
+        "verificationPending",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 7,
+      "requiredBindings": 8,
+      "optionalBindings": 10,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 6,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-goal-register-info-protected",
+      "title": "Protect Sign-in Method Registration",
+      "packagePath": "docs/implementation-content/s-goal-register-info-protected/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 6,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-require-managed-device",
+      "title": "Require a Managed Device Outside the Office",
+      "packagePath": "docs/implementation-content/s-goal-require-managed-device/",
+      "relationship": "baseline-goal-composite-prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 26,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 8,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy"
+    },
+    {
+      "stepId": "s-goal-service-accounts-trusted-network",
+      "title": "Restrict Service Accounts to the Trusted Network",
+      "packagePath": "docs/implementation-content/s-goal-service-accounts-trusted-network/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS_WITH_LIMITATION",
+      "sourceFiles": 3,
+      "contentBlocks": 28,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "prerequisiteRequired",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 7,
+      "requiredBindings": 6,
+      "optionalBindings": 10,
+      "verifiedSourceCount": 8,
+      "packageSpecificMicrosoftSources": 8,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 2
+    },
+    {
+      "stepId": "s-goal-session-lifetime",
+      "title": "Limit How Long Sessions Last",
+      "packagePath": "docs/implementation-content/s-goal-session-lifetime/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS",
+      "sourceFiles": 3,
+      "contentBlocks": 35,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 10,
+      "requiredBindings": 7,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 4,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-goal-sign-in-risk",
+      "title": "Challenge High-Risk Sign-ins",
+      "packagePath": "docs/implementation-content/s-goal-sign-in-risk/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS_WITH_LIMITATION",
+      "sourceFiles": 3,
+      "contentBlocks": 35,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 7,
+      "requiredBindings": 6,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 9,
+      "packageSpecificMicrosoftSources": 9,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 1
+    },
+    {
+      "stepId": "s-goal-sign-in-risk-medium",
+      "title": "Challenge Medium-Risk Sign-ins",
+      "packagePath": "docs/implementation-content/s-goal-sign-in-risk-medium/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS_WITH_LIMITATION",
+      "sourceFiles": 3,
+      "contentBlocks": 26,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 7,
+      "requiredBindings": 4,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-goal-token-protection",
+      "title": "Require Token Protection on Windows",
+      "packagePath": "docs/implementation-content/s-goal-token-protection/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "self-verified",
+      "sourceFiles": 3,
+      "contentBlocks": 29,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 10,
+      "requiredBindings": 4,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 3,
+      "betaDependencies": 1,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-goal-unmanaged-browser",
+      "title": "Limit Unmanaged Devices in the Browser",
+      "packagePath": "docs/implementation-content/s-goal-unmanaged-browser/",
+      "relationship": "baseline-goal-composite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 25,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "configurePrerequisite",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 12,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 10,
+      "packageSpecificMicrosoftSources": 10,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "policy-composite"
+    },
+    {
+      "stepId": "s-goal-user-risk",
+      "title": "Remediate High-Risk Users",
+      "packagePath": "docs/implementation-content/s-goal-user-risk/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS_WITH_LIMITATION",
+      "sourceFiles": 3,
+      "contentBlocks": 28,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "prerequisiteRequired",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 7,
+      "requiredBindings": 6,
+      "optionalBindings": 10,
+      "verifiedSourceCount": 10,
+      "packageSpecificMicrosoftSources": 10,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 1
+    },
+    {
+      "stepId": "s-goal-user-risk-medium",
+      "title": "Reset Passwords for Medium-Risk Users",
+      "packagePath": "docs/implementation-content/s-goal-user-risk-medium/",
+      "relationship": "baseline-goal",
+      "status": "SELF-VERIFIED",
+      "validationResult": "PASS_WITH_LIMITATION",
+      "sourceFiles": 3,
+      "contentBlocks": 29,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "prerequisiteRequired",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 7,
+      "requiredBindings": 4,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 2
+    },
+    {
+      "stepId": "s-goal-workload-identity-block",
+      "title": "Restrict the Entra Connect Sync Account to Its Address",
+      "packagePath": "docs/implementation-content/s-goal-workload-identity-block/",
+      "relationship": "baseline-goal-composite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "self-verified",
+      "sourceFiles": 3,
+      "contentBlocks": 31,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "notApplicable",
+        "locationMissing",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked",
+        "needsDecision",
+        "sourceConflict",
+        "notLicensed"
+      ],
+      "correctionModules": 8,
+      "requiredBindings": 9,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 7,
+      "packageSpecificMicrosoftSources": 7,
+      "sharedPrimitivesReused": 4,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-ladder-operator-passkey",
+      "title": "Register Your Own Passkey",
+      "packagePath": "docs/implementation-content/s-ladder-operator-passkey/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 7,
+      "outputs": {
+        "entra": true,
+        "json": false,
+        "powershell": false,
+        "aiInfo": true,
+        "email": false,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "register",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 1,
+      "optionalBindings": 3,
+      "verifiedSourceCount": 2,
+      "packageSpecificMicrosoftSources": 2,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "human-action"
+    },
+    {
+      "stepId": "s-prereq-allowed-countries",
+      "title": "Create or Correct Allowed Countries Location",
+      "packagePath": "docs/implementation-content/s-prereq-allowed-countries/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 19,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "missing",
+        "partial",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 4,
+      "optionalBindings": 7,
+      "verifiedSourceCount": 4,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-prereq-auth-strength",
+      "title": "Create the Baseline's Authentication Strength",
+      "packagePath": "docs/implementation-content/s-prereq-auth-strength/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 17,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "missing",
+        "partial",
+        "verificationRequired",
+        "inPlace",
+        "blocked",
+        "sourceConflict"
+      ],
+      "correctionModules": 2,
+      "requiredBindings": 3,
+      "optionalBindings": 5,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "supporting"
+    },
+    {
+      "stepId": "s-prereq-break-glass",
+      "title": "Create or Correct Emergency Access Accounts",
+      "packagePath": "docs/implementation-content/s-prereq-break-glass/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 22,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "missing",
+        "partial",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 8,
+      "requiredBindings": 4,
+      "optionalBindings": 8,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-prereq-device-plan",
+      "title": "Decide How Devices Are Managed",
+      "packagePath": "docs/implementation-content/s-prereq-device-plan/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 6,
+      "outputs": {
+        "entra": false,
+        "json": false,
+        "powershell": false,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "decided",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 2,
+      "optionalBindings": 4,
+      "verifiedSourceCount": 4,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "decision"
+    },
+    {
+      "stepId": "s-prereq-exclusion-group",
+      "title": "Create or Correct Exclusions Group",
+      "packagePath": "docs/implementation-content/s-prereq-exclusion-group/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 20,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "groupMissing",
+        "partial",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 4,
+      "requiredBindings": 8,
+      "optionalBindings": 6,
+      "verifiedSourceCount": 6,
+      "packageSpecificMicrosoftSources": 6,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-prereq-passkey-settings",
+      "title": "Set Up Passkeys to Match the Baseline",
+      "packagePath": "docs/implementation-content/s-prereq-passkey-settings/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 15,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "missingOrPartial",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 5,
+      "optionalBindings": 5,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "supporting"
+    },
+    {
+      "stepId": "s-prereq-per-user-mfa",
+      "title": "Finish Moving Off Per-User MFA",
+      "packagePath": "docs/implementation-content/s-prereq-per-user-mfa/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 11,
+      "outputs": {
+        "entra": true,
+        "json": false,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "blocked",
+        "migrationRequired",
+        "readyToDisablePerUser",
+        "verificationRequired",
+        "inPlace"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 4,
+      "optionalBindings": 3,
+      "verifiedSourceCount": 4,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 1,
+      "unresolvedIssues": 0,
+      "family": "supporting"
+    },
+    {
+      "stepId": "s-prereq-security-defaults",
+      "title": "Turn Off Security Defaults",
+      "packagePath": "docs/implementation-content/s-prereq-security-defaults/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 10,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "blocked",
+        "readyToDisable",
+        "verificationRequired",
+        "inPlace"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 3,
+      "optionalBindings": 2,
+      "verifiedSourceCount": 2,
+      "packageSpecificMicrosoftSources": 2,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "supporting"
+    },
+    {
+      "stepId": "s-prereq-service-accounts-group",
+      "title": "Create or Correct Service Accounts Group",
+      "packagePath": "docs/implementation-content/s-prereq-service-accounts-group/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 20,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "notApplicable",
+        "groupMissing",
+        "partial",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 3,
+      "requiredBindings": 6,
+      "optionalBindings": 6,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-prereq-trusted-location",
+      "title": "Define the Trusted Network",
+      "packagePath": "docs/implementation-content/s-prereq-trusted-location/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 19,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "notApplicable",
+        "missing",
+        "partial",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 3,
+      "requiredBindings": 4,
+      "optionalBindings": 6,
+      "verifiedSourceCount": 4,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0
+    },
+    {
+      "stepId": "s-question-mail-devices",
+      "title": "Set Up an SMTP Relay for Mail-Sending Devices",
+      "packagePath": "docs/implementation-content/s-question-mail-devices/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 10,
+      "outputs": {
+        "entra": false,
+        "json": false,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "routeDecisionRequired",
+        "migrationRequired",
+        "relayConnectorReady",
+        "verificationRequired",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 3,
+      "optionalBindings": 9,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "external-admin"
+    },
+    {
+      "stepId": "s-question-partner",
+      "title": "Exclude the Partner or MSP Accounts",
+      "packagePath": "docs/implementation-content/s-question-partner/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 13,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "applyRequired",
+        "verificationRequired",
+        "inPlace",
+        "notApplicable",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 4,
+      "optionalBindings": 5,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "supporting"
+    },
+    {
+      "stepId": "s-question-travel",
+      "title": "Add a Travel Notice and Exclusion",
+      "packagePath": "docs/implementation-content/s-question-travel/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 12,
+      "outputs": {
+        "entra": true,
+        "json": false,
+        "powershell": false,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "approvalRequired",
+        "approvedPendingApply",
+        "activeTrip",
+        "revertDue",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 5,
+      "optionalBindings": 5,
+      "verifiedSourceCount": 1,
+      "packageSpecificMicrosoftSources": 1,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "operational"
+    },
+    {
+      "stepId": "s-shared-devices",
+      "title": "Give Shared Devices Their Own Policy",
+      "packagePath": "docs/implementation-content/s-shared-devices/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 28,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "needsDecision",
+        "missing",
+        "partial",
+        "reportOnly",
+        "readyToEnforce",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 6,
+      "requiredBindings": 7,
+      "optionalBindings": 6,
+      "verifiedSourceCount": 4,
+      "packageSpecificMicrosoftSources": 4,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "supporting-policy"
+    },
+    {
+      "stepId": "s-verify-mfa",
+      "title": "Create and Enforce the MFA Registration Campaign",
+      "packagePath": "docs/implementation-content/s-verify-mfa/",
+      "relationship": "prerequisite",
+      "status": "SELF-VERIFIED",
+      "validationResult": "SELF-VERIFIED",
+      "sourceFiles": 3,
+      "contentBlocks": 16,
+      "outputs": {
+        "entra": true,
+        "json": true,
+        "powershell": true,
+        "aiInfo": true,
+        "email": true,
+        "readiness": true,
+        "troubleshooting": true
+      },
+      "statesSupported": [
+        "setupRequired",
+        "campaignRunning",
+        "holdoutReview",
+        "ready",
+        "inPlace",
+        "blocked"
+      ],
+      "correctionModules": 0,
+      "requiredBindings": 6,
+      "optionalBindings": 6,
+      "verifiedSourceCount": 5,
+      "packageSpecificMicrosoftSources": 5,
+      "sharedPrimitivesReused": 0,
+      "betaDependencies": 0,
+      "unresolvedIssues": 0,
+      "family": "campaign"
+    }
+  ],
+  "bindings": [
+    {
+      "binding": "account.current.accountEnabled",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.current.displayName",
+      "requiredBy": [
+        "s-check-dormant-accounts"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.current.id",
+      "requiredBy": [
+        "s-check-dormant-accounts"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.current.upn",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.decision.disposition",
+      "requiredBy": [
+        "s-check-dormant-accounts"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.evidence.activitySummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.evidence.lastSignInDateTime",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.evidence.lastSuccessfulSignInDateTime",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "account.owner",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-dormant-accounts"
+      ],
+      "packages": [
+        "s-check-dormant-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admin.currentAccountId",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-separate-admin-accounts"
+      ],
+      "packages": [
+        "s-check-separate-admin-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admin.directRoleAssignments",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-separate-admin-accounts"
+      ],
+      "packages": [
+        "s-check-separate-admin-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admin.namingConvention",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-separate-admin-accounts"
+      ],
+      "packages": [
+        "s-check-separate-admin-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admin.newAdminAccountId",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-separate-admin-accounts"
+      ],
+      "packages": [
+        "s-check-separate-admin-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admin.peopleToSeparate",
+      "requiredBy": [
+        "s-check-separate-admin-accounts"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-check-separate-admin-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admin.pimAssignments",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-check-separate-admin-accounts"
+      ],
+      "packages": [
+        "s-check-separate-admin-accounts"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admins.affected.count",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "admins.notReady",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admins-phishing-resistant"
+      ],
+      "packages": [
+        "s-goal-admins-phishing-resistant"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "apps.mobileObserved",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-mobile-app-protection"
+      ],
+      "packages": [
+        "s-goal-mobile-app-protection"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "authContext.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "string",
+      "meaning": "Current authentication-context display name when present",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authContext.current.id",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "string",
+      "meaning": "Current resolved authentication-context ID when present",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authContext.current.isAvailable",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "boolean",
+      "meaning": "Whether the current authentication context is published/available",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authContext.target.displayName",
+      "requiredBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "string",
+      "meaning": "Canonical display name for the privileged-activation authentication context",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authContext.target.id",
+      "requiredBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "string",
+      "meaning": "Stable authentication-context class reference ID resolved by IAMAI for privileged activation",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authStrength.target.allowedCombinations",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth",
+        "s-goal-sign-in-risk",
+        "s-goal-user-risk"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth",
+        "s-goal-sign-in-risk",
+        "s-goal-user-risk"
+      ],
+      "type": "string[]",
+      "meaning": "Resolved allowed method combinations for the target authentication strength when available",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authStrength.target.displayName",
+      "requiredBy": [
+        "s-goal-sign-in-risk",
+        "s-goal-user-risk"
+      ],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth",
+        "s-goal-sign-in-risk",
+        "s-goal-user-risk"
+      ],
+      "type": "string",
+      "meaning": "Tenant authentication-strength display name resolved by IAMAI when available",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authStrength.target.id",
+      "requiredBy": [
+        "s-goal-admins-phishing-resistant",
+        "s-goal-guests-mfa",
+        "s-goal-pim-activation-reauth",
+        "s-goal-user-risk"
+      ],
+      "optionalBy": [
+        "s-goal-sign-in-risk"
+      ],
+      "packages": [
+        "s-goal-admins-phishing-resistant",
+        "s-goal-guests-mfa",
+        "s-goal-pim-activation-reauth",
+        "s-goal-sign-in-risk",
+        "s-goal-user-risk"
+      ],
+      "type": "string",
+      "meaning": "Stable tenant authentication-strength ID resolved by IAMAI for the retained baseline requirement",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "authenticator.target.configuration",
+      "requiredBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "automation.affected",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-azure-management-mfa"
+      ],
+      "packages": [
+        "s-goal-azure-management-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "baseline.unassessedPolicies.count",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-notAssessed"
+      ],
+      "packages": [
+        "cleanup-notAssessed"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "baseline.unassessedPolicies.sourceBundle",
+      "requiredBy": [
+        "cleanup-notAssessed"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "cleanup-notAssessed"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "baseline.unassessedPolicies.summary",
+      "requiredBy": [
+        "cleanup-notAssessed"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "cleanup-notAssessed"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "campaign.current",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-verify-mfa"
+      ],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "campaign.enrollBy",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-verify-mfa"
+      ],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "campaign.excludeTargets",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-verify-mfa"
+      ],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "campaign.mfaEnforceDate",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-verify-mfa"
+      ],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "campaign.snoozeDurationInDays",
+      "requiredBy": [
+        "s-verify-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "decision.devicePlan",
+      "requiredBy": [
+        "s-goal-require-managed-device"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "decision.partner",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-geo-restriction"
+      ],
+      "packages": [
+        "s-goal-geo-restriction"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "decision.signInRisk.firstEnforcementMode",
+      "requiredBy": [
+        "s-goal-sign-in-risk"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-sign-in-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "decision.travel",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-geo-restriction"
+      ],
+      "packages": [
+        "s-goal-geo-restriction"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "decision.travelMode",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "dependencies.blockers",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-notAssessed",
+        "s-check-dormant-accounts",
+        "s-check-separate-admin-accounts",
+        "s-goal-admin-portals-protected",
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-unmanaged-browser",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-ladder-operator-passkey",
+        "s-prereq-allowed-countries",
+        "s-prereq-auth-strength",
+        "s-prereq-break-glass",
+        "s-prereq-exclusion-group",
+        "s-prereq-passkey-settings",
+        "s-prereq-per-user-mfa",
+        "s-prereq-security-defaults",
+        "s-prereq-service-accounts-group",
+        "s-prereq-trusted-location",
+        "s-question-mail-devices",
+        "s-question-partner",
+        "s-question-travel",
+        "s-shared-devices",
+        "s-verify-mfa"
+      ],
+      "packages": [
+        "cleanup-notAssessed",
+        "s-check-dormant-accounts",
+        "s-check-separate-admin-accounts",
+        "s-goal-admin-portals-protected",
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-unmanaged-browser",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-ladder-operator-passkey",
+        "s-prereq-allowed-countries",
+        "s-prereq-auth-strength",
+        "s-prereq-break-glass",
+        "s-prereq-exclusion-group",
+        "s-prereq-passkey-settings",
+        "s-prereq-per-user-mfa",
+        "s-prereq-security-defaults",
+        "s-prereq-service-accounts-group",
+        "s-prereq-trusted-location",
+        "s-question-mail-devices",
+        "s-question-partner",
+        "s-question-travel",
+        "s-shared-devices",
+        "s-verify-mfa"
+      ],
+      "type": "string[]",
+      "meaning": "Existing blockers/dependencies for this step",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "dependencies.deviceCodeWorkflows",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-device-code"
+      ],
+      "packages": [
+        "s-goal-block-device-code"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "dependencies.downstreamSteps",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-device-plan"
+      ],
+      "packages": [
+        "s-prereq-device-plan"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "dependencies.mailDevices",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-legacy-auth"
+      ],
+      "packages": [
+        "s-goal-block-legacy-auth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "dependencies.replacementMfaSummary",
+      "requiredBy": [
+        "s-prereq-per-user-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-per-user-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "dependencies.replacementProtectionSummary",
+      "requiredBy": [
+        "s-prereq-security-defaults"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-security-defaults"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "dependencies.serviceAccountDecision",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-legacy-auth"
+      ],
+      "packages": [
+        "s-goal-block-legacy-auth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "device.computers.summary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-device-plan"
+      ],
+      "packages": [
+        "s-prereq-device-plan"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "device.evidence.summary",
+      "requiredBy": [
+        "s-prereq-device-plan"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-device-plan"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "device.intune.summary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-device-plan"
+      ],
+      "packages": [
+        "s-prereq-device-plan"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "device.phones.summary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-device-plan"
+      ],
+      "packages": [
+        "s-prereq-device-plan"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "drill.failureReason",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-drill"
+      ],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "drill.proofDate",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-drill"
+      ],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.evidence.accountState",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.evidence.authMethods",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.evidence.custody",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.evidence.lastDrill",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.evidence.monitoring",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.evidence.roleState",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.target.accountsSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-break-glass"
+      ],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.target.exclusionsGroupId",
+      "requiredBy": [
+        "s-prereq-break-glass"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.target.upn",
+      "requiredBy": [
+        "s-prereq-break-glass"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergency.target.userId",
+      "requiredBy": [
+        "s-prereq-break-glass"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-break-glass"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergencyAccounts.lastDrill",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-drill"
+      ],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergencyAccounts.lastProof",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-drill"
+      ],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "emergencyAccounts.summary",
+      "requiredBy": [
+        "cleanup-drill"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.activation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about privileged-role activation behavior",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.adminSessions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session"
+      ],
+      "packages": [
+        "s-goal-admin-session"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.atRiskUsers",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "packages": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.authenticationTransfer",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-auth-transfer"
+      ],
+      "packages": [
+        "s-goal-block-auth-transfer"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.autopilotImpact",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-require-managed-device"
+      ],
+      "packages": [
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.azureManagementSignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-azure-management-mfa"
+      ],
+      "packages": [
+        "s-goal-azure-management-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.cloudSyncActivity",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about Cloud Sync provisioning service-principal activity",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.credentialRegistrationImpact",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-register-info-protected"
+      ],
+      "packages": [
+        "s-goal-register-info-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.cutoverChecks",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-security-defaults"
+      ],
+      "packages": [
+        "s-prereq-security-defaults"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.deviceCodeSignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-device-code"
+      ],
+      "packages": [
+        "s-goal-block-device-code"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.deviceCompliance",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI device-compliance evidence relevant to the unmanaged-device boundary",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.devicePlatforms",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-unsupported-platforms"
+      ],
+      "packages": [
+        "s-goal-block-unsupported-platforms"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.deviceReadiness",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-require-managed-device"
+      ],
+      "packages": [
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.deviceRegistration",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-device-registration-mfa"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence relevant to device registration",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.enrollmentWorkflows",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-device-registration-mfa",
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa",
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about enrollment workflows, if the product already exposes it",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": false,
+      "note": "Optional only; absence remains Unknown and does not trigger a new tenant read.",
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.guestExternalScope",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-user-risk"
+      ],
+      "packages": [
+        "s-goal-user-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.highRiskPolicy",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-sign-in-risk-medium",
+        "s-goal-user-risk-medium"
+      ],
+      "packages": [
+        "s-goal-sign-in-risk-medium",
+        "s-goal-user-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.hybridWriteback",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "packages": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.identityTypes",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.intuneEnrollments",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "packages": [
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.legacySignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-legacy-auth"
+      ],
+      "packages": [
+        "s-goal-block-legacy-auth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.mediumRiskSignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-sign-in-risk-medium"
+      ],
+      "packages": [
+        "s-goal-sign-in-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.mfaReadiness",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-mfa-all-users",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium"
+      ],
+      "packages": [
+        "s-goal-mfa-all-users",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.mfaRegistration",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "packages": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.mobileSignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-mobile-app-protection"
+      ],
+      "packages": [
+        "s-goal-mobile-app-protection"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.nativeMail",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-mobile-app-protection"
+      ],
+      "packages": [
+        "s-goal-mobile-app-protection"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.originalTransferMethod",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code"
+      ],
+      "packages": [
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.pimEligible",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about eligible PIM roles/holders",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.remoteRegistrants",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-register-info-protected"
+      ],
+      "packages": [
+        "s-goal-register-info-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.reportOnly",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-unmanaged-browser"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.riskInvestigation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "packages": [
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.riskySignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-sign-in-risk"
+      ],
+      "packages": [
+        "s-goal-sign-in-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.serverSignIns",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-require-managed-device"
+      ],
+      "packages": [
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.sharedDevices",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence/resolution for shared-device accounts",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.signInCountries",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.signInGeography",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-geo-restriction"
+      ],
+      "packages": [
+        "s-goal-geo-restriction"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.signInIpSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-trusted-location"
+      ],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.sourceLocations",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "evidence.syncAddresses",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about observed Cloud Sync source addresses",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.tokenProtectionCompatibility",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-token-protection"
+      ],
+      "packages": [
+        "s-goal-token-protection"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about Token Protection client/device compatibility; absence remains Unknown",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": false,
+      "note": "Optional only; absence remains Unknown and does not trigger a new tenant read.",
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.unmanagedBrowser",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime",
+        "s-goal-unmanaged-browser"
+      ],
+      "packages": [
+        "s-goal-session-lifetime",
+        "s-goal-unmanaged-browser"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about browser use from unmanaged devices",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.windowsRegistration",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-token-protection"
+      ],
+      "packages": [
+        "s-goal-token-protection"
+      ],
+      "type": "object|string",
+      "meaning": "Existing IAMAI evidence about Windows device registration relevant to Token Protection",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "evidence.workflowValidation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.current.id",
+      "requiredBy": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.current.members",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.evidence.type",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-exclusion-group"
+      ],
+      "packages": [
+        "s-prereq-exclusion-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.serviceAccounts.id",
+      "requiredBy": [
+        "s-goal-azure-management-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-azure-management-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.target.displayName",
+      "requiredBy": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.target.mailNickname",
+      "requiredBy": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.target.memberId",
+      "requiredBy": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.target.memberIds",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-exclusion-group"
+      ],
+      "packages": [
+        "s-prereq-exclusion-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "group.target.memberODataBindings",
+      "requiredBy": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-exclusion-group",
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "guests.affected.count",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "guests.partnerTierSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "guests.serviceProviderDecision",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "intune.appProtection.prerequisiteState",
+      "requiredBy": [
+        "s-goal-mobile-app-protection"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-mobile-app-protection"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "intune.compliance.prerequisiteState",
+      "requiredBy": [
+        "s-goal-require-managed-device"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "license.defenderCloudApps",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.allowedCountries.currentCountries",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-travel"
+      ],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.allowedCountries.displayName",
+      "requiredBy": [
+        "s-question-travel"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.allowedCountries.id",
+      "requiredBy": [
+        "s-goal-geo-restriction"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-geo-restriction"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.current.countryCodes",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-workload-identity-block",
+        "s-prereq-allowed-countries",
+        "s-prereq-trusted-location"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block",
+        "s-prereq-allowed-countries",
+        "s-prereq-trusted-location"
+      ],
+      "type": "string",
+      "meaning": "Existing named-location display name when present",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.current.id",
+      "requiredBy": [
+        "s-goal-workload-identity-block",
+        "s-prereq-allowed-countries",
+        "s-prereq-trusted-location"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-workload-identity-block",
+        "s-prereq-allowed-countries",
+        "s-prereq-trusted-location"
+      ],
+      "type": "string",
+      "meaning": "Stable tenant ID of the existing IAMAI-resolved named location",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.current.includeUnknown",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.current.ipRanges",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-trusted-location"
+      ],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.current.isTrusted",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-trusted-location"
+      ],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.current.lookupMethod",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.current.semanticMismatches",
+      "requiredBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "string[]",
+      "meaning": "Existing IAMAI semantic mismatch IDs for the resolved named location",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.syncServer.displayName",
+      "requiredBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "string",
+      "meaning": "Canonical display name for the Cloud Sync server IP named location",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.syncServer.id",
+      "requiredBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "string",
+      "meaning": "Stable tenant ID of the IAMAI-resolved Cloud Sync server named location",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.syncServer.ipRanges",
+      "requiredBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "object[]",
+      "meaning": "Complete approved Graph-ready IP range collection for the Cloud Sync server named location; each item contains @odata.type and cidrAddress",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "location.target.countryCodes",
+      "requiredBy": [
+        "s-prereq-allowed-countries"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-allowed-countries"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.target.displayName",
+      "requiredBy": [
+        "s-prereq-allowed-countries",
+        "s-prereq-trusted-location"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-allowed-countries",
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "location.target.ipRanges",
+      "requiredBy": [
+        "s-prereq-trusted-location"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.acceptedDomain",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.connector.certificateName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.connector.mxEndpoint",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.connector.name",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.connector.senderDomains",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.connector.staticPublicIp",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.devices",
+      "requiredBy": [
+        "s-question-mail-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.route",
+      "requiredBy": [
+        "s-question-mail-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.serviceAccountIds",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mail.testRecipient",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-mail-devices"
+      ],
+      "packages": [
+        "s-question-mail-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mfa.methodsCoverage",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-per-user-mfa"
+      ],
+      "packages": [
+        "s-prereq-per-user-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mfa.methodsMigrationState",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-per-user-mfa"
+      ],
+      "packages": [
+        "s-prereq-per-user-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mfa.perUser.accounts",
+      "requiredBy": [
+        "s-prereq-per-user-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-per-user-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "mfa.perUser.userIds",
+      "requiredBy": [
+        "s-prereq-per-user-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-per-user-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "monitoring.alertPath",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-drill"
+      ],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "monitoring.status",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-drill"
+      ],
+      "packages": [
+        "cleanup-drill"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "network.ownerNotes",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-trusted-location"
+      ],
+      "packages": [
+        "s-prereq-trusted-location"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "operator.current.methods",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-ladder-operator-passkey"
+      ],
+      "packages": [
+        "s-ladder-operator-passkey"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "operator.current.proof",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-ladder-operator-passkey"
+      ],
+      "packages": [
+        "s-ladder-operator-passkey"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "operator.displayName",
+      "requiredBy": [
+        "s-ladder-operator-passkey"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-ladder-operator-passkey"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partner.accessModel",
+      "requiredBy": [
+        "s-question-partner"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partner.affectedPolicyNames",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-partner"
+      ],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partner.currentEvidence",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-partner"
+      ],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partner.decisionSummary",
+      "requiredBy": [
+        "s-question-partner"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partner.providerName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-partner"
+      ],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partner.tenantId",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-partner"
+      ],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "partnerTrust.resolvedPatches",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.current.registeredAaguids",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.current.summary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.profileOptInApproved",
+      "requiredBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.target.allowedAaguids",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.target.fido2Configuration",
+      "requiredBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.target.profileSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "people.affected.count",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "packages": [
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium"
+      ],
+      "type": "integer",
+      "meaning": "IAMAI-derived count of affected people when known",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "people.pushOnly.count",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-sign-in-risk"
+      ],
+      "packages": [
+        "s-goal-sign-in-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "peoplePolicies.resolvedPatches",
+      "requiredBy": [
+        "s-shared-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-shared-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "pim.roleManagementPolicyIds",
+      "requiredBy": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ],
+      "type": "string[]",
+      "meaning": "Stable role-management-policy IDs for IAMAI-selected eligible Microsoft Entra roles that require the authentication context",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.guests.mixed.current.id",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.mixed.target.displayName",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.mixed.target.users",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.semanticMismatches",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.current.id",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.target.displayName",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.target.users",
+      "requiredBy": [
+        "s-goal-guests-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.session.browser.current.id",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string",
+      "meaning": "Stable tenant ID of the IAMAI-resolved browser-session component policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.browser.current.state",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string",
+      "meaning": "Current lifecycle state of the browser-session component policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.browser.target.displayName",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string",
+      "meaning": "Canonical display name for the browser-session component policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.semanticMismatches",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string[]",
+      "meaning": "IAMAI-classified mismatch IDs across the two session-lifetime component policies",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.unmanaged.current.id",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string",
+      "meaning": "Stable tenant ID of the IAMAI-resolved unmanaged-device session component policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.unmanaged.current.state",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string",
+      "meaning": "Current lifecycle state of the unmanaged-device session component policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.unmanaged.target.displayName",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string",
+      "meaning": "Canonical display name for the unmanaged-device session component policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.a.current.id",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.a.current.state",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.a.target.conditions",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.a.target.displayName",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.a.target.sessionControls",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.b.current.id",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.b.current.state",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.b.target.conditions",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.b.target.displayName",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.b.target.sessionControls",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.unmanagedBrowser.semanticMismatches",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-device-registration-mfa",
+        "s-goal-token-protection",
+        "s-goal-workload-identity-block",
+        "s-prereq-exclusion-group",
+        "s-shared-devices"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa",
+        "s-goal-token-protection",
+        "s-goal-workload-identity-block",
+        "s-prereq-exclusion-group",
+        "s-shared-devices"
+      ],
+      "type": "string",
+      "meaning": "Existing policy display name when present",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.current.id",
+      "requiredBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-prereq-exclusion-group",
+        "s-shared-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-prereq-exclusion-group",
+        "s-shared-devices"
+      ],
+      "type": "string",
+      "meaning": "Stable ID of the IAMAI-resolved existing policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.current.semanticMismatches",
+      "requiredBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block"
+      ],
+      "optionalBy": [
+        "s-shared-devices"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "type": "string[]",
+      "meaning": "Existing IAMAI semantic mismatch IDs for the resolved policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.current.state",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "type": "string",
+      "meaning": "Existing policy lifecycle state",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.evidence.missingExclusions",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-exclusion-group"
+      ],
+      "packages": [
+        "s-prereq-exclusion-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.conditions",
+      "requiredBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.conditionsWithExclusion",
+      "requiredBy": [
+        "s-prereq-exclusion-group"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-exclusion-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.displayName",
+      "requiredBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-shared-devices"
+      ],
+      "type": "string",
+      "meaning": "Canonical display name IAMAI will use when creating the policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.target.excludeGroups",
+      "requiredBy": [
+        "s-goal-device-registration-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-pim-activation-reauth",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-shared-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-device-registration-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-pim-activation-reauth",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-shared-devices"
+      ],
+      "type": "string[]",
+      "meaning": "Complete canonical exclusion-group ID set resolved by IAMAI for this policy",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.target.excludeUsers",
+      "requiredBy": [
+        "s-goal-session-lifetime"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "type": "string[]",
+      "meaning": "Complete canonical user exclusion set resolved by IAMAI for the policy, including shared-device accounts",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policy.target.grantControls",
+      "requiredBy": [
+        "s-goal-admin-session",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.includeRoles",
+      "requiredBy": [
+        "s-goal-admin-session"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-session"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.includeUsers",
+      "requiredBy": [
+        "s-shared-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-shared-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.mode",
+      "requiredBy": [
+        "s-goal-register-info-protected"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-register-info-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.sessionControls",
+      "requiredBy": [
+        "s-goal-admin-session",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mobile-app-protection",
+        "s-goal-require-managed-device"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-mobile-app-protection",
+        "s-goal-require-managed-device"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.trustedLocationId",
+      "requiredBy": [
+        "s-shared-devices"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-shared-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policyPair.current.states",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policyPatches.resolved",
+      "requiredBy": [
+        "s-question-partner"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-partner"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "readiness.activeCount",
+      "requiredBy": [
+        "s-verify-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "readiness.adminsNeedingPasskey",
+      "requiredBy": [
+        "s-verify-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "readiness.percent",
+      "requiredBy": [
+        "s-verify-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "readiness.specialCare",
+      "requiredBy": [
+        "s-verify-mfa"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "resource.intuneEnrollment.exists",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "packages": [
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "resource.intuneEnrollment.servicePrincipalId",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "packages": [
+        "s-goal-intune-enrollment-reauth"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "review.decisions.summary",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-notAssessed"
+      ],
+      "packages": [
+        "cleanup-notAssessed"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "securityDefaults.current.isEnabled",
+      "requiredBy": [
+        "s-prereq-security-defaults"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-security-defaults"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "service.candidates",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "service.confirmedAccounts",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "service.migrationNotes",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "service.ropcAccounts",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-service-accounts-group"
+      ],
+      "packages": [
+        "s-prereq-service-accounts-group"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "serviceAccounts.group.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "serviceAccounts.group.id",
+      "requiredBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "serviceAccounts.members",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "shared.confirmedAccounts",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-shared-devices"
+      ],
+      "packages": [
+        "s-shared-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "shared.deviceEvidence",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-shared-devices"
+      ],
+      "packages": [
+        "s-shared-devices"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "sharepoint.adminUrl",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "sharepoint.unmanagedDevices.currentMode",
+      "requiredBy": [
+        "s-goal-unmanaged-browser"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-unmanaged-browser"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "signature",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-unmanaged-browser",
+        "s-verify-mfa"
+      ],
+      "packages": [
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-unmanaged-browser",
+        "s-verify-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "sourceConflict.evidence",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admin-portals-protected"
+      ],
+      "packages": [
+        "s-goal-admin-portals-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "sourceConflict.summary",
+      "requiredBy": [
+        "s-goal-admin-portals-protected"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-admin-portals-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.current.allowedCombinations",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-auth-strength"
+      ],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-auth-strength"
+      ],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.current.id",
+      "requiredBy": [
+        "s-prereq-auth-strength"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.current.semanticMismatches",
+      "requiredBy": [
+        "s-prereq-auth-strength"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.current.usage",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-auth-strength"
+      ],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "strength.target.displayName",
+      "requiredBy": [
+        "s-prereq-auth-strength"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-auth-strength"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "tap.target.configuration",
+      "requiredBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "tenant.displayName",
+      "requiredBy": [
+        "s-check-dormant-accounts",
+        "s-check-separate-admin-accounts",
+        "s-prereq-allowed-countries",
+        "s-prereq-break-glass",
+        "s-prereq-device-plan",
+        "s-prereq-exclusion-group",
+        "s-prereq-passkey-settings",
+        "s-prereq-per-user-mfa",
+        "s-prereq-security-defaults",
+        "s-prereq-service-accounts-group",
+        "s-prereq-trusted-location",
+        "s-question-mail-devices",
+        "s-question-partner",
+        "s-shared-devices",
+        "s-verify-mfa"
+      ],
+      "optionalBy": [
+        "cleanup-drill",
+        "cleanup-notAssessed",
+        "s-goal-admin-portals-protected",
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-unmanaged-browser",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-prereq-auth-strength",
+        "s-question-travel"
+      ],
+      "packages": [
+        "cleanup-drill",
+        "cleanup-notAssessed",
+        "s-check-dormant-accounts",
+        "s-check-separate-admin-accounts",
+        "s-goal-admin-portals-protected",
+        "s-goal-admin-session",
+        "s-goal-admins-phishing-resistant",
+        "s-goal-azure-management-mfa",
+        "s-goal-block-auth-transfer",
+        "s-goal-block-device-code",
+        "s-goal-block-legacy-auth",
+        "s-goal-block-unsupported-platforms",
+        "s-goal-device-registration-mfa",
+        "s-goal-geo-restriction",
+        "s-goal-guests-mfa",
+        "s-goal-intune-enrollment-reauth",
+        "s-goal-mfa-all-users",
+        "s-goal-mobile-app-protection",
+        "s-goal-pim-activation-reauth",
+        "s-goal-register-info-protected",
+        "s-goal-require-managed-device",
+        "s-goal-service-accounts-trusted-network",
+        "s-goal-session-lifetime",
+        "s-goal-sign-in-risk",
+        "s-goal-sign-in-risk-medium",
+        "s-goal-token-protection",
+        "s-goal-unmanaged-browser",
+        "s-goal-user-risk",
+        "s-goal-user-risk-medium",
+        "s-goal-workload-identity-block",
+        "s-prereq-allowed-countries",
+        "s-prereq-auth-strength",
+        "s-prereq-break-glass",
+        "s-prereq-device-plan",
+        "s-prereq-exclusion-group",
+        "s-prereq-passkey-settings",
+        "s-prereq-per-user-mfa",
+        "s-prereq-security-defaults",
+        "s-prereq-service-accounts-group",
+        "s-prereq-trusted-location",
+        "s-question-mail-devices",
+        "s-question-partner",
+        "s-question-travel",
+        "s-shared-devices",
+        "s-verify-mfa"
+      ],
+      "type": "string",
+      "meaning": "Tenant display name when already available",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "tenant.licensingContext",
+      "requiredBy": [],
+      "optionalBy": [
+        "cleanup-notAssessed"
+      ],
+      "packages": [
+        "cleanup-notAssessed"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "travel.approver",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-travel"
+      ],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "travel.countries",
+      "requiredBy": [
+        "s-question-travel"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "travel.endDate",
+      "requiredBy": [
+        "s-question-travel"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "travel.logReference",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-question-travel"
+      ],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "travel.startDate",
+      "requiredBy": [
+        "s-question-travel"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "travel.traveler",
+      "requiredBy": [
+        "s-question-travel"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-question-travel"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "trustedLocation.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-register-info-protected"
+      ],
+      "packages": [
+        "s-goal-register-info-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "trustedLocations.displayNames",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "trustedLocations.ids",
+      "requiredBy": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-service-accounts-trusted-network"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "workload.cloudSync.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "string",
+      "meaning": "Display name of the resolved Cloud Sync provisioning service principal when already available",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "workload.cloudSync.servicePrincipalId",
+      "requiredBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "type": "string",
+      "meaning": "Stable Enterprise applications Object ID of the IAMAI-resolved Entra Cloud Sync provisioning service principal",
+      "sensitivity": "tenant-context",
+      "knownIAMAIInput": true,
+      "definitionStatus": "CARRIED-FORWARD"
+    }
+  ],
+  "issues": [
+    {
+      "id": "cleanup-drill-integration-gap-1",
+      "package": "cleanup-drill",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "IAMAI can store the operator-entered proof date/result, but the drill itself remains interactive human evidence."
+    },
+    {
+      "id": "cleanup-drill-integration-gap-2",
+      "package": "cleanup-drill",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "If IAMAI cannot distinguish a scheduled drill from an unrelated emergency-account sign-in, it must not infer the drill is complete from sign-in logs alone."
+    },
+    {
+      "id": "cleanup-notAssessed-integration-gap-1",
+      "package": "cleanup-notAssessed",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "The renderer must supply the exact current unassessed-policy list and exact pinned source objects from IAMAI's already-loaded baseline package. This is a presentation/binding integration of existing baseline truth, not a new tenant read."
+    },
+    {
+      "id": "cleanup-notAssessed-integration-gap-2",
+      "package": "cleanup-notAssessed",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "If IAMAI does not currently expose the unsupported semantic field/reason per policy, display the policy as unassessed without inventing a reason and preserve the source artifact for human review."
+    },
+    {
+      "id": "admin-portal-non-admin-scope",
+      "package": "s-goal-admin-portals-protected",
+      "type": "sourceConflict",
+      "severity": "blocking-for-this-step",
+      "status": "open",
+      "summary": "Retained baseline documentation and exported member disagree about administrator exclusion/scope. No implementation is authored until the baseline is corrected/reviewed."
+    },
+    {
+      "id": "s-goal-intune-enrollment-reauth-integration-gap-1",
+      "package": "s-goal-intune-enrollment-reauth",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "If IAMAI cannot already distinguish whether the Microsoft Intune Enrollment service principal exists, keep resource absence Unknown rather than adding a new tenant read during content integration."
+    },
+    {
+      "id": "s-goal-service-accounts-trusted-network-integration-gap-1",
+      "package": "s-goal-service-accounts-trusted-network",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "IAMAI must map existing directory evidence to distinguish user-based service accounts from service principals before enforcement. Do not claim user-scoped CA covers service principals."
+    },
+    {
+      "id": "s-goal-service-accounts-trusted-network-integration-gap-2",
+      "package": "s-goal-service-accounts-trusted-network",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "Workflow-owner/source-network validation remains human evidence when IAMAI has not observed every scheduled or infrequent workflow."
+    },
+    {
+      "id": "sign-in-risk-first-enforcement-choice-unavailable",
+      "package": "s-goal-sign-in-risk",
+      "type": "authoringIssue",
+      "severity": "state-gating",
+      "status": "open-until-existing-saved-decision-is-supplied-to-renderer",
+      "summary": "Available project authority defines both valid first-enforcement choices but does not reveal which one the owner selected. Package therefore supports both deterministically and emits no actionable implementation in needsDecision. Do not guess."
+    },
+    {
+      "id": "s-goal-user-risk-integration-gap-1",
+      "package": "s-goal-user-risk",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "IAMAI integration must map its existing guest/external population evidence to an enforcement-safe prerequisite. Do not add a new tenant read solely for this content package."
+    },
+    {
+      "id": "s-goal-user-risk-medium-integration-gap-1",
+      "package": "s-goal-user-risk-medium",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "IAMAI must map its existing MFA-registration, hybrid/password-writeback, and High-risk-policy evidence into prerequisite/readiness bindings. Do not add new tenant reads solely for this content package."
+    },
+    {
+      "id": "s-goal-user-risk-medium-integration-gap-2",
+      "package": "s-goal-user-risk-medium",
+      "type": "integrationGap",
+      "status": "open-for-integration-review",
+      "summary": "Final library review should confirm the current-API normalization from retained-source authenticationStrength to the v1.0-supported mfa + passwordChange AND grant."
+    }
+  ],
+  "technicalPrimitives": [
+    {
+      "id": "ca.graph.policy-v1",
+      "surface": "Microsoft Graph v1.0",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "POST /identity/conditionalAccess/policies creates a policy.",
+        "PATCH /identity/conditionalAccess/policies/{id} updates a policy.",
+        "Policy.Read.All plus Policy.ReadWrite.ConditionalAccess are least delegated permissions for create/update; Conditional Access Administrator and Security Administrator are supported built-in roles.",
+        "conditionalAccessPolicy state values include enabled, disabled, enabledForReportingButNotEnforced."
+      ],
+      "sourceIds": [
+        "ms-graph-create",
+        "ms-graph-update",
+        "ms-ca-policy",
+        "ms-ca-condition-set",
+        "ms-ca-grant-controls"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa",
+        "s-goal-pim-activation-reauth",
+        "s-goal-session-lifetime",
+        "s-goal-workload-identity-block"
+      ]
+    },
+    {
+      "id": "ca.license-p1",
+      "surface": "Microsoft Entra licensing",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "Conditional Access requires Microsoft Entra ID P1; Microsoft 365 Business Premium includes Conditional Access rights."
+      ],
+      "sourceIds": [
+        "ms-ca-licensing"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa",
+        "s-goal-pim-activation-reauth",
+        "s-goal-session-lifetime",
+        "s-goal-token-protection"
+      ]
+    },
+    {
+      "id": "ca.named-location.graph-v1",
+      "surface": "Microsoft Graph v1.0",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "POST /identity/conditionalAccess/namedLocations creates an ipNamedLocation using #microsoft.graph.ipNamedLocation plus displayName and ipRanges.",
+        "PATCH /identity/conditionalAccess/namedLocations/{id} updates an IP named location.",
+        "When updating ipRanges, the request must carry every range that should remain; omitted ranges are removed.",
+        "Policy.Read.All plus Policy.ReadWrite.ConditionalAccess are least delegated permissions for create/update; Conditional Access Administrator and Security Administrator are supported roles."
+      ],
+      "sourceIds": [
+        "ms-ip-named-location",
+        "ms-named-location-create",
+        "ms-ip-named-location-update",
+        "ms-named-location-list"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ]
+    },
+    {
+      "id": "ca.session-lifetime.graph-v1",
+      "surface": "Microsoft Entra Conditional Access + Microsoft Graph v1.0",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "Sign-in frequency supports time-based hour/day controls and persistent-browser mode can be set to never.",
+        "The persistent-browser session control should target All apps/resources to work correctly.",
+        "Graph v1.0 exposes persistentBrowser, signInFrequency, and deviceFilter shapes used by this package."
+      ],
+      "sourceIds": [
+        "ms-session-lifetime-config",
+        "ms-session-lifetime-concept",
+        "ms-ca-session-controls-v1",
+        "ms-signin-frequency-v1",
+        "ms-persistent-browser-v1",
+        "ms-ca-device-filter-v1"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ]
+    },
+    {
+      "id": "ca.token-protection.beta-session-control",
+      "surface": "Microsoft Graph beta",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "The current Graph v1.0 conditionalAccessSessionControls schema does not expose secureSignInSession.",
+        "The Graph beta conditionalAccessSessionControls schema exposes secureSignInSession and secureSignInSessionControl.isEnabled.",
+        "Microsoft warns Graph beta APIs are subject to change and unsupported for production applications; this is an isolated package exception."
+      ],
+      "sourceIds": [
+        "ms-ca-session-controls-v1",
+        "ms-ca-session-controls-beta",
+        "ms-secure-sign-in-session-beta",
+        "ms-graph-ca-create-beta",
+        "ms-graph-ca-update-beta"
+      ],
+      "packages": [
+        "s-goal-token-protection"
+      ]
+    },
+    {
+      "id": "ca.workload-identity.graph-v1",
+      "surface": "Microsoft Entra Conditional Access + Microsoft Graph v1.0",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "Conditional Access workload policies must target an eligible service principal directly; assigning a policy to a group containing the service principal does not enforce it.",
+        "Use the Enterprise applications service principal Object ID, not the App registrations Object ID.",
+        "Location-based workload policy can include All resources, include Any location, exclude the approved named location, and Block access.",
+        "Graph v1.0 conditionalAccessClientApplications exposes includeServicePrincipals and excludeServicePrincipals.",
+        "Microsoft Entra Workload ID Premium is required to create or modify service-principal Conditional Access policies."
+      ],
+      "sourceIds": [
+        "ms-workload-identity-ca",
+        "ms-workload-license-faq",
+        "ms-ca-client-applications"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ]
+    },
+    {
+      "id": "graph.powershell.invoke-v1",
+      "surface": "Microsoft Graph PowerShell",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "Invoke-MgGraphRequest is in Microsoft.Graph.Authentication and supports REST GET/POST/PATCH; Body is required for POST/PATCH."
+      ],
+      "sourceIds": [
+        "ms-powershell-request"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa",
+        "s-goal-pim-activation-reauth",
+        "s-goal-session-lifetime",
+        "s-goal-token-protection",
+        "s-goal-workload-identity-block"
+      ]
+    },
+    {
+      "id": "pim.authentication-context.graph-v1",
+      "surface": "Microsoft Entra PIM + Microsoft Graph v1.0",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "PATCH /identity/conditionalAccess/authenticationContextClassReferences/{id} creates or updates an authentication context and isAvailable publishes it for use.",
+        "AuthenticationContext.ReadWrite.All is the least delegated write permission; Conditional Access Administrator and Security Administrator are supported roles.",
+        "For PIM activation, Microsoft recommends creating and enabling the matching authentication-context CA policy before selecting the context in PIM.",
+        "A matching context CA policy that is Report-only or disabled does not trigger PIM backup MFA.",
+        "Every time reauthentication has a documented 10-minute window across activations."
+      ],
+      "sourceIds": [
+        "ms-auth-context-update-v1",
+        "ms-pim-role-settings",
+        "ms-ca-target-auth-context"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ]
+    },
+    {
+      "id": "pim.license-entitlement",
+      "surface": "Microsoft Entra licensing",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "Privileged Identity Management capabilities require an eligible Microsoft Entra ID P2 or Microsoft Entra ID Governance entitlement for users in scope."
+      ],
+      "sourceIds": [
+        "ms-pim-licensing"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ]
+    },
+    {
+      "id": "pim.role-policy.graph-v1",
+      "surface": "Microsoft Graph v1.0",
+      "checkedOn": "2026-09-10",
+      "facts": [
+        "PATCH /policies/roleManagementPolicies/{policyId}/rules/{ruleId} updates one PIM rule without replacing unrelated rules.",
+        "AuthenticationContext_EndUser_Assignment is the authentication-context activation rule and claimValue stores the authentication-context claim.",
+        "RoleManagementPolicy.ReadWrite.Directory is the least delegated write permission for Entra role policy rules; Privileged Role Administrator is the supported least-privileged write role."
+      ],
+      "sourceIds": [
+        "ms-pim-rule-update-v1",
+        "ms-pim-rule-get-v1"
+      ],
+      "packages": [
+        "s-goal-pim-activation-reauth"
+      ]
+    }
+  ],
+  "aggregate": {
+    "packageCount": 46,
+    "selfVerifiedPackages": 46,
+    "packagesWithOpenIssues": 8,
+    "contentBlocks": 964,
+    "uniqueBindings": 264,
+    "bindingsRequiredByAtLeastOneProjection": 106,
+    "bindingsOptionalInAtLeastOnePackage": 162,
+    "bindingDefinitionsCarriedForward": 45,
+    "bindingDefinitionsPendingHolisticReview": 219,
+    "knownIAMAIInputTrue": 43,
+    "knownIAMAIInputFalse": 2,
+    "knownIAMAIInputUnreviewed": 219,
+    "verifiedSourceRecords": 267,
+    "microsoftSourceRecords": 265,
+    "surfaces": [
+      "Microsoft Defender for Cloud Apps",
+      "Microsoft Entra Authentication",
+      "Microsoft Entra Conditional Access",
+      "Microsoft Entra External ID",
+      "Microsoft Entra ID Protection",
+      "Microsoft Entra roles / PIM",
+      "Microsoft Graph",
+      "Microsoft Intune",
+      "Microsoft PowerShell",
+      "Microsoft Teams devices",
+      "SharePoint Online"
+    ],
+    "graphScopes": [
+      "Application.Read.All",
+      "Application.ReadWrite.All",
+      "AuthenticationContext.Read.All",
+      "AuthenticationContext.ReadWrite.All",
+      "Directory.Read.All",
+      "Group.ReadWrite.All",
+      "GroupMember.ReadWrite.All",
+      "Policy.Read.All",
+      "Policy.Read.AuthenticationMethod",
+      "Policy.ReadWrite.AuthenticationMethod",
+      "Policy.ReadWrite.ConditionalAccess",
+      "Policy.ReadWrite.CrossTenantAccess",
+      "RoleManagement.ReadWrite.Directory",
+      "RoleManagementPolicy.Read.Directory",
+      "RoleManagementPolicy.ReadWrite.Directory",
+      "User.EnableDisableAccount.All",
+      "User.Read.All"
+    ],
+    "adminRoles": [
+      "Application Administrator",
+      "Authentication Policy Administrator",
+      "Conditional Access Administrator",
+      "Global Administrator",
+      "Privileged Role Administrator",
+      "Security Administrator"
+    ],
+    "modules": [
+      "Microsoft.Graph.Authentication",
+      "Microsoft.Graph.Identity.SignIns"
+    ],
+    "betaDependencies": 2,
+    "betaPackages": [
+      "s-goal-token-protection",
+      "s-prereq-per-user-mfa"
+    ],
+    "legacyDependencies": 0
+  },
+  "validationLimitations": [
+    "PowerShell AST/parser was unavailable in the authoring container for this authoring run. 40 packages expose PowerShell content; extracted scripts were statically/mechanically checked where package metadata records that check and should be AST-parsed by the implementation environment before use.",
+    "219 of 264 global binding definitions were not present in the previous LIBRARY.json registry. Their package usage is captured here, but type/sensitivity/existing-IAMAI mapping must be normalized during the planned whole-library integration review rather than guessed."
+  ],
+  "implementationCaveats": [
+    {
+      "id": "authentication-transfer-preview",
+      "package": "s-goal-block-auth-transfer",
+      "status": "documented-platform-behavior",
+      "summary": "Microsoft still documents authentication transfer as preview in 2026. The Conditional Access authenticationFlows condition is available in Graph v1.0; the package remains pinned to the retained baseline and uses Report-only validation."
+    },
+    {
+      "id": "device-code-drs-teams-2026",
+      "package": "s-goal-block-device-code",
+      "status": "documented-platform-behavior",
+      "summary": "Microsoft documents that authentication-flow policies targeting All resources also affect Device Registration Service, and some Teams devices can depend on device code flow. Legitimate use must be remediated or explicitly resolved before enforcement; this package does not invent an exception absent from the retained baseline."
+    },
+    {
+      "id": "pim-activation-reauth-window",
+      "package": "s-goal-pim-activation-reauth",
+      "status": "documented-platform-behavior",
+      "summary": "Microsoft documents a 10-minute reauthentication window across PIM activations after one successful reauthentication. The CA policy is configured for Every time, but the product must not promise a literal new prompt on every activation."
+    },
+    {
+      "id": "registration-july-2026-expansion",
+      "package": "s-goal-register-info-protected",
+      "status": "documented-platform-behavior",
+      "summary": "Microsoft states that from July 6, 2026 Register security information Conditional Access also applies during Windows Hello for Business and macOS Platform SSO credential registration. Report-only validation must include those workflows where present."
+    },
+    {
+      "id": "registration-source-member-identity",
+      "package": "s-goal-register-info-protected",
+      "status": "documented-source-identity-limitation",
+      "summary": "The retained raw/goalMap projection does not expose a dedicated stable member for this goal. IAMAI does expose explicit canonical step/goal semantics. This package does not invent a source GUID; create uses the resolved target and correction requires the stable tenant policy ID."
+    },
+    {
+      "id": "grace-period-scope",
+      "package": "s-goal-require-managed-device",
+      "status": "tenant-resolved",
+      "summary": "IAMAI source calls for a 3-day Mark device non-compliant grace action in each applicable compliance policy. This package does not blind-bulk-edit unknown Intune policy IDs; the prerequisite must be resolved against the tenant compliance-policy set."
+    },
+    {
+      "id": "intune-separate-prerequisite",
+      "package": "s-goal-require-managed-device",
+      "status": "service-boundary",
+      "summary": "Intune compliance configuration is not contained in Conditional Access JSON. The CA policy is only actionable when IAMAI says the compliance prerequisite is real for the in-scope platforms."
+    },
+    {
+      "id": "session-lifetime-companion-source-identity",
+      "package": "s-goal-session-lifetime",
+      "status": "documented-source-identity-limitation",
+      "summary": "IAMAI’s canonical merged-step source specifies the unmanaged-device companion policy, but the available pinned projection does not surface a stable source-member ID for that companion. No source GUID is invented; tenant updates require IAMAI’s resolved stable tenant policy ID."
+    },
+    {
+      "id": "s-goal-token-protection-api-exception",
+      "package": "s-goal-token-protection",
+      "status": "documented-api-exception",
+      "summary": "As checked on 2026-09-10, secureSignInSession is exposed by conditionalAccessSessionControls in Graph beta but not in the v1.0 resource schema. The portal feature is supported; JSON/PowerShell mutation for this field therefore uses an isolated beta endpoint.",
+      "surface": "Microsoft Graph beta",
+      "scope": null
+    },
+    {
+      "id": "token-protection-graph-beta",
+      "package": "s-goal-token-protection",
+      "status": "documented-exception",
+      "summary": "Token Protection is supported in the Entra portal, but secureSignInSession is not exposed in the current Graph v1.0 session-control schema. JSON/PowerShell mutation is isolated to Graph beta and must be reverified before production integration."
+    },
+    {
+      "id": "policy-b-license",
+      "package": "s-goal-unmanaged-browser",
+      "status": "conditional",
+      "summary": "Policy B uses Conditional Access App Control / cloudAppSecurity blockDownloads and requires the Defender for Cloud Apps dependency. If unavailable, Policy A can still be authored but Policy B is not silently omitted from completion truth."
+    },
+    {
+      "id": "sharepoint-ca-side-effect",
+      "package": "s-goal-unmanaged-browser",
+      "status": "must-rescan",
+      "summary": "Microsoft documents that choosing Allow limited, web-only access on the SharePoint unmanaged-devices page disables previous Conditional Access policies created from that page and creates a new all-users CA policy; customizations are not carried over. IAMAI must stop and rescan after this prerequisite change before mutating CA by stable ID."
+    },
+    {
+      "id": "s-prereq-per-user-mfa-api-exception",
+      "package": "s-prereq-per-user-mfa",
+      "status": "documented-api-exception",
+      "summary": "Per-user MFA strongAuthenticationRequirements is currently exposed through the beta authentication requirements API; no v1.0 equivalent is documented.",
+      "surface": "Microsoft Graph beta / Microsoft.Entra.Beta.SignIns",
+      "scope": "Only explicit per-user MFA read/update operations in this package; do not generalize beta use."
+    }
+  ],
+  "generationNotes": [
+    "Rebuilt from the 46 authored V2.5 compact package META.json/CONTENT.md sources available in this authoring run.",
+    "Package rows, output eligibility, state projections, binding usage, source counts, issues, and block counts are derived from package metadata/content rather than reconstructed from memory.",
+    "The global binding registry preserves definitions from the previous LIBRARY.json where they existed; newly encountered bindings are intentionally marked pending holistic integration review instead of inventing types or IAMAI mappings.",
+    "Shared technical primitive definitions are preserved from the previous LIBRARY.json and package membership is expanded only from explicit sharedTechnicalPrimitives declarations."
+  ],
+  "bindingRegistryPolicy": {
+    "canonicalVocabulary": "Binding names are the union declared by package META.json files.",
+    "newDefinitions": "Bindings absent from the previous global registry are not guessed; they remain pending type/sensitivity/existing-IAMAI mapping review.",
+    "integrationBoundary": "A pending binding definition is not permission to add a tenant read or new reasoning. Integration must map it to existing IAMAI facts or report a genuine gap."
+  }
+}

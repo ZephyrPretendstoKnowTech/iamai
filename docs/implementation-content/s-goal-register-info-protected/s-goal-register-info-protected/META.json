@@ -1,0 +1,339 @@
+{
+  "relationship": "baseline-goal",
+  "family": "policy",
+  "validationComplexity": "medium",
+  "recommendedBatch": "1-2",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicy"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": null,
+    "sourceDisplayName": "No dedicated mapped source member surfaced in retained projection",
+    "sourceState": "canonical IAMAI goal semantics",
+    "canonicalSemantics": {
+      "sourceIdentity": "canonical IAMAI step + goal-catalogue semantics; no stable source GUID is invented",
+      "primaryMode": "when a trusted network exists, block Register security information outside All trusted locations",
+      "fallbackMode": "when trusted network is explicitly not applicable, require MFA for registration rather than blocking all locations",
+      "users": "All users with canonical emergency exclusions; guest handling remains constrained by current platform behavior",
+      "userAction": "urn:user:registersecurityinfo",
+      "clientAppTypes": [
+        "all"
+      ],
+      "sessionControls": null,
+      "lifecycle": "Report-only first"
+    },
+    "rule": "Use the explicit IAMAI canonical step/goal semantics. If the trusted-network prerequisite exists, block registration outside trusted locations; if IAMAI has explicitly resolved that no trusted network applies, use the documented MFA fallback. Never invent a source member GUID or silently choose a mode."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.conditions",
+    "policy.target.grantControls",
+    "policy.current.id",
+    "policy.current.semanticMismatches",
+    "policy.target.mode"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "people.affected.count",
+    "policy.current.state",
+    "evidence.reportOnly",
+    "dependencies.blockers",
+    "signature",
+    "trustedLocation.displayName",
+    "evidence.remoteRegistrants",
+    "evidence.credentialRegistrationImpact"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.target-policy"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "mode": "compose",
+      "modules": [
+        {
+          "id": "conditions.canonical",
+          "entra": "entra.correct-conditions",
+          "json": "json.correct-conditions",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        {
+          "id": "grant.canonical",
+          "entra": "entra.correct-grant",
+          "json": "json.correct-grant",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        {
+          "id": "session.none",
+          "entra": "entra.correct-session",
+          "json": "json.correct-session",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        {
+          "id": "name.canonical",
+          "entra": "entra.correct-name",
+          "json": "json.correct-name",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectName"
+          }
+        }
+      ],
+      "sharedAfter": [
+        "entra.correct-verify"
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "correctionModules": [
+    {
+      "id": "conditions.canonical",
+      "appliesWhen": "population, exclusions, resources, or policy conditions differ from the canonical tenant-resolved target",
+      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+    },
+    {
+      "id": "grant.canonical",
+      "appliesWhen": "grant controls differ from canonical target",
+      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+    },
+    {
+      "id": "session.none",
+      "appliesWhen": "session controls are present even though this goal owns none",
+      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+    },
+    {
+      "id": "name.canonical",
+      "appliesWhen": "display name differs; stable tenant ID remains update identity"
+    }
+  ],
+  "emailArtifacts": [
+    {
+      "block": "email.rollout",
+      "audience": "Primary affected audience / client contact",
+      "state": "missing",
+      "trigger": "before report-only rollout",
+      "purpose": "announce impact and remediation path",
+      "recommendation": "Recommended"
+    },
+    {
+      "block": "email.enforce",
+      "audience": "Primary affected audience / client contact",
+      "state": "readyToEnforce",
+      "trigger": "before enforcement",
+      "purpose": "confirm enforcement timing and support path",
+      "recommendation": "Recommended"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-condition-set",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-security-info",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration"
+    },
+    {
+      "id": "ms-combined-registration",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-registration-mfa-sspr-combined"
+    },
+    {
+      "id": "ms-ca-target-resources",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps"
+    }
+  ],
+  "implementationCaveats": [
+    {
+      "id": "registration-source-member-identity",
+      "status": "documented-source-identity-limitation",
+      "detail": "The retained raw/goalMap projection does not expose a dedicated stable member for this goal. IAMAI does expose explicit canonical step/goal semantics. This package does not invent a source GUID; create uses the resolved target and correction requires the stable tenant policy ID."
+    },
+    {
+      "id": "registration-july-2026-expansion",
+      "status": "documented-platform-behavior",
+      "detail": "Microsoft states that from July 6, 2026 Register security information Conditional Access also applies during Windows Hello for Business and macOS Platform SSO credential registration. Report-only validation must include those workflows where present."
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-register-info-protected",
+  "title": "Protect Sign-in Method Registration",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-register-info-protected/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

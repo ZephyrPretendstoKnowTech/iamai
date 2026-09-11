@@ -1,0 +1,318 @@
+{
+  "relationship": "baseline-goal-composite",
+  "family": "policy-composite",
+  "validationComplexity": "high",
+  "recommendedBatch": "1",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicySet"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication + SharePoint Online Management Shell"
+    },
+    "other": [
+      "SharePoint tenant unmanaged-device setting",
+      "Microsoft Defender for Cloud Apps licensing/session-control dependency"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableIds": [],
+    "sourceIdentityStatus": "The retained goalMap/product projection does not surface stable member GUIDs for the two merged unmanaged-browser policy members; none are invented.",
+    "mergedGoals": [
+      "byod-session-controls",
+      "block-downloads-unmanaged"
+    ],
+    "canonicalSemantics": {
+      "sharePointPrerequisite": "organization unmanaged-device setting AllowLimitedAccess, verified separately from CA",
+      "policyA": "Office 365 browser policy with the IAMAI-resolved Windows/unmanaged discriminator and applicationEnforcedRestrictions enabled",
+      "policyB": "Office 365 outside-trusted/other-platform policy with IAMAI-resolved device filter and cloudAppSecurity blockDownloads; only when Defender for Cloud Apps dependency is licensed/resolved",
+      "lifecycle": "CA policies start Report-only; SharePoint prerequisite must be changed and rescanned before CA mutation because Microsoft may replace CA policies created from the SharePoint page"
+    },
+    "rule": "Preserve the two-policy merged IAMAI step and keep SharePoint/Defender service configuration separate from CA JSON. Never invent stable source GUIDs. After changing the SharePoint unmanaged-device tenant setting, stop and rescan before using any previously resolved CA policy ID."
+  },
+  "requiredBindings": [
+    "sharepoint.adminUrl",
+    "sharepoint.unmanagedDevices.currentMode",
+    "policies.unmanagedBrowser.a.target.displayName",
+    "policies.unmanagedBrowser.a.target.conditions",
+    "policies.unmanagedBrowser.a.target.sessionControls",
+    "policies.unmanagedBrowser.a.current.id",
+    "policies.unmanagedBrowser.b.target.displayName",
+    "policies.unmanagedBrowser.b.target.conditions",
+    "policies.unmanagedBrowser.b.target.sessionControls",
+    "policies.unmanagedBrowser.b.current.id",
+    "policies.unmanagedBrowser.semanticMismatches",
+    "license.defenderCloudApps"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "evidence.reportOnly",
+    "evidence.unmanagedBrowser",
+    "dependencies.blockers",
+    "signature",
+    "policies.unmanagedBrowser.a.current.state",
+    "policies.unmanagedBrowser.b.current.state"
+  ],
+  "projection": {
+    "configurePrerequisite": {
+      "entra": [
+        "entra.sharepoint-prerequisite"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.composite",
+          "mode": "ConfigureSharePoint"
+        }
+      ],
+      "aiInfo": [
+        "ai.prerequisite"
+      ],
+      "email": []
+    },
+    "missing": {
+      "entra": [
+        "entra.create-set"
+      ],
+      "json": [
+        "json.policy-a",
+        "json.policy-b"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.composite",
+          "mode": "CreateA"
+        },
+        {
+          "block": "powershell.composite",
+          "mode": "CreateB"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "entra": [
+        "entra.correct-set"
+      ],
+      "json": [
+        "json.policy-a-conditions",
+        "json.policy-a-session",
+        "json.policy-b-conditions",
+        "json.policy-b-session"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.composite",
+          "mode": "StageA"
+        },
+        {
+          "block": "powershell.composite",
+          "mode": "CorrectA"
+        },
+        {
+          "block": "powershell.composite",
+          "mode": "StageB"
+        },
+        {
+          "block": "powershell.composite",
+          "mode": "CorrectB"
+        }
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.composite",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.composite",
+          "mode": "EnforceA"
+        },
+        {
+          "block": "powershell.composite",
+          "mode": "EnforceB"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [
+        "entra.not-licensed"
+      ],
+      "json": [
+        "json.policy-a"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.composite",
+          "mode": "CreateA"
+        }
+      ],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "sources": [
+    {
+      "id": "ms-graph-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-spo-unmanaged",
+      "url": "https://learn.microsoft.com/en-us/sharepoint/control-access-from-unmanaged-devices"
+    },
+    {
+      "id": "ms-app-enforced",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-app-enforced-restrictions"
+    },
+    {
+      "id": "ms-session-controls",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-app-enforced-graph",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/applicationenforcedrestrictionssessioncontrol?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-cloud-app-security-graph",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/cloudappsecuritysessioncontrol?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-device-filter",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-condition-filters-for-devices"
+    },
+    {
+      "id": "ms-defender-caac",
+      "url": "https://learn.microsoft.com/en-us/defender-cloud-apps/proxy-intro-aad"
+    }
+  ],
+  "caveats": [
+    {
+      "id": "sharepoint-ca-side-effect",
+      "status": "must-rescan",
+      "detail": "Microsoft documents that choosing Allow limited, web-only access on the SharePoint unmanaged-devices page disables previous Conditional Access policies created from that page and creates a new all-users CA policy; customizations are not carried over. IAMAI must stop and rescan after this prerequisite change before mutating CA by stable ID."
+    },
+    {
+      "id": "policy-b-license",
+      "status": "conditional",
+      "detail": "Policy B uses Conditional Access App Control / cloudAppSecurity blockDownloads and requires the Defender for Cloud Apps dependency. If unavailable, Policy A can still be authored but Policy B is not silently omitted from completion truth."
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-unmanaged-browser",
+  "title": "Limit Unmanaged Devices in the Browser",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-unmanaged-browser/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

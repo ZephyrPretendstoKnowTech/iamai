@@ -1,0 +1,190 @@
+{
+  "relationship": "prerequisite",
+  "family": "external-admin",
+  "outputs": {
+    "entra": false,
+    "json": false,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "none",
+    "json": {
+      "availability": "none",
+      "kind": "none"
+    },
+    "powershell": {
+      "availability": "partial",
+      "provider": "ExchangeOnlineManagement"
+    },
+    "other": [
+      "Exchange admin center",
+      "device/application configuration"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "productContract": "Move mail-sending devices/applications away from password-dependent legacy SMTP before legacy-authentication enforcement, then remove their user accounts from the service-account exception group when the dependency is gone.",
+    "microsoftCurrent": "Microsoft supports SMTP AUTH with OAuth, SMTP relay through an inbound connector, Direct Send, and other modern alternatives. SMTP relay requires a certificate or static unshared public IP and TCP 25. SMTP AUTH Basic remains unchanged until December 2026 under the revised timeline, but migration should target OAuth or relay rather than rely on Basic."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "mail.devices",
+    "mail.route"
+  ],
+  "optionalBindings": [
+    "mail.connector.name",
+    "mail.connector.certificateName",
+    "mail.connector.senderDomains",
+    "mail.connector.mxEndpoint",
+    "mail.connector.staticPublicIp",
+    "mail.acceptedDomain",
+    "mail.serviceAccountIds",
+    "mail.testRecipient",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "routeDecisionRequired": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.route"
+      ],
+      "email": [
+        "email.owner"
+      ]
+    },
+    "migrationRequired": {
+      "entra": [],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Inspect"
+        }
+      ],
+      "aiInfo": [
+        "ai.migrate"
+      ],
+      "email": [
+        "email.device-owner"
+      ]
+    },
+    "relayConnectorReady": {
+      "entra": [],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "CreateCertificateRelayConnector"
+        }
+      ],
+      "aiInfo": [
+        "ai.relay"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.owner",
+      "audience": "Device/application owner",
+      "state": "routeDecisionRequired",
+      "trigger": "before changing mail transport",
+      "purpose": "confirm device capability and delivery requirements"
+    },
+    {
+      "block": "email.device-owner",
+      "audience": "Device/application owner",
+      "state": "migrationRequired",
+      "trigger": "before migrating device mail flow",
+      "purpose": "coordinate test and rollback"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-device-mail",
+      "url": "https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365"
+    },
+    {
+      "id": "ms-smtp-auth",
+      "url": "https://learn.microsoft.com/en-us/exchange/clients-and-mobile-in-exchange-online/authenticated-client-smtp-submission"
+    },
+    {
+      "id": "ms-connectors",
+      "url": "https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/use-connectors-to-configure-mail-flow/use-connectors-to-configure-mail-flow"
+    },
+    {
+      "id": "ms-inbound-cmdlet",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/new-inboundconnector?view=exchange-ps"
+    },
+    {
+      "id": "ms-smtp-basic-timeline",
+      "url": "https://techcommunity.microsoft.com/blog/exchange/updated-exchange-online-smtp-auth-basic-authentication-deprecation-timeline/4489835"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-question-mail-devices",
+  "title": "Set Up an SMTP Relay for Mail-Sending Devices",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-question-mail-devices/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED",
+    "compactLint": "PASS: 10 blocks; 10 projected/support references; 5 bindings used; PowerShell AST not available.",
+    "boundJson": "passed",
+    "staticSafety": "passed"
+  },
+  "unresolvedIssues": []
+}

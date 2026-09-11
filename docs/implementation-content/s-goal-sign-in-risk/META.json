@@ -1,0 +1,525 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-sign-in-risk",
+  "title": "Challenge High-Risk Sign-ins",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-sign-in-risk/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "memberStableId": "53a8df0b-4658-4835-ace2-100b5d287aac",
+    "initialState": "enabledForReportingButNotEnforced",
+    "population": "All users with tenant-resolved canonical exclusions",
+    "targetResources": [
+      "All"
+    ],
+    "clientAppTypes": [
+      "all"
+    ],
+    "signInRiskLevels": [
+      "high"
+    ],
+    "finalAuthenticationStrengthSemantic": "tenant-resolved baseline strength; available source evidence names Modern MFA + TAP but source-tenant IDs are not portable",
+    "signInFrequency": "everyTime",
+    "firstEnforcementDecision": "Required saved owner/product decision with two supported values: baselineStrength or plainMfa. No selected value was found in the supplied/retrieved authority, so no default is assumed."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches",
+    "decision.signInRisk.firstEnforcementMode",
+    "authStrength.target.displayName"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "authStrength.target.id",
+    "authStrength.target.allowedCombinations",
+    "people.affected.count",
+    "people.pushOnly.count",
+    "evidence.riskySignIns",
+    "evidence.mfaReadiness",
+    "dependencies.blockers"
+  ],
+  "bindingEnums": {
+    "decision.signInRisk.firstEnforcementMode": [
+      "baselineStrength",
+      "plainMfa"
+    ]
+  },
+  "projection": {
+    "needsDecision": {
+      "reason": "No saved first-enforcement selection is present in available authority.",
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision"
+      ],
+      "email": []
+    },
+    "missing": {
+      "mode": "selectByBinding",
+      "selector": "decision.signInRisk.firstEnforcementMode",
+      "variants": {
+        "baselineStrength": {
+          "requires": [
+            "policy.target.displayName",
+            "policy.target.excludeGroups",
+            "authStrength.target.id",
+            "authStrength.target.displayName"
+          ],
+          "entra": [
+            "entra.create.baseline-strength"
+          ],
+          "json": [
+            "json.create.baseline-strength"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Create"
+            }
+          ],
+          "aiInfo": [
+            "ai.create.baseline-strength"
+          ],
+          "email": []
+        },
+        "plainMfa": {
+          "requires": [
+            "policy.target.displayName",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.create.plain-mfa"
+          ],
+          "json": [
+            "json.create.plain-mfa"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Create"
+            }
+          ],
+          "aiInfo": [
+            "ai.create.plain-mfa"
+          ],
+          "email": []
+        }
+      }
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches",
+        "decision.signInRisk.firstEnforcementMode"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.scope-or-exclusions": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.users"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "target.all-resources": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.target"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "risk.high-only": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.risk"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.conditions"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "grant.first-enforcement": {
+          "mode": "selectByBinding",
+          "selector": "decision.signInRisk.firstEnforcementMode",
+          "variants": {
+            "baselineStrength": {
+              "requires": [
+                "policy.current.id",
+                "authStrength.target.id",
+                "authStrength.target.displayName"
+              ],
+              "entra": [
+                "entra.correct.grant.baseline-strength"
+              ],
+              "json": [
+                "json.correct.grant.baseline-strength"
+              ],
+              "powershell": [
+                {
+                  "block": "powershell.run",
+                  "mode": "CorrectGrant"
+                }
+              ]
+            },
+            "plainMfa": {
+              "requires": [
+                "policy.current.id"
+              ],
+              "entra": [
+                "entra.correct.grant.plain-mfa"
+              ],
+              "json": [
+                "json.correct.grant.plain-mfa"
+              ],
+              "powershell": [
+                {
+                  "block": "powershell.run",
+                  "mode": "CorrectGrant"
+                }
+              ]
+            }
+          }
+        },
+        "session.every-time": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.session"
+          ],
+          "json": [
+            "json.correct.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.lifecycle"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups",
+        "decision.signInRisk.firstEnforcementMode"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "mode": "selectByBinding",
+      "selector": "decision.signInRisk.firstEnforcementMode",
+      "variants": {
+        "baselineStrength": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups",
+            "authStrength.target.id",
+            "authStrength.target.displayName"
+          ],
+          "entra": [
+            "entra.enforce.baseline-strength"
+          ],
+          "json": [
+            "json.enforce"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Enforce"
+            }
+          ],
+          "aiInfo": [
+            "ai.enforce.baseline-strength"
+          ],
+          "email": [
+            "email.users.baseline-strength"
+          ]
+        },
+        "plainMfa": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.enforce.plain-mfa"
+          ],
+          "json": [
+            "json.enforce"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Enforce"
+            }
+          ],
+          "aiInfo": [
+            "ai.enforce.plain-mfa"
+          ],
+          "email": [
+            "email.users.plain-mfa"
+          ]
+        }
+      }
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "recommendation": "recommended",
+    "audience": "users-help-desk-client-contact",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice",
+    "blocks": [
+      "email.users.baseline-strength",
+      "email.users.plain-mfa"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "ms-risk-policy",
+      "authority": "Microsoft Learn",
+      "title": "Risk policies",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
+      "purpose": "Current sign-in risk Conditional Access guidance, MFA/authentication-strength options, Every time, and Report-only rollout.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-risk-concept",
+      "authority": "Microsoft Learn",
+      "title": "Risk-based access policies",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
+      "purpose": "Current risk semantics, P2 requirement, self-remediation, and legacy risk-policy retirement date.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-risk-reports",
+      "authority": "Microsoft Learn",
+      "title": "ID Protection Risk Reports",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-risk-reports",
+      "purpose": "Risky sign-in evidence fields and current reporting window.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-auth-strength",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access authentication strengths",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strengths",
+      "purpose": "Authentication-strength semantics and allowed method combinations.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-session-lifetime",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access adaptive session lifetime policies",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
+      "purpose": "Every-time reauthentication semantics for risky sign-ins.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-condition-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessConditionSet resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 signInRiskLevels schema.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-signin-frequency-v1",
+      "authority": "Microsoft Graph",
+      "title": "signInFrequencySessionControl resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 Every time session-control shape.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-create-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 policy create endpoint and permissions.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 policy update endpoint.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "authoringIssues": [
+    {
+      "id": "sign-in-risk-first-enforcement-choice-unavailable",
+      "severity": "state-gating",
+      "status": "open-until-existing-saved-decision-is-supplied-to-renderer",
+      "detail": "Available project authority defines both valid first-enforcement choices but does not reveal which one the owner selected. Package therefore supports both deterministically and emits no actionable implementation in needsDecision. Do not guess."
+    }
+  ],
+  "mechanicalValidation": {
+    "status": "PASS_WITH_LIMITATION",
+    "jsonParse": "pass-after-sample-binding",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "pass",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell AST parsing must run in an environment with PowerShell installed."
+    ]
+  }
+}
