@@ -64,7 +64,7 @@
   "canonicalSources": {
     "home": "88b9a3a5907e78ad83f7c31dca00b86a2bdd741b9b4efca575254567d6e55a50",
     "connect": "903808b07210209a22d1a4f380b9e79dad95bd0e740a0fce0bb3745d265ee48b",
-    "plan": "1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec",
+    "plan": "43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39",
     "mfa-readiness": "12d8bdfbd09f82de66b732037d74da8217a79fca5cd78f12ce673eecbfc76512"
   },
   "files": {
@@ -109,8 +109,10 @@
   },
   "planStep": {
     "$comment": "The final EXPANDED-STEP visual authority. It is the other half of the Plan: iamai-plan-organization-final.html owns the board a step opens from, and this owns what opens. Recorded as its own block, with its own boundary, because two Plan references are current at once and a later task must be able to read which owns what as a value rather than by opening both and guessing.",
-    "file": "iamai-plan-step-variants-final.html",
-    "sha256": "145fcab9c48cfcf4bb1ee2037f89d3b21807ca849611b8d27321dc46598f8e03",
+    "$commentCurrentAuthority": "Owner update, Sep 10, 2026: the expanded-step authority is docs/design/approved/anatomy/plan-step-v1.html as it exists on disk (sha256 below), which integrates Readiness and Implementation into every canonical variant, makes the right rail Next milestone only, and drops What IAMAI found, Who this touches and More from the step. iamai-plan-step-variants-final.html is superseded for the expanded step and is kept, unhashed-over, as the record of the previous design.",
+    "file": "../anatomy/plan-step-v1.html",
+    "sha256": "43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39",
+    "previousFile": "iamai-plan-step-variants-final.html",
     "owns": [
       "expanded Plan step visual hierarchy",
       "the shared step frame",
@@ -158,16 +160,17 @@
       "frame": "src/ui/surfaces/ContentStep.tsx",
       "projection": "src/ui/surfaces/stepContract.ts stepFamily",
       "modules": [
-        "lifecycle track — where stepTrack finds a recorded lifecycle",
+        "lifecycle track — where stepTrack finds a recorded lifecycle, never on a resolution step",
         "Next caption — where the milestone has a dated line or a gate",
-        "What IAMAI found — where the contract built findings",
-        "Who this touches — where the population is worth stating",
-        "Fix before continuing — where the validation authority has outstanding checks",
+        "Readiness — one to three tiles and the bar (stepContract.ts readinessOf); What IAMAI found and Who this touches are its evidence dialog",
+        "MFA preview and handoff — inside Readiness, where stepMfaHold names people",
+        "attention — the baseline-conflict notice and Fix before continuing, under Readiness",
+        "What to do — where the step has a decision, create lines or instructions of its own",
         "decision primitive — where the content entry carries one",
-        "MFA preview and handoff — where stepMfaHold names people",
-        "implementation channels — 0/1/2+ from Foundation A and the translator",
-        "Done when — except a goal the tenant already delivers, which says it under What to do",
-        "rail — where railBlocks has something the header does not carry"
+        "Implementation — Entra/PowerShell/JSON/AI Info from Foundation A and the translator, or the no-action box (implementationEmptyOf)",
+        "Done when — on every step",
+        "rail — Next milestone only, on every step (railOf)",
+        "footer — Exclude from rollout where the content entry marks the step excludable, Doesn't apply here where flagged, and the scan"
       ]
     },
     "implementedBy": "plan shared step frame + policy rollout family pass; remaining families migrated by the final expanded-step pass"

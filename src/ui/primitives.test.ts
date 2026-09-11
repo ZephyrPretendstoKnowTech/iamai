@@ -99,10 +99,10 @@ test('the eyebrow is shared because all four packs declare it, and they declare 
 test('the key label is shared by the two packs that draw a field key, at the smaller step', () => {
   const plan = read(PACKS.plan)
   const mfa = read(PACKS.mfa)
-  // The Plan's side-block label and finding key, and MFA's person-table head.
+  // The Plan's side-block label and readiness tile label, and MFA's person-table head.
   for (const [where, body] of [
     ['plan .side-label', ruleBody(plan, '.side-label', { solo: true })],
-    ['plan .finding .k', ruleBody(plan, '.finding .k', { solo: true })],
+    ['plan .readiness-tile-label', ruleBody(plan, '.readiness-tile-label', { solo: true })],
     ['mfa .table-head', ruleBody(mfa, '.table-head', { solo: true })],
   ] as const) {
     assert.ok(body, `${where} is gone`)
@@ -210,7 +210,7 @@ test('a pattern only one pack draws did not become a global role', () => {
   // The check is two-sided: it fails if the pattern quietly becomes shared in
   // production, and it fails if the pack it belongs to stops drawing it.
   for (const [name, packCss, selector] of [
-    ['the Plan finding card', plan, '.finding'],
+    ['the Plan readiness tile', plan, '.readiness-tile'],
     ['the Plan instruction block', plan, '.instruction'],
     ['the Plan action tab strip', plan, '.action-tab'],
     ['the Plan roadmap row', plan, '.roadmap-row'],

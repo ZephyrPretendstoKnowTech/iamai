@@ -9,12 +9,12 @@
 // blocker evaluation, no lifecycle arithmetic. Those questions were answered
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
+import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Callout, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import { absoluteDate } from '../../copy/dates.ts'
-import type { ContractFix, ContractFound, ContractMember, ContractStage, StepContract } from './stepContract.ts'
-import { CONTRACT, FOOTER, badgeLabel, footerNote, nextCaption, railBlocks, stageClass } from './stepContract.ts'
+import type { ContractFix, ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTone, StepContract } from './stepContract.ts'
+import { CONTRACT, FOOTER, badgeLabel, nextCaption, railOf, stageClass } from './stepContract.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -105,7 +105,7 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
  * next milestone and What to do are the same fact, and What to do is the more
  * specific of the two.
  */
-export { badgeLabel, footerNote, nextCaption, FOOTER }
+export { badgeLabel, nextCaption, FOOTER }
 
 export function StepState({ contract }: { contract: StepContract }) {
   // The two axes moved into the head's badge (`badgeLabel`), which is where the
@@ -182,121 +182,172 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
 }
 
 /**
- * The opened step's right rail (`.step-side` in the pack): the supporting facts
- * that summarise the step, beside the main column rather than in it.
- *
- * Every block is a fact the contract already holds, shown only where it has one.
- * Nothing is filled in to make the rail look populated — a step with no dated
- * milestone shows no milestone block, and where the whole rail is empty there is
- * no rail and the body is one column.
- *
- * Task 036 completed it with the pack's In-place block, which was the one side
- * block production had a truthful source for and was not drawing. The pack's
- * remaining sample blocks — a Readiness list of PASSED prerequisites, a
- * strength comparison against the baseline — stay unbuilt: production surfaces
- * only what is outstanding, and it holds no structured "how much stronger"
- * fact. Inventing either to fill the column is what §5 forbids.
+ * The opened step's right rail (`.step-side` in the pack). In the approved
+ * design it is one block, the Next milestone
+ * (docs/design/approved/anatomy/plan-step-v1.html: "The right rail is Next
+ * milestone only"). The metric is Foundation B's date where it holds one and the
+ * one word for where the step stands where it does not, over the milestone's own
+ * words (stepContract.ts `railOf`). Every step has a next milestone, so every
+ * step has the rail, and nothing else is put in it.
  */
-/** The three implementation channels, in the order What to do offers them. */
-const CHANNELS = ['portal', 'powershell', 'json']
-
 export function StepRail({ contract }: { contract: StepContract }) {
-  const m = contract.milestone
-  const existing = contract.existing
-  const { milestone: showMilestone, implementation: showImplementation } = railBlocks(contract)
-  if (!showMilestone && !showImplementation && existing === null) return null
+  const r = railOf(contract)
   return (
     <aside className="step-side surface-inset">
-      {/* A goal the tenant already delivers has no milestone and no
-          implementation to summarise, so before task 036 its rail was empty and
-          the In-place step drew none at all — while the approved pack's own
-          In-place variant is defined by this block
-          (`docs/design/approved/anatomy/plan-step-v1.html` V4: "Existing
-          implementation" over the policy's name).
-
-          The name is the classifier's (`contract.existing`, which is
-          `Step.satisfiedBy` read once and shared with the finding in the main
-          column): the tenant's own policy under the tenant's own name, never
-          the baseline's, and never one this scan did not classify. Where two
-          policies cover the goal between them both are named and the sub says
-          so, because the rail must not present a policy that does not cover the
-          goal as the one that delivers it. */}
-      {existing !== null && (
-        <div className="side-block">
-          <div className="key-label">{CONTRACT.railExisting}</div>
-          <p className="metric metric-name">{existing.names.join(' · ')}</p>
-          <p className="metric-sub">{existing.together ? CONTRACT.railExistingTogether : CONTRACT.railExistingKeep}</p>
-        </div>
-      )}
-      {showMilestone && (
-        <div className="side-block">
-          <div className="key-label">{CONTRACT.railMilestone}</div>
-          {m.at !== null && <p className="metric">{absoluteDate(m.at)}</p>}
-          <p className="metric-sub">{m.gatedBy ?? m.label}</p>
-        </div>
-      )}
-      {showImplementation && (
-        <div className="side-block">
-          <div className="key-label">{CONTRACT.railImplementation}</div>
-          {/* Foundation A's one answer, said as availability rather than as a
-              second reason: why an implementation is withheld is the step's
-              What to do and is stated once, in the main column.
-
-              Task 035 put it in the pack's side-list grammar
-              (`docs/design/approved/anatomy/plan-step-v1.html` `.side-list`): one item
-              per channel where the step offers them. That is the same one
-              answer, listed rather than said in a sentence — the three channels
-              stand or fall together on `implementationOffered`
-              (roadmap/operations.ts, which is also `stepJson.jsonOffered`), so
-              the rail cannot name a channel the main column withholds. A step
-              that offers none shows the one line saying so and no list. */}
-          {contract.implementation.offered ? (
-            <ul className="side-list">
-              {CHANNELS.map((c) => (
-                <li key={c}>
-                  <span className="tiny" aria-hidden="true" />
-                  <span>{CONTRACT.railChannels[c]}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="metric-sub">{CONTRACT.implementationNone}</p>
-          )}
-        </div>
-      )}
+      <div className="side-block">
+        <div className="key-label">{CONTRACT.railMilestone}</div>
+        <p className="metric">{r.metric}</p>
+        <p className="metric-sub">{r.sub}</p>
+      </div>
     </aside>
   )
 }
 
 /**
- * The step's own footer: what to do with the step once it has been read.
- *
- * It is a footer of the FRAME, not a paragraph at the end of the main column —
- * full width under both, on the quieter surface, divided by the frame's own
- * hairline (the approved step reference's `.footer`). Before this it was the
- * last line of the main column, so on a step with a rail it sat two thirds of
- * the way across under a column of prose and read as part of More.
- *
- * It offers only what production already does. `Scan to update the plan` is the
- * existing action, on the existing routing, shown where the step's own content
- * entry says a scan is how this step is verified (`cs.scanControl`) — which is
- * exactly the states where something in the tenant has to change before the
- * plan can move. A step that is observation-only offers Close alone rather than
- * a disabled button kept for symmetry.
+ * The step's own footer, under both columns (the approved `.step-footer`): the
+ * rollout exception on the left where the step offers one, and the existing
+ * scan on the right. It offers only what production already does — the
+ * exception is the existing skip and Doesn't apply here, the scan is the existing
+ * action on the existing routing — and it renders nothing where it has nothing
+ * to offer. The row above the step is what closes it.
  */
-export function StepFooter({ note = null, onScan, onClose }: { note?: string | null; onScan?: (() => void) | null; onClose: () => void }) {
+export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; onScan?: (() => void) | null }) {
+  if (!controls && !onScan) return null
   return (
     <footer className="step-footer no-print">
-      {onScan && note && <span className="step-footer-note">{note}</span>}
+      {controls}
       {onScan && (
-        <Button variant="primary" onClick={onScan}>
+        <Button variant="primary" className="step-footer-scan" onClick={onScan}>
           {FOOTER.scan}
         </Button>
       )}
-      <Button variant="secondary" onClick={onClose}>
-        {FOOTER.close}
-      </Button>
     </footer>
+  )
+}
+
+/** A tile's mark beside its words: never the state on its own (design lint 5). */
+const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wait: '…', info: null }
+
+/**
+ * The Readiness region (the approved `.readiness-strip` over `.readiness-bar`):
+ * the contract's facts as one to three tiles, then the bar that says where the
+ * step stands with the one action under it, and the link to the evidence where
+ * there is evidence to open. The grid takes its track count from the tiles it
+ * is handed, so nothing is padded to three.
+ */
+export function ReadinessSection({ readiness, lead, onWhy = null, children = null }: { readiness: ContractReadiness; lead: ReactNode; onWhy?: (() => void) | null; children?: ReactNode }) {
+  const W = CONTRACT.readiness
+  return (
+    <section className="step-section readiness-section">
+      <h4>{W.heading}</h4>
+      <ul className={`readiness-strip tiles-${readiness.tiles.length}`}>
+        {readiness.tiles.map((t) => (
+          <li key={t.key} className={`readiness-tile readiness-tile-${t.tone}`}>
+            <span className="readiness-tile-head">
+              <span className="key-label">{t.label}</span>
+              {MARK[t.tone] && (
+                <span className={`readiness-status readiness-status-${t.tone}`} aria-hidden="true">
+                  {MARK[t.tone]}
+                </span>
+              )}
+            </span>
+            <strong>{t.value}</strong>
+            {t.note && <p>{t.note}</p>}
+          </li>
+        ))}
+      </ul>
+      <div className="readiness-bar">
+        <div className="readiness-bar-main">
+          <span className="readiness-bar-head">{readiness.bar.main}</span>
+          {lead}
+        </div>
+        {onWhy && (
+          <button type="button" className="inline-link" onClick={onWhy}>
+            {W.why}
+          </button>
+        )}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+/** The truthful no-action box, at the weight of its reason (the approved `.implementation-empty`). */
+export function ImplementationEmptyBox({ empty }: { empty: ImplementationEmpty }) {
+  return (
+    <div className={`implementation-empty implementation-empty-${empty.tone}`}>
+      <strong>{empty.title}</strong>
+      <p>{empty.text}</p>
+    </div>
+  )
+}
+
+/**
+ * One of the step's dialogs (the approved implementation, readiness and rollout
+ * dialogs): a native modal, so the platform traps focus, Escape closes it and
+ * focus returns to the control that opened it. A click on the backdrop closes it
+ * too. Its content is mounted only while it is open.
+ */
+export function StepDialog({ open, onClose, eyebrow, title, sub = null, closeLabel, wide = false, children }: {
+  open: boolean
+  onClose: () => void
+  eyebrow: string
+  title: string
+  sub?: ReactNode
+  closeLabel: string
+  wide?: boolean
+  children: ReactNode
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+  const titleId = useId()
+  useEffect(() => {
+    const d = ref.current
+    if (!d) return
+    if (open && !d.open) {
+      if (typeof d.showModal === 'function') d.showModal()
+      else d.setAttribute('open', '')
+    }
+    if (!open && d.open) d.close()
+  }, [open])
+  useEffect(() => {
+    const d = ref.current
+    if (!d) return
+    // A click on the backdrop lands on the dialog element itself, outside its
+    // box. Escape is the keyboard's way out, and the platform already gives it.
+    const onBackdrop = (e: MouseEvent): void => {
+      if (e.target !== d) return
+      const r = d.getBoundingClientRect()
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose()
+    }
+    d.addEventListener('click', onBackdrop)
+    return () => d.removeEventListener('click', onBackdrop)
+  }, [onClose])
+  return (
+    <dialog
+      ref={ref}
+      className={`step-dialog panel${wide ? ' step-dialog-wide' : ''}`}
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        e.preventDefault()
+        onClose()
+      }}
+    >
+      {open && (
+        <div className="dialog-shell">
+          <header className="dialog-head">
+            <div>
+              <div className="eyebrow">{eyebrow}</div>
+              <h3 id={titleId}>{title}</h3>
+              {sub && <p>{sub}</p>}
+            </div>
+            <Button variant="secondary" onClick={onClose}>
+              {closeLabel}
+            </Button>
+          </header>
+          <div className="dialog-content">{children}</div>
+        </div>
+      )}
+    </dialog>
   )
 }
 
@@ -426,16 +477,20 @@ export function WhatToDoLead({ contract }: { contract: StepContract }) {
   return <p className={`do-lead do-${contract.whatToDo.kind}`}>{contract.whatToDo.text}</p>
 }
 
-/** How the operator will know the step is finished. Always at least one concrete line. */
+/**
+ * How the operator will know the step is finished. Always at least one concrete
+ * line, drawn as the approved Done when draws it: prose under its heading, one
+ * paragraph per line.
+ */
 export function DoneWhen({ heading, lines }: { heading: string; lines: string[] }) {
   if (lines.length === 0) return null
   return (
     <StepSection heading={heading}>
-      <ul className="sections">
-        {lines.map((l, i) => (
-          <li key={i}>{l}</li>
-        ))}
-      </ul>
+      {lines.map((l, i) => (
+        <p key={i} className="done-line">
+          {l}
+        </p>
+      ))}
     </StepSection>
   )
 }

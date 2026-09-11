@@ -526,7 +526,6 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}
-          onClose={onToggle}
           onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
           decision={decision}
           onDecide={onDecide}

@@ -16,7 +16,7 @@ import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { stepVars } from './stepVars.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { portalNamesFor } from './stepPortal.ts'
-import { FOOTER, footerNote, footerOffersScan, hasRail, implementationIsCurrent, railBlocks, showsDoneWhen, stepContract, stepFamily } from './stepContract.ts'
+import { CONTRACT, FOOTER, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, stepContract, stepFamily } from './stepContract.ts'
 import type { StepFamily } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
@@ -35,7 +35,6 @@ type Audited = {
   family: StepFamily
   contract: StepContract
   channels: number
-  rail: boolean
   decision: boolean
 }
 
@@ -76,7 +75,6 @@ function audited(): Audited[] {
         // The two machine channels stand or fall together on Foundation A's one
         // answer, so a step offers 0, 1 or 3.
         channels: (hasPortal ? 1 : 0) + (contract.implementation.offered ? 2 : 0),
-        rail: hasRail(contract),
         decision: cs.decision !== undefined,
       })
     }
@@ -92,7 +90,7 @@ const of = (family: StepFamily): Audited[] => audited().filter((a) => a.family =
 test('every family goes through one frame: there is no second step shell', () => {
   // One article, one head, one body, one footer, one rail — in the file that
   // draws every step there is.
-  for (const [what, n] of [['<article className="step', 1], ['<StepHead', 1], ['<StepFooter', 1], ['<StepRail', 1], ['className={`step-body', 1]] as const) {
+  for (const [what, n] of [['<article className="step', 1], ['<StepHead', 1], ['<StepFooter', 1], ['<StepRail', 1], ['className="step-body has-rail"', 1]] as const) {
     assert.equal(CONTENT_STEP.split(what).length - 1, n, `${what} appears ${CONTENT_STEP.split(what).length - 1} times, not ${n}`)
   }
   // And no branch mounts a whole alternative structure for a family. A module
@@ -107,7 +105,7 @@ test('every family goes through one frame: there is no second step shell', () =>
   // ContentStep's own body: the file also holds the small components the step
   // composes (the decision primitive, a who-block, More), and each of those
   // rightly has a render of its own.
-  const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Decision({ d, ex'))
+  const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Implementation({'))
   assert.ok(body.length > 500, 'the step body could not be read')
   assert.equal(body.split('return (').length - 1, 1, 'the step has more than one render path')
 })
@@ -151,9 +149,12 @@ test('the corpus exercises every family the manifest calls migrated', () => {
 
 // --------------------------------------------------- the lifecycle is policy's
 
-test('only the policy family carries a lifecycle, and every policy state keeps its own', () => {
+test('only a policy draws a lifecycle, and every policy state keeps its own', () => {
   for (const a of audited()) {
-    if (a.family === 'policy') continue
+    // A goal the tenant already delivers draws the lifecycle its policy recorded
+    // (the approved In-place variant draws four reached stages); every other
+    // family draws none.
+    if (a.family === 'policy' || a.family === 'in-place') continue
     assert.equal(a.contract.track.length, 0, `${a.fixture}/${a.step.id}: a ${a.family} step draws a Conditional Access lifecycle`)
   }
   // And the track is the recorded lifecycle wherever it does render.
@@ -183,12 +184,14 @@ test('every step in the corpus offers a channel count the capability rule can dr
 
 // ------------------------------------------------------------ the rail is real
 
-test('no family renders an empty rail', () => {
+test('every family draws the one Next milestone rail, and it is never empty', () => {
   for (const a of audited()) {
-    if (!a.rail) continue
-    const b = railBlocks(a.contract)
-    assert.ok(b.milestone || b.implementation || b.existing, `${a.fixture}/${a.step.id}: a rail with nothing in it`)
+    const r = railOf(a.contract)
+    assert.ok(r.metric.trim().length > 0 && r.sub.trim().length > 0, `${a.fixture}/${a.step.id}: a rail with nothing in it`)
+    // A date only where Foundation B holds one; never one it does not.
+    if (a.contract.milestone.at === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
+  assert.equal(CONTENT_STEP.split('<StepRail contract={contract} />').length - 1, 1, 'the rail is gated, or drawn twice')
 })
 
 // ------------------------------------ implementation is not always the action
@@ -243,7 +246,7 @@ test('the step gates the display and never the artifact', () => {
   // JSON and the commands are still built by the modules that built them.
   assert.match(CONTENT_STEP, /const deployNow = implementationIsCurrent\(step\)/, 'the step decides for itself when to deploy')
   assert.match(CONTENT_STEP, /const channels = deployNow \? channelsFor\(/, 'the gate is not applied to the channel list')
-  assert.match(CONTENT_STEP, /\{portal && channels\.length > 0 \? \(/, 'the implementation block renders without asking whether it is the action')
+  assert.match(CONTENT_STEP, /<Implementation\n\s*channels=\{channels\}/, 'the implementation region is not handed the gated channel list')
   // Nothing writes to the capability.
   assert.equal(CONTENT_STEP.includes('implementation.offered ='), false, 'the step mutates Foundation A’s answer')
   // And no title decides any of it.
@@ -252,44 +255,32 @@ test('the step gates the display and never the artifact', () => {
   }
 })
 
-test('a held policy’s rail does not advertise the channels the step is withholding', () => {
+test('a held policy offers no implementation, and its region says why at the weight of the reason', () => {
   for (const a of audited()) {
     if (a.step.state.condition === 'healthy') continue
-    assert.equal(railBlocks(a.contract).implementation, false, `${a.fixture}/${a.step.id}: the rail lists channels the main column hid`)
+    assert.equal(implementationIsCurrent(a.step), false, `${a.fixture}/${a.step.id}: a held step offers its deployment`)
+    // The no-action box names the reason; "nothing to generate" is for a step
+    // that describes no policy, never for one something is holding.
+    assert.notEqual(implementationEmptyOf(a.contract).key, 'none', `${a.fixture}/${a.step.id}: a held step says it has nothing to generate rather than why`)
   }
-  // A rail that held nothing else is now no rail at all rather than a column
-  // repeating what the step declines to offer.
-  const heldWithRail = audited().filter((a) => a.step.state.condition !== 'healthy' && a.rail)
-  for (const a of heldWithRail) {
-    const b = railBlocks(a.contract)
-    assert.ok(b.milestone || b.existing, `${a.fixture}/${a.step.id}: a rail survived with only hidden channels in it`)
-  }
+  // The rail is the Next milestone only: it names no channel on any step.
+  const rail = SECTIONS.slice(SECTIONS.indexOf('export function StepRail'), SECTIONS.indexOf('export function StepFooter'))
+  assert.equal(/railChannels|side-list|implementation/.test(rail), false, 'the rail advertises implementation channels')
 })
 
-// ------------------------------------------------------------- the footer map
+// ------------------------------------------------------------------ the footer
 
-test('the footer asks the question the step’s own state implies', () => {
-  const note = (condition: string, fix: number) =>
-    footerNote({ state: { condition }, fix: Array.from({ length: fix }, (_, i) => ({ key: String(i), text: 'x' })) } as never)
-  assert.equal(note('baseline-conflict', 0), FOOTER.source, 'a source conflict asks about the tenant')
-  assert.equal(note('baseline-conflict', 2), FOOTER.source, 'a source conflict with blockers still asks about the source')
-  assert.equal(note('blocked', 1), FOOTER.resolved)
-  assert.equal(note('healthy', 0), FOOTER.changed)
-  assert.equal(FOOTER.source, 'Source corrected?')
-})
-
-test('a goal the tenant already delivers offers Close alone', () => {
-  // There is no tenant change to verify, so a rescan would confirm nothing. The
-  // footer offers Close rather than a scan the operator has no reason to run.
-  const inPlace = of('in-place').filter((a) => a.step.state.satisfied && a.step.state.inPlace)
-  assert.ok(inPlace.length > 0, 'no satisfied in-place step in the corpus')
-  for (const a of inPlace) assert.equal(footerOffersScan(a.step), false, `${a.fixture}/${a.step.id}: an in-place step still invites a rescan`)
-  // Everywhere else the step's own content entry decides, as it always has.
-  for (const a of audited()) {
-    if (a.step.state.satisfied && a.step.state.inPlace) continue
-    assert.equal(footerOffersScan(a.step), true, `${a.fixture}/${a.step.id}: the scan was withdrawn from a step with work left`)
-  }
-  assert.match(CONTENT_STEP, /onScan=\{cs\.scanControl && onScan && footerOffersScan\(step\) \? onScan : null\}/, 'the footer no longer asks whether a scan verifies anything')
+test('the footer offers the rollout exception where the step is excludable, and the existing scan', () => {
+  const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
+  assert.match(footer, /\{onScan && \(/, 'the scan is drawn without the handler it presses')
+  assert.equal(/onClose|disabled/.test(footer), false, 'the footer closes the step or keeps a disabled control; the row closes it')
+  assert.deepEqual(Object.keys(FOOTER), ['scan'], 'the footer grew words the approved footer does not carry')
+  // The exception is the existing skip, offered only on a step the content marks
+  // excludable, and it records the operator's own reason.
+  assert.match(CONTENT_STEP, /cs\.skip \? <Button key="exclude"/, 'the exception is offered on a step the content does not mark excludable')
+  assert.match(CONTENT_STEP, /onConfirm=\{\(r\) => \{ closeDialog\(\); onSkip\(r\) \}\}/, 'the exception is not the existing skip with the operator’s reason')
+  assert.match(CONTENT_STEP, /disabled=\{given\.length === 0\}/, 'the exception can be recorded without a reason')
+  assert.match(CONTENT_STEP, /onScan=\{printing \? null : \(onScan \?\? null\)\}/, 'the footer is not handed the scan it was given')
 })
 
 // --------------------------------------------------- the board's mobile controls
@@ -317,19 +308,19 @@ test('a goal the tenant already delivers invents no work', () => {
   const inPlace = of('in-place')
   assert.ok(inPlace.length > 0, 'no in-place step in the corpus')
   for (const a of inPlace) {
-    assert.equal(a.contract.track.length, 0, `${a.fixture}/${a.step.id}: an in-place step on a rollout`)
+    // The lifecycle its policy recorded, and never a rollout in progress: where a
+    // track is drawn every stage is reached (the approved In-place variant).
+    assert.ok(a.contract.track.length === 0 || a.contract.track.every((t) => t.reached), `${a.fixture}/${a.step.id}: an in-place step drawn mid-rollout`)
     assert.equal(a.channels, 0, `${a.fixture}/${a.step.id}: an in-place step offers an implementation`)
-    // What to do says to keep it. Done when said the same thing again three
-    // sections later, on the one kind of step with nothing left to do.
-    if (a.step.state.inPlace && a.step.state.satisfied) {
-      assert.equal(showsDoneWhen(a.step), false, `${a.fixture}/${a.step.id}: an in-place step repeats its action as a completion`)
+    if (!a.step.state.setAside) {
+      const empty = implementationEmptyOf(a.contract)
+      assert.deepEqual([empty.key, empty.tone], ['inPlace', 'good'], `${a.fixture}/${a.step.id}: an in-place step does not say no implementation is needed`)
     }
     assert.ok(a.contract.whatToDo.text.length > 0, `${a.fixture}/${a.step.id}: an in-place step has no action line at all`)
+    // Done when is drawn on every step, this one included (the approved V4).
+    assert.ok(a.contract.doneWhen.length > 0, `${a.fixture}/${a.step.id}: an in-place step has no completion`)
   }
-  // The contract still CARRIES the line: the print and the export read it, and
-  // this is the opened step declining to say it twice, not a truth change.
-  const one = inPlace.find((a) => a.step.state.inPlace && a.step.state.satisfied)!
-  assert.ok(one.contract.doneWhen.length > 0, 'the contract stopped carrying the completion line')
+  assert.equal(/showsDoneWhen|<DoneWhen[^>]*&&/.test(CONTENT_STEP), false, 'Done when is withheld from a step again')
 })
 
 // -------------------------------------------------- resolution states the facts
@@ -344,10 +335,16 @@ test('a source conflict states the ambiguity and invents no deployment', () => {
     assert.equal(a.contract.implementation.offered, false, `${a.fixture}/${a.step.id}: an artifact for an ambiguous source`)
     assert.ok(a.contract.whatToDo.text.length > 0, `${a.fixture}/${a.step.id}: no resolution action`)
   }
-  // The notice is at the top of the main column, above Why, and not inside More.
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('<More'))
-  assert.ok(main.indexOf('conflictWords && (') < main.indexOf(`<h4>{HEAD.why}</h4>`), 'the conflict notice sank below Why')
-  assert.ok(main.indexOf('conflictWords && (') > 0, 'the conflict notice is gone')
+  // The notice is the approved danger attention under Readiness, above What to
+  // do and Implementation, and never behind a disclosure.
+  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('{printing && ('))
+  const at = main.indexOf('conflictWords && (')
+  assert.ok(at > main.indexOf('<ReadinessSection'), 'the conflict notice is above Readiness')
+  assert.ok(at < main.indexOf('<Implementation'), 'the conflict notice sank below Implementation')
+  for (const a of conflicts) {
+    assert.equal(eyebrowOf(a.contract, 'policy'), CONTRACT.kind.resolution, `${a.fixture}/${a.step.id}: a resolution step is not named one`)
+    assert.equal(implementationEmptyOf(a.contract).tone, 'danger', `${a.fixture}/${a.step.id}: the conflict's no-action box is not at the danger weight`)
+  }
 })
 
 // ------------------------------------------------------- MFA hands off, it does not recompute
@@ -417,7 +414,7 @@ test('supporting work is not dressed as a rollout', () => {
   }
 })
 
-test('the corpus reaches 0 and 3 channels, and the 1-channel rule is proven without one', () => {
+test('the corpus reaches 0 and 3 channels, and a strip never has one tab', () => {
   // An honest record rather than a silent gap. The portal translator runs for
   // policy steps, and the two machine channels stand or fall together on
   // Foundation A's one answer — so every step in the corpus offers either all
@@ -434,6 +431,8 @@ test('the corpus reaches 0 and 3 channels, and the 1-channel rule is proven with
   const rule = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function channelsFor'), CONTENT_STEP.indexOf('function channelsFor') + 700)
   assert.match(rule, /if \(hasPortal\) out\.push\('portal'\)/)
   assert.match(rule, /if \(machineOffered\) out\.push\('ps', 'json'\)/)
-  assert.match(CONTENT_STEP, /channels\.length > 1 \? \(/, 'the strip is drawn without asking whether there is a choice')
-  assert.match(CONTENT_STEP, /<div className="single-channel-label">/, 'the one-channel case has no direct rendering')
+  // AI Info joins any channel set and never stands alone, so a strip always holds
+  // a choice; a step with no channel draws the no-action box, never an empty strip.
+  assert.match(rule, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info can stand alone or is never offered')
+  assert.match(CONTENT_STEP, /channels\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'a step with no channel draws an empty strip')
 })
