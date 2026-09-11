@@ -18,7 +18,7 @@ import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { waveLabels } from '../../derive/phases.ts'
-import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, planPhases, scheduledSpan, undatedRows } from './planRows.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { startControl } from '../../derive/planHeader.ts'
@@ -178,11 +178,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
     .filter((w) => w.steps.length > 0)
   const waveNames = waveLabels(waveRows)
   let nextMarked = false
-  // A group's span is the scheduler's own placement of its rows (schedule.startAt):
-  // a group nothing places reads Not scheduled rather than a borrowed date.
+  // A group's span is its rows' own scheduled days (planRows.ts scheduledSpan): a
+  // floor row created in report-only while readiness gates it is dated, and its
+  // group says so; a group nothing dates reads Not scheduled rather than a borrowed date.
   const placedSpan = (steps: readonly Step[]): string => {
-    const days = steps.map((s) => c.schedule.startAt?.[s.id]).filter((d): d is string => typeof d === 'string').sort()
-    return days.length > 0 ? dateSpan(days[0], days[days.length - 1]) : WHEN.notScheduled
+    const span = scheduledSpan(steps)
+    return span ? dateSpan(span.start, span.end) : WHEN.notScheduled
   }
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   const stepsById = new Map(c.steps.map((s) => [s.id, s]))

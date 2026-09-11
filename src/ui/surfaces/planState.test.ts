@@ -18,7 +18,7 @@ import { NO_FOCUS, WHEN, applyFocus, boardWhenOf, focusCounts, groupSummary, gro
 import type { BoardItem, RoadmapGroup } from './planBoard.ts'
 import { CONTRACT, badgeLabel, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, planPhases, scheduledSpan, undatedRows } from './planRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
@@ -178,6 +178,22 @@ test('a dated row never opens onto Held: its rail is the day the plan schedules'
     }
   }
   assert.ok(checked > 40, `dated rows checked: ${checked}`)
+})
+
+test('a group heading spans every day its rows read: the floor group dates its created rows, the undated group dates none', () => {
+  let floorDated = 0
+  for (const run of everyRun()) {
+    const floor = floorRows(run.r.steps)
+    const span = scheduledSpan(floor)
+    for (const s of floor) {
+      const at = s.scheduled?.at
+      if (!at) continue
+      assert.ok(span && Date.parse(span.start) <= Date.parse(at) && Date.parse(at) <= Date.parse(span.end), `${run.f.name}/${s.id}: the floor group's range does not hold ${at}`)
+      floorDated += 1
+    }
+    assert.equal(scheduledSpan(undatedRows(run.r.steps, planPhases(run.r.schedule))), null, `${run.f.name}: the undated group has a date`)
+  }
+  assert.ok(floorDated > 0, 'no floor row is dated in the fixtures: the premise is untested')
 })
 
 test('a policy being watched that something holds says Report-only · Blocked on the row, in the badge and the Status lens', () => {
