@@ -2161,6 +2161,18 @@ mkdirSync('docs/reports', { recursive: true })
 writeFileSync(REPORT, report)
 writeFileSync(join(OUT, 'findings.json'), JSON.stringify({ sha: SHA, started, findings, readiness: Object.fromEntries([...readinessBy].map(([n, r]) => [n, Object.fromEntries([...r].map(([k, v]) => [k, [...v]]))])), populations: Object.fromEntries([...populationsBy].map(([n, p]) => [n, [...p]])) }, null, 2))
 log(`wrote ${REPORT}: ${findings.P0.length} P0, ${findings.P1.length} P1, ${findings.P2.length} P2`)
+// The report is a CI artifact some reviewers cannot download: the job log carries
+// the P1s too, grouped by where they were found (the label before the first colon).
+const p1ByRegion = new Map()
+for (const f of findings.P1) {
+  const region = f.includes(': ') ? f.slice(0, f.indexOf(': ')) : '(unlabelled)'
+  p1ByRegion.set(region, [...(p1ByRegion.get(region) ?? []), f.slice(region.length + 2) || f])
+}
+for (const [region, items] of [...p1ByRegion].sort((a, b) => b[1].length - a[1].length)) {
+  console.log(`walk: P1 ${region} (${items.length})`)
+  for (const item of items.slice(0, 5)) console.log(`walk:   - ${item.slice(0, 220)}`)
+  if (items.length > 5) console.log(`walk:   … ${items.length - 5} more in the report`)
+}
 
 chrome.kill()
 vite.kill()
