@@ -7,6 +7,8 @@ docs/qa/night/
 fixtures/private/
 # The overnight walk harness output (prompt 53 Unit 0): captures and screenshots, never committed.
 walk/
+# The walk's per-commit report (scripts/walk.mjs creates the folder; CI copies it into the run artifact).
+docs/reports/
 
 # IAMAI Overnight Runner V3.1 durable state, logs, review payloads and reports.
 # The runner must never dirty main merely by coordinating work.
