@@ -1327,8 +1327,13 @@ async function walkFixture(fx) {
           // there is no email to check: it is written once the day is.
           const mfaRowAt = rowTitles.findIndex((t) => /^Require MFA for Everyone$/.test(t))
           const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
-          const planDated = rowWhens.some((w) => DAY_ONLY.test(w || ''))
-          const campaignDated = DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignGroups?.mfaInPlace && planDated)
+          // A day-0 row with no date of its own reads its phase's day (planBoard.ts
+          // boardWhen): preparation is dated, enforcement is not. Only a row in an
+          // enforcement wave, or after one, dates what the email warns of.
+          const inDayZero = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-wave-0') !== null)`)
+          const enforcementDated = (i) => DAY_ONLY.test(rowWhens[i] || '') && !inDayZero[i]
+          const planDated = rowWhens.some((_, i) => enforcementDated(i))
+          const campaignDated = (mfaRowAt >= 0 && enforcementDated(mfaRowAt)) || (campaignGroups?.mfaInPlace && planDated)
           // While the plan dates nothing the email is its undated form (stepExport.ts
           // commsFor): the day and the window are asked of it only where the plan has them.
           if (/MFA Registration Campaign/.test(title)) {
