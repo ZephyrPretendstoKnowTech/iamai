@@ -142,16 +142,16 @@ const OUT_CANONICAL = 'docs/design/approved/rendered'
  * copy would only rot. The production set is evidence *about one task*: task
  * 030 shot `docs/screens/30`, and a later pack that overwrote it would destroy
  * the before-picture its own report cites. So the directory is an argument,
- * the task-numbered convention is kept, and 030's plates stay where its report
- * says they are.
+ * and the task-numbered convention is kept.
  *
  *   node scripts/render-design.mjs --production --out docs/screens/031
  *
- * Mind the numbering. `docs/screens/21` … `45` are the ORIGINAL prompt series'
- * screenshots and are still tracked; `docs/screens/30` is task 030's set
- * sharing a directory with prompt 30's. A restoration pack writes to its
- * zero-padded number (`docs/screens/031`) so it cannot land on top of a
- * historical record — 39 and 41-45 are occupied too.
+ * Mind the numbering. The historical screenshot sets (`docs/screens/21` … `45`,
+ * `030` … `041`) were removed from the current tree and remain in Git history;
+ * only `docs/screens/29`, the brand evidence docs/brand/brand-manifest.json
+ * names, is still tracked. A restoration pack writes to its zero-padded number
+ * (`docs/screens/031`) so a checkout of an older commit reads the same paths its
+ * report names.
  */
 const outFlag = process.argv.indexOf('--out')
 const OUT_PRODUCTION = outFlag !== -1 && process.argv[outFlag + 1] ? process.argv[outFlag + 1].replace(/\\/g, '/') : 'docs/screens/30'
