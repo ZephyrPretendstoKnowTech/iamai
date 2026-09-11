@@ -17,7 +17,7 @@ export const MANAGER = {
   location: (countries: string, affected: number) =>
     `This blocks sign-ins from places the business does not operate in, which is where most automated attacks come from. ${affected === 0 ? 'Nobody signed in from outside the allowed countries in the last 30 days.' : `${count(affected, 'person', 'people')} signed in from outside ${countries} recently and need${affected === 1 ? 's' : ''} a travel exception.`} Without it, a stolen password works from anywhere in the world.`,
   device: (people: number, noDevice: number) =>
-    `This keeps company data on company-managed devices, where it can be protected and wiped. ${count(people, 'person', 'people')} keep working as they do today on managed devices; ${count(noDevice, 'person', 'people')} on unmanaged devices will use the browser with limits or enrol the device. Without it, a copy of the data can sit on any laptop or phone with no way to remove it.`,
+    `This keeps company data on company-managed devices, where it can be protected and wiped. ${count(people, 'person', 'people')} keep working as they do today on managed devices; ${count(noDevice, 'person', 'people')} on unmanaged devices will use the browser with limits or enroll the device. Without it, a copy of the data can sit on any laptop or phone with no way to remove it.`,
   session: (people: number) =>
     `This limits how long a sign-in stays valid, so a device left open or a stolen session cannot be used for long. ${count(people, 'person', 'people')} will sign in a little more often, mainly on shared or personal devices. Without it, one unlocked screen or one stolen token stays usable for days.`,
   other: () =>
@@ -51,7 +51,7 @@ export const MANAGER_BY_GOAL: Record<string, () => string> = {
   'register-info-protected': () =>
     'This stops an attacker with a stolen password from registering their own MFA method and locking the real person out. Anyone already set up sees no change. Without it, one leaked password becomes a lasting hold on the account.',
   'device-registration-mfa': () =>
-    'This requires MFA before a device joins or registers to the tenant, so a stolen password cannot enrol a device the attacker controls. People adding a real device confirm once. Without it, a rogue device can be made to look trusted.',
+    'This requires MFA before a device joins or registers to the tenant, so a stolen password cannot enroll a device the attacker controls. People adding a real device confirm once. Without it, a rogue device can be made to look trusted.',
   'azure-management-mfa': () =>
     'This requires MFA to reach the Azure management portals and APIs, where one session can change billing, resources and access. Admins confirm when they open them. Without it, a stolen admin password runs the subscription unchallenged.',
   'admin-portals-protected': () =>

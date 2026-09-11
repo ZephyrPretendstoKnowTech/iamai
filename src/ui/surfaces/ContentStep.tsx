@@ -62,7 +62,8 @@ import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf } from './stepPackage.ts'
+import { BASELINE_COMMIT, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview } from './stepPackage.ts'
+import { list } from '../../copy/statements.ts'
 import { prerequisiteBasis, projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 import type { ReadinessTile } from './stepContract.ts'
@@ -313,9 +314,14 @@ export function ContentStep({
   const projection = pkg && pkgState && pkgBindings && pkgRuntime ? projectSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
   const pkgReadiness = pkg && pkgState && pkgBindings && pkgRuntime ? readinessSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
   const scenarios: TroubleshootingScenario[] = pkg && pkgState && pkgBindings ? troubleshootingSafely(pkg, pkgState, pkgBindings) : []
+  // The planning preview (owner, 2026-09-11): where the package authors the work
+  // this step will require but it cannot run yet, the planned work stands in the
+  // Implementation region for review and estimation — never copyable, and saying
+  // what is unresolved (stepPackage.ts planningPreview).
+  const preview = pkg && pkgBindings && pkgRuntime ? planningPreview(pkg, step, contract, ctx.snapshot, pkgBindings, pkgRuntime.runtime, projection) : null
   // Whether the package's projection or the step's own channels draw the
   // Implementation region (stepPackage.ts packageDrawsImplementation).
-  const packaged = packageDrawsImplementation(pkg, projection)
+  const packaged = preview !== null || packageDrawsImplementation(pkg, projection)
   // Who this touches (whoBlocks.ts), in the Readiness evidence: each line whole,
   // with the names it ends in. Whether the reach is knowable at all is the
   // contract's answer (Foundation A) — a scope this scan could not settle says so
@@ -333,7 +339,7 @@ export function ContentStep({
   const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies]))
   const createIfNeeded = truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string'
   const creates = (truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)
-  const implementing = packaged ? (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
+  const implementing = packaged ? preview === null && (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
   const ownSteps = !implementing && (hasSteps || before.length > 0)
   const showWhatToDo = decides || createIfNeeded || creates || ownSteps
   // The one next action (stepContract.ts actionOf), drawn once: under the
@@ -355,9 +361,26 @@ export function ContentStep({
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.
   const artifacts: Artifact[] = packaged
-    ? (projection?.channels ?? []).map(packageArtifact)
+    ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
     : channels.map((ch) => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   const W = CONTRACT.implementation
+  // What a preview says beside the planned work: that it is a preview, the values
+  // still to resolve, and where the checks to confirm are. Never the blocker again.
+  const previewNote = preview
+    ? {
+        label: W.preview.label,
+        lines: [
+          W.preview.text,
+          ...(preview.hold && preview.hold.missingBindings.length > 0 ? [fillText(W.preview.values, { values: list([...new Set(preview.hold.missingBindings.map(bindingLabel))]) })] : []),
+          ...(preview.hold && preview.hold.pendingPrerequisites.length > 0 ? [W.preview.checks] : []),
+        ],
+      }
+    : null
+  // A step with nothing to implement by design — a decision, a question, a check —
+  // draws no Implementation region at all: its What to do is the work, and "No
+  // generated implementation" beside it said nothing (owner, 2026-09-11). A policy
+  // step keeps the region, with its planned work or the truthful reason it has none.
+  const showImplementation = artifacts.length > 0 || contract.policy
   // A held projection says why, by the reason it holds: a check to confirm first,
   // a difference no correction covers, content the runtime could not project, or
   // a value IAMAI does not hold. None of them is ever offered an artifact.
@@ -496,19 +519,22 @@ export function ContentStep({
             </section>
           )}
 
-          <Implementation
-            artifacts={artifacts}
-            drawnBy={packaged ? 'package' : 'translator'}
-            title={title}
-            empty={empty}
-            source={sourceLine}
-            onTroubleshooting={scenarios.length > 0 && !printing ? () => setDialog('troubleshooting') : null}
-            open={dialog === 'implementation'}
-            onOpen={() => setDialog('implementation')}
-            onClose={closeDialog}
-            copy={copyArtifact}
-            copied={copied}
-          />
+          {showImplementation && (
+            <Implementation
+              artifacts={artifacts}
+              drawnBy={packaged ? 'package' : 'translator'}
+              preview={previewNote}
+              title={title}
+              empty={empty}
+              source={sourceLine}
+              onTroubleshooting={scenarios.length > 0 && !printing ? () => setDialog('troubleshooting') : null}
+              open={dialog === 'implementation'}
+              onOpen={() => setDialog('implementation')}
+              onClose={closeDialog}
+              copy={copyArtifact}
+              copied={copied}
+            />
+          )}
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
@@ -669,10 +695,12 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
-function Implementation({ artifacts, drawnBy, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
+function Implementation({ artifacts, drawnBy, preview, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
+  /** A planning preview's note (stepPackage.ts planningPreview): the artifacts are the planned work and are not offered to copy. */
+  preview: { label: string; lines: string[] } | null
   title: string
   empty: ImplementationEmpty
   /** "Source updated <date>", from the package's verified sources; null where there is no truthful date. */
@@ -710,13 +738,22 @@ function Implementation({ artifacts, drawnBy, title, empty, source, onTroublesho
       <pre className={`${cls} mono`}>{active.text()}</pre>
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null
+  const planning = preview && (
+    <div className="impl-planning">
+      <strong>{preview.label}</strong>
+      {preview.lines.map((line, i) => (
+        <span key={i}>{line}</span>
+      ))}
+    </div>
+  )
   return (
-    <section className="step-section implementation-section" data-implementation={drawnBy}>
+    <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
       <h4>{W.heading}</h4>
       {artifacts.length === 0 ? (
         <ImplementationEmptyBox empty={empty} />
       ) : (
         <>
+          {planning}
           <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />
           {tab === 'ai' && (
             <div className="ai-warning">
@@ -725,9 +762,12 @@ function Implementation({ artifacts, drawnBy, title, empty, source, onTroublesho
           )}
           <div className="impl-preview" {...onePanelProps(base, tab)}>
             <div className="preview-actions no-print">
-              <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', active?.text() ?? '')}>
-                <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
-              </button>
+              {/* A planning preview is not executable: it is never offered to copy. */}
+              {preview === null && (
+                <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', active?.text() ?? '')}>
+                  <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
+                </button>
+              )}
               <button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}>
                 <Icon name="external-link" size={14} />
               </button>
@@ -741,6 +781,7 @@ function Implementation({ artifacts, drawnBy, title, empty, source, onTroublesho
                 <Callout kind="warning">{W.aiWarning}</Callout>
               </div>
             )}
+            {planning}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
             <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
           </StepDialog>
@@ -891,7 +932,8 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
   const [answer, setAnswer] = useState<string | null>(question ? (saved?.answers?.[question.label] ?? null) : null)
   // The strict toggle (the device decision's Block phones): off unless ticked;
   // its answer is its one option's words, under its own label.
-  const strict = d.strict && typeof d.strict.label === 'string' && typeof d.strict.option === 'string' ? (d.strict as { label: string; option: string; help?: string }) : null
+  // `label` is the answer's key (questionAnswers[step:label]); `heading` is what the page shows over it, where the content names one.
+  const strict = d.strict && typeof d.strict.label === 'string' && typeof d.strict.option === 'string' ? (d.strict as { label: string; option: string; heading?: string; text?: string; help?: string }) : null
   const [strictOn, setStrictOn] = useState<boolean>(strict ? saved?.answers?.[strict.label] === strict.option : false)
   const base = useId()
   const save = (): void =>
@@ -917,6 +959,8 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
             the picker takes it as its group label, the radios as their
             radiogroup's, so a decision is heard as a question with answers. */}
         <div className="dlabel" id={`${base}-decision`}>{d.label}</div>
+        {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
+        {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {hasPicker && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
         {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
         {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
@@ -930,9 +974,10 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
         )}
         {strict && (
           <>
-            <div className="dlabel">{strict.label}</div>
+            <div className="dlabel" id={`${base}-strict`}>{strict.heading ?? strict.label}</div>
+            {strict.text && <p className="reason"><T s={strict.text} ex={ex} /></p>}
             {strict.help && <p className="reason"><T s={strict.help} ex={ex} /></p>}
-            <div className="picker">
+            <div className="picker" role="group" aria-labelledby={`${base}-strict`}>
               <label>
                 <input type="checkbox" checked={strictOn} onChange={(e) => setStrictOn(e.currentTarget.checked)} /> <T s={strict.option} ex={ex} />
               </label>

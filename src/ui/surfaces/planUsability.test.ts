@@ -16,6 +16,15 @@ import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { holdWaitsOn } from '../../roadmap/stateReason.ts'
 import { isHeld } from '../../roadmap/holds.ts'
+import { nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, plannedPackageStateOf, planningPreview } from './stepPackage.ts'
+import { projectSafely } from '../../content/implementation/project.ts'
+import { pilotStepAt } from '../../testing/pilotFixture.ts'
+import { statusOf } from './statusWord.ts'
+import { stepById } from '../../content/content.ts'
+import { currentAnswerText, parseAnswer } from '../../roadmap/answers.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
 
 const CSS = readFileSync('src/ui/app.css', 'utf8')
 
@@ -163,4 +172,101 @@ test('the Plan header is four progress tiles and a how-to link, not a generated 
   const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8')) as { pages: { plan: { howTo: { items: string[] }; progress: Record<string, string> } } }
   assert.equal(content.pages.plan.howTo.items.length, 5)
   assert.deepEqual([content.pages.plan.progress.steps, content.pages.plan.progress.inPlace, content.pages.plan.progress.waiting, content.pages.plan.progress.remaining], ['Steps', 'In place', 'Waiting', 'Remaining'])
+})
+
+// ------------------------------------------------------------ the opened step
+
+const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+
+function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pilotStepAt>[1]) {
+  const f: Fixture = fixture(name)
+  const r = runFixture(f)
+  const found = r.steps.find((s) => s.id === id)
+  assert.ok(found, `${name} carries no ${id}`)
+  const step = move ? pilotStepAt(found, move) : found
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
+  return { f, r, step, ctx, c: stepContract(step, ctx) }
+}
+
+test('a blocked policy with authored implementation shows its planning preview with stand-ins and no Copy; resolved, the same work is executable', () => {
+  const { f, step, ctx, c } = opened('demo', 's-goal-device-registration-mfa')
+  const pkg = implementationPackageFor(step)!
+  const state = packageStateOf(step, c, f.snapshot)!
+  assert.equal(state, 'blocked', 'the premise: nothing to execute now')
+  const bindings = packageBindings(step, ctx, c)
+  const { runtime } = packageRuntime(pkg, state, bindings, {})
+  const executed = projectSafely(pkg, state, bindings, runtime)
+  assert.deepEqual(executed.channels, [], 'a blocked step offered something executable')
+  const preview = planningPreview(pkg, step, c, f.snapshot, bindings, runtime, executed)
+  assert.ok(preview?.preview, 'a blocked policy with authored implementation shows no planned work')
+  assert.deepEqual(preview.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo'])
+  assert.ok(preview.hold!.missingBindings.includes('policy.target.excludeGroups'), 'the preview does not name what is unresolved')
+  for (const ch of preview.channels) assert.equal(/\{\{|\{policy\.|\[omit /.test(ch.text), false, `${ch.channel}: raw binding syntax reached the preview`)
+  assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹exclusions group›/, 'an unknown value was filled silently')
+  // The copy control is not offered on a preview.
+  assert.match(CONTENT_STEP, /\{preview === null && \(\n\s*<button type="button" className="icon-btn" aria-label=\{W\.copy\}/)
+  // Resolved: the same package, the same state's blocks, executable and no longer a preview.
+  const done = opened('small', 's-goal-device-registration-mfa', 'missing')
+  const mstate = packageStateOf(done.step, done.c, done.f.snapshot)!
+  assert.equal(mstate, 'missing')
+  const mb = packageBindings(done.step, done.ctx, done.c)
+  const mrt = packageRuntime(pkg, mstate, mb, {}).runtime
+  const run = projectSafely(pkg, mstate, mb, mrt)
+  assert.equal(run.hold, null)
+  assert.equal(run.preview, undefined)
+  assert.deepEqual(run.channels.map((x) => x.blocks), preview.channels.map((x) => x.blocks), 'the executable work is not the work the preview showed')
+  assert.equal(planningPreview(pkg, done.step, done.c, done.f.snapshot, mb, mrt, run), null, 'an executable step was shown as a preview')
+})
+
+test('a decision or check with nothing to implement by design draws no Implementation region; a policy step keeps one', () => {
+  const { f, step, c } = opened('demo', 's-prereq-device-plan')
+  assert.equal(plannedPackageStateOf(step, c, f.snapshot), null)
+  assert.equal(c.policy, false, 'a decision step is read as a policy')
+  assert.equal(opened('demo', 's-goal-device-registration-mfa').c.policy, true)
+  assert.match(CONTENT_STEP, /const showImplementation = artifacts\.length > 0 \|\| contract\.policy/)
+  assert.match(CONTENT_STEP, /\{showImplementation && \(\n\s*<Implementation/)
+})
+
+test('one blocker, one place: no caption, a concise rail, Prerequisites in Readiness, and the end state as Done when', () => {
+  const { step, c } = opened('demo', 's-goal-device-registration-mfa')
+  assert.equal(statusOf(step).word, 'Blocked')
+  assert.equal(nextCaption(c), null, 'the head restates the hold')
+  assert.deepEqual(railOf(c), { metric: 'Held', sub: 'Resolve prerequisites' })
+  assert.equal(c.doneWhen.length, 1)
+  assert.match(c.doneWhen[0], /^The policy is enforced in /, 'Done when restates what clears the hold')
+  const blockers = readinessOf(step, c).tiles.find((t) => t.key === 'blockers')!
+  assert.equal(blockers.label, 'Prerequisites')
+  assert.match(blockers.value, /^\d+ remaining$/)
+  assert.equal(blockers.note, null, 'the tile points at Fix before continuing instead of stating a fact')
+  // Work the Plan schedules in a phase reads the phase's day on the rail, as the row's When does.
+  const prep = opened('demo', 's-prereq-allowed-countries')
+  const scheduled = stepContract(prep.step, { ...prep.ctx, scheduledOn: '2026-08-31T12:00:00.000Z' })
+  assert.notEqual(railOf(scheduled).metric, 'Not scheduled')
+})
+
+test('Decide How Devices Are Managed: Needs decision until answered, one structure per part, US spelling, and saved answers still count', () => {
+  const { step, c } = opened('demo', 's-prereq-device-plan')
+  assert.equal(statusOf(step).word, 'Needs decision', 'an unanswered decision reads as ready')
+  assert.deepEqual(railOf(c), { metric: 'Needs decision', sub: 'Make the decision' })
+  assert.equal(c.fix.length, 0, 'the decision is listed as something to fix')
+  const d = (stepById['s-prereq-device-plan'] as unknown as { decision: { text: string; options: string[]; question: { text: string; options: string[] }; strict: { heading: string; text: string; help: string } } }).decision
+  assert.equal(d.text, 'How should phones be managed?')
+  assert.deepEqual(d.options, ['Enroll phones in Intune', 'Protect company apps only', 'Keep company data off phones'])
+  assert.equal(d.question.text, 'How should computers be managed?')
+  assert.deepEqual(d.question.options, ['Enroll in Intune', 'Hybrid join is sufficient', 'Not managed'])
+  assert.equal(d.strict.heading, 'Unmanaged phones')
+  assert.equal(d.strict.text, "Should phones that aren't enrolled be blocked?")
+  assert.doesNotMatch(d.strict.help, /Off:|On:/, 'the control explains its own implementation states')
+  assert.match(CONTENT_STEP, /typeof d\.text === 'string' && <p className="reason"><T s=\{d\.text\} ex=\{ex\} \/><\/p>/)
+  assert.match(CONTENT_STEP, /\{strict\.heading \?\? strict\.label\}/)
+  // An answer saved in the old words still answers its option.
+  assert.deepEqual(parseAnswer('Protect the apps only', d.options), { index: 1, picked: [] })
+  assert.equal(currentAnswerText('Hybrid-joined is enough'), 'Hybrid join is sufficient')
+})
+
+test('user-facing content spells enrollment the US way', () => {
+  const text = readFileSync('docs/design/content.json', 'utf8')
+  const values = [...text.matchAll(/"((?:[^"\\]|\\.)*)"(\s*:)?/g)].filter((m) => !m[2]).map((m) => m[1])
+  assert.deepEqual(values.filter((v) => /\b(enrol|Enrol|enrols|enrolment|Enrolment)\b/.test(v)), [])
+  for (const f of ['src/copy/plain.ts', 'src/copy/definitions.ts']) assert.doesNotMatch(readFileSync(f, 'utf8'), /\benrol\b|\benrols\b|\benrolment\b/)
 })

@@ -299,50 +299,27 @@ test('the Next caption is the dated milestone where there is one', () => {
   assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
 })
 
-test('an undated blocked policy captions the gate the rail used to hold alone', () => {
-  // This is the state the header said nothing about: where it was, and never
-  // what would move it. The gate is an existing contract field, wrapped in the
-  // existing `Next: {label}` template — no new sentence is written.
-  const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts' } } as unknown as StepContract
-  assert.ok((nextCaption(gated) ?? '').includes('Create or Correct Emergency Access Accounts'), 'the caption lost the gate')
-  assert.ok((nextCaption(gated) ?? '').startsWith(CONTRACT.next.split('{')[0]), 'the caption does not use the existing Next template')
+test('an undated blocked policy carries no caption: the rail names the move and Fix before continuing the blocker', () => {
+  // Owner, 2026-09-11: one blocker, one place. The gate stays the row's reason
+  // and Fix before continuing's; the caption restating it is gone.
+  const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts', kind: 'resolve', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
+  assert.equal(nextCaption(gated), null)
+  assert.equal(railOf(gated).sub, CONTRACT.rail.resolveSub, 'the rail restates the blocker instead of naming the move')
 })
 
-test('the caption reads as one sentence: the gate’s own colon is not repeated inside the frame', () => {
-  // `pages.plan.blocked.after` is "after: {stepTitle}", written for a row's
-  // reason line where it stands alone and the colon is right. Inside the
-  // caption's own "Next: {label}" frame it produced two colons in five words.
-  // Only that second colon goes; the word, the title and every other milestone
-  // string are returned byte for byte.
-  const gated = (g: string) => nextCaption({ milestone: { line: null, at: null, gatedBy: g } } as unknown as StepContract)
-  assert.equal(gated('after: Create or Correct Emergency Access Accounts'), 'Next: after Create or Correct Emergency Access Accounts')
-  assert.equal(gated('after: Anything At All'), 'Next: after Anything At All')
-  // Not the prefix: untouched, colon and all.
-  assert.equal(gated('once the exclusions group exists'), 'Next: once the exclusions group exists')
-  assert.equal(gated('waiting on: something else'), 'Next: waiting on: something else')
-  assert.equal(gated('afternoon deployment'), 'Next: afternoon deployment', 'the rule matched a word rather than the exact prefix')
-  // A dated line is Foundation B's own sentence and is never rewritten.
-  const dated = { milestone: { line: 'Next: leave it in report-only until Sep 17, 2026.', at: '2026-09-17', gatedBy: 'after: something' } } as unknown as StepContract
-  assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
-})
-
-test('a state with neither a dated line nor a gate gets no caption, and none is invented', () => {
+test('a state with no dated line gets no caption, and none is invented', () => {
   const bare = { milestone: { line: null, at: null, gatedBy: null } } as unknown as StepContract
   assert.equal(nextCaption(bare), null, 'a caption was manufactured for a step with no next fact')
-  // The projection reads two fields and computes nothing.
+  // The projection reads one field and computes nothing.
   const src = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-  // The projection and the one punctuation helper beside it. `stepTitle` appears
-  // in the helper's comment because it names the content key it is fixing —
-  // which is why the guard reads the CODE and not the prose.
   const from = src.indexOf('export function nextCaption')
-  const body = src.slice(from, src.indexOf('const AFTER =', from)).replace(/\/\*[\s\S]*?\*\//g, '')
+  const body = src.slice(from, src.indexOf('\n}', from)).replace(/\/\/.*$/gm, '')
   for (const forbidden of ['Date', 'absoluteDate', 'title', 'lifecycle', 'readyWhen', 'schedule', 'step.']) {
     assert.equal(body.includes(forbidden), false, `the caption computes ${forbidden} instead of reading the milestone`)
   }
-  // The helper is a string rule over an exact existing prefix, and nothing more.
-  const helper = src.slice(src.indexOf('const AFTER ='), src.indexOf('const AFTER =') + 220)
-  assert.match(helper, /const AFTER = 'after: '/, 'the prefix is no longer the exact content one')
-  assert.match(helper, /startsWith\(AFTER\)/, 'the helper matches something other than the exact prefix')
+  // A dated line is Foundation B's own sentence and is never rewritten.
+  const dated = { milestone: { line: 'Next: leave it in report-only until Sep 17, 2026.', at: '2026-09-17', gatedBy: 'after: something' } } as unknown as StepContract
+  assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
 })
 
 test('the rail’s metric is the date where there is one, and the word for where the step stands where there is not', () => {

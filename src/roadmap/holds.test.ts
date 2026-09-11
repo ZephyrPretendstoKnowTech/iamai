@@ -393,7 +393,7 @@ test('Step 4: a campaign with no enrol-by day still says who it reaches, and sta
   const lead = lines.find((l) => /^\d+ active people · /.test(l))
   assert.ok(lead, `the lead is there: ${lines.slice(0, 8).join(' | ')}`)
   assert.match(lead!, /the plan waits for 90%\.$/, 'and names no day')
-  assert.doesNotMatch(lines.join('\n'), /Enrol by /, 'nothing states an enrol-by day')
+  assert.doesNotMatch(lines.join('\n'), /Enroll by /, 'nothing states an enrol-by day')
 })
 
 // ---- no fake Now ----

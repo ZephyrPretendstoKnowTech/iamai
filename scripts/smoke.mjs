@@ -519,7 +519,7 @@ try {
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
   const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
   check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
-  check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /Readiness/.test(document.body.innerText) && /Implementation/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
+  check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /Readiness/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
   // The opened step is one frame attached under the row that opened it, with a
   // head and a main column, and the frame is the row's next element (task 034).
@@ -538,8 +538,10 @@ try {
   // repeated them under the title is gone.
   check('Plan: the step head states the lifecycle and condition once', await evaluate(`document.querySelectorAll('main.page .step .step-state').length === 0 && !!document.querySelector('main.page .step .step-head .status')`))
   // The implementation control follows the capability: a strip only where there
-  // is a choice, and never a one-tab tab set.
-  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const strip = st.querySelector('.tabs.impl-tabs'); const empty = st.querySelector('.implementation-empty'); if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !empty; return !!empty })()`))
+  // is a choice, and never a one-tab tab set. A decision or check step with nothing
+  // to implement by design draws no Implementation region at all (owner, 2026-09-11),
+  // and a planning preview offers no Copy.
+  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const region = st.querySelector('.implementation-section'); if (!region) return true; const strip = region.querySelector('.tabs.impl-tabs'); const empty = region.querySelector('.implementation-empty'); if (region.getAttribute('data-preview') === 'true' && region.querySelector('.preview-actions [aria-label="Copy implementation"]')) return false; if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !empty; return !!empty })()`))
   // The approved Plan pack's topbar is sticky, and it is the one app header.
   const stickyHeader = await evaluate(
     `(async () => { window.scrollTo(0, 800); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const hs = document.querySelectorAll('header.app'); const t = hs[0].getBoundingClientRect().top; window.scrollTo(0, 0); return { n: hs.length, top: Math.round(t), sticky: getComputedStyle(hs[0]).position } })()`,

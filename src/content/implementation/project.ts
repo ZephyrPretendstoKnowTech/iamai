@@ -61,7 +61,12 @@ export type ChannelArtifact = {
  */
 export type Hold = { missingBindings: string[]; unknownMismatches: string[]; pendingPrerequisites: string[]; noProjection: boolean; invalid: string[] }
 
-export type Projection = { state: PackageState; hold: Hold | null; channels: ChannelArtifact[] }
+/**
+ * `preview`: a planning preview (projectPlanned) — the planned work with readable
+ * stand-ins for the values IAMAI does not hold yet, never executable, and its
+ * `hold` says what is unresolved.
+ */
+export type Projection = { state: PackageState; hold: Hold | null; channels: ChannelArtifact[]; preview?: true }
 
 const emptyHold = (): Hold => ({ missingBindings: [], unknownMismatches: [], pendingPrerequisites: [], noProjection: false, invalid: [] })
 
@@ -170,17 +175,51 @@ export function selectMismatches(p: Record<string, unknown>, ctx: ConditionConte
  * reach the page.
  */
 export function projectImplementation(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext = NO_RUNTIME): Projection {
-  if (NO_ACTION_STATES.has(state)) return { state, hold: null, channels: [] }
+  return build(pkg, state, bindings, runtime, null)
+}
+
+/**
+ * The planning preview of one state of one package (owner, 2026-09-11): the work
+ * the step will require, for review, estimation and approval while it cannot be
+ * executed. The same blocks the executable projection names, with a readable
+ * stand-in (`placeholder`) for every required value IAMAI does not hold — never a
+ * raw `{{binding}}`, never a silently invented value — and nothing waits on the
+ * transition's prerequisites. The result is marked `preview` and its hold names
+ * what is unresolved; a caller never offers it as something to run or copy.
+ */
+export function projectPlanned(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: (binding: string) => string): Projection {
+  return build(pkg, state, bindings, runtime, placeholder)
+}
+
+/** Every value a planning preview names that IAMAI does not hold, as its stand-in: the required bindings, the projection's own requirements, request endpoints and script parameters. */
+function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, bindings: Bindings, placeholder: (binding: string) => string): Record<string, string> {
+  const keys = new Set<string>([...(pkg.meta.requiredBindings ?? []), ...asStrings(p.requires)])
+  for (const block of Object.values(pkg.blocks)) {
+    if (typeof block.meta.endpoint === 'string') for (const m of block.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) keys.add(m[1])
+    for (const param of Object.values((block.meta.invocation?.parameters ?? {}) as Record<string, { binding?: unknown }>)) if (typeof param?.binding === 'string') keys.add(param.binding)
+  }
+  // The engine's facts about a correction and the selected-module binding are IAMAI's to supply, never a value to resolve.
+  const own = mismatchBindingOf(p)
+  const out: Record<string, string> = {}
+  for (const k of keys) if (!present(bindings[k]) && k !== CHANGED_FIELDS_BINDING && k !== own && !k.endsWith('.semanticMismatches')) out[k] = placeholder(k)
+  return out
+}
+
+function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: ((binding: string) => string) | null): Projection {
+  const planning = placeholder !== null
+  if (!planning && NO_ACTION_STATES.has(state)) return { state, hold: null, channels: [] }
   const hold = emptyHold()
   const p = pkg.meta.projection[state] as Record<string, unknown> | undefined
   if (!p) return { state, hold: { ...hold, noProjection: true }, channels: [] }
 
   // The next transition's prerequisites, before anything is built: an artifact
-  // that performs a transition a person has not cleared is not offered.
+  // that performs a transition a person has not cleared is not offered. A
+  // planning preview offers nothing, and names them instead.
   hold.pendingPrerequisites = gatingPrerequisites(pkg, state).filter((pr) => !runtime.satisfied.has(pr.id)).map((pr) => pr.id)
-  if (hold.pendingPrerequisites.length > 0) return { state, hold, channels: [] }
+  if (!planning && hold.pendingPrerequisites.length > 0) return { state, hold, channels: [] }
 
-  let b: Bindings = bindings
+  const standIns = planning ? planningValues(pkg, p, bindings, placeholder) : {}
+  let b: Bindings = planning ? { ...bindings, ...standIns } : bindings
   const requires = new Set(asStrings(p.requires))
   const refs = new Map<OutputChannel, ProjectionRef[]>()
   if (p.mode === 'composeByMismatch') {
@@ -190,7 +229,7 @@ export function projectImplementation(pkg: CompiledPackage, state: PackageState,
     if (unknown.length > 0) return { state, hold, channels: [] }
     if (selected.length === 0) return { state, hold: { ...hold, invalid: ['no correction module is selected'] }, channels: [] }
     const binding = mismatchBindingOf(p)
-    if (binding !== null) b = { ...bindings, [binding]: selected }
+    if (binding !== null) b = { ...b, [binding]: selected }
     const table = (p.mismatches ?? {}) as Record<string, Record<string, unknown>>
     for (const id of selected) for (const r of asStrings(table[id].requires)) requires.add(r)
     const before = (p.sharedBefore ?? {}) as Record<string, unknown>
@@ -304,6 +343,7 @@ export function projectImplementation(pkg: CompiledPackage, state: PackageState,
   if (hold.missingBindings.length > 0 || hold.invalid.length > 0) {
     return { state, hold: { ...hold, missingBindings: [...new Set(hold.missingBindings)] }, channels: [] }
   }
+  if (planning) return { state, hold: { ...emptyHold(), missingBindings: Object.keys(standIns), pendingPrerequisites: hold.pendingPrerequisites }, channels, preview: true }
   return { state, hold: null, channels }
 }
 
@@ -324,6 +364,16 @@ export function projectSafely(pkg: CompiledPackage, state: PackageState, binding
     return projectImplementation(pkg, state, bindings, runtime)
   } catch (e) {
     report(pkg.meta.stepId, `projection (${state})`, e)
+    return { state, hold: { ...emptyHold(), invalid: [`runtime fault: ${(e as Error)?.message ?? String(e)}`] }, channels: [] }
+  }
+}
+
+/** The planning preview, and never an exception (see projectSafely). */
+export function planSafely(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: (binding: string) => string, report: typeof reportPackageFault = reportPackageFault): Projection {
+  try {
+    return projectPlanned(pkg, state, bindings, runtime, placeholder)
+  } catch (e) {
+    report(pkg.meta.stepId, `planning preview (${state})`, e)
     return { state, hold: { ...emptyHold(), invalid: [`runtime fault: ${(e as Error)?.message ?? String(e)}`] }, channels: [] }
   }
 }

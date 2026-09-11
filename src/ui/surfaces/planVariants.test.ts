@@ -351,57 +351,40 @@ const INVENTORY: string[] = [
   'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-verify-mfa
   'ladder · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro+set-aside/s-ladder-legacy-auth-inventory
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // small/s-prereq-break-glass
+  'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
   'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-allowed-countries
   'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-trusted-location
-  // Step 5: a held policy not yet deployed that still hands over its report-only
-  // create says to create it now and what turning it on waits for (owner decision;
-  // roadmap/lifecycle.ts nextMilestone), so its action mode is deploy, not resolve.
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-intune-enrollment-reauth
   'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
   'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
   'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-none', // small/s-goal-guests-mfa
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
-  'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
+  'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected
-  'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-mfa-all-users
   'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
   'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
-  // Step 4: a report-only policy something holds has no next date, so the rail
-  // that held only the day its window closes is gone, and its next thing is what
-  // holds it rather than the watching (roadmap/holds.ts).
+  'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // large/s-prereq-device-plan
   'policy · adjust · report-only · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
-  // Step 7: the guest readiness gate counts only people who are Ready for
-  // phishing-resistant MFA, and the demo's guests hold no qualifying method in
-  // this tenant. So every guests-pair variant carries the readiness finding
-  // (`found`); a not-deployed pair still hands over its report-only creates
-  // (`do:deploy`); and on week two the half-pair update, which enforces on run,
-  // is withheld (`no-implementation`), which folds its rescan review-required
-  // variant into the blocked one.
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // demo/s-goal-guests-mfa
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-intune-enrollment-reauth
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
   'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
-  // Step 3 correction: the report-only policy whose required exclusions group has
-  // no usable, owner-confirmed object stays report-only instead of reading Ready to
-  // enforce; an existing policy short of the group is a change, held on the
-  // exclusions prerequisite with no operation while there is no group to add, and
-  // offered once there is.
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-mfa-all-users
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // demo/s-goal-guests-mfa
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-mfa-all-users
   'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · members · who-unknown', // demo-week2+half-pair/s-goal-guests-mfa
+  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-mfa-all-users
   'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-block-auth-transfer
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa

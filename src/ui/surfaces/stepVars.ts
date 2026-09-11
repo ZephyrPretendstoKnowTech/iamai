@@ -69,6 +69,8 @@ export type StepVarContext = {
   passkeyEnforce?: string | null
   /** This step's report-only creation date (ISO), for a policy step's dates line. */
   reportOnlyAt?: string | null
+  /** The first day of the phase the Plan schedules this step in (ISO), where it has no dated milestone of its own: the day its row's When reads. */
+  scheduledOn?: string | null
   /** The one active-people count (Today's denominator), so every step's summary line agrees (walk-51 item 8). */
   /** The groups the plan loaded, for the exclusions-group picker's rows. */
   groups?: GroupMembers

@@ -2124,6 +2124,24 @@ footer.app a {
 .step .step-main ol {
   max-width: none;
 }
+/* A planning preview's note, above the planned work it describes (owner,
+   2026-09-11): the work is shown for review and cannot be copied yet. */
+.step .impl-planning {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+  font-size: var(--t-2);
+  color: var(--secondary-text);
+}
+.step .impl-planning strong {
+  color: var(--primary-text);
+  font-weight: var(--weight-strong);
+}
 /* The rail belongs to this step: it is inside the frame, on the quieter of the
    two surfaces task 031 named, divided from the main column by the frame's own
    hairline. */

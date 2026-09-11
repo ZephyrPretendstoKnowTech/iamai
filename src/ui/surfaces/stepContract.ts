@@ -60,10 +60,6 @@ type ContractWords = {
   foundLabel: Record<string, string>
   next: string
   nextOn: string
-  nextHeld: string
-  nextEnforceHeld: string
-  nextUntilAfter: string
-  nextUntilWhen: string
   foundHeading: string
   fixHeading: string
   member: string
@@ -117,6 +113,8 @@ type ContractWords = {
     close: string
     sourceUpdated: string
     sourcePins: string
+    preview: { label: string; text: string; values: string; checks: string; value: string }
+    values: Record<string, string>
     troubleshooting: string
     powershellInvocation: string
     empty: Record<string, [string, string]>
@@ -309,6 +307,10 @@ export type StepContract = {
   /** The tenant's own policy already delivering this goal; null where there is none to name. */
   existing: ContractExisting | null
   implementation: ContractImplementation
+  /** The first day of the phase the Plan schedules the step in, where the Plan gave one (StepVarContext.scheduledOn): the day its row's When reads. */
+  scheduledOn: string | null
+  /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
+  policy: boolean
 }
 
 const MEMBER_LABELS = 'ABCDEFGH'
@@ -545,6 +547,10 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
       out.push({ key: `step:${b.stepId}`, text: fillText(CONTRACT.fixStep, { step: title }) })
       continue
     }
+    // A decision waiting on this step's own person is its What to do, not a fix:
+    // listing "until phones and computers are decided" under Fix before
+    // continuing restated the question the step is asking (owner, 2026-09-11).
+    if (b.kind === 'decision') continue
     if (typeof b.binding === 'string' && b.binding.length > 0) out.push({ key: `${b.kind}:${b.label}`, text: b.binding })
   }
   // One line per fact: two blockers naming the same prerequisite are one fix. The
@@ -627,9 +633,12 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     // which count days and failures on a policy this tenant cannot hold yet.
     // A step with no policy IAMAI can write finishes on the resolution itself
     // (V5): there is no policy yet whose end state could be stated.
-    const resolution = doneForReason(step, reason, tenant)
-    if (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust')) return [resolution]
-    return [resolution, fillText(CONTRACT.doneHeldEnd, { tenant })]
+    //
+    // A policy IAMAI will write finishes on its end state alone (owner,
+    // 2026-09-11): what clears the hold is already Fix before continuing's, and
+    // Done when is the completion, not a second copy of the blocker.
+    if (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust')) return [doneForReason(step, reason, tenant)]
+    return [fillText(CONTRACT.doneHeldEnd, { tenant })]
   }
   // A step held for review finishes on its own gates *and* on the change being
   // accounted for; the review comes first because until it clears, the gates
@@ -703,6 +712,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
+    scheduledOn: ctx.scheduledOn ?? null,
+    policy: step.kind === 'create' || step.kind === 'adjust',
   }
 }
 
@@ -844,50 +855,12 @@ export function stepFamily(step: Pick<Step, 'state'>, contentKind: string | null
  * skip the line where the real ones live.
  */
 export function nextCaption(c: StepContract): string | null {
-  if (c.milestone.line !== null) return c.milestone.line
-  const gate = c.milestone.gatedBy
-  if (gate === null) return null
-  // A hold's reason is a fragment written for a row ("until the groups…", "after:
-  // a step", "when readiness reaches…"), and "Next: until the groups…" is not a
-  // thought. Where the next thing is to clear the hold, the caption says the step
-  // is held until it clears; where it is the report-only preparation, that the
-  // enforcement waits. The fragment is the engine's and is never rewritten beyond
-  // its own leading connective, matched against the templates that produced it.
-  if (c.milestone.kind === 'resolve' || c.milestone.kind === 'decide') return fillText(CONTRACT.nextHeld, { condition: untilOf(gate) })
-  if (c.milestone.kind === 'deploy') return fillText(CONTRACT.nextEnforceHeld, { condition: untilOf(gate) })
-  return fillText(CONTRACT.next, { label: withoutAfterColon(gate) })
+  // Only a dated next move is a caption (owner, 2026-09-11). A hold's reason is
+  // already the row's, Readiness's and Fix before continuing's, and the rail names
+  // the move; a caption restating it was the fifth copy of one blocker.
+  return c.milestone.line
 }
 
-/** The words before a template's first placeholder: the connective every reason it produces starts with. */
-const leadOf = (template: string): string => template.slice(0, template.indexOf('{'))
-// The row reasons' own templates (pages.plan.blocked), the ones the engine fills.
-const BLOCKED_SHAPES = pages.plan as unknown as { blocked: { after: string; readiness: string; count: string } }
-
-/** A hold's reason as an "until" clause: "after: X" is "until X is finished", "when X" is "until X", and "until X" is itself. */
-function untilOf(gate: string): string {
-  const after = leadOf(BLOCKED_SHAPES.blocked.after)
-  if (after && gate.startsWith(after)) return fillText(CONTRACT.nextUntilAfter, { step: gate.slice(after.length) })
-  for (const t of [BLOCKED_SHAPES.blocked.readiness, BLOCKED_SHAPES.blocked.count]) {
-    const lead = leadOf(t)
-    if (lead && gate.startsWith(lead)) return fillText(CONTRACT.nextUntilWhen, { condition: gate.slice(lead.length) })
-  }
-  return gate
-}
-
-/**
- * The one punctuation fix: `Next: after: X` reads as one sentence.
- *
- * `pages.plan.blocked.after` is `"after: {stepTitle}"`, written for a row's
- * reason line where it stands alone and the colon is right. Wrapped in the
- * caption's own `Next: {label}` frame it produced two colons in five words. This
- * drops the SECOND colon and nothing else: the word `after` stays, the step
- * title stays, and any other milestone text is returned byte for byte.
- *
- * It is a punctuation rule, not a rewrite — which is why it matches the exact
- * existing prefix rather than looking for a word.
- */
-const AFTER = 'after: '
-const withoutAfterColon = (s: string): string => (s.startsWith(AFTER) ? `after ${s.slice(AFTER.length)}` : s)
 
 /**
  * The opened step's eyebrow: what kind of step this is
@@ -1002,7 +975,7 @@ function peopleTile(c: StepContract): ReadinessTile | null {
  */
 function blockingTile(c: StepContract): ReadinessTile {
   const t = R().tiles
-  if (c.fix.length > 0) return { key: 'blockers', label: t.blockers, tone: 'warn', value: fillText(t.open, { n: c.fix.length }), note: t.openNote }
+  if (c.fix.length > 0) return { key: 'blockers', label: t.blockers, tone: 'warn', value: fillText(t.open, { n: c.fix.length }), note: null }
   if (!c.implementation.offered && c.implementation.reason !== null) {
     return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.reason === 'baseline-conflict' ? CONTRACT.implementation.empty.conflict[1] : null }
   }
@@ -1022,9 +995,16 @@ export function readinessOf(step: Step, c: StepContract): ContractReadiness {
  */
 export function railOf(c: StepContract): { metric: string; sub: string } {
   const m = c.milestone
-  const sub = m.gatedBy ?? m.label
-  if (m.at !== null) return { metric: absoluteDate(m.at), sub }
   const w = CONTRACT.rail
+  if (m.at !== null) return { metric: absoluteDate(m.at), sub: m.gatedBy ?? m.label }
+  // One concise next milestone (owner, 2026-09-11): a held step's rail names the
+  // move — resolve its prerequisites, make its decision — and never restates the
+  // blocker the row, Readiness and Fix before continuing already carry.
+  const standing = standingOf(c)
+  const sub = m.kind === 'resolve' && (standing === 'blocked' || standing === 'resolve') ? w.resolveSub : standing === 'decide' ? w.decideSub : standing === 'review' ? (m.gatedBy ?? m.label) : m.label
+  // Work the Plan schedules in a phase, with no dated milestone of its own, reads
+  // the day its row's When reads — never Not scheduled beside a dated row.
+  if (c.scheduledOn && (standing === 'deploy' || standing === 'verify')) return { metric: absoluteDate(c.scheduledOn), sub }
   const metric: Record<string, string> = { conflict: w.deferred, restore: w.setAside, decide: w.decision, preserve: w.noChange, review: w.held, blocked: w.held, resolve: w.held }
   return { metric: metric[standingOf(c)] ?? w.undated, sub }
 }

@@ -54,12 +54,32 @@ export function answerTextFor(option: string, picked: readonly string[] = []): s
 }
 
 /**
+ * Option words the content has since renamed, old → new: the device decision's
+ * US spelling and structure (owner, 2026-09-11). A stored answer is its option's
+ * words, so a rename would read every saved answer as unanswered; the old words
+ * still answer the option they always answered.
+ */
+const RENAMED_OPTIONS: Readonly<Record<string, string>> = {
+  'Enrol phones in Intune': 'Enroll phones in Intune',
+  'Protect the apps only': 'Protect company apps only',
+  'No company data on phones': 'Keep company data off phones',
+  'Enrol in Intune': 'Enroll in Intune',
+  'Hybrid-joined is enough': 'Hybrid join is sufficient',
+}
+
+/** A stored answer in the content's current words. */
+export function currentAnswerText(answer: string): string {
+  return RENAMED_OPTIONS[answer] ?? answer
+}
+
+/**
  * A stored answer parsed against its options: the option's index and the ids
  * picked into its variable; null when no option matches (the content changed
  * since the answer was saved, and the plan reads it as unanswered).
  */
 export function parseAnswer(answer: string | null | undefined, options: readonly string[]): { index: number; picked: string[] } | null {
   if (typeof answer !== 'string') return null
+  answer = currentAnswerText(answer)
   const exact = options.indexOf(answer)
   if (exact >= 0) return { index: exact, picked: [] }
   for (const [index, o] of options.entries()) {
@@ -82,7 +102,7 @@ export function answerOf(mapping: Pick<MappingState, 'questionAnswers'>, stepId:
   if (!label) return null
   const text = mapping.questionAnswers?.[answerKey(stepId, label)]
   const parsed = parseAnswer(text, questionOptions(stepId, kind))
-  return parsed && typeof text === 'string' ? { ...parsed, text } : null
+  return parsed && typeof text === 'string' ? { ...parsed, text: currentAnswerText(text) } : null
 }
 
 /**

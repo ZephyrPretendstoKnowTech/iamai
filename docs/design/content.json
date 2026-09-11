@@ -10,8 +10,8 @@
     },
     "devicePlan": {
       "phone": {
-        "enrol": "enrol it in Intune with the Company Portal app before {mfaEnforce}",
-        "apps": "use Outlook and Teams for work; nothing to enrol",
+        "enrol": "enroll it in Intune with the Company Portal app before {mfaEnforce}",
+        "apps": "use Outlook and Teams for work; nothing to enroll",
         "none": "no company data on it; work from your computer"
       },
       "computer": {
@@ -217,9 +217,9 @@
         "revisionImported": "imported from a version 1 plan file"
       },
       "staticRules": {
-        "blockDependency": "{policy} blocks every resource but excludes none of the sign-in dependencies. Registration and enrolment break; exclude those four apps first.",
+        "blockDependency": "{policy} blocks every resource but excludes none of the sign-in dependencies. Registration and enrollment break; exclude those four apps first.",
         "appProtectionManaged": "{policy} requires an approved app but does not target unmanaged devices only, so scope it to personal devices.",
-        "autopilot": "{policy} requires a compliant device over all resources, so new-device enrolment stops. Add the Autopilot carve-out."
+        "autopilot": "{policy} requires a compliant device over all resources, so new-device enrollment stops. Add the Autopilot carve-out."
       },
       "serviceSignals": {
         "name": "name contains \"{hit}\"",
@@ -606,6 +606,7 @@
         "count": "when {n} {thing} exist (now {have})",
         "baseline": "the baseline defines this policy two ways",
         "exclusionsGroup": "until you choose the exclusions group",
+        "devicePlan": "until phones and computers are decided",
         "unsettled": "until the groups the source policy leaves out are identified",
         "pairUnmatched": "until both policies of the pair can be matched",
         "noOperation": "until a scan rebuilds this step",
@@ -1251,11 +1252,10 @@
               "exclusionsUnproven": "Not proven",
               "people": "Affected people",
               "peopleUnknown": "Not established",
-              "blockers": "Blocking issues",
+              "blockers": "Prerequisites",
               "clear": "Clear",
               "clearNote": "Nothing outstanding changes the next action.",
-              "open": "{n} outstanding",
-              "openNote": "Listed under Fix before continuing.",
+              "open": "{n} remaining",
               "implementation": "Implementation",
               "unavailable": "Unavailable"
             },
@@ -1344,6 +1344,33 @@
                 "IAMAI found a difference on this policy that the step’s corrections do not cover, so no partial correction is offered."
               ]
             },
+            "preview": {
+              "$comment": "The planning preview (owner, 2026-09-11): a step whose implementation is authored but not yet executable shows the planned work, with no Copy, and says what is unresolved (stepPackage.ts planningPreview).",
+              "label": "Planned work",
+              "text": "This is the work once the prerequisites are resolved. It is not ready to run, so it cannot be copied yet.",
+              "values": "Values still to resolve: {values}.",
+              "checks": "Checks to confirm first are under Readiness.",
+              "value": "‹{value}›"
+            },
+            "values": {
+              "$comment": "What an unresolved package binding is called inside a planning preview. A binding with no entry here is named from its own key.",
+              "policy.current.id": "policy ID",
+              "policy.target.displayName": "policy name",
+              "policy.target.excludeGroups": "exclusions group",
+              "policy.target.conditions": "policy conditions",
+              "policy.target.grantControls": "grant controls",
+              "policy.target.sessionControls": "session controls",
+              "authStrength.target.id": "authentication strength",
+              "tenant.displayName": "tenant name",
+              "emergency.target.userId": "emergency account",
+              "emergency.target.upn": "emergency account sign-in name",
+              "emergency.target.exclusionsGroupId": "exclusions group",
+              "location.target.displayName": "named location",
+              "location.target.countryCodes": "allowed countries",
+              "location.target.ipRanges": "trusted IP ranges",
+              "serviceAccounts.group.id": "service accounts group",
+              "trustedLocations.ids": "trusted locations"
+            },
             "email": "Email",
             "sourceUpdated": "Source updated {date}",
             "sourcePins": "Authored against baseline {authored} · plan pins {pinned}",
@@ -1357,7 +1384,9 @@
             "noChange": "No change needed",
             "decision": "Needs decision",
             "setAside": "Set aside",
-            "undated": "Not scheduled"
+            "undated": "Not scheduled",
+            "resolveSub": "Resolve prerequisites",
+            "decideSub": "Make the decision"
           },
           "rollout": {
             "$comment": "The footer's rollout exception (docs/design/approved/anatomy/plan-step-v1.html `#rollout-dialog`). It is the existing skip (roadmap/sets.ts): the step leaves the rollout with the operator's reason recorded, and it never counts as implemented.",
@@ -1392,10 +1421,6 @@
             "cancel": "Cancel",
             "confirmedOn": "Confirmed {date}."
           },
-          "nextHeld": "Next: held {condition}.",
-          "nextEnforceHeld": "Next: turning it on waits {condition}.",
-          "nextUntilAfter": "until {step} is finished",
-          "nextUntilWhen": "until {condition}",
           "doneHeldEnd": "The policy is enforced in {tenant}."
         },
         "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",
@@ -2522,11 +2547,12 @@
       },
       "decision": {
         "label": "Phones",
+        "text": "How should phones be managed?",
         "help": "Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one.",
         "options": [
-          "Enrol phones in Intune",
-          "Protect the apps only",
-          "No company data on phones"
+          "Enroll phones in Intune",
+          "Protect company apps only",
+          "Keep company data off phones"
         ],
         "effect": [
           "Phones stay in the compliant-device policy: a phone that is not enrolled by the enforce date is blocked.",
@@ -2535,10 +2561,10 @@
         ],
         "question": {
           "label": "Computers",
-          "text": "How are computers managed?",
+          "text": "How should computers be managed?",
           "options": [
-            "Enrol in Intune",
-            "Hybrid-joined is enough",
+            "Enroll in Intune",
+            "Hybrid join is sufficient",
             "Not managed"
           ],
           "effect": [
@@ -2549,7 +2575,9 @@
         },
         "strict": {
           "label": "Block phones",
-          "help": "Off: a phone is left out of the policy. On: a phone that is not enrolled is blocked.",
+          "heading": "Unmanaged phones",
+          "text": "Should phones that aren't enrolled be blocked?",
+          "help": "Blocking keeps a phone that isn't enrolled away from company data once the device policy is enforced.",
           "option": "Block phones that are not enrolled"
         },
         "save": "Save"
@@ -2746,14 +2774,14 @@
       "who": {
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
         "leadUndated": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90%.",
-        "timeline": "Enrol by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
+        "timeline": "Enroll by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
         "groups": {
           "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
           "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
           "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
           "needsProof": "{n} people with a phishing-resistant method not yet proven on every platform they use; ask each to sign in with it from each one:",
           "readinessUnknown": "{n} people whose methods or sign-in records could not be read; scan again before judging them:",
-          "holdouts": "{n} people past the enrol-by date with nothing done; review each; they are locked out when the policy enforces:"
+          "holdouts": "{n} people past the enroll-by date with nothing done; review each; they are locked out when the policy enforces:"
         },
         "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
         "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
@@ -2818,7 +2846,7 @@
             "applies": "guestsInScope"
           },
           {
-            "text": "A person who refuses to enrol is locked out on the enforcement day; that is the intended outcome, and they need a manager, not an exclusion.",
+            "text": "A person who refuses to enroll is locked out on the enforcement day; that is the intended outcome, and they need a manager, not an exclusion.",
             "applies": "always"
           }
         ],
@@ -2854,12 +2882,12 @@
         ],
         "enrollBy": "Fri Sep 4",
         "holdouts": [],
-        "deviceIntro": "Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enrol; on a computer, domain-joined computers are already covered:",
+        "deviceIntro": "Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enroll; on a computer, domain-joined computers are already covered:",
         "deviceLines": [
           "Kaladin Stormblessed · phone",
           "Shallan Davar · computer"
         ],
-        "deviceSentence": "On your phone, use Outlook and Teams for work; nothing to enrol; on your computer, domain-joined computers are already covered.",
+        "deviceSentence": "On your phone, use Outlook and Teams for work; nothing to enroll; on your computer, domain-joined computers are already covered.",
         "specialCare": [
           "Lachlan Robinette · admin, phishing-resistant, proven",
           "Kaladin Stormblessed · admin, phishing-resistant, proven",
@@ -3314,7 +3342,7 @@
             "applies": "always"
           },
           {
-            "text": "Windows Hello for Business and macOS Platform SSO enrolment count as registering security info and are covered by this policy.",
+            "text": "Windows Hello for Business and macOS Platform SSO enrollment count as registering security info and are covered by this policy.",
             "applies": "always"
           },
           {
@@ -3851,7 +3879,7 @@
           }
         ],
         "helpDesk": [
-          "Download greyed out on a personal device is deliberate; use a managed device or enrol the device in Intune.",
+          "Download greyed out on a personal device is deliberate; use a managed device or enroll the device in Intune.",
           "Download greyed out on a work device: check the device shows as compliant in Intune; a stale check-in is the usual cause."
         ],
         "manager": "Company files opened from a personal device stay in the browser and cannot be downloaded or printed; work devices are unaffected. Without this, a copy can sit on any laptop with no way to remove it.",
@@ -3902,7 +3930,7 @@
       "who": {
         "lead": "{active} active people · device readiness {readiness}, the plan waits for 80%",
         "evidence": [
-          "{n} people signed in from devices that are neither compliant nor joined; enrol or exclude before {enforce}: {list:unmanagedUsers}",
+          "{n} people signed in from devices that are neither compliant nor joined; enroll or exclude before {enforce}: {list:unmanagedUsers}",
           "{name} signed in from a browser without device claims on a compliant device, so those sign-ins are blocked until the browser is signed in to the device account.",
           "{n} sign-ins to servers or Azure VMs by {list:serverUsers}: servers cannot be compliant; scope them out or they lose RDP.",
           "{n} sign-ins to Microsoft Graph Command Line Tools from non-compliant devices: Autopilot registration from those machines stops.",
@@ -3953,10 +3981,10 @@
         ],
         "helpDesk": [
           "Blocked on a work device: check compliance in Intune → Devices; a stale check-in is the usual cause.",
-          "Personal device: the browser with limits, or enrol the device.",
+          "Personal device: the browser with limits, or enroll the device.",
           "Contractors: a managed device or an approved app is required; confirm they sit in the intended scope."
         ],
-        "manager": "Company data opens only on company-managed devices, where it can be protected and wiped. {n} people on unmanaged devices enrol or use the browser; without this, a copy can sit on any laptop or phone.",
+        "manager": "Company data opens only on company-managed devices, where it can be protected and wiped. {n} people on unmanaged devices enroll or use the browser; without this, a copy can sit on any laptop or phone.",
         "waits": null
       },
       "example": {
@@ -4254,14 +4282,14 @@
       "more": {
         "risks": [
           {
-            "text": "Autopilot and bulk enrolment flows that register devices with a service account are prompted; use the service-accounts group or a provisioning package.",
+            "text": "Autopilot and bulk enrollment flows that register devices with a service account are prompted; use the service-accounts group or a provisioning package.",
             "applies": "always"
           }
         ],
         "helpDesk": [
           "Setting up a new computer asks for MFA once at the join step; that is expected."
         ],
-        "manager": "Adding a device to the company asks for MFA once, so a stolen password cannot enrol a device the attacker controls. People adding a real device confirm once.",
+        "manager": "Adding a device to the company asks for MFA once, so a stolen password cannot enroll a device the attacker controls. People adding a real device confirm once.",
         "waits": null
       },
       "example": {
@@ -4639,14 +4667,14 @@
       "more": {
         "risks": [
           {
-            "text": "Autopilot self-deploying and bulk enrolment use no user sign-in and are unaffected; user-driven Autopilot prompts once.",
+            "text": "Autopilot self-deploying and bulk enrollment use no user sign-in and are unaffected; user-driven Autopilot prompts once.",
             "applies": "always"
           }
         ],
         "helpDesk": [
-          "Enrolment asks to sign in again even though the person just did: expected."
+          "Enrollment asks to sign in again even though the person just did: expected."
         ],
-        "manager": "Enrolling a device asks for a fresh MFA sign-in each time, so a borrowed session cannot enrol a device. People see two prompts when they set up a device: one to join, one to enrol.",
+        "manager": "Enrolling a device asks for a fresh MFA sign-in each time, so a borrowed session cannot enroll a device. People see two prompts when they set up a device: one to join, one to enroll.",
         "waits": null
       },
       "example": {

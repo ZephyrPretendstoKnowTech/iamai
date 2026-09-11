@@ -199,5 +199,5 @@ export const TERM: Record<string, Definition> = {
   securityInfoRegistration: { title: 'Security-info registration', text: 'The page where a person adds or changes their sign-in methods; the first thing an attacker with a password does.' },
   workloadIdentity: { title: 'Workload identity', text: 'An identity used by software rather than a person: an application, a service principal or a managed identity.' },
   legacyAuthentication: { title: 'Legacy authentication', text: 'Older sign-in protocols such as IMAP, POP and SMTP basic auth that cannot do MFA at all.' },
-  intune: { title: 'Intune', text: "Microsoft's device management service: it enrols devices, applies rules and reports whether each device is compliant." },
+  intune: { title: 'Intune', text: "Microsoft's device management service: it enrolls devices, applies rules and reports whether each device is compliant." },
 }

@@ -227,7 +227,8 @@ test('needs decision: the state, the word, the next milestone, the action and th
   assert.equal(contract.state.word, 'Needs decision')
   assert.equal(contract.whatToDo.kind, 'decide')
   assert.deepEqual(contract.doneWhen, [CONTRACT.doneDecision])
-  assert.deepEqual(contract.fix.map((x) => x.text), ['until you choose the exclusions group'])
+  // The question is the step's What to do, not something to fix (owner, 2026-09-11).
+  assert.deepEqual(contract.fix.map((x) => x.text), [])
   // The collapsed row says the same, without the step being opened.
   assert.equal(rowReason(c.step), 'until you choose the exclusions group')
   // Neither the action nor the completion tells them to build a group.
