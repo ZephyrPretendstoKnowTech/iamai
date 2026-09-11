@@ -58,7 +58,13 @@ export type PackageMeta = {
   supportBlocks?: Record<string, string[]>
   verifiedSources?: VerifiedSource[]
   prerequisites?: Prerequisite[]
-  baselineAuthority?: { pinCommit?: string } & Record<string, unknown>
+  /**
+   * `members`: each baseline policy a multi-policy package names, by its role in
+   * the package's bindings (`policies.<family>.<role>.…`) and the pinned
+   * baseline's stable id for it — null where the pin surfaces none, and then
+   * nothing is bound for that member.
+   */
+  baselineAuthority?: { pinCommit?: string; members?: { role: string; memberStableId: string | null }[] } & Record<string, unknown>
   email?: { block?: string; audience?: string; communicationTrigger?: string; purpose?: string } & Record<string, unknown>
 } & Record<string, unknown>
 
