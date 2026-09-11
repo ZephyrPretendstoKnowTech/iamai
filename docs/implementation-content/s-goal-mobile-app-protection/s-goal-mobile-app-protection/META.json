@@ -1,0 +1,321 @@
+{
+  "relationship": "baseline-goal-composite",
+  "family": "policy",
+  "validationComplexity": "high",
+  "recommendedBatch": "1",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicy"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "Intune app protection policy prerequisite"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "sourceGoalKey": "mobile-app-protection",
+    "sourceStableId": null,
+    "sourceStableIdStatus": "The available retained goalMap has no mapped stable policy member for this goal. No source policy GUID is invented. The canonical destination comes from the pinned mobile-app-protection goal template; updates to an existing tenant policy require IAMAI-resolved stable tenant policy ID.",
+    "canonicalSemantics": {
+      "users": "All users with tenant-resolved canonical exclusions",
+      "resources": "All resources",
+      "clientAppTypes": [
+        "all"
+      ],
+      "platforms": {
+        "include": [
+          "android",
+          "iOS"
+        ],
+        "exclude": []
+      },
+      "grant": {
+        "operator": "OR",
+        "builtInControls": [
+          "compliantApplication"
+        ]
+      },
+      "sessionControls": null,
+      "lifecycle": "new Conditional Access deployment starts Report-only"
+    },
+    "intunePrerequisite": "Source requires iOS/iPadOS and Android App Protection policy coverage for the intended Microsoft apps/users, including PIN and blocking save-as to unmanaged locations. This prerequisite is separate from the CA JSON/PowerShell contract.",
+    "rule": "Do not resurrect the retired/read-only approvedApplication grant for a new policy. Preserve the pinned compliantApplication-only destination and keep the Intune APP configuration as a separately verified prerequisite."
+  },
+  "requiredBindings": [
+    "intune.appProtection.prerequisiteState",
+    "policy.target.displayName",
+    "policy.target.conditions",
+    "policy.target.grantControls",
+    "policy.target.sessionControls",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "evidence.reportOnly",
+    "evidence.mobileSignIns",
+    "evidence.nativeMail",
+    "dependencies.blockers",
+    "signature",
+    "people.affected.count",
+    "apps.mobileObserved"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.target-policy"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "mode": "compose",
+      "modules": [
+        {
+          "id": "conditions.canonical",
+          "entra": "entra.correct-conditions",
+          "json": "json.correct-conditions",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        {
+          "id": "grant.canonical",
+          "entra": "entra.correct-grant",
+          "json": "json.correct-grant",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        {
+          "id": "session.canonical",
+          "entra": "entra.correct-session",
+          "json": "json.correct-session",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        {
+          "id": "name.canonical",
+          "entra": "entra.correct-name",
+          "json": "json.correct-name",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectName"
+          }
+        }
+      ],
+      "sharedAfter": [
+        "entra.correct-verify"
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    },
+    "configurePrerequisite": {
+      "entra": [
+        "entra.intune-prerequisite"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.prerequisite"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "sources": [
+    {
+      "id": "ms-graph-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-app-protection",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection"
+    },
+    {
+      "id": "ms-ca-approved-app-migration",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/migrate-approved-client-app/"
+    },
+    {
+      "id": "ms-ca-grant-controls",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-grant"
+    },
+    {
+      "id": "ms-intune-app-based-ca",
+      "url": "https://learn.microsoft.com/en-us/mem/intune/protect/app-based-conditional-access-intune"
+    },
+    {
+      "id": "ms-intune-create-app-protection",
+      "url": "https://learn.microsoft.com/en-us/mem/intune/apps/app-protection-policies"
+    },
+    {
+      "id": "ms-graph-grant-controls",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-mobile-app-protection",
+  "title": "Require App Protection on Phones",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-mobile-app-protection/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

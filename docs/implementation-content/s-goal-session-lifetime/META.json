@@ -1,0 +1,519 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-session-lifetime",
+  "title": "Limit How Long Sessions Last",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-session-lifetime/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "intentionalMultiPolicySet": true,
+    "browserPolicy": {
+      "memberStableId": "ea9459a9-91b6-4d2b-b929-03781ac81d54",
+      "targetResources": [
+        "All"
+      ],
+      "clientAppTypes": [
+        "browser"
+      ],
+      "signInFrequencyHours": 12,
+      "persistentBrowser": "never",
+      "initialState": "enabledForReportingButNotEnforced"
+    },
+    "unmanagedPolicy": {
+      "memberStableId": null,
+      "sourceIdentityStatus": "No companion stable member ID is surfaced by the available pinned-goal projection; no ID is invented.",
+      "targetResources": [
+        "All"
+      ],
+      "deviceFilter": {
+        "mode": "exclude",
+        "rule": "device.isCompliant -eq True"
+      },
+      "clientAppTypes": [
+        "all"
+      ],
+      "signInFrequencyHours": 9,
+      "persistentBrowser": "never",
+      "initialState": "enabledForReportingButNotEnforced"
+    },
+    "canonicalMergedStepEvidence": "IAMAI source defines this step as the intentional merge of all-users-no-persistence and byod-persistence and renders two policies."
+  },
+  "requiredBindings": [
+    "policies.session.browser.target.displayName",
+    "policies.session.unmanaged.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.target.excludeUsers",
+    "policies.session.browser.current.id",
+    "policies.session.unmanaged.current.id",
+    "policies.session.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "people.affected.count",
+    "evidence.unmanagedBrowser",
+    "evidence.deviceCompliance",
+    "evidence.sharedDevices",
+    "policies.session.browser.current.state",
+    "policies.session.unmanaged.current.state",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "missing": {
+      "requires": [
+        "policies.session.browser.target.displayName",
+        "policies.session.unmanaged.target.displayName",
+        "policy.target.excludeGroups",
+        "policy.target.excludeUsers"
+      ],
+      "entra": [
+        "entra.create-set"
+      ],
+      "json": [
+        "json.browser.create",
+        "json.unmanaged.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policies.session.semanticMismatches"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "browser.missing": {
+          "requires": [
+            "policies.session.browser.target.displayName",
+            "policy.target.excludeGroups",
+            "policy.target.excludeUsers"
+          ],
+          "entra": [
+            "entra.correct.browser.missing"
+          ],
+          "json": [
+            "json.browser.create"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CreateBrowser"
+            }
+          ]
+        },
+        "browser.conditions": {
+          "requires": [
+            "policies.session.browser.current.id",
+            "policy.target.excludeGroups",
+            "policy.target.excludeUsers"
+          ],
+          "entra": [
+            "entra.correct.browser.conditions"
+          ],
+          "json": [
+            "json.browser.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectBrowserConditions"
+            }
+          ]
+        },
+        "browser.session": {
+          "requires": [
+            "policies.session.browser.current.id"
+          ],
+          "entra": [
+            "entra.correct.browser.session"
+          ],
+          "json": [
+            "json.browser.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectBrowserSession"
+            }
+          ]
+        },
+        "browser.grant-none": {
+          "requires": [
+            "policies.session.browser.current.id"
+          ],
+          "entra": [
+            "entra.correct.browser.grant-none"
+          ],
+          "json": [
+            "json.browser.grant-none"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectBrowserGrant"
+            }
+          ]
+        },
+        "browser.lifecycle": {
+          "requires": [
+            "policies.session.browser.current.id"
+          ],
+          "entra": [
+            "entra.correct.browser.lifecycle"
+          ],
+          "json": [
+            "json.browser.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnlyBrowser"
+            }
+          ]
+        },
+        "unmanaged.missing": {
+          "requires": [
+            "policies.session.unmanaged.target.displayName",
+            "policy.target.excludeGroups",
+            "policy.target.excludeUsers"
+          ],
+          "entra": [
+            "entra.correct.unmanaged.missing"
+          ],
+          "json": [
+            "json.unmanaged.create"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CreateUnmanaged"
+            }
+          ]
+        },
+        "unmanaged.conditions": {
+          "requires": [
+            "policies.session.unmanaged.current.id",
+            "policy.target.excludeGroups",
+            "policy.target.excludeUsers"
+          ],
+          "entra": [
+            "entra.correct.unmanaged.conditions"
+          ],
+          "json": [
+            "json.unmanaged.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectUnmanagedConditions"
+            }
+          ]
+        },
+        "unmanaged.session": {
+          "requires": [
+            "policies.session.unmanaged.current.id"
+          ],
+          "entra": [
+            "entra.correct.unmanaged.session"
+          ],
+          "json": [
+            "json.unmanaged.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectUnmanagedSession"
+            }
+          ]
+        },
+        "unmanaged.grant-none": {
+          "requires": [
+            "policies.session.unmanaged.current.id"
+          ],
+          "entra": [
+            "entra.correct.unmanaged.grant-none"
+          ],
+          "json": [
+            "json.unmanaged.grant-none"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectUnmanagedGrant"
+            }
+          ]
+        },
+        "unmanaged.lifecycle": {
+          "requires": [
+            "policies.session.unmanaged.current.id"
+          ],
+          "entra": [
+            "entra.correct.unmanaged.lifecycle"
+          ],
+          "json": [
+            "json.unmanaged.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnlyUnmanaged"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policies.session.browser.current.id",
+        "policies.session.unmanaged.current.id",
+        "policy.target.excludeGroups",
+        "policy.target.excludeUsers"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policies.session.browser.current.id",
+        "policies.session.unmanaged.current.id",
+        "policy.target.excludeGroups",
+        "policy.target.excludeUsers"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.browser.enforce",
+        "json.unmanaged.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.users.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "block": "email.users.pre-enforcement",
+    "recommendation": "recommended",
+    "audience": "all-users-and-unmanaged-device-users",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice"
+  },
+  "sharedTechnicalPrimitives": [
+    "ca.graph.policy-v1",
+    "graph.powershell.invoke-v1",
+    "ca.license-p1",
+    "ca.session-lifetime.graph-v1"
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-session-lifetime-config",
+      "authority": "Microsoft Learn",
+      "title": "Configure adaptive session lifetime policies",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+      "purpose": "Current portal configuration, Report-only rollout, What If validation, sign-in frequency and persistent browser behavior.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "readiness",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-session-lifetime-concept",
+      "authority": "Microsoft Learn",
+      "title": "Configure authentication session management with Conditional Access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
+      "purpose": "Current sign-in-frequency semantics and reauthentication behavior.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-ca-session-controls-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessSessionControls resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 session-control shape and requirement that persistentBrowser target All apps/resources.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-signin-frequency-v1",
+      "authority": "Microsoft Graph",
+      "title": "signInFrequencySessionControl resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 sign-in frequency properties.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-persistent-browser-v1",
+      "authority": "Microsoft Graph",
+      "title": "persistentBrowserSessionControl resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/persistentbrowsersessioncontrol?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 persistent-browser mode values always/never.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-ca-device-filter-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessDevices resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessdevices?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 device filter container used by the unmanaged-device companion policy.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    }
+  ],
+  "mechanicalValidation": {
+    "status": "PASS",
+    "jsonParse": "passed including sample-bound JSON templates",
+    "projectionReferences": "passed; all content blocks reachable",
+    "bindings": "passed",
+    "stepHeadingOrder": "passed",
+    "deployableApiScan": "v1.0 only; no beta/AzureAD/MSOnline dependencies",
+    "aiWarning": "exactly once per AI Info block",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell block received static review; implementation environment should perform AST parse before use."
+    ]
+  }
+}

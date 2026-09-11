@@ -1,0 +1,302 @@
+{
+  "relationship": "baseline-goal",
+  "family": "policy",
+  "validationComplexity": "medium",
+  "recommendedBatch": "1-2",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicy"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce",
+    "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
+    "sourceState": "enabled",
+    "canonicalSemantics": {
+      "users": "exact pinned built-in directory-role set with tenant-resolved canonical exclusions",
+      "resources": "All resources",
+      "clientAppTypes": [
+        "all"
+      ],
+      "grant": "tenant-resolved custom strength semantically Modern MFA + TAP",
+      "allowedCombinations": [
+        "windowsHelloForBusiness",
+        "fido2",
+        "x509CertificateMultiFactor",
+        "temporaryAccessPassOneTime",
+        "temporaryAccessPassMultiUse"
+      ],
+      "sessionControls": null,
+      "riskConditions": "none"
+    },
+    "currentMicrosoftDifference": "Microsoft current generic admin template recommends the built-in Phishing-resistant MFA strength. The retained pin instead references the baseline custom Modern MFA + TAP strength. Preserve the pin; resolve the custom strength by semantic combinations in the tenant rather than copying Jon's source-tenant GUID.",
+    "scopeLimitation": "Conditional Access directory-role targeting applies to built-in directory roles; custom and administrative-unit-scoped roles are not reached by this role assignment model."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.conditions",
+    "authStrength.target.id",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "admins.affected.count",
+    "admins.notReady",
+    "policy.current.state",
+    "evidence.reportOnly",
+    "dependencies.blockers",
+    "signature"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.target-policy"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "mode": "compose",
+      "sharedBefore": [
+        "entra.correct-open"
+      ],
+      "modules": [
+        {
+          "id": "conditions.canonical",
+          "entra": "entra.correct-conditions",
+          "json": "json.correct-conditions",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectConditions"
+          }
+        },
+        {
+          "id": "grant.custom-strength",
+          "entra": "entra.correct-grant",
+          "json": "json.correct-grant",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectGrant"
+          }
+        },
+        {
+          "id": "session.none",
+          "entra": "entra.correct-session",
+          "json": "json.correct-session",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectSession"
+          }
+        },
+        {
+          "id": "name.canonical",
+          "entra": "entra.correct-name",
+          "json": "json.correct-name",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectName"
+          }
+        }
+      ],
+      "sharedAfter": [
+        "entra.correct-verify"
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "correctionModules": [
+    {
+      "id": "conditions.canonical",
+      "appliesWhen": "admin role population, exclusions, resources, client apps, or prohibited conditions differ"
+    },
+    {
+      "id": "grant.custom-strength",
+      "appliesWhen": "grant does not reference the tenant-resolved baseline custom strength"
+    },
+    {
+      "id": "session.none",
+      "appliesWhen": "session controls are present in this policy"
+    },
+    {
+      "id": "name.canonical",
+      "appliesWhen": "resolved policy name differs"
+    }
+  ],
+  "emailArtifacts": [
+    {
+      "block": "email.rollout",
+      "audience": "Administrators / client contact",
+      "state": "missing",
+      "trigger": "before report-only rollout",
+      "purpose": "ensure privileged users register an accepted method before enforcement"
+    },
+    {
+      "block": "email.enforce",
+      "audience": "Administrators / client contact",
+      "state": "readyToEnforce",
+      "trigger": "before enforcement",
+      "purpose": "confirm strong-auth requirement and support route"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-admin-phish",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-admin-phish-resistant-mfa"
+    },
+    {
+      "id": "ms-auth-strength",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/authenticationstrengthpolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-users",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups"
+    },
+    {
+      "id": "ms-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-admins-phishing-resistant",
+  "title": "Require Phishing-Resistant MFA for Admins",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-admins-phishing-resistant/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

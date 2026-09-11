@@ -1,0 +1,544 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-pim-activation-reauth",
+  "title": "Require MFA at Every Role Activation",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-pim-activation-reauth/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "a6b3b754-9079-48f0-abb2-9e79b2f41095",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "initialState": "enabledForReportingButNotEnforced",
+    "authenticationContextSourceId": "c1",
+    "population": "All users with tenant-resolved canonical exclusion group",
+    "clientAppTypes": [
+      "all"
+    ],
+    "sourceAuthenticationStrengthId": "42de22a7-5339-4a58-b560-28565d53b14d",
+    "sourceAuthenticationStrengthSemantic": "tenant-resolved baseline authentication strength; source ID is not portable",
+    "signInFrequency": "everyTime",
+    "authenticationContextDescription": "Fresh strong authentication for privileged role activation."
+  },
+  "requiredBindings": [
+    "authContext.target.id",
+    "authContext.target.displayName",
+    "authStrength.target.id",
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches",
+    "pim.roleManagementPolicyIds"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "authStrength.target.displayName",
+    "authStrength.target.allowedCombinations",
+    "authContext.current.id",
+    "authContext.current.displayName",
+    "authContext.current.isAvailable",
+    "policy.current.state",
+    "evidence.pimEligible",
+    "evidence.activation",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "contextMissing": {
+      "requires": [
+        "authContext.target.id",
+        "authContext.target.displayName"
+      ],
+      "entra": [
+        "entra.context.prepare"
+      ],
+      "json": [
+        "json.context.upsert"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "PrepareContext"
+        }
+      ],
+      "aiInfo": [
+        "ai.context"
+      ],
+      "email": []
+    },
+    "missing": {
+      "requires": [
+        "authContext.target.id",
+        "authStrength.target.id",
+        "policy.target.displayName",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.policy.create"
+      ],
+      "json": [
+        "json.policy.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "context.unpublished-or-wrong": {
+          "requires": [
+            "authContext.target.id",
+            "authContext.target.displayName"
+          ],
+          "entra": [
+            "entra.correct.context"
+          ],
+          "json": [
+            "json.context.upsert"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "PrepareContext"
+            }
+          ]
+        },
+        "policy.users": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups",
+            "authContext.target.id"
+          ],
+          "entra": [
+            "entra.correct.policy.users"
+          ],
+          "json": [
+            "json.policy.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "policy.context-target": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups",
+            "authContext.target.id"
+          ],
+          "entra": [
+            "entra.correct.policy.context"
+          ],
+          "json": [
+            "json.policy.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "policy.authentication-strength": {
+          "requires": [
+            "policy.current.id",
+            "authStrength.target.id"
+          ],
+          "entra": [
+            "entra.correct.policy.strength"
+          ],
+          "json": [
+            "json.policy.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        "policy.every-time-session": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.policy.session"
+          ],
+          "json": [
+            "json.policy.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        "policy.remove-noncanonical": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups",
+            "authContext.target.id"
+          ],
+          "entra": [
+            "entra.correct.policy.remove-noncanonical"
+          ],
+          "json": [
+            "json.policy.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "policy.lifecycle": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.policy.report-only"
+          ],
+          "json": [
+            "json.policy.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "authContext.target.id",
+        "authStrength.target.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "authContext.target.id",
+        "authStrength.target.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.enable-ca"
+      ],
+      "json": [
+        "json.policy.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "EnforceCA"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce-ca"
+      ],
+      "email": []
+    },
+    "pimSettingsPending": {
+      "requires": [
+        "authContext.target.id",
+        "authContext.target.displayName",
+        "authStrength.target.id",
+        "policy.target.excludeGroups",
+        "policy.current.id",
+        "pim.roleManagementPolicyIds"
+      ],
+      "entra": [
+        "entra.pim.configure"
+      ],
+      "json": [
+        "json.pim.auth-context-rule"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "ConfigurePIM"
+        }
+      ],
+      "aiInfo": [
+        "ai.configure-pim"
+      ],
+      "email": [
+        "email.admins.pre-activation-change"
+      ]
+    },
+    "verificationPending": {
+      "requires": [
+        "authContext.target.id",
+        "pim.roleManagementPolicyIds"
+      ],
+      "entra": [
+        "entra.verify-activation"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "VerifyPIM"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "block": "email.admins.pre-activation-change",
+    "recommendation": "recommended",
+    "audience": "privileged-administrators",
+    "applicableStates": [
+      "pimSettingsPending"
+    ],
+    "communicationTrigger": "before-pim-role-setting-activation",
+    "purpose": "pre-change-notice"
+  },
+  "pimRoleUpdate": {
+    "block": "json.pim.auth-context-rule",
+    "method": "PATCH",
+    "endpointTemplate": "https://graph.microsoft.com/v1.0/policies/roleManagementPolicies/{roleManagementPolicyId}/rules/AuthenticationContext_EndUser_Assignment",
+    "repeatForBinding": "pim.roleManagementPolicyIds",
+    "stableRuleId": "AuthenticationContext_EndUser_Assignment"
+  },
+  "sharedTechnicalPrimitives": [
+    "ca.graph.policy-v1",
+    "graph.powershell.invoke-v1",
+    "ca.license-p1",
+    "pim.authentication-context.graph-v1",
+    "pim.role-policy.graph-v1",
+    "pim.license-entitlement"
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-pim-role-settings",
+      "authority": "Microsoft Learn",
+      "title": "Configure Microsoft Entra role settings in PIM",
+      "url": "https://learn.microsoft.com/en-us/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings",
+      "purpose": "Current authentication-context ordering, backup-MFA behavior, Every time reauthentication, 10-minute activation window, and PIM configuration guidance.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "email",
+        "readiness",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-auth-context-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create or Update authenticationContextClassReference - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationcontextclassreference-update?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 create/update endpoint, publish flag, permissions and roles for authentication context.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-ca-target-auth-context",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access: Target resources",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+      "purpose": "Current Conditional Access authentication-context targeting behavior.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-pim-rule-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Update unifiedRoleManagementPolicyRule - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-update?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 PIM rule PATCH endpoint, authentication-context rule support, delegated permissions and Privileged Role Administrator requirement.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-pim-rule-get-v1",
+      "authority": "Microsoft Graph",
+      "title": "Get unifiedRoleManagementPolicyRule - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/unifiedrolemanagementpolicyrule-get?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 verification of the PIM authentication-context rule.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-pim-licensing",
+      "authority": "Microsoft Learn",
+      "title": "License requirements to use Privileged Identity Management",
+      "url": "https://learn.microsoft.com/en-us/entra/id-governance/licensing-fundamentals",
+      "purpose": "PIM licensing requirement context.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "supporting",
+      "audience": [
+        "step",
+        "readiness"
+      ]
+    },
+    {
+      "id": "ms-session-lifetime-concept",
+      "authority": "Microsoft Learn",
+      "title": "Configure authentication session management with Conditional Access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
+      "purpose": "Every time sign-in-frequency semantics used by the CA policy.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "supporting",
+      "audience": [
+        "step",
+        "entra",
+        "troubleshooting"
+      ]
+    }
+  ],
+  "mechanicalValidation": {
+    "status": "PASS",
+    "jsonParse": "passed including sample-bound JSON templates",
+    "projectionReferences": "passed; all content blocks reachable",
+    "bindings": "passed",
+    "stepHeadingOrder": "passed",
+    "deployableApiScan": "v1.0 only; no beta/AzureAD/MSOnline dependencies",
+    "aiWarning": "exactly once per AI Info block",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell block received static review; implementation environment should perform AST parse before use."
+    ]
+  }
+}

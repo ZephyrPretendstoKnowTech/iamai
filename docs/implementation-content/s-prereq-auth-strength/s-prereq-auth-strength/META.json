@@ -1,0 +1,218 @@
+{
+  "relationship": "prerequisite",
+  "family": "supporting",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "graphObject"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin.",
+    "portableIdentityRule": "Do not reuse Jon Hope source-tenant custom authentication-strength object ID. Match/create by canonical allowed combinations and tenant-resolved stable identity.",
+    "targetAllowedCombinations": [
+      "windowsHelloForBusiness",
+      "fido2",
+      "x509CertificateMultiFactor",
+      "temporaryAccessPassOneTime",
+      "temporaryAccessPassMultiUse"
+    ],
+    "targetRequirementsSatisfied": "mfa"
+  },
+  "requiredBindings": [
+    "strength.target.displayName",
+    "strength.current.id",
+    "strength.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "strength.current.displayName",
+    "strength.current.allowedCombinations",
+    "strength.current.usage",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "strength.metadata": {
+          "entra": [
+            "entra.correct.metadata"
+          ],
+          "json": [
+            "json.correct.metadata"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectMetadata"
+            }
+          ]
+        },
+        "strength.allowed-combinations": {
+          "entra": [
+            "entra.correct.combinations"
+          ],
+          "json": [
+            "json.correct.combinations"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectCombinations"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": [
+        "email.admin-change"
+      ]
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.source-conflict"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.admin-change",
+      "audience": "Client IT / administrators",
+      "state": "partial",
+      "trigger": "before changing a custom strength already referenced by Conditional Access",
+      "purpose": "make a security-significant shared-object change visible"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-strength-custom",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strength-advanced-options"
+    },
+    {
+      "id": "ms-strength-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-strength-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthpolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-strength-combos",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthpolicy-updateallowedcombinations?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-strength-usage",
+      "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthpolicy-usage?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-prereq-auth-strength",
+  "title": "Create the Baseline's Authentication Strength",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-prereq-auth-strength/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

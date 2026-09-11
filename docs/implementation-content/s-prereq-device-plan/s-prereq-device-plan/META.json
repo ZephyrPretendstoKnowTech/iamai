@@ -1,0 +1,127 @@
+{
+  "relationship": "prerequisite",
+  "family": "decision",
+  "outputs": {
+    "entra": false,
+    "json": false,
+    "powershell": false,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "none",
+    "json": {
+      "availability": "none",
+      "kind": "none"
+    },
+    "powershell": {
+      "availability": "none",
+      "provider": "none"
+    },
+    "other": [
+      "owner decision"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "productContract": "Owner chooses how phone and computer access should be managed; downstream device policies consume that saved decision.",
+    "microsoftCurrent": "Intune supports enrollment/MDM and app management without enrollment; Conditional Access can require compliant or hybrid-joined devices only when those postures actually exist."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "device.evidence.summary"
+  ],
+  "optionalBindings": [
+    "device.phones.summary",
+    "device.computers.summary",
+    "device.intune.summary",
+    "dependencies.downstreamSteps"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision-context"
+      ],
+      "email": [
+        "email.decision-request"
+      ]
+    },
+    "decided": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision-recorded"
+      ],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.decision-request",
+      "audience": "Client contact / IT leadership",
+      "state": "needsDecision",
+      "trigger": "when device-management strategy is still unresolved",
+      "purpose": "collect the owner decision without implying a technical default"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-intune-enrollment",
+      "url": "https://learn.microsoft.com/en-us/intune/intune-service/fundamentals/deployment-guide-enrollment"
+    },
+    {
+      "id": "ms-mam-unenrolled",
+      "url": "https://learn.microsoft.com/en-us/intune/app-management/protection/mam-without-enrollment"
+    },
+    {
+      "id": "ms-ca-device-compliance",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance"
+    },
+    {
+      "id": "ms-ca-hybrid",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-alt-admin-device-compliand-hybrid"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-prereq-device-plan",
+  "title": "Decide How Devices Are Managed",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-prereq-device-plan/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

@@ -1,0 +1,235 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-prereq-allowed-countries",
+  "title": "Create or Correct Allowed Countries Location",
+  "baseline": "jon-hope-pinned",
+  "relationship": "prerequisite",
+  "packagePath": "docs/implementation-content/s-prereq-allowed-countries/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "graphObject/graphPatch"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "productContract": "The approved-country set is an owner decision; sign-in history is evidence only.",
+    "microsoftCurrent": "countryNamedLocation uses ISO country/region codes and supports client IP or Authenticator GPS lookup; IAMAI's canonical location uses client IP and excludes unknown countries/regions."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "location.target.displayName",
+    "location.target.countryCodes",
+    "location.current.id"
+  ],
+  "optionalBindings": [
+    "location.current.displayName",
+    "location.current.countryCodes",
+    "location.current.lookupMethod",
+    "location.current.includeUnknown",
+    "evidence.signInCountries",
+    "decision.travelMode",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision"
+      ],
+      "email": [
+        "email.users.travel-confirmation"
+      ]
+    },
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [],
+      "requires": [
+        "location.target.displayName",
+        "location.target.countryCodes"
+      ]
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "countries.exact-set": {
+          "entra": [
+            "entra.correct.countries"
+          ],
+          "json": [
+            "json.patch"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct"
+            }
+          ]
+        },
+        "unknown-countries.off": {
+          "entra": [
+            "entra.correct.unknown"
+          ],
+          "json": [
+            "json.patch"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct"
+            }
+          ]
+        },
+        "name.canonical": {
+          "entra": [
+            "entra.correct.name"
+          ],
+          "json": [
+            "json.patch"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct"
+            }
+          ]
+        },
+        "lookup.client-ip": {
+          "entra": [
+            "entra.correct.lookup"
+          ],
+          "json": [],
+          "powershell": []
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.review",
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.users.travel-confirmation",
+      "audience": "client contact / users affected by travel restrictions",
+      "state": "needsDecision",
+      "trigger": "before the approved-country set is finalized",
+      "purpose": "surface legitimate travel/remote-work countries before downstream blocking"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-country-resource",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/countrynamedlocation?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-location-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-country-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/countrynamedlocation-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-network",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network"
+    }
+  ],
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

@@ -1,0 +1,400 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-sign-in-risk-medium",
+  "title": "Challenge Medium-Risk Sign-ins",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-sign-in-risk-medium/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "memberStableId": "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc",
+    "initialState": "enabledForReportingButNotEnforced",
+    "population": "All users with tenant-resolved canonical exclusions",
+    "targetResources": [
+      "All"
+    ],
+    "clientAppTypes": [
+      "all"
+    ],
+    "signInRiskLevels": [
+      "medium"
+    ],
+    "grant": "built-in multifactor authentication",
+    "grantOperator": "OR",
+    "sessionControls": null,
+    "authoringCorrection": "The workbook brief mentions sign-in frequency. The retained baseline member has no session control. Current Microsoft guidance recommends Every-time reauthentication, but the pinned baseline is authoritative, so this package does not add it."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "people.affected.count",
+    "evidence.mediumRiskSignIns",
+    "evidence.mfaReadiness",
+    "evidence.highRiskPolicy",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.scope-or-exclusions": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.users"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "target.all-resources": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.target"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "risk.medium-only": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.risk"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.conditions"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "grant.mfa": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.grant"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        "session.remove-noncanonical": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.session"
+          ],
+          "json": [
+            "json.correct.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.lifecycle"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.users.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "recommendation": "recommended",
+    "audience": "users-help-desk-client-contact",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice",
+    "blocks": [
+      "email.users.pre-enforcement"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "ms-risk-policy",
+      "authority": "Microsoft Learn",
+      "title": "Configure and enable risk policies",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/howto-identity-protection-configure-risk-policies",
+      "purpose": "Current sign-in-risk policy guidance, Medium/High recommendation, MFA requirement, Report-only rollout, and Every-time recommendation.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-risk-concept",
+      "authority": "Microsoft Learn",
+      "title": "Risk-based access policies",
+      "url": "https://learn.microsoft.com/en-us/entra/id-protection/concept-identity-protection-policies",
+      "purpose": "Sign-in-risk semantics, P2 requirement, self-remediation, and legacy-policy retirement.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-condition-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessConditionSet resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0",
+      "purpose": "v1.0 signInRiskLevels and clientAppTypes schema.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-grant-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessGrantControls resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0",
+      "purpose": "v1.0 built-in MFA grant support.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-create-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+      "purpose": "v1.0 create endpoint and permissions.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+      "purpose": "v1.0 stable-ID update endpoint and partial update semantics.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-get-v1",
+      "authority": "Microsoft Graph",
+      "title": "Get conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
+      "purpose": "v1.0 stable-ID verification readback.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "integrationGaps": [],
+  "mechanicalValidation": {
+    "status": "PASS_WITH_LIMITATION",
+    "jsonParse": "pass-after-sample-binding",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "pass",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell AST parsing must run in an environment with PowerShell installed."
+    ]
+  }
+}

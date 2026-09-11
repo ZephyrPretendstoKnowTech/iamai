@@ -1,0 +1,533 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-workload-identity-block",
+  "title": "Restrict the Entra Connect Sync Account to Its Address",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal-composite",
+  "packagePath": "docs/implementation-content/s-goal-workload-identity-block/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": null,
+    "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "workloadScope": "one IAMAI-resolved Entra Cloud Sync provisioning service principal",
+    "resourceScope": "All",
+    "locationScope": {
+      "include": [
+        "All"
+      ],
+      "exclude": [
+        "tenant-resolved sync-server named location"
+      ]
+    },
+    "grant": {
+      "operator": "OR",
+      "builtInControls": [
+        "block"
+      ]
+    },
+    "initialState": "enabledForReportingButNotEnforced"
+  },
+  "compositeStateModel": {
+    "notApplicable": "IAMAI has established that Entra Cloud Sync is not present for this step.",
+    "locationMissing": "Cloud Sync applies, but the approved sync-server IP named location does not yet exist. Create only the prerequisite location, then rescan.",
+    "missing": "The approved named location exists and has a stable ID, but the workload Conditional Access policy is missing.",
+    "partial": "The named location and/or existing workload policy has an IAMAI-classified semantic mismatch."
+  },
+  "requiredBindings": [
+    "location.syncServer.displayName",
+    "location.syncServer.ipRanges",
+    "location.syncServer.id",
+    "workload.cloudSync.servicePrincipalId",
+    "policy.target.displayName",
+    "policy.current.id",
+    "policy.current.semanticMismatches",
+    "location.current.id",
+    "location.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "workload.cloudSync.displayName",
+    "policy.current.displayName",
+    "policy.current.state",
+    "location.current.displayName",
+    "evidence.cloudSyncActivity",
+    "evidence.syncAddresses",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "notApplicable": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "locationMissing": {
+      "requires": [
+        "location.syncServer.displayName",
+        "location.syncServer.ipRanges"
+      ],
+      "entra": [
+        "entra.location.create"
+      ],
+      "json": [
+        "json.location.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "CreateLocation"
+        }
+      ],
+      "aiInfo": [
+        "ai.location-create"
+      ],
+      "email": []
+    },
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "workload.cloudSync.servicePrincipalId",
+        "location.syncServer.id"
+      ],
+      "entra": [
+        "entra.policy.create"
+      ],
+      "json": [
+        "json.policy.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "CreatePolicy"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches",
+        "location.current.id",
+        "location.current.semanticMismatches",
+        "workload.cloudSync.servicePrincipalId",
+        "location.syncServer.id",
+        "location.syncServer.ipRanges"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open",
+          "entra.correct.ensure-report-only"
+        ]
+      },
+      "mismatches": {
+        "location.ip-ranges": {
+          "appliesWhen": "the existing sync-server named location IP range set differs from the approved canonical range set",
+          "entra": [
+            "entra.correct.location.ip-ranges"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.location"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "Location"
+              ]
+            }
+          ]
+        },
+        "workload.service-principal": {
+          "appliesWhen": "the policy does not directly include the IAMAI-resolved Cloud Sync provisioning service principal Object ID",
+          "entra": [
+            "entra.correct.policy.service-principal"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.policy-conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "PolicyConditions"
+              ]
+            }
+          ]
+        },
+        "target.all-resources": {
+          "appliesWhen": "the workload policy target resources are not All resources",
+          "entra": [
+            "entra.correct.policy.all-resources"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.policy-conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "PolicyConditions"
+              ]
+            }
+          ]
+        },
+        "conditions.location-boundary": {
+          "appliesWhen": "the policy does not include Any location and exclude only the approved sync-server named location",
+          "entra": [
+            "entra.correct.policy.location-boundary"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.policy-conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "PolicyConditions"
+              ]
+            }
+          ]
+        },
+        "conditions.client-app-types-all": {
+          "appliesWhen": "clientAppTypes differs from the retained all value",
+          "entra": [
+            "entra.correct.policy.client-apps"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.policy-conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "PolicyConditions"
+              ]
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "appliesWhen": "risk, user, device, platform, authentication-flow, or other noncanonical conditions are present",
+          "entra": [
+            "entra.correct.policy.remove-noncanonical"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.policy-conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "PolicyConditions"
+              ]
+            }
+          ]
+        },
+        "grant.block": {
+          "appliesWhen": "grant is not Block access",
+          "entra": [
+            "entra.correct.policy.grant-block"
+          ],
+          "json": [
+            "json.correct.report-only",
+            "json.correct.policy-grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly",
+                "PolicyGrant"
+              ]
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "appliesWhen": "a semantically incorrect workload policy is not in Report-only while being corrected",
+          "entra": [
+            "entra.correct.policy.report-only"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct",
+              "corrections": [
+                "ReportOnly"
+              ]
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "workload.cloudSync.servicePrincipalId",
+        "location.syncServer.id"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "workload.cloudSync.servicePrincipalId",
+        "location.syncServer.id"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.admins.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "block": "email.admins.pre-enforcement",
+    "recommendation": "optional",
+    "audience": "identity-infrastructure-administrators",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-operations-notice"
+  },
+  "sharedTechnicalPrimitives": [
+    "ca.graph.policy-v1",
+    "graph.powershell.invoke-v1",
+    "ca.named-location.graph-v1",
+    "ca.workload-identity.graph-v1"
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-workload-identity-ca",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access for workload identities",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity",
+      "purpose": "Workload scope, licensing, direct service-principal assignment, location policy, report-only, sign-in logs, and Enterprise applications Object ID requirement.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "primary",
+      "audience": [
+        "step",
+        "entra",
+        "aiInfo",
+        "readiness",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-workload-license-faq",
+      "authority": "Microsoft Learn",
+      "title": "Frequently asked questions about Microsoft Entra Workload ID",
+      "url": "https://learn.microsoft.com/en-us/entra/workload-id/workload-identities-faqs",
+      "purpose": "Current Workload ID Premium licensing behavior.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "step",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-ca-client-applications",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessClientApplications resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessclientapplications?view=graph-rest-1.0",
+      "purpose": "v1.0 workload/service-principal include/exclude schema.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-ip-named-location",
+      "authority": "Microsoft Graph",
+      "title": "ipNamedLocation resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/ipnamedlocation?view=graph-rest-1.0",
+      "purpose": "IP named-location shape and CIDR range semantics.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell"
+      ]
+    },
+    {
+      "id": "ms-named-location-create",
+      "authority": "Microsoft Graph",
+      "title": "Create namedLocation - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0",
+      "purpose": "v1.0 named-location POST endpoint, required IP-range fields, permissions, and roles.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-ip-named-location-update",
+      "authority": "Microsoft Graph",
+      "title": "Update ipNamedLocation - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/ipnamedlocation-update?view=graph-rest-1.0",
+      "purpose": "v1.0 named-location PATCH behavior; complete desired ipRanges must be supplied because omitted ranges are removed.",
+      "checkedOn": "2026-09-10",
+      "userFacing": true,
+      "priority": "technical",
+      "audience": [
+        "json",
+        "powershell",
+        "troubleshooting"
+      ]
+    },
+    {
+      "id": "ms-named-location-list",
+      "authority": "Microsoft Graph",
+      "title": "List namedLocations - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-list-namedlocations?view=graph-rest-1.0",
+      "purpose": "Stable list/collision-check surface and Policy.Read.All read permission.",
+      "checkedOn": "2026-09-10",
+      "userFacing": false,
+      "priority": "technical",
+      "audience": [
+        "powershell"
+      ]
+    }
+  ],
+  "validation": {
+    "jsonTemplateConvention": "{{json:<binding>}} is whole-value JSON substitution; mask to null only for authoring syntax lint.",
+    "powershellParser": "not-run-in-authoring-environment-no-pwsh",
+    "liveTenantExecution": false,
+    "graphVersion": "v1.0"
+  },
+  "unresolvedIssues": [],
+  "verificationStatus": "self-verified"
+}

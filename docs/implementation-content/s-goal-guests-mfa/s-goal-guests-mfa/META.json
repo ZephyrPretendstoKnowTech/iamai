@@ -1,0 +1,318 @@
+{
+  "relationship": "baseline-goal",
+  "family": "policy",
+  "validationComplexity": "high",
+  "recommendedBatch": "1",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "compositeBundle"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "cross-tenant access trust when owner-selected partner tier requires it"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "members": [
+      {
+        "role": "strong",
+        "memberStableId": "f25f94e0-98b6-41be-b9d6-68cb781004a4",
+        "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - B2B-Guest",
+        "sourceState": "enabledForReportingButNotEnforced",
+        "guestTypes": [
+          "internalGuest",
+          "b2bCollaborationMember",
+          "b2bDirectConnectUser",
+          "serviceProvider"
+        ],
+        "grant": "tenant-resolved Modern MFA + TAP authentication strength"
+      },
+      {
+        "role": "mixed",
+        "memberStableId": "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
+        "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - Mixed-Guests",
+        "sourceState": "enabledForReportingButNotEnforced",
+        "guestTypes": [
+          "b2bCollaborationGuest",
+          "otherExternalUser"
+        ],
+        "grant": "built-in mfa"
+      }
+    ],
+    "rule": "Preserve the two-member split and tenant-resolve exclusions/strength. Saved partner/MSP decisions may modify external-user exclusions only through the canonical resolved users objects; never collapse guest coverage into an internal-user policy.",
+    "currentMicrosoftContext": "Microsoft supports granular external-user types, MFA for B2B users, inbound MFA trust for ordinary Entra partner tenants, and explicitly treats GDAP differently. Authentication strengths can be used for external Entra users but are not accepted for every external identity provider; built-in MFA remains required for unsupported external authentication-strength scenarios."
+  },
+  "requiredBindings": [
+    "policies.guests.strong.target.displayName",
+    "policies.guests.mixed.target.displayName",
+    "policies.guests.strong.target.users",
+    "policies.guests.mixed.target.users",
+    "authStrength.target.id",
+    "policies.guests.strong.current.id",
+    "policies.guests.mixed.current.id",
+    "policies.guests.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "guests.affected.count",
+    "guests.partnerTierSummary",
+    "guests.serviceProviderDecision",
+    "policyPair.current.states",
+    "evidence.reportOnly",
+    "partnerTrust.resolvedPatches",
+    "dependencies.blockers",
+    "signature"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create-pair"
+      ],
+      "json": [
+        "json.target-pair"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "CreateMissing"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "entra": [
+        "entra.correct-pair"
+      ],
+      "json": [
+        "json.target-pair"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "CorrectPair"
+        }
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "partnerTrustRequired": {
+      "entra": [
+        "entra.partner-trust"
+      ],
+      "json": [
+        "json.partner-trust"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "ApplyPartnerTrust"
+        }
+      ],
+      "aiInfo": [
+        "ai.partner-trust"
+      ],
+      "email": [
+        "email.partner-trust"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce-pair"
+      ],
+      "json": [
+        "json.enforce-pair"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "EnforcePair"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "correctionModules": [
+    {
+      "id": "pair.strong-canonical",
+      "appliesWhen": "strong guest member differs from its resolved pinned target"
+    },
+    {
+      "id": "pair.mixed-canonical",
+      "appliesWhen": "mixed guest member differs from its resolved pinned target"
+    },
+    {
+      "id": "partner-trust.inbound-mfa",
+      "appliesWhen": "saved ordinary-B2B partner decision requires tenant-specific inbound MFA trust; not for GDAP"
+    }
+  ],
+  "emailArtifacts": [
+    {
+      "block": "email.rollout",
+      "audience": "Guests/partners / client contact",
+      "state": "missing",
+      "trigger": "before report-only rollout",
+      "purpose": "set expectations for guest MFA"
+    },
+    {
+      "block": "email.partner-trust",
+      "audience": "Partner/MSP contact / client IT",
+      "state": "partnerTrustRequired",
+      "trigger": "before enabling ordinary B2B inbound MFA trust",
+      "purpose": "confirm partner-tenant trust change"
+    },
+    {
+      "block": "email.enforce",
+      "audience": "Guests/partners / client contact",
+      "state": "readyToEnforce",
+      "trigger": "before enforcement",
+      "purpose": "confirm guest MFA enforcement"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-b2b-mfa",
+      "url": "https://learn.microsoft.com/en-us/entra/external-id/b2b-tutorial-require-mfa"
+    },
+    {
+      "id": "ms-external-ca",
+      "url": "https://learn.microsoft.com/en-us/entra/external-id/authentication-conditional-access"
+    },
+    {
+      "id": "ms-ca-users",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups"
+    },
+    {
+      "id": "ms-cross-tenant",
+      "url": "https://learn.microsoft.com/en-us/entra/external-id/cross-tenant-access-settings-b2b-collaboration"
+    },
+    {
+      "id": "ms-guest-strength",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-guests-mfa-strength"
+    },
+    {
+      "id": "ms-external-users-graph",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessguestsorexternalusers?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-cross-tenant-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-guests-mfa",
+  "title": "Require MFA for Guests",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-guests-mfa/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

@@ -1,0 +1,412 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-intune-enrollment-reauth",
+  "title": "Require a Fresh Sign-in for Intune Enrollment",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-intune-enrollment-reauth/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "sourceMemberKey": "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime",
+    "sourceStableId": null,
+    "sourceStableIdStatus": "The retained source member is keyed by display name in the available pinned mapping; no source policy ID is invented. Tenant updates require IAMAI-resolved stable tenant policy ID.",
+    "targetApplicationId": "d4ebce55-015a-49b5-a083-c84d1797ae8c",
+    "targetApplication": "Microsoft Intune Enrollment",
+    "population": "All users with tenant-resolved canonical exclusions",
+    "clientAppTypes": [
+      "all"
+    ],
+    "grantControls": null,
+    "signInFrequency": {
+      "isEnabled": true,
+      "frequencyInterval": "everyTime",
+      "authenticationType": "primaryAndSecondaryAuthentication"
+    },
+    "initialState": "enabledForReportingButNotEnforced"
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "resource.intuneEnrollment.servicePrincipalId",
+    "resource.intuneEnrollment.exists",
+    "people.affected.count",
+    "evidence.intuneEnrollments",
+    "evidence.enrollmentWorkflows",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "resourceMissing": {
+      "requires": [],
+      "entra": [
+        "entra.prepare.resource"
+      ],
+      "json": [
+        "json.prepare.resource"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "PrepareResource"
+        }
+      ],
+      "aiInfo": [
+        "ai.prepare"
+      ],
+      "email": []
+    },
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.scope-or-exclusions": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.users"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "target.intune-enrollment": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.target"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "requires": [
+            "policy.current.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.conditions"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "grant.remove-noncanonical": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.grant"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        "session.every-time": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.session"
+          ],
+          "json": [
+            "json.correct.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.lifecycle"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.users.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "email": {
+    "recommendation": "recommended",
+    "audience": "users-enrolling-devices-and-device-support",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "pre-change-notice",
+    "blocks": [
+      "email.users.pre-enforcement"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "ms-intune-ca-scenarios",
+      "authority": "Microsoft Learn",
+      "title": "Common ways to use Conditional Access with Intune",
+      "url": "https://learn.microsoft.com/en-us/intune/device-security/conditional-access-integration/scenarios",
+      "purpose": "Confirms Microsoft Intune Enrollment is the CA application for enrollment workflow.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-intune-enrollment-mfa",
+      "authority": "Microsoft Learn",
+      "title": "Require multifactor authentication for Intune device enrollment",
+      "url": "https://learn.microsoft.com/en-us/intune/device-enrollment/configure-multifactor-authentication",
+      "purpose": "Confirms Intune Enrollment app ID/service-principal caveat, enrollment targeting, Every time option, and warns not to use device-based access rules for enrollment.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-session-lifetime",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access adaptive session lifetime policies",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-session-lifetime",
+      "purpose": "Confirms Every time is supported for Microsoft Intune enrollment and describes full reauthentication behavior and loop warning without MFA.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-signin-frequency-v1",
+      "authority": "Microsoft Graph",
+      "title": "signInFrequencySessionControl resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/signinfrequencysessioncontrol?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 Every time session-control shape.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-create-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 create endpoint and permissions.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+      "purpose": "Graph v1.0 update endpoint.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-sp-create-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create servicePrincipal - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/serviceprincipal-post-serviceprincipals?view=graph-rest-1.0",
+      "purpose": "Supported prerequisite creation when the Intune Enrollment service principal is absent.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-autopilot-selfdeploy",
+      "authority": "Microsoft Learn",
+      "title": "Configure Windows Autopilot profiles",
+      "url": "https://learn.microsoft.com/en-us/autopilot/profiles",
+      "purpose": "Confirms self-deploying mode does not require user credentials, so user-driven reauthentication evidence must be evaluated separately.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "integrationGaps": [
+    "If IAMAI cannot already distinguish whether the Microsoft Intune Enrollment service principal exists, keep resource absence Unknown rather than adding a new tenant read during content integration."
+  ],
+  "mechanicalValidation": {
+    "status": "PASS_WITH_LIMITATION",
+    "jsonParse": "pass-after-sample-binding",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "pass",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell AST parsing must run in an environment with PowerShell installed."
+    ]
+  }
+}

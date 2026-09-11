@@ -1,0 +1,291 @@
+{
+  "relationship": "baseline-goal",
+  "family": "policy",
+  "validationComplexity": "medium",
+  "recommendedBatch": "1-2",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "conditionalAccessPolicy"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "9e21fa64-8d9a-4e62-81da-9abce8859a0c",
+    "sourceDisplayName": "IAC - GLOBAL - BLOCK - Unsupported Device Platforms",
+    "sourceState": "enabled",
+    "canonicalSemantics": {
+      "users": "All users with tenant-resolved canonical exclusions",
+      "resources": "All resources",
+      "clientAppTypes": [
+        "all"
+      ],
+      "platforms": {
+        "include": [
+          "all"
+        ],
+        "exclude": [
+          "android",
+          "iOS",
+          "windows",
+          "macOS"
+        ]
+      },
+      "grant": "block / OR",
+      "sessionControls": null,
+      "lifecycle": "new client deployment starts Report-only"
+    },
+    "rule": "Preserve the pinned supported-platform set exactly. Linux and unknown/unidentified platforms remain in scope for block unless a separate owner/device-plan decision changes the canonical target; do not silently add a platform exclusion."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.conditions",
+    "policy.target.grantControls",
+    "policy.target.sessionControls",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "evidence.reportOnly",
+    "evidence.devicePlatforms",
+    "dependencies.blockers",
+    "signature",
+    "people.affected.count"
+  ],
+  "projection": {
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.target-policy"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [
+        "email.rollout"
+      ]
+    },
+    "partial": {
+      "mode": "compose",
+      "modules": [
+        {
+          "id": "conditions.canonical",
+          "entra": "entra.correct-conditions",
+          "json": "json.correct-conditions",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        {
+          "id": "grant.canonical",
+          "entra": "entra.correct-grant",
+          "json": "json.correct-grant",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        {
+          "id": "session.canonical",
+          "entra": "entra.correct-session",
+          "json": "json.correct-session",
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "StageForCorrection"
+            },
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        {
+          "id": "name.canonical",
+          "entra": "entra.correct-name",
+          "json": "json.correct-name",
+          "powershell": {
+            "block": "powershell.run",
+            "mode": "CorrectName"
+          }
+        }
+      ],
+      "sharedAfter": [
+        "entra.correct-verify"
+      ],
+      "aiInfo": [
+        "ai.correct"
+      ]
+    },
+    "reportOnly": {
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Observe"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.enforce"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-licensed"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "sources": [
+    {
+      "id": "ms-graph-ca-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-block-unsupported-platforms",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported"
+    },
+    {
+      "id": "ms-graph-platforms",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessplatforms?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-graph-grant-controls",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-block-unsupported-platforms",
+  "title": "Block Unsupported Device Platforms",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-block-unsupported-platforms/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

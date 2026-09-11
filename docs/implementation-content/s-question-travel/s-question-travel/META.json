@@ -1,0 +1,166 @@
+{
+  "relationship": "prerequisite",
+  "family": "operational",
+  "outputs": {
+    "entra": true,
+    "json": false,
+    "powershell": false,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "none",
+      "kind": "none"
+    },
+    "powershell": {
+      "availability": "none",
+      "provider": "none"
+    },
+    "other": [
+      "communications/trip log"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "productContract": "Handle approved travel by temporarily adjusting the canonical allowed-countries named location for approved dates; never by creating a traveler user exclusion.",
+    "microsoftCurrent": "Conditional Access named countries/regions can be used to allow/block geographic access; location is IP-derived and country mappings can be imperfect."
+  },
+  "requiredBindings": [
+    "travel.traveler",
+    "travel.countries",
+    "travel.startDate",
+    "travel.endDate",
+    "location.allowedCountries.displayName"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "travel.approver",
+    "travel.logReference",
+    "location.allowedCountries.currentCountries",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "approvalRequired": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.approval"
+      ],
+      "email": [
+        "email.approval-request"
+      ]
+    },
+    "approvedPendingApply": {
+      "entra": [
+        "entra.apply"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.apply"
+      ],
+      "email": [
+        "email.traveler-notice"
+      ]
+    },
+    "activeTrip": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.active"
+      ],
+      "email": []
+    },
+    "revertDue": {
+      "entra": [
+        "entra.remove"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.remove"
+      ],
+      "email": [
+        "email.removal-check"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.approval-request",
+      "audience": "Client contact / IT leadership",
+      "state": "approvalRequired",
+      "trigger": "before any country-list change",
+      "purpose": "record travel approval"
+    },
+    {
+      "block": "email.traveler-notice",
+      "audience": "Traveler / help desk",
+      "state": "approvedPendingApply",
+      "trigger": "after approved temporary country change is scheduled",
+      "purpose": "tell traveler what to expect and how to report a block"
+    },
+    {
+      "block": "email.removal-check",
+      "audience": "Client contact / help desk",
+      "state": "revertDue",
+      "trigger": "when approved travel window ends",
+      "purpose": "ensure temporary access is removed"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-location-block",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-by-location"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-question-travel",
+  "title": "Add a Travel Notice and Exclusion",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-question-travel/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

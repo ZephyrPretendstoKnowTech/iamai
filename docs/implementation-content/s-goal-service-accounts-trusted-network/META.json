@@ -1,0 +1,448 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-service-accounts-trusted-network",
+  "title": "Restrict Service Accounts to the Trusted Network",
+  "baseline": "jon-hope-pinned",
+  "relationship": "baseline-goal",
+  "packagePath": "docs/implementation-content/s-goal-service-accounts-trusted-network/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "memberStableId": "99eabebd-877c-4800-aa15-d389b8767760",
+    "initialState": "enabledForReportingButNotEnforced",
+    "population": "Confirmed user-based service accounts in the canonical service-accounts group, with canonical exclusions",
+    "targetResources": [
+      "All"
+    ],
+    "clientAppTypes": [
+      "all"
+    ],
+    "locations": {
+      "include": [
+        "All"
+      ],
+      "exclude": "IAMAI-resolved trusted named location ID(s)"
+    },
+    "grant": "block",
+    "grantOperator": "OR",
+    "sessionControls": null,
+    "identityBoundary": "This user-scoped policy protects user-based service accounts only. Service principals require Conditional Access for workload identities; managed identities are not covered by user-scoped Conditional Access."
+  },
+  "requiredBindings": [
+    "policy.target.displayName",
+    "policy.target.excludeGroups",
+    "serviceAccounts.group.id",
+    "trustedLocations.ids",
+    "policy.current.id",
+    "policy.current.semanticMismatches"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "policy.current.state",
+    "serviceAccounts.group.displayName",
+    "serviceAccounts.members",
+    "trustedLocations.displayNames",
+    "evidence.identityTypes",
+    "evidence.sourceLocations",
+    "evidence.workflowValidation",
+    "people.affected.count",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "prerequisiteRequired": {
+      "entra": [
+        "entra.prerequisites"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.prerequisites"
+      ],
+      "email": []
+    },
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "policy.target.excludeGroups",
+        "serviceAccounts.group.id",
+        "trustedLocations.ids"
+      ],
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": []
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "requires": [
+        "policy.current.id",
+        "policy.current.semanticMismatches"
+      ],
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "users.service-account-group": {
+          "requires": [
+            "policy.current.id",
+            "serviceAccounts.group.id",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.users"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "target.all-resources": {
+          "requires": [
+            "policy.current.id",
+            "serviceAccounts.group.id",
+            "trustedLocations.ids",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.target"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "network.outside-trusted": {
+          "requires": [
+            "policy.current.id",
+            "serviceAccounts.group.id",
+            "trustedLocations.ids",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.network"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "conditions.remove-noncanonical": {
+          "requires": [
+            "policy.current.id",
+            "serviceAccounts.group.id",
+            "trustedLocations.ids",
+            "policy.target.excludeGroups"
+          ],
+          "entra": [
+            "entra.correct.conditions"
+          ],
+          "json": [
+            "json.correct.conditions"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectConditions"
+            }
+          ]
+        },
+        "grant.block": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.grant"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
+            }
+          ]
+        },
+        "session.remove-noncanonical": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.session"
+          ],
+          "json": [
+            "json.correct.session"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectSession"
+            }
+          ]
+        },
+        "lifecycle.report-only": {
+          "requires": [
+            "policy.current.id"
+          ],
+          "entra": [
+            "entra.correct.lifecycle"
+          ],
+          "json": [
+            "json.correct.report-only"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "ReportOnly"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.correct.save-verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "reportOnly": {
+      "requires": [
+        "policy.current.id",
+        "serviceAccounts.group.id",
+        "trustedLocations.ids",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.observe"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.observe"
+      ],
+      "email": []
+    },
+    "readyToEnforce": {
+      "requires": [
+        "policy.current.id",
+        "serviceAccounts.group.id",
+        "trustedLocations.ids",
+        "policy.target.excludeGroups"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
+        }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.owners.pre-enforcement"
+      ]
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "notLicensed": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "verifiedSources": [
+    {
+      "id": "ms-secure-service-accounts",
+      "authority": "Microsoft Learn",
+      "title": "Introduction to securing Microsoft Entra service accounts",
+      "url": "https://learn.microsoft.com/en-us/entra/architecture/secure-service-accounts",
+      "purpose": "Service-account types and preference for managed identities/service principals over user-based service accounts.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-network",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access Policy: Using network signals",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+      "purpose": "Any network/location, selected named locations, public egress IP behavior, and trusted location semantics.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-workload-ca",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access for workload identities",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/workload-identity",
+      "purpose": "Service principals require workload-identity targeting; user-scoped CA does not protect service-principal calls.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-users",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access users, groups, agents, and workload identities",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups",
+      "purpose": "User/group vs workload-identity targeting boundary.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-locations-v1",
+      "authority": "Microsoft Graph",
+      "title": "conditionalAccessLocations resource type - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesslocations?view=graph-rest-1.0",
+      "purpose": "includeLocations/excludeLocations v1.0 schema.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-create-v1",
+      "authority": "Microsoft Graph",
+      "title": "Create conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-policies?view=graph-rest-1.0",
+      "purpose": "v1.0 create endpoint and location-policy example.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-update-v1",
+      "authority": "Microsoft Graph",
+      "title": "Update conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0",
+      "purpose": "Stable-ID update endpoint.",
+      "checkedOn": "2026-09-10"
+    },
+    {
+      "id": "ms-ca-get-v1",
+      "authority": "Microsoft Graph",
+      "title": "Get conditionalAccessPolicy - v1.0",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-get?view=graph-rest-1.0",
+      "purpose": "Stable-ID readback.",
+      "checkedOn": "2026-09-10"
+    }
+  ],
+  "authoringReviewNotes": [
+    "The package targets confirmed user-based service accounts. It must not imply that service-principal or managed-identity activity is protected by this user/group policy.",
+    "Trusted network inputs are tenant-resolved named-location IDs. Do not infer them from observed sign-in history.",
+    "Workflow source locations must be validated before enforcement; an unrecorded cloud/vendor/home egress can break a non-human workload immediately."
+  ],
+  "email": {
+    "recommendation": "recommended",
+    "audience": "application-service-owners-client-it",
+    "applicableStates": [
+      "readyToEnforce"
+    ],
+    "communicationTrigger": "before-enforcement",
+    "purpose": "workflow-impact-notice",
+    "blocks": [
+      "email.owners.pre-enforcement"
+    ]
+  },
+  "integrationGaps": [
+    "IAMAI must map existing directory evidence to distinguish user-based service accounts from service principals before enforcement. Do not claim user-scoped CA covers service principals.",
+    "Workflow-owner/source-network validation remains human evidence when IAMAI has not observed every scheduled or infrequent workflow."
+  ],
+  "mechanicalValidation": {
+    "status": "PASS_WITH_LIMITATION",
+    "jsonParse": "pass-after-sample-binding",
+    "projectionReferences": "pass",
+    "bindings": "pass",
+    "powershellStaticStructure": "pass",
+    "powershellAst": "unavailable-in-authoring-container",
+    "notes": [
+      "No live tenant mutation performed.",
+      "PowerShell AST parsing must run in an environment with PowerShell installed."
+    ]
+  }
+}

@@ -1,0 +1,163 @@
+{
+  "relationship": "prerequisite",
+  "family": "supporting",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "compositeBundle"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "owner approval is required before the irreversible opt-in to passkey profiles when profiles are not already enabled"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "productContract": "Enable the passkey, Microsoft Authenticator, and Temporary Access Pass capabilities needed for the IAMAI baseline without invalidating already-approved security keys.",
+    "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "passkey.profileOptInApproved",
+    "passkey.target.fido2Configuration",
+    "authenticator.target.configuration",
+    "tap.target.configuration"
+  ],
+  "optionalBindings": [
+    "passkey.current.summary",
+    "passkey.current.registeredAaguids",
+    "passkey.target.profileSummary",
+    "passkey.target.allowedAaguids",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [
+        "entra.profile-decision"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision"
+      ],
+      "email": []
+    },
+    "missingOrPartial": {
+      "entra": [
+        "entra.configure-fido2",
+        "entra.configure-authenticator",
+        "entra.configure-tap"
+      ],
+      "json": [
+        "json.fido2",
+        "json.authenticator",
+        "json.tap"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Apply"
+        }
+      ],
+      "aiInfo": [
+        "ai.apply"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [],
+  "microsoftSources": [
+    {
+      "id": "ms-passkey",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-authentication-passkeys-fido2"
+    },
+    {
+      "id": "ms-fido-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/fido2authenticationmethodconfiguration-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-fido-resource",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/fido2authenticationmethodconfiguration?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-authenticator-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethodconfiguration-update?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-tap-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/temporaryaccesspassauthenticationmethodconfiguration-update?view=graph-rest-1.0"
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-prereq-passkey-settings",
+  "title": "Set Up Passkeys to Match the Baseline",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-prereq-passkey-settings/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}

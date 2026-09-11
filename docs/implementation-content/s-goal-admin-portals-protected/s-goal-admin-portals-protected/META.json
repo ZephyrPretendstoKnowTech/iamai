@@ -1,0 +1,118 @@
+{
+  "relationship": "baseline-goal",
+  "family": "policy-resolution",
+  "validationComplexity": "high",
+  "recommendedBatch": "1",
+  "outputs": {
+    "entra": false,
+    "json": false,
+    "powershell": false,
+    "aiInfo": true,
+    "email": false,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "none",
+    "json": {
+      "availability": "none",
+      "kind": "none"
+    },
+    "powershell": {
+      "availability": "none",
+      "provider": "none"
+    },
+    "other": []
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "memberStableId": "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e",
+    "sourceDisplayName": "IAC - ZTCA - GLOBAL \u2013 BLOCK \u2013 Admin Portal",
+    "sourceState": "enabledForReportingButNotEnforced",
+    "conflict": "Product/baseline documentation describes a policy for non-admin users, but the retained exported member targets All users and excludes no administrator by role, user, or dedicated admin group. Acting on either interpretation would invent semantics or risk blocking intended administrators.",
+    "ownerDisposition": "Non-actionable until a reviewed baseline resolves the contradiction. Do not infer a fix from current Microsoft recommendations."
+  },
+  "requiredBindings": [
+    "sourceConflict.summary"
+  ],
+  "optionalBindings": [
+    "tenant.displayName",
+    "sourceConflict.evidence",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "sourceConflict": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.source-conflict"
+      ],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.source-conflict"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.conflict"
+    ],
+    "troubleshooting": [
+      "troubleshooting.conflict"
+    ]
+  },
+  "microsoftSources": [
+    {
+      "id": "ms-admin-portals-resource",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps"
+    },
+    {
+      "id": "ms-ca-users",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups"
+    },
+    {
+      "id": "ms-ca-policy",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesspolicy?view=graph-rest-1.0"
+    }
+  ],
+  "unresolvedIssues": [
+    {
+      "id": "admin-portal-non-admin-scope",
+      "type": "sourceConflict",
+      "severity": "blocking-for-this-step",
+      "summary": "Retained baseline documentation and exported member disagree about administrator exclusion/scope. No implementation is authored until the baseline is corrected/reviewed."
+    }
+  ],
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-goal-admin-portals-protected",
+  "title": "Block the Admin Portals for Non-Admins",
+  "baseline": "jon-hope-pinned",
+  "packagePath": "docs/implementation-content/s-goal-admin-portals-protected/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  }
+}

@@ -1,0 +1,238 @@
+{
+  "schemaVersion": "2.5-compact",
+  "stepId": "s-prereq-trusted-location",
+  "title": "Define the Trusted Network",
+  "baseline": "jon-hope-pinned",
+  "relationship": "prerequisite",
+  "packagePath": "docs/implementation-content/s-prereq-trusted-location/",
+  "sourceFiles": [
+    "META.json",
+    "STEP.md",
+    "CONTENT.md"
+  ],
+  "contentFile": "CONTENT.md",
+  "blockProtocol": "iamai-block-v1",
+  "authoringScope": "additive-source-only",
+  "outputs": {
+    "entra": true,
+    "json": true,
+    "powershell": true,
+    "aiInfo": true,
+    "email": true,
+    "readiness": true,
+    "troubleshooting": true
+  },
+  "implementationProfile": {
+    "entra": "full",
+    "json": {
+      "availability": "full",
+      "kind": "graphObject/graphPatch"
+    },
+    "powershell": {
+      "availability": "full",
+      "provider": "Microsoft.Graph.Authentication"
+    },
+    "other": [
+      "public-IP discovery"
+    ]
+  },
+  "baselineAuthority": {
+    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "productContract": "Only confirmed public egress CIDRs may become trusted; IAMAI must not infer or broaden ranges.",
+    "microsoftCurrent": "IP named locations accept public IPv4/IPv6 CIDRs and can be marked trusted; trusted designation can affect Conditional Access and Identity Protection risk calculations."
+  },
+  "requiredBindings": [
+    "tenant.displayName",
+    "location.target.displayName",
+    "location.target.ipRanges",
+    "location.current.id"
+  ],
+  "optionalBindings": [
+    "location.current.displayName",
+    "location.current.ipRanges",
+    "location.current.isTrusted",
+    "evidence.signInIpSummary",
+    "network.ownerNotes",
+    "dependencies.blockers"
+  ],
+  "projection": {
+    "needsDecision": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.decision"
+      ],
+      "email": [
+        "email.network.confirm"
+      ]
+    },
+    "notApplicable": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.not-applicable"
+      ],
+      "email": []
+    },
+    "missing": {
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
+      "aiInfo": [
+        "ai.create"
+      ],
+      "email": [],
+      "requires": [
+        "location.target.displayName",
+        "location.target.ipRanges"
+      ]
+    },
+    "partial": {
+      "mode": "composeByMismatch",
+      "sharedBefore": {
+        "entra": [
+          "entra.correct.open"
+        ]
+      },
+      "mismatches": {
+        "ranges.exact": {
+          "entra": [
+            "entra.correct.ranges"
+          ],
+          "json": [
+            "json.patch"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct"
+            }
+          ]
+        },
+        "trusted.true": {
+          "entra": [
+            "entra.correct.trusted"
+          ],
+          "json": [
+            "json.patch"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct"
+            }
+          ]
+        },
+        "name.canonical": {
+          "entra": [
+            "entra.correct.name"
+          ],
+          "json": [
+            "json.patch"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "Correct"
+            }
+          ]
+        }
+      },
+      "sharedAfter": {
+        "entra": [
+          "entra.verify"
+        ]
+      },
+      "aiInfo": [
+        "ai.correct"
+      ],
+      "email": []
+    },
+    "verificationRequired": {
+      "entra": [
+        "entra.verify"
+      ],
+      "json": [],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Verify"
+        }
+      ],
+      "aiInfo": [
+        "ai.verify"
+      ],
+      "email": []
+    },
+    "inPlace": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.blocked"
+      ],
+      "email": []
+    }
+  },
+  "supportBlocks": {
+    "readiness": [
+      "readiness.review",
+      "readiness.model"
+    ],
+    "troubleshooting": [
+      "troubleshooting.model"
+    ]
+  },
+  "emailArtifacts": [
+    {
+      "block": "email.network.confirm",
+      "audience": "client contact / network administrators",
+      "state": "needsDecision",
+      "trigger": "before public egress ranges are trusted",
+      "purpose": "obtain authoritative public CIDRs and ownership/change information"
+    }
+  ],
+  "microsoftSources": [
+    {
+      "id": "ms-network",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network"
+    },
+    {
+      "id": "ms-ip-resource",
+      "url": "https://learn.microsoft.com/en-us/graph/api/resources/ipnamedlocation?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-location-create",
+      "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccessroot-post-namedlocations?view=graph-rest-1.0"
+    },
+    {
+      "id": "ms-ip-update",
+      "url": "https://learn.microsoft.com/en-us/graph/api/ipnamedlocation-update?view=graph-rest-1.0"
+    }
+  ],
+  "validation": {
+    "liveTenantExecution": false,
+    "powerShellAst": "not-run-in-authoring-environment-no-pwsh",
+    "status": "SELF-VERIFIED"
+  },
+  "unresolvedIssues": []
+}
