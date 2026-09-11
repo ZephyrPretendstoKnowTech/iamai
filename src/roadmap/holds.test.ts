@@ -297,7 +297,8 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   for (const q of plans()) {
     for (const s of q.r.steps.filter(open)) {
       const board = boardWhenOf(s)
-      assert.equal(board === BOARD.held || (isHeld(s) && /^After /.test(board)), isHeld(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
+      // A baseline that contradicts itself reads Deferred, the rail's own word for it (planBoard.ts boardWhenOf).
+      assert.equal(board === BOARD.held || (isHeld(s) && /^(After |Deferred$)/.test(board)), isHeld(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
     }
   }
 })

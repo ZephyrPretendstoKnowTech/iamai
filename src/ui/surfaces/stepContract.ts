@@ -36,7 +36,9 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
-import { statusOf } from './statusWord.ts'
+import { isHeld } from '../../roadmap/holds.ts'
+import { badgeOf, barKeyOf, planStateOf } from './planState.ts'
+import type { PlanStateKind } from './planState.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { heldByTitle, missingObjects, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
@@ -69,6 +71,8 @@ type ContractWords = {
   whoUnknown: string
   /** The reach is not established because the baseline's own references still wait for a person's answer (resolvePolicy.ts `decisions`). */
   whoUnknownDecision: string
+  /** The words the Plan's one presentation state adds (planState.ts). */
+  stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
   foundInPlace: string
   foundInPlaceNamed: string
@@ -159,6 +163,12 @@ export type ContractState = {
   /** The single word and tone the collapsed row shows (statusWord.ts): a projection, for scanning only. */
   word: string
   tone: StatusTone
+  /** The Plan's one presentation state (planState.ts) the word, the badge, the bar and the rail all read. */
+  kind: PlanStateKind
+  /** Something holds the step (roadmap/holds.ts). */
+  held: boolean
+  /** The opened step's badge: the stage beside the state's own word, never a word the row contradicts. */
+  badge: string
 }
 
 /**
@@ -678,7 +688,9 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const ex = vars ?? stepVars(step, ctx)
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const tenant = tenantNameOf(ctx.snapshot)
-  const word = statusOf(step)
+  // The Plan's one presentation state: the row word, the badge, the bar and the rail read it (planState.ts).
+  const held = isHeld(step)
+  const word = planStateOf(step, held)
   const m = nextMilestone(step)
   const reason = unavailableReason(step)
   const bare: ContractMilestone = { kind: m.kind, label: m.label, at: m.at, gatedBy: m.gatedBy, line: null }
@@ -714,6 +726,9 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       satisfied: step.state.satisfied,
       word: word.word,
       tone: word.tone,
+      kind: word.kind,
+      held,
+      badge: badgeOf(stageOf(step), word, CONTRACT.condition[step.state.condition], step.state.condition === 'healthy'),
     },
     milestone,
     track: stepTrack(step),
@@ -779,6 +794,10 @@ function hardeningOf(step: Step, cs: Record<string, unknown> | undefined, ex: Re
  */
 export function badgeLabel(contract: StepContract): string {
   const s = contract.state
+  // The Plan's one presentation state composes it (planState.ts badgeOf), so the
+  // badge never says a word the row contradicts. A contract handed over without
+  // one composes the two axes the same way it always did.
+  if (typeof s.badge === 'string') return s.badge
   if (s.stage === '') return s.word
   return s.condition === 'healthy' ? s.stage : `${s.stage} · ${s.conditionLabel}`
 }
@@ -1051,10 +1070,14 @@ function blockingTile(c: StepContract): ReadinessTile {
 /** The Readiness region: up to three tiles, and the bar's headline. */
 export function readinessOf(step: Step, c: StepContract): ContractReadiness {
   const lead = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c)].filter((x): x is ReadinessTile => x !== null).slice(0, 2)
-  // A step that could deploy but still has fixes outstanding is not "Ready now":
-  // the bar says what the badge says (statusWord.ts, Needs attention).
+  // The bar says what the row and the badge say (planState.ts): a row reading
+  // Needs attention never opens onto "Ready now", and a step something holds
+  // never reads as ready. Where the state settles nothing of its own, the step's
+  // own action does — and a step that could deploy with fixes outstanding is not
+  // "Ready now" either.
   const standing = standingOf(c)
-  const key = standing === 'deploy' && c.fix.length > 0 ? 'attention' : standing
+  const settled = barKeyOf({ kind: c.state.kind, held: c.state.held })
+  const key = settled ?? (c.state.held && (standing === 'deploy' || standing === 'verify') ? 'blocked' : standing === 'deploy' && c.fix.length > 0 ? 'attention' : standing)
   return { tiles: [...lead, blockingTile(c)], bar: { key, main: R().bar[key] ?? R().bar.none } }
 }
 
@@ -1062,10 +1085,13 @@ export function readinessOf(step: Step, c: StepContract): ContractReadiness {
  * The Next milestone rail: the date where Foundation B holds one, and otherwise
  * the one word for where the step stands, over the milestone's own words.
  */
-export function railOf(c: StepContract): { metric: string; sub: string } {
+export function railOf(c: StepContract, when: string | null = null): { metric: string; sub: string } {
   const m = c.milestone
   const w = CONTRACT.rail
   if (m.at !== null) return { metric: absoluteDate(m.at), sub: m.gatedBy ?? m.label }
+  // Emergency access whose minimum is in place and whose hardening an owner
+  // deferred: never "No change needed" (owner, 2026-09-11).
+  if (c.state.kind === 'deferred') return { metric: CONTRACT.stateWords.hardeningDeferred, sub: m.label }
   // One concise next milestone (owner, 2026-09-11): a held step's rail names the
   // move — resolve its prerequisites, make its decision — and never restates the
   // blocker the row, Readiness and Fix before continuing already carry.
@@ -1074,7 +1100,11 @@ export function railOf(c: StepContract): { metric: string; sub: string } {
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads — never Not scheduled beside a dated row.
   if (c.scheduledOn && (standing === 'deploy' || standing === 'verify')) return { metric: absoluteDate(c.scheduledOn), sub }
-  const metric: Record<string, string> = { conflict: w.deferred, restore: w.setAside, decide: w.decision, preserve: w.noChange, review: w.held, blocked: w.held, resolve: w.held }
+  // Undated and held, the rail says what the row's When column says — the step it
+  // waits on, or Held (planBoard.ts boardWhen) — so the two never read as two answers.
+  const whenWords = (pages.plan as unknown as { when: { after: string; afterPrerequisites: string } }).when
+  const heldMetric = when !== null && (when === w.held || when === whenWords.afterPrerequisites || when.startsWith(whenWords.after.split('{')[0])) ? when : w.held
+  const metric: Record<string, string> = { conflict: w.deferred, restore: w.setAside, decide: w.decision, preserve: w.noChange, review: heldMetric, blocked: heldMetric, resolve: heldMetric }
   return { metric: metric[standingOf(c)] ?? w.undated, sub }
 }
 

@@ -17,9 +17,12 @@ import { stepExportView } from './stepExport.ts'
 // waiting on the operator's own answer is not a step held by work elsewhere.
 // 'Needs attention' is the tenth (owner, 2026-09-11): a ready step whose own
 // checks fail is work on this row, and Ready beside failing checks contradicted it.
-const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Needs decision', 'Needs attention', 'Scheduled', 'Report-only', 'Ready to enforce', 'Enforced', 'Skipped'])
+// 'Needs correction' and 'Minimum in place' are the eleventh and twelfth
+// (correction batch 1, planState.ts): an enforced policy the plan must change and
+// cannot yet, and emergency access whose hardening an owner deferred to Cleanup.
+const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Needs decision', 'Needs attention', 'Needs correction', 'Minimum in place', 'Scheduled', 'Report-only', 'Ready to enforce', 'Enforced', 'Skipped'])
 
-test('every step on every fixture carries exactly one of the ten status words', () => {
+test('every step on every fixture carries exactly one of the status words', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) assert.ok(WORDS.has(statusOf(s).word), `${f.name} ${s.id} → ${statusOf(s).word}`)
   }

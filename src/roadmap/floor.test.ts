@@ -224,6 +224,7 @@ test('a baseline holding both recommendations leaves no floor group to draw', ()
     title: step.title,
     roadmap: { key: 'floor', label: phases.recommended, date: null, secondary: true, start: null },
     status: 'waiting' as const,
+    attention: false,
     workType: 'ca' as const,
     isNext: false,
     order: i,

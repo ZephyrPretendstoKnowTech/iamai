@@ -79,6 +79,7 @@ function itemsFor(name: (typeof FIXTURES)[number]): BoardItem[] {
       title: contentTitle(s),
       roadmap: { key: s.status === 'done' ? 'complete' : `wave-${s.phase}`, label: `Phase ${s.phase}`, date: null, secondary: s.status === 'done', start: null },
       status: statusGroupOf(s, isNext),
+      attention: statusGroupOf(s, false) === 'attention',
       workType: workTypeOf(s.id, (contentStepFor(s) as { kind?: string } | undefined)?.kind ?? null),
       isNext,
       order: i,
@@ -309,7 +310,8 @@ test('the marker is handed in, never re-derived: the projection cannot invent a 
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const isNext = !nextMarked && step\.status === 'ready'/, 'the next marker moved or changed its rule')
   // With the one hold reading beside it (roadmap/holds.ts), handed in the same way.
-  assert.match(plan, /statusGroupOf\(step, isNext, isHeld\(step\)\)/, 'the board no longer groups by the marker')
+  assert.match(plan, /planStateOf\(step, isHeld\(step\)\)/, 'the board no longer reads the one hold reading')
+  assert.match(plan, /statusGroupFor\(planState, isNext\)/, 'the board no longer groups by the marker')
   assert.match(plan, /nextLabel=\{isNext \? PP\.next : null\}/, 'the pill and the group no longer read the same boolean')
 })
 
@@ -388,7 +390,7 @@ test('a group summary counts the rows under it, so the heading cannot disagree w
       for (const g of groupsFor(view, items)) {
         const n = g.items.length
         assert.match(groupSummary(g), new RegExp(`^${n} step${n === 1 ? '' : 's'}`), `${view}/${g.key}: the summary does not count its own rows`)
-        const attention = g.items.filter((i) => i.status === 'attention').length
+        const attention = g.items.filter((i) => i.attention).length
         if (g.key !== 'attention' && attention > 0) assert.match(groupSummary(g), new RegExp(`${attention} need`), `${view}/${g.key}: the summary drops its attention count`)
       }
     }

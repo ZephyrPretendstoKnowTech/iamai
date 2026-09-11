@@ -1195,6 +1195,12 @@
           "memberReview": "{name}: {lifecycle}, and it needs a look",
           "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
           "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's unidentified groups have answers, so no count is shown.",
+          "stateWords": {
+            "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
+            "needsCorrection": "Needs correction",
+            "minimumInPlace": "Minimum in place",
+            "hardeningDeferred": "Hardening deferred"
+          },
           "foundReadiness": "{measure} is {value} today; enforcement waits for {threshold}.",
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
@@ -1293,6 +1299,8 @@
               "resolve": "Held",
               "review": "Held for review",
               "blocked": "Blocked",
+              "correction": "Needs correction",
+              "deferred": "Minimum in place, hardening deferred",
               "conflict": "Deferred",
               "restore": "Set aside",
               "none": "Nothing left to do"
