@@ -46,6 +46,12 @@ export type ReadyWhen = {
    * and the line that states them says so rather than stating a clean window.
    */
   read: boolean
+  /**
+   * True where the policy's readiness is its configuration, not its records: a
+   * User Action policy Microsoft does not evaluate in report-only
+   * (roadmap/evidenceStrategy.ts). Its basis says so, and states no record count.
+   */
+  configuration: boolean
 }
 
 export function readyWhen(step: Step): ReadyWhen | null {
@@ -56,7 +62,7 @@ export function readyWhen(step: Step): ReadyWhen | null {
   // shapes of "not yet": the window has closed and the records are short, or the
   // window is still open.
   const kind = t.readyNow ? 'now' : Date.parse(t.readyOn) <= Date.parse(t.noticedAt) ? 'since' : 'on'
-  return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope, read: t.windowRead }
+  return { kind, date: t.readyOn, days: t.daysInReportOnly, failures: t.failures, seen: t.seenInScope, people: t.activeInScope, read: t.windowRead, configuration: t.evidenceStrategy === 'configuration' }
 }
 
 /**
@@ -72,6 +78,9 @@ export function readyWhen(step: Step): ReadyWhen | null {
  */
 export function readyBasis(ready: ReadyWhen): string | null {
   const TRACK = engine.tracking
+  // A User Action policy's readiness is its configuration: no records were
+  // waited for, so none is counted in the line that states it.
+  if (ready.configuration) return ready.kind === 'now' ? TRACK.readyConfigured : null
   if (ready.kind === 'now') return fillText(TRACK.readyNow, { n: ready.days })
   if (ready.seen === null || ready.people === null) return null
   // A window the records do not reach across has no failure count to state and

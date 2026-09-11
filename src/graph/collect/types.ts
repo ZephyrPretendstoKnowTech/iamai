@@ -30,6 +30,7 @@ export type ConfigSectionKey =
   | 'authMethodsPolicy'
   | 'securityDefaults'
   | 'crossTenantAccess'
+  | 'deviceRegistrationPolicy'
   | 'roleAssignments'
   | 'pimEligibility'
   | 'subscribedSkus'

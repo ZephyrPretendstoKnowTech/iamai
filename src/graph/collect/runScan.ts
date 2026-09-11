@@ -2,6 +2,7 @@
 // §5): spawns the worker, feeds it tokens from MSAL on demand, holds the
 // per-tenant navigator.locks lock, and relays progress events.
 import { getGraphToken } from '../msal.ts'
+import { devScanOverrides } from './devOverrides.ts'
 import { createTokenGate } from './tokenGate.ts'
 import { RoleGapError, coreRoleGap, rolesInToken } from './tokenRoles.ts'
 import type { TenantSnapshot, WorkerOutMessage } from './types.ts'
@@ -52,13 +53,8 @@ export function startScan(tenantId: string, onEvent: (m: WorkerOutMessage) => vo
           }
           onEvent(msg)
         }
-        // ?dev=1&licence=free|p1|p2 simulates a licence profile (SPEC §12).
-        const params = new URLSearchParams(window.location.search)
-        const licence = params.get('dev') === '1' ? params.get('licence') : null
-        const licenceOverride =
-          licence === 'free' || licence === 'p1' || licence === 'p2' ? licence : undefined
-        // ?dev=1&fail=1 forces one 403 and one 429 so the disabled and slow states show (ux-review-06 §34).
-        const devFail = params.get('dev') === '1' && params.get('fail') === '1'
+        // The licence and failure simulations, in dev builds only (devOverrides.ts).
+        const { licenceOverride, devFail } = devScanOverrides(window.location.search, import.meta.env.DEV)
         worker.postMessage({ type: 'start', token, tenantId, licenceOverride, devFail })
       }).finally(() => {
         worker?.terminate()

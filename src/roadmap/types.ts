@@ -505,6 +505,13 @@ export type MemberTracking = {
   failures: number | null
   failuresByUser: { userId: string; count: number }[]
   evidenceQuality: 'enough' | 'thin' | 'none'
+  /**
+   * `configuration` on a member whose policy is scoped to a User Action, which
+   * Microsoft does not evaluate in report-only (roadmap/evidenceStrategy.ts): its
+   * readiness is its configuration, and no sign-in window is waited for or
+   * claimed. Absent on every policy whose readiness is its sign-in records.
+   */
+  evidenceStrategy?: 'configuration'
 }
 
 export type StepTracking = {
@@ -555,6 +562,8 @@ export type StepTracking = {
   readyOn: string | null
   /** The evidence gate: the records since reportOnlyAt show zero failures and every active person in scope at least once. */
   readyNow: boolean
+  /** `configuration` where every member's readiness is its configuration rather than its records (MemberTracking.evidenceStrategy). */
+  evidenceStrategy?: 'configuration'
   /**
    * Whether the sign-in collection covers the whole window the evidence gate is
    * read over — `reportOnlyAt` to this scan — and dates the records it holds

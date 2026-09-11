@@ -171,6 +171,8 @@ export function buildPlanFile(args: {
   revisions?: PlanFile['revisions']
   /** Every picker's saved decision (prompt 52 Part 3); round-trips through the decisions block. */
   stepDecisions?: Record<string, StepDecision>
+  /** Owner confirmations of the checks IAMAI cannot read (roadmap/decisions.ts); round-trip through the decisions block. */
+  confirmations?: Record<string, Record<string, import('./decisions.ts').OwnerConfirmation>>
   /** The name the Tell your people boxes sign with (Plan settings). */
   signature?: string
   /** When Start the plan was pressed (prompt 52 Part 5); the start date above is then anchored. */
@@ -220,6 +222,7 @@ export function buildPlanFile(args: {
       freeze: args.schedule?.freeze ?? null,
       checkpoints: trimCheckpoints(args.checkpoints),
       stepDecisions: args.stepDecisions ?? {},
+      ...(args.confirmations && Object.keys(args.confirmations).length > 0 ? { confirmations: args.confirmations } : {}),
       ...(args.signature ? { signature: args.signature } : {}),
     },
     checkpoints: trimCheckpoints(args.checkpoints),

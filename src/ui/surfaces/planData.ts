@@ -96,6 +96,12 @@ export type PlanData = {
   stepDecisions: Record<string, StepDecision>
   /** A picker's Save: record the decision and regenerate the plan around it. */
   onDecide: (stepId: string, decision: StepDecisionInput) => void
+  /** Owner confirmations of the checks IAMAI cannot read, by step id then prerequisite id: in the plan record and the plan file. */
+  confirmations: Record<string, Record<string, import('../../roadmap/decisions.ts').OwnerConfirmation>>
+  /** Record confirmations for a step, each with the values it was given against. */
+  onConfirm: (stepId: string, confirmed: Record<string, Pick<import('../../roadmap/decisions.ts').OwnerConfirmation, 'basis'>>) => void
+  /** Withdraw a step's confirmations of these prerequisites. */
+  onUnconfirm: (stepId: string, prerequisites: string[]) => void
   /** The name every Tell your people box signs with (Plan settings); in the plan file. */
   signature: string
   setSignature: (signature: string) => void
@@ -330,6 +336,7 @@ export function usePlanData(
       checkpoints: saved.checkpoints ?? [],
       planCreatedAt: saved.planCreatedAt ?? new Date().toISOString(),
       stepDecisions: saved.stepDecisions ?? {},
+      ...(saved.confirmations && Object.keys(saved.confirmations).length > 0 ? { confirmations: saved.confirmations } : {}),
       // What this scan saw of each step's policy, over what the record already
       // held: the one history the next scan cannot work out for itself
       // (roadmap/observation.ts). A scan updates it and never replaces it — the
@@ -340,7 +347,7 @@ export function usePlanData(
       ...(saved.signature ? { signature: saved.signature } : {}),
     }
     if (saved.startedAt) decisions.startedAt = saved.startedAt
-    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
+    const key = JSON.stringify({ skips: decisions.skips, startDate: decisions.startDate, startedAt: decisions.startedAt, band: decisions.band, freeze: decisions.freeze, stepDecisions: decisions.stepDecisions, confirmations: decisions.confirmations, observations: decisions.observations, signature: decisions.signature, cleanup: cleanupRecord(decisions.checkpoints) })
     if (key === lastPersist.current) return
     lastPersist.current = key
     void savePlanRecord(snapshot.tenantId, decisions)
@@ -461,6 +468,32 @@ export function usePlanData(
       setSaved((p) => {
         const base = p ?? { planId, skips: {}, checkpoints: [] }
         return { ...base, stepDecisions: { ...(base.stepDecisions ?? {}), [stepId]: { ...decision, at: new Date().toISOString() } } }
+      })
+      bump()
+    },
+    confirmations: saved?.confirmations ?? {},
+    onConfirm: (stepId, confirmed) => {
+      // A person's word about a check IAMAI cannot read from Microsoft, kept with
+      // the values it was given against (content/implementation/project.ts
+      // prerequisiteBasis): it holds across scans while they hold, and the next
+      // scan that finds them changed no longer counts it.
+      const at = new Date().toISOString()
+      const stamped = Object.fromEntries(Object.entries(confirmed).map(([id, c]) => [id, { at, basis: c.basis }]))
+      setSaved((p) => {
+        const base = p ?? { planId, skips: {}, checkpoints: [] }
+        const all = base.confirmations ?? {}
+        return { ...base, confirmations: { ...all, [stepId]: { ...(all[stepId] ?? {}), ...stamped } } }
+      })
+      bump()
+    },
+    onUnconfirm: (stepId, prerequisites) => {
+      setSaved((p) => {
+        if (!p?.confirmations?.[stepId]) return p
+        const kept = Object.fromEntries(Object.entries(p.confirmations[stepId]).filter(([id]) => !prerequisites.includes(id)))
+        const next = { ...p.confirmations }
+        if (Object.keys(kept).length > 0) next[stepId] = kept
+        else delete next[stepId]
+        return { ...p, confirmations: next }
       })
       bump()
     },

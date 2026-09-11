@@ -42,7 +42,7 @@ export function coreGaps(snapshot: TenantSnapshot): CoreGap[] {
   return gaps
 }
 
-const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'roleAssignments', 'pimEligibility', 'subscribedSkus', 'organization', 'me', 'meMemberOf']
+const CONFIG_KEYS: ConfigSectionKey[] = ['caPolicies', 'namedLocations', 'authStrengths', 'authMethodsPolicy', 'securityDefaults', 'crossTenantAccess', 'deviceRegistrationPolicy', 'roleAssignments', 'pimEligibility', 'subscribedSkus', 'organization', 'me', 'meMemberOf']
 const SOURCE_KEYS: SourceKey[] = ['registrationDetails', 'users', 'devices', 'spActivity', 'authMethods', 'appSignInSummary', 'signInEvidence']
 
 /**

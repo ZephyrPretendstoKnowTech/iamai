@@ -25,6 +25,16 @@ export type StepDecision = { picked?: string[]; option?: string; answers?: Recor
 export type StepDecisionInput = Omit<StepDecision, 'at'>
 
 /**
+ * A person's confirmation of one prerequisite IAMAI cannot read from Microsoft
+ * (an implementation-content package's human-validation check): when it was
+ * given, and a fingerprint of the values it was given against
+ * (content/implementation/project.ts prerequisiteBasis). It holds across scans
+ * while those values are the same, and stops counting — without being deleted —
+ * the moment they change.
+ */
+export type OwnerConfirmation = { at: string; basis: string }
+
+/**
  * Everything a person decided about the plan, persisted between sessions and
  * carried in the plan file. Nothing derived from the tenant lives here.
  */
@@ -50,6 +60,8 @@ export type PlanDecisions = {
   planCreatedAt?: string
   /** Every picker's saved decision, by step id (prompt 52 Part 3). */
   stepDecisions?: Record<string, StepDecision>
+  /** Owner confirmations of the checks IAMAI cannot read, by step id, then by prerequisite id. */
+  confirmations?: Record<string, Record<string, OwnerConfirmation>>
   /**
    * By step id, then by *required policy member* of that step, what the last scan
    * saw of that member's policy: *which deployed object* it was (an opaque

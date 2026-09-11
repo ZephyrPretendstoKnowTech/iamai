@@ -235,7 +235,14 @@ const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wai
  * there is evidence to open. The grid takes its track count from the tiles it
  * is handed, so nothing is padded to three.
  */
-export function ReadinessSection({ readiness, lead, onWhy = null, children = null }: { readiness: ContractReadiness; lead: ReactNode; onWhy?: (() => void) | null; children?: ReactNode }) {
+export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, children = null }: {
+  readiness: ContractReadiness
+  lead: ReactNode
+  onWhy?: (() => void) | null
+  /** Opens the confirmation of a tile's check (a package gate a person confirms); null where the step takes none. */
+  onConfirm?: ((tileKey: string) => void) | null
+  children?: ReactNode
+}) {
   const W = CONTRACT.readiness
   return (
     <section className="step-section readiness-section">
@@ -253,6 +260,11 @@ export function ReadinessSection({ readiness, lead, onWhy = null, children = nul
             </span>
             <strong>{t.value}</strong>
             {t.note && <p>{t.note}</p>}
+            {t.confirm && onConfirm && (
+              <button type="button" className="inline-link readiness-confirm" onClick={() => onConfirm(t.key)}>
+                {t.confirm.satisfied ? CONTRACT.confirm.confirmedControl : CONTRACT.confirm.control}
+              </button>
+            )}
           </li>
         ))}
       </ul>

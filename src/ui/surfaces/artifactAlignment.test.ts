@@ -21,7 +21,7 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepExportView } from './stepExport.ts'
-import { stepContract } from './stepContract.ts'
+import { NO_POLICY_REASONS, stepContract } from './stepContract.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { cleanupText, groundingBundle, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
@@ -166,9 +166,10 @@ test('013.B: where the Plan offers no implementation, no artifact carries one', 
         assert.equal(/"conditions"|includeUsers|grantControls/.test(text), false, `${where}: a policy body reached a prose artifact`)
         assert.equal(/Conditional Access → Policies/.test(text), false, `${where}: a portal instruction reached a prose artifact`)
       }
-      // The completion is what would clear the hold, never the rollout's gates.
-      assert.equal(v.doneWhen.length, 1, `${where}: ${v.doneWhen.join(' | ')}`)
-      assert.equal(/report-only|sign-in failures/i.test(v.doneWhen[0]), false, `${where}: a rollout completion — ${v.doneWhen[0]}`)
+      // The completion is what would clear the hold, then the policy's end state
+      // where there is a policy to state it of; never the rollout's gates.
+      assert.equal(v.doneWhen.length, NO_POLICY_REASONS.has(reason) ? 1 : 2, `${where}: ${v.doneWhen.join(' | ')}`)
+      assert.equal(/report-only|sign-in failures|%/i.test(v.doneWhen.join(' ')), false, `${where}: a rollout completion — ${v.doneWhen.join(' | ')}`)
     }
   }
   // The fixtures really do exercise more than one way for work to be held.

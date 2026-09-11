@@ -10,7 +10,7 @@ import type { BaselineResult } from '../baseline.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
-import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
+import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
 import { app, engine, pages, phases } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
@@ -196,7 +196,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // row's own value, with Held exactly where roadmap/holds.ts says the step is
     // held — never for a step merely sequenced after another.
     const when = boardWhenOf(step, group.start)
-    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} when={when} waveStart={group.start} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} when={when} waveStart={group.start} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   for (const [wi, w] of waveRows.entries()) {
@@ -463,7 +463,9 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
   )
 }
 
-function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, onScan }: {
+const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
+
+function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   isNext: boolean
   /**
@@ -495,6 +497,9 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
   directory: DirectoryEvidence
   decision: StepDecision | null
   onDecide: (decision: StepDecisionInput) => void
+  confirmations: Readonly<Record<string, OwnerConfirmation>>
+  onConfirm: (confirmed: Record<string, Pick<OwnerConfirmation, 'basis'>>) => void
+  onUnconfirm: (prerequisites: string[]) => void
   onScan?: (returnTo: string) => void
 }) {
   const status = statusOf(step)
@@ -529,6 +534,9 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
           onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
           decision={decision}
           onDecide={onDecide}
+          confirmations={confirmations}
+          onConfirm={onConfirm}
+          onUnconfirm={onUnconfirm}
         />
       )}
     </>

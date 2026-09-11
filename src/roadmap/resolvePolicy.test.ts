@@ -711,9 +711,11 @@ test('an unresolved step is not scheduled and carries nothing that implies a rol
   assert.ok(!r.steps.some((x) => x.id === step.id && x.events), 'and no calendar entry can be made from it')
   const view = stepExportView(step, ctx)
   // The completion is the one the screen shows, and on a policy waiting on an
-  // object that is what would clear the wait — not the rollout's gates.
+  // object that is what would clear the wait, then the policy's end state —
+  // never the rollout's gates.
   assert.deepEqual(view.doneWhen, stepContract(step, ctx).doneWhen, "the completion is not the screen's")
-  assert.equal(view.doneWhen.length, 1, `one resolution completion: ${view.doneWhen.join(' | ')}`)
+  assert.equal(view.doneWhen.length, 2, `the resolution and the end state: ${view.doneWhen.join(' | ')}`)
+  assert.equal(view.doneWhen[1], 'The policy is enforced in Contoso Pty Ltd.', 'the end state, not the removal of the blocker')
   assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout completion leaked: ${view.doneWhen.join(' | ')}`)
   assert.equal(view.ifWrong, null, 'no rollback instructions')
   assert.equal(view.dates, null, 'no rollout dates')

@@ -58,7 +58,7 @@ type Words = {
     limitsMore: string
     limitsLink: string
     meta: { people: string; policies: string; steps: string }
-    complete: { state: string; again: string }
+    complete: { state: string; again: string; degraded: string }
     gaps: { state: string; lead: string; leadFirst: string; notRead: string; ask: string; learn: { label: string; url: string } }
     role: { state: string; lead: string; row: string; ask: string }
     ready: { state: string; note: string; start: string }
@@ -344,7 +344,8 @@ export function baselineTile({
  */
 export type ScanCounts = { people: number; policies: number; steps: number }
 export type ScanInput =
-  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null }
+  /** `degraded`: the scan finished, but a material source (sign-in proof) was not read, so MFA readiness is not measured. */
+  | { kind: 'complete'; at: string; now?: number; counts?: ScanCounts | null; degraded?: boolean }
   | { kind: 'gaps'; unread: string[]; lastScan: { at: string } | null }
   | { kind: 'role'; upn: string; gap: RoleGap }
   | { kind: 'scanning'; lane: string; elapsed: string }
@@ -389,6 +390,7 @@ export function scanTile(input: ScanInput): ScanTile {
         state: fillText(S.complete.state, { age: scanAgeWords(input.at, input.now) }),
         tone: 'done',
         meta: c ? [{ value: String(c.people), label: S.meta.people }, { value: String(c.policies), label: S.meta.policies }, { value: String(c.steps), label: S.meta.steps }] : undefined,
+        ...(input.degraded ? { note: S.complete.degraded } : {}),
         actions: [again],
       }
     }

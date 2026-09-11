@@ -205,7 +205,8 @@
           "weakened": "{name} was weakened after {since}; it no longer meets the baseline",
           "narrowed": "{name} covers fewer people than it did on {since}",
           "goal": "changed since {since}: the goal is {what} again"
-        }
+        },
+        "readyConfigured": "ready now: its report-only configuration matches the plan, and Microsoft does not evaluate this user action in report-only"
       },
       "skip": {
         "cannotSkip": "This one cannot be skipped: emergency access is what makes every other change reversible.",
@@ -315,7 +316,10 @@
           "unread": "a condition IAMAI does not read"
         }
       }
-    }
+    },
+    "policyDoneWhenConfiguration": [
+      "The policy is in report-only with the configuration the plan asked for; Microsoft does not evaluate this user action in report-only, so no sign-in records are waited for."
+    ]
   },
   "phases": {
     "first": "Preparation",
@@ -469,7 +473,8 @@
         },
         "complete": {
           "state": "complete · {age}",
-          "again": "Scan again"
+          "again": "Scan again",
+          "degraded": "Sign-in proof not read · MFA readiness not measured"
         },
         "gaps": {
           "state": "finished with gaps · no plan built",
@@ -765,7 +770,8 @@
         "filtered": "Filtered to the {n} people {step} is waiting on.",
         "unknown": "{step} is waiting on sign-in readiness, and this scan could not work out who.",
         "back": "← Back to the step"
-      }
+      },
+      "summaryUnmeasured": "Readiness not measured for {active} active people: this scan holds no sign-in proof."
     },
     "export": {
       "h1": "Export",
@@ -1286,13 +1292,24 @@
               "bindingMissing": [
                 "Nothing to submit yet",
                 "IAMAI does not yet hold every value this change needs, so no artifact is produced."
+              ],
+              "confirmationsPending": [
+                "Confirm the checks before enforcement",
+                "IAMAI cannot read these from Microsoft. Confirm them under Readiness, and the enforcement artifacts appear here."
+              ],
+              "packageFault": [
+                "Nothing to submit yet",
+                "This step's implementation content could not be projected safely, so no artifact is offered."
+              ],
+              "correctionUnknown": [
+                "Nothing to submit yet",
+                "IAMAI found a difference on this policy that the step’s corrections do not cover, so no partial correction is offered."
               ]
             },
             "email": "Email",
             "sourceUpdated": "Source updated {date}",
             "troubleshooting": "Troubleshooting",
-            "powershellMode": "Run with -Mode {mode}",
-            "powershellCorrections": "Run with -Mode {mode} -Corrections {corrections}"
+            "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
           },
           "rail": {
             "$comment": "The Next milestone rail's metric where Foundation B holds no date for the milestone (docs/design/approved/anatomy/plan-step-v1.html V3–V5 `.metric`). The sub-line under it is the milestone's own words.",
@@ -1324,7 +1341,23 @@
             "doNot": "Do not",
             "then": "Then",
             "sources": "Microsoft references"
-          }
+          },
+          "confirm": {
+            "$comment": "A person's confirmation of a check IAMAI cannot read from Microsoft (an implementation-content package's human-validation prerequisite). Opened from the Readiness tile that states the check; the tile's own line is the package author's.",
+            "control": "Confirm",
+            "confirmedControl": "Confirmed",
+            "eyebrow": "Owner confirmation",
+            "body": "IAMAI cannot read this from Microsoft. Confirm it only once you have checked it yourself: the confirmation stays with this plan until what it was given against changes.",
+            "confirm": "I have checked this",
+            "remove": "Remove confirmation",
+            "cancel": "Cancel",
+            "confirmedOn": "Confirmed {date}."
+          },
+          "nextHeld": "Next: held {condition}.",
+          "nextEnforceHeld": "Next: turning it on waits {condition}.",
+          "nextUntilAfter": "until {step} is finished",
+          "nextUntilWhen": "until {condition}",
+          "doneHeldEnd": "The policy is enforced in {tenant}."
         },
         "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",
         "mfaReadinessHoldUnknown": "This scan could not work out who cannot meet this step's sign-in requirement yet.",

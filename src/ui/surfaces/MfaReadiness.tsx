@@ -57,6 +57,8 @@ type PageWords = {
   summaryEyebrow: string
   summary: string
   summaryNone: string
+  /** The headline where the gate could not be measured: no sign-in proof was read (never "0 of N"). */
+  summaryUnmeasured: string
   summarySub: string
   states: Record<ReadinessState, { title: string; stat?: string; hint?: string; aria?: string }>
   strip: { label: string; gate: string; gateLine: string; gateMore: string; gateMet: string; gateNotMeasured: string; gateLink: string; rollout: string; rolloutLine: string; rolloutWithout: string; rolloutNone: string }
@@ -175,7 +177,9 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
     )
   }
   const { facts, counts, passkeys } = view
-  const summary = facts.active > 0 ? fillText(T.summary, { ready: counts.ready, active: facts.active }) : T.summaryNone
+  // A gate this scan could not measure is not "0 of N are Ready": nobody's proof
+  // was read, which is Unknown for everyone rather than Ready for no one.
+  const summary = facts.active === 0 ? T.summaryNone : gate?.unmeasured === 'unreadable' ? fillText(T.summaryUnmeasured, { active: facts.active }) : fillText(T.summary, { ready: counts.ready, active: facts.active })
   const required = facts.active > 0 ? readyNeeded(facts.active, READINESS_THRESHOLD_MFA_PERCENT) : 0
   const more = Math.max(0, required - counts.ready)
   // A gate the scan could not measure is not stated as a shortfall (Step 7).

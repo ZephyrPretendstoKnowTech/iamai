@@ -763,7 +763,7 @@ test('005.14: the screen renders its What-to-do instructions from the one select
 
 // ---- 15. and the held instruction is the one that would undo the protection ----
 
-test('005.15: a Report-only policy whose content turns off the setting it replaces offers that instruction only while the change is due', () => {
+test('005.15: a Report-only User Action policy whose content turns off the setting it replaces offers that instruction with the change it belongs to, and never while nothing is due', () => {
   const { due, observing } = observingWithAPrerequisite()
   const cs = contentStepFor(due.step) as Record<string, any>
   // The step exists to be the destructive case: its first instruction turns off
@@ -784,42 +784,36 @@ test('005.15: a Report-only policy whose content turns off the setting it replac
   assert.ok(due.view(due.step).whatToDo.some((l) => PREREQ_LINE.test(l)), 'and the export carries it')
 
   // The plan then deploys that same policy, and it sits in report-only with two
-  // days behind it: healthy, nothing wrong with it, and the only thing left to
-  // submit is the enforcement it has not earned.
+  // days behind it. It is a User Action policy (Register or join devices), which
+  // Microsoft does not evaluate in report-only (roadmap/evidenceStrategy.ts): no
+  // window of its records is waited for, and its readiness is its configuration.
+  // Read back holding exactly what the plan asked for, with nothing holding the
+  // step, it is ready to enforce — and what is due now is the enforcement.
   const step = observing.step
-  assert.equal(step.state.lifecycle, 'report-only')
+  const t = step.tracking!
+  assert.equal(t.evidenceStrategy, 'configuration')
+  assert.equal(t.failures, null, 'a record count was claimed for a policy Microsoft does not evaluate in report-only')
+  assert.equal(step.state.lifecycle, 'ready-to-enforce')
   assert.equal(step.state.condition, 'healthy')
   assert.deepEqual(step.blockers, [])
   assert.equal(unavailableReason(step), null)
-  assert.equal(enforcementUnearned(step), true)
-  const t = step.tracking!
-  assert.equal(t.evidenceQuality, 'enough')
-  assert.equal(t.failures, 0)
-  assert.equal(t.readyNow, false)
-  assert.ok(t.seenInScope! < t.activeInScope!, `people in scope are still unseen (${t.seenInScope} of ${t.activeInScope})`)
+  assert.equal(enforcementUnearned(step), false)
 
-  // So the screen withholds it. Telling the operator to turn off the setting the
-  // policy replaces, while the replacement is only watching, would leave device
-  // registration with neither.
+  // So the instruction to turn off the setting the policy replaces comes with the
+  // enforcement it belongs to — the same change, in the same place — and the
+  // export carries both.
   const screen = instructionsOf(step, observing.ctx)
-  assert.equal(screen.held, true)
-  assert.equal(screen.portal, null)
-  assert.deepEqual(screen.before, [], 'the screen still instructs the tenant change')
-  assert.deepEqual(screen.steps, [])
-  assert.equal(jsonOffered(step), false)
-  assert.deepEqual(stepOperations(step), [])
+  assert.equal(screen.held, false)
+  assert.ok(screen.before.some((l) => PREREQ_LINE.test(l)), `the prerequisite is not offered with the enforcement: ${JSON.stringify(screen.before)}`)
+  assert.equal(jsonOffered(step), true)
+  assert.ok(observing.view(step).whatToDo.some((l) => PREREQ_LINE.test(l)), 'and the export carries it')
 
-  // And the export says exactly what the screen says: the contract's action,
-  // which is to keep watching, and nothing else.
-  const v = observing.view(step)
-  const c = stepContract(step, observing.ctx)
-  assert.deepEqual(v.whatToDo, [c.whatToDo.text])
-  assert.doesNotMatch(v.whatToDo.join(' | '), PREREQ_LINE)
-  assert.match(v.whatToDo.join(' | '), /report-only/i)
-  assert.doesNotMatch(v.whatToDo.join(' | '), DOING)
-  // Nor does any other artifact a person or a tool reads carry it.
-  const said = [...stepLines(step, observing.ctx), ...v.doneWhen, v.dates ?? '', stepContext(step, observing.view)].join(' | ')
-  assert.doesNotMatch(said, PREREQ_LINE, `an artifact still states the prerequisite: ${said}`)
+  // And while nothing is due — the same deployed policy held by a correction its
+  // configuration still owes — the screen still withholds it: turning off the
+  // setting while its replacement is not the policy the plan asked for would leave
+  // device registration with neither.
+  const drifted = { ...step, state: { ...step.state, lifecycle: 'report-only' as const, condition: 'review-required' as const }, status: 'in-report-only' as const }
+  assert.deepEqual(instructionsOf(drifted, observing.ctx).before.filter((l) => PREREQ_LINE.test(l)), [], 'the prerequisite is offered while the policy is held for review')
 })
 
 // ---- 16. the plan carries no placement for the step at all ----

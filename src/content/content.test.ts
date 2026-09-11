@@ -85,6 +85,15 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // turned an existing policy on. Both need a scan that found the policy in
   // report-only and ready (doneWhen.ts, stepExport.ts ifWrongLineFor).
   '.shared.policyDoneWhenEnforced[0]',
+  // The completion of a User Action policy, whose readiness is its configuration
+  // because Microsoft does not evaluate it in report-only (roadmap/evidenceStrategy.ts,
+  // doneWhen.ts): the review page's example plans create no User Action policy.
+  '.shared.policyDoneWhenConfiguration[0]',
+  // Connect's note and MFA Readiness's headline for a scan that holds no sign-in
+  // proof (scoring/fromSnapshot.ts signInProofRead): the review page's example
+  // scan read its proof.
+  '.pages.connect.scan.complete.degraded',
+  '.pages.readiness.summaryUnmeasured',
   '.shared.enforceIfWrong',
   // The Dates line of a policy already in report-only with nothing left to
   // submit but the enforcement its window has not earned (stepExport.ts

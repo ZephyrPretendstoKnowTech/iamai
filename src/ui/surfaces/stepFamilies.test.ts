@@ -20,6 +20,7 @@ import { CONTRACT, FOOTER, eyebrowOf, implementationEmptyOf, implementationIsCur
 import type { StepFamily } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
+import { enforcesOnRun, operationsOf } from '../../roadmap/operations.ts'
 
 const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
 const SECTIONS = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
@@ -215,7 +216,18 @@ test('the capability is untouched: the same channels come back when the conditio
   // `implementation.offered` is not mutated — so the proof is that a step's
   // capability is identical either side of the gate, and only the current
   // offering differs.
-  const held = audited().filter((a) => a.contract.implementation.offered && a.step.state.condition !== 'healthy')
+  // A held step whose own next action IS the report-only preparation offers it
+  // (owner decision, Step 5: a policy created in report-only denies nobody, and
+  // "Nothing to submit yet" under "Create the policy in report-only now" was
+  // the two-instructions contradiction). Every such step says so as its action,
+  // has nothing deployed, and submits nothing that enforces on arrival.
+  const preparing = audited().filter((a) => a.contract.implementation.offered && a.step.state.condition !== 'healthy' && implementationIsCurrent(a.step))
+  for (const a of preparing) {
+    assert.equal(a.contract.whatToDo.kind, 'deploy', `${a.fixture}/${a.step.id}: a held step offers its implementation under an action that is not the preparation`)
+    assert.equal(a.step.state.lifecycle, 'not-deployed', `${a.fixture}/${a.step.id}: a deployed held policy offers its implementation`)
+    assert.equal(operationsOf(a.step).some(enforcesOnRun), false, `${a.fixture}/${a.step.id}: a held step offers a change that enforces on arrival`)
+  }
+  const held = audited().filter((a) => a.contract.implementation.offered && a.step.state.condition !== 'healthy' && !implementationIsCurrent(a.step))
   assert.ok(held.length > 0, 'no fixture holds a step that has artifacts, so this proves nothing')
   for (const a of held) {
     assert.equal(a.contract.implementation.offered, true, `${a.fixture}/${a.step.id}: the gate mutated the capability`)
@@ -259,6 +271,12 @@ test('the step gates the display and never the artifact', () => {
 test('a held policy offers no implementation, and its region says why at the weight of the reason', () => {
   for (const a of audited()) {
     if (a.step.state.condition === 'healthy') continue
+    // The owner's one exception (Step 5): the report-only preparation of a held,
+    // undeployed policy, offered under the action that says so.
+    if (implementationIsCurrent(a.step)) {
+      assert.equal(a.contract.whatToDo.kind, 'deploy', `${a.fixture}/${a.step.id}: a held step offers its deployment under another action`)
+      continue
+    }
     assert.equal(implementationIsCurrent(a.step), false, `${a.fixture}/${a.step.id}: a held step offers its deployment`)
     // The no-action box names the reason; "nothing to generate" is for a step
     // that describes no policy, never for one something is holding.
