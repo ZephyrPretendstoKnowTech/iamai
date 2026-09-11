@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { normalizeProjection, packageWarnings, parseBlocks, validatePackage, withholdInvalid } from './protocol.ts'
 import type { CompiledPackage, PackageMeta } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
-import { NO_ACTION_STATES, NO_RUNTIME, packageReadiness, projectImplementation, projectSafely, readinessSafely, troubleshootingFor, troubleshootingSafely } from './project.ts'
+import { NO_ACTION_STATES, NO_RUNTIME, bindText, packageReadiness, projectImplementation, projectSafely, readinessSafely, troubleshootingFor, troubleshootingSafely } from './project.ts'
 import { packageSourceLine } from '../../ui/surfaces/stepPackage.ts'
 
 const block = (meta: Record<string, unknown>, body = 'Text.'): string => `@@IAMAI-BEGIN ${JSON.stringify(meta)}\n${body}\n@@IAMAI-END\n`
@@ -209,4 +209,12 @@ test('a state with nothing to implement projects nothing, whatever the package a
   assert.deepEqual(validatePackage(pkg), [])
   assert.deepEqual([...NO_ACTION_STATES].sort(), ['blocked', 'inPlace', 'needsDecision', 'notLicensed', 'sourceConflict'])
   for (const state of NO_ACTION_STATES) assert.deepEqual(projectImplementation(pkg, state, {}), { state, hold: null, channels: [] })
+})
+
+test('an optional line’s omit marker is resolved in either spelling: the marker goes with a value, the line goes without one', () => {
+  for (const marker of ['[omit when unavailable]', '[omit if unavailable]', '[omit this line when unavailable]']) {
+    const text = `- Tenant: {{tenant.displayName}} ${marker}\n- Next.`
+    assert.deepEqual(bindText(text, { 'tenant.displayName': 'Contoso' }, new Set()), { text: '- Tenant: Contoso\n- Next.' }, marker)
+    assert.deepEqual(bindText(text, {}, new Set()), { text: '- Next.' }, marker)
+  }
 })

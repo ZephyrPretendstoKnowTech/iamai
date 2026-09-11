@@ -73,8 +73,8 @@ const emptyHold = (): Hold => ({ missingBindings: [], unknownMismatches: [], pen
  */
 export const NO_ACTION_STATES: ReadonlySet<PackageState> = new Set<PackageState>(['inPlace', 'blocked', 'needsDecision', 'sourceConflict', 'notLicensed'])
 
-/** The authored marker on a line that disappears when its optional value is unavailable. */
-const OMIT = /\s*\[omit (?:this line )?when unavailable\]/g
+/** The authored marker on a line that disappears when its optional value is unavailable, in either of the library's spellings ("when" and "if"). */
+const OMIT = /\s*\[omit (?:this line )?(?:when|if) unavailable\]/g
 
 function formatValue(v: unknown): string {
   if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(', ')
