@@ -8,6 +8,7 @@
 // old pin, the author's tenant or the package's own block names.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { NO_RUNTIME, packageReadiness, projectSafely } from './project.ts'
@@ -43,6 +44,20 @@ function missingStep() {
   const { runtime } = packageRuntime(PKG, state, bindings, {})
   return { step, bindings, state, runtime, projection: projectSafely(PKG, state, bindings, runtime) }
 }
+
+test('the package states no retained old pin as current and claims no exclusion resolved before it is', () => {
+  const dir = 'docs/implementation-content/s-goal-device-registration-mfa'
+  const sources = ['STEP.md', 'CONTENT.md', 'META.json'].map((file) => [file, readFileSync(`${dir}/${file}`, 'utf8')] as const)
+  for (const [file, text] of [...sources, ['registry', Object.values(PKG.blocks).map((b) => b.text).join('\n')] as const]) {
+    assert.doesNotMatch(text, /retained pinned|retained pin\b|historical pinned/i, `${file} describes a retained pin as the target`)
+    assert.doesNotMatch(text, /already resolved/i, `${file} claims values are resolved before the answers they wait on`)
+  }
+  // The old pin survives only as the history of the re-authoring.
+  const meta = JSON.parse(sources[2][1]) as { baselineAuthority: { pinCommit: string; reauthored: { from: string } } }
+  assert.equal(meta.baselineAuthority.pinCommit, PINNED.commit)
+  const mentions = sources.flatMap(([file, text]) => text.split('\n').filter((l) => l.includes(OLD_PIN)).map((l) => `${file}: ${l.trim().slice(0, 60)}`))
+  assert.equal(mentions.length, 2, mentions.join('\n'))
+})
 
 test('the package names the pin the build carries, the member the goal maps to, and the requirement the member now asks for', () => {
   const authority = PKG.meta.baselineAuthority as { pinCommit: string; memberStableId: string; reauthored: { from: string }; authenticationStrength: { requirement: string[]; binding: string } }

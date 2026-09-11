@@ -447,13 +447,11 @@ Return only the Create-in-Report-only action and read-back verification.
 **Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
-Help correct only the IAMAI-classified mismatch(es) on the existing Cloud Sync named location/workload policy.
+Help correct only the IAMAI-classified mismatch(es) on the existing Cloud Sync workload policy.
 
 CURRENT STATE
 Policy ID: {{policy.current.id}}
 Policy mismatches: {{policy.current.semanticMismatches}}
-Named-location ID: {{location.current.id}}
-Named-location mismatches: {{location.current.semanticMismatches}}
 
 TARGET STATE
 Approved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; Report-only during material correction.

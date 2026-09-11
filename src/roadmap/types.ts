@@ -121,7 +121,21 @@ export type StepResolution = {
  * policies name; on the source-references step, every one the plan's open
  * policies name, with the steps that name it (`stepIds`).
  */
-export type SourceReference = { id: string; kind: 'group' | 'namedLocation'; answer: 'pending' | 'mapped' | 'omitted'; stepIds?: string[] }
+export type SourceReference = {
+  id: string
+  kind: 'group' | 'namedLocation'
+  answer: 'pending' | 'mapped' | 'omitted'
+  stepIds?: string[]
+  /**
+   * The part the reference plays in the baseline (interpretation.ts referenceUsage):
+   * an exception to who its policies reach, who they reach, or both. What leaving
+   * it out does depends on it, so the answer is asked with it.
+   */
+  role?: 'exclude' | 'include' | 'both'
+  /** How many of the baseline's policies name it, and how many policies the baseline has. */
+  baselinePolicies?: number
+  baselineTotal?: number
+}
 
 export type Action = {
   kind: StepKind
@@ -410,6 +424,14 @@ export type Step = {
    * report-only. Null on a step that creates no policy.
    */
   reportOnlyAt?: string | null
+  /**
+   * Where the finished plan schedules this step (roadmap/stepSchedule.ts): its
+   * class, the transition and day of its next milestone, its span and its phase.
+   * Written once on the finished plan (roadmap/forecast.ts settleForecast); the
+   * row's When, the phase it sits in, the phase's range, the rail and Waiting all
+   * read it. Absent on a step no finished plan carries.
+   */
+  scheduled?: import('./stepSchedule.ts').StepSchedule
   /** The plain-language title; `title` stays the technical name (§3.1). */
   plainTitle: string
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */

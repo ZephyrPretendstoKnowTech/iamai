@@ -12,7 +12,17 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import type { WaveSchedule } from '../../roadmap/schedule.ts'
 import { inWave } from '../../derive/phases.ts'
+
+/**
+ * The phases the Plan and the printed plan draw: the finished plan's phases, read
+ * off each step's scheduling result (roadmap/stepSchedule.ts phasesOf), or the
+ * schedule's own waves on a plan nothing has settled.
+ */
+export function planPhases(schedule: { waves: WaveSchedule[]; phases?: WaveSchedule[] }): WaveSchedule[] {
+  return schedule.phases ?? schedule.waves
+}
 
 /** The steps a set of waves carries. */
 export function scheduledIds(waves: readonly { stepIds: string[] }[]): Set<string> {

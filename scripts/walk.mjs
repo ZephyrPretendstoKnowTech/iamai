@@ -1647,8 +1647,10 @@ async function walkFixture(fx) {
     // there is no change to land until what holds it is settled, and the step
     // says what that is (`escapeHeld`, the same set the passkey email reads).
     const writable = (i) => !escapeHeld.has(rowTitles[i])
-    const reportOnly = rowStatuses.map((s, i) => (s === 'Report-only' ? rowWhens[i] : null)).filter((w) => w !== null)
-    const reportOnlyWritable = rowStatuses.map((s, i) => (s === 'Report-only' && writable(i) ? rowWhens[i] : null)).filter((w) => w !== null)
+    // A policy being watched that something holds reads "Report-only · Blocked" (ui/surfaces/planState.ts): still a Report-only row.
+    const inReportOnly = (s) => s === 'Report-only' || /^Report-only · /.test(s || '')
+    const reportOnly = rowStatuses.map((s, i) => (inReportOnly(s) ? rowWhens[i] : null)).filter((w) => w !== null)
+    const reportOnlyWritable = rowStatuses.map((s, i) => (inReportOnly(s) && writable(i) ? rowWhens[i] : null)).filter((w) => w !== null)
     if (reportOnly.length === 0) add('P0', `${fx.name}: no plan row reads Report-only; the demo has a policy in report-only`)
     if (!fx.week2 && reportOnlyWritable.length > 0 && !reportOnlyWritable.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
     if (fx.week2) {

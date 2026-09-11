@@ -280,7 +280,7 @@ export function incompleteFieldsOf(step: Step, op: PolicyOperation | null): Read
 /** Whether an open field (`incompleteFieldsOf`) is this field, inside it, or contains it. */
 export const touches = (open: ReadonlySet<string>, field: string): boolean => [...open].some((f) => f === field || f.startsWith(`${field}.`) || field.startsWith(`${f}.`))
 
-type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
+type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown; excludeUsers?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
 
 /**
  * The package bindings IAMAI actually holds for a step, and only those, from the
@@ -342,6 +342,10 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const excl = users?.excludeGroups
   if (Array.isArray(excl)) put('policy.target.excludeGroups', excl.map(String))
   else if (target === null && exclusionsGroupId) put('policy.target.excludeGroups', [exclusionsGroupId])
+  // The target's excluded accounts, from the same resolved users as its excluded
+  // groups: an empty list is the baseline's own "nobody", and a users field still
+  // waiting on a reference binds nothing (`settled` above).
+  if (Array.isArray(users?.excludeUsers)) put('policy.target.excludeUsers', users.excludeUsers.map(String))
   if (Array.isArray(users?.includeUsers)) put('policy.target.includeUsers', users.includeUsers.map(String))
   else if (target === null && step.kind === 'prerequisite') putSome('policy.target.includeUsers', step.population.ids)
   put('policy.target.includeRoles', Array.isArray(users?.includeRoles) ? users.includeRoles.map(String) : undefined)

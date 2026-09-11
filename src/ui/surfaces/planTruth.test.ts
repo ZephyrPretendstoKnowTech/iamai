@@ -23,6 +23,8 @@ import { planFinish } from '../../derive/finish.ts'
 import { FINISH } from '../../copy/statements.ts'
 import { content, engine } from '../../content/content.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { demoTenant } from '../demo.ts'
@@ -71,8 +73,16 @@ test('Step 5: a held step still handing over its report-only create says to crea
         // Foundation A's safe preparation, kept (owner decision): the walk-through and the action agree.
         assert.ok(portal !== null && portal.some((l) => CREATE_WALKTHROUGH.test(l)), `${where}: the create it offers`)
         assert.notEqual(c.whatToDo.text, engine.milestone.resolve, `${where}: "Clear what this step is waiting on" above a create walk-through`)
-        assert.match(c.whatToDo.text, /^Create the policy in report-only now; /, `${where}: "${c.whatToDo.text}"`)
-        assert.equal(nextMilestone(s).at, null, `${where}: still no date`)
+        // Readiness gates enforcement, not creation (owner decision, 2026-09-11): where
+        // the plan schedules the create, the action names that day.
+        const scheduled = s.scheduled ? scheduleOf(s) : null
+        if (scheduled?.class === 'scheduled') {
+          assert.match(c.whatToDo.text, /^Create the policy in report-only on /, `${where}: "${c.whatToDo.text}"`)
+          assert.equal(nextMilestone(s).at, scheduled.at, `${where}: the day it is created`)
+        } else {
+          assert.match(c.whatToDo.text, /^Create the policy in report-only now; /, `${where}: "${c.whatToDo.text}"`)
+          assert.equal(nextMilestone(s).at, null, `${where}: still no date`)
+        }
         offering += 1
       } else if (!c.implementation.offered) {
         assert.deepEqual(stepOperations(s), [], `${where}: operations for the JSON, PowerShell and Download tabs`)
@@ -85,7 +95,9 @@ test('Step 5: a held step still handing over its report-only create says to crea
   // Where a readiness threshold is what waits, the line names it.
   const g = plans()[2]
   const mfa = g.r.steps.find((s) => s.id === 's-goal-mfa-all-users')!
-  assert.equal(stepContract(mfa, g.ctx(mfa)).whatToDo.text, fillText(engine.milestone.prepareHeld, { measure: mfa.action.readinessGate!.measure, threshold: mfa.action.readinessGate!.threshold }))
+  const mfaDay = mfa.scheduled && scheduleOf(mfa).class === 'scheduled' ? scheduleOf(mfa).at : null
+  const gate = { measure: mfa.action.readinessGate!.measure, threshold: mfa.action.readinessGate!.threshold }
+  assert.equal(stepContract(mfa, g.ctx(mfa)).whatToDo.text, mfaDay ? fillText(engine.milestone.prepareScheduled, { ...gate, date: absoluteDate(mfaDay) }) : fillText(engine.milestone.prepareHeld, gate))
 })
 
 // ---- 2. Impact is who the step reaches ----

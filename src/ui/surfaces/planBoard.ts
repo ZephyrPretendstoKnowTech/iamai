@@ -32,6 +32,7 @@ import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import { planStateOf } from './planState.ts'
 import type { PlanState, PlanStateFacts } from './planState.ts'
 import { CONTRACT } from './stepContract.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 
 /** The When column's words where a row has no date or reason of its own (owner, 2026-09-11): the column is never blank. */
 export const WHEN = (pages.plan as unknown as { when: { complete: string; notScheduled: string; after: string; afterPrerequisites: string } }).when
@@ -83,7 +84,9 @@ export const BOARD = {
     upnext: 'Up next',
     ready: 'Ready',
     progress: 'In progress',
+    scheduled: 'Scheduled',
     waiting: 'Waiting',
+    skipped: 'Skipped',
     complete: 'Complete',
   },
   type: {
@@ -107,7 +110,7 @@ export type WorkType = keyof typeof BOARD.type
  * ready work that is NOT the recommendation needs a heading of its own — and it
  * takes production's word for what it is rather than a new one.
  */
-export const STATUS_ORDER: StatusGroup[] = ['attention', 'upnext', 'ready', 'progress', 'waiting', 'complete']
+export const STATUS_ORDER: StatusGroup[] = ['attention', 'upnext', 'ready', 'progress', 'scheduled', 'waiting', 'skipped', 'complete']
 /** The Work type lens's groups, in the order the reference draws them. */
 export const TYPE_ORDER: WorkType[] = ['ca', 'mfa', 'setup', 'resolution']
 
@@ -226,6 +229,12 @@ export function statusGroupOf(step: StatusFacts, isNext: boolean, held = false):
  */
 export function statusGroupFor(s: PlanState, isNext: boolean): StatusGroup {
   if (s.complete) return 'complete'
+  if (s.kind === 'skipped') return 'skipped'
+  // Waiting has one meaning (roadmap/stepSchedule.ts): nothing schedules what the
+  // step waits on. It is the Waiting tile's count and the undated group's rows, so
+  // it comes before every other heading; the Needs attention focus still finds a
+  // waiting row the operator is needed on.
+  if (s.waiting) return 'waiting'
   // A decision, a review or a change that would strand the operator: the answer is on this row.
   if (s.attention && s.kind !== 'attention') return 'attention'
   // The one place Up next is decided, and it reads the marker rather than the
@@ -233,12 +242,11 @@ export function statusGroupFor(s: PlanState, isNext: boolean): StatusGroup {
   if (isNext) return 'upnext'
   // Work on this row that is not ready: its own checks fail.
   if (s.attention) return 'attention'
-  // Work something holds is waiting, whatever its own word says: it is not Ready
-  // and not the next thing. A policy already being watched stays under In progress.
-  if (s.held && s.kind !== 'reportOnly') return 'waiting'
   if (s.kind === 'ready' || s.kind === 'readyToEnforce') return 'ready'
   if (s.kind === 'reportOnly') return 'progress'
-  return 'waiting'
+  // Open work the plan dates for later — sequenced after something, or created
+  // while its enforcement waits — is scheduled, not waiting.
+  return 'scheduled'
 }
 
 /**
@@ -291,14 +299,19 @@ export function boardWhenOf(step: Step, waveStart: string | null = null, titleOf
   // step's rail says (docs/design/approved/anatomy/plan-step-v1.html V5).
   if (step.state.condition === 'baseline-conflict' && step.status !== 'done' && step.status !== 'skipped') return CONTRACT.rail.deferred
   const when = rowWhen(step, waveStart)
-  const held = isHeld(step)
+  // Held in the column's sense is waiting in the schedule's (roadmap/stepSchedule.ts):
+  // a held create the plan still dates reads its day, not Held.
+  const scheduled = step.scheduled ? scheduleOf(step) : null
+  const held = scheduled ? scheduled.class === 'waiting' : isHeld(step)
   const waits = held ? holdWaitsOn(step) : step.status === 'blocked' ? step.blockers.flatMap((b) => (b.kind === 'step' ? [b.stepId] : [])) : []
+  // The generic `now` reads the step's own scheduled day, which is the phase's first day for preparation work.
+  const day = scheduled?.at ?? waveStart
   return boardWhen(when, {
     complete: step.status === 'done',
     genericNow: when === (pages.plan as { now: string }).now,
     held,
     carriesReason: rowWhenWraps(step),
-    groupDay: waveStart ? dayLabel(waveStart) : null,
+    groupDay: day ? dayLabel(day) : null,
     waitsOn: waitsOnLabel(waits, titleOf),
   })
 }
@@ -451,7 +464,7 @@ function byKeyed<K extends string>(items: readonly BoardItem[], order: readonly 
       key: k,
       label: labels[k],
       date: null,
-      secondary: k === 'waiting' || k === 'complete',
+      secondary: k === 'waiting' || k === 'skipped' || k === 'complete',
       closed: CLOSED_BY_DEFAULT.has(k),
       // Production's sequence, inside every lens: the roadmap group's position
       // first, then the row's position in it. A lens re-heads the board; it

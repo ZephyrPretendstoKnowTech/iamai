@@ -32,6 +32,7 @@ import type { Schedule } from './schedule.ts'
 import { readBackPlacement } from './schedule.ts'
 import { policyHold } from './operations.ts'
 import { isHeld, markHoldChains } from './holds.ts'
+import { basisOf, createsWhileGated, settleSchedule } from './stepSchedule.ts'
 
 /** What a step's enforcement date is worth. */
 export type EnforcementBasis =
@@ -256,6 +257,7 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
   // if nothing held any of it. An estimate, never a step's date (derive/finish.ts planWeeks).
   schedule.estimate ??= { weeks: schedule.weeks, targetEnd: schedule.targetEnd, reason: schedule.derivation.reason }
   markHoldChains(steps)
+  const byId = new Map(steps.map((s) => [s.id, s]))
   for (const step of steps) {
     const held = isHeld(step)
     if (!held && !enforcementUnearned(step)) continue
@@ -276,7 +278,9 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
     // A watched policy keeps its rings: the calendar books its review on them.
     if (held) {
       step.rings = []
-      step.reportOnlyAt = null
+      // Readiness gates enforcement, not creation (owner decision, 2026-09-11): a
+      // create only a threshold holds keeps the day it is made in report-only.
+      if (!createsWhileGated(step, basisOf(step, schedule, byId))) step.reportOnlyAt = null
     }
   }
   schedule.forecastOnly = forecastOnly
@@ -285,5 +289,7 @@ export function settleForecast(steps: readonly Step[], schedule: Schedule): Sche
   // the placement itself is never edited, so the second pass withdraws the same
   // set from the same input and lands on the same schedule.
   if (withdrawn.size > 0 && schedule.placement) Object.assign(schedule, readBackPlacement([...steps], schedule.placement, withdrawn))
+  // Then each step's one scheduling result, and the phases read back off them.
+  settleSchedule(steps, schedule)
   return schedule
 }

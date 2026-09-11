@@ -499,7 +499,8 @@ test('013.H: an unanswered decision leaves the work it holds in the printed plan
 test('013.H: the document reads the Plan’s row rule and writes none of its own', () => {
   const src = readFileSync(new URL('./PrintPlan.tsx', import.meta.url), 'utf8')
   assert.match(src, /import \{[^}]*\bfloorRows\b[^}]*\} from '\.\/planRows\.ts'/, 'the print derives its own group')
-  assert.match(src, /undatedRows\(steps, schedule\.waves\)/, 'the print does not read the undated group')
+  assert.match(src, /undatedRows\(steps, phaseList\)/, 'the print does not read the undated group')
+  assert.match(src, /planPhases\(schedule\)/, 'the print does not read the Plan’s phases')
   assert.match(src, /floorRows\(steps\)/, 'the print does not decide alone which rows are the floor')
   assert.match(src, /phaseRows\(steps, w\)/, 'the print decides a numbered phase’s rows itself')
   // All three printed step sections — the phases, the undated group and the
@@ -509,7 +510,7 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
   // And the Plan reads the same rule, so neither surface can decide alone which
   // steps a plan has.
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
-  assert.match(plan, /undatedRows\(c\.steps, c\.schedule\.waves\)/, 'the Plan no longer reads the undated group')
+  assert.match(plan, /undatedRows\(c\.steps, phaseList\)/, 'the Plan no longer reads the undated group')
   assert.match(plan, /floorRows\(c\.steps\)/, 'the Plan reads the same floor rule the document does')
   assert.match(plan, /phaseRows\(c\.steps, w\)/, 'the Plan decides a phase\'s rows itself')
 })

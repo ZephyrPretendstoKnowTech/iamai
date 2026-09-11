@@ -124,6 +124,8 @@ if (args[0] === '--validate-library') {
   });
   const by = (s) => reviews.filter((r) => r.drift.status === s);
   console.log(`semantic re-pin review against ${pinned8}: ${by('current').length} current · ${by('reviewNeeded').length} review needed · ${by('held').length} held`);
+  // Members the pin carries no stable id for are reviewed by display name: said, never assumed stable.
+  for (const r of reviews.filter((r) => r.drift.identityFallback.length > 0)) console.log(`  identity by display name (no stable id in the pin): ${r.package} · ${r.drift.identityFallback.join(', ')}${r.drift.renamed.length ? ` · renamed ${r.drift.renamed.map((x) => `${x.from} -> ${x.to}`).join(', ')}` : ''}`);
   for (const r of reviews.filter((r) => r.drift.status !== 'current' || r.drift.added.length > 0)) console.log(`  ${r.drift.status}: ${r.package}${r.drift.changed.length ? ` · changed ${r.drift.changed.join(', ')}` : ''}${r.drift.removed.length ? ` · removed ${r.drift.removed.join(', ')}` : ''}${r.drift.added.length ? ` · new member ${r.drift.added.join(', ')}` : ''}`);
   console.log(`  passing: ${passed.map((r) => r.package).join(', ') || 'none'}`);
   // Authored states the runtime never enters, reconciled with the nine it does

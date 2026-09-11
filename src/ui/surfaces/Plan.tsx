@@ -18,7 +18,7 @@ import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { waveLabels } from '../../derive/phases.ts'
-import { floorRows, phaseRows, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { startControl } from '../../derive/planHeader.ts'
@@ -165,25 +165,19 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // A policy the plan cannot write yet is in no wave: it has no date to sit
   // under (roadmap/operations.ts). Its row still renders, in its own undated
   // group after the phases, saying what it waits on (planRows.ts).
-  const heldRows = undatedRows(c.steps, c.schedule.waves)
+  // The phases are read off each step's own scheduling result (roadmap/stepSchedule.ts
+  // phasesOf): a phase carries the steps that result places in it, and its range
+  // holds every one of their days.
+  const phaseList = planPhases(c.schedule)
+  const heldRows = undatedRows(c.steps, phaseList)
   // A numbered phase draws the rows planRows.ts gives it and decides nothing
   // itself: the wave's steps, less the floor's group and less the footer's. A
   // wave left with nothing draws no phase.
-  const waveRows = c.schedule.waves
+  const waveRows = phaseList
     .map((w) => ({ wave: w, dates: dateSpan(w.start, w.end), phase: w.phase, steps: phaseRows(c.steps, w) }))
     .filter((w) => w.steps.length > 0)
   const waveNames = waveLabels(waveRows)
   let nextMarked = false
-  // The progress tiles (owner, 2026-09-11): the steps and the in-place count the
-  // print cover and Connect share (derive/facts.ts), the rows waiting in the
-  // undated group the board draws below, and what is left.
-  const waitingCount = heldRows.length
-  const progressTiles = [
-    { key: 'steps', label: PP.progress.steps, value: total },
-    { key: 'inPlace', label: PP.progress.inPlace, value: inPlace },
-    { key: 'waiting', label: PP.progress.waiting, value: waitingCount },
-    { key: 'remaining', label: PP.progress.remaining, value: Math.max(0, total - inPlace - waitingCount) },
-  ]
   // A group's span is the scheduler's own placement of its rows (schedule.startAt):
   // a group nothing places reads Not scheduled rather than a borrowed date.
   const placedSpan = (steps: readonly Step[]): string => {
@@ -279,6 +273,16 @@ export function Plan({ scan: lastScan, baseline, account }: {
   for (const step of c.steps.filter((x) => x.status === 'done')) addStep(step, completeGroup, false)
 
   const groups = groupsFor(view, applyFocus(items, focus))
+  // The progress tiles (owner, 2026-09-11): the steps and the in-place count the
+  // print cover and Connect share (derive/facts.ts), the rows Waiting — the one
+  // classification the Status lens's Waiting group counts — and what is left.
+  const waitingCount = items.filter((i) => i.status === 'waiting').length
+  const progressTiles = [
+    { key: 'steps', label: PP.progress.steps, value: total },
+    { key: 'inPlace', label: PP.progress.inPlace, value: inPlace },
+    { key: 'waiting', label: PP.progress.waiting, value: waitingCount },
+    { key: 'remaining', label: PP.progress.remaining, value: Math.max(0, total - inPlace - waitingCount) },
+  ]
 
   return (
     <section className="surface plan">

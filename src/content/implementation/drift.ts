@@ -32,7 +32,19 @@ export type Drift = {
   changed: string[]
   removed: string[]
   added: string[]
+  /**
+   * The reviewed members known by display name alone, because the baseline's export
+   * carries no stable id for them (goalMap.ts policyKey). Not a stable identity, and
+   * reported as such: a rename changes the key, so each is matched across a rename by
+   * what it does (`renamed`) and otherwise reads as removed.
+   */
+  identityFallback: string[]
+  /** An id-less member the pin renamed without changing what it does: the reviewed name and the pin's. */
+  renamed: { from: string; to: string }[]
 }
+
+/** A baseline policy's stable id: the author's own GUID. A display name standing in for one is not. */
+const STABLE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type Policy = { id?: string | null; displayName: string } & Record<string, unknown>
 type Baseline = { commit: string; policies: readonly Policy[]; goalMap?: Record<string, string[]> }
@@ -63,12 +75,26 @@ export function driftOf(reviewed: Readonly<Record<string, string>> | undefined, 
   const base = { reviewedPin, pinned: pinned.commit }
   if (reviewed === undefined) {
     const added = Object.keys(now)
-    return { status: added.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged: [], changed: [], removed: [], added }
+    return { status: added.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged: [], changed: [], removed: [], added, identityFallback: [], renamed: [] }
   }
   const entries = Object.entries(reviewed)
-  const removed = entries.filter(([key]) => !(key in now)).map(([key]) => key)
+  let removed = entries.filter(([key]) => !(key in now)).map(([key]) => key)
   const unchanged = entries.filter(([key, fingerprint]) => key in now && now[key] === fingerprint).map(([key]) => key)
   const changed = entries.filter(([key, fingerprint]) => key in now && now[key] !== fingerprint).map(([key]) => key)
-  const added = Object.keys(now).filter((key) => !(key in reviewed))
-  return { status: removed.length > 0 ? 'held' : changed.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged, changed, removed, added }
+  let added = Object.keys(now).filter((key) => !(key in reviewed))
+  // A member known only by its name that is gone under that name, while exactly one
+  // new id-less member does the same thing, was renamed: a cosmetic rename alone is
+  // not a removal. A rename that also changed what it does cannot be told from a
+  // replacement, so it stays removed and holds the package.
+  const renamed: { from: string; to: string }[] = []
+  for (const key of removed.filter((k) => !STABLE_ID.test(k))) {
+    const same = added.filter((a) => !STABLE_ID.test(a) && now[a] === reviewed[key])
+    if (same.length !== 1) continue
+    renamed.push({ from: key, to: same[0] })
+    unchanged.push(key)
+    removed = removed.filter((k) => k !== key)
+    added = added.filter((a) => a !== same[0])
+  }
+  const identityFallback = Object.keys(reviewed).filter((k) => !STABLE_ID.test(k))
+  return { status: removed.length > 0 ? 'held' : changed.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged, changed, removed, added, identityFallback, renamed }
 }
