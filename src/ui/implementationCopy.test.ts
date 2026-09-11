@@ -16,8 +16,6 @@ import { PILOT_IDS, PILOT_STEP_ID, pilotBindings, pilotRuntime } from '../testin
 
 const DIR = `docs/implementation-content/${PILOT_STEP_ID}`
 const PKG = compilePackage(readFileSync(`${DIR}/META.json`, 'utf8'), readFileSync(`${DIR}/CONTENT.md`, 'utf8'))
-/** Microsoft's built-in Multifactor authentication strength: a public constant, never tenant data. */
-const BUILT_IN_MFA = '00000000-0000-0000-0000-000000000002'
 
 async function copyThrough(text: string, disposition: Parameters<typeof exportClipboard>[1]): Promise<string | null> {
   let written: string | null = null
@@ -34,26 +32,27 @@ const text = (state: PackageState, channel: string): string => {
   return c.text
 }
 
-test('a copied JSON body is the projected body: valid JSON with the tenant ids and Microsoft constants in it', async () => {
+test('a copied JSON body is the projected body: valid JSON with the tenant ids in it', async () => {
   const body = text('missing', 'json')
   const out = await copyThrough(body, ARTIFACT)
   assert.equal(out, body, 'Copy changed the artifact the viewer shows')
   const parsed = JSON.parse(out ?? '') as { conditions: { users: { excludeGroups: string[] } }; grantControls: { authenticationStrength: { id: string } } }
   assert.deepEqual(parsed.conditions.users.excludeGroups, [PILOT_IDS.exclusions])
-  assert.equal(parsed.grantControls.authenticationStrength.id, BUILT_IN_MFA)
+  assert.equal(parsed.grantControls.authenticationStrength.id, PILOT_IDS.strength, 'the body does not carry the strength IAMAI resolved')
   assert.doesNotMatch(out ?? '', /guid-\d{4}|upn-\d+@redacted/, 'a placeholder replaced a value the request needs')
 })
 
-test('a copied script keeps its constants, and AI Info keeps its tenant context and its warning', async () => {
+test('a copied script keeps the values it runs with, and AI Info keeps its tenant context while the page shows the warning once', async () => {
   const script = text('readyToEnforce', 'powershell')
   const copiedScript = await copyThrough(script, ARTIFACT)
   assert.equal(copiedScript, script)
-  assert.match(copiedScript ?? '', new RegExp(`\\$StrengthId = '${BUILT_IN_MFA}'`))
+  assert.match(copiedScript ?? '', new RegExp(`-AuthenticationStrengthId '${PILOT_IDS.strength}'`))
   const ai = text('readyToEnforce', 'aiInfo')
   const copiedAi = await copyThrough(ai, ARTIFACT)
   assert.equal(copiedAi, ai)
   assert.match(copiedAi ?? '', new RegExp(`Policy ID: ${PILOT_IDS.policy}`))
-  assert.match(copiedAi ?? '', /Contains tenant context/)
+  // The warning is the page's (CONTRACT.implementation.aiWarning), drawn beside the channel, not repeated in the text.
+  assert.doesNotMatch(copiedAi ?? '', /Contains tenant context/)
   const email = text('readyToEnforce', 'email')
   assert.equal(await copyThrough(email, ARTIFACT), email, 'the Email is not copied as authored')
 })
