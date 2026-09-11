@@ -137,6 +137,9 @@
           ]
         },
         "policy.users": {
+          "facts": [
+            "conditions.users"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups",
@@ -156,6 +159,9 @@
           ]
         },
         "policy.context-target": {
+          "facts": [
+            "conditions.applications"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups",
@@ -175,6 +181,9 @@
           ]
         },
         "policy.authentication-strength": {
+          "facts": [
+            "grantControls"
+          ],
           "requires": [
             "policy.current.id",
             "authStrength.target.id"
@@ -193,6 +202,9 @@
           ]
         },
         "policy.every-time-session": {
+          "facts": [
+            "sessionControls"
+          ],
           "requires": [
             "policy.current.id"
           ],
@@ -210,6 +222,18 @@
           ]
         },
         "policy.remove-noncanonical": {
+          "facts": [
+            "conditions.clientAppTypes",
+            "conditions.locations",
+            "conditions.platforms",
+            "conditions.devices",
+            "conditions.signInRiskLevels",
+            "conditions.userRiskLevels",
+            "conditions.servicePrincipalRiskLevels",
+            "conditions.authenticationFlows",
+            "conditions.insiderRiskLevels",
+            "conditions.clientApplications"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups",
@@ -229,6 +253,13 @@
           ]
         },
         "policy.lifecycle": {
+          "select": {
+            "equals": [
+              "policy.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "requires": [
             "policy.current.id"
           ],

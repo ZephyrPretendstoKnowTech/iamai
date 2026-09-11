@@ -114,6 +114,9 @@
       },
       "mismatches": {
         "users.service-account-group": {
+          "facts": [
+            "conditions.users"
+          ],
           "requires": [
             "policy.current.id",
             "serviceAccounts.group.id",
@@ -133,6 +136,9 @@
           ]
         },
         "target.all-resources": {
+          "facts": [
+            "conditions.applications"
+          ],
           "requires": [
             "policy.current.id",
             "serviceAccounts.group.id",
@@ -153,6 +159,9 @@
           ]
         },
         "network.outside-trusted": {
+          "facts": [
+            "conditions.locations"
+          ],
           "requires": [
             "policy.current.id",
             "serviceAccounts.group.id",
@@ -173,6 +182,17 @@
           ]
         },
         "conditions.remove-noncanonical": {
+          "facts": [
+            "conditions.clientAppTypes",
+            "conditions.platforms",
+            "conditions.devices",
+            "conditions.signInRiskLevels",
+            "conditions.userRiskLevels",
+            "conditions.servicePrincipalRiskLevels",
+            "conditions.authenticationFlows",
+            "conditions.insiderRiskLevels",
+            "conditions.clientApplications"
+          ],
           "requires": [
             "policy.current.id",
             "serviceAccounts.group.id",
@@ -193,6 +213,9 @@
           ]
         },
         "grant.block": {
+          "facts": [
+            "grantControls"
+          ],
           "requires": [
             "policy.current.id"
           ],
@@ -210,6 +233,9 @@
           ]
         },
         "session.remove-noncanonical": {
+          "facts": [
+            "sessionControls"
+          ],
           "requires": [
             "policy.current.id"
           ],
@@ -227,6 +253,13 @@
           ]
         },
         "lifecycle.report-only": {
+          "select": {
+            "equals": [
+              "policy.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "requires": [
             "policy.current.id"
           ],

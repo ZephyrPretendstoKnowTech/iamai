@@ -76,60 +76,71 @@
       "mismatches": {
         "users.include-all": {
           "appliesWhen": "included population is not exactly All users",
+          "facts": ["conditions.users"],
           "entra": ["entra.correct.users.include-all"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "users.exclusions-canonical": {
           "appliesWhen": "exclusion set differs from IAMAI's canonical target",
+          "facts": ["conditions.users"],
           "entra": ["entra.correct.users.exclusions-canonical"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "target.resources-pinned": {
           "appliesWhen": "target resources differ from the retained five-resource baseline set",
+          "facts": ["conditions.applications"],
           "entra": ["entra.correct.target.resources-pinned"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "conditions.windows-platform": {
           "appliesWhen": "Windows is not the exact included platform",
+          "facts": ["conditions.platforms"],
           "entra": ["entra.correct.conditions.windows-platform"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "conditions.mobile-desktop-clients": {
           "appliesWhen": "client app scope differs from Mobile apps and desktop clients only",
+          "facts": ["conditions.clientAppTypes"],
           "entra": ["entra.correct.conditions.mobile-desktop-clients"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "conditions.cloudpc-device-filter": {
           "appliesWhen": "device filter differs from the retained CloudPC exclusion rule",
+          "facts": ["conditions.devices"],
           "entra": ["entra.correct.conditions.cloudpc-device-filter"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "conditions.remove-noncanonical": {
           "appliesWhen": "risk, location, authentication-flow, or other noncanonical conditions are present",
+          "facts": ["conditions.locations", "conditions.signInRiskLevels", "conditions.userRiskLevels", "conditions.servicePrincipalRiskLevels", "conditions.authenticationFlows", "conditions.insiderRiskLevels", "conditions.clientApplications"],
           "entra": ["entra.correct.conditions.remove-noncanonical"],
           "json": ["json.correct.conditions"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Conditions"]}]
         },
         "grant.none": {
           "appliesWhen": "a grant control is present even though the retained target uses only a session control",
+          "facts": ["grantControls"],
           "entra": ["entra.correct.grant.none"],
           "json": ["json.correct.grant-none"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["GrantNone"]}]
         },
         "session.token-protection": {
           "appliesWhen": "Require token protection for sign-in sessions is missing or disabled",
+          "facts": ["sessionControls"],
           "entra": ["entra.correct.session.token-protection"],
           "json": ["json.correct.session"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Session"]}]
         },
         "lifecycle.report-only": {
           "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
+          "select": {"equals": ["policy.current.state", "enabled"]},
+          "alongside": true,
           "entra": ["entra.correct.lifecycle.report-only"],
           "json": ["json.correct.report-only"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["ReportOnly"]}]
