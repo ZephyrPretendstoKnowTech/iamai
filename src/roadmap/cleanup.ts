@@ -12,7 +12,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the worker.
 
-export type CleanupKind = 'alerting' | 'drill' | 'naming' | 'consolidation' | 'notAssessed'
+export type CleanupKind = 'alerting' | 'drill' | 'hardening' | 'naming' | 'consolidation' | 'notAssessed'
 
 /** A Cleanup row: which content.cleanup entry to render, and the lists it fills. */
 export type CleanupRow = {
@@ -31,6 +31,8 @@ export type CleanupInputs = {
   overlaps: string[]
   /** Baseline policies IAMAI could not assess against a goal; reviewed, never enforced. */
   notAssessed: string[]
+  /** Emergency-access hardening the operator deferred, already worded (owner, 2026-09-11); empty when nothing is deferred and outstanding. */
+  hardening?: string[]
 }
 
 // The order Cleanup renders in (§5): alerting, drill, naming, consolidation,
@@ -38,6 +40,7 @@ export type CleanupInputs = {
 const ORDER: { kind: CleanupKind; present: (i: CleanupInputs) => boolean; lists: (i: CleanupInputs) => Record<string, string[]> }[] = [
   { kind: 'alerting', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccountUpns: i.emergencyAccountUpns && i.emergencyAccountUpns.length === i.emergencyAccounts.length ? i.emergencyAccountUpns : i.emergencyAccounts }) },
   { kind: 'drill', present: (i) => i.emergencyAccounts.length > 0, lists: (i) => ({ emergencyAccounts: i.emergencyAccounts }) },
+  { kind: 'hardening', present: (i) => (i.hardening ?? []).length > 0, lists: (i) => ({ hardening: i.hardening ?? [] }) },
   { kind: 'naming', present: (i) => i.renames.length > 0, lists: (i) => ({ renames: i.renames }) },
   { kind: 'consolidation', present: (i) => i.overlaps.length > 0, lists: (i) => ({ overlaps: i.overlaps }) },
   { kind: 'notAssessed', present: (i) => i.notAssessed.length > 0, lists: (i) => ({ policies: i.notAssessed }) },

@@ -57,7 +57,7 @@ test('the kept prompt pack is keyed to the plan it speaks for', () => {
   // Everything the pack reads is an input to that plan, so its identity is the
   // whole key. planData.ts is where that list lives; it must keep holding them.
   const planData = read('src/ui/surfaces/planData.ts')
-  const deps = /\}, \[snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, band, freeze, mappingFor, groupsFor\]/
+  const deps = /\}, \[snapshot, baseline, applied, groupsLoaded, loaded, groups, directory, saved, planId, version, startDate, firstDeployment, band, freeze, mappingFor, groupsFor\]/
   assert.match(planData, deps, 'the computed plan is rebuilt for every fact the pack reads')
 })
 

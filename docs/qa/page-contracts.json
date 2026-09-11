@@ -494,6 +494,7 @@
           "Report-only",
           "Ready to enforce",
           "Needs decision",
+          "Needs attention",
           "Enforced",
           "Skipped",
           "Doesn't apply"
@@ -675,6 +676,7 @@
           "Readiness",
           "Do not deploy this policy from the current baseline",
           "Fix before continuing",
+          "Hardening recommendations",
           "What to do",
           "Implementation",
           "Done when"
@@ -695,6 +697,7 @@
           "Report-only",
           "Ready to enforce",
           "Needs decision",
+          "Needs attention",
           "Enforced",
           "Skipped",
           "Doesn't apply",

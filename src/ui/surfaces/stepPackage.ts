@@ -254,7 +254,7 @@ const RESULT_TONE: Record<string, ReadinessTone> = { Ready: 'good', 'Review requ
 const SEVERITY: Record<string, number> = { Blocked: 0, 'Review required': 1, Unknown: 2, Ready: 3, 'Not applicable': 4 }
 
 /** The runtime tiles that state where the step stands; the package never displaces them. */
-const RUNTIME_STATE_KEYS = new Set(['baseline', 'evidence', 'decision', 'coverage', 'gate', 'observation', 'exclusions'])
+const RUNTIME_STATE_KEYS = new Set(['baseline', 'evidence', 'decision', 'coverage', 'gate', 'observation', 'exclusions', 'emergency', 'resilience'])
 
 /**
  * Readiness with the package's gates in it. The runtime tiles that say where the

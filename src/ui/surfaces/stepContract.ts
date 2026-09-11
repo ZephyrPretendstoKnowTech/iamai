@@ -123,7 +123,16 @@ type ContractWords = {
   confirm: { control: string; confirmedControl: string; eyebrow: string; body: string; confirm: string; remove: string; cancel: string; confirmedOn: string }
   rail: Record<string, string>
   rollout: Record<string, string>
+  hardening: { heading: string; leadBlocked: string; leadDefer: string; deferredOn: string; defer: string; undo: string; everyAccount: string; unchecked: string; doneDeferred: string; tiles: Record<string, string> }
 }
+
+/**
+ * The emergency-access step's hardening recommendations (validation/emergencyTiers.ts):
+ * each in the step's own fix words, grouped by the account it is about, with the
+ * basis a deferral is given against, when it was deferred, and whether it can be
+ * deferred now (only once minimum emergency access is available).
+ */
+export type ContractHardening = { groups: { key: string; title: string; items: string[] }[]; unchecked: number; basis: string; deferredAt: string | null; canDefer: boolean }
 
 export const CONTRACT = (app.plan as unknown as { stepContract: ContractWords }).stepContract
 
@@ -311,6 +320,8 @@ export type StepContract = {
   scheduledOn: string | null
   /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
   policy: boolean
+  /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
+  hardening: ContractHardening | null
 }
 
 const MEMBER_LABELS = 'ABCDEFGH'
@@ -620,6 +631,9 @@ export const NO_POLICY_REASONS: ReadonlySet<UnavailableReason> = new Set(['basel
 /** The completion, always concrete and never absent. */
 function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
+  // Emergency access in place with its hardening deferred is not fully resilient,
+  // and Done when does not say it is (owner, 2026-09-11).
+  if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
   if (step.state.satisfied) return [fillText(CONTRACT.doneSatisfied, { tenant })]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
@@ -714,7 +728,36 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
     scheduledOn: ctx.scheduledOn ?? null,
     policy: step.kind === 'create' || step.kind === 'adjust',
+    hardening: hardeningOf(step, cs, ex),
   }
+}
+
+/**
+ * The hardening an emergency-access step carries (owner, 2026-09-11): what its
+ * checks found beyond the minimum, grouped by the account each finding is about.
+ * The minimum stays under Fix before continuing; nothing is said twice.
+ */
+function hardeningOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>): ContractHardening | null {
+  const e = step.emergency
+  if (!e || e.hardening === 0) return null
+  const templates = ((cs?.whatToDo ?? null) as Record<string, unknown> | null)?.checkFixes as Record<string, string> | undefined
+  const rows = (Array.isArray(ex.hardeningChecks) ? ex.hardeningChecks : []) as [string, Record<string, unknown>][]
+  const groups = new Map<string, { key: string; title: string; items: string[] }>()
+  let shown = 0
+  for (const [key, vals] of rows) {
+    const t = templates?.[key]
+    const values = { ...ex, ...vals }
+    if (!t || !whole(t, values)) continue
+    const title = typeof vals.name === 'string' && vals.name.length > 0 ? vals.name : CONTRACT.hardening.everyAccount
+    const line = fillText(t, values)
+    // Under the account's own heading the line does not open with its name again.
+    const own = line.startsWith(`${title}: `) ? line.slice(title.length + 2) : line
+    const g = groups.get(title) ?? { key: `hardening:${title}`, title, items: [] }
+    g.items.push(own.charAt(0).toUpperCase() + own.slice(1))
+    groups.set(title, g)
+    shown += 1
+  }
+  return { groups: [...groups.values()], unchecked: Math.max(0, e.hardening - shown), basis: e.basis, deferredAt: e.deferredAt, canDefer: e.minimum === 0 }
 }
 
 /**
@@ -961,6 +1004,24 @@ function exclusionsTile(step: Step, c: StepContract): ReadinessTile | null {
   return null
 }
 
+/**
+ * The emergency-access step's two facts, first (owner, 2026-09-11): whether a
+ * usable way back in exists, and how resilient it is — Meets recommendations,
+ * Needs attention, or Deferred to Cleanup, never a claim of full resilience while
+ * hardening is outstanding.
+ */
+function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
+  const e = step.emergency
+  if (!e || c.state.setAside) return []
+  const t = CONTRACT.hardening.tiles
+  const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: null } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: null }
+  const resilience: ReadinessTile =
+    e.hardening === 0
+      ? { key: 'resilience', label: t.resilience, tone: 'good', value: t.meets, note: null }
+      : { key: 'resilience', label: t.resilience, tone: 'warn', value: e.deferredAt ? t.deferred : t.needsAttention, note: null }
+  return [access, resilience]
+}
+
 /** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
 function peopleTile(c: StepContract): ReadinessTile | null {
   if (c.who === null) return null
@@ -984,7 +1045,7 @@ function blockingTile(c: StepContract): ReadinessTile {
 
 /** The Readiness region: up to three tiles, and the bar's headline. */
 export function readinessOf(step: Step, c: StepContract): ContractReadiness {
-  const lead = [stateTile(step, c), exclusionsTile(step, c), peopleTile(c)].filter((x): x is ReadinessTile => x !== null).slice(0, 2)
+  const lead = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c)].filter((x): x is ReadinessTile => x !== null).slice(0, 2)
   const key = standingOf(c)
   return { tiles: [...lead, blockingTile(c)], bar: { key, main: R().bar[key] ?? R().bar.none } }
 }

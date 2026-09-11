@@ -15,6 +15,9 @@ import { Button, Callout, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFix, ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, railOf, stageClass } from './stepContract.ts'
+import type { ContractHardening } from './stepContract.ts'
+import { fillText } from '../../content/render.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -541,6 +544,48 @@ export function FixBeforeContinuing({ fix, tone = 'warning' }: { fix: ContractFi
             <li key={f.key}>{f.text}</li>
           ))}
         </ol>
+      </Callout>
+    </section>
+  )
+}
+
+/**
+ * Emergency-access hardening (owner, 2026-09-11): the recommendations beyond the
+ * minimum, grouped by the account each is about, under a prominent warning. Once
+ * minimum emergency access is available the operator may defer them — the
+ * rollout continues and they move to Cleanup, never out of view — and may undo
+ * that. Nothing here repeats Fix before continuing.
+ */
+export function HardeningRecommendations({ hardening, onDefer, onUndo }: { hardening: ContractHardening | null; onDefer: (() => void) | null; onUndo: (() => void) | null }) {
+  if (!hardening) return null
+  const H = CONTRACT.hardening
+  const lead = hardening.deferredAt ? fillText(H.deferredOn, { date: absoluteDate(hardening.deferredAt) }) : hardening.canDefer ? H.leadDefer : H.leadBlocked
+  return (
+    <section className="step-section hardening">
+      <Callout kind="warning">
+        <h4>{H.heading}</h4>
+        <p>{lead}</p>
+        {hardening.groups.map((g) => (
+          <div key={g.key} className="hardening-group">
+            <h5>{g.title}</h5>
+            <ul className="sections">
+              {g.items.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {hardening.unchecked > 0 && <p className="reason">{fillText(H.unchecked, { n: hardening.unchecked })}</p>}
+        {!hardening.deferredAt && hardening.canDefer && onDefer && (
+          <p className="actions">
+            <Button variant="secondary" onClick={onDefer}>{H.defer}</Button>
+          </p>
+        )}
+        {hardening.deferredAt && onUndo && (
+          <p className="actions">
+            <Button variant="secondary" onClick={onUndo}>{H.undo}</Button>
+          </p>
+        )}
       </Callout>
     </section>
   )

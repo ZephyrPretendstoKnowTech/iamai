@@ -1232,6 +1232,27 @@
             "namesHeld": "Named, for the record"
           },
           "attentionConflict": "Do not deploy this policy from the current baseline",
+          "hardening": {
+            "$comment": "Emergency access in two tiers (owner, 2026-09-11; validation/emergencyTiers.ts): the minimum safety checks stay under Fix before continuing and hold the rollout; the resilience hardening is its own section, which the operator may defer to Cleanup.",
+            "heading": "Hardening recommendations",
+            "leadBlocked": "These make emergency access more resilient. Clear Fix before continuing first; these can then be fixed or deferred.",
+            "leadDefer": "Minimum emergency access is available, but less resilient than recommended. Fix these, or defer them: the rollout continues, and they stay in Cleanup until they pass.",
+            "deferredOn": "Deferred to Cleanup on {date}. The rollout continues, and these stay in Cleanup until they pass.",
+            "defer": "Defer hardening",
+            "undo": "Undo deferral",
+            "everyAccount": "All emergency accounts",
+            "unchecked": "{n} more could not be checked on this scan.",
+            "doneDeferred": "Minimum emergency access is in place; the deferred hardening stays in Cleanup until it passes.",
+            "tiles": {
+              "access": "Emergency access",
+              "available": "Available",
+              "unavailable": "Not available",
+              "resilience": "Resilience",
+              "meets": "Meets recommendations",
+              "needsAttention": "Needs attention",
+              "deferred": "Deferred to Cleanup"
+            }
+          },
           "readiness": {
             "$comment": "The opened step's Readiness region (docs/design/approved/anatomy/plan-step-v1.html `.readiness-strip` / `.readiness-bar`, owner update Sep 10, 2026). Tile labels, short values and the bar's headline only: every note and every sub-line is an existing sentence the contract already carries (stepContract.ts readinessOf), so nothing here states a fact of its own.",
             "heading": "Readiness",
@@ -1568,6 +1589,20 @@
         "A test sign-in by an emergency account produced an alert somebody saw."
       ]
     },
+    "hardening": {
+      "title": "Harden Emergency Access",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
+      },
+      "why": "Minimum emergency access is in place, and this hardening was deferred so the rollout could continue. Until it is fixed, one failure could still cost the way back in.",
+      "whatToDo": [
+        "{list:hardening}",
+        "Scan again once these are fixed: the row closes when they pass."
+      ],
+      "doneWhen": [
+        "Every deferred emergency access recommendation passes on a scan."
+      ]
+    },
     "naming": {
       "title": "Rename Policies Off the Naming Convention",
       "learn": {
@@ -1648,7 +1683,7 @@
         "multi": true
       },
       "whatToDo": {
-        "lead": "Fix each failing check, top to bottom. {failing} of {total} checks fail today.",
+        "lead": "Choose the emergency access accounts below and save, then clear what is under Fix before continuing.",
         "create": [
           "Entra admin center → Entra ID → Users → New user. Name it so the purpose is obvious ({exampleName}).",
           "Sign-in address on the tenant's own onmicrosoft.com domain; cloud-only; no licence; no department, title or manager.",
@@ -1675,13 +1710,16 @@
           "auth-methods-migration": "Finish migrating to the authentication methods policy (the per-user MFA setting can block a recovery sign-in): Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration complete.",
           "no-licence-no-mailbox": "{name} holds {licence}; remove it. An emergency account needs no mailbox.",
           "recent-sign-in": "{name} signed in {ago}, not a recorded drill: confirm who signed in and why.",
-          "display-name": "{name}: rename so the purpose is obvious to whoever finds it next, for example {exampleName}."
+          "display-name": "{name}: rename so the purpose is obvious to whoever finds it next, for example {exampleName}.",
+          "drill-due": "{name}: sign in once to prove the account still works, then record the drill in Cleanup.",
+          "credential-storage": "Store each passphrase offline in two places that different people can reach without signing in to this tenant.",
+          "sign-in-alerting": "Alert on every emergency account sign-in (Cleanup: Alert on Emergency Account Sign-ins)."
         }
       },
       "dates": null,
       "doneWhen": [
-        "All {total} checks pass on the next scan.",
-        "Both passphrases are stored offline in two places, and two named people know where."
+        "Every check under Fix before continuing passes on the next scan.",
+        "Each hardening recommendation passes, or is deferred to Cleanup."
       ],
       "ifWrong": null,
       "lockedOut": {

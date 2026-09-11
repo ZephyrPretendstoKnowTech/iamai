@@ -166,9 +166,11 @@ test('013.B: where the Plan offers no implementation, no artifact carries one', 
         assert.equal(/"conditions"|includeUsers|grantControls/.test(text), false, `${where}: a policy body reached a prose artifact`)
         assert.equal(/Conditional Access → Policies/.test(text), false, `${where}: a portal instruction reached a prose artifact`)
       }
-      // The completion is what would clear the hold, then the policy's end state
-      // where there is a policy to state it of; never the rollout's gates.
-      assert.equal(v.doneWhen.length, NO_POLICY_REASONS.has(reason) ? 1 : 2, `${where}: ${v.doneWhen.join(' | ')}`)
+      // The completion is one line: the resolution where there is no policy to
+      // state an end of, and otherwise the policy's end state — what clears the
+      // hold is Fix before continuing's (owner, 2026-09-11); never the rollout's gates.
+      assert.equal(v.doneWhen.length, 1, `${where}: ${v.doneWhen.join(' | ')}`)
+      if (!NO_POLICY_REASONS.has(reason)) assert.match(v.doneWhen[0], /^The policy is enforced in /, `${where}: ${v.doneWhen.join(' | ')}`)
       assert.equal(/report-only|sign-in failures|%/i.test(v.doneWhen.join(' ')), false, `${where}: a rollout completion — ${v.doneWhen.join(' | ')}`)
     }
   }
@@ -481,7 +483,8 @@ test('013.H: an unanswered decision leaves the work it holds in the printed plan
     ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext
   const { printed, held } = placed(run)
   assert.ok(held.length > 0, 'an unanswered exclusions decision dates every policy')
-  const asking = run.steps.find((s) => stepContract(s, ctx(s)).fix.some((x) => x.key.startsWith('decision:')))
+  // The question is the asking step's action (owner, 2026-09-11: a decision is What to do, never a Fix line).
+  const asking = run.steps.find((s) => stepContract(s, ctx(s)).whatToDo.kind === 'decide')
   assert.ok(asking, 'no step carries the unanswered decision')
   assert.ok(printed.has(asking!.id), 'the step that asks the question is not in the document')
   for (const s of held) {

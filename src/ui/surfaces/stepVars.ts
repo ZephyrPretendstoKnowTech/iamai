@@ -363,11 +363,15 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   if (step.checks && step.checks.total > 0) {
     v.failing = step.checks.failing
     v.total = step.checks.total
-    v.failingChecks = step.checks.items.map((it) => {
+    const toVals = (it: (typeof step.checks.items)[number]): [string, Record<string, unknown>] => {
       const vals: Record<string, unknown> = { ...it.values }
       if (it.subject === 'breakGlass' && it.target && vals.name === undefined) vals.name = ctx.nameOf(it.target)
       return [it.fix, vals]
-    })
+    }
+    // What holds the rollout goes under Fix before continuing; emergency-access
+    // hardening is its own section, which the operator may defer (validation/emergencyTiers.ts).
+    v.failingChecks = step.checks.items.filter((it) => it.tier !== 'hardening').map(toVals)
+    v.hardeningChecks = step.checks.items.filter((it) => it.tier === 'hardening').map(toVals)
     // Fewer than two accounts pass the count check: the create instructions show.
     v.needsCreate = step.checks.items.some((it) => it.fix === 'second-account')
     // The policies that do not yet exclude the exclusions group (the emergency

@@ -25,6 +25,8 @@ import { statusOf } from './statusWord.ts'
 import { stepById } from '../../content/content.ts'
 import { currentAnswerText, parseAnswer } from '../../roadmap/answers.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
+import { decisionsOf } from '../../roadmap/progress.ts'
+import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 
 const CSS = readFileSync('src/ui/app.css', 'utf8')
 
@@ -262,6 +264,61 @@ test('Decide How Devices Are Managed: Needs decision until answered, one structu
   // An answer saved in the old words still answers its option.
   assert.deepEqual(parseAnswer('Protect the apps only', d.options), { index: 1, picked: [] })
   assert.equal(currentAnswerText('Hybrid-joined is enough'), 'Hybrid join is sufficient')
+})
+
+// ------------------------------------------------------------ emergency access
+
+const EMERGENCY = 's-prereq-break-glass'
+const waitingOnEmergency = (r: ReturnType<typeof runFixture>): number => r.steps.filter((s) => s.blockers.some((b) => b.kind === 'step' && b.stepId === EMERGENCY)).length
+
+test('a minimum safety blocker holds the rollout, and no deferral can release it', () => {
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const bg = r.steps.find((s) => s.id === EMERGENCY)!
+  assert.ok((bg.emergency?.minimum ?? 0) > 0, 'the premise: demo has a minimum safety failure')
+  assert.notEqual(bg.status, 'done')
+  assert.ok(waitingOnEmergency(r) > 0, 'a missing way back in released the deny-capable steps')
+  const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
+  assert.equal(c.hardening?.canDefer, false, 'deferral is offered while the minimum is not met')
+  assert.ok(c.fix.length > 0, 'the minimum blocker is not under Fix before continuing')
+  // Even a deferral recorded against every hardening finding releases nothing.
+  const deferred = runFixture(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: bg.emergency!.basis } })
+  assert.notEqual(deferred.steps.find((s) => s.id === EMERGENCY)!.status, 'done')
+  assert.ok(waitingOnEmergency(deferred) > 0)
+})
+
+test('resilience hardening holds until fixed or deferred; a deferral releases the rollout, keeps it in Cleanup, and claims no full resilience', () => {
+  const f = fixture('small')
+  const r = runFixture(f)
+  const bg = r.steps.find((s) => s.id === EMERGENCY)!
+  assert.equal(bg.emergency?.minimum, 0, 'the premise: minimum emergency access is available')
+  assert.ok((bg.emergency?.hardening ?? 0) > 0, 'the premise: hardening is outstanding')
+  assert.equal(statusOf(bg).word, 'Needs attention', 'a step with failing checks reads Ready')
+  assert.ok(waitingOnEmergency(r) > 0, 'undeferred hardening released the rollout without anyone acknowledging it')
+  const at = '2026-09-11T10:00:00.000Z'
+  const d = runFixture(f, { hardeningDeferral: { at, basis: bg.emergency!.basis } })
+  const dbg = d.steps.find((s) => s.id === EMERGENCY)!
+  assert.equal(dbg.status, 'done')
+  assert.equal(dbg.emergency?.deferredAt, at)
+  assert.equal(waitingOnEmergency(d), 0, 'the deferral did not release the rollout')
+  const row = d.schedule.cleanup!.rows.find((x) => x.kind === 'hardening')
+  assert.ok(row && row.lists.hardening.length === bg.emergency!.hardening, 'the deferred hardening left the plan instead of moving to Cleanup')
+  assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'hardening'), false, 'hardening reached Cleanup without a deferral')
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => d.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const c = stepContract(dbg, ctx)
+  const tiles = readinessOf(dbg, c).tiles.map((t) => `${t.label}: ${t.value}`)
+  assert.ok(tiles.includes('Emergency access: Available') && tiles.includes('Resilience: Deferred to Cleanup'), tiles.join(' | '))
+  assert.equal(c.doneWhen.length, 1)
+  assert.doesNotMatch(c.doneWhen[0], /Already satisfied/, 'a deferral is read as full resilience')
+  assert.equal(c.hardening?.deferredAt, at)
+  // A new finding is not covered by an earlier deferral: the rollout waits again.
+  const partial = runFixture(f, { hardeningDeferral: { at, basis: bg.emergency!.basis.split(',').slice(1).join(',') } })
+  assert.notEqual(partial.steps.find((s) => s.id === EMERGENCY)!.status, 'done')
+  // The deferral is an owner confirmation, carried by the one persistence path.
+  const kept = decisionsOf({ planId: 'p', skips: {}, checkpoints: [], confirmations: { [EMERGENCY]: { [HARDENING_DEFERRAL_ID]: { at, basis: bg.emergency!.basis } } } }, 'p')
+  assert.deepEqual(kept.confirmations?.[EMERGENCY]?.[HARDENING_DEFERRAL_ID], { at, basis: bg.emergency!.basis })
+  assert.match(readFileSync('src/ui/surfaces/planData.ts', 'utf8'), /hardeningDeferral: saved\?\.confirmations\?\.\[BREAK_GLASS_STEP_ID\]\?\.\[HARDENING_DEFERRAL_ID\] \?\? null/)
+  assert.match(CONTENT_STEP, /onConfirm\(\{ \[HARDENING_DEFERRAL_ID\]: \{ basis: contract\.hardening!\.basis \} \}\)/)
 })
 
 test('user-facing content spells enrollment the US way', () => {
