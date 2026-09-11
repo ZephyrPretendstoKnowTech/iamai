@@ -272,6 +272,68 @@ export function ReadinessSection({ readiness, lead, onWhy = null, children = nul
   )
 }
 
+/** `**bold**` and `` `code` `` inside one line of authored text. Nothing else is interpreted, and no HTML ever is. */
+function inlineText(line: string): ReactNode[] {
+  return line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+      <strong key={i}>{part.slice(2, -2)}</strong>
+    ) : part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
+      <code key={i}>{part.slice(1, -1)}</code>
+    ) : (
+      part
+    ),
+  )
+}
+
+/**
+ * An implementation-content block authored as Markdown (an Entra procedure, AI
+ * Info, an Email), drawn as text a person reads: a heading line, numbered and
+ * bulleted lists, bold and inline code, and every other line as its own line so
+ * an authored line break survives. Copy copies the bound Markdown itself.
+ */
+export function AuthoredText({ text }: { text: string }) {
+  const out: ReactNode[] = []
+  let list: { ordered: boolean; items: string[] } | null = null
+  const flush = (): void => {
+    const current = list
+    if (!current) return
+    const items = current.items.map((it, i) => <li key={i}>{inlineText(it)}</li>)
+    out.push(current.ordered ? <ol key={out.length}>{items}</ol> : <ul key={out.length}>{items}</ul>)
+    list = null
+  }
+  for (const raw of text.replace(/\s+$/, '').split('\n')) {
+    const line = raw.replace(/\s+$/, '')
+    const ordered = /^\d+\.\s+(.*)$/.exec(line)
+    const bullet = /^-\s+(.*)$/.exec(line)
+    if (ordered || bullet) {
+      const isOrdered = ordered !== null
+      if (list === null || list.ordered !== isOrdered) {
+        flush()
+        list = { ordered: isOrdered, items: [] }
+      }
+      list.items.push((ordered ?? bullet)![1])
+      continue
+    }
+    flush()
+    if (line === '') {
+      out.push(<span key={out.length} className="authored-break" aria-hidden="true" />)
+      continue
+    }
+    const heading = /^#{1,6}\s+(.*)$/.exec(line)
+    out.push(
+      heading ? (
+        <p key={out.length} className="authored-heading">
+          <strong>{inlineText(heading[1])}</strong>
+        </p>
+      ) : (
+        <p key={out.length}>{inlineText(line)}</p>
+      ),
+    )
+  }
+  flush()
+  return <>{out}</>
+}
+
 /** The truthful no-action box, at the weight of its reason (the approved `.implementation-empty`). */
 export function ImplementationEmptyBox({ empty }: { empty: ImplementationEmpty }) {
   return (

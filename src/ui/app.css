@@ -2299,6 +2299,25 @@ footer.app a {
 .step .mfa-handoff-block {
   margin-top: 12px;
 }
+/* The approved attention panels draw no icon: the heading carries the state in
+   the role's own ink over a soft edge (plan-step-v1.html `.attention`,
+   `.attention-head`). The shared callout keeps its icon everywhere else; inside
+   the opened step the words carry the meaning, so the icon is not drawn. */
+.step .callout > .icon {
+  display: none;
+}
+.step .callout-warning {
+  border-color: var(--attention-line);
+}
+.step .callout-danger {
+  border-color: var(--danger-line);
+}
+.step .callout-warning h4 {
+  color: var(--attention-text);
+}
+.step .callout-danger h4 {
+  color: var(--danger-text);
+}
 
 /* ---- Implementation: the approved `.implementation-section` ----
    The channels are pill tabs over a fixed-height preview that widens nothing,
@@ -2405,6 +2424,57 @@ footer.app a {
 .step .implementation-empty-danger {
   background: var(--danger-tint);
 }
+/* Each semantic box also takes its role's soft edge, as the approved boxes do
+   (plan-step-v1.html `.implementation-empty.warn{border-color:rgba(…,.28)}`). */
+.step .implementation-empty-good {
+  border-color: var(--success-line);
+}
+.step .implementation-empty-warn {
+  border-color: var(--attention-line);
+}
+.step .implementation-empty-danger {
+  border-color: var(--danger-line);
+}
+/* The approved support line under the preview (`.impl-support`): right-aligned,
+   quiet and small; a package's run note holds its left. */
+.step .impl-support {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px 12px;
+  margin-top: 8px;
+  font-size: var(--t-micro);
+  color: var(--secondary-text);
+}
+.step .impl-support-note {
+  margin-right: auto;
+  min-width: 0;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+/* Authored Markdown (a package's Entra, AI Info or Email block), line for line. */
+.authored p,
+.authored li {
+  margin: 0;
+  max-width: none;
+}
+.authored ol,
+.authored ul {
+  margin: 0;
+  padding-left: 22px;
+  max-width: none;
+}
+.authored .authored-break {
+  display: block;
+  height: 8px;
+}
+.authored code {
+  font-family: var(--font-mono);
+}
+.step .impl-preview .authored {
+  white-space: normal;
+}
 
 /* ---- the step's dialogs: the approved implementation, readiness and rollout
    dialogs ----
@@ -2502,6 +2572,41 @@ footer.app a {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 14px;
+}
+/* The approved backdrop: the canvas at three quarters, blurred
+   (plan-step-v1.html `::backdrop{background:rgba(3,7,9,.75);backdrop-filter:blur(4px)}`). */
+.step-dialog::backdrop {
+  background: var(--scrim);
+  backdrop-filter: blur(4px);
+}
+.step-dialog .impl-dialog-note {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: var(--t-1);
+  color: var(--secondary-text);
+  overflow-wrap: anywhere;
+}
+.step-dialog .dialog-code.authored {
+  font-family: var(--font-sans);
+  font-size: var(--t-2);
+  white-space: normal;
+}
+.step-dialog .source-links {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+/* A package's troubleshooting scenarios, one after another under a hairline. */
+.step-dialog .troubleshooting-scenario + .troubleshooting-scenario {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.step-dialog .troubleshooting h5 {
+  margin: 10px 0 4px;
+}
+.step-dialog .troubleshooting ul {
+  margin: 0;
+  padding-left: 18px;
 }
 .step .instruction {
   padding: 13px 15px;
