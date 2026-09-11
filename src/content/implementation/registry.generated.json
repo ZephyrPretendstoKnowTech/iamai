@@ -24562,7 +24562,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-check-separate-admin-accounts": {
       "status": "current",
@@ -24571,7 +24573,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-admin-portals-protected": {
       "status": "reviewNeeded",
@@ -24582,7 +24586,9 @@
         "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"
       ],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-admin-session": {
       "status": "current",
@@ -24593,7 +24599,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-admins-phishing-resistant": {
       "status": "current",
@@ -24604,7 +24612,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-azure-management-mfa": {
       "status": "current",
@@ -24613,7 +24623,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-block-auth-transfer": {
       "status": "current",
@@ -24624,7 +24636,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-block-device-code": {
       "status": "current",
@@ -24635,7 +24649,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-block-legacy-auth": {
       "status": "current",
@@ -24646,7 +24662,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-block-unsupported-platforms": {
       "status": "current",
@@ -24657,7 +24675,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-device-registration-mfa": {
       "status": "current",
@@ -24668,7 +24688,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-geo-restriction": {
       "status": "current",
@@ -24679,7 +24701,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-guests-mfa": {
       "status": "current",
@@ -24691,7 +24715,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-intune-enrollment-reauth": {
       "status": "current",
@@ -24702,7 +24728,11 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [
+        "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime"
+      ],
+      "renamed": []
     },
     "s-goal-mfa-all-users": {
       "status": "current",
@@ -24713,7 +24743,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-mobile-app-protection": {
       "status": "current",
@@ -24722,7 +24754,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-pim-activation-reauth": {
       "status": "current",
@@ -24733,7 +24767,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-register-info-protected": {
       "status": "current",
@@ -24742,7 +24778,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-require-managed-device": {
       "status": "current",
@@ -24753,7 +24791,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-service-accounts-trusted-network": {
       "status": "current",
@@ -24764,7 +24804,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-session-lifetime": {
       "status": "current",
@@ -24775,7 +24817,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-sign-in-risk": {
       "status": "current",
@@ -24786,7 +24830,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-sign-in-risk-medium": {
       "status": "current",
@@ -24797,7 +24843,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-token-protection": {
       "status": "current",
@@ -24808,7 +24856,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-unmanaged-browser": {
       "status": "current",
@@ -24817,7 +24867,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-user-risk": {
       "status": "current",
@@ -24828,7 +24880,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-user-risk-medium": {
       "status": "current",
@@ -24839,7 +24893,9 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-goal-workload-identity-block": {
       "status": "current",
@@ -24850,7 +24906,11 @@
       ],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [
+        "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
+      ],
+      "renamed": []
     },
     "s-ladder-operator-passkey": {
       "status": "current",
@@ -24859,7 +24919,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-allowed-countries": {
       "status": "current",
@@ -24868,7 +24930,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-auth-strength": {
       "status": "current",
@@ -24877,7 +24941,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-break-glass": {
       "status": "current",
@@ -24886,7 +24952,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-device-plan": {
       "status": "current",
@@ -24895,7 +24963,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-exclusion-group": {
       "status": "current",
@@ -24904,7 +24974,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-passkey-settings": {
       "status": "current",
@@ -24913,7 +24985,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-per-user-mfa": {
       "status": "current",
@@ -24922,7 +24996,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-security-defaults": {
       "status": "current",
@@ -24931,7 +25007,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-service-accounts-group": {
       "status": "current",
@@ -24940,7 +25018,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-prereq-trusted-location": {
       "status": "current",
@@ -24949,7 +25029,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-question-mail-devices": {
       "status": "current",
@@ -24958,7 +25040,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-question-partner": {
       "status": "current",
@@ -24967,7 +25051,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-question-travel": {
       "status": "current",
@@ -24976,7 +25062,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-shared-devices": {
       "status": "current",
@@ -24985,7 +25073,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     },
     "s-verify-mfa": {
       "status": "current",
@@ -24994,7 +25084,9 @@
       "unchanged": [],
       "changed": [],
       "removed": [],
-      "added": []
+      "added": [],
+      "identityFallback": [],
+      "renamed": []
     }
   }
 }

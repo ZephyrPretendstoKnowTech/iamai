@@ -37,7 +37,7 @@ test('unchanged is current, changed needs review, removed is held, and a new mem
   const reviewed = pin('old', [policy(A, 's1')], { goal: [A] })
   const record = membersAt(reviewed, ['goal'])
   assert.equal(driftOf(record, 'old', ['goal'], pin('new', [policy(A, 's1', 'Renamed')], { goal: [A] })).status, 'current')
-  assert.deepEqual(driftOf(record, 'old', ['goal'], pin('new', [policy(A, 's2')], { goal: [A] })), { status: 'reviewNeeded', reviewedPin: 'old', pinned: 'new', unchanged: [], changed: [A], removed: [], added: [] })
+  assert.deepEqual(driftOf(record, 'old', ['goal'], pin('new', [policy(A, 's2')], { goal: [A] })), { status: 'reviewNeeded', reviewedPin: 'old', pinned: 'new', unchanged: [], changed: [A], removed: [], added: [], identityFallback: [], renamed: [] })
   assert.equal(driftOf(record, 'old', ['goal'], pin('new', [], { goal: [] })).status, 'held')
   const grown = driftOf(record, 'old', ['goal'], pin('new', [policy(A, 's1'), policy(B, 's1')], { goal: [A, B] }))
   assert.equal(grown.status, 'current')
@@ -45,6 +45,35 @@ test('unchanged is current, changed needs review, removed is held, and a new mem
   // Never reviewed against a member it implements: needs review. Implements none: nothing to drift.
   assert.equal(driftOf(undefined, null, ['goal'], pin('new', [policy(A, 's1')], { goal: [A] })).status, 'reviewNeeded')
   assert.equal(driftOf(undefined, null, ['template-only'], pin('new', [policy(A, 's1')], { goal: [A] })).status, 'current')
+})
+
+test('a member the pin knows by display name alone is reported as such, and a rename that changes nothing is not a removal', () => {
+  const NAME = 'IAC - WORKLOAD - BLOCK - Example'
+  const idless = (name: string, strength: string) => ({ ...policy(A, strength, name), id: null }) as unknown as ReturnType<typeof policy>
+  const record = membersAt(pin('old', [idless(NAME, 's1')], { goal: [NAME] }), ['goal'])
+  // The same member, renamed and otherwise untouched.
+  const renamed = driftOf(record, 'old', ['goal'], pin('new', [idless('Renamed', 's1')], { goal: ['Renamed'] }))
+  assert.equal(renamed.status, 'current')
+  assert.deepEqual(renamed.renamed, [{ from: NAME, to: 'Renamed' }])
+  assert.deepEqual(renamed.removed, [])
+  assert.deepEqual(renamed.added, [])
+  assert.deepEqual(renamed.identityFallback, [NAME], 'the fallback is said, never assumed stable')
+  // Materially changed under the same name.
+  const changed = driftOf(record, 'old', ['goal'], pin('new', [idless(NAME, 's2')], { goal: [NAME] }))
+  assert.equal(changed.status, 'reviewNeeded')
+  assert.deepEqual(changed.changed, [NAME])
+  // Removed.
+  assert.equal(driftOf(record, 'old', ['goal'], pin('new', [], { goal: [] })).status, 'held')
+  // Renamed and changed cannot be told from a replacement: it holds.
+  assert.equal(driftOf(record, 'old', ['goal'], pin('new', [idless('Renamed', 's2')], { goal: ['Renamed'] })).status, 'held')
+  // An unrelated member changing touches nothing.
+  const other = driftOf(record, 'old', ['goal'], pin('new', [idless(NAME, 's1'), policy(B, 's9')], { goal: [NAME], elsewhere: [B] }))
+  assert.equal(other.status, 'current')
+  // Members with a stable id report no fallback.
+  assert.deepEqual(driftOf(membersAt(pin('old', [policy(A, 's1')], { goal: [A] }), ['goal']), 'old', ['goal'], pin('new', [policy(A, 's1')], { goal: [A] })).identityFallback, [])
+  // The build's registry names the packages reviewed by name.
+  const fallback = Object.entries(REVIEWS as unknown as Record<string, { identityFallback: string[] }>).filter(([, r]) => r.identityFallback.length > 0).map(([id]) => id).sort()
+  assert.deepEqual(fallback, ['s-goal-intune-enrollment-reauth', 's-goal-workload-identity-block'])
 })
 
 test('a package set aside for review no longer draws its step, says why, and every other package still applies', () => {
