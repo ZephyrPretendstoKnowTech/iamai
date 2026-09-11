@@ -24,7 +24,7 @@ const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPack
 
 type Placed = { step: Step; ctx: StepVarContext }
 
-function placed(name: 'small' | 'demo'): Placed[] {
+function placed(name: 'small' | 'demo' | 'demo-week2'): Placed[] {
   const f = fixture(name)
   const r = runFixture(f)
   return r.steps.map((step) => ({ step, ctx: { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null } }))
@@ -123,4 +123,15 @@ test('every registered Partial composes its corrections from the engine’s chan
     const partial = PACKAGES[id].meta.projection.partial
     if (partial) assert.equal(partial.mode, 'composeByMismatch', `${id}: a Partial that cannot choose its corrections was registered`)
   }
+})
+
+test('the demo’s held Intune enrollment policy, prepared in report-only, offers the package’s JSON, and it parses', () => {
+  const { pkg, state, projection } = project(at(placed('demo-week2'), 's-goal-intune-enrollment-reauth'))
+  assert.equal(pkg.meta.stepId, 's-goal-intune-enrollment-reauth')
+  assert.equal(state, 'missing')
+  assert.equal(projection.hold, null, JSON.stringify(projection.hold))
+  const json = projection.channels.find((c) => c.channel === 'json')
+  assert.ok(json, 'no JSON channel')
+  assert.equal(typeof (JSON.parse(json.text) as { displayName?: unknown }).displayName, 'string')
+  for (const c of projection.channels) assert.equal(/\{\{|\[omit /.test(c.text), false, `${c.channel}: an authoring marker reached the page`)
 })
