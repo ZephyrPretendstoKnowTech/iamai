@@ -26,7 +26,8 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate, dateSpan } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, NO_FOCUS, VIEWS, WHEN, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, statusGroupOf, workTypeOf } from './planBoard.ts'
+import { BOARD, NO_FOCUS, VIEWS, WHEN, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, statusGroupFor, workTypeOf } from './planBoard.ts'
+import { planStateOf } from './planState.ts'
 import type { BoardGroup, BoardItem, Focus, RoadmapGroup, View } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
@@ -208,12 +209,16 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // "next" pill on the row — and it is what puts a row in Up next. Nothing
     // re-derives it: a step can be Ready without being the recommendation, and
     // Up next saying otherwise is what this correction fixes.
-    const status = statusGroupOf(step, isNext, isHeld(step))
+    // The Plan's one presentation state (planState.ts): the row's word, its Status
+    // group and whether the Needs attention focus holds it are the same reading.
+    const planState = planStateOf(step, isHeld(step))
+    const status = statusGroupFor(planState, isNext)
     items.push({
       id: step.id,
       title: contentTitle(step),
       roadmap: group,
       status,
+      attention: planState.attention,
       workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null),
       isNext,
       order: order++,
@@ -258,6 +263,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         // A Cleanup row is never the Plan's next marker: the marker is set while
         // walking the numbered phases, and Cleanup follows them all.
         status: complete ? 'complete' : 'ready',
+        attention: false,
         workType: 'setup',
         isNext: false,
         order: order++,
@@ -581,6 +587,7 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
           onUnskip={() => onUnskip(step.id)}
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}
           onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
+          when={when}
           decision={decision}
           onDecide={onDecide}
           confirmations={confirmations}

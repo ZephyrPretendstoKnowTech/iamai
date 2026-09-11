@@ -192,7 +192,7 @@ test('every family draws the one Next milestone rail, and it is never empty', ()
     // A date only where Foundation B holds one; never one it does not.
     if (a.contract.milestone.at === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
-  assert.equal(CONTENT_STEP.split('<StepRail contract={contract} />').length - 1, 1, 'the rail is gated, or drawn twice')
+  assert.equal(CONTENT_STEP.split('<StepRail contract={contract} when={when} />').length - 1, 1, 'the rail is gated, or drawn twice')
 })
 
 // ------------------------------------ implementation is not always the action

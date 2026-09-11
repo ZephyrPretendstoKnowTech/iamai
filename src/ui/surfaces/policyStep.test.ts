@@ -237,7 +237,7 @@ test('every step has the Next milestone rail beside its main column', () => {
   // The approved rail is Next milestone only, and every step has a next
   // milestone, so the rail is never optional and never empty.
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
-  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
+  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} when=\{when\} \/>/, 'the rail is gated')
   const one = CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? ''
   const two = CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? ''
   assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no rail leaves an empty column')

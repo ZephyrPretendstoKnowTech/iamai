@@ -405,7 +405,7 @@ test('the frame has a main column and the step’s own rail, and the rail surviv
   // fact every step has, so the rail is never gated and never duplicated.
   assert.equal(CONTENT_STEP.split('<StepRail').length - 1, 1, 'the step draws more than one rail')
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
-  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
+  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} when=\{when\} \/>/, 'the rail is gated')
 })
 
 test('the Plan’s topbar sticks, through the one shell the product already has', () => {
@@ -650,8 +650,9 @@ test('the rail is the Next milestone only, from the same contract', () => {
     assert.equal(v.split('class="side-block"').length - 1, 1, `${id}: the pack’s rail holds more than one block`)
   }
   const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepRail('), SECTIONS.indexOf('export function StepFooter(')))
-  assert.match(railSrc, /export function StepRail\(\{ contract \}: \{ contract: StepContract \}\)/, 'the rail takes something other than the contract')
-  assert.match(railSrc, /railOf\(contract\)/, 'the rail does not read the contract’s one projection')
+  // The contract, and the row's When column it repeats for an undated held step (planState.ts), and nothing else.
+  assert.match(railSrc, /export function StepRail\(\{ contract, when = null \}: \{ contract: StepContract; when\?: string \| null \}\)/, 'the rail takes something other than the contract')
+  assert.match(railSrc, /railOf\(contract, when\)/, 'the rail does not read the contract’s one projection')
   for (const forbidden of ['step.', 'snapshot', 'mapping', 'implementation', 'side-list', 'reduce(', 'Math.', 'Date.']) {
     assert.equal(railSrc.includes(forbidden), false, `the rail ${forbidden}: it is the Next milestone and nothing else`)
   }

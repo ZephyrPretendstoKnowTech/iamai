@@ -193,8 +193,8 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * words (stepContract.ts `railOf`). Every step has a next milestone, so every
  * step has the rail, and nothing else is put in it.
  */
-export function StepRail({ contract }: { contract: StepContract }) {
-  const r = railOf(contract)
+export function StepRail({ contract, when = null }: { contract: StepContract; when?: string | null }) {
+  const r = railOf(contract, when)
   return (
     <aside className="step-side surface-inset">
       <div className="side-block">

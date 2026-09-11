@@ -29,6 +29,9 @@ import { fillText } from '../../content/render.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
+import { planStateOf } from './planState.ts'
+import type { PlanState, PlanStateFacts } from './planState.ts'
+import { CONTRACT } from './stepContract.ts'
 
 /** The When column's words where a row has no date or reason of its own (owner, 2026-09-11): the column is never blank. */
 export const WHEN = (pages.plan as unknown as { when: { complete: string; notScheduled: string; after: string; afterPrerequisites: string } }).when
@@ -38,7 +41,7 @@ export const WHEN = (pages.plan as unknown as { when: { complete: string; notSch
  * the projection cannot quietly start reading a fourth: widening this is a
  * visible change, where widening a `Pick<Step, …>` inline is not.
  */
-export type StatusFacts = Pick<Step, 'status' | 'operatorSafe'> & { state: Pick<Step['state'], 'condition'> }
+export type StatusFacts = PlanStateFacts
 
 /** The three lenses, in the order the control offers them. Roadmap is the default. */
 export const VIEWS = ['roadmap', 'status', 'type'] as const
@@ -212,19 +215,29 @@ export function workTypeOf(stepId: string, contentKind: string | null): WorkType
  * this row.
  */
 export function statusGroupOf(step: StatusFacts, isNext: boolean, held = false): StatusGroup {
-  if (step.status === 'done') return 'complete'
-  const c = step.state.condition
-  if (c === 'needs-decision' || c === 'review-required' || c === 'baseline-conflict') return 'attention'
-  if (step.operatorSafe === false) return 'attention'
-  // Work something holds is waiting, whatever its own status word says: it is not
-  // Ready and not the next thing (roadmap/holds.ts, handed in by the surface). A
-  // policy already being watched stays under In progress.
-  if (held && step.status !== 'in-report-only') return 'waiting'
+  return statusGroupFor(planStateOf(step, held), isNext)
+}
+
+/**
+ * The Status group of the Plan's one presentation state (planState.ts). The same
+ * state gives the row its word, so a row reading Needs attention is never grouped
+ * under Ready, and one reading Blocked on a baseline contradiction is never put
+ * under Needs attention when nothing in the tenant is the operator's to do.
+ */
+export function statusGroupFor(s: PlanState, isNext: boolean): StatusGroup {
+  if (s.complete) return 'complete'
+  // A decision, a review or a change that would strand the operator: the answer is on this row.
+  if (s.attention && s.kind !== 'attention') return 'attention'
   // The one place Up next is decided, and it reads the marker rather than the
   // status. A step can be ready without being next; that is the whole point.
   if (isNext) return 'upnext'
-  if (step.status === 'ready' || step.status === 'ready-to-enforce') return 'ready'
-  if (step.status === 'in-report-only') return 'progress'
+  // Work on this row that is not ready: its own checks fail.
+  if (s.attention) return 'attention'
+  // Work something holds is waiting, whatever its own word says: it is not Ready
+  // and not the next thing. A policy already being watched stays under In progress.
+  if (s.held && s.kind !== 'reportOnly') return 'waiting'
+  if (s.kind === 'ready' || s.kind === 'readyToEnforce') return 'ready'
+  if (s.kind === 'reportOnly') return 'progress'
   return 'waiting'
 }
 
@@ -273,6 +286,10 @@ function waitsOnLabel(ids: readonly string[], titleOf: (id: string) => string | 
  * or the group it sits in. `waveStart` is the row's roadmap group's first day.
  */
 export function boardWhenOf(step: Step, waveStart: string | null = null, titleOf: (id: string) => string | null = () => null): string {
+  // A baseline that defines the policy two ways has no rollout to date and nothing
+  // in the tenant to wait on: the column says Deferred, which is what the opened
+  // step's rail says (docs/design/approved/anatomy/plan-step-v1.html V5).
+  if (step.state.condition === 'baseline-conflict' && step.status !== 'done' && step.status !== 'skipped') return CONTRACT.rail.deferred
   const when = rowWhen(step, waveStart)
   const held = isHeld(step)
   const waits = held ? holdWaitsOn(step) : step.status === 'blocked' ? step.blockers.flatMap((b) => (b.kind === 'step' ? [b.stepId] : [])) : []
@@ -317,6 +334,13 @@ export type BoardItem = {
   title: string
   roadmap: RoadmapGroup
   status: StatusGroup
+  /**
+   * In the Needs attention focus (planState.ts `attention`): the same reading that
+   * gives the row its word. Kept beside `status` because the row the Plan marks
+   * next can need attention too, and Up next is its group while the focus still
+   * holds it.
+   */
+  attention: boolean
   workType: WorkType
   /**
    * The Plan's next marker: the one row the board recommends advancing, and the
@@ -381,7 +405,7 @@ export function applyFocus(items: readonly BoardItem[], f: Focus): BoardItem[] {
   const q = f.search.trim().toLowerCase()
   return items.filter((i) => {
     if (i.status === 'complete' && !f.showCompleted) return false
-    if (f.attention && i.status !== 'attention') return false
+    if (f.attention && !i.attention) return false
     if (f.upNext && i.status !== 'upnext') return false
     if (q !== '' && !i.title.toLowerCase().includes(q)) return false
     return true
@@ -391,7 +415,7 @@ export function applyFocus(items: readonly BoardItem[], f: Focus): BoardItem[] {
 /** How many rows each focus control would show, over the whole board. Never a constant. */
 export function focusCounts(items: readonly BoardItem[]): { attention: number; upNext: number; complete: number } {
   return {
-    attention: items.filter((i) => i.status === 'attention').length,
+    attention: items.filter((i) => i.attention).length,
     upNext: items.filter((i) => i.status === 'upnext').length,
     complete: items.filter((i) => i.status === 'complete').length,
   }
@@ -445,7 +469,7 @@ function byKeyed<K extends string>(items: readonly BoardItem[], order: readonly 
 export function groupSummary(g: BoardGroup): string {
   const n = g.items.length
   const steps = `${n} step${n === 1 ? '' : 's'}`
-  const attention = g.key === 'attention' ? 0 : g.items.filter((i) => i.status === 'attention').length
+  const attention = g.key === 'attention' ? 0 : g.items.filter((i) => i.attention).length
   if (attention === 0) return steps
   return `${steps} · ${attention} need${attention === 1 ? 's' : ''} attention`
 }

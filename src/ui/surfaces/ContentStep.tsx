@@ -199,9 +199,12 @@ export function ContentStep({
   onUnconfirm,
   baselineCommit = BASELINE_COMMIT,
   printing = false,
+  when = null,
 }: {
   step: Step
   ctx: StepVarContext
+  /** The row's When column (planBoard.ts boardWhenOf), which the rail repeats for an undated held step rather than saying something else. */
+  when?: string | null
   /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
   onSkip: (reason: string) => void
   onUnskip: () => void
@@ -594,7 +597,7 @@ export function ContentStep({
         {/* The rail belongs to this step: beside the main column at full width
             and under it once the body collapses to one column. It is the Next
             milestone and nothing else. */}
-        <StepRail contract={contract} />
+        <StepRail contract={contract} when={when} />
       </div>
       <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
