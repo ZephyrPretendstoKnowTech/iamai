@@ -164,6 +164,9 @@
           ]
         },
         "workload.service-principal": {
+          "facts": [
+            "conditions.clientApplications"
+          ],
           "appliesWhen": "the policy does not directly include the IAMAI-resolved Cloud Sync provisioning service principal Object ID",
           "entra": [
             "entra.correct.policy.service-principal"
@@ -184,6 +187,9 @@
           ]
         },
         "target.all-resources": {
+          "facts": [
+            "conditions.applications"
+          ],
           "appliesWhen": "the workload policy target resources are not All resources",
           "entra": [
             "entra.correct.policy.all-resources"
@@ -204,6 +210,9 @@
           ]
         },
         "conditions.location-boundary": {
+          "facts": [
+            "conditions.locations"
+          ],
           "appliesWhen": "the policy does not include Any location and exclude only the approved sync-server named location",
           "entra": [
             "entra.correct.policy.location-boundary"
@@ -224,6 +233,9 @@
           ]
         },
         "conditions.client-app-types-all": {
+          "facts": [
+            "conditions.clientAppTypes"
+          ],
           "appliesWhen": "clientAppTypes differs from the retained all value",
           "entra": [
             "entra.correct.policy.client-apps"
@@ -244,6 +256,16 @@
           ]
         },
         "conditions.remove-noncanonical": {
+          "facts": [
+            "conditions.users",
+            "conditions.platforms",
+            "conditions.devices",
+            "conditions.signInRiskLevels",
+            "conditions.userRiskLevels",
+            "conditions.servicePrincipalRiskLevels",
+            "conditions.authenticationFlows",
+            "conditions.insiderRiskLevels"
+          ],
           "appliesWhen": "risk, user, device, platform, authentication-flow, or other noncanonical conditions are present",
           "entra": [
             "entra.correct.policy.remove-noncanonical"
@@ -264,6 +286,9 @@
           ]
         },
         "grant.block": {
+          "facts": [
+            "grantControls"
+          ],
           "appliesWhen": "grant is not Block access",
           "entra": [
             "entra.correct.policy.grant-block"
@@ -284,6 +309,13 @@
           ]
         },
         "lifecycle.report-only": {
+          "select": {
+            "equals": [
+              "policy.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "appliesWhen": "a semantically incorrect workload policy is not in Report-only while being corrected",
           "entra": [
             "entra.correct.policy.report-only"

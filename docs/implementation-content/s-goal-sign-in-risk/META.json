@@ -143,6 +143,9 @@
       },
       "mismatches": {
         "users.scope-or-exclusions": {
+          "facts": [
+            "conditions.users"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups"
@@ -161,6 +164,9 @@
           ]
         },
         "target.all-resources": {
+          "facts": [
+            "conditions.applications"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups"
@@ -179,6 +185,9 @@
           ]
         },
         "risk.high-only": {
+          "facts": [
+            "conditions.signInRiskLevels"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups"
@@ -197,6 +206,17 @@
           ]
         },
         "conditions.remove-noncanonical": {
+          "facts": [
+            "conditions.clientAppTypes",
+            "conditions.locations",
+            "conditions.platforms",
+            "conditions.devices",
+            "conditions.userRiskLevels",
+            "conditions.servicePrincipalRiskLevels",
+            "conditions.authenticationFlows",
+            "conditions.insiderRiskLevels",
+            "conditions.clientApplications"
+          ],
           "requires": [
             "policy.current.id",
             "policy.target.excludeGroups"
@@ -215,6 +235,9 @@
           ]
         },
         "grant.first-enforcement": {
+          "facts": [
+            "grantControls"
+          ],
           "mode": "selectByBinding",
           "selector": "decision.signInRisk.firstEnforcementMode",
           "variants": {
@@ -257,6 +280,9 @@
           }
         },
         "session.every-time": {
+          "facts": [
+            "sessionControls"
+          ],
           "requires": [
             "policy.current.id"
           ],
@@ -274,6 +300,13 @@
           ]
         },
         "lifecycle.report-only": {
+          "select": {
+            "equals": [
+              "policy.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "requires": [
             "policy.current.id"
           ],

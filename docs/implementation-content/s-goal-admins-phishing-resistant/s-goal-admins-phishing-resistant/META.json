@@ -88,12 +88,16 @@
     },
     "partial": {
       "mode": "compose",
+      "mismatchBinding": "policy.current.semanticMismatches",
       "sharedBefore": [
         "entra.correct-open"
       ],
       "modules": [
         {
           "id": "conditions.canonical",
+          "facts": [
+            "conditions"
+          ],
           "entra": "entra.correct-conditions",
           "json": "json.correct-conditions",
           "powershell": {
@@ -103,6 +107,9 @@
         },
         {
           "id": "grant.custom-strength",
+          "facts": [
+            "grantControls"
+          ],
           "entra": "entra.correct-grant",
           "json": "json.correct-grant",
           "powershell": {
@@ -112,6 +119,9 @@
         },
         {
           "id": "session.none",
+          "facts": [
+            "sessionControls"
+          ],
           "entra": "entra.correct-session",
           "json": "json.correct-session",
           "powershell": {
