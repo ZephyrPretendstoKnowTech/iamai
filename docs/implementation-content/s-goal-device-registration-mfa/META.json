@@ -46,7 +46,8 @@
     "people.affected.count",
     "evidence.deviceRegistration",
     "evidence.enrollmentWorkflows",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "tenant.deviceRegistration.multiFactorAuthConfiguration"
   ],
   "projection": {
     "missing": {
@@ -73,6 +74,7 @@
     },
     "partial": {
       "mode": "composeByMismatch",
+      "mismatchBinding": "policy.current.semanticMismatches",
       "requires": [
         "policy.current.id",
         "policy.current.semanticMismatches",
@@ -86,6 +88,12 @@
       "mismatches": {
         "users.include-all": {
           "appliesWhen": "included population is not exactly All users",
+          "facts": [
+            "conditions.users.includeUsers",
+            "conditions.users.includeGroups",
+            "conditions.users.includeRoles",
+            "conditions.users.includeGuestsOrExternalUsers"
+          ],
           "entra": [
             "entra.correct.users.include-all"
           ],
@@ -104,6 +112,12 @@
         },
         "users.exclusions-canonical": {
           "appliesWhen": "exclusion set differs from IAMAI's canonical target",
+          "facts": [
+            "conditions.users.excludeUsers",
+            "conditions.users.excludeGroups",
+            "conditions.users.excludeRoles",
+            "conditions.users.excludeGuestsOrExternalUsers"
+          ],
           "entra": [
             "entra.correct.users.exclusions-canonical"
           ],
@@ -122,6 +136,9 @@
         },
         "target.register-or-join-devices": {
           "appliesWhen": "target resource/user action differs from Register or join devices only",
+          "facts": [
+            "conditions.applications"
+          ],
           "entra": [
             "entra.correct.target.register-or-join-devices"
           ],
@@ -140,6 +157,18 @@
         },
         "conditions.remove-noncanonical": {
           "appliesWhen": "one or more noncanonical conditions are present",
+          "facts": [
+            "conditions.clientAppTypes",
+            "conditions.locations",
+            "conditions.platforms",
+            "conditions.devices",
+            "conditions.signInRiskLevels",
+            "conditions.userRiskLevels",
+            "conditions.servicePrincipalRiskLevels",
+            "conditions.authenticationFlows",
+            "conditions.insiderRiskLevels",
+            "conditions.clientApplications"
+          ],
           "entra": [
             "entra.correct.conditions.remove-noncanonical"
           ],
@@ -158,6 +187,9 @@
         },
         "grant.authentication-strength": {
           "appliesWhen": "grant or authentication strength differs from retained pinned target",
+          "facts": [
+            "grantControls"
+          ],
           "entra": [
             "entra.correct.grant.authentication-strength"
           ],
@@ -176,6 +208,13 @@
         },
         "lifecycle.report-only": {
           "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
+          "select": {
+            "equals": [
+              "policy.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "entra": [
             "entra.correct.lifecycle.report-only"
           ],
@@ -314,17 +353,33 @@
     {
       "id": "legacy-device-mfa-toggle",
       "class": "human-validation",
-      "requiredBefore": "readyToEnforce->inPlace"
+      "requiredBefore": "readyToEnforce->inPlace",
+      "evidence": {
+        "equals": [
+          "tenant.deviceRegistration.multiFactorAuthConfiguration",
+          "notRequired"
+        ]
+      },
+      "invalidatedBy": [
+        "policy.current.id"
+      ]
     },
     {
       "id": "enrollment-workflows",
       "class": "human-validation",
-      "requiredBefore": "readyToEnforce->inPlace"
+      "requiredBefore": "readyToEnforce->inPlace",
+      "invalidatedBy": [
+        "policy.current.id",
+        "policy.target.excludeGroups"
+      ]
     },
     {
       "id": "external-auth-methods",
       "class": "human-validation",
-      "requiredBefore": "readyToEnforce->inPlace"
+      "requiredBefore": "readyToEnforce->inPlace",
+      "invalidatedBy": [
+        "policy.current.id"
+      ]
     }
   ],
   "sharedTechnicalPrimitives": [

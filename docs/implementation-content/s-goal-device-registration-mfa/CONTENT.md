@@ -209,7 +209,7 @@ Done when the same policy ID is On, the legacy device-registration MFA toggle is
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]},"EnrollmentWorkflowsValidated":{"switch":true,"prerequisite":"enrollment-workflows","modes":["Enforce"]},"ExternalAuthenticationCompatibilityResolved":{"switch":true,"prerequisite":"external-auth-methods","modes":["Enforce"]}}}}
 # IAMAI compact implementation script — Require MFA to Register a Device
 # Required module: Microsoft.Graph.Authentication
 # Create/Correct/Enforce delegated scopes: Policy.Read.All, Policy.ReadWrite.ConditionalAccess
@@ -588,15 +588,18 @@ IT
     {
       "id": "readiness.exclusions",
       "gate": "Exclusions",
+      "gateKey": "exclusions",
       "sourceType": "tenant-evidence",
       "requiredInput": "policy.target.excludeGroups",
       "rules": [
         {
+          "if": { "present": "policy.target.excludeGroups" },
           "when": "canonical exclusion set is resolved and nonempty",
           "result": "Ready",
           "line": "IAMAI has the canonical exclusions this policy must preserve."
         },
         {
+          "if": { "absent": "policy.target.excludeGroups" },
           "when": "canonical exclusion set is unresolved",
           "result": "Blocked",
           "line": "Resolve the policy exclusions before creating or correcting it."
@@ -609,6 +612,7 @@ IT
       "sourceType": "baseline-requirement",
       "rules": [
         {
+          "if": { "baselineCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890" },
           "when": "retained pinned baseline is authoritative",
           "result": "Ready",
           "line": "Use built-in Multifactor authentication (00000000-0000-0000-0000-000000000002)."
@@ -620,18 +624,22 @@ IT
       "gate": "Enrollment workflows",
       "sourceType": "tenant-evidence",
       "optionalInput": "evidence.enrollmentWorkflows",
+      "confirms": ["enrollment-workflows"],
       "rules": [
         {
+          "if": { "confirmed": "enrollment-workflows" },
           "when": "all known affected workflows have validated resolution",
           "result": "Ready",
           "line": "Known device-registration and enrollment workflows are validated."
         },
         {
+          "if": { "present": "evidence.enrollmentWorkflows" },
           "when": "a known workflow is unvalidated or incompatible",
           "result": "Review required",
           "line": "Validate the identified registration/enrollment workflow before enforcement."
         },
         {
+          "if": { "absent": "evidence.enrollmentWorkflows" },
           "when": "IAMAI has no usable workflow evidence",
           "result": "Unknown",
           "line": "IAMAI cannot prove unobserved enrollment workflows are safe."
@@ -642,13 +650,16 @@ IT
       "id": "readiness.enforcement-settings",
       "gate": "Enforcement checks",
       "sourceType": "microsoft-rule",
+      "confirms": ["legacy-device-mfa-toggle", "external-auth-methods"],
       "rules": [
         {
+          "if": { "all": [{ "state": ["missing", "partial", "reportOnly", "readyToEnforce"] }, { "not": { "all": [{ "confirmed": "legacy-device-mfa-toggle" }, { "confirmed": "external-auth-methods" }] } }] },
           "when": "state is missing, partial, or reportOnly",
           "result": "Review required",
           "line": "Before enforcement, confirm the legacy device-registration MFA toggle is No and resolve external-authentication-method compatibility."
         },
         {
+          "if": { "all": [{ "confirmed": "legacy-device-mfa-toggle" }, { "confirmed": "external-auth-methods" }] },
           "when": "human enforcement checks are recorded complete by the existing workflow",
           "result": "Ready",
           "line": "Mandatory pre-enforcement checks are complete."
@@ -660,6 +671,12 @@ IT
     "safeToCreateOrCorrect": "Ready to create or correct in Report-only when canonical exclusions and stable identity requirements are resolved.",
     "safeToObserve": "Continue direct workflow validation; Report-only does not evaluate this User Action.",
     "safeToEnforce": "Enforce only after enrollment workflows pass, external-authentication compatibility is resolved, and the legacy device-registration MFA toggle is confirmed No."
+  },
+  "conclusionByState": {
+    "missing": "safeToCreateOrCorrect",
+    "partial": "safeToCreateOrCorrect",
+    "reportOnly": "safeToObserve",
+    "readyToEnforce": "safeToEnforce"
   },
   "whyIamAISaysThis": {
     "id": "why-iamai-says-this",

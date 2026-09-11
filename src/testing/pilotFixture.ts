@@ -1,13 +1,31 @@
 // The implementation-content pilot's reviewable states (dev harness and tests
 // only; nothing in the product imports this).
 //
-// The fixture supplies STATE and BINDINGS. Every word of content comes from the
-// package (docs/implementation-content/s-goal-device-registration-mfa/). The
-// identifiers below are synthetic and belong to no tenant.
+// The fixture supplies STATE, BINDINGS and what a person has confirmed. Every
+// word of content comes from the package
+// (docs/implementation-content/s-goal-device-registration-mfa/). The identifiers
+// below are synthetic and belong to no tenant.
 import type { Step } from '../roadmap/types.ts'
-import type { Bindings, PackageState } from '../content/implementation/project.ts'
+import type { Bindings, PackageState, RuntimeContext } from '../content/implementation/project.ts'
+import registry from '../content/implementation/registry.generated.json' with { type: 'json' }
+import type { CompiledPackage } from '../content/implementation/protocol.ts'
+import { CHANGED_FIELDS_BINDING } from '../content/implementation/protocol.ts'
 
 export const PILOT_STEP_ID = 's-goal-device-registration-mfa'
+
+/** The pilot as registered, whatever baseline it was authored against. */
+export const PILOT_PACKAGE = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages[PILOT_STEP_ID]
+
+/**
+ * The baseline commit the pilot was authored against (META.json
+ * `baselineAuthority.pinCommit`). The build pins another, so the product does not
+ * activate the pilot (ui/surfaces/stepPackage.ts packageApplies); the tests and
+ * the dev harness project it as a build pinned to its own baseline would.
+ */
+export const PILOT_PIN = String(PILOT_PACKAGE.meta.baselineAuthority?.pinCommit ?? '')
+
+/** Every prerequisite the pilot declares. */
+export const PILOT_PREREQUISITES = (PILOT_PACKAGE.meta.prerequisites ?? []).map((p) => p.id)
 
 /** Synthetic identifiers: a policy and an exclusions group no tenant has. */
 export const PILOT_IDS = {
@@ -28,12 +46,18 @@ export function pilotBindings(state: PackageState, over: Record<string, unknown>
     base['policy.current.displayName'] = 'Core - Require - MFA for device registration'
     base['policy.current.state'] = state === 'inPlace' ? 'enabled' : 'enabledForReportingButNotEnforced'
   }
-  if (state === 'partial') base['policy.current.semanticMismatches'] = ['users.exclusions-canonical', 'grant.authentication-strength']
+  // The engine's semantic facts about the correction a Partial state owes (roadmap/changedFields.ts).
+  if (state === 'partial') base[CHANGED_FIELDS_BINDING] = ['conditions.users.excludeGroups', 'grantControls.authenticationStrength.id']
   for (const [k, v] of Object.entries(over)) {
     if (v === undefined) delete base[k]
     else base[k] = v
   }
   return base
+}
+
+/** The runtime a build pinned to the pilot's baseline would hand it: these prerequisites satisfied (all of them by default). */
+export function pilotRuntime(satisfied: readonly string[] = PILOT_PREREQUISITES): RuntimeContext {
+  return { satisfied: new Set(satisfied), baselineCommit: PILOT_PIN }
 }
 
 type PilotRuntimeState = 'missing' | 'reportOnly' | 'readyToEnforce'

@@ -1,49 +1,60 @@
-// The implementation-content pilot: s-goal-device-registration-mfa, end to end.
+// The implementation-content pilot: s-goal-device-registration-mfa, end to end,
+// against the runtime contract (README.md).
 //
-// Package ingestion (protocol.ts), state projection, Partial composition,
-// bindings, Readiness, troubleshooting and the source date (project.ts), the
+// Package ingestion (protocol.ts), state projection, Partial composition from the
+// engine's semantic facts, the enforcement gate and owner confirmations,
+// bindings, readiness, troubleshooting and the source date (project.ts), the
 // runtime adapter that hands IAMAI's state to the package (stepPackage.ts), and
-// the viewer that draws it (ContentStep.tsx). The fixture supplies state and
-// bindings; every word of content is read from the package itself.
+// the viewer that draws it (ContentStep.tsx). The fixture supplies state, bindings
+// and confirmations; every word of content is read from the package itself.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { PackageError, compilePackage, parseBlocks, validatePackage } from './protocol.ts'
+import { CHANGED_FIELDS_BINDING, PackageError, compilePackage, parseBlocks, validatePackage } from './protocol.ts'
 import type { CompiledPackage } from './protocol.ts'
-import { OUTPUT_ORDER, PACKAGE_STATES, packageReadiness, projectImplementation, sourceUpdatedOn, troubleshootingFor } from './project.ts'
+import { OUTPUT_ORDER, PACKAGE_STATES, packageReadiness, prerequisiteBasis, prerequisiteStatus, projectImplementation, sourceUpdatedOn, troubleshootingFor } from './project.ts'
 import type { PackageState } from './project.ts'
 import registry from './registry.generated.json' with { type: 'json' }
-import { PILOT_IDS, PILOT_STEP_ID, pilotBindings, pilotStepAt } from '../../testing/pilotFixture.ts'
+import { PILOT_IDS, PILOT_PIN, PILOT_PREREQUISITES, PILOT_STEP_ID, pilotBindings, pilotRuntime, pilotStepAt } from '../../testing/pilotFixture.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { readinessOf, stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { ACTIVE_PACKAGE_STEP_IDS, implementationPackageFor, mergeReadiness, packageBindings, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
+import { ACTIVE_PACKAGE_STEP_IDS, BASELINE_COMMIT, INACTIVE_PACKAGES, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, mergeReadiness, packageBindings, packageRuntime, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
 
 const DIR = `docs/implementation-content/${PILOT_STEP_ID}`
 const read = (p: string): string => readFileSync(p, 'utf8')
-const source = (): CompiledPackage => compilePackage(read(`${DIR}/META.json`), read(`${DIR}/CONTENT.md`))
-const PKG = source()
-const channelsOf = (state: PackageState, over: Record<string, unknown> = {}): string[] => projectImplementation(PKG, state, pilotBindings(state, over)).channels.map((c) => c.channel)
-const artifact = (state: PackageState, channel: string) => projectImplementation(PKG, state, pilotBindings(state)).channels.find((c) => c.channel === channel)!
-const bound = (id: string): string => PKG.blocks[id].text.replace(/\s+$/, '')
+const PKG: CompiledPackage = compilePackage(read(`${DIR}/META.json`), read(`${DIR}/CONTENT.md`))
+const ALL = pilotRuntime()
+const project = (state: PackageState, over: Record<string, unknown> = {}, runtime = ALL) => projectImplementation(PKG, state, pilotBindings(state, over), runtime)
+const channelsOf = (state: PackageState, over: Record<string, unknown> = {}): string[] => project(state, over).channels.map((c) => c.channel)
+const artifact = (state: PackageState, channel: string, over: Record<string, unknown> = {}) => project(state, over).channels.find((c) => c.channel === channel)!
+const authored = (id: string): string => PKG.blocks[id].text.replace(/\s+$/, '')
 
 // ------------------------------------------------------------ package ingestion
 
-test('the pilot package compiles: META.json parses and every projected block exists', () => {
+test('the pilot package compiles under the strict contract: every projected block, invocation, condition and model is sound', () => {
   assert.equal(PKG.meta.stepId, PILOT_STEP_ID)
   assert.deepEqual(validatePackage(PKG), [])
   assert.equal(Object.keys(PKG.blocks).length, 24)
-  // Every state the package names is one the projection knows, and no other.
   assert.deepEqual(Object.keys(PKG.meta.projection).sort(), [...PACKAGE_STATES].sort())
 })
 
-test('the generated registry is the compiled pilot, and the pilot is the only active package', () => {
+test('the registry is the compiled pilot; the build does not activate it, because it was authored against another baseline pin', () => {
   const packages = (registry as unknown as { packages: Record<string, unknown> }).packages
-  assert.deepEqual(Object.keys(packages), [PILOT_STEP_ID], 'another implementation-content package became active')
+  assert.deepEqual(Object.keys(packages), [PILOT_STEP_ID], 'another implementation-content package was registered')
   assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(PKG)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
-  assert.deepEqual([...ACTIVE_PACKAGE_STEP_IDS], [PILOT_STEP_ID])
+  assert.deepEqual([...REGISTERED_PACKAGE_STEP_IDS], [PILOT_STEP_ID])
+  // The pinned baseline wins (CLAUDE.md): the build pins baselines/*.pinned.json, and the pilot names 8461e0f2.
+  assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
+  assert.equal(PILOT_PIN, '8461e0f2fd10167bf034e7c20ed8ea293827d890')
+  assert.notEqual(BASELINE_COMMIT, PILOT_PIN)
+  assert.deepEqual([...ACTIVE_PACKAGE_STEP_IDS], [], 'a package authored against another baseline is active')
+  assert.equal(INACTIVE_PACKAGES.length, 1)
+  assert.match(INACTIVE_PACKAGES[0].reason, new RegExp(`${PILOT_PIN}.*${BASELINE_COMMIT}`))
+  assert.equal(implementationPackageFor(PILOT_STEP_ID), null, 'the product renders the pilot against a baseline it was not authored for')
+  assert.equal(implementationPackageFor(PILOT_STEP_ID, PILOT_PIN), (registry as unknown as { packages: Record<string, CompiledPackage> }).packages[PILOT_STEP_ID])
   assert.equal(implementationPackageFor('s-goal-block-legacy-auth'), null, 'a step without an active package gained one')
 })
 
@@ -53,14 +64,11 @@ test('a duplicate, nested, unterminated or unknown block fails, and so does an u
   assert.throws(() => parseBlocks(`@@IAMAI-BEGIN {"id":"a","channel":"entra"}\n@@IAMAI-BEGIN {"id":"b","channel":"entra"}\n@@IAMAI-END\n@@IAMAI-END\n`), PackageError)
   assert.throws(() => parseBlocks(`@@IAMAI-BEGIN {"id":"a","channel":"entra"}\nText.\n`), PackageError)
   assert.throws(() => parseBlocks(`@@IAMAI-BEGIN {not json}\n@@IAMAI-END\n`), PackageError)
-  // META.json names a block CONTENT.md does not have.
   const meta = JSON.parse(read(`${DIR}/META.json`)) as { projection: { missing: { entra: string[] } } }
   meta.projection.missing.entra = ['entra.nope']
   assert.throws(() => compilePackage(JSON.stringify(meta), read(`${DIR}/CONTENT.md`)), /missing block entra\.nope/)
-  // A block in a channel the viewer does not have.
   const odd = validatePackage({ meta: { stepId: 'x', projection: {} }, blocks: parseBlocks(block('fax.send', 'fax')) })
   assert.ok(odd.some((e) => /unsupported channel fax/.test(e)), odd.join('\n'))
-  // A projection that names a channel the viewer does not have.
   const badKey = validatePackage({ meta: { stepId: 'x', projection: { missing: { fax: ['entra.create'] } } }, blocks: parseBlocks(block('entra.create')) })
   assert.ok(badKey.some((e) => /unsupported key fax/.test(e)), badKey.join('\n'))
 })
@@ -75,104 +83,173 @@ test('each state projects exactly the channels META.json names for it', () => {
   for (const state of ['inPlace', 'blocked', 'needsDecision', 'sourceConflict', 'notLicensed'] as const) {
     assert.deepEqual(channelsOf(state), [], `${state} manufactures an implementation`)
   }
-  // The viewer order is the approved selector with Email appended.
   assert.deepEqual([...OUTPUT_ORDER], ['entra', 'powershell', 'json', 'aiInfo', 'email'])
 })
 
-test('Ready to enforce projects all five channels, each from its enforce block', () => {
-  const p = projectImplementation(PKG, 'readyToEnforce', pilotBindings('readyToEnforce'))
+test('Ready to enforce projects all five channels, and the script is runnable as projected', () => {
+  const p = project('readyToEnforce')
   assert.equal(p.hold, null)
   const by = Object.fromEntries(p.channels.map((c) => [c.channel, c]))
   assert.deepEqual(by.entra.blocks, ['entra.enforce'])
-  assert.equal(by.entra.text, bound('entra.enforce'))
+  assert.equal(by.entra.text, authored('entra.enforce'))
+  // The script, defined once, and the call its invocation makes with IAMAI's values
+  // and the switches for the checks that are satisfied (content/implementation/invocation.ts).
   assert.deepEqual(by.powershell.blocks, ['powershell.run'])
-  assert.equal(by.powershell.mode, 'Enforce')
-  assert.equal(by.powershell.text, bound('powershell.run'))
+  assert.deepEqual(by.powershell.runs, [{ mode: 'Enforce', corrections: [] }])
+  assert.ok(by.powershell.text.startsWith('function Invoke-IAMAIStep {\n# IAMAI compact implementation script'))
+  assert.ok(by.powershell.text.includes(authored('powershell.run')), 'the authored script is not carried whole')
+  assert.ok(
+    by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -LegacyDeviceMfaToggleConfirmedNo -EnrollmentWorkflowsValidated -ExternalAuthenticationCompatibilityResolved`),
+    by.powershell.text.slice(-300),
+  )
   assert.deepEqual(by.json.blocks, ['json.enforce'])
   assert.deepEqual(JSON.parse(by.json.text), { state: 'enabled' })
   assert.deepEqual(by.json.requests, [{ method: 'PATCH', endpoint: `/identity/conditionalAccess/policies/${PILOT_IDS.policy}` }])
-  assert.deepEqual(by.aiInfo.blocks, ['ai.enforce'])
   assert.match(by.aiInfo.text, new RegExp(`Policy ID: ${PILOT_IDS.policy}`))
   assert.match(by.aiInfo.text, new RegExp(`Canonical exclusions: ${PILOT_IDS.exclusions}`))
-  assert.deepEqual(by.email.blocks, ['email.users.pre-enforcement'])
-  assert.equal(by.email.text, bound('email.users.pre-enforcement'), 'the Email is not the authored message exactly')
+  assert.equal(by.email.text, authored('email.users.pre-enforcement'), 'the Email is not the authored message exactly')
+  assert.deepEqual(by.email.communication, { audience: 'affected-users', trigger: 'before-enforcement', purpose: 'pre-change-notice' })
 })
 
-test('Email appears only where META.json projects it, with its audience and trigger', () => {
+test('Email appears only where META.json projects it', () => {
   for (const state of PACKAGE_STATES) {
-    const email = projectImplementation(PKG, state, pilotBindings(state)).channels.find((c) => c.channel === 'email')
+    const email = project(state).channels.find((c) => c.channel === 'email')
     assert.equal(email !== undefined, state === 'readyToEnforce', `${state}: Email presence`)
   }
-  assert.deepEqual(artifact('readyToEnforce', 'email').communication, { audience: 'affected-users', trigger: 'before-enforcement', purpose: 'pre-change-notice' })
 })
 
-test('Partial composes only the detected mismatches, shares one API boundary and refuses an unknown one', () => {
-  const p = projectImplementation(PKG, 'partial', pilotBindings('partial'))
+// ------------------------------------------------------------ the enforcement gate
+
+test('the human checks gate the Enforce action, not the stage: no enforcement artifact until they are satisfied', () => {
+  const held = project('readyToEnforce', {}, pilotRuntime([]))
+  assert.deepEqual(held.channels, [])
+  assert.deepEqual(held.hold?.pendingPrerequisites, ['legacy-device-mfa-toggle', 'enrollment-workflows', 'external-auth-methods'])
+  // The other states' artifacts are not the enforcement and do not wait on it.
+  assert.deepEqual(project('missing', {}, pilotRuntime([])).hold, null)
+  assert.deepEqual(project('reportOnly', {}, pilotRuntime([])).hold, null)
+  // One unsatisfied check is enough to hold.
+  assert.deepEqual(project('readyToEnforce', {}, pilotRuntime(PILOT_PREREQUISITES.filter((id) => id !== 'external-auth-methods'))).hold?.pendingPrerequisites, ['external-auth-methods'])
+  // And the switch the script needs is passed only for a satisfied check.
+  const readyScript = artifact('readyToEnforce', 'powershell').text
+  assert.match(readyScript, /-ExternalAuthenticationCompatibilityResolved$/)
+})
+
+test('a tenant fact satisfies a check without anybody’s word; a confirmation holds only while its values hold', () => {
+  const bindings = pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'notRequired' })
+  const status = (b = bindings, c: Record<string, { at: string; basis: string }> = {}) => Object.fromEntries(prerequisiteStatus(PKG, 'readyToEnforce', b, c, BASELINE_COMMIT).map((s) => [s.id, s]))
+  // The legacy device-registration MFA setting, read as off: satisfied by evidence.
+  assert.equal(status()['legacy-device-mfa-toggle'].by, 'evidence')
+  assert.equal(status(pilotBindings('readyToEnforce', { 'tenant.deviceRegistration.multiFactorAuthConfiguration': 'required' }))['legacy-device-mfa-toggle'].satisfied, false, 'a setting read as on satisfied the check')
+  assert.equal(status(pilotBindings('readyToEnforce'))['legacy-device-mfa-toggle'].satisfied, false, 'a setting the scan did not read satisfied the check')
+  // A confirmation, given against these values, counts.
+  const prereq = (id: string) => PKG.meta.prerequisites!.find((p) => p.id === id)!
+  const given = { 'enrollment-workflows': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('enrollment-workflows'), bindings) }, 'external-auth-methods': { at: '2026-09-10T00:00:00.000Z', basis: prerequisiteBasis(prereq('external-auth-methods'), bindings) } }
+  assert.equal(status(bindings, given)['enrollment-workflows'].by, 'confirmation')
+  assert.equal(status(bindings, given)['external-auth-methods'].confirmedAt, '2026-09-10T00:00:00.000Z')
+  // A changed exclusion set is a different thing to have validated workflows for…
+  const moved = pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': [PILOT_IDS.exclusions, '00000000-0000-4000-8000-00000000e002'] })
+  assert.equal(status(moved, given)['enrollment-workflows'].satisfied, false, 'a confirmation outlived the exclusions it was given against')
+  // …and does not touch the check that is not about exclusions; a recreated policy invalidates both.
+  assert.equal(status(moved, given)['external-auth-methods'].satisfied, true)
+  const recreated = pilotBindings('readyToEnforce', { 'policy.current.id': '00000000-0000-4000-8000-00000000a002' })
+  assert.equal(status(recreated, given)['external-auth-methods'].satisfied, false)
+  // The same values in another order are the same values.
+  assert.equal(prerequisiteBasis(prereq('enrollment-workflows'), pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['b', 'a'] })), prerequisiteBasis(prereq('enrollment-workflows'), pilotBindings('readyToEnforce', { 'policy.target.excludeGroups': ['a', 'b'] })))
+})
+
+// ------------------------------------------------------------------- Partial
+
+test('Partial selects correction modules from the engine’s changed fields, one API boundary per request, and refuses a field it cannot correct', () => {
+  const p = project('partial')
+  assert.equal(p.hold, null)
   const by = Object.fromEntries(p.channels.map((c) => [c.channel, c]))
   assert.deepEqual(by.entra.blocks, ['entra.correct.open', 'entra.correct.users.exclusions-canonical', 'entra.correct.grant.authentication-strength', 'entra.correct.save-verify'])
+  // Two PATCH bodies to one endpoint are one request with one body.
   assert.deepEqual(by.json.blocks, ['json.correct.conditions', 'json.correct.grant'])
-  assert.equal(by.powershell.mode, 'Correct')
-  assert.deepEqual(by.powershell.corrections, ['Conditions', 'Grant'])
+  assert.deepEqual(Object.keys(JSON.parse(by.json.text)).sort(), ['conditions', 'grantControls'])
+  assert.deepEqual(by.json.requests, [{ method: 'PATCH', endpoint: `/identity/conditionalAccess/policies/${PILOT_IDS.policy}` }])
+  assert.deepEqual(by.powershell.runs, [{ mode: 'Correct', corrections: ['Conditions', 'Grant'] }])
+  assert.match(by.powershell.text, /Invoke-IAMAIStep -Mode 'Correct' -Corrections 'Conditions','Grant' -PolicyId/)
+  // The selected module ids are what the package's own text names.
+  assert.match(by.aiInfo.text, /IAMAI mismatches: users\.exclusions-canonical, grant\.authentication-strength/)
   for (const notDetected of ['entra.correct.users.include-all', 'entra.correct.target.register-or-join-devices', 'entra.correct.conditions.remove-noncanonical', 'entra.correct.lifecycle.report-only']) {
-    assert.equal(by.entra.blocks.includes(notDetected), false, `${notDetected} shown for a mismatch IAMAI did not report`)
+    assert.equal(by.entra.blocks.includes(notDetected), false, `${notDetected} shown for a field the engine did not report`)
   }
-  // Two condition mismatches share the one canonical conditions mutation.
-  const shared = projectImplementation(PKG, 'partial', pilotBindings('partial', { 'policy.current.semanticMismatches': ['users.include-all', 'users.exclusions-canonical'] }))
-  const sj = shared.channels.find((c) => c.channel === 'json')!
-  assert.deepEqual(sj.blocks, ['json.correct.conditions'])
+  // Two condition fields share the one canonical conditions mutation.
+  const shared = project('partial', { [CHANGED_FIELDS_BINDING]: ['conditions.users.includeUsers', 'conditions.users.excludeGroups'] })
+  assert.deepEqual(shared.channels.find((c) => c.channel === 'json')!.blocks, ['json.correct.conditions'])
   assert.deepEqual(shared.channels.find((c) => c.channel === 'powershell')!.corrections, ['Conditions'])
-  // A mismatch the package has no module for produces nothing.
-  const unknown = projectImplementation(PKG, 'partial', pilotBindings('partial', { 'policy.current.semanticMismatches': ['users.include-all', 'grant.made-up'] }))
+  // A live policy being corrected goes back to report-only alongside the correction, never on its own.
+  const live = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] })
+  assert.ok(live.channels.find((c) => c.channel === 'entra')!.blocks.includes('entra.correct.lifecycle.report-only'))
+  assert.deepEqual(JSON.parse(live.channels.find((c) => c.channel === 'json')!.text).state, 'enabledForReportingButNotEnforced')
+  assert.deepEqual(live.channels.find((c) => c.channel === 'powershell')!.corrections, ['Grant', 'ReportOnly'])
+  const aloneAlone = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: undefined })
+  assert.deepEqual(aloneAlone.channels, [], 'returning a policy to report-only was offered as a correction on its own')
+  // A field no module covers holds the whole projection: no partial correction.
+  const unknown = project('partial', { [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups', 'sessionControls.signInFrequency'] })
   assert.deepEqual(unknown.channels, [])
-  assert.deepEqual(unknown.hold?.unknownMismatches, ['grant.made-up'])
+  assert.deepEqual(unknown.hold?.unknownMismatches, ['sessionControls.signInFrequency'])
+  // Nothing here reads a title, a heading or a reason sentence to decide.
+  const code = read('src/content/implementation/project.ts')
+  for (const heuristic of ['displayName', 'title.', 'appliesWhen']) assert.equal(new RegExp(`\\b${heuristic.replace('.', '\\.')}`).test(code.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')), false, `project.ts decides on ${heuristic}`)
 })
 
 // ---------------------------------------------------------------------- bindings
 
 test('a required binding IAMAI does not hold produces no deployable content', () => {
-  const noId = projectImplementation(PKG, 'readyToEnforce', pilotBindings('readyToEnforce', { 'policy.current.id': undefined }))
+  const noId = project('readyToEnforce', { 'policy.current.id': undefined })
   assert.deepEqual(noId.channels, [])
   assert.deepEqual(noId.hold?.missingBindings, ['policy.current.id'])
-  const noExclusions = projectImplementation(PKG, 'missing', pilotBindings('missing', { 'policy.target.excludeGroups': [] }))
-  assert.deepEqual(noExclusions.channels, [], 'an empty exclusion set produced a Create')
-  const noMismatches = projectImplementation(PKG, 'partial', pilotBindings('partial', { 'policy.current.semanticMismatches': undefined }))
-  assert.deepEqual(noMismatches.channels, [], 'Partial composed without IAMAI mismatches')
+  assert.deepEqual(project('missing', { 'policy.target.excludeGroups': [] }).channels, [], 'an empty exclusion set produced a Create')
 })
 
 test('an optional binding IAMAI does not hold disappears with its line', () => {
   const observe = artifact('reportOnly', 'aiInfo').text
   assert.equal(/device-registration evidence|Enrollment-workflow evidence|Current blockers/.test(observe), false, 'an unavailable optional line survived')
-  const withTenant = artifact('missing', 'aiInfo').text
-  assert.match(withTenant, /^- Tenant: Contoso \(sample\)$/m)
-  const withoutTenant = projectImplementation(PKG, 'missing', pilotBindings('missing', { 'tenant.displayName': undefined })).channels.find((c) => c.channel === 'aiInfo')!.text
-  assert.equal(/Tenant:/.test(withoutTenant), false)
+  assert.match(artifact('missing', 'aiInfo').text, /^- Tenant: Contoso \(sample\)$/m)
+  assert.equal(/Tenant:/.test(artifact('missing', 'aiInfo', { 'tenant.displayName': undefined }).text), false)
 })
 
-test('no unresolved placeholder or authoring marker reaches any projected text', () => {
+test('no unresolved placeholder or authoring marker reaches any projected text, and every JSON artifact parses', () => {
   for (const state of PACKAGE_STATES) {
-    for (const c of projectImplementation(PKG, state, pilotBindings(state)).channels) {
+    for (const c of project(state).channels) {
       assert.equal(/\{\{|\[omit |\{policy\./.test(c.text), false, `${state}/${c.channel}: a placeholder reached the page`)
       for (const r of c.requests) assert.equal(/\{/.test(r.endpoint), false, `${state}/${c.channel}: an unbound endpoint`)
-      if (c.channel === 'json') for (const body of c.text.split(/\n\n(?=\{)/)) JSON.parse(body)
+      if (c.channel === 'json') JSON.parse(c.text)
     }
   }
 })
 
 // --------------------------------------------------------------------- readiness
 
-test('Readiness: Exclusions is Ready only from the resolved canonical set, never from the absence of a problem', () => {
-  const tile = (state: PackageState, over: Record<string, unknown> = {}) => packageReadiness(PKG, state, pilotBindings(state, over))!.tiles.find((t) => t.id === 'readiness.exclusions')!
-  const ready = tile('readyToEnforce')
-  assert.equal(ready.result, 'Ready')
-  assert.equal(ready.line, 'IAMAI has the canonical exclusions this policy must preserve.')
-  assert.equal(tile('readyToEnforce', { 'policy.target.excludeGroups': undefined }).result, 'Blocked')
-  assert.equal(tile('readyToEnforce', { 'policy.target.excludeGroups': [] }).result, 'Blocked')
-  const r = packageReadiness(PKG, 'readyToEnforce', pilotBindings('readyToEnforce'))!
-  // Evidence IAMAI does not hold is Unknown, and the human checks IAMAI keeps no record of are never Ready.
-  assert.equal(r.tiles.find((t) => t.id === 'readiness.enrollment-workflows')!.result, 'Unknown')
-  assert.equal(r.tiles.find((t) => t.id === 'readiness.enforcement-settings')!.result, 'Review required')
-  assert.equal(r.conclusion, 'Enforce only after enrollment workflows pass, external-authentication compatibility is resolved, and the legacy device-registration MFA toggle is confirmed No.')
-  assert.ok(r.references.every((s) => s.userFacing === true))
+test('Readiness is the package’s rules evaluated deterministically; nothing is Ready from the absence of a problem', () => {
+  const tiles = (state: PackageState, over: Record<string, unknown> = {}, runtime = pilotRuntime([])) => Object.fromEntries(packageReadiness(PKG, state, pilotBindings(state, over), runtime)!.tiles.map((t) => [t.id, t]))
+  // Exclusions: Ready only from the resolved canonical set, and the runtime's own exclusions tile answers where there is one.
+  assert.equal(tiles('readyToEnforce')['readiness.exclusions'].result, 'Ready')
+  assert.equal(tiles('readyToEnforce')['readiness.exclusions'].gateKey, 'exclusions')
+  assert.equal(tiles('readyToEnforce', { 'policy.target.excludeGroups': undefined })['readiness.exclusions'].result, 'Blocked')
+  // The authentication strength the package names belongs to its own baseline pin: shown only against it.
+  assert.equal(tiles('missing', {}, { satisfied: new Set(), baselineCommit: BASELINE_COMMIT })['readiness.authentication-strength'], undefined, 'the pilot’s strength is stated against a baseline that names another')
+  assert.equal(tiles('missing', {}, pilotRuntime([]))['readiness.authentication-strength'].result, 'Ready')
+  // Enrollment workflows: Unknown with no evidence, a confirmation the enforcement waits on, Ready once confirmed.
+  const unconfirmed = tiles('readyToEnforce')['readiness.enrollment-workflows']
+  assert.equal(unconfirmed.result, 'Unknown')
+  assert.deepEqual(unconfirmed.confirm, { prerequisites: ['enrollment-workflows'], satisfied: false })
+  assert.equal(tiles('readyToEnforce', {}, pilotRuntime(['enrollment-workflows']))['readiness.enrollment-workflows'].result, 'Ready')
+  assert.equal(tiles('missing')['readiness.enrollment-workflows'].confirm, null, 'a check the current transition does not need asks for confirmation')
+  // Enforcement checks: Review required until both are satisfied, then Ready — never a permanent Review required.
+  assert.equal(tiles('readyToEnforce')['readiness.enforcement-settings'].result, 'Review required')
+  assert.deepEqual(tiles('readyToEnforce')['readiness.enforcement-settings'].confirm, { prerequisites: ['legacy-device-mfa-toggle', 'external-auth-methods'], satisfied: false })
+  assert.equal(tiles('readyToEnforce', {}, pilotRuntime(['legacy-device-mfa-toggle', 'external-auth-methods']))['readiness.enforcement-settings'].result, 'Ready')
+  // The conclusion is the package's, by state.
+  assert.equal(packageReadiness(PKG, 'readyToEnforce', pilotBindings('readyToEnforce'), ALL)!.conclusion, 'Enforce only after enrollment workflows pass, external-authentication compatibility is resolved, and the legacy device-registration MFA toggle is confirmed No.')
+  // And no pilot knowledge is written into the runtime.
+  const code = (p: string): string => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+  const runtime = code('src/content/implementation/project.ts') + code('src/ui/surfaces/stepPackage.ts')
+  for (const pilotOnly of ['STATE_SCOPED_RESULT', 'CONCLUSION_FOR', 'SAME_FACT', 'readiness.exclusions', 'readiness.enforcement-settings', 'safeToEnforce', "'policy.current.semanticMismatches'", 'device-registration']) {
+    assert.equal(runtime.includes(pilotOnly), false, `the runtime carries pilot knowledge: ${pilotOnly}`)
+  }
 })
 
 // ------------------------------------------------------------------- source date
@@ -184,8 +261,7 @@ test('the source date comes from the package’s verified sources, never a clock
   assert.equal(sourceUpdatedOn(later), '2026-10-01', 'the latest user-facing source is not the date, or a research-only source moved it')
   const code = read('src/content/implementation/project.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
-  const step = read('src/ui/surfaces/ContentStep.tsx')
-  assert.match(step, /const sourceLine = sourceOn \? fillText\(W\.sourceUpdated, \{ date: absoluteDate\(`\$\{sourceOn\}T12:00:00Z`\) \}\) : null/)
+  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = sourceOn \? fillText\(W\.sourceUpdated, \{ date: absoluteDate\(`\$\{sourceOn\}T12:00:00Z`\) \}\) : null/)
 })
 
 // --------------------------------------------------------------- troubleshooting
@@ -212,58 +288,64 @@ function stepAndContext(name: 'small' | 'demo'): { step: Step; ctx: StepVarConte
 test('runtime truth decides the package state: a blocked fixture step implements nothing', () => {
   const { step, ctx } = stepAndContext('small')
   const c = stepContract(step, ctx)
-  assert.equal(packageStateOf(step, c), 'blocked')
-  assert.deepEqual(projectImplementation(PKG, 'blocked', packageBindings(step, ctx, c)).channels, [])
+  const state = packageStateOf(step, c, ctx.snapshot)
+  assert.ok(state === 'blocked' || state === 'missing', `unexpected ${state}`)
+  if (state === 'blocked') assert.deepEqual(projectImplementation(PKG, 'blocked', packageBindings(step, ctx, c), ALL).channels, [])
 })
 
-test('a real fixture step at Ready to enforce reaches all five channels through the runtime adapter', () => {
+test('a real fixture step at Ready to enforce reaches all five channels through the runtime adapter, once its checks are confirmed', () => {
   const { step: base, ctx } = stepAndContext('small')
   const step = pilotStepAt(base, 'readyToEnforce')
   const c = stepContract(step, ctx)
   assert.equal(c.state.lifecycle, 'ready-to-enforce')
   assert.equal(c.implementation.offered, true)
-  assert.equal(packageStateOf(step, c), 'readyToEnforce')
+  assert.equal(packageStateOf(step, c, ctx.snapshot), 'readyToEnforce')
   const bindings = packageBindings(step, ctx, c)
   assert.equal(bindings['policy.current.id'], PILOT_IDS.policy)
   assert.ok(Array.isArray(bindings['policy.target.excludeGroups']) && (bindings['policy.target.excludeGroups'] as string[]).length > 0)
   assert.equal(bindings['policy.current.semanticMismatches'], undefined, 'a semantic-mismatch list was invented')
-  const p = projectImplementation(PKG, 'readyToEnforce', bindings)
+  assert.equal(bindings[CHANGED_FIELDS_BINDING], undefined, 'an enforcement was read as a correction')
+  // The fixture tenant's device-registration setting is read, and satisfies its check.
+  assert.equal(bindings['tenant.deviceRegistration.multiFactorAuthConfiguration'], 'notRequired')
+  const unconfirmed = packageRuntime(PKG, 'readyToEnforce', bindings, {}, PILOT_PIN)
+  assert.deepEqual(projectImplementation(PKG, 'readyToEnforce', bindings, unconfirmed.runtime).hold?.pendingPrerequisites, ['enrollment-workflows', 'external-auth-methods'])
+  const at = '2026-09-10T00:00:00.000Z'
+  const basis = (id: string) => prerequisiteBasis(PKG.meta.prerequisites!.find((p) => p.id === id)!, bindings)
+  const confirmed = packageRuntime(PKG, 'readyToEnforce', bindings, { 'enrollment-workflows': { at, basis: basis('enrollment-workflows') }, 'external-auth-methods': { at, basis: basis('external-auth-methods') } }, PILOT_PIN)
+  const p = projectImplementation(PKG, 'readyToEnforce', bindings, confirmed.runtime)
   assert.equal(p.hold, null)
   assert.deepEqual(p.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
-  // The Exclusions gate reaches the page's Readiness, positively.
-  const merged = mergeReadiness(readinessOf(step, c), packageReadiness(PKG, 'readyToEnforce', bindings))
+  const merged = mergeReadiness(readinessOf(step, c), packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime))
   assert.ok(merged.tiles.length <= 3)
-  assert.equal(merged.tiles.find((t) => t.key === 'readiness.exclusions')?.value, 'Ready')
-  // And Missing is Create, from the same step.
   const missing = pilotStepAt(base, 'missing')
-  assert.equal(packageStateOf(missing, stepContract(missing, ctx)), 'missing')
+  assert.equal(packageStateOf(missing, stepContract(missing, ctx), ctx.snapshot), 'missing')
 })
 
 test('where Foundation A withholds the operation, the target is unresolved and Exclusions is not Ready', () => {
-  // The demo's source policy leaves out groups IAMAI cannot identify, so no
-  // operation is handed over and no canonical exclusion set is resolved.
   const { step, ctx } = stepAndContext('demo')
   const c = stepContract(step, ctx)
   const bindings = packageBindings(step, ctx, c)
   assert.equal(bindings['policy.target.excludeGroups'], undefined)
-  const state = packageStateOf(step, c)!
-  const tile = packageReadiness(PKG, state, bindings)!.tiles.find((t) => t.id === 'readiness.exclusions')!
+  const state = packageStateOf(step, c, ctx.snapshot)!
+  const tile = packageReadiness(PKG, state, bindings, ALL)!.tiles.find((t) => t.id === 'readiness.exclusions')!
   assert.equal(tile.result, 'Blocked')
 })
 
 // ------------------------------------------------------------------------ viewer
 
-test('the viewer draws every package channel through the one Implementation region', () => {
+test('the viewer draws every package channel through the one Implementation region, safely', () => {
   const step = read('src/ui/surfaces/ContentStep.tsx')
   const ids = [...(step.match(/const CHANNEL_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
   assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'], 'Email is not the fifth member of the one selector')
   assert.match(step, /const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = \{ entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' \}/)
-  // One region, one preview, one Copy through the export guard, one Expand.
   assert.equal(step.split('<Implementation\n').length - 1, 1)
   assert.match(step, /onClick=\{\(\) => copy\('implementation', active\?\.text\(\) \?\? ''\)\}/)
-  assert.match(step, /exportClipboard\(text, REDACTED\)/)
-  // The tenant-context warning stays on the AI channel, in the preview and in the expanded viewer.
+  assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
-  // A package step never also draws the channels it had before.
   assert.match(step, /const artifacts: Artifact\[\] = pkg\n\s*\? \(projection\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
+  // The projection, the readiness and the troubleshooting never throw through the step.
+  for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
+  for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)
+  // A confirmation is the tile's, in the approved dialog grammar.
+  assert.match(step, /dialog === 'confirm'/)
 })
