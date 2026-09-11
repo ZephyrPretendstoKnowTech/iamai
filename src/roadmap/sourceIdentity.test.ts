@@ -45,6 +45,7 @@ import { pinnedPackage } from '../baseline/pinned.ts'
 import { inventoryReferences, unresolvedReferences } from '../baseline/references.ts'
 import { implementationOffered, operationsOf } from './operations.ts'
 import { PREREQ_STEP_ID } from './stepIds.ts'
+import { holdWaitsOn } from './stateReason.ts'
 import { policyKey } from '../baseline/interpretation.ts'
 
 const FIXTURES: FixtureName[] = ['demo', 'demo-week2', 'getiamai', 'small', 'mid', 'messy', 'midflight']
@@ -125,24 +126,24 @@ function unsettledGroups(): string[] {
     .map((r) => r.id.toLowerCase())
 }
 
-test('a group of the author’s that nothing settles holds the policy: no operation, and no channel offers one', () => {
+test('a group of the author’s that nothing settles waits on a person’s answer: no operation, and no channel offers one', () => {
   // The case the reviewer named. The author's Device Registration policy carves
   // three groups of his own out of a requirement for Modern MFA + TAP. Nothing
   // he published says what any of them is, so nothing here can say who a copy of
   // that policy made in another tenant would newly stop — and a carve-out left
   // out of a policy that demands a stronger sign-in is people who cannot sign in.
   //
-  // It used to be dropped and the policy offered anyway, on the reading that an
-  // author's exclusion is the author's own business because leaving it out
-  // reaches more people and never fewer. More people is the danger, and "only
-  // ever excluded" was never a reading of the object at all.
+  // It used to be dropped and the policy offered anyway; then it held the policy
+  // with no step that could ever end the wait. Now the question is asked, once,
+  // on the source-references step, and the policy waits on that answer.
   const r = runFixture(fixture('demo-week2'))
   const step = r.steps.find((s) => s.id === 's-goal-device-registration-mfa')
   assert.ok(step, 'the device-registration step is on the demo plan')
   const unsettled = unsettledGroups()
   const held = (step.action.missing ?? []).filter((m) => unsettled.includes(m.token.toLowerCase()))
   assert.ok(held.length >= 3, `the source policy's own unexplained carve-outs are what it waits on (${held.length})`)
-  assert.ok(held.every((m) => m.unreadable === true && m.stepId === null), 'and no step of this tenant’s ends the wait')
+  assert.ok(held.every((m) => m.decision === true && m.stepId === PREREQ_STEP_ID.sourceReferences && m.unreadable === undefined), 'each waits on the step where a person answers it')
+  assert.ok(holdWaitsOn(step).includes(PREREQ_STEP_ID.sourceReferences), 'and what holds it names that step')
   assert.equal(implementationOffered(step), false, 'no channel offers a policy this tenant cannot honestly copy')
   assert.deepEqual(operationsOf(step), [], 'and there is no operation to run')
   assert.equal(step.action.json, null, 'nothing is written for the plan file or the exports either')
@@ -277,8 +278,8 @@ test('a named location of the author’s that nothing settles sends nobody to th
     assert.ok(step, 'the workload step is on the plan of a tenant licensed for it')
     const held = (step.action.missing ?? []).find((m) => m.token.toLowerCase() === ENTRA_CONNECT_LOCATION)
     assert.ok(held, 'the policy waits on the location')
-    assert.equal(held.stepId, null, 'and no step of this tenant’s ends the wait')
-    assert.equal(held.unreadable, true, 'it is a reading of the author’s baseline, and says so')
+    assert.equal(held.stepId, PREREQ_STEP_ID.sourceReferences, 'and on the step where a person answers what it stands for')
+    assert.equal(held.decision, true, 'it is a question about the author’s baseline, and says so')
     assert.equal(
       (step.action.missing ?? []).some((m) => m.stepId === PREREQ_STEP_ID.trustedLocation),
       false,

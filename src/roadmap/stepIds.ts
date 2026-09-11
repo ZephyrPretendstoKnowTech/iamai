@@ -28,4 +28,10 @@ export const PREREQ_STEP_ID = {
   authStrength: 's-prereq-auth-strength',
   /** The device decision (E2): how phones and computers are managed, before any device policy is offered. */
   devicePlan: 's-prereq-device-plan',
+  /**
+   * The baseline's own groups and locations no settled reading explains: what each
+   * stands for in this tenant, answered by a person (roadmap/resolvePolicy.ts
+   * `decisions`). Only the policies that name an unanswered one wait on it.
+   */
+  sourceReferences: 's-prereq-source-references',
 } as const

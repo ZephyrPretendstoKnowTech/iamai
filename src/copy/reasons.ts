@@ -52,7 +52,7 @@ export const NOT_ASSESSED = {
  * The rest of the reasons stay on the step, under More.
  */
 export const BLOCKED_REASON_MAX_WORDS = 12
-const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; unsettled: string; pairUnmatched: string; noOperation: string; emergency: string } }).blocked
+const BLOCKED = (pages.plan as { blocked: { after: string; readiness: string; count: string; baseline: string; exclusionsGroup: string; devicePlan: string; unsettled: string; sourceReferences: string; pairUnmatched: string; noOperation: string; emergency: string } }).blocked
 export const BLOCKED_REASON = {
   after: (stepTitle: string): string => fillText(BLOCKED.after, { stepTitle }),
   reaches: (measure: string, threshold: string, now: string): string => fillText(BLOCKED.readiness, { measure, threshold, value: now }),
@@ -74,6 +74,8 @@ export const BLOCKED_REASON = {
    * emergency access it cannot prove is out of scope.
    */
   unsettled: BLOCKED.unsettled,
+  /** The baseline's own references a person has not answered yet (roadmap/resolvePolicy.ts `decisions`): the source-references step waits on them. */
+  sourceReferences: BLOCKED.sourceReferences,
   pairUnmatched: BLOCKED.pairUnmatched,
   noOperation: BLOCKED.noOperation,
   emergency: BLOCKED.emergency,

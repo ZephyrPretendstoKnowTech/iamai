@@ -899,7 +899,54 @@ function ReasonForm({ body, label, placeholder, cancel, confirm, multiline = fal
   )
 }
 
-function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+  // One answer per baseline reference (the source-references step): the same
+  // options, once for each reference the plan's policies name.
+  if (props.d.references && Array.isArray(props.ex.sourceReferenceRows)) return <ReferenceDecisions {...props} />
+  return <SingleDecision {...props} />
+}
+
+/**
+ * The source-references step's answers (roadmap/resolvePolicy.ts `decisions`):
+ * for each of the baseline's own references, none needed here, or this tenant's
+ * own object picked from the kind the reference is. One Save writes every answer,
+ * each under its reference's source id.
+ */
+function ReferenceDecisions({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
+  const rows = ex.sourceReferenceRows as { id: string; kind: 'group' | 'namedLocation'; policies: string[] }[]
+  const refs = d.references as { groupLabel: string; locationLabel: string; usedBy: string; options: string[] }
+  const options = optionsOf(refs.options, ex)
+  const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
+  const groups = useMemo(() => pickerUniverse(stepId, 'groups', pickerCtx), [stepId, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
+  const locations = useMemo(() => pickerUniverse(stepId, 'locations', pickerCtx), [stepId, ctx.snapshot, ctx.mapping, ctx.nameOf])
+  const [answers, setAnswers] = useState<Record<string, string | null>>(() => ({ ...(saved?.answers ?? {}) }))
+  const base = useId()
+  let groupN = 0
+  let locationN = 0
+  return (
+    <>
+      <Line s={decisionLine(d, null)} ex={ex} cls="reason" />
+      <div className="decision">
+        <div className="dlabel" id={`${base}-decision`}>{d.label}</div>
+        {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
+        {rows.map((r) => {
+          const n = r.kind === 'group' ? ++groupN : ++locationN
+          const labelId = `${base}-${r.id}`
+          return (
+            <div key={r.id} className="reference-decision">
+              <div className="dlabel" id={labelId}>{fillText(r.kind === 'group' ? refs.groupLabel : refs.locationLabel, { n })}</div>
+              <p className="reason">{fillText(refs.usedBy, { policies: list(r.policies) })}</p>
+              <Options name={answerKey(stepId, r.id)} labelledBy={labelId} options={options} answer={answers[r.id] ?? null} onAnswer={(a) => setAnswers((prev) => ({ ...prev, [r.id]: a }))} ex={ex} universe={r.kind === 'group' ? groups : locations} nameOf={ctx.nameOf} single />
+            </div>
+          )
+        })}
+        <Button variant="secondary" onClick={() => onDecide?.({ answers: Object.fromEntries(Object.entries(answers).filter((e): e is [string, string] => typeof e[1] === 'string')) })}>{d.save || 'Save'}</Button>
+      </div>
+    </>
+  )
+}
+
+function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
   // The typeahead (target-state §6.4): empty, it lists the objects the scan
   // nominated with their signal text, ticked by default as chips; typing filters
   // every object of the kind in the tenant by name and UPN; the chips are the
@@ -1009,7 +1056,7 @@ function Decision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, a
  * reader reads each option on its own and never the question they answer, and
  * two decisions on one step read as one undifferentiated run of radios.
  */
-function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string }) {
+function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf, single = false }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string; single?: boolean }) {
   const parts = answerParts(answer, options)
   const valued = options.find((o) => o.needs !== null) ?? null
   const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
@@ -1036,7 +1083,7 @@ function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, na
         return (
           <div key={i} className="option-value">
             {before && <span className="reason">{fillText(before, ex as Record<string, unknown>)}</span>}
-            <Picker selected={chips} options={results} suggestions={[]} onChange={pick} onSearch={setQuery} />
+            <Picker selected={chips} options={results} suggestions={[]} onChange={pick} onSearch={setQuery} single={single} />
             {after && <span className="reason">{fillText(after, ex as Record<string, unknown>)}</span>}
           </div>
         )

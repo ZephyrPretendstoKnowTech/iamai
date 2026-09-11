@@ -249,6 +249,18 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     if (customs.length > 0) v.strengths = customs
   }
 
+  // The source-references step (roadmap/resolvePolicy.ts `decisions`): each of
+  // the baseline's own references the plan's open policies name, with the titles
+  // of those policies, for the step's one answer per reference.
+  if (step.id === PREREQ_STEP_ID.sourceReferences) {
+    v.sourceReferenceRows = (step.action.sourceReferences ?? []).map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      answer: r.answer,
+      policies: (r.stepIds ?? []).map((id) => contentStepFor({ id, goalId: id.replace(/^s-goal-/, '') })?.title ?? id),
+    }))
+  }
+
   // Nobody affected (timing.ts, the one definition): the records show nobody
   // using what this step blocks, so the manager's "nobody here used it" clause
   // applies (E9); and the service-accounts group the service-accounts block names.

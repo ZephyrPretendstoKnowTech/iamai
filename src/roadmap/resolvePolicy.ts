@@ -66,7 +66,15 @@ export type TenantObjects = {
   strengths?: ReadonlyMap<string, TenantStrength>
   /** Author reference id → the tenant object a person confirmed for it (mapping.records). */
   confirmed?: ReadonlyMap<string, string>
+  /** Author references a person said this tenant needs no counterpart for (mapping.omittedReferences). */
+  omitted?: ReadonlySet<string>
 }
+
+/**
+ * Where a reference only a person can answer stands: unanswered, answered with a
+ * tenant object, or answered as needing none here.
+ */
+export type SourceReferenceAnswer = 'pending' | 'mapped' | 'omitted'
 
 /**
  * The tenant objects the mapping holds. Two of them the mapping cannot name on
@@ -79,7 +87,7 @@ export type TenantObjects = {
  * reference stays unresolved.
  */
 export function tenantObjectsOf(
-  mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId' | 'trustedLocationIds'>,
+  mapping: Pick<MappingState, 'records' | 'serviceAccountsGroupId' | 'trustedLocationIds'> & Partial<Pick<MappingState, 'omittedReferences'>>,
   allowedCountriesLocationId: string | null = null,
   exclusionsGroupId: string | null = null,
   strengths: ReadonlyMap<string, TenantStrength> = new Map(),
@@ -96,6 +104,7 @@ export function tenantObjectsOf(
     trustedLocationIds: mapping.trustedLocationIds ?? [],
     strengths,
     confirmed,
+    omitted: new Set((mapping.omittedReferences ?? []).map((id) => id.toLowerCase())),
   }
 }
 
@@ -110,7 +119,7 @@ export function tenantObjectsOf(
  * author's baseline, not a task in this tenant - and the surfaces say so in
  * words instead of naming an id out of somebody else's tenant.
  */
-export type MissingReference = { token: string; stepId: string | null; unreadable?: true }
+export type MissingReference = { token: string; stepId: string | null; unreadable?: true; decision?: true }
 
 export type ResolvedPolicy = {
   /**
@@ -161,8 +170,29 @@ export type ResolvedPolicy = {
    * clears one is evidence, settled once in the baseline's interpretation file
    * and carried into every later update of it; there is nothing for this tenant
    * to go and do, so no Preparation step waits on it.
+   *
+   * Since the source-references step (correction batch 1) this is only a
+   * reference the interpretation settles as `invalidSource`: one that names
+   * nothing. A reference nothing settles is a question for a person instead
+   * (`decisions`), because holding a policy on it forever gave the operator a
+   * wait nothing they could do would ever end.
    */
   unsettled: ReadonlySet<string>
+  /**
+   * The source references only a person can answer — a group, or a location no
+   * Preparation step makes, that no settled reading of this baseline explains —
+   * and where each answer stands. IAMAI never guesses one: a pending reference is
+   * in `unresolved` against the source-references step, so the policy waits on
+   * that answer and nothing else; a mapped one is substituted like any confirmed
+   * object; an omitted one is in `omitted`.
+   */
+  decisions: ReadonlyMap<string, { kind: 'group' | 'namedLocation'; answer: SourceReferenceAnswer }>
+  /**
+   * The references a person said this tenant needs no counterpart for: taken out
+   * of the body like `authorOnly`, reported apart from it because the reason is a
+   * person's answer and not evidence, and never waited on.
+   */
+  omitted: ReadonlySet<string>
 }
 
 // Author references are inventoried from the baseline's policies, which are a
@@ -376,6 +406,14 @@ export function unmatchedStrengths(policies: readonly CaPolicy[], tenant: Tenant
 /** One tenant object, or none. */
 const single = (id: string | null): string[] => (id ? [id] : [])
 
+/** Every string a policy body holds, lowercased: the references it actually names. */
+function stringsIn(value: unknown, out: Set<string> = new Set()): Set<string> {
+  if (typeof value === 'string') out.add(value.toLowerCase())
+  else if (Array.isArray(value)) for (const v of value) stringsIn(v, out)
+  else if (value !== null && typeof value === 'object') for (const v of Object.values(value as Record<string, unknown>)) stringsIn(v, out)
+  return out
+}
+
 /** Graph's own location words, which name no tenant object. */
 const LOCATION_KEYWORDS = new Set(['all', 'alltrusted'])
 
@@ -399,6 +437,14 @@ const MAPPED_TOKENS = new Set(['exclusionsGroup', 'serviceAccountsGroup', 'allow
  * complete policy may go without.
  */
 const AUTHOR_ENVIRONMENT = 'authorEnvironment'
+
+/**
+ * The pin's token for a source reference the interpretation settles as naming
+ * nothing at all (src/baseline/interpretation.ts `invalidSource`): the one
+ * reference a policy fails closed on, because there is neither an object to copy
+ * nor a question a person could answer.
+ */
+const INVALID_SOURCE = 'invalidSource'
 
 /** The Preparation step that creates the tenant's object for a reference the tenant lacks. */
 function stepForReference(kind: ReferenceKind, token: string | null, goalId: string): string | null {
@@ -466,19 +512,47 @@ function substitutionsFor(
   strengths: Map<string, BaselineStrength>,
   tenant: TenantObjects,
   goalId: string,
-): { ids: Map<string, string[]>; unresolved: Map<string, string | null>; authorOnly: Set<string>; unsettled: Set<string> } {
+): {
+  ids: Map<string, string[]>
+  unresolved: Map<string, string | null>
+  authorOnly: Set<string>
+  unsettled: Set<string>
+  decisions: Map<string, { kind: 'group' | 'namedLocation'; answer: SourceReferenceAnswer }>
+  omitted: Set<string>
+} {
   const ids = new Map<string, string[]>()
   const unresolved = new Map<string, string | null>()
   const authorOnly = new Set<string>()
   const unsettled = new Set<string>()
+  const decisions = new Map<string, { kind: 'group' | 'namedLocation'; answer: SourceReferenceAnswer }>()
+  const omitted = new Set<string>()
   for (const r of refs) {
     // Graph's own words for a location ("All", "AllTrusted") are not objects:
     // nothing resolves them and nothing is missing while they stand.
     if (r.kind === 'namedLocation' && LOCATION_KEYWORDS.has(r.id)) continue
     const token = tokens.get(r.id) ?? null
+    // A reference only a person can answer: a group, or a named location no
+    // Preparation step of this tenant's makes, that no settled reading of the
+    // baseline explains. IAMAI cannot say what the author's object is, so it
+    // cannot say who a copy of the policy made here without it would reach — and
+    // it will not hand one over on the assumption that the answer is nobody, nor
+    // hold the policy forever on a question nothing in the tenant can end. So the
+    // question is asked, once, on the source-references step, and the policies
+    // that name the reference wait on that answer and on nothing else.
+    const kind = r.kind === 'group' || r.kind === 'namedLocation' ? r.kind : null
+    const needsAnswer = token === null && kind !== null && (kind === 'group' || stepForReference(kind, null, goalId) === null)
     const confirmed = tenant.confirmed?.get(r.id) ?? null
     if (confirmed) {
       ids.set(r.id, [confirmed])
+      if (needsAnswer && kind) decisions.set(r.id, { kind, answer: 'mapped' })
+      continue
+    }
+    // Answered as needing no counterpart here: the person's answer, never a
+    // reading of where the reference sits in a collection.
+    if (needsAnswer && kind && tenant.omitted?.has(r.id)) {
+      unresolved.set(r.id, null)
+      omitted.add(r.id)
+      decisions.set(r.id, { kind, answer: 'omitted' })
       continue
     }
     /** Unresolved — and what, if anything, this tenant can do about it. */
@@ -489,23 +563,22 @@ function substitutionsFor(
       // interpretation file: this tenant has no such object and needs none, so
       // the policy is whole without it. That is a finding about what the object
       // *is* — a vendor's own service principal, one dependency's addresses —
-      // and it is the only thing that lets a source reference be left out.
+      // and it is the only thing that lets a source reference be left out
+      // without a person's answer.
       if (token === AUTHOR_ENVIRONMENT) {
         authorOnly.add(r.id)
         return
       }
-      // A group nothing settles. IAMAI cannot say what the author's group is,
-      // so it cannot say who a copy of this policy made here would reach that
-      // the author's own tenant did not, and it will not hand one over on the
-      // assumption that the answer is nobody. Held, and cleared by evidence
-      // rather than by a task in this tenant.
-      //
-      // And a named location nothing settles, which is the same case: no token
-      // names it, no step of this tenant's would answer it, and what it is is a
-      // reading of the author's baseline. Saying so is the whole difference
-      // between "nobody can copy this yet" and "go and finish the Trusted
-      // network step", which never ends the wait.
-      if (token === null && (r.kind === 'group' || (r.kind === 'namedLocation' && step === null))) unsettled.add(r.id)
+      // A reference the interpretation settles as naming nothing at all: there is
+      // no object to copy and no question to ask, so the policy fails closed.
+      if (token === INVALID_SOURCE) {
+        unsettled.add(r.id)
+        return
+      }
+      if (needsAnswer && kind) {
+        unresolved.set(r.id, PREREQ_STEP_ID.sourceReferences)
+        decisions.set(r.id, { kind, answer: 'pending' })
+      }
     }
     if (token !== null && MAPPED_TOKENS.has(token)) {
       // A token the product maps means that object and no other. The trusted
@@ -551,7 +624,7 @@ function substitutionsFor(
     }
     leave()
   }
-  return { ids, unresolved, authorOnly, unsettled }
+  return { ids, unresolved, authorOnly, unsettled, decisions, omitted }
 }
 
 /**
@@ -618,7 +691,11 @@ function dedupeCollections(value: unknown): unknown {
  * group and the de-duplication.
  */
 export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
-  const { ids, unresolved, authorOnly, unsettled } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), tenant, goalId)
+  const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), tenant, goalId)
+  // The references are the package's; the questions this policy raises are the
+  // ones its own body names. A step lists, and waits on, only those.
+  const named = stringsIn(policy)
+  const decisions = new Map([...packageDecisions].filter(([id]) => named.has(id)))
   const body = substitute(structuredClone(policy), ids) as RawPolicy
   // The exclusions group is excluded from every policy the plan writes; it is
   // added before the de-duplication, so a policy that already excludes it (the
@@ -637,7 +714,7 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   users.excludeGroups = [...(Array.isArray(users.excludeGroups) ? (users.excludeGroups as unknown[]) : []), tenant.exclusionsGroupId ?? '{exclusionsGroup}']
   conditions.users = users
   body.conditions = conditions
-  return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly, unsettled }
+  return { body: dedupeCollections(body) as RawPolicy, substitutions: ids, unresolved, authorOnly, unsettled, decisions, omitted }
 }
 
 /**
@@ -673,25 +750,41 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
  */
 export function implementable(
   body: RawPolicy,
-  refs: { unresolved?: ReadonlyMap<string, string | null>; authorOnly?: ReadonlySet<string>; unsettled?: ReadonlySet<string> } = {},
-): { policy: RawPolicy; missing: MissingReference[]; authorOnly: string[] } {
+  refs: {
+    unresolved?: ReadonlyMap<string, string | null>
+    authorOnly?: ReadonlySet<string>
+    unsettled?: ReadonlySet<string>
+    decisions?: ReadonlyMap<string, { answer: SourceReferenceAnswer }>
+    omitted?: ReadonlySet<string>
+  } = {},
+): { policy: RawPolicy; missing: MissingReference[]; authorOnly: string[]; omitted: string[] } {
   const unresolved = refs.unresolved ?? new Map<string, string | null>()
   const authorOnly = refs.authorOnly ?? new Set<string>()
   const unsettled = refs.unsettled ?? new Set<string>()
+  const omitted = refs.omitted ?? new Set<string>()
   const isUnresolved = (s: string): boolean => unresolved.has(s.toLowerCase()) || /^\{[A-Za-z]+\}$/.test(s) || /^__IAMAI_/.test(s)
   const missing: MissingReference[] = []
   const authorsOwn: string[] = []
+  const leftOut: string[] = []
   const left = (token: string): void => {
-    if (authorOnly.has(token.toLowerCase())) {
+    const key = token.toLowerCase()
+    if (authorOnly.has(key)) {
       if (!authorsOwn.includes(token)) authorsOwn.push(token)
       return
     }
+    // A person said this tenant needs no counterpart: out of the body, and nothing waits on it.
+    if (omitted.has(key)) {
+      if (!leftOut.includes(token)) leftOut.push(token)
+      return
+    }
     if (missing.some((m) => m.token === token)) return
-    if (unsettled.has(token.toLowerCase())) {
+    if (unsettled.has(key)) {
       missing.push({ token, stepId: null, unreadable: true })
       return
     }
-    missing.push({ token, stepId: unresolved.get(token.toLowerCase()) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? null })
+    const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? null
+    // A reference only a person can answer waits on the step where they answer it.
+    missing.push(refs.decisions?.get(key)?.answer === 'pending' ? { token, stepId, decision: true } : { token, stepId })
   }
   const walk = (v: unknown): unknown => {
     if (Array.isArray(v)) {
@@ -725,7 +818,7 @@ export function implementable(
     }
     return v
   }
-  return { policy: walk(structuredClone(body)) as RawPolicy, missing, authorOnly: authorsOwn }
+  return { policy: walk(structuredClone(body)) as RawPolicy, missing, authorOnly: authorsOwn, omitted: leftOut }
 }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v)

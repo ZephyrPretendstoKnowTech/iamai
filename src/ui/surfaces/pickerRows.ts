@@ -248,7 +248,7 @@ export type PickerKind = 'accounts' | 'groups' | 'locations' | 'countries' | 'st
 export function pickerKind(stepId: string, source: string | null): PickerKind {
   if (DECISION_STEPS.emergency.has(stepId) || stepId === DECISION_STEPS.serviceAccounts || stepId === DECISION_STEPS.sharedDevices || stepId === DECISION_STEPS.campaign || source === 'accounts') return 'accounts'
   if (DECISION_STEPS.exclusions.has(stepId) || source === 'groups') return 'groups'
-  if (stepId === DECISION_STEPS.trustedLocation) return 'locations'
+  if (stepId === DECISION_STEPS.trustedLocation || source === 'locations') return 'locations'
   if (stepId === DECISION_STEPS.countries) return 'countries'
   if (source === 'strengths') return 'strengths'
   return 'other'

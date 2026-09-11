@@ -11,7 +11,7 @@ import { emergencyExposureOf, enforcementHeld, isOpenPolicy, isValidOperation, o
 import type { PolicyEffect } from './operations.ts'
 import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
-import type { PolicyOperation } from './types.ts'
+import type { PolicyOperation, SourceReference } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
 import { emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
@@ -522,6 +522,10 @@ export function buildCreateAction(
    * carve-out reaches people theirs did not and nobody can say who.
    */
   const authorOnly: string[] = []
+  /** The references a person said this tenant needs no counterpart for (resolvePolicy.ts `omitted`). */
+  const omitted: string[] = []
+  /** The references only a person can answer that these policies name, and where each answer stands. */
+  const sourceReferences = new Map<string, SourceReference>()
   const operations: PolicyOperation[] = []
   for (const [i, p] of policies.entries()) {
     const tag = tagFor(i)
@@ -537,6 +541,8 @@ export function buildCreateAction(
     const whole = implementable(artifact(answered, p, tag), p.resolved)
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     for (const a of whole.authorOnly) if (!authorOnly.includes(a)) authorOnly.push(a)
+    for (const o of whole.omitted) if (!omitted.includes(o)) omitted.push(o)
+    for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id)) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
     const target = p.target ?? null
     if (target) {
@@ -567,7 +573,17 @@ export function buildCreateAction(
   const bodies = operations.map((o) => o.body)
   const json = runnable ? JSON.stringify(bodies.length === 1 ? bodies[0] : bodies, null, 2) : null
   const kind = operations.some((o) => o.mode === 'update') ? 'adjust' : 'create'
-  return { kind, summary: [], json, portalSteps: [], missing, authorOnly, resolution: { policies: operations, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } } }
+  return {
+    kind,
+    summary: [],
+    json,
+    portalSteps: [],
+    missing,
+    authorOnly,
+    ...(omitted.length > 0 ? { omitted } : {}),
+    ...(sourceReferences.size > 0 ? { sourceReferences: [...sourceReferences.values()] } : {}),
+    resolution: { policies: operations, tenant: { exclusionsGroupId: null, serviceAccountsGroupId: null } },
+  }
 }
 
 export { proposedPolicyName } from '../coverage/naming.ts'
@@ -1035,6 +1051,20 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
+  // The baseline's own groups and locations no settled reading explains
+  // (resolvePolicy.ts `decisions`): what each stands for in this tenant is a
+  // person's answer, asked once in Preparation. The step is put on the plan here,
+  // so the goal loop below can make each policy that names an unanswered one wait
+  // on it; after the loop it keeps the references the plan's open policies
+  // actually name, and leaves the plan where they name none.
+  const sourceStepId = PREREQ_STEP_ID.sourceReferences
+  if (canUseConditionalAccess) {
+    const s = prereq(sourceStepId)
+    s.kind = 'check'
+    s.action = { ...s.action, kind: 'check' }
+    steps.push(s)
+  }
+
   // The three questions the operator can answer (prompt 48 item 10), read from
   // their stored answers, questionAnswers[stepId:label] (answers.ts): an answer
   // that changes the plan adds its carve-out step, whose words are a content
@@ -1448,8 +1478,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // the step that creates it — read off the step's own missing list, so the
       // dependency is the same fact the body already reports and never a second
       // reading of which goals happen to use a strength.
-      if ((action.missing ?? []).some((m) => m.stepId === strengthStepId) && steps.some((x) => x.id === strengthStepId)) blockByStep(strengthStepId, 'create-object')
-      // The service-accounts block names the group and the trusted network (E9): it waits on both.
+      if ((action.missing ?? []).some((m) => m.stepId === strengthStepId) && steps.some((x) => x.id === strengthStepId)) blockByStep(strengthStepId, 'create-object')      // The service-accounts block names the group and the trusted network (E9): it waits on both.
       if (goal.id === SERVICE_ACCOUNTS_TRUSTED_GOAL) {
         if (steps.some((s) => s.id === saStepId)) blockByStep(saStepId, 'create-object')
         if (steps.some((s) => s.id === locStepId && s.status !== 'done') && !doesntApply(locStepId)) blockByStep(locStepId, 'trusted-location')
@@ -1814,6 +1843,37 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             ? { proposed: existing.policyName, fromBaseline: source?.facts.name ?? null, note: null }
             : null,
     })
+  }
+
+  // The source-references step answers for the references the plan's open
+  // policies name, and lists the steps that name each one. Where no open policy
+  // names one it leaves the plan: there is nothing to ask. While any is
+  // unanswered it needs a decision; once every one is answered it is in place,
+  // and its answers stay open to change.
+  {
+    const src = steps.find((s) => s.id === sourceStepId)
+    if (src) {
+      const byId = new Map<string, SourceReference & { stepIds: string[] }>()
+      for (const s of steps) {
+        if (s.id === sourceStepId || s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust')) continue
+        for (const r of s.action.sourceReferences ?? []) {
+          const at = byId.get(r.id) ?? { ...r, stepIds: [] }
+          if (!at.stepIds.includes(s.id)) at.stepIds.push(s.id)
+          byId.set(r.id, at)
+        }
+      }
+      if (byId.size === 0) steps.splice(steps.indexOf(src), 1)
+      else {
+        const references = [...byId.values()].sort((a, b) => b.stepIds.length - a.stepIds.length || a.id.localeCompare(b.id))
+        src.action = { ...src.action, sourceReferences: references }
+        if (references.some((r) => r.answer === 'pending')) {
+          src.blockers = [...src.blockers, { kind: 'decision', label: 'source-references', binding: BLOCKED_REASON.sourceReferences }]
+          setState(src, { condition: conditionFor(src.blockers) })
+        } else {
+          setState(src, { satisfied: true, inPlace: true })
+        }
+      }
+    }
   }
 
   // ---- Phase 2 verification campaign ----

@@ -114,6 +114,15 @@ export type StepResolution = {
   tenant: { exclusionsGroupId: string | null; serviceAccountsGroupId: string | null; emergencyIds?: string[] }
 }
 
+/**
+ * One of the baseline's own references only a person can answer (a group, or a
+ * location no Preparation step makes, that no settled reading of the baseline
+ * explains), and where the answer stands. On a policy step, the ones its
+ * policies name; on the source-references step, every one the plan's open
+ * policies name, with the steps that name it (`stepIds`).
+ */
+export type SourceReference = { id: string; kind: 'group' | 'namedLocation'; answer: 'pending' | 'mapped' | 'omitted'; stepIds?: string[] }
+
 export type Action = {
   kind: StepKind
   summary: string[] // adjust: the exact field changes in words; others: what to do
@@ -132,7 +141,21 @@ export type Action = {
    * of the baseline explains, which the surfaces say in words rather than by
    * naming an id out of the author's tenant (resolvePolicy.ts `unsettled`).
    */
-  missing?: { token: string; stepId: string | null; unreadable?: true }[]
+  missing?: { token: string; stepId: string | null; unreadable?: true; decision?: true }[]
+  /**
+   * The baseline's own references a person said this tenant needs no counterpart
+   * for (mapping.omittedReferences): left out of every body, and never waited on.
+   * Kept apart from `authorOnly`, which rests on evidence rather than on a
+   * person's answer.
+   */
+  omitted?: string[]
+  /**
+   * The baseline's own references this step's policies name that only a person
+   * can answer — a group or a location no settled reading explains — with the
+   * answer so far (resolvePolicy.ts `decisions`). The source-references step
+   * lists them; a pending one is in `missing` and waits on that step.
+   */
+  sourceReferences?: SourceReference[]
   /**
    * The author's own objects this tenant's copy of the policy does without: a
    * source reference the baseline's interpretation settles, with evidence, as
