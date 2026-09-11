@@ -121,6 +121,7 @@ type ContractWords = {
     sourcePins: string
     preview: { label: string; text: string; textValues: string; values: string; checks: string; value: string }
     withheld: { values: string; fault: string }
+    review: { reviewNeeded: string; held: string }
     values: Record<string, string>
     troubleshooting: string
     powershellInvocation: string

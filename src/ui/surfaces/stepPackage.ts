@@ -26,6 +26,7 @@ import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
+import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
 import type { Bindings, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
@@ -41,6 +42,9 @@ import type { StepVarContext } from './stepVars.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
+/** Each registered package reviewed against the pin this build carries (content/implementation/drift.ts). */
+const REVIEWS = (registry as unknown as { reviews?: Record<string, Drift> }).reviews ?? {}
+
 /** The pinned baseline commit this build carries (baselines/*.pinned.json). */
 export const BASELINE_COMMIT: string = PINNED.commit
 
@@ -52,14 +56,31 @@ const BY_CONTENT: ReadonlyMap<string, CompiledPackage> = new Map(
   }),
 )
 
+const packageByEntry = (step: { id: string; goalId: string }): CompiledPackage | null => {
+  const entry = contentStepFor(step)
+  return (entry ? BY_CONTENT.get(entry.id) : undefined) ?? null
+}
+
 /**
  * The package for a step, or null: a step without one keeps its existing
  * channels. A step and a package meet at the content entry the step's title comes
  * from, so a merged goal or an aliased step reaches the package its entry names.
+ *
+ * A package the semantic re-pin review sets aside — a member it implements changed
+ * or left the baseline since it was reviewed — does not apply: its guidance was
+ * written for a policy the baseline no longer asks for, and the step draws the
+ * baseline's own channels (packageReviewFor says why). Only that package.
  */
 export function implementationPackageFor(step: { id: string; goalId: string }): CompiledPackage | null {
-  const entry = contentStepFor(step)
-  return (entry ? BY_CONTENT.get(entry.id) : undefined) ?? null
+  const pkg = packageByEntry(step)
+  return pkg !== null && (REVIEWS[pkg.meta.stepId]?.status ?? 'current') === 'current' ? pkg : null
+}
+
+/** The review that sets a step's package aside, or null where the step's package applies or it has none. */
+export function packageReviewFor(step: { id: string; goalId: string }): Drift | null {
+  const pkg = packageByEntry(step)
+  const review = pkg ? REVIEWS[pkg.meta.stepId] : undefined
+  return review !== undefined && review.status !== 'current' ? review : null
 }
 
 /** The step ids with a package in the registry. */

@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"8b42eda3-6917-4ab4-afb2-e32c37520f9b":"084282ca"},
     "memberStableId": "8b42eda3-6917-4ab4-afb2-e32c37520f9b",
     "sourceDisplayName": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
     "sourceState": "enabled",

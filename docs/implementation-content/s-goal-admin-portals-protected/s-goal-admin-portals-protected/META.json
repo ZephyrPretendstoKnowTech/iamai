@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"fafaa50c-0b61-4ac6-a589-f9a1120b2f9e":"3172d679"},
     "memberStableId": "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e",
     "sourceDisplayName": "IAC - ZTCA - GLOBAL \u2013 BLOCK \u2013 Admin Portal",
     "sourceState": "enabledForReportingButNotEnforced",

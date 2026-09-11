@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"9e21fa64-8d9a-4e62-81da-9abce8859a0c":"5489f662"},
     "memberStableId": "9e21fa64-8d9a-4e62-81da-9abce8859a0c",
     "sourceDisplayName": "IAC - GLOBAL - BLOCK - Unsupported Device Platforms",
     "sourceState": "enabled",

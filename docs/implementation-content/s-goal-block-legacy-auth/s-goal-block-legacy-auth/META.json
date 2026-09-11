@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"9eab445f-7f21-479a-85c9-29769512067e":"7398df1e"},
     "memberStableId": "9eab445f-7f21-479a-85c9-29769512067e",
     "sourceDisplayName": "IAC - GLOBAL \u2013 BLOCK - Legacy Authentication",
     "sourceState": "enabled",

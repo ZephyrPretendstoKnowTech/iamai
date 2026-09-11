@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"fa005ec2-4940-49c8-b4e7-b58e66ef481c":"5af5cbd4"},
     "memberStableId": "fa005ec2-4940-49c8-b4e7-b58e66ef481c",
     "sourceDisplayName": "IAC - GLOBAL - BLOCK - Authentication Transfer",
     "sourceState": "enabledForReportingButNotEnforced",

@@ -17,7 +17,7 @@ import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, packageBindings, packageDrawsImplementation, packageRuntime, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
+import { BASELINE_COMMIT, REGISTERED_PACKAGE_STEP_IDS, implementationPackageFor, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageStateOf } from '../../ui/surfaces/stepPackage.ts'
 
 const LIBRARY = compileLibrary()
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
@@ -56,13 +56,18 @@ test('the registry is the whole library compiled: every package for a Plan conte
 
 test('each package reaches the steps whose title comes from its content entry, a merged goal included', () => {
   let reached = 0
+  let reviewed = 0
   for (const { step } of DEMO) {
     const pkg = implementationPackageFor(step)
-    if (!pkg) continue
+    if (!pkg) {
+      // A package the semantic re-pin review set aside still reaches its step, as a review.
+      if (packageReviewFor(step)) reviewed++
+      continue
+    }
     reached++
     assert.equal(contentStepForPackage(pkg.meta.stepId)?.id, contentStepFor(step)?.id, `${step.id} reached ${pkg.meta.stepId}`)
   }
-  assert.ok(reached >= 27, `only ${reached} demo steps reached a package`)
+  assert.ok(reached + reviewed >= 27, `only ${reached + reviewed} demo steps reached a package`)
   assert.equal(implementationPackageFor(at(DEMO, 's-goal-all-users-no-persistence').step)?.meta.stepId, 's-goal-session-lifetime')
   assert.equal(implementationPackageFor({ id: 'cleanup-drill', goalId: '' }), null)
 })
@@ -99,9 +104,12 @@ test('a required value IAMAI does not hold withholds only the channel that names
   const none = projectSafely(held.pkg, 'missing', {}, NO_RUNTIME)
   assert.deepEqual(none.channels, [], 'a projection with none of its values offered something')
   assert.ok((none.hold?.missingBindings.length ?? 0) > 0)
-  const silent = project(at(SMALL, 's-goal-admin-portals-protected'))
-  assert.equal(silent.projection.hold?.noProjection, true)
-  assert.equal(packageDrawsImplementation(silent.pkg, silent.projection), false)
+  // A registered package in a state it authors nothing for leaves the step its own channels.
+  const quiet = Object.values(PACKAGES).flatMap((pkg) => PACKAGE_STATES.filter((s) => !NO_ACTION_STATES.has(s) && !pkg.meta.projection[s]).map((state) => ({ pkg, state })))[0]
+  assert.ok(quiet, 'every registered package authors every action state: the premise is untested')
+  const silent = projectSafely(quiet.pkg, quiet.state, {}, NO_RUNTIME)
+  assert.equal(silent.hold?.noProjection, true)
+  assert.equal(packageDrawsImplementation(quiet.pkg, silent), false)
   assert.equal(packageDrawsImplementation(null, null), false)
 })
 

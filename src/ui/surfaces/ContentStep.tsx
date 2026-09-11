@@ -63,7 +63,7 @@ import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageRuntime, packageSourceLine, packageStateOf, planningPreview } from './stepPackage.ts'
+import { BASELINE_COMMIT, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { prerequisiteBasis, projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -390,6 +390,10 @@ export function ContentStep({
         return d.invalid.length === 0 && d.missingBindings.length > 0 ? fillText(W.withheld.values, { channel, values: list([...new Set(d.missingBindings.map(bindingLabel))]) }) : fillText(W.withheld.fault, { channel })
       })
     : []
+  // A package the semantic re-pin review set aside (stepPackage.ts packageReviewFor):
+  // the step draws the baseline's own channels, and says why, before anything else.
+  const review = packageReviewFor(step)
+  const notes = review ? [review.status === 'held' ? W.review.held : W.review.reviewNeeded, ...withheld] : withheld
   // A step with nothing to implement by design — a decision, a question, a check —
   // draws no Implementation region at all: its What to do is the work, and "No
   // generated implementation" beside it said nothing (owner, 2026-09-11). A policy
@@ -548,7 +552,7 @@ export function ContentStep({
               artifacts={artifacts}
               drawnBy={packaged ? 'package' : 'translator'}
               preview={previewNote}
-              withheld={withheld}
+              withheld={notes}
               title={title}
               empty={empty}
               source={sourceLine}

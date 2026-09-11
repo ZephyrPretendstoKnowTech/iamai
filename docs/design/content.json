@@ -1390,6 +1390,11 @@
               "values": "{channel} is not shown yet: IAMAI does not hold {values}.",
               "fault": "{channel} is not shown: its content could not be projected safely."
             },
+            "review": {
+              "$comment": "A package the semantic re-pin review sets aside (src/content/implementation/drift.ts): the step draws the baseline's own channels instead.",
+              "reviewNeeded": "IAMAI's written guidance for this step was reviewed against an earlier version of its baseline policy, which has changed since. Until it is reviewed again, these steps come from the baseline itself.",
+              "held": "A baseline policy this step's written guidance was reviewed for is no longer in the baseline, so that guidance is not shown."
+            },
             "values": {
               "$comment": "What an unresolved package binding is called inside a planning preview. A binding with no entry here is named from its own key.",
               "policy.current.id": "policy ID",

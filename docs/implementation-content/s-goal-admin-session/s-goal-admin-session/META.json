@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"04b969aa-3e98-4e0f-8b32-2319b199b56a":"db834f8f"},
     "memberStableId": "04b969aa-3e98-4e0f-8b32-2319b199b56a",
     "sourceDisplayName": "IAC - GLOBAL \u2013 SESSION \u2013 Admin Persistence (4 Hours)",
     "sourceState": "enabled",

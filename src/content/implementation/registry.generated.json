@@ -707,6 +707,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e": "3172d679"
+          },
           "memberStableId": "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e",
           "sourceDisplayName": "IAC - ZTCA - GLOBAL – BLOCK – Admin Portal",
           "sourceState": "enabledForReportingButNotEnforced",
@@ -868,6 +871,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "04b969aa-3e98-4e0f-8b32-2319b199b56a": "db834f8f"
+          },
           "memberStableId": "04b969aa-3e98-4e0f-8b32-2319b199b56a",
           "sourceDisplayName": "IAC - GLOBAL – SESSION – Admin Persistence (4 Hours)",
           "sourceState": "enabled",
@@ -1496,6 +1502,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce": "b42cb56a"
+          },
           "memberStableId": "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce",
           "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllAdmins",
           "sourceState": "enabled",
@@ -2782,6 +2791,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "fa005ec2-4940-49c8-b4e7-b58e66ef481c": "5af5cbd4"
+          },
           "memberStableId": "fa005ec2-4940-49c8-b4e7-b58e66ef481c",
           "sourceDisplayName": "IAC - GLOBAL - BLOCK - Authentication Transfer",
           "sourceState": "enabledForReportingButNotEnforced",
@@ -3452,6 +3464,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "8b42eda3-6917-4ab4-afb2-e32c37520f9b": "084282ca"
+          },
           "memberStableId": "8b42eda3-6917-4ab4-afb2-e32c37520f9b",
           "sourceDisplayName": "IAC - GLOBAL - BLOCK - Device Code Auth Flow",
           "sourceState": "enabled",
@@ -4123,6 +4138,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "9eab445f-7f21-479a-85c9-29769512067e": "7398df1e"
+          },
           "memberStableId": "9eab445f-7f21-479a-85c9-29769512067e",
           "sourceDisplayName": "IAC - GLOBAL – BLOCK - Legacy Authentication",
           "sourceState": "enabled",
@@ -4781,6 +4799,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "9e21fa64-8d9a-4e62-81da-9abce8859a0c": "5489f662"
+          },
           "memberStableId": "9e21fa64-8d9a-4e62-81da-9abce8859a0c",
           "sourceDisplayName": "IAC - GLOBAL - BLOCK - Unsupported Device Platforms",
           "sourceState": "enabled",
@@ -5405,6 +5426,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+          "reviewedMembers": {
+            "aeb49474-5250-4b65-8b0a-56c47127ee0f": "75f2c295"
+          },
           "memberStableId": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
           "reauthored": {
             "on": "2026-09-11",
@@ -6430,6 +6454,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5": "e205689f"
+          },
           "memberStableId": "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5",
           "sourceDisplayName": "IAC - GLOBAL – BLOCK – Countries not Allowed",
           "sourceState": "enabled",
@@ -7055,6 +7082,10 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "e0fabad3-bd0f-42e4-a901-51ef7ab8889c": "4c820ee3",
+            "f25f94e0-98b6-41be-b9d6-68cb781004a4": "14baaf36"
+          },
           "members": [
             {
               "role": "strong",
@@ -7614,6 +7645,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime": "183dce40"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "sourceMemberKey": "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime",
           "sourceStableId": null,
@@ -8347,6 +8381,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4": "40f72c4c"
+          },
           "memberStableId": "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4",
           "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllUsers",
           "sourceState": "enabledForReportingButNotEnforced",
@@ -9681,6 +9718,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "a6b3b754-9079-48f0-abb2-9e79b2f41095": "d0f90a62"
+          },
           "memberStableId": "a6b3b754-9079-48f0-abb2-9e79b2f41095",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "initialState": "enabledForReportingButNotEnforced",
@@ -11266,6 +11306,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "660ab461-0de5-4b00-baea-ec7325280f60": "8424f9ef"
+          },
           "memberStableId": "660ab461-0de5-4b00-baea-ec7325280f60",
           "sourceDisplayName": "IAC - INTUNE - GRANT - RequireCompliantDevice",
           "sourceState": "enabledForReportingButNotEnforced",
@@ -11935,6 +11978,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "99eabebd-877c-4800-aa15-d389b8767760": "c5ed6560"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "memberStableId": "99eabebd-877c-4800-aa15-d389b8767760",
           "initialState": "enabledForReportingButNotEnforced",
@@ -12765,6 +12811,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "ea9459a9-91b6-4d2b-b929-03781ac81d54": "37d17a62"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "intentionalMultiPolicySet": true,
           "members": [
@@ -13530,6 +13579,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "53a8df0b-4658-4835-ace2-100b5d287aac": "cbbc493d"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "memberStableId": "53a8df0b-4658-4835-ace2-100b5d287aac",
           "initialState": "enabledForReportingButNotEnforced",
@@ -14330,6 +14382,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc": "d8117064"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "memberStableId": "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc",
           "initialState": "enabledForReportingButNotEnforced",
@@ -15023,6 +15078,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "8bb25c6a-ed35-4556-bed4-b3aaa14e192b": "da1f0680"
+          },
           "memberStableId": "8bb25c6a-ed35-4556-bed4-b3aaa14e192b",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "initialState": "enabledForReportingButNotEnforced",
@@ -16433,6 +16491,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "544cd9ef-5e37-4568-9ad8-b8e151be1814": "d3d2e8ae"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "memberStableId": "544cd9ef-5e37-4568-9ad8-b8e151be1814",
           "initialState": "enabled",
@@ -17202,6 +17263,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "7475b373-0544-4ee8-8827-cff35009136d": "d00eec2b"
+          },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "memberStableId": "7475b373-0544-4ee8-8827-cff35009136d",
           "initialState": "enabled",
@@ -18021,6 +18085,9 @@
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+          "reviewedMembers": {
+            "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP": "ec1eed2b"
+          },
           "memberStableId": null,
           "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -24485,6 +24552,449 @@
           "text": "{\n  \"scenarios\": []\n}\n"
         }
       }
+    }
+  },
+  "reviews": {
+    "s-check-dormant-accounts": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-check-separate-admin-accounts": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-admin-portals-protected": {
+      "status": "reviewNeeded",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [
+        "fafaa50c-0b61-4ac6-a589-f9a1120b2f9e"
+      ],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-admin-session": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "04b969aa-3e98-4e0f-8b32-2319b199b56a"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-admins-phishing-resistant": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "f893f39f-2ab3-4f1e-a8e1-9a2b9589a9ce"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-azure-management-mfa": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-block-auth-transfer": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "fa005ec2-4940-49c8-b4e7-b58e66ef481c"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-block-device-code": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "8b42eda3-6917-4ab4-afb2-e32c37520f9b"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-block-legacy-auth": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "9eab445f-7f21-479a-85c9-29769512067e"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-block-unsupported-platforms": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "9e21fa64-8d9a-4e62-81da-9abce8859a0c"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-device-registration-mfa": {
+      "status": "current",
+      "reviewedPin": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "aeb49474-5250-4b65-8b0a-56c47127ee0f"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-geo-restriction": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-guests-mfa": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "e0fabad3-bd0f-42e4-a901-51ef7ab8889c",
+        "f25f94e0-98b6-41be-b9d6-68cb781004a4"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-intune-enrollment-reauth": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-mfa-all-users": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-mobile-app-protection": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-pim-activation-reauth": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "a6b3b754-9079-48f0-abb2-9e79b2f41095"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-register-info-protected": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-require-managed-device": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "660ab461-0de5-4b00-baea-ec7325280f60"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-service-accounts-trusted-network": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "99eabebd-877c-4800-aa15-d389b8767760"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-session-lifetime": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "ea9459a9-91b6-4d2b-b929-03781ac81d54"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-sign-in-risk": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "53a8df0b-4658-4835-ace2-100b5d287aac"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-sign-in-risk-medium": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "180ab5a3-d3ae-4457-9ef1-e3c06f5dfbfc"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-token-protection": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "8bb25c6a-ed35-4556-bed4-b3aaa14e192b"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-unmanaged-browser": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-user-risk": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "544cd9ef-5e37-4568-9ad8-b8e151be1814"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-user-risk-medium": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "7475b373-0544-4ee8-8827-cff35009136d"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-goal-workload-identity-block": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [
+        "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
+      ],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-ladder-operator-passkey": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-allowed-countries": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-auth-strength": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-break-glass": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-device-plan": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-exclusion-group": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-passkey-settings": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-per-user-mfa": {
+      "status": "current",
+      "reviewedPin": null,
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-security-defaults": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-service-accounts-group": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-prereq-trusted-location": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-question-mail-devices": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-question-partner": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-question-travel": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-shared-devices": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
+    },
+    "s-verify-mfa": {
+      "status": "current",
+      "reviewedPin": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "pinned": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+      "unchanged": [],
+      "changed": [],
+      "removed": [],
+      "added": []
     }
   }
 }

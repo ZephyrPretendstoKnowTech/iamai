@@ -24,6 +24,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
+    "reviewedMembers": {"aeb49474-5250-4b65-8b0a-56c47127ee0f":"75f2c295"},
     "memberStableId": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
     "reauthored": {
       "on": "2026-09-11",
