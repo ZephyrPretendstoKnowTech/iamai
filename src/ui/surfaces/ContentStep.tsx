@@ -498,6 +498,7 @@ export function ContentStep({
 
           <Implementation
             artifacts={artifacts}
+            drawnBy={packaged ? 'package' : 'translator'}
             title={title}
             empty={empty}
             source={sourceLine}
@@ -668,8 +669,10 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
-function Implementation({ artifacts, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
+function Implementation({ artifacts, drawnBy, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
   artifacts: Artifact[]
+  /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
+  drawnBy: 'package' | 'translator'
   title: string
   empty: ImplementationEmpty
   /** "Source updated <date>", from the package's verified sources; null where there is no truthful date. */
@@ -708,7 +711,7 @@ function Implementation({ artifacts, title, empty, source, onTroubleshooting, op
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null
   return (
-    <section className="step-section implementation-section">
+    <section className="step-section implementation-section" data-implementation={drawnBy}>
       <h4>{W.heading}</h4>
       {artifacts.length === 0 ? (
         <ImplementationEmptyBox empty={empty} />

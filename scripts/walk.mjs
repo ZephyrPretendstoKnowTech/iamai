@@ -1453,9 +1453,12 @@ async function walkFixture(fx) {
         }
         // A translator-rendered step keeps its content's "before" lines above the
         // portal lines (the merge follow-up): on the step, each line is present and
-        // sits before the portal root line.
+        // sits before the portal root line. A step whose implementation-content
+        // package draws the Implementation region has no translator portal lines;
+        // the package owns those words (ContentStep.tsx data-implementation).
+        const packageDrawn = await evaluate(`Boolean(document.querySelector('main.page .step-body .implementation-section[data-implementation="package"]'))`)
         for (const b of BEFORE_LINES) {
-          if (b.title !== title || b.lines.length === 0 || cannotWriteYet) continue
+          if (b.title !== title || b.lines.length === 0 || cannotWriteYet || packageDrawn) continue
           const root = bodyText.indexOf('Conditional Access → Policies → New policy')
           for (const line of b.lines) {
             const at = bodyText.indexOf(line.replace(/\{[a-zA-Z0-9_:]+\}/g, '').split(' ').slice(0, 6).join(' '))
