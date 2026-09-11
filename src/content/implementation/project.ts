@@ -1,20 +1,26 @@
 // Projecting an implementation-content package into what one step shows now.
 //
 // The package owns the words (CONTENT.md) and the rules for choosing them
-// (META.json); IAMAI owns the state and the tenant's values. This module joins
-// the two and adds nothing of its own: a state selects the blocks META.json
-// names for it, a Partial state composes only the correction modules for the
-// semantic mismatches IAMAI supplied, and bindings fill the blocks — or, where a
-// required value is missing, nothing is produced at all. It never selects a
-// block by its heading, its position or a policy's name.
+// (META.json and the structured fields beside its prose); IAMAI owns the state,
+// the tenant's values and what a person has confirmed. This module joins the two
+// and adds nothing of its own: a state selects the blocks META.json names for it,
+// a Partial state composes only the correction modules the engine's semantic
+// facts select, a prerequisite the next transition needs holds that transition's
+// artifacts until it is satisfied, and bindings fill the blocks — or, where a
+// required value is missing, nothing is produced at all. It never selects a block
+// by its heading, its position or a policy's name, and it interprets no prose.
 //
 // Pure: no DOM, no network, no clock.
-import type { Block, CompiledPackage, ProjectionRef, VerifiedSource } from './protocol.ts'
-import { BINDING, PackageError, refsOf } from './protocol.ts'
+import type { Block, CompiledPackage, PackageState, Prerequisite, ProjectionRef, VerifiedSource } from './protocol.ts'
+import { BINDING, CHANGED_FIELDS_BINDING, PACKAGE_STATES, mismatchBindingOf, refsOf } from './protocol.ts'
+import type { Bindings, ConditionContext } from './conditions.ts'
+import { holds, present } from './conditions.ts'
+import { renderInvocation } from './invocation.ts'
+import type { ScriptRun } from './invocation.ts'
+import type { OwnerConfirmation } from '../../roadmap/decisions.ts'
 
-/** The states a package projects (guide §2). */
-export const PACKAGE_STATES = ['missing', 'partial', 'reportOnly', 'readyToEnforce', 'inPlace', 'blocked', 'needsDecision', 'sourceConflict', 'notLicensed'] as const
-export type PackageState = (typeof PACKAGE_STATES)[number]
+export { PACKAGE_STATES, present }
+export type { Bindings, PackageState }
 
 /**
  * The viewer's channel order: the approved selector's Entra, PowerShell, JSON
@@ -24,7 +30,10 @@ export type PackageState = (typeof PACKAGE_STATES)[number]
 export const OUTPUT_ORDER = ['entra', 'powershell', 'json', 'aiInfo', 'email'] as const
 export type OutputChannel = (typeof OUTPUT_ORDER)[number]
 
-export type Bindings = Readonly<Record<string, unknown>>
+/** What IAMAI's runtime knows beside the bindings: the prerequisites satisfied now, and the baseline this build pins. */
+export type RuntimeContext = { satisfied: ReadonlySet<string>; baselineCommit: string | null }
+
+export const NO_RUNTIME: RuntimeContext = { satisfied: new Set(), baselineCommit: null }
 
 export type ChannelArtifact = {
   channel: OutputChannel
@@ -33,27 +42,28 @@ export type ChannelArtifact = {
   format: string
   /** The bound text: what the preview shows, the viewer expands and Copy copies. */
   text: string
-  /** A JSON block's request, bound: `PATCH /identity/conditionalAccess/policies/<id>`. */
+  /** A JSON body's request, bound: `PATCH /identity/conditionalAccess/policies/<id>`. */
   requests: { method: string; endpoint: string }[]
-  /** A mode-based script's mode, and the corrections a Partial projection asks of it. */
+  /** A mode-based script's first mode, and every correction its runs ask of it. */
   mode: string | null
   corrections: string[]
+  /** Every run of a mode-based script, in projection order; empty for anything else. */
+  runs: ScriptRun[]
   /** An Email block's declared audience and trigger (guide §26.6). */
   communication: { audience: string; trigger: string; purpose: string } | null
 }
 
-/** Why a projection produced nothing: a required value IAMAI does not have, a mismatch the package has no module for, or bound output that does not parse. */
-export type Hold = { missingBindings: string[]; unknownMismatches: string[]; invalid: string[] }
+/**
+ * Why a projection produced nothing: a required value IAMAI does not hold, an
+ * engine fact no correction module covers, a prerequisite the next transition
+ * needs that nobody has satisfied, a state the package projects nothing for, or
+ * bound output that does not hold together.
+ */
+export type Hold = { missingBindings: string[]; unknownMismatches: string[]; pendingPrerequisites: string[]; noProjection: boolean; invalid: string[] }
 
 export type Projection = { state: PackageState; hold: Hold | null; channels: ChannelArtifact[] }
 
-/** A binding IAMAI actually has: not absent, not blank, not an empty list. */
-export function present(v: unknown): boolean {
-  if (v === undefined || v === null) return false
-  if (typeof v === 'string') return v.trim() !== ''
-  if (Array.isArray(v)) return v.length > 0
-  return true
-}
+const emptyHold = (): Hold => ({ missingBindings: [], unknownMismatches: [], pendingPrerequisites: [], noProjection: false, invalid: [] })
 
 /** The authored marker on a line that disappears when its optional value is unavailable. */
 const OMIT = /\s*\[omit (?:this line )?when unavailable\]/g
@@ -87,7 +97,7 @@ export function bindText(text: string, bindings: Bindings, required: ReadonlySet
   return { text: out.join('\n').replace(/\s+$/, '') }
 }
 
-/** An endpoint with its single-brace identity filled (`/policies/{policy.current.id}`), or null where the identity is unknown. */
+/** An endpoint with its single-brace identity filled (`/policies/{policy.current.id}`), or the bindings it lacks. */
 function bindEndpoint(endpoint: string, bindings: Bindings): { endpoint: string } | { missing: string[] } {
   const missing: string[] = []
   const bound = endpoint.replace(/\{([A-Za-z0-9_.-]+)\}/g, (_m, key: string) => {
@@ -106,7 +116,7 @@ const asStrings = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : 
 function dedupe(refs: ProjectionRef[]): ProjectionRef[] {
   const out: ProjectionRef[] = []
   for (const r of refs) {
-    const seen = out.find((o) => o.block === r.block)
+    const seen = out.find((o) => o.block === r.block && (o.mode ?? null) === (r.mode ?? null))
     if (!seen) {
       out.push({ ...r, ...(r.corrections ? { corrections: [...r.corrections] } : {}) })
       continue
@@ -119,91 +129,244 @@ function dedupe(refs: ProjectionRef[]): ProjectionRef[] {
   return out
 }
 
+/** The prerequisites a state's next transition needs (`requiredBefore: "<state>->…"`). */
+export function gatingPrerequisites(pkg: CompiledPackage, state: PackageState): Prerequisite[] {
+  return (pkg.meta.prerequisites ?? []).filter((p) => typeof p.requiredBefore === 'string' && p.requiredBefore.startsWith(`${state}->`))
+}
+
+const covers = (fact: string, field: string): boolean => field === fact || field.startsWith(`${fact}.`)
+
+/**
+ * The correction modules the engine's facts select. A module is chosen when one
+ * of the fields it declares is a field the update changes; a module with a
+ * `select` condition is chosen when the condition holds — and, where it says
+ * `alongside`, only beside another chosen module (returning a live policy to
+ * report-only is part of correcting it, never a correction on its own). A
+ * changed field no module declares is an unknown mismatch.
+ */
+export function selectMismatches(p: Record<string, unknown>, ctx: ConditionContext): { selected: string[]; unknown: string[] } {
+  const changed = asStrings(ctx.bindings[CHANGED_FIELDS_BINDING])
+  const table = (p.mismatches ?? {}) as Record<string, Record<string, unknown>>
+  const ids = Object.keys(table)
+  const byFacts = ids.filter((id) => asStrings(table[id].facts).some((f) => changed.some((c) => covers(f, c))))
+  const bySelect = ids.filter((id) => !byFacts.includes(id) && table[id].select !== undefined && holds(table[id].select as never, ctx) && (table[id].alongside !== true || byFacts.length > 0))
+  const unknown = changed.filter((c) => !ids.some((id) => asStrings(table[id].facts).some((f) => covers(f, c))))
+  // In the table's own order, so the page reads the corrections the way the package lists them.
+  return { selected: ids.filter((id) => byFacts.includes(id) || bySelect.includes(id)), unknown }
+}
+
 /**
  * What one state of one package shows. Every channel META.json names for the
  * state is built from its blocks; a channel it names nothing for is absent. Any
- * refusal — a required value missing, a mismatch with no module, bound JSON that
- * does not parse — holds the whole projection, so no partial deployable
- * artifact can reach the page.
+ * refusal holds the whole projection, so no partial deployable artifact can
+ * reach the page.
  */
-export function projectImplementation(pkg: CompiledPackage, state: PackageState, bindings: Bindings): Projection {
+export function projectImplementation(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext = NO_RUNTIME): Projection {
+  const hold = emptyHold()
   const p = pkg.meta.projection[state] as Record<string, unknown> | undefined
-  if (!p) throw new PackageError(`${pkg.meta.stepId}: no projection for ${state}`)
-  const hold: Hold = { missingBindings: [], unknownMismatches: [], invalid: [] }
-  hold.missingBindings = asStrings(p.requires).filter((b) => !present(bindings[b]))
-  if (hold.missingBindings.length > 0) return { state, hold, channels: [] }
+  if (!p) return { state, hold: { ...hold, noProjection: true }, channels: [] }
 
+  // The next transition's prerequisites, before anything is built: an artifact
+  // that performs a transition a person has not cleared is not offered.
+  hold.pendingPrerequisites = gatingPrerequisites(pkg, state).filter((pr) => !runtime.satisfied.has(pr.id)).map((pr) => pr.id)
+  if (hold.pendingPrerequisites.length > 0) return { state, hold, channels: [] }
+
+  let b: Bindings = bindings
+  const requires = new Set(asStrings(p.requires))
   const refs = new Map<OutputChannel, ProjectionRef[]>()
   if (p.mode === 'composeByMismatch') {
-    const ids = asStrings(bindings['policy.current.semanticMismatches'])
+    const ctx: ConditionContext = { state, bindings, satisfied: runtime.satisfied, baselineCommit: runtime.baselineCommit }
+    const { selected, unknown } = selectMismatches(p, ctx)
+    hold.unknownMismatches = unknown
+    if (unknown.length > 0) return { state, hold, channels: [] }
+    if (selected.length === 0) return { state, hold: { ...hold, invalid: ['no correction module is selected'] }, channels: [] }
+    const binding = mismatchBindingOf(p)
+    if (binding !== null) b = { ...bindings, [binding]: selected }
     const table = (p.mismatches ?? {}) as Record<string, Record<string, unknown>>
-    hold.unknownMismatches = ids.filter((id) => !Object.hasOwn(table, id))
-    if (hold.unknownMismatches.length > 0) return { state, hold, channels: [] }
+    for (const id of selected) for (const r of asStrings(table[id].requires)) requires.add(r)
     const before = (p.sharedBefore ?? {}) as Record<string, unknown>
     const after = (p.sharedAfter ?? {}) as Record<string, unknown>
     for (const ch of OUTPUT_ORDER) {
-      const own = ids.flatMap((id) => refsOf(table[id][ch]))
+      const own = selected.flatMap((id) => refsOf(table[id][ch]))
       refs.set(ch, [...(own.length > 0 ? [...refsOf(before[ch]), ...own, ...refsOf(after[ch])] : []), ...refsOf(p[ch])])
     }
   } else {
     for (const ch of OUTPUT_ORDER) refs.set(ch, refsOf(p[ch]))
   }
+  hold.missingBindings = [...requires].filter((r) => !present(b[r]))
+  if (hold.missingBindings.length > 0) return { state, hold, channels: [] }
 
   const required = new Set(pkg.meta.requiredBindings ?? [])
   const channels: ChannelArtifact[] = []
   for (const ch of OUTPUT_ORDER) {
     const list = dedupe(refs.get(ch) ?? [])
     if (list.length === 0) continue
+    const blockIds = [...new Set(list.map((r) => r.block))]
     const texts: string[] = []
     const requests: ChannelArtifact['requests'] = []
-    const corrections: string[] = []
-    let mode: string | null = null
+    const runs: ScriptRun[] = []
+    const bodies: { method: string; endpoint: string; body: Record<string, unknown>; text: string }[] = []
     let communication: ChannelArtifact['communication'] = null
-    for (const ref of list) {
-      const block: Block | undefined = pkg.blocks[ref.block]
-      if (!block) throw new PackageError(`${pkg.meta.stepId}: ${state} names missing block ${ref.block}`)
-      const bound = bindText(block.text, bindings, required)
+    for (const id of blockIds) {
+      const block: Block | undefined = pkg.blocks[id]
+      if (!block) {
+        hold.invalid.push(`${id}: no such block`)
+        continue
+      }
+      const bound = bindText(block.text, b, required)
       if ('missing' in bound) {
         hold.missingBindings.push(...bound.missing)
         continue
       }
       if (/\{\{|\[omit /.test(bound.text)) {
-        hold.invalid.push(ref.block)
+        hold.invalid.push(`${id}: an unresolved placeholder`)
+        continue
+      }
+      const ownRuns = list.filter((r) => r.block === id && typeof r.mode === 'string').map((r) => ({ mode: r.mode as string, corrections: r.corrections ?? [] }))
+      if (ch === 'powershell' && block.meta.kind === 'deployableAfterBinding') {
+        if (!block.meta.invocation || ownRuns.length === 0) {
+          hold.invalid.push(`${id}: a deployable script with no invocation`)
+          continue
+        }
+        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied)
+        if ('missing' in rendered) {
+          hold.missingBindings.push(...rendered.missing)
+          continue
+        }
+        runs.push(...ownRuns)
+        texts.push(rendered.text)
         continue
       }
       if (block.meta.format === 'json' || block.meta.format === 'json-template') {
+        let parsed: unknown
         try {
-          JSON.parse(bound.text)
+          parsed = JSON.parse(bound.text)
         } catch {
-          hold.invalid.push(ref.block)
+          hold.invalid.push(`${id}: bound JSON does not parse`)
+          continue
+        }
+        if (typeof block.meta.endpoint === 'string') {
+          const ep = bindEndpoint(block.meta.endpoint, b)
+          if ('missing' in ep) {
+            hold.missingBindings.push(...ep.missing)
+            continue
+          }
+          bodies.push({ method: String(block.meta.method ?? ''), endpoint: ep.endpoint, body: (parsed ?? {}) as Record<string, unknown>, text: bound.text })
           continue
         }
       }
-      if (typeof block.meta.endpoint === 'string') {
-        const ep = bindEndpoint(block.meta.endpoint, bindings)
-        if ('missing' in ep) {
-          hold.missingBindings.push(...ep.missing)
-          continue
-        }
-        requests.push({ method: String(block.meta.method ?? ''), endpoint: ep.endpoint })
-      }
-      if (ref.mode) {
-        if (mode !== null && mode !== ref.mode) hold.invalid.push(ref.block)
-        mode = ref.mode
-      }
-      for (const c of ref.corrections ?? []) if (!corrections.includes(c)) corrections.push(c)
       if (ch === 'email') {
-        communication = { audience: String(block.meta.audience ?? ''), trigger: String(block.meta.communicationTrigger ?? ''), purpose: String(block.meta.purpose ?? '') }
+        const declared = pkg.meta.email?.block === id ? pkg.meta.email : null
+        communication = {
+          audience: String(block.meta.audience ?? declared?.audience ?? ''),
+          trigger: String(block.meta.communicationTrigger ?? declared?.communicationTrigger ?? ''),
+          purpose: String(block.meta.purpose ?? declared?.purpose ?? ''),
+        }
       }
       texts.push(bound.text)
     }
-    channels.push({ channel: ch, blocks: list.map((r) => r.block), format: String(pkg.blocks[list[0].block].meta.format ?? 'markdown'), text: texts.join('\n\n'), requests, mode, corrections, communication })
+    // Request bodies: one request carries one body. Several blocks that send to the
+    // same endpoint with the same method are one request whose body is theirs
+    // together (a correction's conditions and grant are one PATCH), so the copied
+    // JSON is a single document Graph accepts. Two blocks that set the same
+    // top-level field, or bodies for different requests, do not hold together as
+    // one artifact and hold the projection instead.
+    if (bodies.length > 0) {
+      const targets = new Set(bodies.map((x) => `${x.method} ${x.endpoint}`))
+      if (targets.size > 1) hold.invalid.push(`${ch}: bodies for ${targets.size} different requests`)
+      else if (bodies.length === 1) {
+        texts.push(bodies[0].text)
+        requests.push({ method: bodies[0].method, endpoint: bodies[0].endpoint })
+      } else {
+        const merged: Record<string, unknown> = {}
+        for (const x of bodies) {
+          for (const [k, v] of Object.entries(x.body)) {
+            if (Object.hasOwn(merged, k) && JSON.stringify(merged[k]) !== JSON.stringify(v)) hold.invalid.push(`${ch}: two bodies set ${k}`)
+            merged[k] = v
+          }
+        }
+        texts.push(JSON.stringify(merged, null, 2))
+        requests.push({ method: bodies[0].method, endpoint: bodies[0].endpoint })
+      }
+    }
+    const corrections = [...new Set(runs.flatMap((r) => r.corrections))]
+    channels.push({ channel: ch, blocks: blockIds, format: String(pkg.blocks[blockIds[0]]?.meta.format ?? 'markdown'), text: texts.join('\n\n'), requests, mode: runs[0]?.mode ?? null, corrections, runs, communication })
   }
   if (hold.missingBindings.length > 0 || hold.invalid.length > 0) {
     return { state, hold: { ...hold, missingBindings: [...new Set(hold.missingBindings)] }, channels: [] }
   }
   return { state, hold: null, channels }
 }
+
+// ---- faults ----
+
+/** Where a projection that throws is reported: the console, always, so a development run and a test log both show it. */
+export function reportPackageFault(stepId: string, what: string, error: unknown): void {
+  console.error(`[IAMAI implementation content] ${stepId}: ${what} failed:`, error)
+}
+
+/**
+ * The projection, and never an exception: a package the runtime cannot project
+ * holds its implementation (the step still renders, with its lifecycle, its
+ * readiness and a truthful no-action box) and the fault is reported.
+ */
+export function projectSafely(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, report: typeof reportPackageFault = reportPackageFault): Projection {
+  try {
+    return projectImplementation(pkg, state, bindings, runtime)
+  } catch (e) {
+    report(pkg.meta.stepId, `projection (${state})`, e)
+    return { state, hold: { ...emptyHold(), invalid: [`runtime fault: ${(e as Error)?.message ?? String(e)}`] }, channels: [] }
+  }
+}
+
+// ---- prerequisites and confirmations ----
+
+/** A person's confirmation of one prerequisite: when, and the values it was given against (roadmap/decisions.ts). */
+export type { OwnerConfirmation }
+
+/** FNV-1a over the canonical text: short, stable, and carrying none of the tenant's values into the plan record. */
+function hash(text: string): string {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
+/**
+ * The values a confirmation of this prerequisite is given against: its
+ * `invalidatedBy` bindings, in order. A confirmation holds while they are the
+ * same values, and a policy recreated under a new id, or a changed exclusion set,
+ * is a different thing to have confirmed.
+ */
+export function prerequisiteBasis(pr: Prerequisite, bindings: Bindings): string {
+  const values = (pr.invalidatedBy ?? []).map((k) => {
+    const v = bindings[k]
+    return Array.isArray(v) ? [...v].map(String).sort() : v ?? null
+  })
+  return hash(JSON.stringify([pr.id, values]))
+}
+
+export type PrerequisiteStatus = { id: string; satisfied: boolean; by: 'evidence' | 'confirmation' | null; confirmedAt: string | null }
+
+/**
+ * Every prerequisite's standing now: satisfied by the tenant fact the package
+ * names (`evidence`), or by a person's confirmation whose basis still matches —
+ * never by the absence of a problem. A confirmation whose values changed no
+ * longer counts, and is not shown as confirmed.
+ */
+export function prerequisiteStatus(pkg: CompiledPackage, state: PackageState, bindings: Bindings, confirmations: Readonly<Record<string, OwnerConfirmation>>, baselineCommit: string | null): PrerequisiteStatus[] {
+  const ctx: ConditionContext = { state, bindings, satisfied: new Set(), baselineCommit }
+  return (pkg.meta.prerequisites ?? []).map((pr) => {
+    if (pr.evidence !== undefined && holds(pr.evidence, ctx)) return { id: pr.id, satisfied: true, by: 'evidence', confirmedAt: null }
+    const c = confirmations[pr.id]
+    if (c && c.basis === prerequisiteBasis(pr, bindings)) return { id: pr.id, satisfied: true, by: 'confirmation', confirmedAt: c.at }
+    return { id: pr.id, satisfied: false, by: null, confirmedAt: null }
+  })
+}
+
+// ---- sources, troubleshooting, readiness ----
 
 /** The package's verified sources a person may be shown (guide §29). */
 const userFacing = (pkg: CompiledPackage): VerifiedSource[] => (pkg.meta.verifiedSources ?? []).filter((s) => s.userFacing === true)
@@ -235,15 +398,22 @@ export type TroubleshootingScenario = {
   sources: VerifiedSource[]
 }
 
-const supportModel = (pkg: CompiledPackage, channel: 'readiness' | 'troubleshooting'): Record<string, unknown> | null => {
-  const id = pkg.meta.supportBlocks?.[channel]?.[0]
+/** A support model, bound: the first block of the channel that declares the state (or the first), its JSON template filled. */
+function supportModel(pkg: CompiledPackage, channel: 'readiness' | 'troubleshooting', state: PackageState, bindings: Bindings): Record<string, unknown> | null {
+  const ids = pkg.meta.supportBlocks?.[channel] ?? []
+  const id = ids.find((x) => (pkg.blocks[x]?.meta.states ?? []).includes(state)) ?? ids[0]
   const block = id ? pkg.blocks[id] : undefined
-  return block ? (JSON.parse(block.text) as Record<string, unknown>) : null
+  if (!block) return null
+  if (block.meta.format === 'json-template') {
+    const bound = bindText(block.text, bindings, new Set())
+    return 'missing' in bound ? null : (JSON.parse(bound.text) as Record<string, unknown>)
+  }
+  return JSON.parse(block.text) as Record<string, unknown>
 }
 
 /** The package's authored troubleshooting scenarios for this state, with their user-facing sources; none where it authors none. */
-export function troubleshootingFor(pkg: CompiledPackage, state: PackageState): TroubleshootingScenario[] {
-  const model = supportModel(pkg, 'troubleshooting')
+export function troubleshootingFor(pkg: CompiledPackage, state: PackageState, bindings: Bindings = {}): TroubleshootingScenario[] {
+  const model = supportModel(pkg, 'troubleshooting', state, bindings)
   const scenarios = (model?.scenarios ?? []) as Record<string, unknown>[]
   return scenarios
     .filter((s) => asStrings(s.states).includes(state))
@@ -262,11 +432,20 @@ export function troubleshootingFor(pkg: CompiledPackage, state: PackageState): T
     }))
 }
 
-export type PackageReadinessTile = { id: string; gate: string; result: string; line: string }
+export type PackageReadinessTile = {
+  id: string
+  gate: string
+  result: string
+  line: string
+  /** The runtime tile that states the same fact, which answers instead where it exists (`gateKey`). */
+  gateKey: string | null
+  /** The prerequisites the next transition needs that this tile's confirmation covers, and whether they are all satisfied. */
+  confirm: { prerequisites: string[]; satisfied: boolean } | null
+}
 
 export type PackageReadiness = {
   tiles: PackageReadinessTile[]
-  /** The package's conclusion for this state's next transition, where it authors one. */
+  /** The package's conclusion for this state, where it names one (`conclusionByState`). */
   conclusion: string | null
   whyItMatters: string | null
   unknowns: string[]
@@ -274,51 +453,32 @@ export type PackageReadiness = {
 }
 
 /**
- * Readiness gates whose rules are scoped by lifecycle state and by a record of
- * human checks, which the package states in prose. They are read here, once,
- * for the one active package, and never as a positive rule: IAMAI keeps no
- * record that the human pre-enforcement checks were completed, so the Ready
- * rule can never be selected, and before enforcement the gate still asks for
- * those checks.
+ * The package's readiness tiles evaluated against what IAMAI holds. Each tile is
+ * the first of its rules whose machine condition holds; a tile none of whose
+ * conditions holds is not shown. Nothing is inferred from prose, and nothing
+ * from the absence of a problem.
  */
-const STATE_SCOPED_RESULT: Record<string, (state: PackageState) => string | null> = {
-  'readiness.enforcement-settings': (s) => (s === 'missing' || s === 'partial' || s === 'reportOnly' || s === 'readyToEnforce' ? 'Review required' : null),
-}
-
-/** The conclusion key a state's next transition reads (the package's `conclusions`). */
-const CONCLUSION_FOR: Partial<Record<PackageState, string>> = {
-  missing: 'safeToCreateOrCorrect',
-  partial: 'safeToCreateOrCorrect',
-  reportOnly: 'safeToObserve',
-  readyToEnforce: 'safeToEnforce',
-}
-
-/**
- * The package's readiness gates evaluated against what IAMAI actually holds.
- *
- * A gate with a `requiredInput` is Ready only when that value is bound and
- * non-empty — the canonical exclusion set resolved, not merely no problem
- * recorded — and Blocked when it is not. A gate with an `optionalInput` IAMAI
- * does not have is Unknown. A baseline requirement with one rule is that rule.
- * A gate this cannot evaluate from structured data is left out rather than
- * guessed.
- */
-export function packageReadiness(pkg: CompiledPackage, state: PackageState, bindings: Bindings): PackageReadiness | null {
-  const model = supportModel(pkg, 'readiness')
+export function packageReadiness(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext = NO_RUNTIME): PackageReadiness | null {
+  const model = supportModel(pkg, 'readiness', state, bindings)
   if (!model) return null
+  const ctx: ConditionContext = { state, bindings, satisfied: runtime.satisfied, baselineCommit: runtime.baselineCommit }
+  const gating = new Set(gatingPrerequisites(pkg, state).map((p) => p.id))
   const tiles: PackageReadinessTile[] = []
   for (const t of (model.tiles ?? []) as Record<string, unknown>[]) {
-    const rules = (t.rules ?? []) as { result: string; line: string }[]
-    const byResult = (r: string | null): { result: string; line: string } | null => (r === null ? null : (rules.find((x) => x.result === r) ?? null))
-    let rule: { result: string; line: string } | null = null
-    if (typeof t.requiredInput === 'string') rule = byResult(present(bindings[t.requiredInput]) ? 'Ready' : 'Blocked')
-    else if (typeof t.optionalInput === 'string') rule = present(bindings[t.optionalInput]) ? null : byResult('Unknown')
-    else if (t.sourceType === 'baseline-requirement' && rules.length === 1) rule = rules[0]
-    else if (typeof t.id === 'string' && STATE_SCOPED_RESULT[t.id]) rule = byResult(STATE_SCOPED_RESULT[t.id](state))
-    if (rule) tiles.push({ id: String(t.id), gate: String(t.gate), result: rule.result, line: rule.line })
+    const rule = ((t.rules ?? []) as { if?: unknown; result: string; line: string }[]).find((r) => r.if !== undefined && holds(r.if as never, ctx))
+    if (!rule) continue
+    const confirmable = asStrings(t.confirms).filter((id) => gating.has(id))
+    tiles.push({
+      id: String(t.id),
+      gate: String(t.label ?? t.gate),
+      result: rule.result,
+      line: rule.line,
+      gateKey: typeof t.gateKey === 'string' ? t.gateKey : null,
+      confirm: confirmable.length > 0 ? { prerequisites: confirmable, satisfied: confirmable.every((id) => runtime.satisfied.has(id)) } : null,
+    })
   }
   const conclusions = (model.conclusions ?? {}) as Record<string, string>
-  const key = CONCLUSION_FOR[state]
+  const key = ((model.conclusionByState ?? {}) as Record<string, string>)[state]
   const sections = ((model.whyIamAISaysThis as Record<string, unknown> | undefined)?.sections ?? {}) as Record<string, unknown>
   return {
     tiles,
@@ -328,5 +488,25 @@ export function packageReadiness(pkg: CompiledPackage, state: PackageState, bind
     references: asStrings(sections.microsoftReferences)
       .map((id) => sourceById(pkg, id))
       .filter((x): x is VerifiedSource => x !== null),
+  }
+}
+
+/** Readiness, and never an exception (see projectSafely). */
+export function readinessSafely(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, report: typeof reportPackageFault = reportPackageFault): PackageReadiness | null {
+  try {
+    return packageReadiness(pkg, state, bindings, runtime)
+  } catch (e) {
+    report(pkg.meta.stepId, `readiness (${state})`, e)
+    return null
+  }
+}
+
+/** Troubleshooting, and never an exception (see projectSafely). */
+export function troubleshootingSafely(pkg: CompiledPackage, state: PackageState, bindings: Bindings, report: typeof reportPackageFault = reportPackageFault): TroubleshootingScenario[] {
+  try {
+    return troubleshootingFor(pkg, state, bindings)
+  } catch (e) {
+    report(pkg.meta.stepId, `troubleshooting (${state})`, e)
+    return []
   }
 }

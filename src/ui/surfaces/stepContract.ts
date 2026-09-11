@@ -25,11 +25,11 @@ import type { Step } from '../../roadmap/types.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
-import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
+import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, engine, stepById } from '../../content/content.ts'
+import { app, engine, pages, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -60,6 +60,10 @@ type ContractWords = {
   foundLabel: Record<string, string>
   next: string
   nextOn: string
+  nextHeld: string
+  nextEnforceHeld: string
+  nextUntilAfter: string
+  nextUntilWhen: string
   foundHeading: string
   fixHeading: string
   member: string
@@ -77,6 +81,7 @@ type ContractWords = {
   doneDecision: string
   doneReadiness: string
   doneMissing: string
+  doneHeldEnd: string
   doneMissingUnreadable: string
   donePair: string
   doneEscapeHatch: string
@@ -112,11 +117,11 @@ type ContractWords = {
     close: string
     sourceUpdated: string
     troubleshooting: string
-    powershellMode: string
-    powershellCorrections: string
+    powershellInvocation: string
     empty: Record<string, [string, string]>
   }
   troubleshooting: { eyebrow: string; close: string; seeing: string; cause: string; check: string; fix: string; doNot: string; then: string; sources: string }
+  confirm: { control: string; confirmedControl: string; eyebrow: string; body: string; confirm: string; remove: string; cancel: string; confirmedOn: string }
   rail: Record<string, string>
   rollout: Record<string, string>
 }
@@ -602,20 +607,33 @@ function milestoneSentence(m: Pick<ContractMilestone, 'kind' | 'label' | 'at'>):
   return m.at ? fillText(MILESTONE.observeUntil, { date: absoluteDate(m.at) }) : MILESTONE.observe
 }
 
+/** The reasons that leave no policy IAMAI can write, so no end state to state. */
+export const NO_POLICY_REASONS: ReadonlySet<UnavailableReason> = new Set(['baseline-conflict', 'no-operation', 'unmatched-pair'])
+
 /** The completion, always concrete and never absent. */
 function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, fix: ContractFix[], tenant: string): string[] {
   if (step.state.setAside) return [CONTRACT.doneSetAside]
   if (step.state.satisfied) return [fillText(CONTRACT.doneSatisfied, { tenant })]
-  if (reason !== null) return [doneForReason(step, reason, tenant)]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
+  const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
+    .filter((x) => whole(x, ex))
+    .map((x) => fillText(x, ex))
+  if (reason !== null) {
+    // A held policy still finishes where every policy finishes: what clears the
+    // hold comes first, then the control's end state (the approved design's held
+    // variant, V3). The end state is one line and never the rollout's gates,
+    // which count days and failures on a policy this tenant cannot hold yet.
+    // A step with no policy IAMAI can write finishes on the resolution itself
+    // (V5): there is no policy yet whose end state could be stated.
+    const resolution = doneForReason(step, reason, tenant)
+    if (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust')) return [resolution]
+    return [resolution, fillText(CONTRACT.doneHeldEnd, { tenant })]
+  }
   // A step held for review finishes on its own gates *and* on the change being
   // accounted for; the review comes first because until it clears, the gates
   // below are being counted on a policy nobody has vouched for.
   const review = heldForReview(step) ? [CONTRACT.doneReview] : []
-  const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
-    .filter((x) => whole(x, ex))
-    .map((x) => fillText(x, ex))
   if (own.length > 0) return [...review, ...own]
   if (review.length > 0) return review
   if (step.state.condition === 'needs-decision') return [CONTRACT.doneDecision]
@@ -747,8 +765,20 @@ export const FOOTER = {
  * creating the policy is telling the operator to do two different things at
  * once, and the numbered steps are the louder of the two.
  */
-export function implementationIsCurrent(step: Pick<Step, 'state'>): boolean {
-  return step.state.condition === 'healthy'
+export function implementationIsCurrent(step: Step): boolean {
+  if (step.state.condition === 'healthy') return true
+  // The one exception, and it is the owner's (Step 5, dcd3518): a held policy
+  // nobody has deployed, which Foundation A still hands over, is created in
+  // report-only now — a policy in report-only denies nobody — and turning it on
+  // is what the hold keeps back. Foundation B already says so as the step's
+  // action (lifecycle.ts nextMilestone `prepareHeld`, kind `deploy`), and an
+  // Implementation region reading "Nothing to submit yet" under that action is
+  // the two-instructions contradiction the owner rejected. Only a blocked step,
+  // only before deployment, only where the next thing IS that deployment, and
+  // only where nothing submitted enforces the moment it lands.
+  if (step.state.condition !== 'blocked' || step.state.lifecycle !== 'not-deployed') return false
+  if (!implementationOffered(step) || nextMilestone(step).kind !== 'deploy') return false
+  return operationsOf(step).every((op) => !enforcesOnRun(op))
 }
 
 /**
@@ -814,8 +844,33 @@ export function stepFamily(step: Pick<Step, 'state'>, contentKind: string | null
  */
 export function nextCaption(c: StepContract): string | null {
   if (c.milestone.line !== null) return c.milestone.line
-  if (c.milestone.gatedBy === null) return null
-  return fillText(CONTRACT.next, { label: withoutAfterColon(c.milestone.gatedBy) })
+  const gate = c.milestone.gatedBy
+  if (gate === null) return null
+  // A hold's reason is a fragment written for a row ("until the groups…", "after:
+  // a step", "when readiness reaches…"), and "Next: until the groups…" is not a
+  // thought. Where the next thing is to clear the hold, the caption says the step
+  // is held until it clears; where it is the report-only preparation, that the
+  // enforcement waits. The fragment is the engine's and is never rewritten beyond
+  // its own leading connective, matched against the templates that produced it.
+  if (c.milestone.kind === 'resolve' || c.milestone.kind === 'decide') return fillText(CONTRACT.nextHeld, { condition: untilOf(gate) })
+  if (c.milestone.kind === 'deploy') return fillText(CONTRACT.nextEnforceHeld, { condition: untilOf(gate) })
+  return fillText(CONTRACT.next, { label: withoutAfterColon(gate) })
+}
+
+/** The words before a template's first placeholder: the connective every reason it produces starts with. */
+const leadOf = (template: string): string => template.slice(0, template.indexOf('{'))
+// The row reasons' own templates (pages.plan.blocked), the ones the engine fills.
+const BLOCKED_SHAPES = pages.plan as unknown as { blocked: { after: string; readiness: string; count: string } }
+
+/** A hold's reason as an "until" clause: "after: X" is "until X is finished", "when X" is "until X", and "until X" is itself. */
+function untilOf(gate: string): string {
+  const after = leadOf(BLOCKED_SHAPES.blocked.after)
+  if (after && gate.startsWith(after)) return fillText(CONTRACT.nextUntilAfter, { step: gate.slice(after.length) })
+  for (const t of [BLOCKED_SHAPES.blocked.readiness, BLOCKED_SHAPES.blocked.count]) {
+    const lead = leadOf(t)
+    if (lead && gate.startsWith(lead)) return fillText(CONTRACT.nextUntilWhen, { condition: gate.slice(lead.length) })
+  }
+  return gate
 }
 
 /**
@@ -860,7 +915,19 @@ export function eyebrowOf(c: StepContract, contentKind: string | null): string |
 /** A readiness tile's mark: ✓ met, ! needs attention, … still under way, or none where the tile states a count and no verdict. */
 export type ReadinessTone = 'good' | 'warn' | 'wait' | 'info'
 
-export type ReadinessTile = { key: string; label: string; tone: ReadinessTone; value: string; note: string | null }
+export type ReadinessTile = {
+  key: string
+  label: string
+  tone: ReadinessTone
+  value: string
+  note: string | null
+  /**
+   * A package gate a person confirms (content/implementation project.ts): the
+   * prerequisites of the next transition its confirmation covers, and whether
+   * they are satisfied now. Absent on every tile the runtime states itself.
+   */
+  confirm?: { prerequisites: string[]; satisfied: boolean }
+}
 
 export type ContractReadiness = {
   /** One to three tiles, each a fact the contract holds; never padded to three. */

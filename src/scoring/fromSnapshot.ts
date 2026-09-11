@@ -8,6 +8,29 @@ import { personAccounts } from '../derive/sets.ts'
 import { adminUserIds } from '../roles.ts'
 
 /**
+ * Whether the snapshot's sign-in records carry proof per method and platform,
+ * which the collector records from Step 7 (4a93982) on. A snapshot aggregated
+ * before then has records and no proof: its proof was never read, which is
+ * Unknown and never "no proof" — and never a readiness of 0%. A snapshot with
+ * no records at all has nothing that could carry it.
+ */
+export function signInProofsRecorded(snapshot: Pick<TenantSnapshot, 'signInEvidence'>): boolean {
+  const records = Object.values(snapshot.signInEvidence ?? {})
+  return records.length === 0 || records.some((e) => Array.isArray(e.proofs))
+}
+
+/**
+ * Whether this scan read sign-in proof at all: the records were read (in full
+ * or in part) and they carry proof. The one reading the readiness gate, MFA
+ * Readiness and Connect all make, so a scan that holds no proof is stated as
+ * unmeasured everywhere rather than as a measured zero anywhere.
+ */
+export function signInProofRead(snapshot: Pick<TenantSnapshot, 'signInEvidence' | 'sources'>): boolean {
+  const s = snapshot.sources?.signInEvidence
+  return !!s && (s.status === 'ok' || s.status === 'partial') && signInProofsRecorded(snapshot)
+}
+
+/**
  * One row per person. Accounts that are not people — shared mailboxes, room and
  * equipment resources, confirmed service accounts — are dropped here rather
  * than at each caller, because every headline number in the app is derived from
@@ -35,8 +58,7 @@ export function buildViabilityInputs(
   // Proof per method and platform is recorded from Step 7 on. A snapshot whose
   // records carry none of it was read before then: its proof is not read, which
   // is Unknown and never "no proof". A snapshot with no records at all has none.
-  const records = Object.values(snapshot.signInEvidence)
-  const proofsRecorded = records.length === 0 || records.some((e) => Array.isArray(e.proofs))
+  const proofsRecorded = signInProofsRecorded(snapshot)
   // One definition of admin (roles.ts): the directory's role holders. The
   // registration report carries its own admin flag, refreshed on Microsoft's
   // schedule and over Microsoft's role list, so Today's line and its Admin tags

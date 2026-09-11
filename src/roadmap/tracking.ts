@@ -25,8 +25,9 @@ import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
 import { inBaselineConflict } from './baselineConflict.ts'
 import { observationDaysFor } from './schedule.ts'
-import { readyWhen } from '../derive/readyWhen.ts'
+import { readyBasis, readyWhen } from '../derive/readyWhen.ts'
 import { effectOf } from './operations.ts'
+import { evidenceStrategyOf } from './evidenceStrategy.ts'
 import { scopeCohort } from './strand.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
@@ -341,7 +342,7 @@ function trackedScope(policy: PolicyRow, snapshot: TenantSnapshot, ctx: Tracking
   return bounded === null ? { kind: 'unknown' } : { kind: 'uncountable' }
 }
 
-type Gates = Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'windowRead' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality'>
+type Gates = Pick<StepTracking, 'daysInReportOnly' | 'readyOn' | 'readyNow' | 'windowRead' | 'seenInScope' | 'activeInScope' | 'signIns' | 'failures' | 'failuresByUser' | 'evidenceQuality' | 'evidenceStrategy'>
 
 /**
  * Whether the sign-in collection provably reaches across `from` to this scan, so
@@ -420,7 +421,7 @@ function windowCollected(snapshot: TenantSnapshot, from: string): boolean {
  * Everything it reads is about the one deployed object it was handed: another
  * member's records are another policy's records, and never reach this.
  */
-function gates(
+export function gates(
   step: Step,
   policy: PolicyRow,
   snapshot: TenantSnapshot,
@@ -433,6 +434,17 @@ function gates(
   const scope = trackedScope(policy, snapshot, ctx, activeSet)
   const active = scope.kind === 'people' ? scope.ids : null
   const daysInReportOnly = since ? daysBetween(since, snapshot.asOf) : 0
+  // A User Action policy (roadmap/evidenceStrategy.ts). Microsoft does not
+  // evaluate it in report-only, so there is no window of its records to wait
+  // for and no count of them to state: `signIns` is none and `failures` is
+  // unknown, never zero. Its readiness is its configuration — the object in
+  // report-only, holding what the plan asked for, with nothing holding the step
+  // — and every one of those is the caller's (trackExecution: `asPlanned`, the
+  // review, `isHeld`). Here it is only "in report-only". What Microsoft cannot
+  // show about it gates the enforcement action, not this stage.
+  if (evidenceStrategyOf(policy) === 'configuration') {
+    return { daysInReportOnly, readyOn: since, readyNow: since !== null, windowRead: false, seenInScope: null, activeInScope: active?.length ?? null, signIns: 0, failures: null, failuresByUser: [], evidenceQuality: 'none', evidenceStrategy: 'configuration' }
+  }
   const observationDays = observationDaysFor(step)
   const readyOn = since ? new Date(Date.parse(since) + observationDays * DAY).toISOString() : null
   // The stretch the records have to be a complete reading of: the step's own
@@ -689,6 +701,7 @@ function aggregateTracking(members: MemberTracking[], observed: ObservedState[],
       failures: m.failures,
       failuresByUser: m.failuresByUser,
       evidenceQuality: m.evidenceQuality,
+      ...(m.evidenceStrategy ? { evidenceStrategy: m.evidenceStrategy } : {}),
     }
   }
   const watched = members.filter((_, i) => observed[i] === 'report-only')
@@ -740,6 +753,8 @@ function aggregateTracking(members: MemberTracking[], observed: ObservedState[],
     failures: members.some((m) => m.failures === null) ? null : members.reduce((n, m) => n + (m.failures ?? 0), 0),
     failuresByUser: members.flatMap((m) => m.failuresByUser),
     evidenceQuality: members.some((m) => m.evidenceQuality === 'none') ? 'none' : members.some((m) => m.evidenceQuality === 'thin') ? 'thin' : 'enough',
+    // One member whose readiness is its records keeps the pair on records.
+    ...(members.length > 0 && members.every((m) => m.evidenceStrategy === 'configuration') ? { evidenceStrategy: 'configuration' as const } : {}),
   }
 }
 
@@ -1012,7 +1027,7 @@ export function trackExecution(
       // is no other note.
       if (lifecycle === 'ready-to-enforce') {
         const ready = readyWhen(step)
-        if (ready?.kind === 'now') advance(step, { lifecycle: 'ready-to-enforce' }, fillText(TRACK.readyNow, { n: ready.days }), now)
+        if (ready?.kind === 'now') advance(step, { lifecycle: 'ready-to-enforce' }, readyBasis(ready) ?? fillText(TRACK.readyNow, { n: ready.days }), now)
       }
       continue
     }

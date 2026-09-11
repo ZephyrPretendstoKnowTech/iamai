@@ -153,6 +153,18 @@ export function decisionsOf(
     const answers = Object.fromEntries(Object.entries(d.answers ?? {}).filter((e): e is [string, string] => typeof e[1] === 'string'))
     stepDecisions[id] = { ...(Array.isArray(d.picked) ? { picked: d.picked.map(String) } : {}), ...(typeof d.option === 'string' ? { option: d.option } : {}), ...(Object.keys(answers).length > 0 ? { answers } : {}), at: String(d.at ?? '') }
   }
+  // Owner confirmations travel as written — when, and the fingerprint of what
+  // they were given against — and anything else in their place is not one.
+  const confirmations: Record<string, Record<string, { at: string; basis: string }>> = {}
+  for (const [stepId, byId] of Object.entries((rec as { confirmations?: unknown } | null | undefined)?.confirmations ?? {})) {
+    if (!byId || typeof byId !== 'object') continue
+    const kept: Record<string, { at: string; basis: string }> = {}
+    for (const [id, c] of Object.entries(byId as Record<string, unknown>)) {
+      const v = c as { at?: unknown; basis?: unknown } | null
+      if (v && typeof v.at === 'string' && typeof v.basis === 'string') kept[id] = { at: v.at, basis: v.basis }
+    }
+    if (Object.keys(kept).length > 0) confirmations[stepId] = kept
+  }
   // What the last scan saw of each step's policy: the one history only the
   // record holds (observation.ts). A pre-Foundation-B record kept a single
   // report-only date per step, and it migrates as a report-only observation.
@@ -167,6 +179,7 @@ export function decisionsOf(
     checkpoints: rec?.checkpoints ?? [],
     planCreatedAt: rec?.planCreatedAt,
     stepDecisions,
+    ...(Object.keys(confirmations).length > 0 ? { confirmations } : {}),
     observations,
     ...(typeof (rec as { signature?: unknown } | null)?.signature === 'string' ? { signature: (rec as { signature: string }).signature } : {}),
   }

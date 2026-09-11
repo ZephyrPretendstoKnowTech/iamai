@@ -14,6 +14,7 @@ import type { Step } from '../../roadmap/types.ts'
 import { content } from '../../content/content.ts'
 import { readyWhen } from '../../derive/readyWhen.ts'
 import { createsNewPolicy } from './stepJson.ts'
+import { stepEvidenceStrategy } from '../../roadmap/evidenceStrategy.ts'
 
 export function doneWhenTemplates(step: Step, doneWhen: unknown[]): unknown[] {
   const shared = content.shared as Record<string, string[]>
@@ -25,7 +26,17 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[]): unknown[] {
   // believe was reached by planning the enforcement rather than by making it
   // (roadmap/lifecycle.ts: only tracking's own next reading writes `enforced`).
   const tracked = step.state.lifecycle === 'ready-to-enforce' ? [...shared.policyDoneWhenTracked, ...shared.policyDoneWhenEnforced] : shared.policyDoneWhenTracked
-  const policy = readyWhen(step) ? [...tracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)] : shared.policyDoneWhen
+  // A User Action policy is not evaluated in report-only (roadmap/evidenceStrategy.ts):
+  // its completion is its configuration, and the two record gates — days with no
+  // failures, everyone in scope seen — are replaced, never stated as something to
+  // wait for. The lines after the gates stay.
+  const configured = stepEvidenceStrategy(step) === 'configuration'
+  const gatesFor = configured ? (step.state.lifecycle === 'ready-to-enforce' ? [...shared.policyDoneWhenConfiguration, ...shared.policyDoneWhenEnforced] : shared.policyDoneWhenConfiguration) : null
+  const policy = gatesFor
+    ? [...gatesFor, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)]
+    : readyWhen(step)
+      ? [...tracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)]
+      : shared.policyDoneWhen
   // A create has no changed settings to match and no week after the change: its
   // completion is the report-only observation the plan is about to start.
   const change = createsNewPolicy(step) ? policy : shared.changeDoneWhen

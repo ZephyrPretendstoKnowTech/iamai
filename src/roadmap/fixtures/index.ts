@@ -626,6 +626,8 @@ export function buildFixture(spec: Spec): Fixture {
       authMethodsPolicy: section([{ policyMigrationState: spec.perUserMfa ? 'preMigration' : 'migrationComplete', registrationEnforcement: { authenticationMethodsRegistrationCampaign: { state: 'enabled' } }, authenticationMethodConfigurations: [{ id: 'MicrosoftAuthenticator', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Fido2', state: 'enabled', includeTargets: [{ id: 'all_users' }] }, { id: 'Sms', state: spec.breakGlassSmsOnly ? 'enabled' : 'disabled', includeTargets: [] }] }]),
       securityDefaults: section([{ isEnabled: spec.securityDefaults === true }]),
       crossTenantAccess: section([]),
+      // Microsoft's default for a tenant that never changed it (Graph v1.0 deviceRegistrationPolicy).
+      deviceRegistrationPolicy: section([{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }]),
       roleAssignments: section(Object.entries(rolesActive).map(([principalId, roles]) => ({ principalId, roleDefinitionId: roles[0], roleDefinition: { id: roles[0], displayName: 'Global Administrator' }, ...(spPrincipals[principalId] ? { principalType: 'ServicePrincipal', principal: { displayName: spPrincipals[principalId], '@odata.type': '#microsoft.graph.servicePrincipal' } } : {}) }))),
       pimEligibility: section([], p2 ? 'ok' : 'disabled', p2 ? null : 'needs Entra ID P2'),
       subscribedSkus: section([

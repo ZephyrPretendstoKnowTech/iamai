@@ -5,6 +5,7 @@ import type { Readiness } from './types.ts'
 import { deviceScopeOf } from './answers.ts'
 import type { DeviceScope } from './answers.ts'
 import { isPhoneOs } from '../derive/platforms.ts'
+import { signInProofsRecorded } from '../scoring/fromSnapshot.ts'
 
 const MFA_GOALS = new Set(['mfa-all-users', 'register-info-protected', 'device-registration-mfa', 'azure-management-mfa', 'admin-portals-protected'])
 // Risk policies act on the sign-ins Identity Protection flags, so their
@@ -90,6 +91,12 @@ export function readinessFor(
   // percentage is not stated rather than stated as 0%.
   const signIns = snapshot.sources?.signInEvidence
   if ((family === 'mfa' || family === 'guest' || family === 'admin') && signIns && signIns.status !== 'ok' && signIns.status !== 'partial') {
+    return { family, percent: null, unmeasured: 'unreadable', lines: [] }
+  }
+  // Records read by a build that recorded no proof in them (a scan saved before
+  // Step 7) are records whose proof was never read: every person reads Unknown,
+  // and a gate counting only Ready would state that as 0%.
+  if ((family === 'mfa' || family === 'guest' || family === 'admin') && signIns && !signInProofsRecorded(snapshot)) {
     return { family, percent: null, unmeasured: 'unreadable', lines: [] }
   }
   const devicesSource = snapshot.sources?.devices

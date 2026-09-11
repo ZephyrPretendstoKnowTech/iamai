@@ -94,6 +94,7 @@ export function fixtureSnapshot(): TenantSnapshot {
       },
       securityDefaults: { status: 'ok', reason: null, rows: [{ isEnabled: false }] },
       crossTenantAccess: { status: 'ok', reason: null, rows: [] },
+      deviceRegistrationPolicy: { status: 'ok', reason: null, rows: [{ id: 'deviceRegistrationPolicy', multiFactorAuthConfiguration: 'notRequired' }] },
       roleAssignments: { status: 'ok', reason: null, rows: [] },
       pimEligibility: { status: 'disabled', reason: 'needs Entra ID P2', rows: [] },
       subscribedSkus: {

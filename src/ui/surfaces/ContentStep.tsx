@@ -54,7 +54,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
-import { REDACTED, exportClipboard } from '../exportGuard.ts'
+import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty } from './stepContract.ts'
 import { AuthoredText, DoneWhen, FixBeforeContinuing, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
@@ -62,12 +62,18 @@ import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { implementationPackageFor, mergeReadiness, packageBindings, packageStateOf } from './stepPackage.ts'
-import { packageReadiness, projectImplementation, sourceUpdatedOn, troubleshootingFor } from '../../content/implementation/project.ts'
-import type { ChannelArtifact, OutputChannel, TroubleshootingScenario } from '../../content/implementation/project.ts'
+import { BASELINE_COMMIT, implementationPackageFor, mergeReadiness, packageBindings, packageRuntime, packageStateOf } from './stepPackage.ts'
+import { prerequisiteBasis, projectSafely, readinessSafely, sourceUpdatedOn, troubleshootingSafely } from '../../content/implementation/project.ts'
+import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
+import type { ReadinessTile } from './stepContract.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
 type Ex = Record<string, unknown>
+
+const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
+
+/** The unavailable reasons that make handing a change over unsafe, not merely early (roadmap/operations.ts policyResult's emergency-access boundary). */
+const UNSAFE_REASONS: ReadonlySet<string> = new Set(['unsafe-emergency-access', 'unverified-emergency-exclusion', 'escape-hatch-unverified'])
 type Channel = 'portal' | 'ps' | 'json' | 'ai' | 'email'
 
 /**
@@ -83,14 +89,15 @@ const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = { entra: 'portal', power
 
 /**
  * A package channel as an artifact. The words are the package's, bound; the
- * support line is its own metadata — the mode a mode-based script is run in, the
- * request a JSON body is sent with — and never a sentence written here.
+ * support line is its own metadata — the modes a script's invocation runs it in
+ * (content/implementation/invocation.ts), the request a JSON body is sent with —
+ * and never a sentence written here.
  */
 function packageArtifact(a: ChannelArtifact): Artifact {
   const W = CONTRACT.implementation
   const note =
-    a.channel === 'powershell' && a.mode !== null
-      ? fillText(a.corrections.length > 0 ? W.powershellCorrections : W.powershellMode, { mode: a.mode, corrections: a.corrections.join(',') })
+    a.channel === 'powershell' && a.runs.length > 0
+      ? fillText(W.powershellInvocation, { modes: [...new Set(a.runs.map((r) => r.mode))].join(', ') })
       : a.channel === 'json' && a.requests.length > 0
         ? a.requests.map((r) => `${r.method} ${r.endpoint}`).join(' · ')
         : null
@@ -174,7 +181,7 @@ function Line({ s, ex, cls }: { s: unknown; ex: Ex; cls?: string }) {
   return <p className={cls}><T s={s} ex={ex} /></p>
 }
 
-type Dialog = 'readiness' | 'implementation' | 'troubleshooting' | 'rollout' | 'doesnt-apply' | null
+type Dialog = 'readiness' | 'implementation' | 'troubleshooting' | 'confirm' | 'rollout' | 'doesnt-apply' | null
 
 export function ContentStep({
   step,
@@ -185,6 +192,10 @@ export function ContentStep({
   onScan,
   decision = null,
   onDecide,
+  confirmations = NO_CONFIRMATIONS,
+  onConfirm,
+  onUnconfirm,
+  baselineCommit = BASELINE_COMMIT,
   printing = false,
 }: {
   step: Step
@@ -199,10 +210,25 @@ export function ContentStep({
   decision?: StepDecision | null
   /** The picker's Save: the ticked ids, the chosen option and the question's answer become the plan's decision. */
   onDecide?: (decision: StepDecisionInput) => void
+  /** This step's owner confirmations of the checks IAMAI cannot read, by prerequisite id (roadmap/decisions.ts). */
+  confirmations?: Readonly<Record<string, OwnerConfirmation>>
+  /** Records confirmations, each with the values it was given against. */
+  /** The checks confirmed, each with the basis it was given against; the record stamps the time. */
+  onConfirm?: (confirmed: Record<string, Pick<OwnerConfirmation, 'basis'>>) => void
+  /** Withdraws the confirmations of these prerequisites. */
+  onUnconfirm?: (prerequisites: string[]) => void
+  /**
+   * The baseline commit implementation content is matched against: this build's
+   * pin, always, on every product surface. Only the dev review harness
+   * (src/testing/pilotPreview.tsx, never built) renders a package as a build
+   * pinned to that package's own baseline would.
+   */
+  baselineCommit?: string
   /** Printing: the evidence and More stand open on the page, so every step prints in full (§7). */
   printing?: boolean
 }) {
   const [dialog, setDialog] = useState<Dialog>(null)
+  const [confirmKey, setConfirmKey] = useState<string | null>(null)
   const closeDialog = (): void => setDialog(null)
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
@@ -218,12 +244,22 @@ export function ContentStep({
   // The one title, from the one resolver the row reads (content/stepTitle.ts), so
   // the row and the body it opens can never disagree.
   const title = contentTitle(step)
+  const copied1500 = (id: string) => (ok: boolean): void => {
+    if (!ok) return
+    setCopied(id)
+    setTimeout(() => setCopied(null), 1500)
+  }
+  // The copy boxes under More (the email, the help-desk and manager text) are
+  // text a person forwards, and leave the app redacted.
   const copy = (id: string, text: string): void => {
-    void exportClipboard(text, REDACTED).then((ok) => {
-      if (!ok) return
-      setCopied(id)
-      setTimeout(() => setCopied(null), 1500)
-    })
+    void exportClipboard(text, REDACTED).then(copied1500(id))
+  }
+  // An implementation artifact is copied exactly as the viewer shows it: the
+  // tenant's own object ids and Microsoft's own constants are what make a JSON
+  // body, a script or a portal procedure deployable, and a redacted copy would be
+  // a different, invalid artifact (exportGuard.ts `implementation-artifact`).
+  const copyArtifact = (id: string, text: string): void => {
+    void exportClipboard(text, unredactedFrom('implementation-artifact')).then(copied1500(id))
   }
   const learn = cs.learn || {}
   const who = cs.who || {}
@@ -266,12 +302,17 @@ export function ContentStep({
   // (stepPackage.ts): IAMAI's state and bindings in, the package's own blocks
   // out. A package state with nothing to implement projects no channel; a
   // required value IAMAI does not hold projects nothing at all.
-  const pkg = implementationPackageFor(step.id)
-  const pkgState = pkg ? packageStateOf(step, contract) : null
+  const pkg = implementationPackageFor(step.id, baselineCommit)
+  const pkgState = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
   const pkgBindings = pkg && pkgState ? packageBindings(step, ctx, contract) : null
-  const projection = pkg && pkgState && pkgBindings ? projectImplementation(pkg, pkgState, pkgBindings) : null
-  const pkgReadiness = pkg && pkgState && pkgBindings ? packageReadiness(pkg, pkgState, pkgBindings) : null
-  const scenarios: TroubleshootingScenario[] = pkg && pkgState ? troubleshootingFor(pkg, pkgState) : []
+  // What the runtime knows beside the bindings: which prerequisites a tenant fact
+  // or a person's still-valid confirmation satisfies now. The projection, the
+  // readiness and the troubleshooting never throw: a package the runtime cannot
+  // project holds its implementation and the fault is reported (project.ts).
+  const pkgRuntime = pkg && pkgState && pkgBindings ? packageRuntime(pkg, pkgState, pkgBindings, confirmations, baselineCommit) : null
+  const projection = pkg && pkgState && pkgBindings && pkgRuntime ? projectSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
+  const pkgReadiness = pkg && pkgState && pkgBindings && pkgRuntime ? readinessSafely(pkg, pkgState, pkgBindings, pkgRuntime.runtime) : null
+  const scenarios: TroubleshootingScenario[] = pkg && pkgState && pkgBindings ? troubleshootingSafely(pkg, pkgState, pkgBindings) : []
   const sourceOn = pkg ? sourceUpdatedOn(pkg) : null
   // Who this touches (whoBlocks.ts), in the Readiness evidence: each line whole,
   // with the names it ends in. Whether the reach is knowable at all is the
@@ -315,7 +356,38 @@ export function ContentStep({
     ? (projection?.channels ?? []).map(packageArtifact)
     : channels.map((ch) => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   const W = CONTRACT.implementation
-  const empty: ImplementationEmpty = projection?.hold ? { key: 'bindingMissing', tone: 'warn', title: W.empty.bindingMissing[0], text: W.empty.bindingMissing[1] } : implementationEmptyOf(contract)
+  // A held projection says why, by the reason it holds: a check to confirm first,
+  // a difference no correction covers, content the runtime could not project, or
+  // a value IAMAI does not hold. None of them is ever offered an artifact.
+  const hold = projection?.hold ?? null
+  const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
+  const empty: ImplementationEmpty =
+    hold === null
+      ? implementationEmptyOf(contract)
+      : hold.pendingPrerequisites.length > 0
+        ? heldBox('confirmationsPending')
+        : hold.unknownMismatches.length > 0
+          ? heldBox('correctionUnknown')
+          : hold.noProjection || hold.invalid.length > 0
+            ? heldBox('packageFault')
+            : heldBox('bindingMissing')
+  // The check a person is confirming, from the Readiness tile that states it.
+  const confirmTile: ReadinessTile | null = confirmKey ? (readiness.tiles.find((t) => t.key === confirmKey) ?? null) : null
+  const closeConfirm = (): void => {
+    setConfirmKey(null)
+    setDialog(null)
+  }
+  const confirmedByPerson = confirmTile?.confirm ? (pkgRuntime?.prerequisites ?? []).filter((p) => confirmTile.confirm!.prerequisites.includes(p.id) && p.by === 'confirmation') : []
+  const confirmedOn = confirmedByPerson.map((p) => p.confirmedAt ?? '').filter((d) => d !== '').sort().at(-1) ?? null
+  // Each confirmation carries the values it was given against, so a later scan
+  // that finds them changed no longer counts it. A check a tenant fact already
+  // satisfies needs nobody's word and is not recorded.
+  const confirmChecks = (tile: ReadinessTile): void => {
+    if (!pkg || !pkgBindings || !tile.confirm || !onConfirm) return
+    const byEvidence = new Set((pkgRuntime?.prerequisites ?? []).filter((p) => p.by === 'evidence').map((p) => p.id))
+    const given = (pkg.meta.prerequisites ?? []).filter((pr) => tile.confirm!.prerequisites.includes(pr.id) && !byEvidence.has(pr.id))
+    onConfirm(Object.fromEntries(given.map((pr) => [pr.id, { basis: prerequisiteBasis(pr, pkgBindings) }])))
+  }
   // The package's verified-source date (project.ts sourceUpdatedOn), set at
   // midday UTC so no display time zone moves it across a day.
   const sourceLine = sourceOn ? fillText(W.sourceUpdated, { date: absoluteDate(`${sourceOn}T12:00:00Z`) }) : null
@@ -368,7 +440,12 @@ export function ContentStep({
               step stands with its one action under it, and — where this step's
               enforcement waits on the people it reaches — who they are, handed
               to MFA Readiness (derive/stepMfaReadiness.ts). */}
-          <ReadinessSection readiness={readiness} lead={showWhatToDo ? null : actionLead} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}>
+          <ReadinessSection
+            readiness={readiness}
+            lead={showWhatToDo ? null : actionLead}
+            onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
+            onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
+          >
             <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
           </ReadinessSection>
 
@@ -389,7 +466,12 @@ export function ContentStep({
 
           {/* What must be fixed first, at the weight the step's own condition
               gives it (Foundation B). The severity is production's. */}
-          <FixBeforeContinuing fix={contract.fix} tone={contract.state.condition === 'blocked' || contract.state.condition === 'baseline-conflict' ? 'danger' : 'warning'} />
+          {/* Ordinary work before continuing is the approved attention (amber,
+              plan-step-v1.html V3 `.attention`); the danger treatment is kept
+              for what makes the change unsafe to hand over at all — emergency
+              access a policy would reach, or could not be proven not to — the way
+              the design reserves it for "Do not deploy" (V5). */}
+          <FixBeforeContinuing fix={contract.fix} tone={!contract.implementation.offered && contract.implementation.reason !== null && UNSAFE_REASONS.has(contract.implementation.reason) ? 'danger' : 'warning'} />
 
           {showWhatToDo && (
             <section className="step-section">
@@ -421,7 +503,7 @@ export function ContentStep({
             open={dialog === 'implementation'}
             onOpen={() => setDialog('implementation')}
             onClose={closeDialog}
-            copy={copy}
+            copy={copyArtifact}
             copied={copied}
           />
 
@@ -432,7 +514,10 @@ export function ContentStep({
               the page there, in the order they always printed. */}
           {printing && (
             <>
-              <WhatIamaiFound found={contract.found} />
+              {/* A finding the Readiness tiles already state, word for word, is
+                  not printed twice: the tile is the reading, and the page keeps
+                  every finding it does not already carry. */}
+              <WhatIamaiFound found={contract.found.filter((f) => !readiness.tiles.some((t) => t.note === f.text || t.value === f.text))} />
               {showWho && (
                 <section className="step-section">
                   <h4>{HEAD.who}</h4>
@@ -530,6 +615,32 @@ export function ContentStep({
           </StepDialog>
           <StepDialog open={dialog === 'troubleshooting'} onClose={closeDialog} eyebrow={CONTRACT.troubleshooting.eyebrow} title={title} closeLabel={CONTRACT.troubleshooting.close}>
             <Troubleshooting scenarios={scenarios} />
+          </StepDialog>
+          {/* A person's confirmation of a check IAMAI cannot read from Microsoft
+              (roadmap/decisions.ts OwnerConfirmation): the tile's own authored
+              line, what confirming means, and when it was confirmed. */}
+          <StepDialog open={dialog === 'confirm' && confirmTile?.confirm !== undefined} onClose={closeConfirm} eyebrow={CONTRACT.confirm.eyebrow} title={confirmTile?.label ?? ''} closeLabel={CONTRACT.confirm.cancel}>
+            {confirmTile?.confirm && (
+              <div className="dialog-prose">
+                {confirmTile.note && <p>{confirmTile.note}</p>}
+                <p>{CONTRACT.confirm.body}</p>
+                {confirmedOn && <p className="reason">{fillText(CONTRACT.confirm.confirmedOn, { date: absoluteDate(confirmedOn) })}</p>}
+                <div className="dialog-actions-row">
+                  <Button variant="secondary" onClick={closeConfirm}>
+                    {CONTRACT.confirm.cancel}
+                  </Button>
+                  {confirmedByPerson.length > 0 ? (
+                    <Button variant="secondary" onClick={() => { onUnconfirm?.(confirmedByPerson.map((p) => p.id)); closeConfirm() }}>
+                      {CONTRACT.confirm.remove}
+                    </Button>
+                  ) : !confirmTile.confirm.satisfied ? (
+                    <Button variant="primary" onClick={() => { confirmChecks(confirmTile); closeConfirm() }}>
+                      {CONTRACT.confirm.confirm}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            )}
           </StepDialog>
           <StepDialog open={dialog === 'rollout'} onClose={closeDialog} eyebrow={RO.eyebrow} title={RO.title} closeLabel={RO.cancel}>
             <ReasonForm body={RO.body} label={RO.reason} placeholder={RO.placeholder} cancel={RO.cancel} confirm={RO.control} multiline onCancel={closeDialog} onConfirm={(r) => { closeDialog(); onSkip(r) }} />
@@ -974,14 +1085,14 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
             {comms.extra.map((l, i) => <p key={i}>{l}</p>)}
             <p>{comms.signature}</p>
           </div>
-          <p className="reason adapt">{ADAPT_LINE}</p>
+          <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
       {Array.isArray(more.helpDesk) && (more.helpDesk as unknown[]).filter((x) => whole(x, ex)).length > 0 && (
         <>
           <h4>{HEAD.helpDesk}</h4>
           <ul className="sections">{(more.helpDesk as unknown[]).filter((x) => whole(x, ex)).map((x, i) => <li key={i}><T s={x} ex={ex} /></li>)}</ul>
-          <p className="reason adapt">{ADAPT_LINE}</p>
+          <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
       {managerText(cs, ex as Record<string, unknown>) !== null && (
@@ -990,7 +1101,7 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           {/* The three sentences, and the clause the records earn (managerNone under its applies, E9). */}
           <p className="reason">{managerText(cs, ex as Record<string, unknown>)}</p>
           <p className="actions"><Button variant="secondary" onClick={() => copy('manager', managerText(cs, ex as Record<string, unknown>) ?? '')}>{copied === 'manager' ? 'Copied' : 'Copy'}</Button></p>
-          <p className="reason adapt">{ADAPT_LINE}</p>
+          <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
       {/* Skip, and beside it Doesn't apply here on the content steps flagged for it:

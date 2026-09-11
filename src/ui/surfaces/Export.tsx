@@ -174,7 +174,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     // An uploaded baseline is recorded as an upload, not attributed to the author.
     const baselineSource = planBaselineSource(baseline)
     // The saved checkpoints travel (each Cleanup row's Done is one, E3), then this save's own.
-    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, startedAt: data.startedAt ?? undefined, signature: data.signature })
+    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, confirmations: data.confirmations, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
     exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
