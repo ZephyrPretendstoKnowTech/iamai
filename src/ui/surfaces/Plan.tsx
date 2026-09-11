@@ -576,7 +576,7 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
         <ContentStep
           key={snapshot.asOf}
           step={step}
-          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, groups, directory, naming: computed.coverage.organisation.naming }}
+          ctx={{ snapshot, mapping: mapping ?? EMPTY_MAPPING, nameOf, signature, operatorId, now: snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStart, groups, directory, naming: computed.coverage.organisation.naming }}
           onSkip={(reason) => onSkip(step.id, reason)}
           onUnskip={() => onUnskip(step.id)}
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}

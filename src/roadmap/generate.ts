@@ -1000,6 +1000,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     if (devicePlan) {
       setState(s, { satisfied: true, inPlace: true })
       s.deliveredBy = [devicePlan.phonesText, ...(devicePlan.computersText ? [devicePlan.computersText] : [])]
+    } else {
+      // Open, the step waits on a person (owner, 2026-09-11): it reads Needs
+      // decision, never Ready, and its next milestone is the decision itself.
+      s.blockers = [...s.blockers, { kind: 'decision', label: 'device-plan', binding: BLOCKED_REASON.devicePlan }]
+      setState(s, { condition: conditionFor(s.blockers) })
     }
     steps.push(s)
   }

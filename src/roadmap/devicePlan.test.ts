@@ -70,7 +70,9 @@ test('open: the step asks, phones are out of readiness, and only the device step
   const ds = r.steps.find((s) => s.id === DEVICE)
   assert.ok(ds, 'the device decision is a Preparation step on the demo')
   assert.equal(ds.phase, 0)
-  assert.equal(ds.status, 'ready')
+  // Open, it waits on a person: Needs decision, never Ready (owner, 2026-09-11).
+  assert.equal(ds.status, 'blocked')
+  assert.equal(ds.state.condition, 'needs-decision')
   assert.ok(ds.population.active > 0, 'it names the people on phones and unjoined computers')
   const ex = stepVars(ds, ctxFor(f, r, m))
   assert.ok((ex.phoneUsers as string[]).length >= 2, 'the demo signs in from two phones')
@@ -130,15 +132,15 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   assert.ok(deviceLines.some((l) => / · phone$/.test(l)), `a phone line per person: ${deviceLines.join(' | ')}`)
   assert.ok(deviceLines.some((l) => / · computer$/.test(l)), 'a computer line per person')
   assert.equal(deviceLines.length, (cv.phoneUsers as string[]).length + (cv.unjoinedUsers as string[]).length, 'one line per person on a phone or an unjoined computer')
-  assert.equal(cv.deviceIntro, 'Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enrol; on a computer, domain-joined computers are already covered:')
-  assert.equal(cv.deviceSentence, 'On your phone, use Outlook and Teams for work; nothing to enrol; on your computer, domain-joined computers are already covered.')
+  assert.equal(cv.deviceIntro, 'Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enroll; on a computer, domain-joined computers are already covered:')
+  assert.equal(cv.deviceSentence, 'On your phone, use Outlook and Teams for work; nothing to enroll; on your computer, domain-joined computers are already covered.')
 })
 
 test('the other answers: enrol keeps phones in, block phones keeps them in, nothing managed sends the device steps to the footer with the answer', () => {
   const f = fixture('demo')
   const enrol = applied(f, decided('Enrol phones in Intune', 'Enrol in Intune'))
   assert.deepEqual(excludedPlatforms(enrol), [], 'enrol: the baseline stands')
-  assert.equal(deviceStepDoesntApply(APP_PROTECTION_GOAL, enrol), 'Enrol phones in Intune', 'the app-protection step leaves with the answer as reason')
+  assert.equal(deviceStepDoesntApply(APP_PROTECTION_GOAL, enrol), 'Enroll phones in Intune', 'the app-protection step leaves with the answer as reason')
   const strict = applied(f, decided('No company data on phones', 'Hybrid-joined is enough', true))
   assert.equal(devicePlanOf(strict)?.blockPhones, true)
   assert.deepEqual(excludedPlatforms(strict), [], 'block phones: phones stay in the policy, so a phone not enrolled is blocked')
@@ -148,7 +150,7 @@ test('the other answers: enrol keeps phones in, block phones keeps them in, noth
   for (const goalId of [COMPLIANT_DEVICE_GOAL, INTUNE_ENROLMENT_GOAL]) {
     const s = r.steps.find((x) => x.goalId === goalId)!
     assert.equal(s.status, 'skipped', `${goalId}: leaves the plan`)
-    assert.equal(s.doesntApply, 'No company data on phones; Not managed', `${goalId}: the answer is the reason`)
+    assert.equal(s.doesntApply, 'Keep company data off phones; Not managed', `${goalId}: the answer is the reason`)
   }
 })
 

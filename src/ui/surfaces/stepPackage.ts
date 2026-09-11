@@ -27,12 +27,12 @@ import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
 import type { Bindings, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
-import { prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
+import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
-import { implementationIsCurrent } from './stepContract.ts'
+import { CONTRACT, implementationIsCurrent } from './stepContract.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -138,7 +138,61 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
   if (s.lifecycle === 'report-only') return 'reportOnly'
   if ((s.lifecycle === 'not-deployed' || s.lifecycle === null) && operationsOf(step).some((o) => o.mode === 'create')) return 'missing'
+  // A preparation step makes the object it names: until it is in place, that
+  // object is missing (owner, 2026-09-11). Its package decides nothing more, and a
+  // value IAMAI does not hold still produces nothing executable.
+  if (step.kind === 'prerequisite') return 'missing'
   return 'blocked'
+}
+
+/**
+ * The package state whose implementation a step will eventually need, where its
+ * own state has nothing to implement now (owner, 2026-09-11: the Plan is a
+ * planning surface; state controls executability, not whether the planned work
+ * is visible). A policy the plan would create, correct or turn on; an object a
+ * preparation step makes. Null where there is no eventual implementation to
+ * preview: a delivered goal, a step set aside, a baseline that contradicts
+ * itself, a decision or a check.
+ */
+export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: TenantSnapshot | null): PackageState | null {
+  const s = c.state
+  if (s.setAside || s.satisfied || s.condition === 'baseline-conflict') return null
+  if (step.kind === 'create' || step.kind === 'adjust') {
+    if (correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+    if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
+    if (s.lifecycle === 'report-only') return 'reportOnly'
+    return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
+  }
+  return step.kind === 'prerequisite' ? 'missing' : null
+}
+
+/** What an unresolved value is called in a planning preview: the content's name for the binding, else its own key in words. */
+export function bindingLabel(binding: string): string {
+  const named = (CONTRACT.implementation.values as Record<string, string>)[binding]
+  if (typeof named === 'string') return named
+  return binding
+    .split('.')
+    .filter((part) => !['policy', 'target', 'current'].includes(part))
+    .map((part) => part.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase())
+    .join(' ')
+}
+
+/**
+ * The planning preview a step shows in place of an empty Implementation region,
+ * or null where the step has something executable, nothing planned, or planned
+ * content that does not project (a correction no module covers, a package fault).
+ * The executable projection always wins: this previews only what it withholds.
+ */
+export function planningPreview(pkg: CompiledPackage, step: Step, c: StepContract, snapshot: TenantSnapshot | null, bindings: Bindings, runtime: RuntimeContext, executed: Projection | null): Projection | null {
+  const state = packageStateOf(step, c, snapshot)
+  if (state === null) return null
+  if (executed !== null && executed.hold === null && executed.channels.length > 0) return null
+  const held = executed?.hold ?? null
+  const waitsOnValues = held !== null && held.invalid.length === 0 && held.unknownMismatches.length === 0 && !held.noProjection && (held.missingBindings.length > 0 || held.pendingPrerequisites.length > 0)
+  const planned = NO_ACTION_STATES.has(state) ? plannedPackageStateOf(step, c, snapshot) : waitsOnValues ? state : null
+  if (planned === null) return null
+  const preview = planSafely(pkg, planned, bindings, runtime, (binding) => fillText(CONTRACT.implementation.preview.value, { value: bindingLabel(binding) }))
+  return preview.preview && preview.channels.length > 0 ? preview : null
 }
 
 type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown } }; grantControls?: { authenticationStrength?: { id?: unknown } }; sessionControls?: unknown }

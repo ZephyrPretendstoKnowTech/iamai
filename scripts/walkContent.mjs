@@ -161,7 +161,7 @@ export const ACCEPTANCE = [
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'asks for your passkey or security key each time', mustNot: 'confirm with MFA each time' },
   { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}' },
   { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'PIM for Groups and Azure resource roles can use the same authentication context.' },
-  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'People see two prompts when they set up a device: one to join, one to enrol.', mustNot: 'one extra prompt' },
+  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'People see two prompts when they set up a device: one to join, one to enroll.', mustNot: 'one extra prompt' },
   { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'A person with only Authenticator approval is not prompted but stopped, until they get a Temporary Access Pass' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
   { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Every risky sign-in in the report-only days was reviewed.' },

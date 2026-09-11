@@ -1280,8 +1280,8 @@ async function walkFixture(fx) {
             if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
             if (week2) {
               // Decide here: phones protected by their apps, computers hybrid-joined.
-              const a = await clickText('label', /^Protect the apps only$/, 'main.page .step-body')
-              const b = await clickText('label', /^Hybrid-joined is enough$/, 'main.page .step-body')
+              const a = await clickText('label', /^Protect company apps only$/, 'main.page .step-body')
+              const b = await clickText('label', /^Hybrid join is sufficient$/, 'main.page .step-body')
               const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
               // Saved, the step is In place and joins the board's Complete group;
@@ -1416,7 +1416,7 @@ async function walkFixture(fx) {
               if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
               // The device sentence is the email's, and the email is written only once the plan dates an enforcement.
               const emailWritten = emailText.trim() !== '' || whensDated
-              if (week2 && emailWritten && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
+              if (week2 && emailWritten && !/nothing to enroll/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
               if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
             } })
           }
