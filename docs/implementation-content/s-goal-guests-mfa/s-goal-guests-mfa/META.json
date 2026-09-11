@@ -28,6 +28,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"e0fabad3-bd0f-42e4-a901-51ef7ab8889c":"4c820ee3","f25f94e0-98b6-41be-b9d6-68cb781004a4":"14baaf36"},
     "members": [
       {
         "role": "strong",

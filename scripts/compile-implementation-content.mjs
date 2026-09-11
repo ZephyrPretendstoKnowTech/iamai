@@ -17,6 +17,7 @@ import { spawnSync } from 'node:child_process';
 import { PackageError, bindingsUsed, maskJsonTemplate, normalizeProjection, packageWarnings, parseBlocks, validatePackage } from '../src/content/implementation/protocol.ts';
 import { LIBRARY_ROOT, compileLibrary, registryOf } from '../src/content/implementation/library.ts';
 import { stateCompatibility, stepClassOf } from '../src/content/implementation/states.ts';
+import { driftOf } from '../src/content/implementation/drift.ts';
 import { contentStepForPackage } from '../src/content/stepTitle.ts';
 
 function fail(message) { console.error(`ERROR: ${message}`); process.exit(1); }
@@ -48,7 +49,7 @@ if (args[0] === '--registry') {
   try { library = compileLibrary(args[2] ?? LIBRARY_ROOT); }
   catch (e) { if (e instanceof PackageError) fail(e.message); throw e; }
   fs.writeFileSync(path.resolve(out), JSON.stringify(registryOf(library), null, 2) + '\n');
-  for (const r of library.registered) console.log(`  ${r.stepId.padEnd(42)} ${String(r.withheld.length).padStart(4)} withheld`);
+  for (const r of library.registered) console.log(`  ${r.stepId.padEnd(42)} ${String(r.withheld.length).padStart(4)} withheld · ${r.drift.status}`);
   if (library.notSteps.length > 0) console.log(`  not a Plan content step, not registered: ${library.notSteps.map((r) => r.stepId).join(', ')}`);
   console.log(`registry: ${library.registered.length} packages -> ${out}`);
   process.exit(0);
@@ -113,7 +114,17 @@ if (args[0] === '--validate-library') {
   for (const [f, v] of Object.entries(byFeature).sort((a, b) => b[1].packages.size - a[1].packages.size)) console.log(`  ${String(v.packages.size).padStart(3)} packages · ${String(v.errors).padStart(4)} errors · ${f}`);
   const pinned8 = pinned.slice(0, 8);
   const otherPin = results.filter((r) => r.pin && r.pin !== pinned);
-  if (otherPin.length > 0) console.log(`  ${otherPin.length} authored against a baseline pin other than ${pinned8} (inactive in this build even when valid): ${otherPin.map((r) => r.package).join(', ')}`);
+  if (otherPin.length > 0) console.log(`  ${otherPin.length} authored against a baseline pin other than ${pinned8}; each still applies unless a member it implements changed (semantic re-pin review below): ${otherPin.map((r) => r.package).join(', ')}`);
+  // Step-scoped semantic re-pin review (src/content/implementation/drift.ts).
+  const pinnedBaseline = readJson(path.resolve('baselines/jhope188-conditionalaccesspolicies.pinned.json'));
+  const reviews = results.filter((r) => r.pkg && contentStepForPackage(r.package)).map((r) => {
+    const entry = contentStepForPackage(r.package);
+    const authority = r.pkg.meta.baselineAuthority ?? {};
+    return { package: r.package, drift: driftOf(authority.reviewedMembers, authority.pinCommit ?? null, [entry.id, ...(entry.mergesGoals ?? [])], pinnedBaseline) };
+  });
+  const by = (s) => reviews.filter((r) => r.drift.status === s);
+  console.log(`semantic re-pin review against ${pinned8}: ${by('current').length} current · ${by('reviewNeeded').length} review needed · ${by('held').length} held`);
+  for (const r of reviews.filter((r) => r.drift.status !== 'current' || r.drift.added.length > 0)) console.log(`  ${r.drift.status}: ${r.package}${r.drift.changed.length ? ` · changed ${r.drift.changed.join(', ')}` : ''}${r.drift.removed.length ? ` · removed ${r.drift.removed.join(', ')}` : ''}${r.drift.added.length ? ` · new member ${r.drift.added.join(', ')}` : ''}`);
   console.log(`  passing: ${passed.map((r) => r.package).join(', ') || 'none'}`);
   // Authored states the runtime never enters, reconciled with the nine it does
   // (src/content/implementation/states.ts). No engine state is added.

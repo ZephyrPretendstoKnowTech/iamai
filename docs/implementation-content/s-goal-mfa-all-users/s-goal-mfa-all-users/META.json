@@ -26,6 +26,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"a66e8427-e5e7-4072-bfd1-7e99db7a7dc4":"40f72c4c"},
     "memberStableId": "a66e8427-e5e7-4072-bfd1-7e99db7a7dc4",
     "sourceDisplayName": "IAC - GLOBAL - GRANT - MFA - AllUsers",
     "sourceState": "enabledForReportingButNotEnforced",

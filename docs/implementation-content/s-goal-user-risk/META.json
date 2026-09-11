@@ -24,6 +24,7 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "reviewedMembers": {"544cd9ef-5e37-4568-9ad8-b8e151be1814":"d3d2e8ae"},
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
     "memberStableId": "544cd9ef-5e37-4568-9ad8-b8e151be1814",
     "initialState": "enabled",
