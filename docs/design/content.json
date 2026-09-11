@@ -871,7 +871,7 @@
       },
       "eyebrow": "Microsoft identity security",
       "h1": "Strengthen identity security without guessing what will break.",
-      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each policy runs in report-only first, to confirm its predicted impact before enforcement.",
+      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each change starts in report-only before it is enforced.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
       "heroMeta": [

@@ -235,6 +235,7 @@ try {
     source: 'window.__dl = []; window.__alerts = []; window.__printed = 0;' +
       'window.print = function () { try { window.dispatchEvent(new Event("beforeprint")); } catch (e) {} window.__printed++; };' +
       'window.alert = function (m) { window.__alerts.push(String(m)); };' +
+      'window.__copied = []; try { Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: function (t) { window.__copied.push(String(t)); return Promise.resolve(); } } }); } catch (e) {}' +
       'var _c = URL.createObjectURL.bind(URL); URL.createObjectURL = function (b) { window.__lastBlob = b; return _c(b); };' +
       'var _k = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { if (this.download) { var b = window.__lastBlob; window.__dl.push({ name: this.download, size: b ? b.size : 0, blob: b }); return; } return _k.call(this); };',
   })
@@ -1058,6 +1059,27 @@ try {
     inPlaceOf(week2Body) > inPlaceOf(day1Body),
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )
+  // The public demo's implementation path: the follow-up scan's held Intune
+  // enrollment policy is prepared in report-only (Step 5), through the normal
+  // engine. Its JSON copies exactly what the preview shows, with its ids, and parses.
+  const INTUNE = JSON.stringify('Require a Fresh Sign-in for Intune Enrollment')
+  const intuneStep = `(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return null; let n = t.closest('.plan-row').nextElementSibling; return n && (n.matches('.step') ? n : n.querySelector('.step')) })()`
+  await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return false; const r = t.closest('.plan-row'); r.scrollIntoView({ block: 'center' }); if (r.getAttribute('aria-expanded') !== 'true') r.click(); return true })()`)
+  const intuneJsonTab = await waitFor(`(() => { const st = ${intuneStep}; const tab = st && [...st.querySelectorAll('.implementation-section [role=tab]')].find((x) => x.textContent.trim() === 'JSON'); if (tab) tab.click(); return !!tab })()`, 8000)
+  await sleep(300)
+  const intunePreview = intuneJsonTab ? await evaluate(`(() => { const p = ${intuneStep}.querySelector('.implementation-section .impl-preview .preview-text'); return p ? p.innerText : '' })()`) : ''
+  const copiedBefore = await evaluate('window.__copied.length')
+  if (intuneJsonTab) await evaluate(`(() => { const b = ${intuneStep}.querySelector('.implementation-section .preview-actions button'); if (b) b.click(); return !!b })()`)
+  await waitFor(`window.__copied.length > ${copiedBefore}`, 3000)
+  const intuneCopied = await evaluate(`window.__copied.length > ${copiedBefore} ? window.__copied[window.__copied.length - 1] : ''`)
+  let intuneParses = false
+  try { intuneParses = typeof JSON.parse(intuneCopied).displayName === 'string' } catch {}
+  check(
+    'Demo: a held policy prepared in report-only offers JSON, and Copy copies the preview exactly and it parses',
+    intuneJsonTab && intuneCopied.length > 0 && intuneCopied.replace(/\s+/g, ' ').trim() === intunePreview.replace(/\s+/g, ' ').trim() && intuneParses && !/guid-\d{4}|REDACTED/.test(intuneCopied),
+    `tab ${intuneJsonTab}, preview ${intunePreview.length} chars, copied ${intuneCopied.length} chars, parses ${intuneParses}`,
+  )
+  await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); const r = t && t.closest('.plan-row'); if (r && r.getAttribute('aria-expanded') === 'true') r.click(); return true })()`)
   // Scan again only ever moves forward; the way back to the initial scan is the
   // banner's selector, which names the snapshot it selects.
   await demoScanAgain()
