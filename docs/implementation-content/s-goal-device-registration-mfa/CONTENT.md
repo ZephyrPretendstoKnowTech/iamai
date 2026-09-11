@@ -11,13 +11,13 @@ IAMAI will supply the resolved policy name and canonical exclusion set.
 2. Select **New policy** and enter the IAMAI-resolved policy name.
 3. Under **Users or workload identities**, include **All users** and exclude exactly the IAMAI-resolved canonical exclusions.
 4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.
-5. Under **Grant**, select **Grant access > Require authentication strength > Multifactor authentication**.
+5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.
 6. Leave noncanonical conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the retained pinned target also has no device-platform, location, risk, or authentication-flow conditions.
 7. Set **Enable policy** to **Report-only**.
 8. Create the policy.
 9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.
 
-Done when IAMAI rescans the newly created policy and finds the canonical scope, exclusions, MFA authentication strength, and Report-only lifecycle.
+Done when IAMAI rescans the newly created policy and finds the canonical scope, exclusions, the resolved authentication strength, and Report-only lifecycle.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template","moduleRole":"sharedBefore"}
@@ -65,11 +65,11 @@ Done when IAMAI reads the same policy ID and no longer finds the noncanonical co
 @@IAMAI-BEGIN {"id":"entra.correct.grant.authentication-strength","channel":"entra","states":["partial"],"format":"markdown","kind":"template","moduleRole":"mismatch"}
 # Correct the grant
 
-Under **Grant**, select **Grant access > Require authentication strength > Multifactor authentication**. Remove a simultaneous **Require multifactor authentication** built-in grant if present. Leave the canonical User Action, population, and exclusions unchanged.
+Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**. Remove a simultaneous **Require multifactor authentication** built-in grant if present. Leave the canonical User Action, population, and exclusions unchanged.
 
-The retained pin uses built-in **Multifactor authentication** (`00000000-0000-0000-0000-000000000002`), not the newer upstream Modern MFA + TAP strength.
+**{{authStrength.target.displayName}}** is the authentication strength IAMAI resolved for this policy. Do not select a different or weaker strength in its place.
 
-Done when IAMAI reads the same policy ID and finds the pinned authentication strength.
+Done when IAMAI reads the same policy ID and finds the resolved authentication strength.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.lifecycle.report-only","channel":"entra","states":["partial"],"format":"markdown","kind":"template","moduleRole":"mismatch"}
@@ -147,7 +147,7 @@ Done when the same policy ID is On, the legacy device-registration MFA toggle is
     "customAuthenticationFactors": [],
     "termsOfUse": [],
     "authenticationStrength": {
-      "id": "00000000-0000-0000-0000-000000000002"
+      "id": {{json:authStrength.target.id}}
     }
   }
 }
@@ -183,7 +183,7 @@ Done when the same policy ID is On, the legacy device-registration MFA toggle is
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"/identity/conditionalAccess/policies/{policy.current.id}"}
+@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"/identity/conditionalAccess/policies/{policy.current.id}"}
 {
   "grantControls": {
     "operator": "OR",
@@ -191,7 +191,7 @@ Done when the same policy ID is On, the legacy device-registration MFA toggle is
     "customAuthenticationFactors": [],
     "termsOfUse": [],
     "authenticationStrength": {
-      "id": "00000000-0000-0000-0000-000000000002"
+      "id": {{json:authStrength.target.id}}
     }
   }
 }
@@ -209,7 +209,7 @@ Done when the same policy ID is On, the legacy device-registration MFA toggle is
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]},"EnrollmentWorkflowsValidated":{"switch":true,"prerequisite":"enrollment-workflows","modes":["Enforce"]},"ExternalAuthenticationCompatibilityResolved":{"switch":true,"prerequisite":"external-auth-methods","modes":["Enforce"]}}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify","Enforce"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify","Enforce"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","Correct","Verify","Enforce"]},"LegacyDeviceMfaToggleConfirmedNo":{"switch":true,"prerequisite":"legacy-device-mfa-toggle","modes":["Enforce"]},"EnrollmentWorkflowsValidated":{"switch":true,"prerequisite":"enrollment-workflows","modes":["Enforce"]},"ExternalAuthenticationCompatibilityResolved":{"switch":true,"prerequisite":"external-auth-methods","modes":["Enforce"]}}}}
 # IAMAI compact implementation script — Require MFA to Register a Device
 # Required module: Microsoft.Graph.Authentication
 # Create/Correct/Enforce delegated scopes: Policy.Read.All, Policy.ReadWrite.ConditionalAccess
@@ -226,6 +226,8 @@ param(
     [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
     [string] $PolicyId,
     [string[]] $ExcludeGroupIds,
+    [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
+    [string] $AuthenticationStrengthId,
 
     [ValidateSet('Conditions','Grant','ReportOnly')]
     [string[]] $Corrections,
@@ -237,7 +239,8 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$StrengthId = '00000000-0000-0000-0000-000000000002'
+if ([string]::IsNullOrWhiteSpace($AuthenticationStrengthId)) { throw 'IAMAI must supply the resolved authentication strength ID.' }
+$StrengthId = $AuthenticationStrengthId
 $BaseUri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'
 $GuidPattern = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
 
@@ -285,7 +288,7 @@ function Assert-CanonicalPolicy {
     foreach ($name in @('locations','platforms','devices','authenticationFlows','insiderRiskLevels')) {
         if ($null -ne $Policy.conditions.$name) { $errors.Add("Noncanonical condition is present: $name") }
     }
-    if ($Policy.grantControls.authenticationStrength.id -ne $StrengthId) { $errors.Add('Authentication strength differs from pinned Multifactor authentication.') }
+    if ($Policy.grantControls.authenticationStrength.id -ne $StrengthId) { $errors.Add('Authentication strength differs from the IAMAI-resolved strength.') }
     if (@($Policy.grantControls.builtInControls).Count -ne 0) { $errors.Add('A built-in grant is present in addition to authentication strength.') }
     if ($null -ne $Policy.sessionControls) { $errors.Add('Session controls are present.') }
     if ($errors.Count -gt 0) {
@@ -381,8 +384,6 @@ switch ($Mode) {
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
-
 ROLE
 You are helping implement one IAMAI Plan step. Do not redesign the baseline or infer new tenant facts.
 
@@ -391,8 +392,8 @@ Create the Conditional Access policy that requires the pinned MFA authentication
 
 AUTHORITY
 - IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.
-- Jon Hope's retained pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` owns the baseline destination for this step.
-- The retained member uses built-in Multifactor authentication strength `00000000-0000-0000-0000-000000000002`. Do not substitute the newer upstream Modern MFA + TAP variant.
+- The baseline IAMAI plans from owns the destination for this step.
+- The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.
 - Current Microsoft documentation owns current portal/API behavior.
 
 TENANT CONTEXT
@@ -402,16 +403,16 @@ TENANT CONTEXT
 - Affected people count: {{people.affected.count}} [omit when unavailable]
 
 TARGET STATE
-All users; IAMAI-resolved canonical exclusions; User Action `urn:user:registerdevice`; no cloud-app, location, platform, device/filter, risk, or authentication-flow condition; built-in Multifactor authentication strength; no session controls; Report-only.
+All users; IAMAI-resolved canonical exclusions; User Action `urn:user:registerdevice`; no cloud-app, location, platform, device/filter, risk, or authentication-flow condition; the resolved authentication strength {{authStrength.target.displayName}}; no session controls; Report-only.
 
 PREREQUISITES
 IAMAI already resolved the target name and exclusions. Do not ask the administrator to rediscover them. Enforcement has separate human checks for the legacy device-registration MFA setting and enrollment workflows.
 
 IMPLEMENTATION OPTIONS
-Use only the approved Create projection: `entra.create`, `json.create` after binding, or `powershell.run` in `Create` mode. Do not create a duplicate if a matching policy is discovered; rescan IAMAI instead.
+Use only the Entra steps, the JSON request or the PowerShell script in Create mode that IAMAI shows for this step. Do not create a duplicate if a matching policy is discovered; rescan IAMAI instead.
 
 DO NOT CHANGE
-Do not add device state/filter, Client apps, location, or cloud-application scope. Do not change the pinned authentication strength.
+Do not add device state/filter, Client apps, location, or cloud-application scope. Do not change the resolved authentication strength.
 
 VERIFICATION
 Read back the created policy, confirm Report-only canonical semantics, then rescan IAMAI. Do not treat Report-only as proof for this User Action.
@@ -432,8 +433,6 @@ Return conclusions, checks, assumptions, evidence, and the smallest safe next ac
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
-
 ROLE
 Help correct only the semantic mismatch(es) IAMAI supplied for this exact policy. Do not reconfigure fields IAMAI already says are correct.
 
@@ -442,8 +441,8 @@ Move the existing resolved policy to the canonical Report-only target without cr
 
 AUTHORITY
 - IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.
-- Jon Hope's retained pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` owns the baseline destination for this step.
-- The retained member uses built-in Multifactor authentication strength `00000000-0000-0000-0000-000000000002`. Do not substitute the newer upstream Modern MFA + TAP variant.
+- The baseline IAMAI plans from owns the destination for this step.
+- The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.
 - Current Microsoft documentation owns current portal/API behavior.
 
 TENANT CONTEXT
@@ -454,13 +453,13 @@ TENANT CONTEXT
 - Canonical exclusions: {{policy.target.excludeGroups}}
 
 TARGET STATE
-All users; canonical exclusions; only `urn:user:registerdevice`; no noncanonical conditions; built-in Multifactor authentication strength; Report-only until enforcement readiness is proven.
+All users; canonical exclusions; only `urn:user:registerdevice`; no noncanonical conditions; the resolved authentication strength {{authStrength.target.displayName}}; Report-only until enforcement readiness is proven.
 
 IMPLEMENTATION OPTIONS
 Use only the correction module(s) mapped by IAMAI to the supplied semantic mismatches. Condition-related Graph/PowerShell corrections intentionally reconstruct the full canonical conditions object; grant and lifecycle corrections use separate PATCH boundaries.
 
 DO NOT CHANGE
-Use `policy.current.id` as update identity. Do not create another policy, broaden exclusions, add unsupported device/location/client conditions, or substitute the newer upstream strength.
+Use `policy.current.id` as update identity. Do not create another policy, broaden exclusions, add unsupported device/location/client conditions, or substitute a weaker authentication strength.
 
 VERIFICATION
 Read the same policy ID back, verify the corrected semantic field(s), and rescan IAMAI.
@@ -477,8 +476,6 @@ Explain only the supplied mismatch(es), the safe correction, verification, and a
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
-
 ROLE
 Help validate this already-Report-only policy for enforcement readiness. Do not repeat Create or Correct unless IAMAI supplies a new mismatch.
 
@@ -487,8 +484,8 @@ Collect the evidence that still matters because Microsoft does not evaluate User
 
 AUTHORITY
 - IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.
-- Jon Hope's retained pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` owns the baseline destination for this step.
-- The retained member uses built-in Multifactor authentication strength `00000000-0000-0000-0000-000000000002`. Do not substitute the newer upstream Modern MFA + TAP variant.
+- The baseline IAMAI plans from owns the destination for this step.
+- The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.
 - Current Microsoft documentation owns current portal/API behavior.
 
 TENANT CONTEXT
@@ -518,8 +515,6 @@ Separate confirmed evidence from unknowns, identify the remaining human workflow
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
-
 ROLE
 Help perform the final enforcement transition for the exact IAMAI-resolved policy. Do not redesign or broaden the policy.
 
@@ -528,8 +523,8 @@ Change only the verified policy lifecycle from Report-only to On after all human
 
 AUTHORITY
 - IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.
-- Jon Hope's retained pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` owns the baseline destination for this step.
-- The retained member uses built-in Multifactor authentication strength `00000000-0000-0000-0000-000000000002`. Do not substitute the newer upstream Modern MFA + TAP variant.
+- The baseline IAMAI plans from owns the destination for this step.
+- The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.
 - Current Microsoft documentation owns current portal/API behavior.
 
 TENANT CONTEXT
@@ -543,7 +538,7 @@ PREREQUISITES
 - Human verification confirms the tenant-wide device-registration MFA toggle is No.
 
 IMPLEMENTATION OPTIONS
-Use only the approved Enforce projection: `entra.enforce`, `json.enforce`, or `powershell.run` in `Enforce` mode. The policy mutation is only `state: enabled`.
+Use only the Entra steps, the JSON request or the PowerShell script in Enforce mode that IAMAI shows for this step. The policy mutation is only `state: enabled`.
 
 DO NOT CHANGE
 Do not change users, exclusions, User Action, conditions, or grant during enforcement.
@@ -612,10 +607,16 @@ IT
       "sourceType": "baseline-requirement",
       "rules": [
         {
-          "if": { "baselineCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890" },
-          "when": "retained pinned baseline is authoritative",
+          "if": { "present": "authStrength.target.id" },
+          "when": "IAMAI resolved the strength this policy requires",
           "result": "Ready",
-          "line": "Use built-in Multifactor authentication (00000000-0000-0000-0000-000000000002)."
+          "line": "IAMAI resolved the authentication strength this policy requires for this tenant."
+        },
+        {
+          "if": { "absent": "authStrength.target.id" },
+          "when": "no strength is resolved yet",
+          "result": "Blocked",
+          "line": "This tenant has no authentication strength for this policy's requirement yet. Create it before this policy."
         }
       ]
     },

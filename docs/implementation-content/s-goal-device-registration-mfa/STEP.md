@@ -4,7 +4,7 @@
 Require the pinned baseline's MFA authentication strength when an in-scope user registers or joins a device in Microsoft Entra ID.
 
 ## Why this exists
-A password alone must not be enough to register an attacker-controlled device as a tenant device. Jon Hope's retained pinned member for this goal targets the Microsoft Entra **Register or join devices** user action and requires the built-in **Multifactor authentication** authentication strength.
+A password alone must not be enough to register an attacker-controlled device as a tenant device. Jon Hope's retained pinned member for this goal targets the Microsoft Entra **Register or join devices** user action and requires an authentication strength that allows only Windows Hello for Business, FIDO2 security keys, certificate-based MFA and a one-time Temporary Access Pass. IAMAI resolves this tenant's own strength for that requirement.
 
 ## Applies when
 Show implementation only when IAMAI classifies this step as `missing`, `partial`, `reportOnly`, or `readyToEnforce` and all state-specific blockers are cleared.
@@ -31,13 +31,16 @@ Do not offer enforcement while a known device-registration or enrollment workflo
 If a required enrollment workflow cannot satisfy the pinned target and no already-approved exclusion covers it, do not invent a new exclusion. The exception or workflow change is an owner/security decision.
 
 ## Owner decisions
-- The current Jon Hope baseline pin `8461e0f2fd10167bf034e7c20ed8ea293827d890` remains authoritative; the later upstream re-pin proposal was deferred.
-- Therefore this package uses the built-in **Multifactor authentication** authentication strength (`00000000-0000-0000-0000-000000000002`), not the newer upstream **Modern MFA + TAP** strength.
+- The build pins Jon Hope's baseline at `90d9b890c4b9af2ac4bc02d97c06bf8900064b4c`, and this package is authored against it. It was re-authored on 2026-09-11 from `8461e0f2fd10167bf034e7c20ed8ea293827d890`, where the member required the built-in Multifactor authentication strength.
+- The member now requires the author's custom strength. Its ID belongs to the author's tenant, so the package binds IAMAI's resolved tenant strength (`authStrength.target.id`, named by `authStrength.target.displayName`) and never names the source ID. Where the tenant has no strength for the requirement, the preparation step that creates one comes first.
+- The re-pinned member excludes one more source group. IAMAI asks the owner what it stands for, and `policy.target.excludeGroups` carries the answer.
 
 ## Current-state inputs
 IAMAI may supply only existing facts it already knows:
 - `policy.target.displayName`
 - `policy.target.excludeGroups`
+- `authStrength.target.id`
+- `authStrength.target.displayName`
 - `policy.current.id`
 - `policy.current.displayName`
 - `policy.current.state`
@@ -62,8 +65,8 @@ The canonical Conditional Access policy is:
 - Device platforms: none.
 - Device filters/device state: none.
 - Authentication flows: none.
-- Grant: **Grant access > Require authentication strength > Multifactor authentication**.
-- Authentication strength ID: `00000000-0000-0000-0000-000000000002`.
+- Grant: **Grant access > Require authentication strength >** this tenant's strength for the requirement (`authStrength.target.displayName`).
+- Authentication strength ID: IAMAI's resolved `authStrength.target.id`.
 - Session controls: none.
 - Create/correct lifecycle: **Report-only**.
 - Enforced lifecycle: **On** only after enrollment validation and the mandatory legacy device-MFA setting check.
@@ -80,7 +83,7 @@ The following must agree across Entra, Graph JSON, and PowerShell:
 - `conditions.userRiskLevels = []`
 - no location, platform, device/filter, authentication-flow, or other noncanonical condition
 - `grantControls.operator = "OR"`
-- `grantControls.authenticationStrength.id = "00000000-0000-0000-0000-000000000002"`
+- `grantControls.authenticationStrength.id =` IAMAI's resolved tenant strength ID
 - no simultaneous `mfa` built-in grant
 - no session controls
 - `state = "enabledForReportingButNotEnforced"` before enforcement; `state = "enabled"` only for the Enforce transition
@@ -100,7 +103,7 @@ Condition-related mismatches share one canonical `json.correct.conditions` block
 - Do not add a location restriction because the historical pinned display name says "trusted location"; the retained pinned object has no location condition. Current Microsoft documentation specifically marks Client apps, Filters for devices, and Device state conditions unavailable for this User Action; other conditions remain absent here because they are not part of the retained pinned target.
 - Do not add Client apps, device-state, or device-filter conditions to this User Action policy.
 - Do not configure both the MFA built-in grant and authentication strength in the same policy.
-- Do not silently replace the pinned built-in MFA strength with the newer upstream Modern MFA + TAP strength.
+- Do not substitute the built-in Multifactor authentication strength, or any strength that allows password-based methods, for the resolved tenant strength.
 - Do not treat an empty Report-only log as evidence that device registration is safe to enforce.
 - Do not create a guessed exclusion for Windows bulk enrollment or another enrollment workflow.
 - Do not delete the existing policy as a troubleshooting first step.
@@ -135,7 +138,7 @@ Before changing the lifecycle state:
 ## Verification
 After Create or Correct:
 - Read the Conditional Access policy back by stable ID.
-- Confirm the canonical user scope, exclusions, `urn:user:registerdevice` target, absence of noncanonical conditions, built-in MFA authentication strength ID, no session controls, and Report-only lifecycle.
+- Confirm the canonical user scope, exclusions, `urn:user:registerdevice` target, absence of noncanonical conditions, the resolved tenant authentication strength ID, no session controls, and Report-only lifecycle.
 - Rescan IAMAI and confirm the same policy ID is now classified at the expected next state.
 
 During Report-only:
@@ -166,4 +169,4 @@ If device registration or an enrollment workflow fails unexpectedly after enforc
 - Windows Hello for Business and device-bound passkeys cannot be used to satisfy this User Action at the point where the device must first be registered.
 
 ## Source verification
-Microsoft sources were rechecked on 2026-09-10. The primary administrator reference is **Require multifactor authentication for device registration**. Supporting sources cover User Action limitations, Report-only behavior, device settings, Windows bulk enrollment, Conditional Access licensing, Microsoft Graph v1.0 policy/condition/grant schemas and create/update/read endpoints, authentication strengths, Graph PowerShell, and authentication-strength troubleshooting. See `META.json` for the complete source log and user-facing reference classifications.
+Microsoft sources were rechecked on 2026-09-10. The package was re-authored against the build's pin on 2026-09-11; the Microsoft behaviour it relies on did not change with the pin. The primary administrator reference is **Require multifactor authentication for device registration**. Supporting sources cover User Action limitations, Report-only behavior, device settings, Windows bulk enrollment, Conditional Access licensing, Microsoft Graph v1.0 policy/condition/grant schemas and create/update/read endpoints, authentication strengths, Graph PowerShell, and authentication-strength troubleshooting. See `META.json` for the complete source log and user-facing reference classifications.

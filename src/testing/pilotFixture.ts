@@ -28,10 +28,11 @@ export const PILOT_PIN = String(PILOT_PACKAGE.meta.baselineAuthority?.pinCommit 
 /** Every prerequisite the pilot declares. */
 export const PILOT_PREREQUISITES = (PILOT_PACKAGE.meta.prerequisites ?? []).map((p) => p.id)
 
-/** Synthetic identifiers: a policy and an exclusions group no tenant has. */
+/** Synthetic identifiers: a policy, an exclusions group and an authentication strength no tenant has. */
 export const PILOT_IDS = {
   policy: '00000000-0000-4000-8000-00000000a001',
   exclusions: '00000000-0000-4000-8000-00000000e001',
+  strength: '00000000-0000-4000-8000-00000000c001',
 } as const
 
 /** Bindings as IAMAI would hold them in a state, for the package-level tests. */
@@ -40,6 +41,9 @@ export function pilotBindings(state: PackageState, over: Record<string, unknown>
     'tenant.displayName': 'Contoso (sample)',
     'policy.target.displayName': 'Core - Require - MFA for device registration',
     'policy.target.excludeGroups': [PILOT_IDS.exclusions],
+    // The tenant's own strength for the pinned requirement, as IAMAI would resolve it.
+    'authStrength.target.id': PILOT_IDS.strength,
+    'authStrength.target.displayName': 'Phishing-resistant MFA and one-time TAP (sample)',
     'people.affected.count': 30,
   }
   if (state !== 'missing') {

@@ -23,12 +23,26 @@
     "troubleshooting": true
   },
   "baselineAuthority": {
-    "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+    "pinCommit": "90d9b890c4b9af2ac4bc02d97c06bf8900064b4c",
     "memberStableId": "aeb49474-5250-4b65-8b0a-56c47127ee0f",
-    "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
+    "reauthored": {
+      "on": "2026-09-11",
+      "from": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
+      "changes": [
+        "grantControls: the member requires the author's custom authentication strength allowing only windowsHelloForBusiness, fido2, x509CertificateMultiFactor and temporaryAccessPassOneTime, where it required the built-in Multifactor authentication strength",
+        "conditions.users.excludeGroups: one more source group, which IAMAI resolves through the owner's answer for the baseline's unidentified groups",
+        "displayName: renamed by the author"
+      ]
+    },
     "authenticationStrength": {
-      "id": "00000000-0000-0000-0000-000000000002",
-      "displayName": "Multifactor authentication"
+      "requirement": [
+        "windowsHelloForBusiness",
+        "fido2",
+        "x509CertificateMultiFactor",
+        "temporaryAccessPassOneTime"
+      ],
+      "binding": "authStrength.target.id",
+      "sourceIdentity": "The author's strength ID belongs to the author's tenant. IAMAI binds this tenant's own strength for the requirement and the package never names the source ID."
     },
     "userAction": "urn:user:registerdevice",
     "initialState": "enabledForReportingButNotEnforced"
@@ -36,6 +50,8 @@
   "requiredBindings": [
     "policy.target.displayName",
     "policy.target.excludeGroups",
+    "authStrength.target.id",
+    "authStrength.target.displayName",
     "policy.current.id",
     "policy.current.semanticMismatches"
   ],
@@ -53,7 +69,8 @@
     "missing": {
       "requires": [
         "policy.target.displayName",
-        "policy.target.excludeGroups"
+        "policy.target.excludeGroups",
+        "authStrength.target.id"
       ],
       "entra": [
         "entra.create"
