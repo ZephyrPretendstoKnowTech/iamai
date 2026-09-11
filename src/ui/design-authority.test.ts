@@ -67,7 +67,7 @@ const APPROVED = [
     surface: 'plan',
     file: 'plan-step-v1.html',
     sourceName: 'plan-step-design-pack(1).html',
-    sha256: '1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec',
+    sha256: '43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39',
   },
   {
     surface: 'mfa-readiness',

@@ -1090,6 +1090,9 @@ async function walkFixture(fx) {
       // Finished rows are not opened one by one, for the same reason the footer's
       // never were: the loop below walks the work that is still to do.
       let inComplete = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-complete') !== null)`)
+      // Checks over the work artifacts only the printed plan carries now — the
+      // emails and the manager's sentence — run once every row has been opened.
+      const emailChecks = []
       for (let i = 0; i < n; i++) {
         if (inFooter[i] || inComplete[i]) continue
         const title = rowTitles[i]
@@ -1114,7 +1117,16 @@ async function walkFixture(fx) {
           continue
         }
         await settle()
-        const bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
+        let bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
+        // What IAMAI found and who the step touches are the evidence behind the
+        // step's Readiness, and open from it (the approved Plan design, Sep 10,
+        // 2026): read them the way a person does, and hold them to the same checks.
+        if (await evaluate(`(() => { const b = document.querySelector('main.page .step .readiness-bar .inline-link'); if (b) b.click(); return !!b })()`)) {
+          await waitFor(`!!document.querySelector('main.page .step dialog[open]')`, 3000)
+          bodyText += '\n' + (await evaluate(`(document.querySelector('main.page .step dialog[open] .dialog-content') || {}).innerText || ''`))
+          await evaluate(`(() => { const d = document.querySelector('main.page .step dialog[open]'); if (d) d.querySelector('.dialog-head button').click() })()`)
+          await sleep(150)
+        }
         // Foundation A: a policy step offers no implementation at all — no portal
         // instructions, no JSON, no PowerShell, no download — while it names an
         // object this tenant does not have yet, or when it has nothing to create
@@ -1183,10 +1195,11 @@ async function walkFixture(fx) {
         writeFileSync(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.txt`), bodyText)
         await shot(join(wdir, `step-${String(i + 1).padStart(2, '0')}-${safe}.png`))
         if (bodyTitle.trim() && bodyTitle.trim() !== title) add('P0', `${slabel}: the row says "${title}" and the opened step says "${bodyTitle.trim()}"`)
-        const emailText = await evaluate(`[...document.querySelectorAll('main.page .step-body .copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n')`)
-        const outsideEmail = emailText ? bodyText.replace(emailText, '') : bodyText
-        checkText(slabel, outsideEmail)
-        checkText(`${slabel} (email)`, emailText, { emails: true })
+        checkText(slabel, bodyText)
+        // The emails, the help-desk lines and the manager's sentence belong to the
+        // printed plan now, not to the opened step (the approved Plan design): they
+        // are read from the print document once every row has been opened, and each
+        // check that reads them waits for it (emailChecks, below the loop).
         // No step tip on an opened step.
         if ((await evaluate(`document.querySelectorAll('main.page .step-body .page-tip').length`)) !== 0) add('P0', `${slabel}: the step still renders a tip`)
         // The campaign step's rung counts, kept for the ladder to agree with. The
@@ -1245,7 +1258,7 @@ async function walkFixture(fx) {
           if (/^Use Separate Accounts for Admin Work$/.test(title)) {
             const named = (bodyText.match(/^.+ · (Outlook|Microsoft Teams)/gm) ?? []).length
             if (named < 2) add('P0', `${slabel}: the step lists ${named} admin(s) with mail or Teams sign-ins; the demo has two`)
-            if (!/^Skip this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step is not skippable`)
+            if (!/^Exclude from rollout$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step offers no rollout exception`)
           }
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
           // The lockout list (E8): the demo's admins not yet at Passkey or security
@@ -1300,7 +1313,9 @@ async function walkFixture(fx) {
           // eventsFor): the check is about the sessions clause of an email that
           // is written, so it asks for one only where there is one to write.
           if (/^Shorten Admin Sessions$/.test(title) && !cannotWriteYet && !enforcementHeld) {
-            if (!/expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/.test(emailText)) add('P0', `${slabel}: the admin email does not say how long sessions last (expire after {wantedLong})`)
+            emailChecks.push({ title, slabel, run: (emailText) => {
+              if (!/expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/.test(emailText)) add('P0', `${slabel}: the admin email does not say how long sessions last (expire after {wantedLong})`)
+            } })
           }
           // One definition of enough (E7): the campaign email dates the MFA
           // enforcement day and the window; the managed-device email says what a
@@ -1315,23 +1330,27 @@ async function walkFixture(fx) {
           const campaignDated = DAY_ONLY.test(rowWhens[mfaRowAt] || '') || (campaignGroups?.mfaInPlace && planDated)
           // While the plan dates nothing the email is its undated form (stepExport.ts
           // commsFor): the day and the window are asked of it only where the plan has them.
-          if (/MFA Registration Campaign/.test(title) && (campaignDated || emailText.trim() !== '')) {
-            if (campaignDated && !/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
-            // The email dates the enforcement it warns of: the MFA policy's day while
-            // MFA is not yet in place; the first passkey policy's while one remains
-            // (the passkey version names it; once none remains, nothing to date).
-            const LONG = '(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}'
-            const passkeyVersion = /You already confirm sign-ins/.test(emailText)
-            if (campaignDated && !passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
-            if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
-            if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
-            // Where the Plan's row reads Require MFA for Everyone In place (the demo
-            // in week two), the email is the passkey version. On day one that policy
-            // does not exclude the chosen exclusions group, so it is partly in place
-            // and the email dates its enforcement instead (Step 3 correction); the
-            // row word is the one read above for the campaign's rungs.
-            if (campaignGroups?.mfaInPlace && (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText))) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
-            if (!week2) campaignEmail = emailText
+          if (/MFA Registration Campaign/.test(title)) {
+            const mfaInPlace = campaignGroups?.mfaInPlace
+            emailChecks.push({ title, slabel, run: (emailText) => {
+              if (!(campaignDated || emailText.trim() !== '')) return
+              if (campaignDated && !/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
+              // The email dates the enforcement it warns of: the MFA policy's day while
+              // MFA is not yet in place; the first passkey policy's while one remains
+              // (the passkey version names it; once none remains, nothing to date).
+              const LONG = '(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}'
+              const passkeyVersion = /You already confirm sign-ins/.test(emailText)
+              if (campaignDated && !passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
+              if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
+              if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
+              // Where the Plan's row reads Require MFA for Everyone In place (the demo
+              // in week two), the email is the passkey version. On day one that policy
+              // does not exclude the chosen exclusions group, so it is partly in place
+              // and the email dates its enforcement instead (Step 3 correction); the
+              // row word is the one read above for the campaign's rungs.
+              if (mfaInPlace && (!/You already confirm sign-ins/.test(emailText) || /will ask you to confirm with the Microsoft Authenticator app/.test(emailText))) add('P0', `${slabel}: Require MFA for Everyone is in place, and the campaign email is not the passkey version`)
+              if (!week2) campaignEmail = emailText
+            } })
           }
           // A strength policy's row carries its lockout count in the who-column
           // when it is not zero, and the count is the step's own.
@@ -1350,9 +1369,13 @@ async function walkFixture(fx) {
           // policy yet, or its enforcement is held behind a readiness threshold.
           // Where the step does announce, the email says what a personal device
           // can still do.
-          if (/Require a Managed Device/.test(title) && !cannotWriteYet && !enforcementHeld && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
-          // A policy with no day to announce announces nothing at all.
-          if (/Require a Managed Device/.test(title) && (cannotWriteYet || enforcementHeld) && emailText.trim() !== '') add('P0', `${slabel}: it has no enforcement day (${cannotWriteYet ? 'it waits on an object' : 'its enforcement waits on a readiness threshold'}) and still announces a change`)
+          if (/Require a Managed Device/.test(title)) {
+            emailChecks.push({ title, slabel, run: (emailText) => {
+              if (!cannotWriteYet && !enforcementHeld && !/Personal devices are blocked\./.test(emailText)) add('P0', `${slabel}: the managed-device email does not say what a personal device can do ({personalDevicesClause}; this baseline holds no unmanaged-browser policy, so they are blocked)`)
+              // A policy with no day to announce announces nothing at all.
+              if ((cannotWriteYet || enforcementHeld) && emailText.trim() !== '') add('P0', `${slabel}: it has no enforcement day (${cannotWriteYet ? 'it waits on an object' : 'its enforcement waits on a readiness threshold'}) and still announces a change`)
+            } })
+          }
           if (/^Register Your Own Passkey$/.test(title) && !/or a hardware security key/.test(bodyText)) add('P0', `${slabel}: step 12 asks for a key and a passkey; either is enough`)
           // Small engine items (E9), on the demo: the admin-portals step names the
           // developer who opened the Azure portal; the service-accounts block is
@@ -1370,28 +1393,31 @@ async function walkFixture(fx) {
             // zero (roadmap/timing.ts nobodyAffected): the records counted here
             // were counted against the policy this step would run, and while
             // there is no policy to run there is no count to report. So the
-            // clause is asked for only where the step can write.
-            // More is closed at this point, so its innerText is empty: read textContent.
-            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
-            if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)
+            // clause is asked for only where the step can write. The manager's
+            // sentence is the printed plan's (emailChecks).
+            emailChecks.push({ title, slabel, run: (_email, more) => {
+              if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)
+            } })
           }
           if (/^Block Unsupported Device Platforms$/.test(title)) {
-            // More is closed at this point, so its innerText is empty: read textContent.
-            const more = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
-            if (/Nobody here/.test(more)) add('P0', `${slabel}: one demo sign-in carried no platform, and the manager line says nobody did`)
+            emailChecks.push({ title, slabel, run: (_email, more) => {
+              if (/Nobody here/.test(more)) add('P0', `${slabel}: one demo sign-in carried no platform, and the manager line says nobody did`)
+            } })
             if (!/carried no platform \(Outlook Mobile\)/.test(bodyText)) add('P0', `${slabel}: the step does not name the sign-in that carried no platform`)
           }
           if (/MFA Registration Campaign/.test(title)) {
-            // The rungs' people are under More (task 011); the counts and the
-            // instruction stay on the step. More is closed here, so its innerText
-            // is empty: read textContent, which has no line breaks to anchor on.
-            const rungPeople = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).textContent || ''`)
-            const devices = / · phone(?![a-z])/.test(rungPeople) || / · phone(?![a-z])/.test(bodyText)
-            if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
-            // The device sentence is the email's, and the email is written only once the plan dates an enforcement.
-            const emailWritten = emailText.trim() !== '' || rowWhens.some((w) => /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(w || ''))
-            if (week2 && emailWritten && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
-            if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
+            // The rungs' people are the step's Readiness evidence (read into
+            // bodyText above) and the printed plan's More; the email is the printed
+            // plan's (emailChecks).
+            const whensDated = rowWhens.some((w) => /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(w || ''))
+            emailChecks.push({ title, slabel, run: (emailText, rungPeople) => {
+              const devices = / · phone(?![a-z])/.test(rungPeople) || / · phone(?![a-z])/.test(bodyText)
+              if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
+              // The device sentence is the email's, and the email is written only once the plan dates an enforcement.
+              const emailWritten = emailText.trim() !== '' || whensDated
+              if (week2 && emailWritten && !/nothing to enrol/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
+              if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
+            } })
           }
         }
         // Cleanup completion (E3), on the demo. The emergency accounts signed in
@@ -1455,24 +1481,6 @@ async function walkFixture(fx) {
             const td = await evaluate(extractIn(`document.querySelector('main.page .step-body')`, sc?.reach?.exclude ?? ''))
             if (td) for (const f of FORBID_EVERY) if (td.proseText.includes(f)) add('P0', `${slabel}: forbidden-everywhere string "${f}" in a What-to-do tab`)
           }
-          if (await clickText('summary', /^More$/, 'main.page .step-body')) {
-            await sleep(250)
-            const mc = contractById['plan.step.more']
-            const md = await evaluate(extractIn(`document.querySelector('main.page .step-body details.more')`, ''))
-            if (md) {
-              diffContract(`${slabel} / More`, mc, md)
-              const moreText = await evaluate(`(document.querySelector('main.page .step-body details.more') || {}).innerText || ''`)
-              writeFileSync(join(wdir, `more-${String(i + 1).padStart(2, '0')}-${safe}.txt`), moreText)
-              // The emails are in More now (task 011) and date things the long way
-              // on purpose, so they are measured under the email rule and the rest
-              // of More under the ordinary one — the same split the body made.
-              const moreEmail = await evaluate(`[...document.querySelectorAll('main.page .step-body details.more .copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n')`)
-              checkText(`${slabel} / More`, moreEmail ? moreText.replace(moreEmail, '') : moreText)
-              if (moreEmail) checkText(`${slabel} / More (email)`, moreEmail, { emails: true })
-              if (md.emptyLists > 0) add('P0', `${slabel} / More: ${md.emptyLists} empty list(s) rendered`)
-              for (const h of md.emptySections) add('P0', `${slabel} / More: the "${h}" section is empty`)
-            }
-          }
         }
         // C2: every opened step and Cleanup row carries a Learn link beside its Why.
         const bodyLinks = await evaluate(`[...document.querySelectorAll('main.page .step-body a[href^="http"]')].map((a) => a.href)`)
@@ -1492,6 +1500,28 @@ async function walkFixture(fx) {
           inComplete = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-complete') !== null)`)
           n = rowTitles.length
           i -= 1
+        }
+      }
+      // The work artifacts the opened step no longer draws, read from the printed
+      // plan: PrintPlan renders every step through the same body with More open,
+      // so the emails and the manager's sentence are the ones the step always had.
+      if (emailChecks.length > 0) {
+        await send('Page.navigate', { url: `${fx.base}#/export` })
+        await sleep(300)
+        await ensureWeek2('export')
+        await waitFor(`[...document.querySelectorAll('main.page button')].some((b) => /^Print or save as PDF$/.test((b.textContent || '').trim()))`, 10000)
+        await evaluate(`window.print = function () { try { window.dispatchEvent(new Event('beforeprint')) } catch (e) {} }`)
+        const printing = await clickText('button', /^Print or save as PDF$/)
+        const ready = printing ? await waitFor(`document.querySelector('.print-plan .print-statement') !== null`, 8000) : false
+        if (!ready) add('P0', `${fx.name} @${width}: the printed plan does not render, so the step emails cannot be read`)
+        const printed = ready
+          ? await evaluate(`Object.fromEntries([...document.querySelectorAll('.print-plan article.step')].map((s) => [((s.querySelector('.step-head .step-title') || {}).textContent || '').trim(), { email: [...s.querySelectorAll('.copy-box')].map((e) => [...e.querySelectorAll('p')].map((x) => x.textContent).join('\\n')).join('\\n'), more: (s.querySelector('details.more') || {}).textContent || '' }]))`)
+          : {}
+        await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
+        await sleep(200)
+        for (const c of emailChecks) {
+          const p = printed[c.title] ?? { email: '', more: '' }
+          c.run(p.email, p.more)
         }
       }
       // The footer groups, expanded.

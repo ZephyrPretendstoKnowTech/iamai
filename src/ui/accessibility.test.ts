@@ -401,42 +401,27 @@ test('a tablist keeps the keyboard behaviour its role promises, and its panels a
   assert.match(rule(css, '.tab-panel') ?? '', /display:\s*none/)
 })
 
-test("the Plan step's three implementation channels are one tab set, and all three stay offered", () => {
-  assert.match(contentStep, /import \{ Callout, Picker, TabList, onePanelProps \}/)
+test("the Plan step's implementation channels are one tab set over one panel, and each is offered only where it exists", () => {
+  assert.match(contentStep, /import \{ Button, Callout, Icon, Picker, TabList, onePanelProps \}/)
   assert.doesNotMatch(contentStep, /role="tablist"/, 'the step reuses the shared strip rather than hand-rolling one')
-  // The approved order is Entra, then PowerShell, then JSON: the console an
-  // operator is most likely to use first, then the two machine channels. The
-  // IDS are internal and deliberately unchanged — `portal` is the channel that
-  // renders stepPortal.ts's lines, whatever Microsoft calls its console.
-  const ids = [...(contentStep.match(/const DO_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual(ids, ['portal', 'ps', 'json'])
-  // And the labels are the content file's, not this file's: the strip and the
-  // rail's Implementation block name the same three channels, so they read the
-  // same three words from one entry.
-  assert.match(contentStep, /label: CONTRACT\.railChannels\.portal/, 'the strip writes its own label beside the rail’s')
-  assert.deepEqual(
-    [CONTRACT.railChannels.portal, CONTRACT.railChannels.powershell, CONTRACT.railChannels.json],
-    ['Entra', 'PowerShell', 'JSON'],
-    'the operator-facing channel labels moved',
-  )
-  assert.match(contentStep, /<TabList base=\{doBase\}[\s\S]*?panelId=\{\(\) => `\$\{doBase\}-panel`\}/)
-  // Task 035 gave the panel the approved pack's instruction-block edge. It is
-  // still one panel, still labelled by whichever tab is selected, and still
-  // reachable: a panel of prose or a scrolling code block holds nothing else a
-  // keyboard can land on.
-  // The panel is a TAB panel only where there are tabs. With one channel there
-  // is no strip to label it and no selection to announce, so the panel props are
-  // applied only when the capability rule produced a choice (channelsFor).
-  assert.match(contentStep, /<div className="instruction" \{\.\.\.\(channels\.length > 1 \? onePanelProps\(doBase, tab\) : \{\}\)\}>/)
-  assert.match(contentStep, /channels\.length > 1 \? \(\n\s*<TabList/, 'the strip is drawn without asking whether there is a choice')
-  // Availability is unchanged in meaning and is read from ONE authority: the
-  // machine channels render only where Foundation A offers an implementation,
-  // and Download JSON is gated on the same answer. The surface asks the Step
-  // Contract, which asked `implementationOffered` once, rather than asking the
-  // engine again itself (task 035).
-  assert.match(contentStep, /tab === 'json' && contract\.implementation\.offered && <pre className="mono">/)
-  assert.match(contentStep, /tab === 'ps' && contract\.implementation\.offered && <pre className="mono">/)
-  assert.match(contentStep, /\{contract\.implementation\.offered && \(/)
+  // The approved order is Entra, PowerShell, JSON, then AI Info. The IDS are
+  // internal and deliberately unchanged — `portal` is the channel that renders
+  // stepPortal.ts's lines, whatever Microsoft calls its console.
+  const ids = [...(contentStep.match(/const CHANNEL_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
+  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai'])
+  assert.match(contentStep, /label: CONTRACT\.railChannels\.portal/, 'the strip writes its own channel label')
+  assert.deepEqual([CONTRACT.railChannels.portal, CONTRACT.railChannels.powershell, CONTRACT.railChannels.json, CONTRACT.implementation.ai], ['Entra', 'PowerShell', 'JSON', 'AI Info'], 'the operator-facing channel labels moved')
+  assert.match(contentStep, /<TabList base=\{base\}[\s\S]*?panelId=\{\(\) => `\$\{base\}-panel`\}/)
+  // One panel, labelled by whichever tab is selected, and reachable: a scrolling
+  // code block holds nothing else a keyboard can land on.
+  assert.match(contentStep, /<div className="impl-preview" \{\.\.\.onePanelProps\(base, tab\)\}>/)
+  // Copy and Expand are real buttons with names, not glyphs a screen reader
+  // cannot announce.
+  assert.match(contentStep, /<button type="button" className="icon-btn" aria-label=\{W\.copy\}/)
+  assert.match(contentStep, /<button type="button" className="icon-btn" aria-label=\{W\.expand\}/)
+  // Availability is read from ONE authority: the machine channels exist only
+  // where Foundation A offers an implementation, through the contract.
+  assert.match(contentStep, /const channels = deployNow \? channelsFor\(hasPortal, contract\.implementation\.offered\) : \[\]/)
   assert.doesNotMatch(contentStep, /jsonOffered\(/, 'the surface re-reads the implementation gate instead of the contract it was handed')
 })
 
@@ -714,5 +699,6 @@ test('the accessibility repair left the step body deciding nothing', () => {
   // they were; only the markup around them moved.
   assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>\)/)
   assert.match(contentStep, /<WhatToDoLead contract=\{contract\} \/>/)
-  assert.match(contentStep, /\{d && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\) && <Decision/)
+  assert.match(contentStep, /const decides = Boolean\(d\) && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\)/)
+  assert.match(contentStep, /\{decides && <Decision/)
 })

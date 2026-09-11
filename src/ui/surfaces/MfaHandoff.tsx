@@ -72,12 +72,12 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
   // rather than filled in from somewhere else.
   const held = new Set(hold.ids ?? [])
   const preview = held.size === 0 ? [] : view.rows.filter((r) => held.has(r.user.id)).slice(0, PREVIEW)
-  // Its own ruled section of the opened step (task 035): the pack divides an
-  // opened step into sections, and a line that renders on some steps and not
-  // others has to carry its own division or it reads as a loose sentence
-  // trailing the section above it.
+  // Inside the step's Readiness region, under its bar: the approved Plan design
+  // puts affected-person impact in Readiness
+  // (docs/design/approved/anatomy/plan-step-v1.html), and who cannot meet this
+  // step's sign-in requirement is exactly that.
   return (
-    <section className="step-section">
+    <div className="mfa-handoff-block">
       {preview.length > 0 && (
         <ul className="mfa-preview">
           {preview.map((r) => (
@@ -104,6 +104,6 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
           {n === null ? P.mfaReadinessLinkUnknown : P.mfaReadinessLink}
         </a>
       </p>
-    </section>
+    </div>
   )
 }

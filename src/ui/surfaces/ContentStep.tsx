@@ -1,12 +1,16 @@
 // A step opened in place: the one body the Plan draws for every step it has, and
 // the only one (task 011).
 //
-// The order is the Step Contract's own (Foundation D): where it is and what
-// happens next, Why, What IAMAI found, Who this touches, What to do, Fix before
-// continuing, Done when, More. Every sentence is a string in content.json filled
-// with the tenant's values (stepVars.ts); the What-to-do on a policy step is the
-// portal translator over the goal's baseline policy (stepPortal.ts), because the
-// baseline wins.
+// The anatomy is the approved Plan design's
+// (docs/design/approved/anatomy/plan-step-v1.html, owner update Sep 10, 2026):
+// the head with its lifecycle track, then Why, Readiness, what must be fixed
+// first, What to do where the step has instructions of its own, Implementation
+// and Done when, beside a rail that is the Next milestone only, over a footer
+// that carries the rollout exception and the scan. Every step draws those
+// regions with the same components; its state changes what they say, never which
+// component draws them. Every sentence is a string in content.json filled with
+// the tenant's values (stepVars.ts); the portal lines are the translator over
+// the goal's baseline policy (stepPortal.ts), because the baseline wins.
 //
 // Three things this body will not do.
 //
@@ -15,26 +19,27 @@
 // an empty panel; now the contract's own title, Why and next action stand, and
 // the content entry adds only the words the engine has none of.
 //
-// It does not put everything the engine knows on the first screen. A list of
-// names is a fact while it is short enough to read and an inventory once it is
-// not, so above NAMES_INLINE the default step keeps the count and the
-// consequence and the names themselves go to More. The person-by-person
+// It does not put everything the engine knows on the first screen. What IAMAI
+// found and who the step touches, names and all, are the evidence behind the
+// Readiness region and open from it ("Why IAMAI says this"); the person-by-person
 // registration state behind them belongs to the MFA readiness surface, not to a
-// rollout step.
+// rollout step. The printed plan keeps every one of them on the page.
 //
 // And it does not decide anything. What the step is, whether an implementation
 // is offered, what blocks it and what finishes it are the contract's answers,
 // asked once, below the UI.
 import { useId, useState, useMemo } from 'react'
+import type { ReactNode } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
-import { app, content, pages } from '../../content/content.ts'
+import { app, content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
-import { Callout, Picker, TabList, onePanelProps } from '../components/index.ts'
+import { stepContext } from '../../roadmap/prompts.ts'
+import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption, TabItem } from '../components/index.ts'
 import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
@@ -43,24 +48,23 @@ import type { QuestionOption } from './stepQuestion.ts'
 import { answerKey } from '../../roadmap/decisions.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { powershellFor } from './stepPowerShell.ts'
-import { policyJsonText, stepOperations, waitingLine } from './stepJson.ts'
-import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } from './stepExport.ts'
-import { list } from '../../copy/statements.ts'
+import { policyJsonText, stepOperations } from './stepJson.ts'
+import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine, stepExportView } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
-import { REDACTED, exportClipboard, exportDownload } from '../exportGuard.ts'
-import { Button } from '../components/index.ts'
-import { CONTRACT, footerOffersScan, hasRail, implementationIsCurrent, showsDoneWhen, stepContract } from './stepContract.ts'
-import { DoneWhen, FixBeforeContinuing, PolicyMembers, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel, footerNote } from './StepSections.tsx'
+import { REDACTED, exportClipboard } from '../exportGuard.ts'
+import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
+import type { ImplementationEmpty } from './stepContract.ts'
+import { DoneWhen, FixBeforeContinuing, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
 
 type Ex = Record<string, unknown>
-type DoTab = 'portal' | 'json' | 'ps'
+type Channel = 'portal' | 'ps' | 'json' | 'ai'
 
 /**
  * Which implementation channels this step actually has, in the approved order.
@@ -72,43 +76,31 @@ type DoTab = 'portal' | 'json' | 'ps'
  * `implementationOffered` and is also `stepJson.jsonOffered`). Nothing here asks
  * a second time, and nothing here manufactures a channel to fill a strip.
  *
- * What the count decides is the CONTROL, which is the approved rule:
- *
- *   0  no selector at all — the step's ordinary instructions, where it has any
- *   1  the channel itself, directly, with no strip to choose from
- *   2+ a real tab set, in the order Entra → PowerShell → JSON
- *
- * A one-tab tab set is a control that cannot be operated, and it says the step
- * has options it does not have.
+ * AI Info is the approved design's fourth channel. It describes the step the
+ * other channels implement — the step context the prompts already ground
+ * themselves in (roadmap/prompts.ts `stepContext`) — so it stands beside them and
+ * never on its own: a step with nothing to implement has nothing to describe.
  */
-function channelsFor(hasPortal: boolean, machineOffered: boolean): DoTab[] {
-  const out: DoTab[] = []
+function channelsFor(hasPortal: boolean, machineOffered: boolean): Channel[] {
+  const out: Channel[] = []
   if (hasPortal) out.push('portal')
   if (machineOffered) out.push('ps', 'json')
+  if (out.length > 0) out.push('ai')
   return out
 }
 
 /**
- * The three implementation channels, in the approved order — Entra, then
- * PowerShell, then JSON — and under the labels an operator reads on the page.
- *
- * The words come from `CONTRACT.railChannels`
- * (pages.app.plan.stepContract.railChannels), which is where the rail already
- * reads them: the strip in What to do and the Implementation block in the rail
- * name the same three channels, so they name them with the same three words
- * from one entry. Before this they were two lists, and the strip's were written
- * into this file.
- *
- * The ids are the internal ones and do not move: `portal` is the channel that
- * renders the portal translator's lines (stepPortal.ts), whatever the operator-
- * facing label for the Microsoft console is this year. Renaming it would churn
- * `stepPortal.ts`, `stepInstructions.ts` and every test that reads the id, for
- * no one's benefit.
+ * The channels under the labels an operator reads on the page, in the approved
+ * order — Entra, PowerShell, JSON, AI Info. The first three are
+ * `CONTRACT.railChannels`, the words those channels have always had; the ids are
+ * the internal ones and do not move (`portal` renders the portal translator's
+ * lines, whatever the console is called this year).
  */
-const DO_TABS: TabItem[] = [
+const CHANNEL_TABS: TabItem[] = [
   { id: 'portal', label: CONTRACT.railChannels.portal },
   { id: 'ps', label: CONTRACT.railChannels.powershell },
   { id: 'json', label: CONTRACT.railChannels.json },
+  { id: 'ai', label: CONTRACT.implementation.ai },
 ]
 
 const truthy = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.length > 0 : typeof v === 'number' ? v !== 0 : Boolean(v))
@@ -125,10 +117,7 @@ function offersDoesntApply(cs: Record<string, any>, step: Step): boolean {
 }
 const SHARED = content.shared as Record<string, string>
 
-/** The opened step's eyebrow, one label per steps[] kind (pages.app.plan.stepContract.kind). */
-const KINDS: Record<string, string> = CONTRACT.kind
-
-/** One who block on the default step: the sentence, and its names under it when they are short enough to read. */
+/** One who block: the sentence, and its names under it. */
 function WhoBlockView({ block }: { block: WhoBlock }) {
   if (block.names.length === 0) return <p className="reason">{block.lead}</p>
   return (
@@ -152,13 +141,14 @@ function Line({ s, ex, cls }: { s: unknown; ex: Ex; cls?: string }) {
   return <p className={cls}><T s={s} ex={ex} /></p>
 }
 
+type Dialog = 'readiness' | 'implementation' | 'rollout' | 'doesnt-apply' | null
+
 export function ContentStep({
   step,
   ctx,
   onSkip,
   onUnskip,
   onDoesntApply,
-  onClose,
   onScan,
   decision = null,
   onDecide,
@@ -166,21 +156,21 @@ export function ContentStep({
 }: {
   step: Step
   ctx: StepVarContext
+  /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
   onSkip: (reason: string) => void
   onUnskip: () => void
   /** Doesn't apply here, with the person's one-line reason (content steps flagged doesntApply). */
   onDoesntApply?: (reason: string) => void
-  onClose: () => void
   onScan?: () => void
   /** This step's saved decision, when one was made (prompt 52 Part 3). */
   decision?: StepDecision | null
   /** The picker's Save: the ticked ids, the chosen option and the question's answer become the plan's decision. */
   onDecide?: (decision: StepDecisionInput) => void
-  /** Printing: More stands open, so every step prints in full (§7). */
+  /** Printing: the evidence and More stand open on the page, so every step prints in full (§7). */
   printing?: boolean
 }) {
-  const [chosen, setTab] = useState<DoTab>('portal')
-  const doBase = useId()
+  const [dialog, setDialog] = useState<Dialog>(null)
+  const closeDialog = (): void => setDialog(null)
   const [copied, setCopied] = useState<string | null>(null)
   // The content step (resolved the same way the plan row resolves its title).
   // The step's own words, where the content file has any. A step it has no entry
@@ -209,24 +199,16 @@ export function ContentStep({
   // The tenant's objects behind the baseline's placeholders (a saved decision
   // included), or the names the plan proposes for them, so every line is a name.
   const portalNames = portalNamesFor(ctx, ex, title)
-  // What to do offers today (stepInstructions.ts): the step's own resolved
-  // policies through the translator — the same bodies the JSON, the PowerShell
-  // and the download carry — the content's leading "before" lines, and the
-  // step's own instruction lines. All three are withheld together while an
-  // authority holds the change: a policy the plan may not write, or one
-  // deployed in report-only whose only remaining submission is the enforcement
-  // its window has not earned. The export view reads the same decision, so the
-  // screen cannot instruct a change the artifacts refuse to describe.
+  // What the step offers today (stepInstructions.ts): the step's own resolved
+  // policies through the translator — the same bodies the JSON and the
+  // PowerShell carry — the content's leading "before" lines, and the step's own
+  // instruction lines. All three are withheld together while an authority holds
+  // the change, so the screen cannot instruct a change the artifacts refuse to
+  // describe.
   const instructions = stepInstructions(step, cs, ex as Record<string, unknown>, portalNames)
-  // A goal the baseline holds no policy for has no portal lines; an empty list is
-  // not a What to do (the shared-devices step rendered an empty section).
   const portal = instructions.portal
-  // Why an implementation is not offered — a missing object, an unmatched pair,
-  // an emergency account in reach, an unverified way back in, a readiness
-  // threshold, a baseline that contradicts itself — is one question with one
-  // answer, and the contract's action line carries it (stepContract.ts). What is
-  // still read here is only whether the step has *dates* and a rollback to show,
-  // which it does not while its policy cannot be written.
+  // Whether the step has *dates* and a rollback to print, which it does not
+  // while its policy cannot be written.
   const reason = cs.kind === 'policy' ? unavailableReason(step) : null
   // The contradiction this step's own source carries, where it carries one
   // (roadmap/baselineConflict.ts): the explanation follows the reviewed source
@@ -234,13 +216,8 @@ export function ContentStep({
   // baseline hands that source.
   const conflictWords = baselineConflictWords(step)
   // The content's leading "before" lines (a setting to change before the policy
-  // is created: the device-settings toggle, password writeback, the SharePoint
-  // access control) stay above the translator's portal lines, numbered with them.
+  // is created) stay above the translator's portal lines, numbered with them.
   const before = instructions.before
-  // The channels this step actually has, and the one the panel is showing. The
-  // chosen tab is clamped to what is available, so a step that offers only the
-  // portal cannot be left showing an empty JSON panel by a click on another
-  // step — the frame is reused across rows and the state is not.
   // What the step is offering RIGHT NOW. The capability is unchanged — the
   // artifacts exist and `contract.implementation.offered` still says so — but a
   // step whose current action is to clear a blocker, answer a decision or read
@@ -248,253 +225,347 @@ export function ContentStep({
   // `implementationIsCurrent`). The same channels come back when the condition
   // does, from the same call, with nothing regenerated.
   const deployNow = implementationIsCurrent(step)
-  const channels = deployNow ? channelsFor(portal !== null && portal.length + before.length > 0, contract.implementation.offered) : []
-  const tab: DoTab = channels.includes(chosen) ? chosen : (channels[0] ?? 'portal')
+  const hasPortal = portal !== null && portal.length + before.length > 0
+  const channels = deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
+  const portalLines = hasPortal ? [...before, ...(portal ?? [])] : []
   const hasSteps = instructions.steps.length > 0
-  // Who this touches, split into what the default step shows and what More
-  // carries (whoBlocks.ts): the counts and the consequences here, the names
-  // behind them there, once there are more of them than a person reads at a
-  // glance. Whether the reach is knowable at all is the contract's answer
-  // (Foundation A) — a scope this scan could not settle says so in one line and
-  // shows no count, which is why the section renders even where the step's own
-  // who-lines could not fill.
+  // Who this touches (whoBlocks.ts), in the Readiness evidence: each line whole,
+  // with the names it ends in. Whether the reach is knowable at all is the
+  // contract's answer (Foundation A) — a scope this scan could not settle says so
+  // in one line and shows no count.
   const { inline: whoInline, held: whoHeld } = whoBlocks(who, ex as Record<string, unknown>)
   const lead = whoLeadLine(who, ex as Record<string, unknown>, [...whoInline, ...whoHeld])
   const showWho = lead !== null || whoInline.length > 0 || (contract.who !== null && !contract.who.known)
-  // Whether the contract has anything for the rail. One predicate, read here and
-  // by the rail itself, so the frame cannot leave a 290px column beside nothing.
-  const rail = hasRail(contract)
+  const whoFull = [...whoInline.map((b) => whoHeld.find((h) => h.key === b.key) ?? b), ...whoHeld.filter((h) => !whoInline.some((b) => b.key === h.key))]
+  const hasEvidence = contract.found.length > 0 || showWho
+  const readiness = readinessOf(step, contract)
+  // What to do, where the step has instructions of its own. On a step whose
+  // action IS the implementation the approved design draws no What to do: the
+  // action is the Readiness bar's line and the instructions are the channels.
+  const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies]))
+  const createIfNeeded = truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string'
+  const creates = (truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)
+  const ownSteps = !(portal && channels.length > 0) && (hasSteps || before.length > 0)
+  const showWhatToDo = decides || createIfNeeded || creates || ownSteps
+  // The one next action (stepContract.ts actionOf), drawn once: under the
+  // Readiness bar where the step has no instructions of its own, and at the head
+  // of What to do where it does, because there it leads the list it introduces.
+  const actionLead = <WhatToDoLead contract={contract} />
+  // What kind of step this is, and "Resolution step" for one whose source
+  // contradicts itself (stepContract.ts eyebrowOf).
+  const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
+  const textOf = (ch: Channel): string =>
+    ch === 'portal'
+      ? portalLines.map((l, i) => `${i + 1}. ${l}`).join('\n')
+      : ch === 'ps'
+        ? powershellFor(stepOperations(step))
+        : ch === 'json'
+          ? policyJsonText(step)
+          : stepContext(step, (s) => stepExportView(s, ctx))
+  // The footer's rollout exception: the existing skip, offered only where the
+  // step's content entry marks it excludable, and Doesn't apply here where the
+  // step is flagged for it. A step already set aside offers the way back.
+  const RO = CONTRACT.rollout
+  const exceptions: ReactNode[] = printing
+    ? []
+    : step.status === 'skipped'
+      ? [<Button key="put-back" variant="secondary" onClick={onUnskip}>{app.plan.putBack}</Button>]
+      : [
+          cs.skip ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
+          offersDoesntApply(cs, step) && onDoesntApply ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
+        ].filter((x) => x !== null)
 
   return (
-    // The opened step, as the approved Plan pack draws it (task 034;
-    // docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached under
-    // the roadmap row that opened it — the row is its top edge, so the frame
-    // carries no top border of its own and rounds off only the bottom — with the
-    // head above and the main column and its right rail below.
+    // The opened step, as the approved Plan design draws it
+    // (docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached
+    // under the roadmap row that opened it, with the head above and the main
+    // column and its Next milestone rail below.
     <article className="step panel panel-key">
-      <StepHead
-        eyebrow={KINDS[String(cs.kind ?? '')] ?? null}
-        title={title}
-        sub={
-          <>
+      <StepHead eyebrow={eyebrow} title={title} sub={<>
             {/* The one supporting line the step already carried under its
                 title: what this change is, and the step it is done with. */}
             <Line s={cs.changeLine} ex={ex} cls="step-sub" />
             <Line s={cs.partner} ex={ex} cls="step-sub partner" />
-          </>
-        }
-        badge={badgeLabel(contract)}
-        tone={contract.state.tone}
-        track={contract.track}
-      >
-        {/* Where the step is on both axes, and what happens next: the pack's
-            track caption, above the track it captions. */}
+          </>} badge={badgeLabel(contract)} tone={contract.state.tone} track={contract.track}>
+        {/* What happens next: the track caption, above the track it captions. */}
         <StepState contract={contract} />
         <PolicyMembers members={contract.members} />
       </StepHead>
-      <div className={`step-body${rail ? ' has-rail' : ''}`}>
+      <div className="step-body has-rail">
         <div className="step-main">
-      {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
-          the step says so and offers no instructions. The words belong to the
-          reviewed source policy the step's own state names, never to the goal,
-          so whichever goal a baseline hands that source says the same thing
-          about it. They are the content file's; nothing here composes them. */}
-      {conflictWords && (
-        <section className="step-section">
-          {/* The pack's attention panel at its danger weight
-              (`docs/design/approved/anatomy/plan-step-v1.html` `.attention.danger`,
-              "Do not deploy this policy from the current baseline"), which is
-              the shared `.callout` role task 031 built. It stays at the top of
-              the step, above Why: the pack's own conflict variant has nothing
-              above it to be above, and a notice that a policy must not be
-              deployed is not something to meet after two sections of
-              explanation. */}
-          <Callout kind="danger"><T s={conflictWords} ex={ex} /></Callout>
-        </section>
-      )}
-
-      {/* The contract's Why: the step's own sentence where the content file has
-          one, and the engine's where it does not (a validation blocker states how
-          many of its checks are outstanding, and that changes between scans). */}
-      <section className="step-section">
-        <h4>{HEAD.why}</h4>
-        <p>
-          {contract.why}{' '}
-          {learn.url && (
-            <a href={learn.url} target="_blank" rel="noopener noreferrer">
-              Learn →
-            </a>
-          )}
-        </p>
-      </section>
-
-      <WhatIamaiFound found={contract.found} />
-
-      {/* Who this touches: the counts and the consequences that decide the next
-          action. A list longer than NAMES_INLINE names is in More. */}
-      {showWho && (
-        <section className="step-section">
-          <h4>{HEAD.who}</h4>
-          {lead && <p className="line">{lead}</p>}
-          {whoInline.map((b) => <WhoBlockView key={b.key} block={b} />)}
-          {/* Foundation A settled the reach and could not: no count, no names, and
-              one line saying so rather than the goal's people standing in. */}
-          {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
-        </section>
-      )}
-
-      <section className="step-section">
-      <h4>{HEAD.whatToDo}</h4>
-      {/* The one action, always. Where nothing overrules the lifecycle this is the
-          step's own lead; where an authority does — a policy the plan may not
-          write, a goal already in place, a question waiting on a person — it is
-          that authority's answer instead (stepContract.ts actionOf). */}
-      <WhatToDoLead contract={contract} />
-      {/* The decision comes before the instructions, and on a step that needs one
-          it *is* the action: IAMAI cannot choose, so nothing is offered to submit
-          until a person has (Foundation C). A decision with an `applies` key is
-          offered only while its condition holds (the risk policy's first-enforcement
-          rung, while anyone has only Authenticator approval). */}
-      {d && (typeof d.applies !== 'string' || truthy(ex[d.applies])) && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
-      {/* The create instructions. `needsCreate` is a proof that nothing
-          qualifies; `createIfNeeded` is the same instructions offered to an
-          operator who knows they need one, on a reading that could not prove it
-          (mapping/safetyChoice.ts). */}
-      {truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string' && <p className="reason"><T s={w.createIfNeeded} ex={ex} /></p>}
-      {(truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create) && (
-        <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>
-      )}
-      {portal && channels.length > 0 ? (
-        <>
-          {/* One panel, three tabs (task 017): each names the panel it controls
-              and the panel names the tab that labels it, so the three channels
-              read as one control and not as three loose buttons. Which channels
-              carry anything is unchanged — the JSON and PowerShell tabs stay
-              selectable and say what they are waiting on, because withholding
-              the tab would hide the reason. */}
-          {/* The pack's action strip over the instruction block it labels
-              (`docs/design/approved/anatomy/plan-step-v1.html` `.action-tabs` over
-              `.instruction`): the three channels read as one control, and what
-              they select sits in a panel of its own rather than loose on the
-              page. It is the shared `TabList` wearing the Plan's own strip
-              treatment, so the keyboard behaviour and the selected-state
-              semantics task 017 built are unchanged. */}
-          {/* The control follows the CAPABILITY (channelsFor above): a strip only
-              where there is a choice to make. One channel renders itself, with
-              its name over it, and no tab set to operate. */}
-          {channels.length > 1 ? (
-            <TabList base={doBase} tabs={DO_TABS.filter((t) => channels.includes(t.id as DoTab))} active={tab} onSelect={(id) => setTab(id as DoTab)} panelId={() => `${doBase}-panel`} className="tabs action-tabs no-print" />
-          ) : (
-            <div className="single-channel-label">{DO_TABS.find((t) => t.id === channels[0])?.label}</div>
-          )}
-          <div className="instruction" {...(channels.length > 1 ? onePanelProps(doBase, tab) : {})}>
-            {tab === 'portal' && <ol className="sections">{[...before, ...portal].map((l, i) => <li key={i}>{l}</li>)}</ol>}
-            {/* Whether an artifact is offered is Foundation A's one answer, and
-                the contract already carries it (stepContract.ts
-                `implementation.offered`, which is roadmap/operations.ts
-                `implementationOffered` — the same reading `stepJson.jsonOffered`
-                and the portal translator both make). It is read here, never
-                asked again: a channel this surface decided for itself is how the
-                screen came to instruct a change the artifacts refused to
-                describe. Where it is withheld, one line names the Preparation
-                step that would clear it, and Download JSON is not offered. */}
-            {(tab === 'json' || tab === 'ps') && !contract.implementation.offered && (
-              <p className="reason">{waitingLine(step, String(ex.tenant ?? ''))}</p>
-            )}
-            {/* The JSON is stepJson.ts's, over the step's own resolved
-                operations, and the commands are stepPowerShell.ts's over the
-                same operations. Neither is composed here. */}
-            {tab === 'json' && contract.implementation.offered && <pre className="mono">{policyJsonText(step)}</pre>}
-            {tab === 'ps' && contract.implementation.offered && <pre className="mono">{powershellFor(stepOperations(step))}</pre>}
-          </div>
-          {contract.implementation.offered && (
-            <p className="actions">
-              <Button variant="secondary" onClick={() => exportDownload(`${step.id}.json`, policyJsonText(step), 'application/json', REDACTED)}>
-                Download JSON
-              </Button>
+          {/* The contract's Why: the step's own sentence where the content file
+              has one, and the engine's where it does not. */}
+          <section className="step-section">
+            <h4>{HEAD.why}</h4>
+            <p>
+              {contract.why}{' '}
+              {learn.url && (
+                <a href={learn.url} target="_blank" rel="noopener noreferrer">
+                  Learn →
+                </a>
+              )}
             </p>
+          </section>
+
+          {/* Readiness: the contract's facts as tiles, the bar that says where the
+              step stands with its one action under it, and — where this step's
+              enforcement waits on the people it reaches — who they are, handed
+              to MFA Readiness (derive/stepMfaReadiness.ts). */}
+          <ReadinessSection readiness={readiness} lead={showWhatToDo ? null : actionLead} onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}>
+            <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
+          </ReadinessSection>
+
+          {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
+              the approved design's danger attention, under Readiness. The words
+              belong to the reviewed source policy the step's own state names, and
+              they are the content file's; nothing here composes them. */}
+          {conflictWords && (
+            <section className="step-section">
+              <Callout kind="danger">
+                <h4>{CONTRACT.attentionConflict}</h4>
+                <p>
+                  <T s={conflictWords} ex={ex} />
+                </p>
+              </Callout>
+            </section>
           )}
-        </>
-      ) : (
-        // Why an implementation is not offered is the contract's action line and
-        // is said once, above. This is only the step's own instructions where it
-        // has them; the eight reason branches that used to stand here were the
-        // same eight sentences a second time, chosen by a second reading of
-        // Foundation A inside the JSX.
-        (hasSteps || before.length > 0) && (
-          <div className="instruction">
-            <ol className="sections">{[...before.map((l) => <>{l}</>), ...instructions.steps.map((l) => <T s={l} ex={ex} />)].map((node, i) => <li key={i}>{node}</li>)}</ol>
-          </div>
-        )
-      )}
-      </section>
 
-      {/* The pack's attention panel, at the weight the step's own condition
-          gives it (Foundation B): a policy the baseline contradicts, or a step
-          the plan is blocked on, is the danger weight the pack draws for "do not
-          deploy"; everything else outstanding is the ordinary attention weight.
-          The severity is production's — nothing here reads a blocker to decide
-          how alarming it is. */}
-      <FixBeforeContinuing fix={contract.fix} tone={contract.state.condition === 'blocked' || contract.state.condition === 'baseline-conflict' ? 'danger' : 'warning'} />
+          {/* What must be fixed first, at the weight the step's own condition
+              gives it (Foundation B). The severity is production's. */}
+          <FixBeforeContinuing fix={contract.fix} tone={contract.state.condition === 'blocked' || contract.state.condition === 'baseline-conflict' ? 'danger' : 'warning'} />
 
-      {/* Where this step's own enforcement waits on the people it reaches being
-          able to sign in the way it asks, who those people are is MFA
-          Readiness's answer, not the Plan's (derive/stepMfaReadiness.ts). */}
-      <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
+          {showWhatToDo && (
+            <section className="step-section">
+              <h4>{HEAD.whatToDo}</h4>
+              {actionLead}
+              {/* The decision comes before the instructions, and on a step that
+                  needs one it *is* the action: IAMAI cannot choose, so nothing is
+                  offered to submit until a person has (Foundation C). */}
+              {decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+              {/* The create instructions. `needsCreate` is a proof that nothing
+                  qualifies; `createIfNeeded` is the same instructions offered to
+                  an operator who knows they need one (mapping/safetyChoice.ts). */}
+              {createIfNeeded && <p className="reason"><T s={w.createIfNeeded} ex={ex} /></p>}
+              {creates && <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>}
+              {ownSteps && (
+                <div className="instruction">
+                  <ol className="sections">{[...before.map((l) => <>{l}</>), ...instructions.steps.map((l) => <T s={l} ex={ex} />)].map((node, i) => <li key={i}>{node}</li>)}</ol>
+                </div>
+              )}
+            </section>
+          )}
 
-      {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
-        <section className="step-section">
-          <h4>{HEAD.dates}</h4>
-          <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
-        </section>
-      )}
+          <Implementation
+            channels={channels}
+            textOf={textOf}
+            portalLines={portalLines}
+            title={title}
+            empty={implementationEmptyOf(contract)}
+            open={dialog === 'implementation'}
+            onOpen={() => setDialog('implementation')}
+            onClose={closeDialog}
+            copy={copy}
+            copied={copied}
+          />
 
-      {/* Every step has a completion, and it is concrete. The step's own gates
-          where it has them; where a policy cannot be written yet, what would
-          clear that instead — which is exactly the step that used to render no
-          Done when at all (stepContract.ts doneWhenOf). */}
-      {/* Everywhere but the one kind of step with nothing left to do: a goal
-          the tenant already delivers says "keep it" under What to do, and its
-          completion line says the same thing again (stepContract.ts
-          `showsDoneWhen`). The contract still carries it for the print and the
-          export; the opened step says it once. */}
-      {showsDoneWhen(step) && <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />}
+          {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
+          <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
 
-      {/* Everything below the completion is audit depth and work artifacts: the
-          names behind the counts, the way back from a change nobody has made
-          yet, the recovery runbook, and the three copy boxes. None of it decides
-          the next action, so none of it stands between the operator and it. The
-          print opens More, so a printed step is unchanged. */}
-      <section className="step-section">
-      <More
-        cs={cs}
-        ex={ex}
-        step={step}
-        contractWho={whoHeld}
-        ifWrong={reason === null ? ifWrongLineFor(step, cs) : null}
-        comms={reason === null ? commsFor(cs, ex as Record<string, unknown>, step) : null}
-        onSkip={onSkip}
-        onUnskip={onUnskip}
-        onDoesntApply={onDoesntApply}
-        copy={copy}
-        copied={copied}
-        open={printing === true}
-      />
-      </section>
-
+          {/* The printed plan is the whole step: the evidence and More stand on
+              the page there, in the order they always printed. */}
+          {printing && (
+            <>
+              <WhatIamaiFound found={contract.found} />
+              {showWho && (
+                <section className="step-section">
+                  <h4>{HEAD.who}</h4>
+                  {lead && <p className="line">{lead}</p>}
+                  {whoInline.map((b) => <WhoBlockView key={b.key} block={b} />)}
+                  {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
+                </section>
+              )}
+              {reason === null && datesLineFor(step, cs) && whole(datesLineFor(step, cs), ex) && (
+                <section className="step-section">
+                  <h4>{HEAD.dates}</h4>
+                  <p className="line"><T s={datesLineFor(step, cs)} ex={ex} /></p>
+                </section>
+              )}
+              <section className="step-section">
+                <More
+                  cs={cs}
+                  ex={ex}
+                  step={step}
+                  contractWho={whoHeld}
+                  ifWrong={reason === null ? ifWrongLineFor(step, cs) : null}
+                  comms={reason === null ? commsFor(cs, ex as Record<string, unknown>, step) : null}
+                  onSkip={onSkip}
+                  onUnskip={onUnskip}
+                  onDoesntApply={onDoesntApply}
+                  copy={copy}
+                  copied={copied}
+                  open
+                />
+              </section>
+            </>
+          )}
         </div>
-        {/* The rail belongs to this step, not to the page: it sits inside the
-            frame, beside the main column at full width and under it once the
-            pack's own breakpoint collapses the body to one column. Where the
-            contract has nothing for it, there is no rail and no empty track. */}
-        {rail && <StepRail contract={contract} />}
+        {/* The rail belongs to this step: beside the main column at full width
+            and under it once the body collapses to one column. It is the Next
+            milestone and nothing else. */}
+        <StepRail contract={contract} />
       </div>
-      {/* The frame's own footer, under both columns (StepSections.tsx
-          StepFooter). It offers the existing scan action where the step's
-          content entry says a scan is how this step is verified, and Close
-          otherwise — never a disabled button kept for symmetry. */}
-      <StepFooter note={footerNote(contract)} onScan={cs.scanControl && onScan && footerOffersScan(step) ? onScan : null} onClose={onClose} />
+      <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
+      {!printing && (
+        <>
+          <StepDialog open={dialog === 'readiness'} onClose={closeDialog} eyebrow={CONTRACT.readiness.dialogEyebrow} title={CONTRACT.readiness.dialogTitle} closeLabel={CONTRACT.readiness.close}>
+            <div className="dialog-prose">
+              {contract.found.length > 0 && (
+                <>
+                  <h4>{CONTRACT.foundHeading}</h4>
+                  {contract.found.map((f) => <p key={f.key}>{f.text}</p>)}
+                </>
+              )}
+              {showWho && (
+                <>
+                  <h4>{HEAD.who}</h4>
+                  {lead && <p className="line">{lead}</p>}
+                  {whoFull.map((b) => <WhoBlockView key={b.key} block={b} />)}
+                  {contract.who !== null && !contract.who.known && <p className="reason">{contract.who.text}</p>}
+                </>
+              )}
+            </div>
+          </StepDialog>
+          <StepDialog open={dialog === 'rollout'} onClose={closeDialog} eyebrow={RO.eyebrow} title={RO.title} closeLabel={RO.cancel}>
+            <ReasonForm body={RO.body} label={RO.reason} placeholder={RO.placeholder} cancel={RO.cancel} confirm={RO.control} multiline onCancel={closeDialog} onConfirm={(r) => { closeDialog(); onSkip(r) }} />
+          </StepDialog>
+          <StepDialog open={dialog === 'doesnt-apply'} onClose={closeDialog} eyebrow={RO.eyebrow} title={SHARED.doesntApplyControl} closeLabel={RO.cancel}>
+            <ReasonForm body={fillText(SHARED.doesntApplyPrompt, { tenant: String(ex.tenant ?? '') })} label={RO.reason} placeholder="" cancel={RO.cancel} confirm="Save" onCancel={closeDialog} onConfirm={(r) => { closeDialog(); onDoesntApply?.(r) }} />
+          </StepDialog>
+        </>
+      )}
     </article>
+  )
+}
+
+/**
+ * The Implementation region (docs/design/approved/anatomy/plan-step-v1.html
+ * `.implementation-section`): the channels this step has, as pill tabs over a
+ * fixed preview with Copy and Expand on its corner, and the whole artifact in the
+ * implementation dialog. A step with no channel shows the one truthful no-action
+ * box instead (stepContract.ts implementationEmptyOf) and never an artifact.
+ *
+ * The artifacts are their own modules' — the portal translator's lines,
+ * stepPowerShell.ts, stepJson.ts and the prompts' step context — and nothing is
+ * composed here.
+ */
+function Implementation({ channels, textOf, portalLines, title, empty, open, onOpen, onClose, copy, copied }: {
+  channels: Channel[]
+  textOf: (ch: Channel) => string
+  portalLines: string[]
+  title: string
+  empty: ImplementationEmpty
+  open: boolean
+  onOpen: () => void
+  onClose: () => void
+  copy: (id: string, text: string) => void
+  copied: string | null
+}) {
+  const [chosen, setChosen] = useState<Channel>('portal')
+  const base = useId()
+  const dialogBase = useId()
+  const W = CONTRACT.implementation
+  // The chosen tab is clamped to what is available, so a step that offers only
+  // some channels cannot be left showing another's panel — the frame is reused
+  // across rows and the state is not.
+  const tab: Channel = channels.includes(chosen) ? chosen : (channels[0] ?? 'portal')
+  const tabs = CHANNEL_TABS.filter((t) => channels.includes(t.id as Channel))
+  const body = (cls: string) =>
+    tab === 'portal' ? (
+      <ol className={cls}>
+        {portalLines.map((l, i) => (
+          <li key={i}>{l}</li>
+        ))}
+      </ol>
+    ) : (
+      <pre className={`${cls} mono`}>{textOf(tab)}</pre>
+    )
+  return (
+    <section className="step-section implementation-section">
+      <h4>{W.heading}</h4>
+      {channels.length === 0 ? (
+        <ImplementationEmptyBox empty={empty} />
+      ) : (
+        <>
+          <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />
+          {tab === 'ai' && (
+            <div className="ai-warning">
+              <Callout kind="warning">{W.aiWarning}</Callout>
+            </div>
+          )}
+          <div className="impl-preview" {...onePanelProps(base, tab)}>
+            <div className="preview-actions no-print">
+              <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', textOf(tab))}>
+                <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
+              </button>
+              <button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}>
+                <Icon name="external-link" size={14} />
+              </button>
+            </div>
+            {body('preview-text')}
+          </div>
+          <StepDialog open={open} onClose={onClose} eyebrow={W.dialogEyebrow} title={title} sub={tabs.find((t) => t.id === tab)?.label ?? null} closeLabel={W.close} wide>
+            <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
+            {tab === 'ai' && (
+              <div className="ai-warning">
+                <Callout kind="warning">{W.aiWarning}</Callout>
+              </div>
+            )}
+            <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
+          </StepDialog>
+        </>
+      )}
+    </section>
+  )
+}
+
+/**
+ * The reason a rollout exception is recorded with. It is mounted only while its
+ * dialog is open, so every opening starts empty, and it confirms nothing until
+ * there is a reason to record.
+ */
+function ReasonForm({ body, label, placeholder, cancel, confirm, multiline = false, onCancel, onConfirm }: {
+  body: string
+  label: string
+  placeholder: string
+  cancel: string
+  confirm: string
+  multiline?: boolean
+  onCancel: () => void
+  onConfirm: (reason: string) => void
+}) {
+  const [reason, setReason] = useState('')
+  const id = useId()
+  const given = reason.trim()
+  return (
+    <div className="dialog-prose">
+      <p>{body}</p>
+      <label className="key-label" htmlFor={id}>
+        {label}
+      </label>
+      {multiline ? (
+        <textarea id={id} className="rollout-field" value={reason} placeholder={placeholder} onChange={(e) => setReason(e.currentTarget.value)} />
+      ) : (
+        <input id={id} type="text" required className="rollout-field rollout-field-line" value={reason} onChange={(e) => setReason(e.currentTarget.value)} />
+      )}
+      <div className="dialog-actions-row">
+        <Button variant="secondary" onClick={onCancel}>
+          {cancel}
+        </Button>
+        <Button variant="primary" disabled={given.length === 0} onClick={() => { if (given.length > 0) onConfirm(given) }}>
+          {confirm}
+        </Button>
+      </div>
+    </div>
   )
 }
 

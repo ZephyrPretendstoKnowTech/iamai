@@ -163,7 +163,11 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // The Plan board's focus controls carry the same two shapes: a dot beside
       // the control's own word, and the count in a full round beside it
       // (docs/design/approved/reference/iamai-plan-organization-final.html).
-      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector) || /\.plan-controls \.dot/.test(r.selector))) continue
+      // The opened Plan step's readiness mark and its implementation preview's
+      // Copy and Expand controls are circles in the approved design
+      // (docs/design/approved/anatomy/plan-step-v1.html `.readiness-status`,
+      // `.icon-btn{border-radius:50%}`); the mark sits beside its tile's words.
+      if (v === '50%' && (/\.status::before/.test(r.selector) || /spinner|infotip-btn/.test(r.selector) || /\.connect-status \.dot/.test(r.selector) || /\.rung-badge/.test(r.selector) || /\.side-list \.tiny/.test(r.selector) || /\.plan-controls \.dot/.test(r.selector) || /\.readiness-status\b/.test(r.selector) || /\.icon-btn\b/.test(r.selector))) continue
       // A picker's chip is a pill (the accent tint, the name, a separate x),
       // and so is the shared `.pill` role — the Plan pack's state badge and the
       // MFA pack's readiness cell are both `border-radius:999px`
@@ -173,7 +177,9 @@ test('design 3: a border-radius is one of the three shape tokens, except a circl
       // and the approved Connect step's numbered badge, which that pack draws as
       // a full round rather than a value on the 4/8/12 hierarchy
       // (docs/design/approved/anatomy/connect-v3.html `.num{border-radius:999px}`).
-      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b|\.plan-controls \.count/.test(r.selector)) continue
+      // And the opened Plan step's implementation channels, which the approved
+      // design draws as pills (plan-step-v1.html `.impl-tab{border-radius:999px}`).
+      if (v === '999px' && /\.chip-(select|remove)|\.pill\b|\.connect-step \.n\b|\.plan-controls \.count|\.impl-tabs \.tab\b/.test(r.selector)) continue
       hits.push(where(r, `border-radius: ${v}`))
     }
   }
@@ -243,7 +249,11 @@ test('design 5: a state colour is painted only where a word or an icon carries t
   //                    beside the proof line it marks, so the glyph and the
   //                    line's words both say it and the colour says it a third time.
   const STATE = /var\(--(success|attention|danger|admin|unproven)(-text)?\)|var\(--idle\)|var\(--rung-\d\)/
-  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-|\.proof-mark-/
+  //   .readiness-status-*
+  //                    the opened Plan step's readiness mark (docs/design/approved/
+  //                    anatomy/plan-step-v1.html `.readiness-status`): a ✓ ! … glyph
+  //                    beside the tile's own label and value, so the words say it.
+  const CARRIES_A_WORD = /\.status|\.callout-|\.connect-step|\.connect-status|\.connect-destination|\.rung-|\.stat-n|\.stage-|\.side-list \.tiny|\.role-|\.print-|\.plan-controls \.dot-|\.proof-mark-|\.readiness-status-/
   const hits = rules
     .filter((r) => STATE.test(r.body) && !CARRIES_A_WORD.test(r.selector))
     .map((r) => where(r, r.body.match(STATE)?.[0] ?? ''))

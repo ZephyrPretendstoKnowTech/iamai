@@ -11,8 +11,9 @@
 // CONTENT ANATOMY inside that frame (task 035): the join between them, the
 // head, the lifecycle track, the main/rail body and its responsive collapse,
 // the sticky shell the pack asks the Plan for, the canonical section order, the
-// findings cards, the attention treatment, the action strip over its
-// instruction block, the More disclosure and the rail's side blocks.
+// Readiness region, the attention treatment, the Implementation region and its
+// dialogs, the Next milestone rail and the footer (owner update, Sep 10, 2026),
+// and the five canonical states through that one frame.
 //
 // Applying that grammar to every step VARIANT, and retiring the bespoke
 // branches it makes redundant, is pack 036's.
@@ -30,7 +31,9 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { statusOf } from './statusWord.ts'
-import { CONTRACT, stageClass, stepContract, stepTrack as trackFor } from './stepContract.ts'
+import { CONTRACT, badgeLabel, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stageClass, stepContract, stepTrack as trackFor } from './stepContract.ts'
+import type { StepContract } from './stepContract.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -390,18 +393,17 @@ test('the frame has a main column and the step’s own rail, and the rail surviv
   assert.match(pack, /\.step-body\{display:grid;grid-template-columns:minmax\(0,1fr\) 290px\}/, 'the pack no longer draws a main column and a rail')
   assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.step-body\{grid-template-columns:1fr\}/, 'the pack no longer collapses the body to one column')
   assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.step-side\{border-left:0;border-top:1px solid var\(--line\)\}/, 'the pack no longer moves the rail below the main column')
-  // Production: the same two tracks, and the rail belongs to the step's frame
-  // rather than to the page.
   assert.match(rule('.step-body.has-rail'), /grid-template-columns: minmax\(0, 1fr\) 290px;/, 'the desktop body is not main + rail')
   assert.match(rule('.step-side'), /border-left: 1px solid var\(--line\);/, 'the rail is not divided from the main column')
   const narrow = atWidth(940)
   assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/, 'the body does not collapse to one column')
   assert.match(narrow, /\.step-side \{[\s\S]*border-top: 1px solid var\(--line\);/, 'the rail does not move below the main column')
   assert.equal(/\.step-side \{[^}]*display:\s*none/.test(narrow), false, 'the rail is hidden rather than moved')
-  // One rail, in one place in the DOM, at every width: no second copy for a
-  // second layout, so reading order and rendered order cannot diverge.
+  // One rail, in one place in the DOM, on every step: the Next milestone is a
+  // fact every step has, so the rail is never gated and never duplicated.
   assert.equal(CONTENT_STEP.split('<StepRail').length - 1, 1, 'the step draws more than one rail')
-  assert.match(CONTENT_STEP, /\{rail && <StepRail contract=\{contract\} \/>\}/, 'the rail is not gated on the contract having something for it')
+  assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
+  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
 })
 
 test('the Plan’s topbar sticks, through the one shell the product already has', () => {
@@ -409,29 +411,25 @@ test('the Plan’s topbar sticks, through the one shell the product already has'
   assert.match(pack, /\.topbar\{[\s\S]{0,60}position:sticky;top:0/, 'the pack no longer defines a sticky topbar')
   assert.match(SHELL, /const sticky = planActive/, 'the Plan does not turn on the sticky shell its pack asks for')
   assert.match(SHELL, /className=\{`shell\$\{sticky \? ' shell-sticky' : ''\}`\}/, 'the sticky state is not set on the one shell')
-  // The capability stays task 030's one rule, with the anchor offset it needs;
-  // no second navigation shell was built for the Plan.
   assert.match(CSS, /\.shell\.shell-sticky header\.app \{[\s\S]*?position: sticky;/, 'the sticky rule left the shell')
   assert.match(CSS, /\.shell\.shell-sticky \[id\] \{\s*\n\s*scroll-margin-top:/, 'a sticky header without an anchor offset lands every in-page link under itself')
   assert.equal(SHELL.match(/<header className="app">/g)?.length, 1, 'the shell renders more than one application header')
 })
 
 test('the frame is production’s composition, not a second reading of the engine', () => {
-  // The frame moved markup. It must not have moved a DECISION into the markup:
-  // the head, the track and the rail render `stepContract` and nothing else.
-  // The code, without its prose: a comment naming the authority the component
-  // defers to is the documentation this file wants, not the second reading it
-  // forbids.
+  // The head, the track, the rail, the footer, Readiness and the dialogs render
+  // the contract and nothing else. The code, without its prose: a comment naming
+  // the authority a component defers to is documentation, not a second reading.
   const parts = code(SECTIONS.slice(SECTIONS.indexOf('export function StepHead('), SECTIONS.indexOf('export function PolicyMembers(')))
   for (const forbidden of ['implementationOffered', 'unavailableReason', 'policyHold', 'nextMilestone', 'statusOf', 'projectStatus', 'heldForReview']) {
     assert.equal(parts.includes(forbidden), false, `the frame calls ${forbidden}; the contract already answered it`)
   }
-  // The projection itself reads Foundation B's lifecycle and never rebuilds one:
-  // a stage is reached because the recorded lifecycle is past it, and a goal the
-  // tenant already satisfies draws no rollout it never had.
+  // The projection reads Foundation B's lifecycle and never rebuilds one: a stage
+  // is reached because the recorded lifecycle is past it; a set-aside step and a
+  // step whose source contradicts itself draw no rollout.
   assert.match(CONTRACT_SRC, /const LIFECYCLE_ORDER: Lifecycle\[\] = \['not-deployed', 'report-only', 'ready-to-enforce', 'enforced'\]/, 'the lifecycle order left the contract')
   const trackOf = CONTRACT_SRC.slice(CONTRACT_SRC.indexOf('function stepTrack'), CONTRACT_SRC.indexOf('function stepTrack') + 700)
-  assert.match(trackOf, /if \(s\.lifecycle === null \|\| s\.setAside \|\| s\.inPlace\) return \[\]/, 'a rollout is drawn for a step that never had one')
+  assert.match(trackOf, /if \(s\.lifecycle === null \|\| s\.setAside \|\| s\.condition === 'baseline-conflict'\) return \[\]/, 'a rollout is drawn for a step that has none')
   for (const forbidden of ['advanceState', 'setState', 'Date.', 'percent']) {
     assert.equal(trackOf.includes(forbidden), false, `the track projection ${forbidden}: it may only restate the recorded lifecycle`)
   }
@@ -442,59 +440,51 @@ test('the track projects the recorded lifecycle and nothing else', () => {
     const t = trackFor(s)
     return { labels: t.map((x) => x.label), reached: t.map((x) => x.reached), current: t.findIndex((x) => x.current) }
   }
-  // Not deployed: four stages, none reached, the first current.
   assert.deepEqual(at(step({})).labels, ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced'])
   assert.deepEqual(at(step({})).reached, [false, false, false, false])
   assert.equal(at(step({})).current, 0)
-  // Report-only: the stage before it is behind the policy, because a policy in
-  // report-only has been deployed. Nothing beyond it is claimed.
   const ro = step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'report-only', condition: 'healthy' } })
   assert.deepEqual(at(ro).reached, [true, false, false, false])
   assert.equal(at(ro).current, 1)
-  // The condition moves on its own axis and moves no stage: a held report-only
-  // policy is at exactly the stage a healthy one is at.
+  // The condition moves on its own axis and moves no stage.
   const held = step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'report-only', condition: 'review-required' } })
   assert.deepEqual(at(held), at(ro), 'a condition advanced or retreated the lifecycle')
   const blocked = step({ status: 'blocked', state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'blocked' } })
   assert.deepEqual(at(blocked).reached, [false, false, false, false], 'a blocked step claims progress it has not made')
-  // A goal the tenant already satisfies was never on this plan's lifecycle, and
-  // a set-aside step has left it: neither gets a rollout drawn for it.
-  assert.deepEqual(trackFor(step({ status: 'done', state: { inPlace: true, setAside: false, satisfied: true, lifecycle: 'enforced', condition: 'healthy' } })), [])
+  // A goal the tenant already delivers draws the lifecycle its policy recorded:
+  // the approved In-place variant draws four reached stages.
+  const pack = read(PACK)
+  const v4 = pack.slice(pack.indexOf('id="v4"'), pack.indexOf('id="v5"'))
+  assert.equal(v4.split('<div class="stage done"></div>').length - 1, 4, 'the pack no longer draws the In-place lifecycle as reached')
+  assert.deepEqual(at(step({ status: 'done', state: { inPlace: true, setAside: false, satisfied: true, lifecycle: 'enforced', condition: 'healthy' } })).reached, [true, true, true, true])
+  // A resolution step draws no track, whatever lifecycle it carries — and the pack draws none.
+  const v5 = pack.slice(pack.indexOf('id="v5"'), pack.indexOf('id="decisions"'))
+  assert.equal(v5.includes('class="track"'), false, 'the pack now draws a lifecycle on its resolution variant')
+  assert.deepEqual(trackFor(step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: 'not-deployed', condition: 'baseline-conflict' } })), [])
   assert.deepEqual(trackFor(step({ state: { inPlace: false, setAside: true, satisfied: false, lifecycle: 'not-deployed', condition: 'healthy' } })), [])
   assert.deepEqual(trackFor(step({ state: { inPlace: false, setAside: false, satisfied: false, lifecycle: null, condition: 'healthy' } })), [])
 })
 
 test('no generated attribution or tagline came in with the design work', () => {
-  // The approved packs are a visual authority and not a copy one; the branding
-  // previews are authority for nothing at all. Neither may put a name or a
-  // strapline into the product.
   for (const file of ['src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/StepSections.tsx', 'src/ui/surfaces/PlanFooter.tsx', 'src/ui/app.css']) {
     assert.equal(/jon hope|built by/i.test(read(file)), false, `${file} carries a generated attribution`)
   }
-  // The one place the name appears is the home page's sentence about who wrote
-  // the BASELINE, which is a fact about the package and predates the design
-  // work (task 016). It is not an IAMAI byline, and nothing in the restoration
-  // turned it into one: task 038 moved the sentence into the approved Home's
-  // side rail, where the rail's own heading names the package, and there is
-  // still exactly one mention.
   const content = read('docs/design/content.json')
   const mentions = [...content.matchAll(/[^"]*built by Jon Hope[^"]*/gi)].map((m) => m[0].trim())
   assert.equal(mentions.length, 1, 'a second attribution was added')
   assert.match(mentions[0], /Conditional Access policies, built by Jon Hope, a Microsoft MVP\.$/, 'the baseline author sentence changed')
-  // It attributes the baseline, never the product. IAMAI's own About is the
-  // owner's, and no byline sits under the wordmark.
   const home = JSON.parse(content).pages.home as { about: string; baseline: string; brand: string }
   assert.match(home.about, /^Built by Lachlan Robinette\./)
   assert.ok(!home.brand.includes('Jon Hope'), 'the wordmark carries an attribution')
 })
 
-// ------------------------------------------------ pack 035: the content anatomy
+// ------------------------------------ the approved step anatomy (owner update, Sep 10, 2026)
 
-/** The opened step's main column, which is all of the markup pack 035 orders. */
+/** The opened step's main column, which is all of the markup the anatomy orders. */
 const MAIN = ((): string => {
   const from = CONTENT_STEP.indexOf('<div className="step-main">')
   assert.ok(from >= 0, 'ContentStep still draws the main column')
-  return CONTENT_STEP.slice(from, CONTENT_STEP.indexOf('{rail && <StepRail', from))
+  return CONTENT_STEP.slice(from, CONTENT_STEP.indexOf('<StepRail contract', from))
 })()
 
 /** Every step of a fixture with its contract: the plan as a person actually reads it. */
@@ -514,26 +504,38 @@ function contractsOf(name: 'demo' | 'demo-week2' | 'messy' | 'hostile') {
   return r.steps.map((step) => ({ step, c: stepContract(step, ctx(step)) }))
 }
 
-test('the opened step runs the pack’s section order, and each section is a section', () => {
+type VariantId = 'v1' | 'v2' | 'v3' | 'v4' | 'v5'
+const VARIANTS: VariantId[] = ['v1', 'v2', 'v3', 'v4', 'v5']
+
+/** One canonical variant of the approved pack, by its id. */
+function variant(pack: string, id: VariantId): string {
+  const i = VARIANTS.indexOf(id)
+  const from = pack.indexOf(`id="${id}"`)
+  const to = i < VARIANTS.length - 1 ? pack.indexOf(`id="${VARIANTS[i + 1]}"`) : pack.indexOf('id="decisions"')
+  assert.ok(from > 0 && to > from, `the pack no longer draws variant ${id}`)
+  return pack.slice(from, to)
+}
+
+/** The regions a pack variant's main column draws, in order: a section's heading, or the attention panel it holds. */
+const regions = (html: string): string[] =>
+  [...html.matchAll(/<section class="step-section[^"]*"[^>]*>\s*(?:<h4>([^<]+)<\/h4>|<div class="attention( danger)?">)/g)].map((m) => m[1] ?? (m[2] ? 'attention danger' : 'attention'))
+
+test('every approved variant draws the same regions, and production runs them in that order', () => {
   const pack = read(PACK)
-  // The pack states the order twice, and both statements have to still be
-  // there: as its numbered step contract, and as the sections its variants
-  // actually draw.
-  const rules = pack.slice(pack.indexOf('<div class="rules"'), pack.indexOf('</section>', pack.indexOf('<div class="rules"')))
-  assert.deepEqual(
-    [...rules.matchAll(/<strong>([^<]+)<\/strong>/g)].map((m) => m[1]),
-    ['State / next milestone', 'Why', 'What IAMAI found', 'Who this touches', 'What to do', 'Fix before continuing', 'Done when', 'More'],
-    'the pack no longer states the canonical section order',
-  )
-  const v1 = pack.slice(pack.indexOf('<!-- V1 -->'), pack.indexOf('<!-- V2 -->'))
-  assert.deepEqual(
-    [...v1.matchAll(/<section class="step-section"><h4>([^<]+)<\/h4>/g)].map((m) => m[1]),
-    ['Why', 'What IAMAI found', 'Who this touches', 'What to do', 'Done when'],
-    'the pack no longer draws its sections in that order',
-  )
-  // Production: the same order, read off the markup rather than off a comment.
-  // The anchors are what each section is, not what it says, so a wording change
-  // does not silently reorder the step.
+  assert.match(pack, /Right rail is intentionally Next milestone only in current canonical variants/, 'the pack no longer states that the rail is Next milestone only')
+  assert.deepEqual(regions(variant(pack, 'v1')), ['Why', 'Readiness', 'Implementation', 'Done when'])
+  assert.deepEqual(regions(variant(pack, 'v2')), ['Why', 'Readiness', 'What to do', 'Implementation', 'Done when'])
+  assert.deepEqual(regions(variant(pack, 'v3')), ['Why', 'Readiness', 'attention', 'What to do', 'Implementation', 'Done when'])
+  assert.deepEqual(regions(variant(pack, 'v4')), ['Why', 'Readiness', 'What to do', 'Implementation', 'Done when'])
+  assert.deepEqual(regions(variant(pack, 'v5')), ['Why', 'Readiness', 'attention danger', 'What to do', 'Implementation', 'Done when'])
+  // The regions the owner's update took out of the step, and that none of the
+  // canonical variants draws.
+  for (const id of VARIANTS) {
+    for (const gone of ['What IAMAI found', 'Who this touches', '<details class="more"']) assert.equal(variant(pack, id).includes(gone), false, `${id} draws ${gone} again`)
+  }
+
+  // Production: the same order, read off the markup. The anchors are what each
+  // region is, not what it says, so a wording change does not reorder the step.
   const at = (needle: string): number => {
     const i = MAIN.indexOf(needle)
     assert.ok(i >= 0, `the opened step no longer renders ${needle}`)
@@ -541,220 +543,271 @@ test('the opened step runs the pack’s section order, and each section is a sec
   }
   const order = [
     ['why', at('<h4>{HEAD.why}</h4>')],
-    ['found', at('<WhatIamaiFound found={contract.found} />')],
-    ['who', at('<h4>{HEAD.who}</h4>')],
-    ['what to do', at('<h4>{HEAD.whatToDo}</h4>')],
-    ['fix', at('<FixBeforeContinuing fix={contract.fix}')],
+    ['readiness', at('<ReadinessSection')],
+    ['conflict attention', at('{conflictWords && (')],
+    ['fix attention', at('<FixBeforeContinuing fix={contract.fix}')],
+    ['what to do', at('{showWhatToDo && (')],
+    ['implementation', at('<Implementation\n')],
     ['done when', at('<DoneWhen heading={HEAD.doneWhen}')],
-    ['more', at('<More')],
   ] as const
-  assert.deepEqual(
-    [...order].sort((a, b) => a[1] - b[1]).map((x) => x[0]),
-    order.map((x) => x[0]),
-    'the opened step’s sections are not in the pack’s order',
-  )
-  // The conflict notice is the one deliberate difference from the pack's own
-  // conflict variant, and it is the safe direction: the pack has nothing above
-  // Why to be above, and production does, so "do not deploy this policy" stays
-  // at the top of the step rather than arriving after two sections.
-  assert.ok(MAIN.indexOf('{conflictWords && (') < order[0][1], 'the baseline-conflict notice sank below Why')
-
-  // And each of them is the pack's ruled section, in production and in the pack.
+  assert.deepEqual([...order].sort((a, b) => a[1] - b[1]).map((x) => x[0]), order.map((x) => x[0]), 'the opened step’s regions are not in the approved order')
+  // What IAMAI found, Who this touches, Dates and More are on the printed page
+  // only; on screen they are the Readiness evidence dialog, outside the column.
+  const printed = at('{printing && (')
+  for (const needle of ['<WhatIamaiFound', '<More', '<h4>{HEAD.who}</h4>', '<h4>{HEAD.dates}</h4>']) {
+    assert.ok(at(needle) > printed, `${needle} is on the opened step outside the printed page`)
+  }
+  // Done when is drawn on every step, gated by nothing.
+  assert.match(MAIN, /\n\s*<DoneWhen heading=\{HEAD\.doneWhen\} lines=\{contract\.doneWhen\} \/>/, 'Done when is gated')
+  // Each region is the pack's ruled section.
   assert.match(pack, /\.step-section\{padding:19px 0;border-bottom:1px solid var\(--line\)\}/, 'the pack no longer rules its sections')
-  assert.match(pack, /\.step-section:last-child\{border-bottom:0\}/, 'the pack no longer drops the last rule')
   assert.match(rule('.step-section'), /border-bottom: 1px solid var\(--line\);/, 'production’s sections are not divided')
   assert.match(rule('.step-section:last-child'), /border-bottom: 0;/, 'the last section keeps a rule under it')
-  // Real elements, so the division a reader sees is the structure a screen
-  // reader walks — not a border drawn between two loose headings.
-  assert.ok(MAIN.split('<section className="step-section">').length - 1 >= 5, 'the sections are not <section> elements')
 })
 
-test('What IAMAI found draws the pack’s cards, over facts the contract already built', () => {
+test('Readiness is the pack’s tiles over its bar, from facts the contract already holds', () => {
   const pack = read(PACK)
-  assert.match(pack, /\.findings\{display:grid/, 'the pack no longer lays the findings out as cards')
-  assert.match(pack, /\.finding\{border:1px solid var\(--line\)/, 'the pack’s finding card lost its edge')
-  assert.match(pack, /\.finding \.k\{[^}]*text-transform:uppercase/, 'the pack’s finding no longer carries a key over it')
-  // Production draws the same card with the shared key-label role.
-  assert.match(rule('.step .finding'), /border: 1px solid var\(--line\);/)
-  assert.match(SECTIONS, /<li key=\{f\.key\} className="finding">/, 'the findings are not cards')
-  assert.match(SECTIONS, /<span className="key-label">\{f\.label\}<\/span>/, 'a finding no longer carries its key')
-
-  // The component presents; it does not count. Nothing in it reads a step, adds
-  // up a population or decides which findings there are.
-  const found = code(SECTIONS.slice(SECTIONS.indexOf('export function WhatIamaiFound('), SECTIONS.indexOf('export function FixBeforeContinuing(')))
-  for (const forbidden of ['step.', 'reduce(', 'filter(', '.length >', 'Number(', 'Math.']) {
-    assert.equal(found.includes(forbidden), false, `the findings component ${forbidden}: the contract already built the list`)
-  }
-
-  // And the labels are real: every finding the contract produces on every
-  // fixture has one, from the content file rather than from the component.
-  const labelled = new Set<string>()
-  let any = 0
+  assert.match(pack, /\.readiness-strip\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);gap:10px\}/, 'the pack no longer lays Readiness out as three tiles')
+  assert.match(pack, /\.readiness-tile\{[^}]*min-height:104px/, 'the pack’s tile lost its height')
+  assert.match(pack, /\.readiness-bar\{display:flex;justify-content:space-between/, 'the pack’s bar is gone')
+  assert.match(pack, /Why IAMAI says this →/, 'the pack no longer opens the readiness evidence')
+  assert.match(pack, /<dialog aria-labelledby="readiness-dialog-title" id="readiness-dialog">/, 'the pack’s readiness dialog is gone')
+  assert.match(rule('.step .readiness-strip'), /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/, 'production’s strip is not three tracks')
+  assert.match(rule('.step .readiness-tile'), /min-height: 104px;/)
+  assert.match(rule('.step .readiness-bar'), /justify-content: space-between;/)
+  // The component presents; it does not count, and a mark never carries a state on its own.
+  const section = code(SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box')))
+  for (const forbidden of ['step.', 'reduce(', 'Math.', 'implementation.offered']) assert.equal(section.includes(forbidden), false, `Readiness ${forbidden}`)
+  assert.match(section, /className=\{`readiness-strip tiles-\$\{readiness\.tiles\.length\}`\}/, 'the strip is padded to three tracks')
+  assert.match(section, /aria-hidden="true"/, 'the tile mark is announced as content')
+  assert.match(section, /<strong>\{t\.value\}<\/strong>/, 'a tile’s state is not a word')
+  // And over every plan the fixtures build: one to three tiles, each a label over
+  // a value the contract holds, and a headline from the content file.
+  const bars = new Set(Object.values(CONTRACT.readiness.bar))
   for (const name of ['demo', 'demo-week2', 'messy', 'hostile'] as const) {
-    for (const { step, c } of contractsOf(name)) {
-      for (const f of c.found) {
-        any++
-        labelled.add(f.key)
-        assert.equal(typeof f.label, 'string', `${name}/${step.id}: a finding with no key over it`)
-        assert.ok(f.label.length > 0, `${name}/${step.id}: a finding’s key is empty`)
-        assert.equal(f.label, CONTRACT.foundLabel[f.key], `${name}/${step.id}: the key did not come from the content file`)
-        // The card is a key over the finding, never a headline production never
-        // wrote: the text is the contract's own sentence, whole.
-        assert.equal(f.text.trim(), f.text)
-        assert.ok(f.text.length > 0)
-      }
+    for (const { step: s, c } of contractsOf(name)) {
+      const r = readinessOf(s, c)
+      assert.ok(r.tiles.length >= 1 && r.tiles.length <= 3, `${name}/${s.id}: ${r.tiles.length} tiles`)
+      for (const t of r.tiles) assert.ok(t.label.trim() !== '' && t.value.trim() !== '', `${name}/${s.id}: an empty tile`)
+      assert.ok(bars.has(r.bar.main), `${name}/${s.id}: the bar’s headline is not the content file’s`)
+      const people = r.tiles.find((t) => t.key === 'people')
+      if (people && c.who?.known) assert.equal(people.value, c.who.text, `${name}/${s.id}: the people tile counts on its own`)
     }
   }
-  assert.ok(any > 0, 'no fixture produces a finding, so this proves nothing')
-  assert.ok(labelled.size >= 2, 'only one kind of finding was exercised')
-  // Nothing is padded to fill the pack's three sample columns.
-  const counts = new Set(contractsOf('demo').map(({ c }) => c.found.length))
-  assert.ok(!counts.has(3) || counts.size > 1, 'every step reports exactly three findings, which would mean they are being made up')
 })
 
-test('a blocker is the pack’s attention panel, at production’s severity, and never inside More', () => {
+test('Implementation is the pack’s pill channels over a fixed preview, or one truthful no-action box', () => {
   const pack = read(PACK)
-  assert.match(pack, /\.attention\{border:1px solid[^}]*\}/, 'the pack no longer draws an attention panel')
-  assert.match(pack, /\.attention\.danger\{border-color/, 'the pack no longer has a danger weight for it')
-  // Production draws it with the shared `.callout` role — the same object task
-  // 031 established, not a second one for the Plan.
-  const fix = SECTIONS.slice(SECTIONS.indexOf('export function FixBeforeContinuing('), SECTIONS.indexOf('/** The one next operator action'))
-  assert.match(fix, /<Callout kind=\{tone\}>/, 'Fix before continuing is not the attention panel')
-  assert.match(fix, /<h4>\{CONTRACT\.fixHeading\}<\/h4>/, 'the blocker list lost its heading')
-  // The severity is production's, from the condition Foundation B recorded, and
-  // is chosen once, at the call site, from the contract's own state.
-  assert.match(MAIN, /tone=\{contract\.state\.condition === 'blocked' \|\| contract\.state\.condition === 'baseline-conflict' \? 'danger' : 'warning'\}/, 'the attention weight is not read off the step’s condition')
-  assert.equal(code(fix).includes('condition'), false, 'the panel decides its own severity')
+  const v1 = variant(pack, 'v1')
+  assert.deepEqual([...v1.matchAll(/class="impl-tab(?: active)?"[^>]*>([^<]+)</g)].map((m) => m[1]), ['Entra', 'PowerShell', 'JSON', 'AI Info'], 'the pack’s channels moved')
+  assert.match(pack, /\.impl-tab\{[^}]*border-radius:999px/, 'the pack’s channels are no longer pills')
+  assert.match(pack, /\.impl-preview\{height:112px/, 'the pack’s preview lost its height')
+  assert.match(v1, /aria-label="Copy implementation"[\s\S]*aria-label="Expand implementation"/, 'the pack’s preview controls are gone')
+  assert.match(pack, /<dialog aria-labelledby="implementation-dialog-title" id="implementation-dialog">/, 'the pack’s implementation dialog is gone')
+  // The variants that offer nothing draw the no-action box at the weight of their reason.
+  assert.match(variant(pack, 'v2'), /class="implementation-empty"/)
+  assert.match(variant(pack, 'v3'), /class="implementation-empty warn"/)
+  assert.match(variant(pack, 'v4'), /class="implementation-empty good"/)
+  assert.match(variant(pack, 'v5'), /class="implementation-empty danger"/)
+  for (const id of ['v2', 'v3', 'v4', 'v5'] as const) assert.equal(variant(pack, id).includes('class="impl-tab'), false, `${id} offers an implementation`)
 
-  // Nothing safety-critical is under the disclosure. More carries audit depth
-  // and work artifacts; the blockers, the action, the completion and the
-  // conflict notice all stay on the default step.
-  const more = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function More('))
-  for (const forbidden of ['FixBeforeContinuing', 'contract.fix', 'DoneWhen', 'contract.doneWhen', 'WhatToDoLead', 'conflictWords', 'Callout']) {
-    assert.equal(more.includes(forbidden), false, `More carries ${forbidden}; a blocker behind a disclosure is a blocker somebody skips`)
-  }
-})
-
-test('the three channels are the pack’s strip over its instruction block, and consume one authority', () => {
-  const pack = read(PACK)
-  assert.match(pack, /<div class="action-tabs">[\s\S]{0,200}?PowerShell/, 'the pack no longer draws the three-channel strip')
-  assert.match(pack, /\.action-tabs\{display:flex/, 'the pack’s strip is gone')
-  assert.match(pack, /\.instruction\{border:1px solid var\(--line\)/, 'the pack’s instruction block lost its edge')
-  // Production: the shared strip wearing the Plan's own treatment, over a panel
-  // with the pack's edge. The strip is not a second tab implementation.
-  assert.match(MAIN, /className="tabs action-tabs no-print"/, 'the action strip is not the Plan’s treatment of the shared tab role')
-  assert.equal(MAIN.includes('role="tablist"'), false, 'the step hand-rolled a tab strip')
-  assert.match(rule('.step .instruction'), /border: 1px solid var\(--line\);/, 'the instruction block has no edge')
-  assert.match(rule('.step .tabs.action-tabs .tab'), /border: 1px solid var\(--line\);/, 'the action tabs are not the pack’s chips')
-  // The selected tab is not a colour alone: aria-selected drives it, and the
-  // treatment is a border, a fill and the ink together.
-  const active = rule(".step .tabs.action-tabs .tab.active,\n.step .tabs.action-tabs .tab[aria-selected='true']")
-  for (const prop of ['color:', 'border-color:', 'background:']) assert.ok(active.includes(prop), `the selected channel is signalled by ${prop.replace(':', '')} alone`)
-
-  // Whether a channel carries anything is Foundation A's one answer, read from
-  // the contract that already asked it. The surface asks nothing itself.
-  assert.match(MAIN, /tab === 'json' && contract\.implementation\.offered/, 'the JSON tab does not read the contract’s answer')
-  assert.match(MAIN, /tab === 'ps' && contract\.implementation\.offered/, 'the PowerShell tab does not read the contract’s answer')
-  assert.equal(CONTENT_STEP.includes('jsonOffered('), false, 'the surface re-reads the implementation gate')
-  assert.equal(CONTENT_STEP.includes('implementationOffered('), false, 'the surface asks Foundation A directly')
-  // And the artifacts are their own modules': nothing is composed in the JSX.
-  assert.match(MAIN, /<pre className="mono">\{policyJsonText\(step\)\}<\/pre>/, 'the JSON is not stepJson.ts’s')
-  assert.match(MAIN, /<pre className="mono">\{powershellFor\(stepOperations\(step\)\)\}<\/pre>/, 'the commands are not stepPowerShell.ts’s')
+  assert.match(rule('.step .tabs.impl-tabs .tab'), /border-radius: 999px;/, 'production’s channels are not pills')
+  assert.match(rule('.step .impl-preview'), /height: 112px;/, 'production’s preview lost its height')
+  assert.match(CONTENT_STEP, /className="tabs impl-tabs no-print"/, 'the channels are not the shared tab role')
+  // The artifacts are their own modules', and nothing is composed in the JSX.
+  assert.match(CONTENT_STEP, /policyJsonText\(step\)/)
+  assert.match(CONTENT_STEP, /powershellFor\(stepOperations\(step\)\)/)
+  assert.match(CONTENT_STEP, /stepContext\(step, \(s\) => stepExportView\(s, ctx\)\)/, 'AI Info is not the step context the prompts ground themselves in')
   for (const forbidden of ['JSON.stringify', 'conditions:', 'grantControls', 'displayName:']) {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the surface builds ${forbidden}; policy JSON is not composed in presentation`)
   }
-  // A long policy body scrolls inside the block rather than widening the step.
-  assert.match(rule('.step .instruction pre.mono'), /background: transparent;/, 'the code carries a second inset box inside the instruction panel')
-  assert.match(rule('.step-body pre.mono'), /overflow-x: auto;/, 'a long line widens the step instead of scrolling')
+  // Tenant context is flagged wherever the AI channel is shown.
+  assert.equal(CONTENT_STEP.split("{tab === 'ai' && (").length - 1, 2, 'the AI channel is shown without its tenant-context warning')
+  assert.match(rule('.step .impl-preview .preview-text'), /overflow-wrap: anywhere;/, 'a long line widens the step')
 })
 
-test('Done when and More are the contract’s, and More is a real disclosure', () => {
+test('Done when is prose on every step, and the footer carries the rollout exception and the scan', () => {
   const pack = read(PACK)
-  assert.match(pack, /<details class="more"><summary>More<\/summary>/, 'the pack’s More is no longer a disclosure')
-  assert.match(pack, /\.more-grid\{display:grid;grid-template-columns:1fr 1fr/, 'the pack no longer cards the disclosure')
-  // Done when renders the contract's completion and computes none of its own.
-  assert.match(MAIN, /<DoneWhen heading=\{HEAD\.doneWhen\} lines=\{contract\.doneWhen\} \/>/, 'Done when is not the contract’s')
-  assert.match(CONTRACT_SRC, /function doneWhenOf\(/, 'the completion authority left the contract')
-  const done = code(SECTIONS.slice(SECTIONS.indexOf('export function DoneWhen(')))
-  for (const forbidden of ['step.', 'lifecycle', 'enforced', 'Date.']) {
-    assert.equal(done.includes(forbidden), false, `Done when ${forbidden}: it may only render what the contract computed`)
+  assert.match(variant(pack, 'v1'), /<section class="step-section"><h4>Done when<\/h4><p>/, 'the pack’s Done when is no longer prose')
+  assert.match(variant(pack, 'v1'), /<footer class="step-footer"><button class="btn rollout-exception" type="button">Exclude from rollout<\/button><button class="btn primary scan-update-plan"/, 'the pack’s footer moved')
+  assert.equal(variant(pack, 'v2').includes('rollout-exception'), false, 'the pack offers the exception on a step that is not excludable')
+  assert.match(pack, /It does not count as implemented or as satisfying the baseline\./, 'the pack’s exception no longer says what it does not count as')
+  assert.match(pack, /@media\(max-width:650px\)\{\.step-footer\{padding-left:18px;padding-right:18px;align-items:flex-start;flex-direction:column\}/)
+
+  assert.match(SECTIONS.slice(SECTIONS.indexOf('export function DoneWhen(')), /<p key=\{i\} className="done-line">/, 'Done when is not prose')
+  assert.match(CONTRACT.rollout.body, /does not count as implemented/, 'the exception no longer says it does not count as implemented')
+  assert.match(CONTENT_STEP, /cs\.skip \? <Button key="exclude" variant="secondary" className="rollout-exception"/, 'the exception is offered on a step the content does not mark excludable')
+  assert.match(atWidth(650), /\.step-footer \{\n\s*flex-direction: column;/, 'the footer does not stack on a phone')
+})
+
+test('the rail is the Next milestone only, from the same contract', () => {
+  const pack = read(PACK)
+  for (const id of VARIANTS) {
+    const v = variant(pack, id)
+    assert.match(v, /<aside class="step-side"><div class="side-block"><div class="side-label">Next milestone<\/div>/, `${id}: the pack’s rail is not the Next milestone`)
+    assert.equal(v.split('class="side-block"').length - 1, 1, `${id}: the pack’s rail holds more than one block`)
   }
-  // More is <details>/<summary>: keyboard-operable and disclosed by the
-  // platform, not by a div listening for a click.
-  assert.match(CONTENT_STEP, /<details className="more" open=\{open \|\| undefined\}>/, 'More is not a semantic disclosure')
-  assert.match(CONTENT_STEP, /<summary>\{HEAD\.more\}<\/summary>/, 'the disclosure has no summary')
-  // The pack's small-card grammar, holding the two blocks its own samples hold
-  // and nothing invented to fill the second column.
-  assert.match(CONTENT_STEP, /<div className="more-grid">/, 'the disclosure lost the pack’s card grid')
-  assert.equal(CONTENT_STEP.match(/<div className="more-card">/g)?.length, 2, 'the disclosure gained or lost a card')
-  assert.match(rule('.step .more-grid'), /grid-template-columns: repeat\(auto-fit/, 'a lone card is held to half a row with a gap beside it')
-  assert.match(rule('.step .more-card'), /border: 1px solid var\(--line\);/, 'the cards have no edge')
-})
-
-test('the rail says what the main column says, from the same contract', () => {
-  const pack = read(PACK)
-  assert.match(pack, /\.side-list\{list-style:none/, 'the pack’s rail no longer lists')
-  assert.match(pack, /\.side-label\{[^}]*text-transform:uppercase/, 'the pack’s rail label is gone')
-  const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepRail('), SECTIONS.indexOf('export function PolicyMembers(')))
-  // The rail is handed the contract and reads nothing else: no step, no
-  // snapshot, no second count. That is what keeps it from disagreeing with the
-  // main column about the same fact.
+  const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepRail('), SECTIONS.indexOf('export function StepFooter(')))
   assert.match(railSrc, /export function StepRail\(\{ contract \}: \{ contract: StepContract \}\)/, 'the rail takes something other than the contract')
-  for (const forbidden of ['step.', 'snapshot', 'mapping', 'jsonOffered', 'implementationOffered', 'reduce(', 'Math.', 'Date.']) {
-    assert.equal(railSrc.includes(forbidden), false, `the rail ${forbidden}: a second reading is how a rail comes to contradict the step beside it`)
+  assert.match(railSrc, /railOf\(contract\)/, 'the rail does not read the contract’s one projection')
+  for (const forbidden of ['step.', 'snapshot', 'mapping', 'implementation', 'side-list', 'reduce(', 'Math.', 'Date.']) {
+    assert.equal(railSrc.includes(forbidden), false, `the rail ${forbidden}: it is the Next milestone and nothing else`)
   }
-  assert.match(railSrc, /className="side-list"/, 'the rail’s channels are not the pack’s side list')
-  assert.match(railSrc, /contract\.implementation\.offered \? \(/, 'the rail does not read the one implementation answer')
-  // The list marker is a bullet, not a state: the meaning is in the words, and
-  // the marker is hidden from assistive technology.
-  assert.match(railSrc, /<span className="tiny" aria-hidden="true" \/>/, 'the rail’s bullet is exposed as content')
-  assert.match(rule('.step .side-list .tiny'), /background: var\(--quiet-text\);/, 'the rail’s bullet carries a state colour')
-  // And every value it shows is a value the contract holds: a step with no
-  // dated milestone gets no invented date, and one with nothing to submit gets
-  // no invented channel.
   for (const name of ['demo', 'demo-week2', 'hostile'] as const) {
-    for (const { step, c } of contractsOf(name)) {
-      if (c.milestone.at === null && c.milestone.gatedBy === null) continue
-      assert.ok(c.milestone.at !== null || c.milestone.gatedBy !== null, `${name}/${step.id}: the rail would show a milestone the contract has not got`)
+    for (const { step: s, c } of contractsOf(name)) {
+      const r = railOf(c)
+      assert.ok(r.metric.trim() !== '' && r.sub.trim() !== '', `${name}/${s.id}: an empty rail`)
+      if (c.milestone.at !== null) assert.equal(r.metric, absoluteDate(c.milestone.at), `${name}/${s.id}: the rail’s date is not the milestone’s`)
     }
   }
 })
 
-test('the narrow widths keep every section, in order, and widen nothing', () => {
+test('the narrow widths collapse the approved regions and widen nothing', () => {
   const pack = read(PACK)
-  assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.findings,\.more-grid\{grid-template-columns:1fr\}/, 'the pack no longer collapses its grids')
+  assert.match(pack, /@media\(max-width:940px\)\{\.readiness-strip\{grid-template-columns:1fr\}\.readiness-bar\{align-items:flex-start;flex-direction:column\}\}/, 'the pack no longer collapses Readiness at 940')
   const narrow = atWidth(940)
-  // Both grids are one column below 940, by the rule and not by their track
-  // sizing: at a 768px viewport the opened step's main column is still wide
-  // enough for two 260px tracks, so auto-fit alone would leave two findings
-  // side by side at the width the pack draws them stacked.
-  assert.match(narrow, /\.step \.findings,\s*\.step \.more-grid \{[\s\S]*?grid-template-columns: 1fr;/, 'the findings and More grids do not both collapse at 940')
-  // Three equal tracks, each `minmax(0, 1fr)`: the pack's and the approved
-  // reference's `repeat(3,1fr)`, with a zero minimum so a long finding wraps
-  // inside its third of the row instead of widening the grid past the column.
-  // It replaced `auto-fit`, which stretched a lone finding across the whole
-  // column and turned one observation into a billboard.
-  assert.match(rule('.step .findings'), /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/, 'the findings grid is no longer the approved three tracks')
-  assert.match(read(PACK), /\.findings\{display:grid;grid-template-columns:repeat\(3,1fr\)/, 'the pack no longer lays three findings across a row')
-  // Nothing is hidden to make the step shorter: the sections, the attention
-  // panel, the strip and the rail are all still rendered at every width.
-  for (const gone of ['.findings', '.instruction', '.step-section', '.callout', '.tabs.action-tabs']) {
+  assert.match(narrow, /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-2 \{\s*grid-template-columns: minmax\(0, 1fr\);/, 'Readiness does not stack at 940')
+  assert.match(narrow, /\.step \.readiness-bar \{\s*flex-direction: column;/, 'the bar does not stack at 940')
+  for (const gone of ['.readiness-strip', '.impl-preview', '.step-section', '.callout', '.tabs.impl-tabs']) {
     assert.equal(new RegExp(`\\${gone.replace(/\./g, '\\.')} \\{[^}]*display:\\s*none`).test(narrow), false, `${gone} is hidden at 940px rather than reflowed`)
   }
   assert.equal(/display:\s*none/.test(atWidth(650).match(/\.step[\s\S]{0,400}/)?.[0] ?? ''), false, 'the step hides content at the second breakpoint')
+  // Code wraps inside its own box, in the preview and in the dialog.
+  assert.match(rule('.step-dialog .dialog-code'), /white-space: pre-wrap;/)
+  assert.match(rule('.step-dialog .dialog-content'), /overflow: auto;/, 'the dialog’s content scrolls the page instead of itself')
+})
+
+// ---------------------------------------------- the five canonical states
+
+type Mock = { step: Step; c: StepContract }
+
+/** A step and its contract in one canonical state, carrying only the fields the projections read. */
+function stateOf(o: {
+  lifecycle: Lifecycle | null
+  condition: string
+  kind: StepContract['whatToDo']['kind']
+  status?: string
+  satisfied?: boolean
+  inPlace?: boolean
+  at?: string | null
+  gatedBy?: string | null
+  offered?: boolean
+  reason?: string | null
+  hold?: string | null
+  fix?: number
+  observation?: string | null
+}): Mock {
+  const s = step({ status: o.status ?? 'ready', action: {}, state: { lifecycle: o.lifecycle, condition: o.condition, satisfied: o.satisfied ?? false, inPlace: o.inPlace ?? false, setAside: false, members: [], observation: o.observation ? { note: o.observation } : null } })
+  const stage = o.satisfied ? (o.inPlace || o.lifecycle !== 'enforced' ? CONTRACT.lifecycle['in-place'] : CONTRACT.lifecycle.enforced) : o.lifecycle ? CONTRACT.lifecycle[o.lifecycle] : ''
+  const c = {
+    state: { lifecycle: o.lifecycle, condition: o.condition, stage, conditionLabel: CONTRACT.condition[o.condition], setAside: false, inPlace: o.inPlace ?? false, satisfied: o.satisfied ?? false, word: 'Blocked', tone: 'stop' },
+    milestone: { kind: o.kind, label: 'The milestone’s own words.', at: o.at ?? null, gatedBy: o.gatedBy ?? null, line: null },
+    track: trackFor(s),
+    why: 'Why.',
+    found: [],
+    who: { known: true, text: '4 active people' },
+    whatToDo: { kind: o.kind, text: 'The one action.' },
+    fix: Array.from({ length: o.fix ?? 0 }, (_, i) => ({ key: `f${i}`, text: 'Fix it.' })),
+    doneWhen: ['Done.'],
+    members: [],
+    multiPolicy: false,
+    existing: null,
+    implementation: o.offered ? { offered: true, operations: 1 } : { offered: false, reason: o.reason ?? null, hold: o.hold ?? null, because: o.reason ? 'Because.' : null },
+  } as unknown as StepContract
+  return { step: s, c }
+}
+
+const STATES = {
+  'not-deployed': stateOf({ lifecycle: 'not-deployed', condition: 'healthy', kind: 'deploy', at: '2026-09-22T00:00:00.000Z', offered: true }),
+  'report-only': stateOf({ lifecycle: 'report-only', condition: 'healthy', status: 'in-report-only', kind: 'observe', at: '2026-09-17T00:00:00.000Z', hold: 'observation-incomplete' }),
+  'review-required': stateOf({ lifecycle: 'report-only', condition: 'review-required', status: 'in-report-only', kind: 'resolve', hold: 'observation-incomplete', observation: 'The policy changed since IAMAI last read it.', gatedBy: 'The policy changed since IAMAI last read it.', fix: 1 }),
+  'in-place': stateOf({ lifecycle: 'enforced', condition: 'healthy', status: 'done', satisfied: true, inPlace: true, kind: 'preserve' }),
+  'baseline-conflict': stateOf({ lifecycle: null, condition: 'baseline-conflict', status: 'blocked', kind: 'resolve', reason: 'baseline-conflict' }),
+} as const
+
+test('the five canonical states are one frame whose content the state changes', () => {
+  // One frame: one article, head, body, rail and footer, one render path, and
+  // nothing in the frame chooses a component from where a step stands.
+  for (const [needle, n] of [['<article className="step', 1], ['<StepHead', 1], ['<ReadinessSection', 1], ['<Implementation\n', 1], ['<StepRail', 1], ['<StepFooter', 1]] as const) {
+    assert.equal(CONTENT_STEP.split(needle).length - 1, n, `${needle} appears ${CONTENT_STEP.split(needle).length - 1} times`)
+  }
+  const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Implementation('))
+  assert.equal(body.split('return (').length - 1, 1, 'the step has more than one render path')
+  for (const [file, src] of [['ContentStep.tsx', CONTENT_STEP], ['StepSections.tsx', SECTIONS]] as const) {
+    assert.equal(/standingOf|stepFamily|title\.(includes|match)/.test(code(src)), false, `${file} selects presentation from the step’s standing, family or title`)
+  }
+  // No duplicate shell or header inside the step.
+  assert.equal(/<header className="app"|AppShell|<nav\b/.test(CONTENT_STEP + SECTIONS), false, 'the step draws a shell of its own')
+
+  const S = STATES
+  // Lifecycle and condition stay apart: the badge composes them, the track is the
+  // lifecycle alone, and a review moves no stage.
+  assert.equal(badgeLabel(S['not-deployed'].c), 'Not deployed')
+  assert.equal(badgeLabel(S['report-only'].c), 'Report-only')
+  assert.equal(badgeLabel(S['review-required'].c), 'Report-only · Review required')
+  assert.equal(badgeLabel(S['in-place'].c), 'In place')
+  assert.deepEqual(S['review-required'].c.track, S['report-only'].c.track, 'a condition moved the lifecycle')
+  assert.deepEqual(S['not-deployed'].c.track.map((t) => [t.reached, t.current]), [[false, true], [false, false], [false, false], [false, false]])
+  assert.deepEqual(S['report-only'].c.track.map((t) => t.reached), [true, false, false, false])
+  assert.deepEqual(S['in-place'].c.track.map((t) => t.reached), [true, true, true, true])
+  assert.deepEqual(S['baseline-conflict'].c.track, [])
+  assert.equal(eyebrowOf(S['baseline-conflict'].c, 'policy'), CONTRACT.kind.resolution)
+  for (const k of ['not-deployed', 'report-only', 'review-required', 'in-place'] as const) assert.equal(eyebrowOf(S[k].c, 'policy'), CONTRACT.kind.policy)
+
+  // Readiness: tiles and headline, per state.
+  const tiles = (m: Mock): string[] => readinessOf(m.step, m.c).tiles.map((t) => `${t.key}:${t.tone}`)
+  assert.deepEqual(tiles(S['not-deployed']), ['people:info', 'blockers:good'])
+  assert.deepEqual(tiles(S['report-only']), ['observation:wait', 'people:info', 'blockers:good'])
+  assert.deepEqual(tiles(S['review-required']), ['evidence:warn', 'people:info', 'blockers:warn'])
+  assert.deepEqual(tiles(S['in-place']), ['coverage:good', 'people:info', 'blockers:good'])
+  assert.deepEqual(tiles(S['baseline-conflict']), ['baseline:warn', 'people:info', 'implementation:warn'])
+  const bar = (m: Mock): string => readinessOf(m.step, m.c).bar.main
+  const B = CONTRACT.readiness.bar
+  assert.deepEqual(
+    [bar(S['not-deployed']), bar(S['report-only']), bar(S['review-required']), bar(S['in-place']), bar(S['baseline-conflict'])],
+    [B.deploy, B.observe, B.review, B.preserve, B.conflict],
+  )
+
+  // Implementation only where it is the current action; otherwise the one box, at the weight of the reason.
+  assert.equal(implementationIsCurrent(S['not-deployed'].step), true)
+  assert.equal(S['not-deployed'].c.implementation.offered, true)
+  for (const k of ['review-required', 'baseline-conflict'] as const) assert.equal(implementationIsCurrent(S[k].step), false, `${k} offers its implementation`)
+  for (const k of ['report-only', 'in-place', 'baseline-conflict'] as const) assert.equal(S[k].c.implementation.offered, false, `${k} offers an artifact`)
+  const empty = (m: Mock): string => `${implementationEmptyOf(m.c).key}:${implementationEmptyOf(m.c).tone}`
+  assert.deepEqual(
+    [empty(S['report-only']), empty(S['review-required']), empty(S['in-place']), empty(S['baseline-conflict'])],
+    ['observe:neutral', 'review:warn', 'inPlace:good', 'conflict:danger'],
+  )
+
+  // The Next milestone rail: the date where there is one, the standing word where there is not.
+  const W = CONTRACT.rail
+  assert.equal(railOf(S['not-deployed'].c).metric, absoluteDate('2026-09-22T00:00:00.000Z'))
+  assert.equal(railOf(S['report-only'].c).metric, absoluteDate('2026-09-17T00:00:00.000Z'))
+  assert.equal(railOf(S['review-required'].c).metric, W.held)
+  assert.equal(railOf(S['in-place'].c).metric, W.noChange)
+  assert.equal(railOf(S['baseline-conflict'].c).metric, W.deferred)
+})
+
+test('the opened step mutates nothing: its only actions are the exception, the scan, the decision and copying', () => {
+  for (const [file, src] of [['ContentStep.tsx', CONTENT_STEP], ['StepSections.tsx', SECTIONS]] as const) {
+    const c = code(src)
+    for (const forbidden of ['fetch(', "from '../../graph", 'graphClient', "method: 'POST'", "method: 'PATCH'", 'XMLHttpRequest']) {
+      assert.equal(c.includes(forbidden), false, `${file} carries ${forbidden}`)
+    }
+  }
+  // The footer presses only the handlers the Plan handed down.
+  const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter('), SECTIONS.indexOf('/** A tile'))
+  assert.equal(footer.split('<Button').length - 1, 1, 'the footer draws a control of its own')
+  assert.match(footer, /onClick=\{onScan\}/)
+  // Copy goes through the export guard, redacted.
+  assert.match(CONTENT_STEP, /exportClipboard\(text, REDACTED\)/, 'the step copies around the export guard')
+  assert.equal(CONTENT_STEP.includes('exportDownload'), false, 'the step downloads an artifact the approved design does not offer')
 })
 
 test('the demo opens the same step body, with the same grammar', () => {
-  // One step body in the product, and the demo is the product with a synthetic
-  // snapshot behind it: there is no demo branch in the Plan's composition and
-  // no second content anatomy to keep in step.
   const bodies = ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/PrintPlan.tsx']
     .map((f) => (read(f).includes('className="step-main"') ? f : null))
     .filter(Boolean)
-  // Two bodies, for the two things the Plan opens: a step, and a Cleanup row.
-  // Neither is a demo body — the demo is the product with a synthetic snapshot
-  // behind it — and both draw their sections through the same components, so
-  // the grammar cannot be restored on one and not the other.
   assert.deepEqual(bodies, ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx'], 'a third step body draws its own main column')
   for (const body of bodies) assert.match(read(body!), /from '\.\/StepSections\.tsx'/, `${body} draws its sections itself`)
   assert.match(CLEANUP_STEP, /<StepSection heading=\{HEAD\.why\}>/, 'the Cleanup row stopped using the shared section')
@@ -762,12 +815,11 @@ test('the demo opens the same step body, with the same grammar', () => {
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the step body branches on ${forbidden}`)
   }
   assert.equal(SECTIONS.includes('demo'), false, 'the step components branch on the demo')
-  // And the fixture the demo is built from produces the same grammar: findings
-  // with keys, an attention list where there is one, a completion always.
   const demo = contractsOf('demo')
   assert.ok(demo.length > 0)
-  for (const { step, c } of demo) {
-    for (const f of c.found) assert.equal(f.label, CONTRACT.foundLabel[f.key], `demo/${step.id}: a finding with no key`)
-    assert.ok(c.doneWhen.length > 0, `demo/${step.id}: no completion`)
+  for (const { step: s, c } of demo) {
+    for (const f of c.found) assert.equal(f.label, CONTRACT.foundLabel[f.key], `demo/${s.id}: a finding with no key`)
+    assert.ok(c.doneWhen.length > 0, `demo/${s.id}: no completion`)
+    assert.ok(readinessOf(s, c).tiles.length > 0, `demo/${s.id}: no readiness`)
   }
 })

@@ -1108,7 +1108,8 @@
             "blocker": "Preparation step",
             "check": "Check step",
             "campaign": "Campaign step",
-            "ladder": "Hardening step"
+            "ladder": "Hardening step",
+            "resolution": "Resolution step"
           },
           "trackLabel": "Rollout lifecycle",
           "railMilestone": "Next milestone",
@@ -1184,6 +1185,118 @@
             "alsoPossible": "Also possible",
             "more": "More",
             "namesHeld": "Named, for the record"
+          },
+          "attentionConflict": "Do not deploy this policy from the current baseline",
+          "readiness": {
+            "$comment": "The opened step's Readiness region (docs/design/approved/anatomy/plan-step-v1.html `.readiness-strip` / `.readiness-bar`, owner update Sep 10, 2026). Tile labels, short values and the bar's headline only: every note and every sub-line is an existing sentence the contract already carries (stepContract.ts readinessOf), so nothing here states a fact of its own.",
+            "heading": "Readiness",
+            "why": "Why IAMAI says this →",
+            "dialogEyebrow": "Readiness evidence",
+            "dialogTitle": "Why IAMAI says this",
+            "close": "Minimize",
+            "tiles": {
+              "baseline": "Baseline definition",
+              "conflictValue": "Conflict unresolved",
+              "decision": "Decision",
+              "coverage": "Existing coverage",
+              "gate": "Threshold",
+              "observation": "Observation",
+              "observationUntil": "Until {date}",
+              "exclusions": "Exclusions",
+              "exclusionsReached": "Reaches emergency access",
+              "exclusionsUnproven": "Not proven",
+              "people": "Affected people",
+              "peopleUnknown": "Not established",
+              "blockers": "Blocking issues",
+              "clear": "Clear",
+              "clearNote": "Nothing outstanding changes the next action.",
+              "open": "{n} outstanding",
+              "openNote": "Listed under Fix before continuing.",
+              "implementation": "Implementation",
+              "unavailable": "Unavailable"
+            },
+            "bar": {
+              "deploy": "Ready now",
+              "observe": "Continue observation",
+              "enforce": "Ready to enforce",
+              "verify": "Ready to check",
+              "preserve": "Already satisfied",
+              "decide": "Needs a decision",
+              "resolve": "Held",
+              "review": "Held for review",
+              "blocked": "Blocked",
+              "conflict": "Deferred",
+              "restore": "Set aside",
+              "none": "Nothing left to do"
+            }
+          },
+          "implementation": {
+            "$comment": "The opened step's Implementation region (docs/design/approved/anatomy/plan-step-v1.html `.implementation-section`). The channels are production's own artifacts — the portal translator, stepPowerShell.ts, stepJson.ts and the step context the prompts read (roadmap/prompts.ts stepContext) — and `empty` is the one truthful no-action box a step shows when it offers none of them, by the reason it offers none.",
+            "heading": "Implementation",
+            "tabsLabel": "Implementation channel",
+            "ai": "AI Info",
+            "aiWarning": "Contains tenant context. Review before sharing with an external AI service.",
+            "copy": "Copy implementation",
+            "expand": "Expand implementation",
+            "dialogEyebrow": "Implementation",
+            "close": "Minimize",
+            "empty": {
+              "inPlace": [
+                "No implementation needed",
+                "The tenant already delivers this, so nothing is generated for it."
+              ],
+              "observe": [
+                "No tenant change to submit right now",
+                "The policy stays in report-only while IAMAI observes it."
+              ],
+              "review": [
+                "Nothing to submit yet",
+                "Resolve the review item first."
+              ],
+              "decision": [
+                "Nothing to submit yet",
+                "Answer the question this step is waiting on first."
+              ],
+              "blocked": [
+                "Nothing to submit yet",
+                "Clear what is listed under Fix before continuing first."
+              ],
+              "unavailable": [
+                "Nothing to submit yet",
+                "IAMAI offers no artifact for this policy as it stands."
+              ],
+              "conflict": [
+                "Nothing to submit yet",
+                "No Entra, PowerShell, JSON or AI artifact is offered while the baseline definition is unresolved."
+              ],
+              "setAside": [
+                "Nothing to submit",
+                "This step is set aside."
+              ],
+              "none": [
+                "No generated implementation",
+                "This step describes no policy for IAMAI to generate."
+              ]
+            }
+          },
+          "rail": {
+            "$comment": "The Next milestone rail's metric where Foundation B holds no date for the milestone (docs/design/approved/anatomy/plan-step-v1.html V3–V5 `.metric`). The sub-line under it is the milestone's own words.",
+            "held": "Held",
+            "deferred": "Deferred",
+            "noChange": "No change needed",
+            "decision": "Needs decision",
+            "setAside": "Set aside",
+            "undated": "Not scheduled"
+          },
+          "rollout": {
+            "$comment": "The footer's rollout exception (docs/design/approved/anatomy/plan-step-v1.html `#rollout-dialog`). It is the existing skip (roadmap/sets.ts): the step leaves the rollout with the operator's reason recorded, and it never counts as implemented.",
+            "control": "Exclude from rollout",
+            "eyebrow": "Rollout exception",
+            "title": "Exclude this step from rollout",
+            "body": "An excluded step remains recorded as an exception. It does not count as implemented or as satisfying the baseline.",
+            "reason": "Reason",
+            "placeholder": "Record why this step is being excluded.",
+            "cancel": "Cancel"
           }
         },
         "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",

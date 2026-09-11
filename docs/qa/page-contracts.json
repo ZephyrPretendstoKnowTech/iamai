@@ -671,17 +671,18 @@
       "allow": {
         "headings": [
           "Why",
-          "What IAMAI found",
-          "Who this touches",
-          "What to do",
+          "Readiness",
+          "Do not deploy this policy from the current baseline",
           "Fix before continuing",
-          "Dates",
+          "What to do",
+          "Implementation",
           "Done when"
         ],
         "tabs": [
           "Entra",
           "PowerShell",
-          "JSON"
+          "JSON",
+          "AI Info"
         ],
         "tiles": [],
         "columns": [],
@@ -700,15 +701,14 @@
           "re:^CIS \\d+(\\.\\d+)?$"
         ],
         "buttons": [
-          "Download JSON",
+          "Why IAMAI says this →",
           "Export CSV",
           "Scan to update the plan",
+          "Exclude from rollout",
           "Doesn't apply here",
-          "Close"
+          "Put this step back"
         ],
-        "summaries": [
-          "More"
-        ],
+        "summaries": [],
         "links": [
           "Learn →",
           "re:^.{3,60} →$"

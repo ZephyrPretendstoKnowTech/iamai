@@ -174,11 +174,15 @@ test('042.4: nothing derives a lifecycle of its own, and no condition implies on
       assert.equal(view.condition, contract.state.conditionLabel, `${c.label}/${step.id}: the export view states a different condition`)
       assert.equal(view.status, contract.state.word, `${c.label}/${step.id}: the export view states a different status word`)
       // The track is a projection of the lifecycle and of nothing else: it is
-      // empty exactly where there is no rollout to draw, and its current stage
-      // is the lifecycle itself.
+      // empty exactly where there is no rollout to draw (a step set aside, or a
+      // resolution step whose source contradicts itself), and its current stage
+      // is the lifecycle itself. A goal the tenant already delivers draws the
+      // lifecycle its policy recorded, complete and never part-way (the approved
+      // Plan design, Sep 10, 2026).
       if (contract.track.length > 0) {
         assert.equal(contract.track.find((t) => t.current)?.key, step.state.lifecycle, `${c.label}/${step.id}: the track marks a stage the lifecycle is not at`)
-        assert.equal(step.state.setAside || step.state.inPlace, false, `${c.label}/${step.id}: a rollout drawn for a step that never had one`)
+        assert.equal(step.state.setAside || step.state.condition === 'baseline-conflict', false, `${c.label}/${step.id}: a rollout drawn for a step that never had one`)
+        if (step.state.inPlace) assert.ok(contract.track.every((t) => t.reached), `${c.label}/${step.id}: a goal already delivered drawn part-way through a rollout`)
       }
       const key = step.state.lifecycle ?? 'none'
       const set = seen.get(step.state.condition) ?? new Set<string>()

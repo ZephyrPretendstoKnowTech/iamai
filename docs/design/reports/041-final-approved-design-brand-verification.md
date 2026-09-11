@@ -654,3 +654,14 @@ Focused suites re-run during the work: `design-authority.test.ts`, `foundation.t
 `responsive.test.ts`, `tokens.test.ts`, `accessibility.test.ts`, `home.test.ts`,
 `connectAnatomy.test.ts`, `planAnatomy.test.ts`, `readinessAnatomy.test.ts`,
 `planVariants.test.ts`, `demo.test.ts`, `publicTrust.test.ts`.
+
+## Authority update, Sep 10, 2026
+
+The owner updated the Plan authority in place. `docs/design/approved/anatomy/plan-step-v1.html`
+is now `43de0a7cb9eae37ddf08eeebd829dcd13ed00200ca42e412cbbbfb875df6ae39` (it was
+`1f1bda574fc76d0cc48c7d2e7a5d26abe34d8ee0aa5fab4888282cd9955ad4ec` when this report was written).
+The update integrates Readiness and Implementation into every canonical variant, makes the right
+rail Next milestone only, and drops What IAMAI found, Who this touches and More from the opened step.
+The conformance recorded above is for the earlier bytes; Plan conformance to the updated file is
+evidenced by `planAnatomy.test.ts`, which reads the updated file two-sided, and by that change's
+rendered comparison.

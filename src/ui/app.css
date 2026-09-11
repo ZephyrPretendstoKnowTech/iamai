@@ -2052,47 +2052,15 @@ footer.app a {
   font-size: var(--t-lead-lg);
   font-weight: var(--weight-strong);
 }
-/* A metric that is a tenant object's name and not a date or a number: the pack
-   drops it a step for exactly this block (`docs/design/approved/anatomy/plan-step-v1.html`
-   V4 sets the existing policy's name to 14px against the 18px of a date), and a
-   real Conditional Access policy name is longer than "Sep 22" — long enough to
-   push the 290px rail wide if it is allowed to. So it takes the smaller step of
-   the ramp and breaks inside a word rather than overflowing (task 036). */
-.side-block .metric-name {
-  font-size: var(--t-3);
+/* A metric can be a word rather than a date ("No change needed"): it wraps
+   inside the 290px rail rather than widening it. */
+.side-block .metric {
   overflow-wrap: anywhere;
-  min-width: 0;
 }
 .side-block .metric-sub {
   margin: 2px 0 0;
   font-size: var(--t-1);
   color: var(--secondary-text);
-}
-/* The pack's side list: a rail block that is a handful of short items rather
-   than one metric (`.side-list{list-style:none;display:grid;gap:7px}` with a
-   6px dot before each). The dot is a bullet and carries no state — every item
-   in it is the same kind of fact — so it is the quiet ink and is hidden from
-   assistive technology, which reads the words. */
-.step .side-list {
-  list-style: none;
-  margin: 7px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 7px;
-}
-.step .side-list li {
-  display: flex;
-  gap: 8px;
-  font-size: var(--t-1);
-  color: var(--secondary-text);
-}
-.step .side-list .tiny {
-  width: 6px;
-  height: 6px;
-  margin-top: 6px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: var(--quiet-text);
 }
 .step-body h4 {
   margin: 18px 0 6px;
@@ -2208,63 +2176,332 @@ footer.app a {
 }
 
 /* ---- the step's own footer ----
-   The approved step reference's `.footer`: under BOTH columns, full width, on
-   the quieter surface, divided by the frame's own hairline. It used to be the
-   last line of the main column, so on a step with a rail it sat two thirds of
-   the way across under a column of prose and read as the end of More rather
-   than as the frame's controls. */
+   The approved `.step-footer` (docs/design/approved/anatomy/plan-step-v1.html):
+   under BOTH columns, full width, on the quieter surface, divided by the frame's
+   own hairline. The rollout exception holds the left and the scan the right;
+   with no exception to offer, the scan still sits right. */
 .step-footer {
   display: flex;
-  justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   padding: 14px 27px;
   border-top: 1px solid var(--line);
   background: var(--secondary-surface);
 }
-/* The question the scan answers, held to the left of the controls it belongs
-   to. It renders only beside a scan control: with nothing to press it would be
-   a question the footer asks and cannot act on. */
-.step-footer-note {
-  margin-right: auto;
-  color: var(--quiet-text);
-  font-size: var(--t-0);
-}
-/* One channel is not a choice, so it is not a tab strip: the channel names
-   itself over the block it labels. The floor for a compact label here is
-   --t-micro, the same as the board's column head. */
-.single-channel-label {
-  font-size: var(--t-micro);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: var(--weight-strong);
-  color: var(--quiet-text);
-  margin-bottom: 6px;
+.step-footer .step-footer-scan {
+  margin-left: auto;
 }
 
-/* ---- What to do: the action strip over the instruction block ----
-   The pack's `.action-tabs` are bordered chips rather than the underlined strip
-   the rest of the product uses, and they label a panel with an edge of its own
-   (`.instruction{border:1px solid var(--line);border-radius:8px;padding:13px
-   15px}`). The shared `.tabs` role keeps the behaviour; this is the Plan's own
-   treatment of it, and it does not touch the strips on Connect, Export or
-   Inventory. The selected tab is a border, a fill AND the ink together, over
-   `aria-selected` — never the tint alone. */
-.step .tabs.action-tabs {
-  gap: 6px;
-  border-bottom: 0;
-  margin: 0 0 12px;
+/* ---- Readiness: the approved `.readiness-strip` over `.readiness-bar` ----
+   One to three tiles, each a fact the contract holds, over the bar that says
+   where the step stands with its one action under it. The grid takes its track
+   count from the tiles the step has, so two facts are two tiles rather than two
+   tiles and a gap. A tile's mark is a glyph beside the tile's own words
+   (✓ ! …), never the state on its own. */
+.step .readiness-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-width: none;
 }
-.step .tabs.action-tabs .tab {
-  padding: 6px 10px;
+.step .readiness-strip.tiles-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.step .readiness-strip.tiles-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+.step .readiness-tile {
+  min-width: 0;
+  min-height: 104px;
+  padding: 12px 13px;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
+  background: var(--secondary-surface);
 }
-.step .tabs.action-tabs .tab.active,
-.step .tabs.action-tabs .tab[aria-selected='true'] {
+.step .readiness-tile-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.step .readiness-status {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  border: 1px solid var(--strong-line);
+  border-radius: 50%;
+  font-size: var(--t-0);
+  line-height: 1;
+}
+.step .readiness-status-good {
+  color: var(--success-text);
+}
+.step .readiness-status-warn,
+.step .readiness-status-wait {
+  color: var(--attention-text);
+}
+.step .readiness-tile strong {
+  display: block;
+  margin-top: 8px;
+  font-size: var(--t-2);
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.step .readiness-tile p {
+  margin: 5px 0 0;
+  font-size: var(--t-0);
+  line-height: 1.45;
+  color: var(--secondary-text);
+}
+.step .readiness-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--code-surface);
+}
+.step .readiness-bar-main {
+  min-width: 0;
+}
+.step .readiness-bar-head {
+  display: block;
+  font-size: var(--t-1);
+  font-weight: var(--weight-strong);
+}
+/* The one action is the bar's sub-line: the contract's own sentence, at the
+   quiet level the approved bar sets it. */
+.step .readiness-bar .do-lead {
+  margin: 1px 0 0;
+  font-size: var(--t-0);
+  font-weight: 400;
+  color: var(--secondary-text);
+}
+.step .inline-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--brand-secondary-text);
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.step .mfa-handoff-block {
+  margin-top: 12px;
+}
+
+/* ---- Implementation: the approved `.implementation-section` ----
+   The channels are pill tabs over a fixed-height preview that widens nothing,
+   with Copy and Expand on its corner; Expand opens the whole artifact in the
+   implementation dialog. The shared `.tabs` role keeps the keyboard behaviour;
+   the selected tab is a border, a fill AND the ink together, over
+   `aria-selected` — never the tint alone. Where a step offers no channel the
+   section is the one no-action box, at the weight of its reason. */
+.step .tabs.impl-tabs {
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 10px;
+  border-bottom: 0;
+}
+.step .tabs.impl-tabs .tab {
+  padding: 6px 11px;
+  border: 1px solid var(--strong-line);
+  border-radius: 999px;
+  font-size: var(--t-1);
+  font-weight: var(--weight-strong);
+  line-height: 1.2;
+  color: var(--secondary-text);
+}
+.step .tabs.impl-tabs .tab.active,
+.step .tabs.impl-tabs .tab[aria-selected='true'] {
   color: var(--primary-text);
   border-color: var(--brand-primary);
   background: var(--brand-tint);
+}
+.step .ai-warning {
+  margin: 9px 0;
+}
+.step .impl-preview {
+  position: relative;
+  height: 112px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--code-surface);
+}
+.step .preview-actions {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 5px;
+}
+.step .icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--strong-line);
+  border-radius: 50%;
+  background: var(--secondary-surface);
+  color: var(--secondary-text);
+  cursor: pointer;
+}
+.step .icon-btn:hover {
+  color: var(--primary-text);
+}
+.step .impl-preview .preview-text {
+  margin: 0;
+  padding: 13px 78px 13px 13px;
+  max-width: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--t-0);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.step .impl-preview ol.preview-text {
+  padding-left: 32px;
+}
+.step .impl-preview ol.preview-text li {
+  margin: 0;
+}
+.step .implementation-empty {
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+}
+.step .implementation-empty strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: var(--t-1);
+}
+.step .implementation-empty p {
+  margin: 0;
+  font-size: var(--t-0);
+  color: var(--secondary-text);
+}
+.step .implementation-empty-good {
+  background: var(--success-tint);
+}
+.step .implementation-empty-warn {
+  background: var(--attention-tint);
+}
+.step .implementation-empty-danger {
+  background: var(--danger-tint);
+}
+
+/* ---- the step's dialogs: the approved implementation, readiness and rollout
+   dialogs ----
+   Native modal dialogs: the head is the eyebrow, the title and the one close
+   control, and the content scrolls inside the dialog, never the page. */
+.step-dialog.panel {
+  width: min(620px, calc(100vw - 28px));
+  max-height: min(760px, 86vh);
+  padding: 0;
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-panel);
+  color: var(--primary-text);
+  overflow: hidden;
+}
+.step-dialog.step-dialog-wide {
+  width: min(1040px, 92vw);
+  height: min(760px, 86vh);
+  max-width: none;
+}
+.step-dialog .dialog-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  max-height: inherit;
+}
+.step-dialog .dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 19px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--secondary-surface);
+}
+.step-dialog .dialog-head h3 {
+  margin: 3px 0 0;
+  font-size: var(--t-lead-lg);
+}
+.step-dialog .dialog-head p {
+  margin: 3px 0 0;
+  font-size: var(--t-1);
+  color: var(--secondary-text);
+}
+.step-dialog .dialog-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 22px;
+}
+.step-dialog .dialog-content .tabs.impl-tabs {
+  margin-bottom: 14px;
+}
+.step-dialog .dialog-code {
+  margin: 0;
+  padding: 16px;
+  max-width: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--code-surface);
+  font-family: var(--font-mono);
+  font-size: var(--t-1);
+  line-height: 1.62;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.step-dialog ol.dialog-code {
+  padding-left: 36px;
+}
+.step-dialog .dialog-prose h4 {
+  margin: 0 0 6px;
+}
+.step-dialog .dialog-prose * + h4 {
+  margin-top: 18px;
+}
+.step-dialog .dialog-prose p {
+  margin: 0 0 10px;
+}
+.step-dialog .rollout-field {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-control);
+  background: var(--code-surface);
+  color: var(--primary-text);
+  font: inherit;
+  resize: vertical;
+}
+.step-dialog .rollout-field-line {
+  min-height: 0;
+}
+.step-dialog .dialog-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
 }
 .step .instruction {
   padding: 13px 15px;
@@ -2511,6 +2748,8 @@ footer.app a {
   .print-plan .findings { grid-template-columns: 1fr; }
   .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--line); background: none; }
   .print-plan .step-footer { display: none; }
+  .print-plan .impl-preview { height: auto; overflow: visible; }
+  .print-plan .impl-preview .preview-text { padding-right: 13px; }
   .print-plan .track { display: none; }
   .print-json { break-inside: auto; }
   .print-plan .datatable, .print-plan table { width: 100%; border-collapse: collapse; }
@@ -3469,6 +3708,17 @@ td .not-person {
   .step .more-grid {
     grid-template-columns: 1fr;
   }
+  /* The approved Readiness collapses at the same width
+     (`.readiness-strip{grid-template-columns:1fr}`, `.readiness-bar{flex-direction:
+     column}`): one tile per row, and the evidence link under the bar's words. */
+  .step .readiness-strip,
+  .step .readiness-strip.tiles-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .step .readiness-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
   /* A person's three zones stack rather than shrink: a name, a method and a
      next action each need their own line before the column is 200px wide. */
   .step .mfa-preview li {
@@ -3515,14 +3765,18 @@ td .not-person {
     padding-left: 18px;
     padding-right: 18px;
   }
-  /* The controls wrap before they clip, and the question takes its own line
-     above them rather than squeezing them off the edge. */
+  /* The approved footer stacks at this width (`.step-footer{flex-direction:
+     column;align-items:flex-start}`): the exception over the scan, both at the
+     left edge. */
   .step-footer {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
   }
-  .step-footer-note {
-    width: 100%;
-    margin-right: 0;
+  .step-footer .step-footer-scan {
+    margin-left: 0;
+  }
+  .step .tabs.impl-tabs {
+    gap: 6px;
   }
   .step-head-top {
     display: block;

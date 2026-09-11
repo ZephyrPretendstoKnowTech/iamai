@@ -242,7 +242,7 @@ export function PrintPlan({
           <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} printing />
             </article>
           ))}
         </section>
@@ -257,7 +257,7 @@ export function PrintPlan({
           <p className="muted">{HELD.lead}</p>
           {held.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} printing />
             </article>
           ))}
         </section>
@@ -270,7 +270,7 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} onClose={noop} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} printing />
             </article>
           ))}
         </section>

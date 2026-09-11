@@ -89,6 +89,29 @@ type ContractWords = {
   fixStep: string
   fixReview: string
   doneReview: string
+  attentionConflict: string
+  readiness: {
+    heading: string
+    why: string
+    dialogEyebrow: string
+    dialogTitle: string
+    close: string
+    tiles: Record<string, string>
+    bar: Record<string, string>
+  }
+  implementation: {
+    heading: string
+    tabsLabel: string
+    ai: string
+    aiWarning: string
+    copy: string
+    expand: string
+    dialogEyebrow: string
+    close: string
+    empty: Record<string, [string, string]>
+  }
+  rail: Record<string, string>
+  rollout: Record<string, string>
 }
 
 export const CONTRACT = (app.plan as unknown as { stepContract: ContractWords }).stepContract
@@ -169,55 +192,22 @@ export type ContractFix = { key: string; text: string }
  * past it, which is a restatement of that one fact rather than a second reading
  * of it. `current` is where Foundation B says the step is.
  *
- * Empty where there is no rollout to draw. A goal the tenant already satisfies
- * (`inPlace`) was never on this plan's lifecycle, and marking its stages reached
- * would claim a rollout that did not happen; a set-aside step has left the
- * lifecycle; a step with no policy has none.
+ * Empty where there is no rollout to draw: a set-aside step has left the
+ * lifecycle, a step with no policy has none, and a step whose baseline defines
+ * its policy two ways is a resolution step with no policy to roll out — the
+ * approved pack draws that variant with no track and does not fabricate one
+ * (docs/design/approved/anatomy/plan-step-v1.html V5). A goal the tenant already
+ * delivers draws the lifecycle its policy has recorded, which for an enforced
+ * one is four reached stages (V4); where none is recorded it draws nothing.
  */
 export type ContractStage = { key: Lifecycle; label: string; reached: boolean; current: boolean }
-
-/**
- * Which of the rail's blocks this step has a fact for, and therefore whether
- * the opened step has a rail at all.
- *
- * The pack's `.step-side` is a 290px column beside the main one, and a rail
- * with nothing in it is 290px of nothing: the frame reads it to decide whether
- * to lay the body out in two columns, and the rail itself reads it to decide
- * what to draw. One predicate, so those two answers cannot differ.
- *
- * It is a projection and adds no fact — each block is shown exactly where the
- * contract already holds what it would say. Nothing is filled in to make the
- * rail look populated (task 034 §5, task 036 §9).
- */
-export function railBlocks(c: StepContract): { milestone: boolean; implementation: boolean; existing: boolean } {
-  return {
-    // A DATE, and nothing else. The gate — "after: Create or Correct Emergency
-    // Access Accounts" — is the header's Next caption now (`nextCaption`), and a
-    // rail block that repeated it word for word beside the caption was the same
-    // sentence twice on one screen. What is left here is the fact the header
-    // cannot carry: when.
-    milestone: c.milestone.at !== null,
-    // Only while deploying is the current action. A blocked step's rail used to
-    // list Entra / PowerShell / JSON beside a main column that had just hidden
-    // them, which is a column advertising what the step declines to offer — and
-    // on a step whose rail held nothing else, a whole rail existing to do it.
-    implementation: c.members.length > 0 && c.state.condition === 'healthy',
-    existing: c.existing !== null,
-  }
-}
-
-/** Whether the opened step has a rail beside its main column at all. */
-export function hasRail(c: StepContract): boolean {
-  const b = railBlocks(c)
-  return b.milestone || b.implementation || b.existing
-}
 
 /** The lifecycle in order. The one place the stages are sequenced. */
 const LIFECYCLE_ORDER: Lifecycle[] = ['not-deployed', 'report-only', 'ready-to-enforce', 'enforced']
 
 export function stepTrack(step: Step): ContractStage[] {
   const s = step.state
-  if (s.lifecycle === null || s.setAside || s.inPlace) return []
+  if (s.lifecycle === null || s.setAside || s.condition === 'baseline-conflict') return []
   const at = LIFECYCLE_ORDER.indexOf(s.lifecycle)
   if (at < 0) return []
   return LIFECYCLE_ORDER.map((key, i) => ({ key, label: CONTRACT.lifecycle[key], reached: i < at || s.lifecycle === 'enforced', current: i === at }))
@@ -723,30 +713,13 @@ export function badgeLabel(contract: StepContract): string {
  */
 
 /**
- * The footer's own words.
- *
- * `scan` and `close` are the labels the step already used, moved rather than
- * written. The two notes are this pass's, and they live here for the same reason
- * the board's control vocabulary lives in planBoard.ts: the task that specified
- * them holds docs/design/content.json out of scope. A later content pass moves
- * all four without touching a component, because every one of them is read from
- * this record.
- *
- * Which note a step shows is read off the contract — a step with outstanding
- * blockers is being asked whether the blocker is resolved, not whether a policy
- * was created — and never off its title.
+ * The footer's scan label, the one the step already used. The approved footer
+ * (docs/design/approved/anatomy/plan-step-v1.html `.step-footer`) carries the
+ * rollout exception and the scan and nothing else: the row above the step is
+ * what closes it, and the question notes that sat beside the scan are gone.
  */
 export const FOOTER = {
   scan: 'Scan to update the plan',
-  close: 'Close',
-  changed: 'Changes made in Microsoft?',
-  resolved: 'Resolved the issue?',
-  /**
-   * A source that contradicts itself is not a tenant problem, and the step's own
-   * body says so. Asking "Changes made in Microsoft?" under it invited the
-   * operator to go and change a tenant that has nothing wrong with it.
-   */
-  source: 'Source corrected?',
 } as const
 
 /**
@@ -769,35 +742,6 @@ export const FOOTER = {
  */
 export function implementationIsCurrent(step: Pick<Step, 'state'>): boolean {
   return step.state.condition === 'healthy'
-}
-
-/**
- * Whether the footer offers the existing scan.
- *
- * A scan is how a tenant CHANGE is verified. A goal the tenant already delivers
- * has no change to verify — its action is "keep the policy as it is" — so the
- * footer offers Close alone rather than inviting a rescan that would confirm
- * nothing. Everywhere else the step's own content entry decides, as it always
- * has (`cs.scanControl`).
- */
-export function footerOffersScan(step: Pick<Step, 'state'>): boolean {
-  return !(step.state.satisfied && step.state.inPlace)
-}
-
-/**
- * Whether the opened step draws Done when.
- *
- * It does wherever work or verification remains, which is nearly everywhere.
- * The exception is a goal the tenant already delivers: production's completion
- * line for one reads "Already satisfied: <tenant> has this, and the step is to
- * keep it that way", and its What to do reads "Keep the policy as it is" — the
- * same instruction twice, three sections apart, on the one kind of step that has
- * nothing left to do. The contract still CARRIES the line, unchanged, and the
- * printed plan and the export still read it; this is the opened step declining
- * to say it a second time.
- */
-export function showsDoneWhen(step: Pick<Step, 'state'>): boolean {
-  return !(step.state.satisfied && step.state.inPlace)
 }
 
 /**
@@ -883,13 +827,152 @@ const AFTER = 'after: '
 const withoutAfterColon = (s: string): string => (s.startsWith(AFTER) ? `after ${s.slice(AFTER.length)}` : s)
 
 /**
- * Which question the footer asks, from the step's own condition and blockers.
- *
- *   baseline-conflict  the ambiguity is in the SOURCE, not the tenant
- *   outstanding fixes  the operator was asked to clear something
- *   otherwise          an ordinary tenant change
+ * The opened step's eyebrow: what kind of step this is
+ * (pages.app.plan.stepContract.kind), and the approved design's "Resolution
+ * step" for one whose source defines its policy two ways
+ * (docs/design/approved/anatomy/plan-step-v1.html V5) — there is no policy to
+ * roll out until a reviewed baseline settles which one is meant. A kind with no
+ * label shows none.
  */
-export const footerNote = (contract: StepContract): string => {
-  if (contract.state.condition === 'baseline-conflict') return FOOTER.source
-  return contract.fix.length > 0 ? FOOTER.resolved : FOOTER.changed
+export function eyebrowOf(c: StepContract, contentKind: string | null): string | null {
+  if (c.state.condition === 'baseline-conflict') return CONTRACT.kind.resolution ?? null
+  return contentKind === null ? null : (CONTRACT.kind[contentKind] ?? null)
+}
+
+// ---- the approved Readiness, Implementation and Next milestone regions ----
+//
+// docs/design/approved/anatomy/plan-step-v1.html (owner update, Sep 10, 2026)
+// draws every expanded step with the same regions: Readiness in the main column,
+// Implementation under it, and a rail that is Next milestone only. What follows
+// PROJECTS the contract into those regions. It decides nothing the contract has
+// not already decided: every tile note, every bar sub-line and every rail sub-line
+// is a sentence the contract already carries, and the only words added are the
+// region's own labels (pages.app.plan.stepContract.readiness / implementation /
+// rail). The state changes what a region says, never which component draws it.
+
+/** A readiness tile's mark: ✓ met, ! needs attention, … still under way, or none where the tile states a count and no verdict. */
+export type ReadinessTone = 'good' | 'warn' | 'wait' | 'info'
+
+export type ReadinessTile = { key: string; label: string; tone: ReadinessTone; value: string; note: string | null }
+
+export type ContractReadiness = {
+  /** One to three tiles, each a fact the contract holds; never padded to three. */
+  tiles: ReadinessTile[]
+  /** The bar's headline, keyed by where the step stands; its sub-line is the contract's one action (`whatToDo`). */
+  bar: { key: string; main: string }
+}
+
+const R = (): ContractWords['readiness'] => CONTRACT.readiness
+
+/**
+ * Where the step stands, as one key: the condition first, because it overrules
+ * the lifecycle's own idea of the next move (Foundation B), then the action the
+ * contract settled. The bar's headline, the rail's undated metric and the
+ * implementation's empty box all read it, so the three cannot disagree.
+ */
+export function standingOf(c: StepContract): string {
+  const s = c.state
+  if (s.condition === 'baseline-conflict') return 'conflict'
+  if (s.setAside) return 'restore'
+  if (s.condition === 'review-required') return 'review'
+  if (s.condition === 'needs-decision') return 'decide'
+  if (s.condition === 'blocked') return 'blocked'
+  return c.whatToDo.kind
+}
+
+/** The tile that says what the step's own state turns on, where the state turns on something. */
+function stateTile(step: Step, c: StepContract): ReadinessTile | null {
+  const s = c.state
+  const t = R().tiles
+  if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
+  if (s.setAside) return null
+  if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
+  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: CONTRACT.condition['needs-decision'], note: MILESTONE.decide }
+  if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? null }
+  // The threshold is on the action only while it is unmet (roadmap/types.ts
+  // `readinessGate`), so its mark is never a tick.
+  const gate = step.action.readinessGate
+  if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: gate.value, note: fillText(CONTRACT.foundReadiness, { ...gate }) }
+  if (c.milestone.kind === 'observe') return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: null }
+  return null
+}
+
+/**
+ * The emergency-access boundary, where it has something to say. Foundation A
+ * records an exposure only when a final scope reaches an emergency account or
+ * cannot be proven not to (roadmap/operations.ts emergencyExposureOf), so the
+ * absence of one is not proof of exclusion and draws no tile.
+ */
+function exclusionsTile(step: Step, c: StepContract): ReadinessTile | null {
+  const e = step.action.emergencyExposure
+  if (!e || c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict') return null
+  const t = R().tiles
+  const because = c.implementation.offered ? null : c.implementation.because
+  if (e.reached.length > 0) return { key: 'exclusions', label: t.exclusions, tone: 'warn', value: t.exclusionsReached, note: because }
+  if (e.unproven.length > 0) return { key: 'exclusions', label: t.exclusions, tone: 'warn', value: t.exclusionsUnproven, note: because }
+  return null
+}
+
+/** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
+function peopleTile(c: StepContract): ReadinessTile | null {
+  if (c.who === null) return null
+  const t = R().tiles
+  return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: null } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
+}
+
+/**
+ * The last tile: what stands in the way. Outstanding fixes where there are any;
+ * where there are none and Foundation A still offers nothing, that is the fact,
+ * and "Clear" beside it would be a claim the step cannot make.
+ */
+function blockingTile(c: StepContract): ReadinessTile {
+  const t = R().tiles
+  if (c.fix.length > 0) return { key: 'blockers', label: t.blockers, tone: 'warn', value: fillText(t.open, { n: c.fix.length }), note: t.openNote }
+  if (!c.implementation.offered && c.implementation.reason !== null) {
+    return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.reason === 'baseline-conflict' ? CONTRACT.implementation.empty.conflict[1] : null }
+  }
+  return { key: 'blockers', label: t.blockers, tone: 'good', value: t.clear, note: t.clearNote }
+}
+
+/** The Readiness region: up to three tiles, and the bar's headline. */
+export function readinessOf(step: Step, c: StepContract): ContractReadiness {
+  const lead = [stateTile(step, c), exclusionsTile(step, c), peopleTile(c)].filter((x): x is ReadinessTile => x !== null).slice(0, 2)
+  const key = standingOf(c)
+  return { tiles: [...lead, blockingTile(c)], bar: { key, main: R().bar[key] ?? R().bar.none } }
+}
+
+/**
+ * The Next milestone rail: the date where Foundation B holds one, and otherwise
+ * the one word for where the step stands, over the milestone's own words.
+ */
+export function railOf(c: StepContract): { metric: string; sub: string } {
+  const m = c.milestone
+  const sub = m.gatedBy ?? m.label
+  if (m.at !== null) return { metric: absoluteDate(m.at), sub }
+  const w = CONTRACT.rail
+  const metric: Record<string, string> = { conflict: w.deferred, restore: w.setAside, decide: w.decision, preserve: w.noChange, review: w.held, blocked: w.held, resolve: w.held }
+  return { metric: metric[standingOf(c)] ?? w.undated, sub }
+}
+
+export type ImplementationEmpty = { key: string; tone: 'neutral' | 'good' | 'warn' | 'danger'; title: string; text: string }
+
+/**
+ * The truthful no-action box a step shows where it offers no implementation
+ * channel, by the reason it offers none. A goal already delivered, a step whose
+ * source contradicts itself, a review, a decision and a blocker each say so;
+ * none of them is ever offered an artifact in its place.
+ */
+export function implementationEmptyOf(c: StepContract): ImplementationEmpty {
+  const E = CONTRACT.implementation.empty
+  const box = (key: string, tone: ImplementationEmpty['tone']): ImplementationEmpty => ({ key, tone, title: E[key][0], text: E[key][1] })
+  const s = c.state
+  if (s.condition === 'baseline-conflict') return box('conflict', 'danger')
+  if (s.setAside) return box('setAside', 'neutral')
+  if (s.satisfied) return box('inPlace', 'good')
+  if (s.condition === 'review-required') return box('review', 'warn')
+  if (s.condition === 'needs-decision') return box('decision', 'warn')
+  if (!c.implementation.offered && c.implementation.reason !== null) return box('unavailable', 'warn')
+  if (s.condition === 'blocked') return box('blocked', 'warn')
+  if ((!c.implementation.offered && c.implementation.hold !== null) || c.whatToDo.kind === 'observe') return box('observe', 'neutral')
+  return box('none', 'neutral')
 }

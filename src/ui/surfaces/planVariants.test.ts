@@ -19,7 +19,7 @@
 // it renders at:
 //
 //   kind · lifecycle · condition · outcome · action · track · implementation ·
-//   rail · found · fix · members · who
+//   found · fix · members · who
 //
 // That set is the product's real variant inventory, and §1 pins it: a shape
 // that disappears is a variant that stopped being reachable, and a shape that
@@ -54,7 +54,7 @@ import { scannedAt } from '../../roadmap/fixtures/records.ts'
 import { heldForReview } from '../../roadmap/lifecycle.ts'
 import type { Condition, Lifecycle } from '../../roadmap/lifecycle.ts'
 import { implementationOffered, isPreserved, operationsOf, policyHold, unavailableReason } from '../../roadmap/operations.ts'
-import { hasRail, railBlocks, stepContract, stepTrack } from './stepContract.ts'
+import { CONTRACT, railOf, readinessOf, stepContract, stepTrack } from './stepContract.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import type { StepContract } from './stepContract.ts'
 import { statusOf } from './statusWord.ts'
@@ -95,7 +95,6 @@ function shapeOf(step: Step, c: StepContract): string {
     `do:${c.whatToDo.kind}`,
     c.track.length > 0 ? 'track' : 'no-track',
     c.implementation.offered ? 'implementation' : 'no-implementation',
-    hasRail(c) ? 'rail' : 'no-rail',
     c.found.length > 0 ? 'found' : 'no-found',
     c.fix.length > 0 ? 'fix' : 'no-fix',
     c.multiPolicy ? 'members' : 'one-policy',
@@ -324,7 +323,7 @@ const CASES: Record<string, (v: Variant) => boolean> = {
   // step with a fix list is waiting on something, and a step waiting on
   // something is not healthy enough for the implementation block: the shape is
   // no longer one the product can render, and its rail was the defect.
-  'sparse': (v) => v.c.found.length === 0 && v.c.fix.length === 0 && !hasRail(v.c),
+  'sparse': (v) => v.c.found.length === 0 && v.c.fix.length === 0 && v.c.milestone.at === null,
 }
 
 /**
@@ -342,46 +341,39 @@ const CASES: Record<string, (v: Variant) => boolean> = {
  * The comment after each line is one example, not the only one: most of these
  * are reached by several fixtures.
  */
-// Twelve more moved from `rail` to `no-rail` when a held policy stopped offering
-// its deployment: the rail's only content on those steps was the Entra /
-// PowerShell / JSON list, beside a main column that had just withheld it. A rail
-// existing to advertise what the step declines to offer is worse than no rail.
-//
-// Four entries moved from `rail` to `no-rail` when the header gained its Next
-// caption: a step whose ONLY rail block was an undated gate ("after: Create or
-// Correct Emergency Access Accounts") now says that in the header, and the rail
-// it left behind held nothing else. The rail is optional by design, so the
-// answer is no rail rather than a column repeating the line above it.
+// The rail dimension left the shape when the approved design (owner update, Sep 10,
+// 2026) made the rail the Next milestone on every step: there is no step left that
+// draws one and no step that does not, so it no longer tells two shapes apart.
 const INVENTORY: string[] = [
-  'ladder · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // micro/s-ladder-security-defaults
-  'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // micro/s-ladder-legacy-auth-inventory
-  'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // micro/s-check-dormant-accounts
-  'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // micro/s-verify-mfa
-  'ladder · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // micro+set-aside/s-ladder-legacy-auth-inventory
-  'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · fix · one-policy · who-none', // small/s-prereq-break-glass
-  'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // small/s-prereq-allowed-countries
-  'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // small/s-prereq-trusted-location
+  'ladder · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro/s-ladder-security-defaults
+  'ladder · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro/s-ladder-legacy-auth-inventory
+  'check · check · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-check-dormant-accounts
+  'campaign · verify · no-lifecycle · healthy · open · do:verify · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // micro/s-verify-mfa
+  'ladder · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // micro+set-aside/s-ladder-legacy-auth-inventory
+  'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · fix · one-policy · who-none', // small/s-prereq-break-glass
+  'object · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-allowed-countries
+  'object · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-trusted-location
   // Step 5: a held policy not yet deployed that still hands over its report-only
   // create says to create it now and what turning it on waits for (owner decision;
   // roadmap/lifecycle.ts nextMilestone), so its action mode is deploy, not resolve.
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · no-found · fix · one-policy · who-known', // demo/s-goal-intune-enrollment-reauth
-  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-rail · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
-  'policy · create · enforced · healthy · in-place · do:preserve · no-track · no-implementation · rail · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
-  'policy · create · enforced · healthy · in-place · do:preserve · no-track · no-implementation · rail · found · no-fix · one-policy · who-none', // small/s-goal-guests-mfa
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
-  'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-rail · no-found · fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected
-  'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
-  'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
-  'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · one-policy · who-known', // small/s-goal-register-info-protected
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-intune-enrollment-reauth
+  'policy · create · not-deployed · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // small/s-goal-block-auth-transfer
+  'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // small/s-goal-block-legacy-auth
+  'policy · create · enforced · healthy · in-place · do:preserve · track · no-implementation · found · no-fix · one-policy · who-none', // small/s-goal-guests-mfa
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small/s-goal-geo-restriction
+  'blocker · prerequisite · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · fix · one-policy · who-none', // small+unanswered/s-prereq-exclusion-group
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-register-info-protected
+  'blocker · prerequisite · no-lifecycle · healthy · in-place · do:preserve · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // small/s-prereq-exclusion-group
+  'policy · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // mid/s-shared-devices
+  'blocker · prerequisite · no-lifecycle · healthy · open · do:deploy · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
   // Step 4: a report-only policy something holds has no next date, so the rail
   // that held only the day its window closes is gone, and its next thing is what
   // holds it rather than the watching (roadmap/holds.ts).
-  'policy · adjust · report-only · blocked · open · do:resolve · track · implementation · no-rail · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
-  'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · rail · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
-  'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
+  'policy · adjust · report-only · blocked · open · do:resolve · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
+  'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
+  'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
   // Step 7: the guest readiness gate counts only people who are Ready for
   // phishing-resistant MFA, and the demo's guests hold no qualifying method in
   // this tenant. So every guests-pair variant carries the readiness finding
@@ -389,31 +381,31 @@ const INVENTORY: string[] = [
   // (`do:deploy`); and on week two the half-pair update, which enforces on run,
   // is withheld (`no-implementation`), which folds its rescan review-required
   // variant into the blocked one.
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
-  'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer
-  'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · rail · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
+  'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer
+  'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
+  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
   // Step 3 correction: the report-only policy whose required exclusions group has
   // no usable, owner-confirmed object stays report-only instead of reading Ready to
   // enforce; an existing policy short of the group is a change, held on the
   // exclusions prerequisite with no operation while there is no group to add, and
   // offered once there is.
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-rail · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-mfa-all-users
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // demo/s-goal-guests-mfa
-  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-rail · no-found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
-  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-known', // demo+curated/s-goal-mfa-all-users
-  'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-rail · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
-  'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · no-rail · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-rail · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
-  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · no-rail · found · no-fix · members · who-unknown', // demo-week2+half-pair/s-goal-guests-mfa
-  'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-block-auth-transfer
-  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
-  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-rail · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
-  'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · rail · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-token-protection
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // small+unanswered/s-goal-block-legacy-auth
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // small+unanswered/s-goal-mfa-all-users
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // demo/s-goal-guests-mfa
+  'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
+  'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-mfa-all-users
+  'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
+  'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
+  'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · members · who-unknown', // demo-week2+half-pair/s-goal-guests-mfa
+  'policy · adjust · report-only · healthy · open · do:observe · track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-block-auth-transfer
+  'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
+  'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
+  'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-token-protection
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {
@@ -443,16 +435,23 @@ test('§2 the lifecycle track is a projection of the lifecycle alone, and the co
       assert.equal(current.length, 1, `${v.where}: the track marks ${current.length} current stages`)
       assert.equal(current[0].key, v.c.state.lifecycle, `${v.where}: the marked stage is not the step's lifecycle`)
     }
-    // And it is drawn at all only where there is a rollout: a goal the tenant
-    // already satisfies was never on this plan's lifecycle, and a set-aside step
-    // has left it. Neither may be painted as a rollout half way through.
-    const expected = v.c.state.lifecycle !== null && !v.c.state.setAside && !v.c.state.inPlace
+    // And it is drawn wherever a lifecycle is recorded, except where there is no
+    // rollout to draw: a set-aside step has left the lifecycle, and a step whose
+    // source contradicts itself is a resolution step with no policy to roll out
+    // (the approved pack's V5 draws no track).
+    const expected = v.c.state.lifecycle !== null && !v.c.state.setAside && v.c.state.condition !== 'baseline-conflict'
     assert.equal(v.c.track.length > 0, expected, `${v.where}: the track is drawn where there is no rollout to draw, or missing where there is`)
     // The orthogonality, proved by construction rather than by inspection: the
-    // same step at each of the five conditions draws the same track.
+    // same step at each of the four ordinary conditions draws the same track, and
+    // the resolution condition draws none rather than a different one.
     const drawn = JSON.stringify(v.c.track)
     for (const condition of CONDITIONS) {
       const swapped = { ...v.step, state: { ...v.step.state, condition } } as Step
+      if (condition === 'baseline-conflict') {
+        assert.deepEqual(stepTrack(swapped), [], `${v.where}: a resolution step draws a lifecycle`)
+        continue
+      }
+      if (v.c.state.condition === 'baseline-conflict') continue
       assert.equal(JSON.stringify(stepTrack(swapped)), drawn, `${v.where}: the track changes with the condition badge (${condition})`)
     }
   }
@@ -545,14 +544,19 @@ test('§3c a preserved goal is never asked to be created, and a set-aside step n
     (v) => !isPreserved(v.step) || !v.c.implementation.offered,
     'a goal already delivered is offered as a policy to create',
   )
-  // A goal the TENANT already delivered was never on this plan's lifecycle, so
-  // it draws no track: marking its stages reached would claim a rollout that
-  // did not happen. A goal this plan itself deployed and enforced is a
-  // different fact and keeps the rollout it actually had.
+  // A goal the TENANT already delivered draws the lifecycle its policy recorded,
+  // as the approved In-place variant does: complete, never mid-rollout. Who put
+  // it there stays in the words — its badge reads In place, never Enforced,
+  // which is the one claim that IAMAI ran the rollout (statusWord.ts).
   every(
     'in-place-track',
-    (v) => !v.c.state.inPlace || v.c.track.length === 0,
-    'a policy the tenant already had is drawn as a rollout this plan ran',
+    (v) => !v.c.state.inPlace || v.c.track.every((t) => t.reached),
+    'a policy the tenant already had is drawn part-way through a rollout',
+  )
+  every(
+    'in-place-word',
+    (v) => !(v.c.state.inPlace && v.c.state.satisfied) || v.c.state.stage === CONTRACT.lifecycle['in-place'],
+    'a policy the tenant already had is named as a rollout this plan enforced',
   )
   every(
     'set-aside',
@@ -598,11 +602,18 @@ test('§4b what IAMAI found is what this scan observed, never a padded card', ()
 
 // -------------------------------------------------------------------- §5 rail
 
-test('§5 the rail exists only where the contract has a block for it, on every variant', () => {
+test('§5 the rail and Readiness say only what the contract holds, on every variant', () => {
+  // The approved rail is the Next milestone only, and every step has one.
+  every('rail', (v) => railOf(v.c).metric.trim().length > 0 && railOf(v.c).sub.trim().length > 0, 'a step draws an empty Next milestone rail')
+  // Readiness is one to three tiles, each a label over a value, and a bar with
+  // a headline: never empty, never padded to three.
   every(
-    'rail',
-    (v) => hasRail(v.c) === Object.values(railBlocks(v.c)).some(Boolean),
-    'the frame keeps a rail column beside nothing, or drops a rail that has content',
+    'readiness',
+    (v) => {
+      const r = readinessOf(v.step, v.c)
+      return r.tiles.length >= 1 && r.tiles.length <= 3 && r.tiles.every((t) => t.label.trim() !== '' && t.value.trim() !== '') && r.bar.main.trim() !== ''
+    },
+    'a step draws an empty or padded Readiness region',
   )
   // Task 036's own addition: the pack's In-place variant is defined by a rail
   // block naming the tenant's own policy. It is `Step.satisfiedBy` and nothing
@@ -628,20 +639,20 @@ test('§5 the rail exists only where the contract has a block for it, on every v
   )
 })
 
-test('§5b a preserved goal now draws the pack’s In-place rail, and the pack still draws it', () => {
+test('§5b a preserved goal draws the pack’s In-place variant: no change needed, and no implementation', () => {
   const pack = read('docs/design/approved/anatomy/plan-step-v1.html')
-  const v4 = pack.slice(pack.indexOf('<!-- V4 -->'), pack.indexOf('<!-- V5 -->'))
-  assert.ok(v4.includes('Existing implementation'), 'the pack no longer draws the In-place variant’s existing-implementation block')
-  assert.ok(!v4.includes('<div class="track"'), 'the pack now draws a lifecycle track on its In-place variant')
-  // Production: at least one preserved step in the sweep names its policy, and
-  // every one that does draws the rail rather than the empty column it used to.
-  const named = sweep().filter((v) => v.c.existing !== null)
-  assert.ok(named.length > 0, 'no preserved step names the policy that delivers the goal')
-  for (const v of named) assert.equal(hasRail(v.c), true, `${v.where}: the In-place step names its policy and still draws no rail`)
-  // And the rail block is the component's, over the contract's fact.
-  const sections = read('src/ui/surfaces/StepSections.tsx')
-  assert.match(sections, /CONTRACT\.railExisting/, 'the rail no longer draws the existing-implementation block')
-  assert.match(sections, /existing\.names\.join/, 'the rail composes the policy name somewhere other than the contract')
+  const v4 = pack.slice(pack.indexOf('id="v4"'), pack.indexOf('id="v5"'))
+  assert.ok(v4.includes('<div class="metric">No change needed</div>'), 'the pack’s In-place rail no longer says no change is needed')
+  assert.ok(v4.includes('implementation-empty good'), 'the pack’s In-place variant now offers an implementation')
+  assert.equal(v4.split('<div class="stage done"></div>').length - 1, 4, 'the pack no longer draws the In-place lifecycle as reached')
+  // Production: every preserved goal nothing holds says the same, from the contract.
+  const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy')
+  assert.ok(preserved.length > 0, 'no preserved goal in the sweep')
+  for (const v of preserved) {
+    assert.equal(railOf(v.c).metric, CONTRACT.rail.noChange, `${v.where}: a preserved goal’s rail does not say no change is needed`)
+    assert.ok(v.c.track.every((t) => t.reached), `${v.where}: a preserved goal is drawn mid-rollout`)
+    assert.equal(v.c.implementation.offered, false, `${v.where}: a preserved goal offers an implementation`)
+  }
 })
 
 // ------------------------------------------------------- §6 one presentation
@@ -680,13 +691,9 @@ test('§6a Portal, JSON and PowerShell are one authority chain the presentation 
   // (`implementation.offered`, which is roadmap/operations.ts's
   // `implementationOffered`). A surface that decided a channel for itself is
   // how the screen came to instruct a change the artifacts refused to describe.
-  for (const gate of [
-    `{tab === 'json' && contract.implementation.offered &&`,
-    `{tab === 'ps' && contract.implementation.offered &&`,
-    `{contract.implementation.offered && (`,
-    `{(tab === 'json' || tab === 'ps') && !contract.implementation.offered && (`,
-  ]) assert.ok(step.includes(gate), `the step no longer gates a channel on the contract's one answer: ${gate}`)
-  assert.match(sections, /contract\.implementation\.offered \? \(/, 'the rail no longer lists its channels off the contract’s one answer')
+  assert.ok(step.includes('const channels = deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []'), "the step no longer gates its channels on the contract's one answer")
+  assert.ok(step.includes("if (machineOffered) out.push('ps', 'json')"), 'the machine channels are offered without Foundation A')
+  assert.equal(/implementationOffered|jsonOffered/.test(sections.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the frame components ask Foundation A themselves')
   // And the bodies themselves are never composed here: the JSON is stepJson's
   // over the step's own resolved operations, and the commands are
   // stepPowerShell's over the same operations.

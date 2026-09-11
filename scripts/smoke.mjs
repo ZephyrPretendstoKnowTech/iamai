@@ -512,7 +512,7 @@ try {
   const blockedWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').map((r) => ({ when: ((r.querySelector('.when') || {}).textContent || '').trim(), reason: ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim() }))`)
   const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === '' || when === 'Held' || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^after: /.test(reason))))
   check('Plan: a Blocked row reads Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
-  check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /What to do/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
+  check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /Readiness/.test(document.body.innerText) && /Implementation/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
   // The opened step is one frame attached under the row that opened it, with a
   // head and a main column, and the frame is the row's next element (task 034).
@@ -521,16 +521,18 @@ try {
   )
   check('Plan: the opened step is a frame attached under the row that opened it', !!framed && framed.tag === 'ARTICLE' && framed.head && framed.main && framed.row === 'plan-row|true', JSON.stringify(framed))
   // The frame's own footer: under BOTH columns, not the last line of the main
-  // column. `Close` is always there; the scan is only where a scan is how the
-  // step is verified.
+  // column. It carries the rollout exception where the step is excludable and the
+  // scan; the row above the step is what closes it (the approved Plan design).
   check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
-  check('Plan: the footer offers Close, and a scan only where the step is verified by one', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Close')) return false; return b.every((t) => t === 'Close' || t === 'Scan to update the plan') && !f.querySelector('button[disabled]') })()`))
+  check('Plan: the footer offers the rollout exception and the scan, and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Scan to update the plan')) return false; return b.every((t) => ['Scan to update the plan', 'Exclude from rollout', "Doesn't apply here", 'Put this step back'].includes(t)) && !f.querySelector('button[disabled]') })()`))
+  // The Readiness region and the Next milestone rail are on every opened step.
+  check('Plan: the opened step draws Readiness and the Next milestone rail', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile').length; const rail = st.querySelector('.step-side'); return tiles >= 1 && tiles <= 3 && !!st.querySelector('.readiness-bar') && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
   // The head badge carries the lifecycle and the condition, once. The line that
   // repeated them under the title is gone.
   check('Plan: the step head states the lifecycle and condition once', await evaluate(`document.querySelectorAll('main.page .step .step-state').length === 0 && !!document.querySelector('main.page .step .step-head .status')`))
   // The implementation control follows the capability: a strip only where there
   // is a choice, and never a one-tab tab set.
-  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const strip = st.querySelector('.tabs.action-tabs'); const solo = st.querySelector('.single-channel-label'); if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !solo; return true })()`))
+  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const strip = st.querySelector('.tabs.impl-tabs'); const empty = st.querySelector('.implementation-empty'); if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !empty; return !!empty })()`))
   // The approved Plan pack's topbar is sticky, and it is the one app header.
   const stickyHeader = await evaluate(
     `(async () => { window.scrollTo(0, 800); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const hs = document.querySelectorAll('header.app'); const t = hs[0].getBoundingClientRect().top; window.scrollTo(0, 0); return { n: hs.length, top: Math.round(t), sticky: getComputedStyle(hs[0]).position } })()`,
@@ -545,7 +547,6 @@ try {
     const stepText = await evaluate(`(document.querySelector('main.page .step') || {}).textContent || ''`)
     const stepHits = FORBID_EVERYWHERE.filter((f) => stepText.includes(f))
     check('Step: the What-to-do tabs carry no forbidden placeholder', stepHits.length === 0, stepHits.join('; '))
-    await clickText('/^Download JSON$/'); await sleep(200)
   }
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
   check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|Housekeeping/g) || []).length >= 1)
@@ -901,23 +902,25 @@ try {
     await sleep(400)
   }
   check('Demo: a picker decision is saved', decided, decideNote || openNote)
-  // A skip: Block the Admin Portals for Non-Admins, from its More.
+  // A rollout exception: Block the Admin Portals for Non-Admins, from its footer,
+  // with the operator's reason recorded (the approved Plan design's dialog).
   await demoGo('plan')
   let skipped = false
   let skipNote = ''
   if (await openRow('/Block the Admin Portals/')) {
-    await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true })()`)
-    await sleep(150)
-    if (await clickText('/^Put this step back$/', 'main.page .step-body')) {
+    if (await clickText('/^Put this step back$/', 'main.page .step .step-footer')) {
       await sleep(400)
       await demoGo('plan')
       await openRow('/Block the Admin Portals/')
-      await evaluate(`(() => { const d = document.querySelector('main.page .step-body details.more'); if (d) d.open = true })()`)
-      await sleep(150)
     }
-    skipNote = await evaluate(`[...document.querySelectorAll('main.page .step-body button')].map((b) => b.textContent.trim()).join('|')`)
-    skipped = await clickText('/^Skip this step$/', 'main.page .step-body')
-    await sleep(400)
+    skipNote = await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('|')`)
+    if (await clickText('/^Exclude from rollout$/', 'main.page .step .step-footer')) {
+      await waitFor(`!!document.querySelector('main.page .step dialog[open] textarea')`, 3000)
+      await evaluate(`(() => { const el = document.querySelector('main.page .step dialog[open] textarea'); if (!el) return false; const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(el, 'Not needed for this tenant'); el.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
+      await sleep(150)
+      skipped = await clickText('/^Exclude from rollout$/', 'main.page .step dialog[open] .dialog-actions-row')
+      await sleep(400)
+    }
   }
   check('Demo: a step is skipped', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Block the Admin Portals/.test(r.textContent) && /Skipped/.test(r.textContent))`, 4000)), skipNote || openNote)
   // A start date, in the plan settings.

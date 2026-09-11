@@ -19,7 +19,8 @@ import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
-import { CONTRACT, FOOTER, badgeLabel, footerNote, hasRail, implementationIsCurrent, nextCaption, railBlocks, stepTrack as trackFor } from './stepContract.ts'
+import { CONTRACT, badgeLabel, nextCaption, railOf, stepTrack as trackFor } from './stepContract.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 
 import type { ContractStage, StepContract } from './stepContract.ts'
 
@@ -176,17 +177,19 @@ test('the implementation control follows the capability: none, one, or a real ta
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the surface asks ${forbidden} instead of reading the contract`)
   }
   assert.match(CONTENT_STEP, /channelsFor\([\s\S]{0,120}contract\.implementation\.offered\)/, 'the channel rule does not read the contract’s one answer')
-  assert.match(CONTENT_STEP, /channels\.length > 1 \? \(/, 'the strip is drawn without asking whether there is a choice')
-  assert.match(CONTENT_STEP, /<div className="single-channel-label">/, 'one channel has no name over it')
+  // AI Info joins any channel that exists, so the strip always holds a choice,
+  // and a step with none draws the one no-action box instead of a strip.
+  assert.match(fn, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info is offered alone, or not beside the channels')
+  assert.match(CONTENT_STEP, /channels\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'no channel draws an empty strip')
 })
 
-test('the channel order is Entra, then PowerShell, then JSON, among the channels that exist', () => {
-  const list = CONTENT_STEP.slice(CONTENT_STEP.indexOf('const DO_TABS'), CONTENT_STEP.indexOf('const DO_TABS') + 400)
+test('the channel order is Entra, PowerShell, JSON, then AI Info, among the channels that exist', () => {
+  const list = CONTENT_STEP.slice(CONTENT_STEP.indexOf('const CHANNEL_TABS'), CONTENT_STEP.indexOf('const CHANNEL_TABS') + 400)
   const ids = [...list.matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
-  assert.deepEqual(ids, ['portal', 'ps', 'json'], 'the canonical channel order moved')
+  assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai'], 'the canonical channel order moved')
   // The strip is the canonical order FILTERED by what is available, so removing
   // a channel can never reorder the ones that remain.
-  assert.match(CONTENT_STEP, /DO_TABS\.filter\(\(t\) => channels\.includes\(t\.id as DoTab\)\)/, 'the strip is built from something other than the canonical order')
+  assert.match(CONTENT_STEP, /CHANNEL_TABS\.filter\(\(t\) => channels\.includes\(t\.id as Channel\)\)/, 'the strip is built from something other than the canonical order')
 })
 
 test('every policy step in the fixtures offers a channel count the rule can draw', () => {
@@ -206,22 +209,14 @@ test('every policy step in the fixtures offers a channel count the rule can draw
 
 // ----------------------------------------------------------------- the footer
 
-test('the footer offers the existing scan only where a scan is the verification, and Close always', () => {
-  assert.match(CONTENT_STEP, /<StepFooter note=\{footerNote\(contract\)\} onScan=\{cs\.scanControl && onScan && footerOffersScan\(step\) \? onScan : null\}/, 'the footer decides for itself when a scan applies')
-  // Close is unconditional; the scan is not. A disabled button kept for symmetry
-  // is a control that teaches the operator to ignore the footer.
-  const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('export const FOOTER'))
+test('the footer carries the rollout exception and the scan, and nothing it cannot act on', () => {
+  assert.match(CONTENT_STEP, /<StepFooter controls=\{exceptions\.length > 0 \? exceptions : null\} onScan=\{printing \? null : \(onScan \?\? null\)\} \/>/, 'the footer is not handed the exception and the scan')
+  // A disabled button kept for symmetry is a control that teaches the operator
+  // to ignore the footer, and a footer with nothing to offer is not drawn.
+  const footer = SECTIONS.slice(SECTIONS.indexOf('export function StepFooter'), SECTIONS.indexOf('/** A tile'))
   assert.match(footer, /\{onScan && \(/, 'the scan control is unconditional')
-  assert.equal(/disabled/.test(footer), false, 'the footer keeps a disabled control for symmetry')
-  assert.match(footer, /onClick=\{onClose\}/, 'Close is not the handler it was given')
-  // The note only appears beside a control that can answer it.
-  assert.match(footer, /\{onScan && note && </, 'the footer asks a question it cannot act on')
-})
-
-test('the footer note is read off the contract, never off the step', () => {
-  const blocked = contractAt(MATRIX[1], { fix: [{ key: 'a', text: 'x' }] as StepContract['fix'] })
-  assert.equal(footerNote(blocked), FOOTER.resolved, 'a step with blockers is not asked about its blockers')
-  assert.equal(footerNote(contractAt(MATRIX[0])), FOOTER.changed, 'a step with no blockers is asked about a blocker')
+  assert.match(footer, /if \(!controls && !onScan\) return null/, 'an empty footer is drawn')
+  assert.equal(/disabled|onClose/.test(footer), false, 'the footer keeps a disabled control, or closes the step the row closes')
 })
 
 // ------------------------------------------------------------- the frame shape
@@ -231,16 +226,18 @@ test('the header is full width and the two-column split begins below it', () => 
   // spans the whole frame rather than being squeezed into the main column beside
   // a 290px rail.
   const frame = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<article className="step'), CONTENT_STEP.indexOf('</article>'))
-  assert.ok(frame.indexOf('<StepHead') < frame.indexOf('<div className={`step-body'), 'the head is not above the body')
-  assert.ok(frame.indexOf('</StepHead>') < frame.indexOf('<div className={`step-body'), 'the head is inside the body')
+  assert.ok(frame.indexOf('<StepHead') < frame.indexOf('<div className="step-body has-rail">'), 'the head is not above the body')
+  assert.ok(frame.indexOf('</StepHead>') < frame.indexOf('<div className="step-body has-rail">'), 'the head is inside the body')
   assert.equal(/step-body[\s\S]{0,400}<StepHead/.test(frame), false, 'the head was drawn inside the split')
   // The footer is the frame's, under both columns.
-  assert.ok(frame.indexOf('<StepFooter') > frame.indexOf('{rail && <StepRail'), 'the footer is inside the body')
+  assert.ok(frame.indexOf('<StepFooter') > frame.indexOf('<StepRail contract'), 'the footer is inside the body')
 })
 
-test('the rail is optional: no rail means the main column takes the whole width', () => {
-  assert.match(CONTENT_STEP, /className=\{`step-body\$\{rail \? ' has-rail' : ''\}`\}/, 'the body does not know whether it has a rail')
-  assert.match(CONTENT_STEP, /\{rail && <StepRail contract=\{contract\} \/>\}/, 'the rail renders without being gated')
+test('every step has the Next milestone rail beside its main column', () => {
+  // The approved rail is Next milestone only, and every step has a next
+  // milestone, so the rail is never optional and never empty.
+  assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
+  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
   const one = CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? ''
   const two = CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? ''
   assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no rail leaves an empty column')
@@ -251,7 +248,7 @@ test('the footer is the frame’s own band, not the last line of the main column
   const rule = CSS.match(/\.step-footer \{[^}]*\}/)?.[0] ?? ''
   assert.match(rule, /border-top: 1px solid var\(--line\);/, 'the footer is not divided from the step')
   assert.match(rule, /background: var\(--secondary-surface\);/, 'the footer is not on the quieter surface')
-  assert.match(rule, /justify-content: flex-end;/, 'the footer controls are not held to the end')
+  assert.match(CSS, /\.step-footer \.step-footer-scan \{\n\s*margin-left: auto;/, 'the scan is not held to the end')
   // And it collapses with the rest of the frame at the pack's second breakpoint.
   const narrow = CSS.slice(CSS.indexOf('@media (max-width: 650px)'))
   assert.match(narrow, /\.step-head,\n\s*\.step-main,\n\s*\.step-footer \{/, 'the footer keeps a desktop inset on a phone')
@@ -282,7 +279,7 @@ test('the track is the header’s, never the main column’s and never the rail�
   assert.match(head, /<LifecycleTrack track=\{track\} \/>/, 'the head no longer draws the track')
   assert.match(head, /<header className="step-head">/, 'the track is not inside the full-width header')
   // Not in the body, not in the rail: the frame renders the head, then the split.
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('{rail && <StepRail'))
+  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('<StepRail contract'))
   assert.equal(main.includes('LifecycleTrack'), false, 'the track moved into the main column')
   const rail = SECTIONS.slice(SECTIONS.indexOf('export function StepRail'), SECTIONS.indexOf('export function PolicyMembers'))
   assert.equal(rail.includes('LifecycleTrack'), false, 'the track moved into the rail')
@@ -348,22 +345,18 @@ test('a state with neither a dated line nor a gate gets no caption, and none is 
   assert.match(helper, /startsWith\(AFTER\)/, 'the helper matches something other than the exact prefix')
 })
 
-test('the caption and the rail do not print the same sentence twice', () => {
-  // The rail's milestone block used to render on `at !== null || gatedBy !==
-  // null`, so an undated gated step showed the gate in the rail — and now also
-  // in the header. The rail keeps only the fact the header cannot carry: when.
+test('the rail’s metric is the date where there is one, and the word for where the step stands where there is not', () => {
+  // The caption says what happens next; the rail's headline says when, or — with
+  // no date — the one word for the step's standing, never the caption again.
+  const gated = { milestone: { at: null, gatedBy: 'after: something', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
+  assert.equal(railOf(gated).metric, CONTRACT.rail.held, 'an undated held step is not Held')
+  assert.equal((nextCaption(gated) ?? '').includes(railOf(gated).metric), false, 'the rail headline repeats the caption')
+  const dated = { milestone: { at: '2026-09-17T00:00:00.000Z', gatedBy: null, label: 'Leave it in report-only until Sep 17.' }, state: { condition: 'healthy', setAside: false }, whatToDo: { kind: 'observe', text: 'x' } } as unknown as StepContract
+  assert.equal(railOf(dated).metric, absoluteDate('2026-09-17T00:00:00.000Z'), 'a dated milestone does not lead with its date')
+  assert.equal(railOf(dated).sub, 'Leave it in report-only until Sep 17.')
   const src = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
-  const rails = src.slice(src.indexOf('export function railBlocks'), src.indexOf('export function hasRail'))
-  assert.match(rails, /milestone: c\.milestone\.at !== null,/, 'the rail still repeats the gate the header captions')
-  assert.equal(rails.includes('gatedBy'), false, 'the rail block still gates on the sentence the header owns')
-  // A step whose only rail block was that gate now has no rail at all, rather
-  // than a column repeating the line above it.
-  const gatedOnly = { milestone: { at: null, gatedBy: 'after: something' }, members: [], existing: null } as unknown as StepContract
-  assert.equal(railBlocks(gatedOnly).milestone, false)
-  assert.equal(hasRail(gatedOnly), false, 'a rail survives holding only the caption’s own sentence')
-  // A dated one keeps it: the date is the distinct value.
-  const datedRail = { milestone: { at: '2026-09-17', gatedBy: null }, members: [], existing: null } as unknown as StepContract
-  assert.equal(railBlocks(datedRail).milestone, true)
+  const rail = src.slice(src.indexOf('export function railOf'), src.indexOf('export type ImplementationEmpty'))
+  for (const forbidden of ['Date.', 'new Date', 'step.', 'implementation']) assert.equal(rail.includes(forbidden), false, `the rail computes ${forbidden}`)
 })
 
 // ------------------------------------------- the other families are untouched
