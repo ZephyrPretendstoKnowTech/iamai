@@ -33,6 +33,7 @@
 // one place (/planner/… on the published site).
 import { createHash } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
+import { homeCsp, inlineScriptHashes, withCsp } from './csp.ts'
 import { fileURLToPath } from 'node:url'
 import { MARK_GEOMETRY, MARK_VIEWBOX } from '../src/brand/logo/mark.ts'
 import { renderTokensCss } from '../src/ui/tokens.ts'
@@ -348,7 +349,8 @@ export function assembleHome(html: string, sheets: Record<string, string>, toolP
     page = page.replaceAll(link, `href="/${versioned}"`)
     out[versioned] = sub(text)
   }
-  out['index.html'] = page
+  // The policy last, so the hashes are of the scripts exactly as published (scripts/csp.ts).
+  out['index.html'] = withCsp(page, homeCsp(inlineScriptHashes(page)))
   return out
 }
 
