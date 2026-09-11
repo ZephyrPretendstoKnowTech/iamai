@@ -1697,7 +1697,9 @@ async function walkFixture(fx) {
         // A device step something else holds says what holds it (roadmap/holds.ts,
         // stateReason.ts holdReasonFor) and reads Held; one only sequenced after the
         // open decision names the decision.
-        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && rowWhensOpen[k] === 'Held')
+        // Held on another step of the plan (the baseline's unanswered groups, a
+        // missing object) reads that step as its reason and After … as its When.
+        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (rowWhensOpen[k] === 'Held' || /^after: (?!Decide How Devices Are Managed)/.test(rowReasonsOpen[k] || '')))
         if (!heldOpen && !reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
         if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
       }
