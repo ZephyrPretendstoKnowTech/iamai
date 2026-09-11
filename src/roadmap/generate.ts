@@ -3,6 +3,7 @@
 // operator self-safety, Learn links, auto-scheduling). Pure.
 import type { CaPolicy } from '../baseline/types.ts'
 import { docFor } from '../baseline/index.ts'
+import { referenceUsage } from '../baseline/interpretation.ts'
 import type { BaselinePackage } from '../baseline/types.ts'
 import { CORE_ADMIN_ROLE_IDS, matchesSignature } from '../coverage/classify.ts'
 import { placeholdersIn, resolveTemplate } from './template.ts'
@@ -1854,10 +1855,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const src = steps.find((s) => s.id === sourceStepId)
     if (src) {
       const byId = new Map<string, SourceReference & { stepIds: string[] }>()
+      // The part each reference plays across the baseline, read off the source
+      // policies themselves: what leaving it out does is asked with it.
+      const usage = new Map(referenceUsage(input.baseline.policies).map((u) => [u.id, u]))
+      const roleOf = (id: string): Pick<SourceReference, 'role' | 'baselinePolicies' | 'baselineTotal'> => {
+        const u = usage.get(id.toLowerCase())
+        if (!u) return {}
+        const role = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
+        return { role, baselinePolicies: new Set([...u.includedIn, ...u.excludedFrom]).size, baselineTotal: input.baseline.policies.length }
+      }
       for (const s of steps) {
         if (s.id === sourceStepId || s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust')) continue
         for (const r of s.action.sourceReferences ?? []) {
-          const at = byId.get(r.id) ?? { ...r, stepIds: [] }
+          const at = byId.get(r.id) ?? { ...r, ...roleOf(r.id), stepIds: [] }
           if (!at.stepIds.includes(s.id)) at.stepIds.push(s.id)
           byId.set(r.id, at)
         }

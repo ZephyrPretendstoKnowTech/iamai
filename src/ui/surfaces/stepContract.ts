@@ -42,7 +42,7 @@ import type { PlanStateKind } from './planState.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
-import { heldByTitle, missingObjects, waitingLine } from './stepJson.ts'
+import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -85,6 +85,7 @@ type ContractWords = {
   doneDecision: string
   doneReadiness: string
   doneMissing: string
+  doneMissingDecision: string
   doneHeldEnd: string
   doneMissingUnreadable: string
   donePair: string
@@ -392,10 +393,11 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       // nothing explains is settled. A step can be waiting on both, and then it
       // says both — the same pair the reason line reads (stepJson.ts
       // waitingLine), in the same order.
-      const objects = step.action.missing ?? []
+      const kinds = new Set((step.action.missing ?? []).map(waitKindOf))
       const done: string[] = []
-      if (objects.some((m) => !m.unreadable)) done.push(fillText(CONTRACT.doneMissing, { tenant }))
-      if (objects.some((m) => m.unreadable)) done.push(fillText(CONTRACT.doneMissingUnreadable, { tenant }))
+      if (kinds.has('referenceUnresolved')) done.push(fillText(CONTRACT.doneMissingDecision, { tenant }))
+      if (kinds.has('objectMissing')) done.push(fillText(CONTRACT.doneMissing, { tenant }))
+      if (kinds.has('sourceUnreadable')) done.push(fillText(CONTRACT.doneMissingUnreadable, { tenant }))
       return done.join(' ')
     }
     case 'unmatched-pair':

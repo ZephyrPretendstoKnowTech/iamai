@@ -214,6 +214,17 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[13].decision.text',
   '.steps[13].decision.references.options[0]',
   '.steps[13].decision.references.options[1]',
+  // The source-references rows' words, read by stepVars.ts sourceReferenceRowsOf by role (correction batch 1.1).
+  '.steps[13].decision.references.answered',
+  '.steps[13].decision.references.clear',
+  '.steps[13].decision.references.omitBoth',
+  '.steps[13].decision.references.omitExclude',
+  '.steps[13].decision.references.omitInclude',
+  '.steps[13].decision.references.roleBoth',
+  '.steps[13].decision.references.roleExclude',
+  '.steps[13].decision.references.roleInclude',
+  '.steps[13].decision.references.sourceId',
+  '.steps[13].decision.references.unanswered',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
