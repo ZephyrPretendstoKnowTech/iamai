@@ -6,6 +6,7 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { planner } from './src/content/content.ts'
 import { buildHome } from './scripts/build-home.ts'
+import { plannerCsp, withCsp } from './scripts/csp.ts'
 import { demoFacts } from './src/ui/demoFacts.ts'
 import { TOOL_PATH } from './scripts/toolPath.ts'
 
@@ -71,6 +72,19 @@ function productTitle(): Plugin {
   }
 }
 
+// The published planner's Content-Security-Policy (scripts/csp.ts). Build only:
+// the dev server's module graph and HMR run inline and evaluated code the
+// published bundle never does.
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'content-security-policy',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return withCsp(html, plannerCsp())
+    },
+  }
+}
+
 // The home page's theme file, from the same tokens as the bundle (prompt 47.1
 // Part 3 item 11): written on every build so the two cannot drift.
 function homeTheme(): Plugin {
@@ -122,7 +136,7 @@ export default defineConfig({
   // absolute URL, so nothing else has to change between them.
   base: process.env.VITE_BASE ?? process.env.BASE_PATH ?? `/${TOOL_PATH}/`,
   build: { outDir: `dist/${TOOL_PATH}`, emptyOutDir: true },
-  plugins: [react(), spikeCapture(), productTitle(), homeTheme(), demoFactsModule()],
+  plugins: [react(), spikeCapture(), productTitle(), contentSecurityPolicy(), homeTheme(), demoFactsModule()],
   // Redirect URI is registered as http://localhost:5173 exactly; never fall back to another port.
   server: { port: 5173, strictPort: true },
 })
