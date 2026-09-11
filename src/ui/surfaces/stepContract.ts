@@ -67,6 +67,8 @@ type ContractWords = {
   memberWatched: string
   memberReview: string
   whoUnknown: string
+  /** The reach is not established because the baseline's own references still wait for a person's answer (resolvePolicy.ts `decisions`). */
+  whoUnknownDecision: string
   foundReadiness: string
   foundInPlace: string
   foundInPlaceNamed: string
@@ -462,7 +464,8 @@ export function existingOf(step: Step): ContractExisting | null {
 /** Who the policy reaches, from the reach Foundation A settled — never the goal's population standing in for it. */
 function whoOf(step: Step): ContractWho | null {
   const pop = reached(step)
-  if (pop === null) return { known: false, text: CONTRACT.whoUnknown }
+  // Where the scope waits on a person's answer about the baseline's own groups, that is the reason, not the scan.
+  if (pop === null) return { known: false, text: (step.action.missing ?? []).some((m) => m.decision) ? CONTRACT.whoUnknownDecision : CONTRACT.whoUnknown }
   const view = stepPopulation(step)
   if (view === null) return { known: false, text: CONTRACT.whoUnknown }
   if (view.active === 0 && view.enabledCovered === 0) return null

@@ -101,6 +101,13 @@ export type MappingState = {
   questionAnswers?: Record<string, string>
   /** Baseline policies IAMAI did not assess that the person said do not apply here, by name, with the reason (the Cleanup row's note, E3). */
   notAssessedNotes?: Record<string, string>
+  /**
+   * The baseline's own references (lowercased source ids) a person said this
+   * tenant needs no counterpart for, answered on the source-references step
+   * (roadmap/decisions.ts). A reference a person mapped to a tenant object is a
+   * `records` entry instead. Nothing here is ever inferred.
+   */
+  omittedReferences?: string[]
   updatedAt: string
 }
 

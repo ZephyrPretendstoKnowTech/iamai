@@ -30,6 +30,26 @@ function contentDecision(stepId: string): ContentDecision | null {
 const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null)
 
 /**
+ * The two answers every reference on the source-references step is given in
+ * (content.json decision.references.options), in order: this tenant needs no
+ * counterpart, or this tenant's own object, picked into the option's variable.
+ * An answer persists as questionAnswers[stepId:<source id>] like any other.
+ */
+export function referenceOptions(): string[] {
+  const d = contentStepFor({ id: PREREQ_STEP_ID.sourceReferences, goalId: '' })?.decision as { references?: { options?: unknown } } | null | undefined
+  const raw = d?.references?.options
+  return Array.isArray(raw) ? raw.filter((o): o is string => typeof o === 'string') : []
+}
+
+/** A source-reference answer read back: leave it out, or the tenant object picked; null while unanswered or unreadable. */
+export function referenceAnswer(answer: string | null | undefined): { omit: true } | { objectId: string } | null {
+  const parsed = parseAnswer(answer, referenceOptions())
+  if (!parsed) return null
+  if (parsed.index === 0) return { omit: true }
+  return parsed.index === 1 && parsed.picked.length > 0 ? { objectId: parsed.picked[0] } : null
+}
+
+/**
  * The labels a step's decision block carries in content.json: the decision's
  * own (its options), its question's, and its strict toggle's. The answer keys
  * are built from these, so the content file is the one source of a label.

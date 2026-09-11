@@ -15,7 +15,7 @@ const SHAPES = [/^after: .+$/, /^when .+ reaches .+ \(now .+\)$/, /^when \d+ .+ 
  * The fourth shape is the content file's own sentence, not a fill: matched whole.
  * So are the holds no step of the plan clears (roadmap/stateReason.ts holdReasonFor).
  */
-const SENTENCES = [BLOCKED_REASON.baseline, BLOCKED_REASON.exclusionsGroup, BLOCKED_REASON.devicePlan, BLOCKED_REASON.unsettled, BLOCKED_REASON.pairUnmatched, BLOCKED_REASON.noOperation, BLOCKED_REASON.emergency]
+const SENTENCES = [BLOCKED_REASON.baseline, BLOCKED_REASON.exclusionsGroup, BLOCKED_REASON.devicePlan, BLOCKED_REASON.unsettled, BLOCKED_REASON.sourceReferences, BLOCKED_REASON.pairUnmatched, BLOCKED_REASON.noOperation, BLOCKED_REASON.emergency]
 const inShape = (reason: string): boolean => SENTENCES.includes(reason) || SHAPES.some((re) => re.test(reason))
 const words = (s: string): number => s.trim().split(/\s+/).length
 

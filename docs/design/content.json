@@ -608,6 +608,7 @@
         "exclusionsGroup": "until you choose the exclusions group",
         "devicePlan": "until phones and computers are decided",
         "unsettled": "until the groups the source policy leaves out are identified",
+        "sourceReferences": "until the baseline's unidentified groups have answers",
         "pairUnmatched": "until both policies of the pair can be matched",
         "noOperation": "until a scan rebuilds this step",
         "emergency": "until emergency access is provably out of scope"
@@ -1193,6 +1194,7 @@
           "memberWatched": "{name}: {lifecycle}, watched since {date}",
           "memberReview": "{name}: {lifecycle}, and it needs a look",
           "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
+          "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's unidentified groups have answers, so no count is shown.",
           "foundReadiness": "{measure} is {value} today; enforcement waits for {threshold}.",
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
@@ -2655,6 +2657,59 @@
         "unjoinedUsers": [
           "Shallan Davar"
         ]
+      }
+    },
+    {
+      "id": "s-prereq-source-references",
+      "kind": "check",
+      "title": "Decide What the Baseline's Unidentified Groups Stand For",
+      "changeLine": null,
+      "why": "The baseline names some of its author's own groups without saying what they are. A copy made in {tenant} needs your answer for each: the group here that plays the same part, or none.",
+      "learn": {
+        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-users-groups"
+      },
+      "who": null,
+      "decision": {
+        "label": "Baseline groups",
+        "text": "For each one, pick the group in {tenant} that stands in for it, or say none is needed here.",
+        "help": "Until a group is answered, the policies that name it wait on this step and offer nothing to deploy.",
+        "references": {
+          "groupLabel": "Group {n}",
+          "locationLabel": "Named location {n}",
+          "usedBy": "Named in {policies}.",
+          "options": [
+            "None needed here: leave it out",
+            "Use this tenant's own: {object}"
+          ]
+        },
+        "save": "Save"
+      },
+      "whatToDo": {
+        "lead": null,
+        "steps": []
+      },
+      "dates": null,
+      "doneWhen": [
+        "Every group the plan's policies name has an answer: a group in {tenant}, or none needed."
+      ],
+      "ifWrong": null,
+      "comms": null,
+      "doesntApply": false,
+      "skip": false,
+      "scanControl": true,
+      "more": {
+        "risks": [
+          {
+            "text": "Leaving a group out means the policy reaches the people the author's own tenant left out of it.",
+            "applies": "always"
+          }
+        ],
+        "helpDesk": null,
+        "manager": null,
+        "waits": null
+      },
+      "example": {
+        "tenant": "GetIAMAI"
       }
     },
     {

@@ -55,6 +55,28 @@ export type SourceMeaning =
   | 'trustedLocation'
   | 'authorEnvironment'
   | 'unknown'
+  /**
+   * Evidence that the reference names nothing at all any more — an object the
+   * author's own documentation shows was deleted, with no target meaning left.
+   * A policy naming one fails closed (resolvePolicy.ts `unsettled`); nothing is
+   * substituted for it and nobody is asked to answer it.
+   */
+  | 'invalidSource'
+
+/**
+ * What adopting this reference takes, recorded beside its meaning so a reviewer
+ * of the next update sees why the plan treats it the way it does:
+ *
+ * - `knownSemantic`: a settled meaning names the tenant object that answers it;
+ * - `sourceOnly`: evidence identifies it as the author's own environment, which
+ *   an adopting tenant does not need (`authorEnvironment`);
+ * - `decisionRequired`: a meaningful carve-out or target whose counterpart in
+ *   the adopting tenant nobody can name from the evidence, so a person answers
+ *   it on the plan's source-references step (roadmap/resolvePolicy.ts
+ *   `decisions`) — never an impossible hold, never a guess;
+ * - `invalidSource`: it names nothing, and the policy fails closed.
+ */
+export type ReferenceClassification = 'knownSemantic' | 'sourceOnly' | 'decisionRequired' | 'invalidSource'
 
 /**
  * Where a meaning comes from, strongest first. `authorConfirmed` is the author
@@ -74,6 +96,8 @@ export type InterpretationRecord = {
   kind: ReferenceKind
   meaning: SourceMeaning
   basis: InterpretationBasis
+  /** What adopting it takes (`ReferenceClassification`); it has to agree with `meaning`. */
+  classification: ReferenceClassification
   /** Why, in the author's own material. Read by a person reviewing the next update. */
   evidence: string
   /**
@@ -156,7 +180,16 @@ export type ReferenceUsage = {
   context: Record<string, string>
 }
 
-const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation', 'authorEnvironment', 'unknown']
+const MEANINGS: SourceMeaning[] = ['exclusionsGroup', 'serviceAccountsGroup', 'allowedCountries', 'trustedLocation', 'authorEnvironment', 'unknown', 'invalidSource']
+const CLASSIFICATIONS: ReferenceClassification[] = ['knownSemantic', 'sourceOnly', 'decisionRequired', 'invalidSource']
+
+/** The one classification each meaning allows: a record whose two fields disagree cannot be checked by a reviewer. */
+export function classificationFor(meaning: SourceMeaning): ReferenceClassification {
+  if (meaning === 'authorEnvironment') return 'sourceOnly'
+  if (meaning === 'unknown') return 'decisionRequired'
+  if (meaning === 'invalidSource') return 'invalidSource'
+  return 'knownSemantic'
+}
 const BASES: InterpretationBasis[] = ['authorConfirmed', 'documented', 'structural']
 const KINDS: ReferenceKind[] = ['group', 'user', 'role', 'application', 'namedLocation', 'servicePrincipal', 'authenticationStrength', 'termsOfUse']
 
@@ -424,11 +457,17 @@ export function readInterpretation(value: unknown): BaselineInterpretation {
     if (r.meaning !== 'unknown' && r.basis !== 'authorConfirmed' && (r.includedIn as string[]).length === 0 && (excludedFrom as string[]).length === 0 && atLeast === 0) {
       return bad(`reference ${id} claims ${String(r.meaning)} and names no source usage its evidence rests on`)
     }
+    // What adopting it takes is recorded, and it is the one thing its meaning
+    // allows: a reviewer reads why the plan treats a reference the way it does
+    // from the file, never from the engine.
+    if (!CLASSIFICATIONS.includes(r.classification as ReferenceClassification)) return bad(`reference ${id} records no classification`)
+    if (r.classification !== classificationFor(r.meaning as SourceMeaning)) return bad(`reference ${id} is classified ${String(r.classification)} but its meaning is ${String(r.meaning)}`)
     return {
       id,
       kind: r.kind as ReferenceKind,
       meaning: r.meaning as SourceMeaning,
       basis: r.basis as InterpretationBasis,
+      classification: r.classification as ReferenceClassification,
       evidence: r.evidence,
       includedIn: [...(r.includedIn as string[])].sort(),
       excludedFrom: [...(excludedFrom as string[])].sort(),

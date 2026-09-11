@@ -10,6 +10,7 @@
       "kind": "group",
       "meaning": "exclusionsGroup",
       "basis": "documented",
+      "classification": "knownSemantic",
       "evidence": "Excluded from 31 of the 38 exported policies and included by none. Every per-policy README records the audit finding \"Break-glass group excluded\", and the author's naming guide (README.md) defines CA-GlobalExclusions as the universal exclusion group for emergency break-glass accounts, excluded from all CA policies.",
       "includedIn": [],
       "excludedFromAtLeast": 31,
@@ -20,6 +21,7 @@
       "kind": "group",
       "meaning": "exclusionsGroup",
       "basis": "authorConfirmed",
+      "classification": "knownSemantic",
       "evidence": "Not an object id: the author wrote the token CA-GlobalExclusions-GroupID-ReplaceMe into IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime for a consumer to fill in, and README.md defines CA-GlobalExclusions as the break-glass exclusion group. The author states the meaning in the export itself.",
       "includedIn": [],
       "context": {}
@@ -29,6 +31,7 @@
       "kind": "group",
       "meaning": "serviceAccountsGroup",
       "basis": "documented",
+      "classification": "knownSemantic",
       "evidence": "The only group included by IAC - GLOBAL - BLOCK - Service Accounts (99eabebd-877c-4800-aa15-d389b8767760), whose README states the policy blocks interactive sign-in for members of CA-ServiceAccounts. The policy names the group as its target and the documentation names the target.",
       "includedIn": [
         "99eabebd-877c-4800-aa15-d389b8767760"
@@ -42,6 +45,7 @@
       "kind": "namedLocation",
       "meaning": "trustedLocation",
       "basis": "documented",
+      "classification": "knownSemantic",
       "evidence": "Named \"IAC - Trusted Locations (IP)\" in the Conditions row of the READMEs of both policies that exclude it: IAC - GLOBAL - GRANT - BreakGlass - TrustedLocations and IAC - GLOBAL - BLOCK - Service Accounts.",
       "includedIn": [],
       "excludedFrom": [
@@ -58,6 +62,7 @@
       "kind": "namedLocation",
       "meaning": "allowedCountries",
       "basis": "documented",
+      "classification": "knownSemantic",
       "evidence": "Named \"IAC - AllowedCountries\" in the Conditions row of the README of IAC - GLOBAL - BLOCK - Countries not Allowed, which excludes it so that sign-in from the permitted countries is not blocked. This is the goal geo-restriction's own location.",
       "includedIn": [],
       "excludedFrom": [
@@ -72,6 +77,7 @@
       "kind": "namedLocation",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Named \"IAC - Blocked Countries\" in the README of IAC - GLOBAL - BLOCK - Countries not Allowed - NoExclusions, which includes it in order to block it. It is the blocked-countries list, so it is not the allowed-countries location a tenant supplies, and IAMAI holds no tenant object for a blocked-countries list. The policy naming it is a Cleanup row that implements no goal.",
       "includedIn": [
         "1eaf943a-abad-4c77-b101-0c5342fc1044"
@@ -85,6 +91,7 @@
       "kind": "namedLocation",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded only by IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP, which the author's README.md describes as excluding a named location holding Entra Connect sync IP ranges. That is one dependency's own addresses, not the tenant's trusted network, and no tenant object answers it.",
       "includedIn": [],
       "context": {}
@@ -94,6 +101,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from 23 policies of every kind (MFA, legacy authentication, device code, token protection, admin portal, sessions) and included by none, so its breadth says only that it is a standing exclusion. No README, policy body or naming guide entry binds this id to a purpose. It cannot be the service accounts: IAC - GLOBAL - BLOCK - Service Accounts includes 6612d6d7 and excludes this group. Breadth alone does not distinguish it from the break-glass group above, so it stays the author's own.",
       "includedIn": [],
       "context": {}
@@ -103,6 +111,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from 6 policies and included by none. No source artifact binds this id to a purpose. It cannot be the service accounts: IAC - GLOBAL - BLOCK - Service Accounts includes 6612d6d7 and excludes this group.",
       "includedIn": [],
       "context": {}
@@ -112,6 +121,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from the three AVD and SharePoint/OneDrive location policies and included by none. Their READMEs describe the location conditions and record only the break-glass exclusion; nothing names this group.",
       "includedIn": [],
       "context": {}
@@ -121,6 +131,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from one policy, IAC - APP - BLOCK - AVD - Exclude - AllowedAVDUsers, and included by none. That policy's README describes an AVD access allowlist and names no group. Nothing here is about geography; the word \"Allowed\" in the policy's name is about AVD users.",
       "includedIn": [],
       "context": {}
@@ -130,6 +141,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from 5 policies (the risk-remediation set, the WindowsAzureAD baseline scopes policy and Device Registration) and included by none. The Device Registration README calls it only \"additional exclusion\". No source artifact names it.",
       "includedIn": [],
       "context": {}
@@ -139,6 +151,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from the two Intune device policies and included by none. The author's naming guide has a CA-DeviceExclusions concept, but no source artifact binds it to this id, and a device-exclusion group is not one IAMAI resolves to a tenant object.",
       "includedIn": [],
       "context": {}
@@ -148,6 +161,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Excluded from one policy, IAC - GLOBAL - BLOCK - Countries not Allowed, and included by none. Being excluded from a countries policy does not make a group the travelling users: 62d67e66 is excluded from the same policy and from 22 others. The README says only that the break-glass group is excluded.",
       "includedIn": [],
       "context": {}
@@ -157,6 +171,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Included by IAC - P2 - GLOBAL - GRANT - EAM - High-Risk Users - Risk Remediation and excluded from the non-EAM version of the same policy, so it is the population the author routes to external authentication. Its README names no group, and IAMAI holds no tenant object for that population.",
       "includedIn": [
         "bb6a814e-808a-467c-9475-06f89140ce99"
@@ -170,6 +185,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Included by IAC - GLOBAL - GRANT - MFA-Passkey - UserRegistration, so it is that policy's own registration pilot population. Its README names no group and IAMAI holds no tenant object for it.",
       "includedIn": [
         "30a1edce-e832-456b-b2c5-4b1098d3a9b3"
@@ -183,6 +199,7 @@
       "kind": "group",
       "meaning": "unknown",
       "basis": "documented",
+      "classification": "decisionRequired",
       "evidence": "Included by IAC - GLOBAL - GRANT - MFA-Passkeys - ADM-Users, so it is that policy's own admin passkey population. Its README names no group and IAMAI holds no tenant object for it.",
       "includedIn": [
         "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0"
@@ -191,5 +208,6 @@
         "a53c4c2b-b577-4d88-b64d-36b92f8f3ca0": "c919ce14ccb76838"
       }
     }
-  ]
+  ],
+  "classificationNote": "Each record carries what adopting its reference takes (src/baseline/interpretation.ts ReferenceClassification). decisionRequired: the evidence shows a meaningful carve-out or target and names no purpose, so no counterpart can be inferred and none is assumed to be unneeded; a person answers it once on the plan step Decide What the Baseline's Unidentified Groups Stand For, and only the policies that name it wait on that answer. Reviewed 2026-09-11 against pin 90d9b890; no reference was reclassified as sourceOnly or invalidSource, because none of the evidence identifies an object as the author's own environment or as deleted."
 }

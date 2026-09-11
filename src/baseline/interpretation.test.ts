@@ -72,7 +72,8 @@ const settled = (over: Partial<InterpretationRecord> & Pick<InterpretationRecord
     const k = p.id ?? p.displayName
     if (includedIn.includes(k) || excludedFrom.includes(k)) context[k] = policyContext(p)
   }
-  return { kind: 'group', basis: 'documented', evidence: 'documented', excludedFromAtLeast: 0, ...over, id: over.id.toLowerCase(), includedIn, excludedFrom, context }
+  const classification = over.meaning === 'unknown' ? 'decisionRequired' : over.meaning === 'authorEnvironment' ? 'sourceOnly' : over.meaning === 'invalidSource' ? 'invalidSource' : 'knownSemantic'
+  return { kind: 'group', basis: 'documented', evidence: 'documented', excludedFromAtLeast: 0, classification, ...over, id: over.id.toLowerCase(), includedIn, excludedFrom, context }
 }
 
 const tokensFor = (interpretation: BaselineInterpretation, policies: CaPolicy[] = SOURCE): Map<string, string> =>
@@ -269,7 +270,10 @@ test('a specialised reading that names no source usage at all is refused', () =>
   // in prose, and nothing a later package can be checked against, so the
   // reference could move anywhere in the source and the meaning would still be
   // applied.
-  const record = (over: Record<string, unknown>) => ({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning: 'exclusionsGroup', basis: 'documented', evidence: 'excluded from almost every policy and the naming guide names it', includedIn: [], context: {}, ...over }] })
+  const record = (over: Record<string, unknown>) => {
+    const r = { id: 'a', kind: 'group', meaning: 'exclusionsGroup', basis: 'documented', evidence: 'excluded from almost every policy and the naming guide names it', includedIn: [], context: {}, ...over }
+    return { version: 1, owner: 'o', repo: 'r', references: [{ classification: r.meaning === 'unknown' ? 'decisionRequired' : 'knownSemantic', ...r }] }
+  }
   assert.throws(() => readInterpretation(record({})), /names no source usage/)
   assert.doesNotThrow(() => readInterpretation(record({ excludedFromAtLeast: 31 })), 'breadth is a usage the next package can be checked against')
   assert.doesNotThrow(() => readInterpretation(record({ excludedFrom: ['p-1'], context: { 'p-1': 'ctx' } })), 'so is the exclusion the evidence cites')
@@ -314,8 +318,8 @@ test('a malformed interpretation file is refused, never read as an empty one', (
         owner: 'o',
         repo: 'r',
         references: [
-          { id: 'a', kind: 'group', meaning: 'unknown', basis: 'documented', evidence: 'x', includedIn: [], context: {} },
-          { id: 'A', kind: 'group', meaning: 'unknown', basis: 'documented', evidence: 'x', includedIn: [], context: {} },
+          { id: 'a', kind: 'group', meaning: 'unknown', classification: 'decisionRequired', basis: 'documented', evidence: 'x', includedIn: [], context: {} },
+          { id: 'A', kind: 'group', meaning: 'unknown', classification: 'decisionRequired', basis: 'documented', evidence: 'x', includedIn: [], context: {} },
         ],
       }),
     /twice/,
@@ -330,7 +334,7 @@ test('a malformed interpretation file is refused, never read as an empty one', (
 })
 
 test('structure alone may record that nothing is known and may not claim a role', () => {
-  const structural = (meaning: string) => ({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning, basis: 'structural', evidence: 'excluded from a lot of policies', includedIn: [], context: {} }] })
+  const structural = (meaning: string) => ({ version: 1, owner: 'o', repo: 'r', references: [{ id: 'a', kind: 'group', meaning, classification: meaning === 'unknown' ? 'decisionRequired' : 'knownSemantic', basis: 'structural', evidence: 'excluded from a lot of policies', includedIn: [], context: {} }] })
   assert.doesNotThrow(() => readInterpretation(structural('unknown')))
   assert.throws(() => readInterpretation(structural('serviceAccountsGroup')), /structure alone/)
   assert.throws(() => readInterpretation(structural('exclusionsGroup')), /structure alone/)

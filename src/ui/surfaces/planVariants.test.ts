@@ -136,7 +136,8 @@ const DAY = 86_400_000
  */
 function rescanned(f: Fixture): Variant[] {
   const first = runFixture(f)
-  const watched = first.steps.find((s) => s.state.lifecycle === 'report-only' && s.tracking?.policyId)
+  // The first watched policy by step id, not by plan order: the order moves whenever a dependency does.
+  const watched = first.steps.filter((s) => s.state.lifecycle === 'report-only' && s.tracking?.policyId).sort((a, b) => a.id.localeCompare(b.id))[0]
   if (!watched) return []
   const target = watched.tracking!.policyId!
   const rows = ((f.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]).map((row) => {
@@ -374,14 +375,10 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · no-found · fix · one-policy · who-known', // demo/s-goal-intune-enrollment-reauth
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · fix · members · who-unknown', // demo+no-ca/s-goal-guests-mfa
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · fix · members · who-unknown', // demo+half-pair/s-goal-guests-mfa
-  'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer
-  'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
-  'policy · create · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2/s-goal-device-registration-mfa
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2+unanswered/s-goal-block-auth-transfer
   'check · check · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // demo-week2+set-aside/s-check-dormant-accounts
   'policy · adjust · report-only · review-required · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // demo-week2+rescan/s-goal-block-auth-transfer
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · members · who-unknown', // demo-week2+no-ca/s-goal-guests-mfa
-  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · no-fix · one-policy · who-unknown', // demo-week2+half-pair/s-goal-mfa-all-users
   'policy · adjust · not-deployed · blocked · open · do:resolve · track · no-implementation · found · no-fix · members · who-unknown', // demo-week2+half-pair/s-goal-guests-mfa
   'policy · adjust · enforced · blocked · open · do:resolve · track · implementation · no-found · fix · one-policy · who-known', // demo+curated/s-goal-block-legacy-auth
   'policy · adjust · enforced · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-known', // demo+curated/s-goal-mfa-all-users
@@ -389,6 +386,9 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-token-protection
+  'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-prereq-source-references (correction batch 1: the baseline's unread references, answered by a person)
+  'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer (waits on the source-references answer, named under Fix)
+  'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
 ]
 
 test('§1 the sweep reaches every canonical Plan case, and renders the inventory that was migrated', () => {

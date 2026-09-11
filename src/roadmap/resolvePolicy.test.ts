@@ -180,12 +180,12 @@ test('1: the author’s four exclusion groups on one policy come to the tenant�
   assert.deepEqual(excludeGroupsOf(impl.policy), [X])
   // And the three the author's own tenant carved out hold the policy. Nothing
   // here says who they are, so nothing can say who a copy of this policy made in
-  // another tenant would newly reach; they are reported as missing, marked as
-  // the ones no step of ours ends, and none of them is the author's to leave out
-  // (`authorOnly` takes a settled reading and there is none).
+  // another tenant would newly reach; they are reported as missing, each waiting
+  // on the step where a person answers what it stands for, and none of them is
+  // the author's to leave out (`authorOnly` takes a settled reading and there is none).
   const others = authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort()
   assert.deepEqual(impl.missing.map((m) => m.token.toLowerCase()).sort(), others, 'the three hold the policy')
-  assert.ok(impl.missing.every((m) => m.unreadable === true && m.stepId === null), 'no step of this tenant’s ends the wait')
+  assert.ok(impl.missing.every((m) => m.decision === true && m.stepId === PREREQ_STEP_ID.sourceReferences), 'each waits on a person’s answer')
   assert.deepEqual(impl.authorOnly, [], 'and none of them is left out as the author’s own')
 })
 
@@ -251,8 +251,8 @@ test('4: an explicit serviceAccountsGroup the tenant does not have stays unresol
   assert.ok(excludeGroupsOf(resolved.body).includes(X), 'the exclusions group is applied')
   const impl = implementable(resolved.body, resolved)
   // The policy also excludes two groups of the author's that nothing settles;
-  // they hold it too, with no step, which is the case beside this one.
-  assert.deepEqual(impl.missing.filter((m) => !m.unreadable).map((m) => m.stepId), [PREREQ_STEP_ID.serviceAccountsGroup])
+  // they hold it too, on a person's answer, which is the case beside this one.
+  assert.deepEqual(impl.missing.filter((m) => !m.decision).map((m) => m.stepId), [PREREQ_STEP_ID.serviceAccountsGroup])
   assert.ok(!(((usersOf(impl.policy).includeGroups as string[] | undefined) ?? []).includes(authorServiceAccounts)), 'and it is not in the body a channel carries')
   assert.ok(excludeGroupsOf(impl.policy).includes(X), 'while the exclusions group still is')
 
