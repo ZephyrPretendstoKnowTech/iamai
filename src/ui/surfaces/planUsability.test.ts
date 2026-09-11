@@ -16,7 +16,8 @@ import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { holdWaitsOn } from '../../roadmap/stateReason.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { cleanupWhen } from './cleanupExport.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, plannedPackageStateOf, planningPreview } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
@@ -319,6 +320,26 @@ test('resilience hardening holds until fixed or deferred; a deferral releases th
   assert.deepEqual(kept.confirmations?.[EMERGENCY]?.[HARDENING_DEFERRAL_ID], { at, basis: bg.emergency!.basis })
   assert.match(readFileSync('src/ui/surfaces/planData.ts', 'utf8'), /hardeningDeferral: saved\?\.confirmations\?\.\[BREAK_GLASS_STEP_ID\]\?\.\[HARDENING_DEFERRAL_ID\] \?\? null/)
   assert.match(CONTENT_STEP, /onConfirm\(\{ \[HARDENING_DEFERRAL_ID\]: \{ basis: contract\.hardening!\.basis \} \}\)/)
+})
+
+test('the opened emergency step agrees with its row: no Ready now with fixes outstanding, set-wide hardening under every account, and an undated Cleanup row says Not scheduled', () => {
+  const f = fixture('demo')
+  const r = runFixture(f)
+  const bg = r.steps.find((s) => s.id === EMERGENCY)!
+  const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
+  assert.ok(c.fix.length > 0, 'the premise: a fix is outstanding')
+  const bar = readinessOf(bg, c).bar.main
+  assert.notEqual(bar, CONTRACT.readiness.bar.deploy, 'the Readiness bar says Ready now beside Fix before continuing')
+  assert.equal(bar, statusOf(bg).word, 'the bar and the badge disagree')
+  // A recommendation about the set of accounts is not filed under the first account's name.
+  const groups = c.hardening!.groups
+  const every = groups.find((g) => g.title === CONTRACT.hardening.everyAccount)
+  assert.ok(every && every.items.some((i) => /offline/.test(i)), groups.map((g) => g.title).join(' | '))
+  for (const g of groups.filter((x) => x !== every)) assert.equal(g.items.some((i) => /offline/.test(i)), false, `${g.title} carries a set-wide recommendation`)
+  // Cleanup while the plan cannot finish: a word, not a blank.
+  const row = { ...runFixture(fixture('small'), { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: runFixture(fixture('small')).steps.find((s) => s.id === EMERGENCY)!.emergency!.basis } }).schedule.cleanup!.rows[0], done: null }
+  assert.equal(cleanupWhen(row, true), 'Not scheduled')
+  assert.notEqual(cleanupWhen(row, false).trim(), '')
 })
 
 test('user-facing content spells enrollment the US way', () => {

@@ -748,7 +748,9 @@ function hardeningOf(step: Step, cs: Record<string, unknown> | undefined, ex: Re
     const t = templates?.[key]
     const values = { ...ex, ...vals }
     if (!t || !whole(t, values)) continue
-    const title = typeof vals.name === 'string' && vals.name.length > 0 ? vals.name : CONTRACT.hardening.everyAccount
+    // A recommendation about one account names it; one about the set (a check the
+    // report files under the first account) belongs to every emergency account.
+    const title = /\{name\}/.test(t) && typeof vals.name === 'string' && vals.name.length > 0 ? vals.name : CONTRACT.hardening.everyAccount
     const line = fillText(t, values)
     // Under the account's own heading the line does not open with its name again.
     const own = line.startsWith(`${title}: `) ? line.slice(title.length + 2) : line
@@ -1046,7 +1048,10 @@ function blockingTile(c: StepContract): ReadinessTile {
 /** The Readiness region: up to three tiles, and the bar's headline. */
 export function readinessOf(step: Step, c: StepContract): ContractReadiness {
   const lead = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c)].filter((x): x is ReadinessTile => x !== null).slice(0, 2)
-  const key = standingOf(c)
+  // A step that could deploy but still has fixes outstanding is not "Ready now":
+  // the bar says what the badge says (statusWord.ts, Needs attention).
+  const standing = standingOf(c)
+  const key = standing === 'deploy' && c.fix.length > 0 ? 'attention' : standing
   return { tiles: [...lead, blockingTile(c)], bar: { key, main: R().bar[key] ?? R().bar.none } }
 }
 
