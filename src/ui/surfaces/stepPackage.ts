@@ -10,13 +10,13 @@
 // does not hold is left unbound, and the package's own contract decides what that
 // means.
 //
-// Only the packages in the generated registry are candidates
-// (src/content/implementation/registry.generated.json), and only those authored
-// against the baseline this build pins are active: a package whose
-// `baselineAuthority.pinCommit` names another commit describes another baseline's
-// policy, and its artifacts would contradict the policy every other channel and
-// the plan itself resolve (CLAUDE.md: the pinned baseline wins). Such a step keeps
-// the channels it had.
+// Every package in the generated registry is active
+// (src/content/implementation/registry.generated.json): the whole library, with
+// the parts the runtime cannot project safely withheld at compile time. A package
+// authored against another baseline pin still applies (owner decision,
+// 2026-09-11); the step's source line names the pin it was authored against beside
+// the pin this build carries (`packageSourceLine`), and a block the author scoped
+// with a `baselineCommit` condition stays scoped to its own pin.
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
@@ -26,8 +26,11 @@ import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
-import type { Bindings, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, RuntimeContext } from '../../content/implementation/project.ts'
-import { prerequisiteStatus } from '../../content/implementation/project.ts'
+import type { Bindings, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
+import { prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
+import { fillText } from '../../content/render.ts'
+import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { implementationIsCurrent } from './stepContract.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -38,35 +41,51 @@ const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPack
 /** The pinned baseline commit this build carries (baselines/*.pinned.json). */
 export const BASELINE_COMMIT: string = PINNED.commit
 
-/** Whether a package describes the baseline this build pins, and why not where it does not. */
-export function packageApplies(pkg: CompiledPackage, baselineCommit: string = BASELINE_COMMIT): { applies: true } | { applies: false; reason: string } {
-  const pin = pkg.meta.baselineAuthority?.pinCommit
-  if (typeof pin === 'string' && pin !== baselineCommit) return { applies: false, reason: `authored against baseline ${pin}; this build pins ${baselineCommit}` }
-  return { applies: true }
-}
+/** Each registered package by the content entry it describes (stepTitle.ts contentStepForPackage). */
+const BY_CONTENT: ReadonlyMap<string, CompiledPackage> = new Map(
+  Object.values(PACKAGES).flatMap((pkg): [string, CompiledPackage][] => {
+    const entry = contentStepForPackage(pkg.meta.stepId)
+    return entry ? [[entry.id, pkg]] : []
+  }),
+)
 
-/** The active package for a step, or null: a step without one keeps its existing channels. */
-export function implementationPackageFor(stepId: string, baselineCommit: string = BASELINE_COMMIT): CompiledPackage | null {
-  if (!Object.hasOwn(PACKAGES, stepId)) return null
-  const pkg = PACKAGES[stepId]
-  return packageApplies(pkg, baselineCommit).applies ? pkg : null
+/**
+ * The package for a step, or null: a step without one keeps its existing
+ * channels. A step and a package meet at the content entry the step's title comes
+ * from, so a merged goal or an aliased step reaches the package its entry names.
+ */
+export function implementationPackageFor(step: { id: string; goalId: string }): CompiledPackage | null {
+  const entry = contentStepFor(step)
+  return (entry ? BY_CONTENT.get(entry.id) : undefined) ?? null
 }
 
 /** The step ids with a package in the registry. */
 export const REGISTERED_PACKAGE_STEP_IDS: readonly string[] = Object.keys(PACKAGES)
 
-/** The step ids whose package is active in this build. */
-export const ACTIVE_PACKAGE_STEP_IDS: readonly string[] = REGISTERED_PACKAGE_STEP_IDS.filter((id) => packageApplies(PACKAGES[id]).applies)
+/**
+ * Whether the package draws the step's Implementation region. It does, holds
+ * included, unless it authors nothing for the step's state (or that projection
+ * was withheld at compile time): then it has nothing to say about the
+ * implementation, and the step keeps the channels it always had. Never both.
+ */
+export function packageDrawsImplementation(pkg: CompiledPackage | null, projection: Projection | null): boolean {
+  return pkg !== null && projection?.hold?.noProjection !== true
+}
 
-/** The registered packages this build does not activate, and why: surfaced by the compiler and the tests, never guessed around. */
-export const INACTIVE_PACKAGES: readonly { stepId: string; reason: string }[] = REGISTERED_PACKAGE_STEP_IDS.flatMap((id) => {
-  const a = packageApplies(PACKAGES[id])
-  return a.applies ? [] : [{ stepId: id, reason: a.reason }]
-})
-
-/** A package from the registry whatever pin it was authored against: for the tests and the compiler, never for the page. */
-export function registeredPackage(stepId: string): CompiledPackage | null {
-  return Object.hasOwn(PACKAGES, stepId) ? PACKAGES[stepId] : null
+/**
+ * The Implementation region's source line: the date the package's user-facing
+ * Microsoft sources were last checked (set at midday UTC so no display time zone
+ * moves it across a day), and the baseline pin the package was authored against
+ * beside the pin this build carries.
+ */
+export function packageSourceLine(pkg: CompiledPackage, words: { sourceUpdated: string; sourcePins: string }, baselineCommit: string = BASELINE_COMMIT): string | null {
+  const on = sourceUpdatedOn(pkg)
+  const pin = pkg.meta.baselineAuthority?.pinCommit
+  const parts = [
+    on ? fillText(words.sourceUpdated, { date: absoluteDate(`${on}T12:00:00Z`) }) : null,
+    typeof pin === 'string' && pin !== '' ? fillText(words.sourcePins, { authored: pin.slice(0, 8), pinned: baselineCommit.slice(0, 8) }) : null,
+  ].filter((x): x is string => x !== null)
+  return parts.length > 0 ? parts.join(' · ') : null
 }
 
 /**
@@ -122,14 +141,17 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   return 'blocked'
 }
 
-type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown } } }
+type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown } }; grantControls?: { authenticationStrength?: { id?: unknown } }; sessionControls?: unknown }
 
 /**
  * The package bindings IAMAI actually holds for a step, and only those.
  *
  * The target is Foundation A's resolved operation: where it withholds the
  * operation — a source reference it cannot identify, a missing object — the
- * target is not resolved, and no target value is bound. The current policy is the
+ * target is not resolved, and no target value is bound. The target's conditions,
+ * grant and session controls, and the authentication strength its grant names,
+ * are the pinned baseline's policy as Foundation A resolved it for this tenant,
+ * so a package's request body renders that policy. The current policy is the
  * operation's own update identity, or the tracked policy. The fields a correction
  * changes are the engine's (`policy.current.changedFields`). The tenant-wide
  * device-registration MFA setting is read where the scan read it, and unbound
@@ -149,6 +171,11 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('policy.target.displayName', typeof name === 'string' ? name : undefined)
   const excl = target?.conditions?.users?.excludeGroups
   put('policy.target.excludeGroups', Array.isArray(excl) ? excl.map(String) : undefined)
+  put('policy.target.conditions', target?.conditions)
+  put('policy.target.grantControls', target?.grantControls)
+  put('policy.target.sessionControls', target?.sessionControls)
+  const strength = target?.grantControls?.authenticationStrength?.id
+  put('authStrength.target.id', typeof strength === 'string' ? strength : undefined)
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)
   put('policy.current.state', step.tracking?.state)

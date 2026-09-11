@@ -116,6 +116,7 @@ type ContractWords = {
     dialogEyebrow: string
     close: string
     sourceUpdated: string
+    sourcePins: string
     troubleshooting: string
     powershellInvocation: string
     empty: Record<string, [string, string]>
