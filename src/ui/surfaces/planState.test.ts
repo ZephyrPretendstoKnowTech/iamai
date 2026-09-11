@@ -18,11 +18,22 @@ import { NO_FOCUS, WHEN, applyFocus, boardWhenOf, focusCounts, groupSummary, gro
 import type { BoardItem, RoadmapGroup } from './planBoard.ts'
 import { CONTRACT, badgeLabel, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { floorRows, phaseRows, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
+import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { referenceOptions } from '../../roadmap/answers.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 
 type Run = { f: Fixture; r: ReturnType<typeof runFixture> }
 
-const RUNS: (() => Fixture)[] = [() => fixture('demo'), () => fixture('demo-week2'), () => curatedFixture('demo'), () => curatedFixture('demo-week2'), () => fixture('small'), () => fixture('mid'), () => fixture('messy'), () => fixture('midflight')]
+/** The demo with the baseline's references answered "none needed here": the plan the decision releases. */
+function answered(f: Fixture): Fixture {
+  const source = PREREQ_STEP_ID.sourceReferences
+  const pending = runFixture(f).steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  return { ...f, mapping: applyStepDecisions(f.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: f.snapshot.asOf } }) }
+}
+
+const RUNS: (() => Fixture)[] = [() => fixture('demo'), () => answered(fixture('demo')), () => fixture('demo-week2'), () => curatedFixture('demo'), () => curatedFixture('demo-week2'), () => fixture('small'), () => fixture('mid'), () => fixture('messy'), () => fixture('midflight')]
 
 const ctxOf = ({ f, r }: Run): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
 
@@ -37,7 +48,7 @@ function boardOf({ f, r }: Run): { items: BoardItem[]; when: Map<string, string>
     items.push({ id: step.id, title: step.title, roadmap: group, status: statusGroupFor(s, isNext), attention: s.attention, workType: 'ca', isNext, order: order++ })
     when.set(step.id, boardWhenOf(step, group.start))
   }
-  for (const w of r.schedule.waves) {
+  for (const w of planPhases(r.schedule)) {
     const group: RoadmapGroup = { key: `wave-${w.wave}`, label: `Phase ${w.wave}`, date: null, secondary: false, start: w.start }
     for (const step of phaseRows(r.steps, w)) {
       const isNext = !nextMarked && step.status === 'ready' && !isHeld(step)
@@ -45,7 +56,7 @@ function boardOf({ f, r }: Run): { items: BoardItem[]; when: Map<string, string>
       add(step, group, isNext)
     }
   }
-  for (const step of undatedRows(r.steps, r.schedule.waves)) add(step, { key: 'held', label: 'Waiting', date: null, secondary: true, start: null }, false)
+  for (const step of undatedRows(r.steps, planPhases(r.schedule))) add(step, { key: 'held', label: 'Waiting', date: null, secondary: true, start: null }, false)
   for (const step of floorRows(r.steps)) add(step, { key: 'floor', label: 'Floor', date: null, secondary: true, start: null }, false)
   const cleanup: RoadmapGroup = { key: 'cleanup', label: 'Cleanup', date: null, secondary: false, start: null }
   for (const row of r.schedule.cleanup?.rows ?? []) {
@@ -81,7 +92,7 @@ test('the row word, the badge, the Needs attention focus, the Status group and t
         assert.notEqual(statusGroupFor(s, false), 'ready', `${where}: reads Needs attention and is grouped under Ready`)
         assert.equal(bar, 'attention', `${where}: reads Needs attention and opens onto "${bar}"`)
       }
-      if (word === 'Needs decision') {
+      if (word === 'Needs decision' && !s.waiting) {
         assert.ok(s.attention && statusGroupFor(s, false) === 'attention', `${where}: a decision outside Needs attention`)
         assert.equal(bar, 'decide', `${where}`)
       }
@@ -120,10 +131,74 @@ test('the progress tiles reconcile with the rows the board draws', () => {
     const facts = stepFacts(run.r.steps, run.r.schedule.cleanup ?? null, run.f.mapping.breakGlassAnswers ?? null)
     assert.equal(items.length, facts.steps, `${run.f.name}: Steps is not the rows`)
     assert.equal(items.filter((i) => i.status === 'complete').length, facts.done, `${run.f.name}: In place is not the finished rows`)
-    // Waiting is the undated group; Remaining is everything else still to do, Cleanup included.
-    const waiting = items.filter((i) => i.roadmap.key === 'held').length
-    assert.equal(facts.steps - facts.done - waiting, items.filter((i) => i.status !== 'complete' && i.roadmap.key !== 'held').length, `${run.f.name}: Remaining is not the rest`)
+    // Waiting is the Status lens's Waiting group (Plan.tsx counts it); Remaining is everything else still to do, Cleanup included.
+    const waiting = items.filter((i) => i.status === 'waiting').length
+    assert.equal(facts.steps - facts.done - waiting, items.filter((i) => i.status !== 'complete' && i.status !== 'waiting').length, `${run.f.name}: Remaining is not the rest`)
   }
+})
+
+test('Waiting means one thing: the tile, the Status group and the undated group count the same rows', () => {
+  let waitingRows = 0
+  for (const run of everyRun()) {
+    const { items } = boardOf(run)
+    const byId = new Map(run.r.steps.map((s) => [s.id, s]))
+    const tile = items.filter((i) => i.status === 'waiting').length
+    const classified = items.filter((i) => byId.get(i.id)?.scheduled?.class === 'waiting')
+    assert.equal(tile, classified.length, `${run.f.name}: the Waiting tile counts a different set from the schedule's waiting rows`)
+    const statusGroup = groupsFor('status', applyFocus(items, { ...NO_FOCUS, showCompleted: true })).find((g) => g.key === 'waiting')?.items.length ?? 0
+    assert.equal(statusGroup, tile, `${run.f.name}: the Status lens's Waiting group is not the tile`)
+    const undated = items.filter((i) => i.roadmap.key === 'held')
+    assert.deepEqual(undated.map((i) => i.id).sort(), classified.filter((i) => i.roadmap.key !== 'floor').map((i) => i.id).sort(), `${run.f.name}: the undated group is not the waiting rows`)
+    for (const i of items) {
+      const step = byId.get(i.id)
+      if (!step) continue
+      if (step.status === 'done') assert.notEqual(i.status, 'waiting', `${run.f.name}/${i.id}: finished work is waiting`)
+      if (step.scheduled?.class === 'scheduled' || step.scheduled?.class === 'observing') assert.notEqual(i.status, 'waiting', `${run.f.name}/${i.id}: scheduled work is waiting`)
+    }
+    waitingRows += tile
+  }
+  assert.ok(waitingRows > 10, `waiting rows: ${waitingRows}`)
+})
+
+test('a dated row never opens onto Held: its rail is the day the plan schedules', () => {
+  let checked = 0
+  for (const run of everyRun()) {
+    const { when } = boardOf(run)
+    const ctx = ctxOf(run)
+    for (const step of run.r.steps) {
+      const label = when.get(step.id)
+      if (!label || !/\d{4}$/.test(label) || step.scheduled?.at == null) continue
+      const rail = railOf(stepContract(step, ctx), label)
+      assert.notEqual(rail.metric, CONTRACT.rail.held, `${run.f.name}/${step.id}: dated ${label}, rail Held`)
+      // A decision keeps its own word on the rail; every other dated row's rail is its day.
+      if (step.scheduled.transition === 'decide') assert.equal(rail.metric, CONTRACT.rail.decision, `${run.f.name}/${step.id}`)
+      else assert.equal(rail.metric, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
+      assert.ok(label.endsWith(absoluteDate(step.scheduled.at)), `${run.f.name}/${step.id}: the row's day is not the scheduled day`)
+      checked += 1
+    }
+  }
+  assert.ok(checked > 40, `dated rows checked: ${checked}`)
+})
+
+test('a policy being watched that something holds says Report-only · Blocked on the row, in the badge and the Status lens', () => {
+  let checked = 0
+  for (const run of everyRun()) {
+    const ctx = ctxOf(run)
+    for (const step of run.r.steps.filter((s) => s.status === 'in-report-only')) {
+      const s = planStateOf(step, isHeld(step))
+      const c = stepContract(step, ctx)
+      if (isHeld(step)) {
+        const condition = step.state.condition === 'healthy' ? 'Blocked' : CONTRACT.condition[step.state.condition]
+        assert.equal(s.word, `${CONTRACT.lifecycle['report-only']} · ${condition}`, `${run.f.name}/${step.id}`)
+        assert.equal(badgeLabel(c), s.word, `${run.f.name}/${step.id}: the badge and the row say different things`)
+        assert.equal(statusGroupFor(s, false), 'waiting')
+        checked += 1
+      } else {
+        assert.equal(s.word, CONTRACT.lifecycle['report-only'], `${run.f.name}/${step.id}`)
+      }
+    }
+  }
+  assert.ok(checked > 0, 'no held report-only policy in the fixtures: the premise is untested')
 })
 
 test('an enforced policy the plan must change and cannot yet reads Needs correction, beside its stage', () => {

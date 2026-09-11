@@ -24,7 +24,8 @@ const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Needs decision', 'Needs 
 
 test('every step on every fixture carries exactly one of the status words', () => {
   for (const f of allFixtures()) {
-    for (const s of runFixture(f).steps) assert.ok(WORDS.has(statusOf(s).word), `${f.name} ${s.id} → ${statusOf(s).word}`)
+    // A held report-only policy reads its stage and its condition (correction batch 1.1): "Report-only · Blocked".
+    for (const s of runFixture(f).steps) assert.ok(WORDS.has(statusOf(s).word) || /^Report-only · \S/.test(statusOf(s).word), `${f.name} ${s.id} → ${statusOf(s).word}`)
   }
 })
 
@@ -32,7 +33,7 @@ test('a re-scan that tracked policies moves rows to Report-only and Enforced (mi
   const r = runFixture(fixture('midflight'))
   const words = new Set(r.steps.map((s) => statusOf(s).word))
   assert.ok(words.has('Enforced'), 'a tracked enforced policy reads Enforced')
-  assert.ok(words.has('Report-only'), 'a tracked report-only policy reads Report-only')
+  assert.ok([...words].some((w) => w.split(' · ')[0] === 'Report-only'), 'a tracked report-only policy reads Report-only')
   // Tracking comes from evidence, not from a manual status.
   assert.ok(r.steps.some((s) => s.tracking !== null), 'at least one step is tracked')
 })

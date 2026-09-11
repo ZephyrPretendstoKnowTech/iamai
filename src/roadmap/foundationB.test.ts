@@ -44,6 +44,7 @@ import { activePeopleIds } from '../derive/population.ts'
 import { notPeopleIds } from '../derive/sets.ts'
 import type { PolicyOperation } from './types.ts'
 import type { Step, StepStatus } from './types.ts'
+import { scheduleOf } from './stepSchedule.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
 import type { MfaViability } from '../scoring/mfaViability.ts'
 
@@ -448,7 +449,9 @@ test('a policy watched for its whole window is ready to enforce; the same policy
   assert.equal(s.state.lifecycle, 'report-only', 'watched from here, not ready to enforce')
   assert.equal(s.tracking?.reportOnlyAt, DEMO.snapshot.asOf, 'the window starts again at the scan that noticed')
   assert.equal(s.tracking?.reportOnlyAtSource, 'first-seen-by-iamai')
-  assert.equal(statusOf(s).word, 'Report-only', 'nothing new on screen: the condition is its own axis')
+  // The stage stays; the row carries the condition beside it, as the badge does (correction batch 1.1).
+  assert.equal(statusOf(s).word.split(' · ')[0], 'Report-only', 'the stage is still the row’s first word')
+  assert.notEqual(statusOf(s).word, 'Report-only', 'a policy held for review says so on its row')
 
   // And a policy that moved into something the plan did not ask for is the case
   // that does need a person: same object, a grant nobody submitted.
@@ -633,7 +636,7 @@ test('4: a replacement that is exactly what the plan meant to deploy resets the 
   assert.notEqual(s.state.condition, 'review-required', 'a restarted clock is not a rollout in trouble')
   // The two axes stay orthogonal: where it is, and whether anything is wrong.
   assert.equal(s.state.lifecycle, 'report-only')
-  assert.equal(statusOf(s).word, 'Report-only')
+  assert.equal(statusOf(s).word, isHeld(s) ? 'Report-only · Blocked' : 'Report-only')
 })
 
 test('5: a legacy record loads, explains itself, and closes no gate — unless this policy’s own evidence does', () => {
@@ -1077,8 +1080,11 @@ test('every step ends in one next thing, and none of them invents a date', () =>
     // and never from anywhere else.
     if (s.state.lifecycle === 'report-only' && !s.state.satisfied && !isHeld(s) && m.at !== (s.tracking?.readyOn ?? null)) wrong.push(`${where}: watched until a date the tracking does not hold`)
     // A held step's next thing is what holds it, and it has no date (roadmap/holds.ts).
-    if (isHeld(s) && m.at !== null) wrong.push(`${where}: a held step with a next date`)
-    if (s.status === 'blocked' && s.state.condition !== 'baseline-conflict' && m.gatedBy !== s.blockedReason) wrong.push(`${where}: a milestone gated by something other than the reason the row shows`)
+    // Except the one day a held create keeps: the day it is made in report-only
+    // while a readiness threshold gates its enforcement (owner decision, 2026-09-11).
+    const gated = s.scheduled !== undefined && scheduleOf(s).class === 'scheduled' && scheduleOf(s).enforcement === 'gated'
+    if (isHeld(s) && m.at !== null && !(gated && m.at === scheduleOf(s).at)) wrong.push(`${where}: a held step with a next date`)
+    if (s.status === 'blocked' && s.state.condition !== 'baseline-conflict' && !gated && m.gatedBy !== s.blockedReason) wrong.push(`${where}: a milestone gated by something other than the reason the row shows`)
   }
   assert.deepEqual(wrong, [])
   // An open observation window is reached on the curated baseline: on the pinned

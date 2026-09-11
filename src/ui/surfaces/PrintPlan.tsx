@@ -24,7 +24,7 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { floorRows, phaseRows, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -108,10 +108,11 @@ export function PrintPlan({
   // finished a start date, and attribute a control to the baseline author who
   // never asked for it. `phaseRows` is the one rule that decides this, and the
   // screen reads it too, so a plan taken to PDF carries the same rows.
-  const held = undatedRows(steps, schedule.waves)
+  const phaseList = planPhases(schedule)
+  const held = undatedRows(steps, phaseList)
   const floor = floorRows(steps)
   const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w)
-  const waves = schedule.waves.filter((w) => phaseSteps(w).length > 0)
+  const waves = phaseList.filter((w) => phaseSteps(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
   const waveTitle = (w: Schedule['waves'][number]) => waveLabelByNumber.get(w.wave) ?? ''

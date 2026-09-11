@@ -17,6 +17,7 @@ import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { awaitingDeployment } from '../../roadmap/forecast.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { heldByReadiness } from '../../derive/finish.ts'
 import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 
@@ -41,12 +42,20 @@ const PLAN = pages.plan as { now: string; readyOn: string; readyNow: string; hel
  * and never as waiting on a threshold. This is the row agreeing with the count.
  */
 function readsThreshold(step: Step): boolean {
-  return unavailableReason(step) === null && heldByReadiness(step)
+  // A create the plan still schedules while the threshold holds its enforcement
+  // reads its creation day instead; the threshold goes on its reason line.
+  return unavailableReason(step) === null && heldByReadiness(step) && !(step.scheduled && scheduleOf(step).class === 'scheduled')
 }
 
 export function rowWhen(step: Step, waveStart: string | null = null): string {
   // A done step's row shows no date word: blank, never "now".
   if (step.status === 'done') return ''
+  // The step's one scheduling result (roadmap/stepSchedule.ts), where the finished
+  // plan wrote it: every day this column prints is that result's day.
+  const scheduled = step.scheduled ? scheduleOf(step) : null
+  // Readiness gates enforcement, not creation (owner decision, 2026-09-11): a held
+  // create the plan still schedules reads the day it is created in report-only.
+  if (scheduled?.class === 'scheduled' && scheduled.at !== null && isHeld(step)) return absoluteDate(scheduled.at)
   if (readsThreshold(step)) {
     const b = step.blockers.find((x) => x.kind === 'readiness' && typeof x.binding === 'string' && /readiness reaches/.test(x.binding))
     if (b && typeof b.binding === 'string') return b.binding
@@ -97,13 +106,16 @@ export function rowWhen(step: Step, waveStart: string | null = null): string {
   // the calendar entry and the prompt pack say — all four from the one reading
   // in roadmap/forecast.ts — instead of handing a projection over as a date
   // something has earned.
-  if (awaitingDeployment(step)) return step.reportOnlyAt ? absoluteDate(step.reportOnlyAt) : ''
+  if (awaitingDeployment(step)) {
+    const day = scheduled ? scheduled.at : (step.reportOnlyAt ?? null)
+    return day ? absoluteDate(day) : ''
+  }
   // A step nothing holds reads its own dated milestone. It borrows no wave's date
   // (`waveStart` is the group's, kept for the callers). With no date of its own it
   // reads "now" only when it is Ready — work a person can do today — and nothing
   // otherwise: unknown is better than a "now" nothing has made true.
   void waveStart
-  const at = step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null
+  const at = scheduled ? scheduled.at : (step.events?.enforce.at ?? step.rings[0]?.plannedStart ?? null)
   return at ? absoluteDate(at) : step.status === 'ready' ? PLAN.now : ''
 }
 

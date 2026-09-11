@@ -190,7 +190,9 @@ test('every family draws the one Next milestone rail, and it is never empty', ()
     const r = railOf(a.contract)
     assert.ok(r.metric.trim().length > 0 && r.sub.trim().length > 0, `${a.fixture}/${a.step.id}: a rail with nothing in it`)
     // A date only where Foundation B holds one; never one it does not.
-    if (a.contract.milestone.at === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
+    // A day the schedule places (roadmap/stepSchedule.ts) is not invented: the row reads the same day.
+    const scheduled = a.contract.schedule !== null && a.contract.schedule.transition !== 'decide' ? a.contract.schedule.at : null
+    if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
   assert.equal(CONTENT_STEP.split('<StepRail contract={contract} when={when} />').length - 1, 1, 'the rail is gated, or drawn twice')
 })
