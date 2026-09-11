@@ -32,8 +32,15 @@ import { app } from '../content/content.ts'
  * - `plan-file` — the Export tab's plan-file card. The file is the person's own
  *   working state, saved to load back on the same tenant (the loader's tenant
  *   check needs the real id); the card says what it holds and that names are in full.
+ * - `implementation-artifact` — Copy on a Plan step's Implementation viewer. The
+ *   viewer shows the whole artifact, identifiers and all, before Copy can be
+ *   pressed, and Copy copies exactly what it shows: a JSON body, a script or a
+ *   portal procedure deploys only with the tenant's own object ids and
+ *   Microsoft's own constants in it, so a redacted copy is a different and
+ *   invalid artifact. AI Info carries its tenant-context warning above the same
+ *   preview (ui/surfaces/ContentStep.tsx `Implementation`).
  */
-export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file'
+export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact'
 
 export type Disposition = { redact: true } | { redact: false; surface: UnredactedSurface }
 
