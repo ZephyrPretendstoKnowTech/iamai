@@ -32,6 +32,7 @@ import type { ObservationChange } from './observation.ts'
 import { historyReset } from './observation.ts'
 import { holdOf } from './holds.ts'
 import { implementationOffered } from './operations.ts'
+import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 
 const MILESTONE = engine.milestone
@@ -299,6 +300,15 @@ export function nextMilestone(step: Step): Milestone {
   // two instructions pulling apart. Still no date: nothing schedules the hold clearing.
   if (hold !== null && s.lifecycle === 'not-deployed' && implementationOffered(step)) {
     const gate = step.action.readinessGate
+    // Readiness gates enforcement, not creation (owner decision, 2026-09-11): where
+    // the plan still schedules the create (roadmap/stepSchedule.ts), that day is
+    // the milestone, and turning it on is what waits.
+    const scheduled = step.scheduled ? scheduleOf(step) : null
+    if (scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
+      const date = absoluteDate(scheduled.at)
+      const label = gate ? fillText(MILESTONE.prepareScheduled, { date, measure: gate.measure, threshold: gate.threshold }) : fillText(MILESTONE.prepareScheduledOther, { date })
+      return { kind: 'deploy', label, at: scheduled.at, gatedBy: null }
+    }
     const label = gate ? fillText(MILESTONE.prepareHeld, { measure: gate.measure, threshold: gate.threshold }) : MILESTONE.prepareHeldOther
     return { kind: 'deploy', label, at: null, gatedBy: step.blockedReason }
   }
@@ -324,5 +334,7 @@ export function nextMilestone(step: Step): Milestone {
   if (s.observation && historyReset(s.observation)) return { kind: 'observe', label: s.observation.note, at: null, gatedBy: null }
   if (step.kind === 'verify' || step.kind === 'check') return { kind: 'verify', label: MILESTONE.verify, at: null, gatedBy: null }
   if (s.lifecycle === null) return { kind: 'deploy', label: MILESTONE.prepare, at: null, gatedBy: null }
-  return { kind: 'deploy', label: MILESTONE.deploy, at: step.events?.announce?.at ?? null, gatedBy: null }
+  // The day the plan schedules it (roadmap/stepSchedule.ts): the report-only
+  // creation, or the change to the tenant's policy — the day its row reads.
+  return { kind: 'deploy', label: MILESTONE.deploy, at: step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
 }

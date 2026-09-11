@@ -679,7 +679,7 @@ test("the demo's week two: the tenant switched its own policy on, so the row rea
   // Enforced at all.
   const week1 = runFixture(fixture('demo'))
   const before = week1.steps.find((s) => s.id === STEP_ID)!
-  assert.equal(statusOf(before).word, 'Report-only')
+  assert.equal(statusOf(before).word.split(' · ')[0], 'Report-only')
 
   const f = fixture('demo-week2')
   const run = runFixture(f)

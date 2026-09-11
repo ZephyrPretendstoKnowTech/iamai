@@ -200,7 +200,7 @@ function freshScan(over: { edit?: (row: Row) => void; evidence?: boolean; record
 function nothingIsOffered(c: Case): void {
   assert.equal(c.step.state.lifecycle, 'report-only', 'the policy is still being watched')
   assert.notEqual(c.step.status, 'ready-to-enforce')
-  assert.equal(statusOf(c.step).word, 'Report-only')
+  assert.equal(statusOf(c.step).word.split(' · ')[0], 'Report-only')
   assert.equal(policyHold(c.step), 'observation-incomplete', 'Foundation A holds the operation, and names the reason')
   assert.equal(implementationOffered(c.step), false)
   assert.equal(enforcementUnearned(c.step), true)
@@ -862,7 +862,7 @@ test('007.10: a policy whose gates have not closed is not Ready, and no enforcem
   assert.equal(t.readyNow, false)
   assert.ok((t.seenInScope ?? 0) < (t.activeInScope ?? 0), 'and not everybody has been seen')
   assert.equal(c.step.state.lifecycle, 'report-only')
-  assert.equal(statusOf(c.step).word, 'Report-only')
+  assert.equal(statusOf(c.step).word.split(' · ')[0], 'Report-only')
   // Its operation is the very same enforcing update, and Foundation A holds it.
   const [op] = operationsOf(c.step)
   assert.equal(op.mode, 'update')
@@ -900,7 +900,7 @@ test('007.11: with both gates closed against it the canonical policy itself fall
   assert.equal(implementationOffered(c.step), false)
   assert.equal(policyHold(c.step), 'observation-incomplete')
   assert.equal(c.step.events, null)
-  assert.equal(statusOf(c.step).word, 'Report-only')
+  assert.equal(statusOf(c.step).word.split(' · ')[0], 'Report-only')
 })
 
 // ---- control B: evidence a person has to look at ----
@@ -920,7 +920,7 @@ test('007.12: unexplained evidence returns the held Report-only case and takes t
   assert.equal(implementationOffered(c.step), false)
   assert.equal(jsonOffered(c.step), false)
   assert.equal(c.step.events, null, 'no enforcement date survives a change nobody has explained')
-  assert.equal(statusOf(c.step).word, 'Report-only')
+  assert.equal(statusOf(c.step).word.split(' · ')[0], 'Report-only')
   assert.notEqual(rowWhen(c.step), '')
   assert.ok(!/Ready to enforce/.test(everythingSaid(c)), everythingSaid(c))
 })

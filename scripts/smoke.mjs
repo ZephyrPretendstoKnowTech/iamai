@@ -514,7 +514,9 @@ try {
   // and names what it comes after (roadmap/holds.ts). A date is never shown on a
   // Blocked row without that.
   const blockedWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').map((r) => ({ when: ((r.querySelector('.when') || {}).textContent || '').trim(), reason: ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim() }))`)
-  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === 'Held' || when === 'Not scheduled' || /^After /.test(when) || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^after: /.test(reason))))
+  // A dated Blocked row is sequenced after something (after: …) or is a create the
+  // plan schedules while a threshold holds its enforcement (when …): roadmap/stepSchedule.ts.
+  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === 'Held' || when === 'Not scheduled' || /^After /.test(when) || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^(after: |when )/.test(reason))))
   check('Plan: a Blocked row reads what it waits on or Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
   const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
@@ -574,7 +576,8 @@ try {
     await waitFor(`/MFA Readiness/.test(document.body.innerText)`)
     const scoped = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
     const t2 = await text()
-    check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ people/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
+    // The count bends its noun (pluralise): one person, or n people.
+    check('MFA Readiness: opened from a step, it says which step and filters to its people', /Filtered to the \d+ (people|person)\b/.test(t2) && (Number.isNaN(wanted) || scoped === wanted), `${scoped} rows, the step said ${wanted}: ${(t2.match(/Filtered to[^\n]*/) ?? [''])[0]}`)
     check('MFA Readiness: and offers the way back to that step', /← Back to the step/.test(t2))
     // The counts above the table stay the whole tenant, not the filtered set.
     const scopedSummary = t2.match(SUMMARY_LINE)
@@ -861,9 +864,11 @@ try {
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // Item 4: a readiness-held step renders as a Blocked row whose date column
   // reads the reason in the 46 shape, not a date.
-  const whenCols = await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => e.textContent.trim()).join(' | ')`)
+  // A create the plan still makes while the threshold gates its enforcement reads
+  // its creation day there and the threshold on its reason line (roadmap/stepSchedule.ts).
+  const whenCols = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ((r.querySelector('.when') || {}).textContent || '').trim() + ' / ' + ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim()).join(' | ')`)
   // Any family: the demo's held rows are the MFA ones now that the device and admin session gates are gone (E9).
-  check('Demo: a readiness-held step reads its reason in the date column', /when [A-Za-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/when [A-Za-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
+  check('Demo: a readiness-held step reads its reason in the date column, or on its reason line beside its creation day', /when [A-Za-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/[^|]*when [A-Za-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0

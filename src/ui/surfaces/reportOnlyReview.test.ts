@@ -243,7 +243,9 @@ test('006.1: a later scan finds the deployed policy changed to something the pla
   assert.notEqual(step.state.lifecycle, 'ready-to-enforce')
   assert.notEqual(step.state.lifecycle, 'not-deployed')
   assert.notEqual(step.state.lifecycle, 'enforced')
-  assert.equal(statusOf(step).word, 'Report-only', 'the row word is the stage, never the condition')
+  // The stage leads the row, and the condition stands beside it as it does in the badge (correction batch 1.1).
+  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only', 'the row word leads with the stage')
+  assert.notEqual(statusOf(step).word, 'Report-only', 'and does not hide the review the step is held for')
   // The condition came from the observation, which came from two scans.
   const obs = step.state.observation!
   assert.equal(obs.reviewRequired, true)

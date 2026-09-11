@@ -20,6 +20,8 @@ import { copyBoxes, stepLines } from './stepExport.ts'
 import { content } from '../../content/content.ts'
 import type { RoadmapInput } from '../../roadmap/generate.ts'
 import { rowWhen } from './rowWhen.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { notLicensedRows } from '../../derive/notLicensed.ts'
 import { DEVICE_GOALS } from '../../roadmap/deviations.ts'
 import { stepById } from '../../content/content.ts'
@@ -182,11 +184,15 @@ test('GetIAMAI: with a Windows-only token-protection policy on, the step names t
   const wave = r.schedule.waves.find((w) => w.stepIds.includes(step.id)) ?? null
   const when = rowWhen(step, wave?.start ?? null)
   if (step.status === 'blocked') assert.notEqual(when, now, 'Blocked · <date>, never Blocked · now')
-  else assert.equal(when, now, 'Ready · now')
+  // Ready work reads the day the plan schedules it (roadmap/stepSchedule.ts), or now where nothing dates it.
+  else assert.ok(when === now || (step.scheduled !== undefined && scheduleOf(step).at !== null && when === absoluteDate(scheduleOf(step).at!)), `Ready · ${when}`)
   // A blocked step with no date of its own reads its wave's start.
   assert.equal(rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'))
   assert.notEqual(rowWhen({ ...step, status: 'blocked', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), now)
-  assert.equal(rowWhen({ ...step, status: 'ready', events: null, rings: [] }, '2026-10-05T12:00:00.000Z'), now, 'Ready · now')
+  // With no day of its own and none the plan schedules, Ready reads now; with the plan's day, that day (roadmap/stepSchedule.ts).
+  assert.equal(rowWhen({ ...step, status: 'ready', events: null, rings: [], scheduled: undefined }, '2026-10-05T12:00:00.000Z'), now, 'Ready · now')
+  const settled = { ...step, status: 'ready' as const, events: null, rings: [] }
+  if (settled.scheduled && scheduleOf(settled).at) assert.equal(rowWhen(settled, '2026-10-05T12:00:00.000Z'), absoluteDate(scheduleOf(settled).at!), 'Ready · its scheduled day')
 })
 
 // The footer's Doesn't-apply group holds the person's answers only; a goal a

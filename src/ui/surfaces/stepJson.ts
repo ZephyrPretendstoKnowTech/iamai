@@ -26,8 +26,25 @@ import { implementationOffered, operationsOf, submitsEnforcementOnly } from '../
 export { implementationOffered }
 
 /** The objects the body names that the tenant lacks, with the step that creates each (its content title). */
-export function missingObjects(step: Step): { token: string; stepId: string | null; unreadable?: true; title: string }[] {
-  return (step.action.missing ?? []).map((m) => ({ ...m, title: (m.stepId && stepById[m.stepId]?.title) || m.token }))
+export function missingObjects(step: Step): { token: string; stepId: string | null; unreadable?: true; decision?: true; title: string; wait: WaitKind }[] {
+  return (step.action.missing ?? []).map((m) => ({ ...m, title: (m.stepId && stepById[m.stepId]?.title) || m.token, wait: waitKindOf(m) }))
+}
+
+/**
+ * What a policy waiting on a reference is waiting for, as one of three things that
+ * read differently and clear differently:
+ *
+ * - `objectMissing`: an object this tenant has not made yet — a task a Preparation
+ *   step does;
+ * - `referenceUnresolved`: a reference of the baseline's author nobody has said
+ *   what stands for it here — a person's answer, not an object that is missing;
+ * - `sourceUnreadable`: a source object no settled reading explains — nothing this
+ *   tenant does ends it.
+ */
+export type WaitKind = 'objectMissing' | 'referenceUnresolved' | 'sourceUnreadable'
+
+export function waitKindOf(m: { unreadable?: true; decision?: true }): WaitKind {
+  return m.unreadable ? 'sourceUnreadable' : m.decision ? 'referenceUnresolved' : 'objectMissing'
 }
 
 /**
@@ -44,10 +61,14 @@ export function missingObjects(step: Step): { token: string; stepId: string | nu
  */
 export function waitingLine(step: Step, tenant: string): string {
   const objects = missingObjects(step)
-  const named = [...new Set(objects.filter((m) => !m.unreadable).map((m) => m.title))]
+  const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind).map((m) => m.title))]
   const lines: string[] = []
-  if (named.length > 0) lines.push(fillText(app.plan.jsonWaits, { steps: list(named), tenant }))
-  if (objects.some((m) => m.unreadable)) lines.push(fillText(app.plan.jsonWaitsUnreadable, { tenant }))
+  const decided = titles('referenceUnresolved')
+  const made = titles('objectMissing')
+  // A reference whose meaning nobody has settled is not an object the tenant lacks.
+  if (decided.length > 0) lines.push(fillText(app.plan.jsonWaitsDecision, { steps: list(decided), tenant }))
+  if (made.length > 0) lines.push(fillText(app.plan.jsonWaits, { steps: list(made), tenant }))
+  if (objects.some((m) => m.wait === 'sourceUnreadable')) lines.push(fillText(app.plan.jsonWaitsUnreadable, { tenant }))
   return lines.join(' ')
 }
 

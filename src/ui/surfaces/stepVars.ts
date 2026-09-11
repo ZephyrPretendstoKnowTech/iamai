@@ -32,7 +32,7 @@ import { readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { engine, shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
-import { QUESTION_STEP, answerOf, devicePlanOf } from '../../roadmap/answers.ts'
+import { QUESTION_STEP, answerOf, answerTextFor, devicePlanOf } from '../../roadmap/answers.ts'
 import { nobodyAffected } from '../../roadmap/timing.ts'
 import { SERVICE_ACCOUNTS_TRUSTED_GOAL } from '../../roadmap/generate.ts'
 import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
@@ -102,6 +102,51 @@ export function tenantNameOf(snapshot: TenantSnapshot): string {
  * produced (the renderer reads the content step's own example keys); a missing
  * key gates its line off. Lists come as name arrays already resolved.
  */
+/** One of the baseline's references on the source-references step, in the words its answer is asked with. */
+export type SourceReferenceRow = {
+  id: string
+  kind: 'group' | 'namedLocation'
+  answer: 'pending' | 'mapped' | 'omitted'
+  /** The titles of the plan's policies that name it. */
+  policies: string[]
+  role: 'exclude' | 'include' | 'both' | null
+  /** The part it plays in the baseline, and how widely. */
+  roleLine: string | null
+  /** What leaving it out does, for the part it plays: an exception left out keeps people in scope; a target left out leaves them uncovered. */
+  omitLine: string | null
+  /** The answer saved for it, in the option's own words, or that it has none. */
+  answerLine: string
+}
+
+/**
+ * The source-references step's rows (roadmap/resolvePolicy.ts `decisions`): each of
+ * the baseline's own references the plan's open policies name, with the part it
+ * plays, what leaving it out does and the answer it has, so a person knows what
+ * they are deciding. The author's identifier is never the row's name.
+ */
+export function sourceReferenceRowsOf(step: Step, ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'>): SourceReferenceRow[] {
+  const refs = ((contentStepFor({ id: PREREQ_STEP_ID.sourceReferences, goalId: '' }) as { decision?: { references?: Record<string, unknown> } } | undefined)?.decision?.references ?? {}) as Record<string, unknown>
+  const words = (key: string): string => (typeof refs[key] === 'string' ? (refs[key] as string) : '')
+  const options = Array.isArray(refs.options) ? (refs.options as unknown[]).filter((o): o is string => typeof o === 'string') : []
+  const tenant = tenantNameOf(ctx.snapshot)
+  return (step.action.sourceReferences ?? []).map((r) => {
+    const role = r.role ?? null
+    const suffix = role === 'include' ? 'Include' : role === 'both' ? 'Both' : 'Exclude'
+    const mapped = ctx.mapping.records?.[r.id.toLowerCase()]?.resolvedId ?? null
+    const answer = r.answer === 'omitted' ? (options[0] ?? null) : r.answer === 'mapped' && mapped ? answerTextFor(options[1] ?? '', [ctx.nameOf(mapped)]) : null
+    return {
+      id: r.id,
+      kind: r.kind,
+      answer: r.answer,
+      policies: (r.stepIds ?? []).map((id) => contentStepFor({ id, goalId: id.replace(/^s-goal-/, '') })?.title ?? id),
+      role,
+      roleLine: role !== null && r.baselinePolicies !== undefined && r.baselineTotal !== undefined ? fillText(words(`role${suffix}`), { n: r.baselinePolicies, total: r.baselineTotal }) : null,
+      omitLine: role !== null ? fillText(words(`omit${suffix}`), { tenant }) : null,
+      answerLine: answer !== null ? fillText(words('answered'), { answer }) : words('unanswered'),
+    }
+  })
+}
+
 export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknown> {
   // The one population per step (derive/population.ts): the row's who-line, the
   // lead's counts and the names all read it. For an open policy it is the people
@@ -252,14 +297,7 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
   // The source-references step (roadmap/resolvePolicy.ts `decisions`): each of
   // the baseline's own references the plan's open policies name, with the titles
   // of those policies, for the step's one answer per reference.
-  if (step.id === PREREQ_STEP_ID.sourceReferences) {
-    v.sourceReferenceRows = (step.action.sourceReferences ?? []).map((r) => ({
-      id: r.id,
-      kind: r.kind,
-      answer: r.answer,
-      policies: (r.stepIds ?? []).map((id) => contentStepFor({ id, goalId: id.replace(/^s-goal-/, '') })?.title ?? id),
-    }))
-  }
+  if (step.id === PREREQ_STEP_ID.sourceReferences) v.sourceReferenceRows = sourceReferenceRowsOf(step, ctx)
 
   // Nobody affected (timing.ts, the one definition): the records show nobody
   // using what this step blocks, so the manager's "nobody here used it" clause

@@ -106,7 +106,7 @@ test('week one: a policy the scan first sees in report-only is watched from the 
   assert.equal(step.tracking?.readyOn, readyOn, 'the time gate: first seen plus the observation window')
   assert.equal(step.tracking?.readyNow, false, 'no records of this policy yet: the evidence gate is not met')
   assert.equal(readyWhen(step)?.kind, 'on')
-  assert.equal(statusOf(step).word, 'Report-only')
+  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
   // Day one's admins policy is held — the way back in is not verified — so its
   // window closing makes it ready for nothing: the row states no ready day and
   // the step names no review date (roadmap/holds.ts). Week two's transfer
@@ -193,7 +193,7 @@ test('rescan: a policy whose window closed on clean records while a Foundation-A
   // verified, so it stays Report-only, and the row offers no date at all.
   assert.ok(isHeld(step))
   assert.equal(step.status, 'in-report-only')
-  assert.equal(statusOf(step).word, 'Report-only')
+  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
   assert.equal(unavailableReason(step), 'escape-hatch-unverified')
   assert.equal(implementationOffered(step), false)
   assert.equal(rowWhen(step), '')
@@ -217,7 +217,7 @@ test('rescan: the same ten days with no records read is not ready, and the row s
   assert.equal(step.tracking?.failures, null, 'no records read is not a clean window')
   assert.equal(step.tracking?.readyNow, false)
   assert.equal(step.status, 'in-report-only')
-  assert.equal(statusOf(step).word, 'Report-only')
+  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
   assert.equal(readyWhen(step)?.kind, 'since', 'the window closed and the records did not')
   // Held besides — the way back in is not verified — so the column states nothing
   // at all, and the step is not waiting on the records alone (roadmap/holds.ts).
@@ -247,7 +247,7 @@ test('rescan: the same ten days in a record that never named a policy carries no
   assert.equal(step.state.observation?.prior?.firstSeenAt, seenAt, 'the date is still there')
   assert.equal(step.tracking?.reportOnlyAt, f.snapshot.asOf, 'but the window runs from this scan')
   assert.notEqual(step.status, 'ready-to-enforce')
-  assert.equal(statusOf(step).word, 'Report-only')
+  assert.equal(statusOf(step).word.split(' · ')[0], 'Report-only')
 })
 
 test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'s report-only policies match their steps on screen (held Report-only / ready <date>) and the admins policy reads In place', () => {
@@ -264,14 +264,14 @@ test('the app\'s demo: the plan\'s tags follow the app\'s plan id, so week two\'
   // and its row does not offer the evidence that would earn the change.
   assert.equal(token.tracking?.readyNow, true)
   assert.ok(isHeld(token))
-  assert.equal(statusOf(token).word, 'Report-only')
+  assert.equal(statusOf(token).word, 'Report-only · Blocked', 'held, the row says so beside its stage')
   assert.notEqual(unavailableReason(token), null)
   assert.equal(implementationOffered(token), false)
   assert.equal(token.events, null)
   assert.equal(rowWhen(token), '')
   assert.notEqual(rowReason(token), readyBasis(readyWhen(token)!))
   const transfer = run.steps.find((s) => s.id === TRANSFER)!
-  assert.equal(statusOf(transfer).word, 'Report-only')
+  assert.equal(statusOf(transfer).word.split(' · ')[0], 'Report-only')
   // Held on the app's own tenant too, so it reads no ready day either.
   assert.ok(isHeld(transfer))
   assert.equal(rowWhen(transfer), '')
@@ -288,7 +288,7 @@ test("the walk's reading: every report-only step of the app's demo says where it
   const d = demoTenant(true)
   const demo = { ...f, snapshot: d.snapshot, mapping: d.mapping, planId: planIdFor(DEMO_TENANT_ID) }
   const run = runFixture(demo)
-  const rows = run.steps.filter((s) => statusOf(s).word === 'Report-only' && readyWhen(s) !== null)
+  const rows = run.steps.filter((s) => statusOf(s).word.split(' · ')[0] === 'Report-only' && readyWhen(s) !== null)
   assert.ok(rows.length > 0, 'the app\'s demo week two has a policy in report-only')
   for (const step of rows) {
     // A held one states nothing in its column: it is not watched towards a day it

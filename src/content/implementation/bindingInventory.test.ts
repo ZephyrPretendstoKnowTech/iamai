@@ -15,6 +15,10 @@ import type { Step } from '../../roadmap/types.ts'
 import { stepContract, CONTRACT } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
 import { bindingLabel, implementationPackageFor, incompleteFieldsOf, memberBindings, packageBindings, touches } from '../../ui/surfaces/stepPackage.ts'
+import { NO_RUNTIME, bindText, bound, projectSafely } from './project.ts'
+import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { referenceOptions } from '../../roadmap/answers.ts'
+import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 const NAMES = ['demo', 'demo-week2', 'small'] as const
@@ -29,6 +33,46 @@ function plans() {
 }
 
 const bindingsOf = (step: Step, ctx: StepVarContext) => packageBindings(step, ctx, stepContract(step, ctx))
+
+test('the target’s excluded accounts bind as the resolved target holds them: a list, an empty list, null, or nothing while its users wait', () => {
+  const SESSION = 's-goal-all-users-no-persistence'
+  const source = PREREQ_STEP_ID.sourceReferences
+  const base = fixture('demo')
+  const baseRun = runFixture(base)
+  const ctxOf = (f: typeof base, r: typeof baseRun): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
+  // Unavailable: its users still name a reference nobody has answered.
+  const waiting = baseRun.steps.find((s) => s.id === SESSION)!
+  assert.ok(touches(incompleteFieldsOf(waiting, operationsOf(waiting)[0] ?? null), 'conditions.users') || (waiting.action.missing ?? []).length > 0, 'the premise: its users wait on an answer')
+  assert.equal(Object.hasOwn(bindingsOf(waiting, ctxOf(base, baseRun)), 'policy.target.excludeUsers'), false, 'bound while the users wait')
+  // Answered: the pinned target excludes nobody by account, and that is a value.
+  const pending = baseRun.steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const f = { ...base, mapping: applyStepDecisions(base.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
+  const r = runFixture(f)
+  const step = r.steps.find((s) => s.id === SESSION)!
+  const bindings = bindingsOf(step, ctxOf(f, r))
+  assert.deepEqual(bindings['policy.target.excludeUsers'], [], 'the empty list the target holds is bound as the fact it is')
+  assert.ok(Array.isArray(bindings['policy.target.excludeGroups']), 'the excluded groups still bind beside it')
+  // Populated: the accounts the target excludes.
+  const populated = structuredClone(step)
+  const op = populated.action.resolution!.policies[0]
+  for (const body of [op.body, op.target].filter((b): b is Record<string, unknown> => !!b)) ((body.conditions as { users: Record<string, unknown> }).users).excludeUsers = ['user-1']
+  assert.deepEqual(bindingsOf(populated, ctxOf(f, r))['policy.target.excludeUsers'], ['user-1'])
+  // A users field that is not a list binds nothing.
+  const nulled = structuredClone(step)
+  for (const body of [nulled.action.resolution!.policies[0].body, nulled.action.resolution!.policies[0].target].filter((b): b is Record<string, unknown> => !!b)) ((body.conditions as { users: Record<string, unknown> }).users).excludeUsers = null
+  assert.equal(Object.hasOwn(bindingsOf(nulled, ctxOf(f, r)), 'policy.target.excludeUsers'), false)
+  // The projection keeps its contract: null is a whole JSON value; a required list
+  // that is empty is not a set IAMAI holds (pilot.test.ts: an empty exclusion set
+  // never produces a Create); a key IAMAI does not hold is missing.
+  assert.equal(bound({ k: null }, 'k'), true)
+  assert.equal(bound({ k: ['user-1'] }, 'k'), true)
+  assert.equal(bound({}, 'k'), false)
+  assert.deepEqual(bindText('"excludeUsers": {{json:k}}', { k: ['user-1'] }, new Set(['k'])), { text: '"excludeUsers": ["user-1"]' })
+  assert.deepEqual(bindText('"excludeUsers": {{json:k}}', {}, new Set(['k'])), { missing: ['k'] })
+  // Session Lifetime still waits on a real blocker beside it: its second member has no stable id in the pin.
+  const held = projectSafely(implementationPackageFor(step)!, 'missing', bindings, NO_RUNTIME).hold
+  assert.ok((held?.missingBindings ?? []).includes('policies.session.unmanaged.target.displayName'), JSON.stringify(held))
+})
 
 test('every value a registered package requires has one human name in the content', () => {
   const labels = CONTRACT.implementation.values as Record<string, string>

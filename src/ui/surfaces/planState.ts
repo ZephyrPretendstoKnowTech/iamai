@@ -18,9 +18,12 @@
 import type { Step } from '../../roadmap/types.ts'
 import type { StatusTone } from '../components/index.ts'
 import { app } from '../../content/content.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 
 /** What the state words are (pages.app.plan.stepContract.stateWords). */
 const WORDS = (app.plan as unknown as { stepContract: { stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string> } }).stepContract.stateWords
+/** The condition's own words, which the badge beside the stage uses (pages.app.plan.stepContract.condition). */
+const CONDITION = (app.plan as unknown as { stepContract: { condition: Record<string, string> } }).stepContract.condition
 
 /**
  * Where a step stands, as one kind:
@@ -58,6 +61,15 @@ export type PlanState = {
   attention: boolean
   /** Delivered: the board's Complete group and the In place tile. */
   complete: boolean
+  /**
+   * Waiting, in the one meaning the Plan gives the word (roadmap/stepSchedule.ts
+   * `waiting`): it cannot take its next step and nothing schedules what it waits
+   * on. The Waiting tile, the Status lens's Waiting group and the undated group
+   * count exactly these. Scheduled future work is not waiting.
+   */
+  waiting: boolean
+  /** The word already says the lifecycle stage ("Report-only · Blocked"), so the badge says the word and no more. */
+  withStage: boolean
 }
 
 /** The facts the state is read from — a Step, or the part of one a test builds. */
@@ -66,19 +78,25 @@ export type PlanStateFacts = Pick<Step, 'status' | 'operatorSafe'> & {
   kind?: Step['kind']
   checks?: Step['checks']
   emergency?: Step['emergency']
+  scheduled?: Step['scheduled']
 }
 
 /** The one reading. `held` is roadmap/holds.ts `isHeld` for the step, which the caller holds. */
 export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
   const c = step.state.condition
   const stop = step.operatorSafe === false
-  const make = (kind: PlanStateKind, word: string, tone: StatusTone): PlanState => ({
+  // The finished plan's scheduling result decides Waiting; a step no plan scheduled
+  // (a test's own facts) waits exactly where something holds it.
+  const isWaiting = step.scheduled ? scheduleOf(step as Step).class === 'waiting' : held
+  const make = (kind: PlanStateKind, word: string, tone: StatusTone, withStage = false): PlanState => ({
     kind,
     word,
     tone,
     held,
     attention: kind === 'decision' || kind === 'attention' || c === 'review-required' || (stop && kind !== 'conflict' && step.status !== 'done' && step.status !== 'skipped'),
     complete: kind === 'inPlace' || kind === 'enforced' || kind === 'deferred',
+    waiting: isWaiting,
+    withStage,
   })
   // A policy the tenant already enforces that cannot be brought up to the plan yet.
   const waiting = (): PlanState =>
@@ -100,7 +118,12 @@ export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
       if (c === 'baseline-conflict') return make('conflict', 'Blocked', 'wait')
       return waiting()
     case 'in-report-only':
-      return make('reportOnly', 'Report-only', 'wait')
+      // A policy being watched that something holds says both on the row: the
+      // stage it is at and that it cannot advance. "Report-only" alone hid the
+      // hold the opened step's badge and bar name.
+      // It says what the badge says: the condition, or Blocked where the condition
+      // is healthy and something else holds it. The kind stays: the policy is being watched.
+      return held ? make('reportOnly', `Report-only · ${c === 'healthy' ? 'Blocked' : CONDITION[c]}`, stop ? 'stop' : 'wait', true) : make('reportOnly', 'Report-only', 'wait')
     case 'ready-to-enforce':
       return make('readyToEnforce', 'Ready to enforce', 'ok')
   }
@@ -113,6 +136,7 @@ export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
  */
 export function badgeOf(stage: string, s: PlanState, conditionLabel: string, healthy: boolean): string {
   if (stage === '' || s.complete || s.kind === 'skipped') return s.kind === 'deferred' ? WORDS.minimumInPlace : stage === '' ? s.word : stage
+  if (s.withStage) return s.word
   switch (s.kind) {
     case 'attention':
     case 'decision':

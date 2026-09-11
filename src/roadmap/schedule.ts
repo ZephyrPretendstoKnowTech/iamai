@@ -96,6 +96,13 @@ export type Schedule = {
    */
   forecastOnly?: Record<string, import('./forecast.ts').ForecastPlacement>
   /**
+   * The phases the Plan draws, read off each step's own scheduling result
+   * (roadmap/stepSchedule.ts phasesOf): the waves above, with the steps each one
+   * actually carries and a range that holds every one of their scheduled days.
+   * Filled on the finished plan; absent until then.
+   */
+  phases?: WaveSchedule[]
+  /**
    * The rollout's length as the generator drew it, before `settleForecast`
    * withdrew anything held or unearned: an estimate, never a date a step has.
    * Connect's sample tile and a plan that cannot finish yet read its weeks

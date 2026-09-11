@@ -40,7 +40,9 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, barKeyOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
-import { heldByTitle, missingObjects, waitingLine } from './stepJson.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
+import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -83,6 +85,7 @@ type ContractWords = {
   doneDecision: string
   doneReadiness: string
   doneMissing: string
+  doneMissingDecision: string
   doneHeldEnd: string
   doneMissingUnreadable: string
   donePair: string
@@ -130,6 +133,8 @@ type ContractWords = {
   troubleshooting: { eyebrow: string; close: string; seeing: string; cause: string; check: string; fix: string; doNot: string; then: string; sources: string }
   confirm: { control: string; confirmedControl: string; eyebrow: string; body: string; confirm: string; remove: string; cancel: string; confirmedOn: string }
   rail: Record<string, string>
+  /** The rail's sub-line under a day the plan schedules, by the transition it is for (roadmap/stepSchedule.ts). */
+  railTransition: Record<'createReportOnly' | 'change' | 'enforce', string>
   rollout: Record<string, string>
   hardening: { heading: string; leadBlocked: string; leadDefer: string; deferredOn: string; defer: string; undo: string; everyAccount: string; unchecked: string; doneDeferred: string; tiles: Record<string, string> }
 }
@@ -332,6 +337,8 @@ export type StepContract = {
   implementation: ContractImplementation
   /** The first day of the phase the Plan schedules the step in, where the Plan gave one (StepVarContext.scheduledOn): the day its row's When reads. */
   scheduledOn: string | null
+  /** The step's one scheduling result on the finished plan (roadmap/stepSchedule.ts); null where no finished plan carries the step. The rail reads it. */
+  schedule: StepSchedule | null
   /** True for a step that delivers a policy: it keeps its Implementation region even with nothing to offer, where a decision or a check draws none. */
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
@@ -386,10 +393,11 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       // nothing explains is settled. A step can be waiting on both, and then it
       // says both — the same pair the reason line reads (stepJson.ts
       // waitingLine), in the same order.
-      const objects = step.action.missing ?? []
+      const kinds = new Set((step.action.missing ?? []).map(waitKindOf))
       const done: string[] = []
-      if (objects.some((m) => !m.unreadable)) done.push(fillText(CONTRACT.doneMissing, { tenant }))
-      if (objects.some((m) => m.unreadable)) done.push(fillText(CONTRACT.doneMissingUnreadable, { tenant }))
+      if (kinds.has('referenceUnresolved')) done.push(fillText(CONTRACT.doneMissingDecision, { tenant }))
+      if (kinds.has('objectMissing')) done.push(fillText(CONTRACT.doneMissing, { tenant }))
+      if (kinds.has('sourceUnreadable')) done.push(fillText(CONTRACT.doneMissingUnreadable, { tenant }))
       return done.join(' ')
     }
     case 'unmatched-pair':
@@ -747,6 +755,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       ? { offered: true, operations: operationsOf(step).length }
       : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
     scheduledOn: ctx.scheduledOn ?? null,
+    schedule: step.scheduled ? scheduleOf(step) : null,
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
   }
@@ -1099,9 +1108,21 @@ export function railOf(c: StepContract, when: string | null = null): { metric: s
   // blocker the row, Readiness and Fix before continuing already carry.
   const standing = standingOf(c)
   const sub = m.kind === 'resolve' && (standing === 'blocked' || standing === 'resolve') ? w.resolveSub : standing === 'decide' ? w.decideSub : standing === 'review' ? (m.gatedBy ?? m.label) : m.label
+  // A day the plan schedules (roadmap/stepSchedule.ts) is the rail's metric, with
+  // what that day is for — the same result the row's When and its phase read, so a
+  // dated row never opens onto Held. Sequenced after a prerequisite, the next
+  // milestone is still that day; what it comes after is the row's reason line.
+  // A decision keeps its own word, Needs decision (owner, 2026-09-11): it is the
+  // operator's to make, and never Held.
+  const s = c.schedule ?? null
+  if (s !== null && s.transition !== 'decide' && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) {
+    const T = CONTRACT.railTransition
+    const words = s.transition === 'createReportOnly' || s.transition === 'change' || s.transition === 'enforce' ? T[s.transition] : m.label
+    return { metric: absoluteDate(s.at), sub: words }
+  }
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads — never Not scheduled beside a dated row.
-  if (c.scheduledOn && (standing === 'deploy' || standing === 'verify')) return { metric: absoluteDate(c.scheduledOn), sub }
+  if (s === null && c.scheduledOn && (standing === 'deploy' || standing === 'verify')) return { metric: absoluteDate(c.scheduledOn), sub }
   // Undated and held, the rail says what the row's When column says — the step it
   // waits on, or Held (planBoard.ts boardWhen) — so the two never read as two answers.
   const whenWords = (pages.plan as unknown as { when: { after: string; afterPrerequisites: string } }).when

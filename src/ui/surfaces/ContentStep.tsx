@@ -51,7 +51,7 @@ import { powershellFor } from './stepPowerShell.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
 import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine, stepExportView } from './stepExport.ts'
 import { stepVars } from './stepVars.ts'
-import type { StepVarContext } from './stepVars.ts'
+import type { SourceReferenceRow, StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
@@ -940,14 +940,20 @@ function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision |
  * each under its reference's source id.
  */
 function ReferenceDecisions({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
-  const rows = ex.sourceReferenceRows as { id: string; kind: 'group' | 'namedLocation'; policies: string[] }[]
-  const refs = d.references as { groupLabel: string; locationLabel: string; usedBy: string; options: string[] }
+  const rows = ex.sourceReferenceRows as SourceReferenceRow[]
+  const refs = d.references as { groupLabel: string; locationLabel: string; usedBy: string; options: string[]; clear: string; sourceId: string }
   const options = optionsOf(refs.options, ex)
   const pickerCtx = { snapshot: ctx.snapshot, mapping: ctx.mapping, nameOf: ctx.nameOf, groups: ctx.groups, directory: ctx.directory }
   const groups = useMemo(() => pickerUniverse(stepId, 'groups', pickerCtx), [stepId, ctx.snapshot, ctx.mapping, ctx.nameOf, ctx.groups])
   const locations = useMemo(() => pickerUniverse(stepId, 'locations', pickerCtx), [stepId, ctx.snapshot, ctx.mapping, ctx.nameOf])
   const [answers, setAnswers] = useState<Record<string, string | null>>(() => ({ ...(saved?.answers ?? {}) }))
   const base = useId()
+  // One saved answer taken back, and only that one: the others the step already
+  // holds stay, and the plan regenerates around the reference waiting again.
+  const clear = (id: string): void => {
+    setAnswers((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)))
+    onDecide?.({ answers: Object.fromEntries(Object.entries(saved?.answers ?? {}).filter((e): e is [string, string] => e[0] !== id && typeof e[1] === 'string')) })
+  }
   let groupN = 0
   let locationN = 0
   return (
@@ -962,8 +968,20 @@ function ReferenceDecisions({ d, ex, saved, onDecide, stepId, ctx }: { d: Record
           return (
             <div key={r.id} className="reference-decision">
               <div className="dlabel" id={labelId}>{fillText(r.kind === 'group' ? refs.groupLabel : refs.locationLabel, { n })}</div>
+              {r.roleLine && <p className="reason">{r.roleLine}</p>}
               <p className="reason">{fillText(refs.usedBy, { policies: list(r.policies) })}</p>
-              <Options name={answerKey(stepId, r.id)} labelledBy={labelId} options={options} answer={answers[r.id] ?? null} onAnswer={(a) => setAnswers((prev) => ({ ...prev, [r.id]: a }))} ex={ex} universe={r.kind === 'group' ? groups : locations} nameOf={ctx.nameOf} single />
+              <Options key={`${r.id}:${saved?.answers?.[r.id] ?? ''}`} name={answerKey(stepId, r.id)} labelledBy={labelId} options={options} answer={answers[r.id] ?? null} onAnswer={(a) => setAnswers((prev) => ({ ...prev, [r.id]: a }))} ex={ex} universe={r.kind === 'group' ? groups : locations} nameOf={ctx.nameOf} single />
+              {r.omitLine && <p className="reason">{r.omitLine}</p>}
+              <p className="reason">{r.answerLine}</p>
+              {typeof saved?.answers?.[r.id] === 'string' && (
+                <Button variant="secondary" onClick={() => clear(r.id)}>
+                  {refs.clear}
+                </Button>
+              )}
+              <details>
+                <summary>{refs.sourceId}</summary>
+                <code>{r.id}</code>
+              </details>
             </div>
           )
         })}
