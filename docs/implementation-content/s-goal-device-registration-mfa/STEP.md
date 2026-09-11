@@ -4,7 +4,7 @@
 Require the pinned baseline's MFA authentication strength when an in-scope user registers or joins a device in Microsoft Entra ID.
 
 ## Why this exists
-A password alone must not be enough to register an attacker-controlled device as a tenant device. Jon Hope's retained pinned member for this goal targets the Microsoft Entra **Register or join devices** user action and requires an authentication strength that allows only Windows Hello for Business, FIDO2 security keys, certificate-based MFA and a one-time Temporary Access Pass. IAMAI resolves this tenant's own strength for that requirement.
+A password alone must not be enough to register an attacker-controlled device as a tenant device. The member of Jon Hope's baseline pinned at `90d9b890` for this goal targets the Microsoft Entra **Register or join devices** user action and requires an authentication strength that allows only Windows Hello for Business, FIDO2 security keys, certificate-based MFA and a one-time Temporary Access Pass. IAMAI resolves this tenant's own strength for that requirement.
 
 ## Applies when
 Show implementation only when IAMAI classifies this step as `missing`, `partial`, `reportOnly`, or `readyToEnforce` and all state-specific blockers are cleared.
@@ -100,7 +100,7 @@ Condition-related mismatches share one canonical `json.correct.conditions` block
 ## Do not do
 - Do not create a second policy when IAMAI has a safe correction target.
 - Do not update an existing policy by display name alone.
-- Do not add a location restriction because the historical pinned display name says "trusted location"; the retained pinned object has no location condition. Current Microsoft documentation specifically marks Client apps, Filters for devices, and Device state conditions unavailable for this User Action; other conditions remain absent here because they are not part of the retained pinned target.
+- Do not add a location restriction because an earlier display name of this member mentioned a trusted location; the pinned member has no location condition. Current Microsoft documentation specifically marks Client apps, Filters for devices, and Device state conditions unavailable for this User Action; other conditions remain absent here because the pinned member sets none.
 - Do not add Client apps, device-state, or device-filter conditions to this User Action policy.
 - Do not configure both the MFA built-in grant and authentication strength in the same policy.
 - Do not substitute the built-in Multifactor authentication strength, or any strength that allows password-based methods, for the resolved tenant strength.

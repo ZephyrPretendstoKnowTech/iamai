@@ -12,7 +12,7 @@ IAMAI will supply the resolved policy name and canonical exclusion set.
 3. Under **Users or workload identities**, include **All users** and exclude exactly the IAMAI-resolved canonical exclusions.
 4. Under **Target resources**, select **User actions > Register or join devices**. Do not select cloud applications.
 5. Under **Grant**, select **Grant access > Require authentication strength > {{authStrength.target.displayName}}**, the authentication strength IAMAI resolved for this policy. Select it by that name; do not select a similar or weaker strength in its place.
-6. Leave noncanonical conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the retained pinned target also has no device-platform, location, risk, or authentication-flow conditions.
+6. Leave noncanonical conditions unset. Microsoft makes **Client apps**, **Filters for devices**, and **Device state** unavailable for this User Action; the pinned member also sets no device-platform, location, risk, or authentication-flow conditions.
 7. Set **Enable policy** to **Report-only**.
 8. Create the policy.
 9. Rescan IAMAI. Do not treat Report-only as rollout proof for this User Action; complete the enrollment-workflow checks before enforcement.
@@ -406,7 +406,7 @@ TARGET STATE
 All users; IAMAI-resolved canonical exclusions; User Action `urn:user:registerdevice`; no cloud-app, location, platform, device/filter, risk, or authentication-flow condition; the resolved authentication strength {{authStrength.target.displayName}}; no session controls; Report-only.
 
 PREREQUISITES
-IAMAI already resolved the target name and exclusions. Do not ask the administrator to rediscover them. Enforcement has separate human checks for the legacy device-registration MFA setting and enrollment workflows.
+The target name and exclusions above are the ones IAMAI resolved for this tenant. This text is complete only when every one of them is filled in; an exclusion still waiting on an answer about the baseline's own groups is not resolved yet, and the policy is not created until it is. Do not ask the administrator to rediscover resolved values. Enforcement has separate human checks for the legacy device-registration MFA setting and enrollment workflows.
 
 IMPLEMENTATION OPTIONS
 Use only the Entra steps, the JSON request or the PowerShell script in Create mode that IAMAI shows for this step. Do not create a duplicate if a matching policy is discovered; rescan IAMAI instead.
@@ -684,7 +684,7 @@ IT
     "sections": {
       "currentConclusion": "Render the conclusion for the current state only.",
       "confirmed": [
-        "Use tenant evidence for resolved exclusions/current policy and the retained pinned baseline for the MFA strength."
+        "Use tenant evidence for the resolved exclusions and the current policy, and the pinned member's required authentication strength, resolved to this tenant's own strength."
       ],
       "stillNeedsAttention": [
         "Render unresolved enrollment-workflow evidence and the mandatory human pre-enforcement checks only when applicable."

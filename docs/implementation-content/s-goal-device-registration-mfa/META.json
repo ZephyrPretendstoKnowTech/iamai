@@ -204,7 +204,7 @@
           ]
         },
         "grant.authentication-strength": {
-          "appliesWhen": "grant or authentication strength differs from retained pinned target",
+          "appliesWhen": "grant or authentication strength differs from the pinned member's requirement, resolved to this tenant's own strength",
           "facts": [
             "grantControls"
           ],
