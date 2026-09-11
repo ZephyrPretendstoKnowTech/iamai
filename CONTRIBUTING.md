@@ -13,9 +13,12 @@ declined however good the rest of it is.
   even a report-only policy: the plan tells the operator what to create, in the
   portal, themselves.
 - **Browser-only.** No server, no telemetry, no CDN, no fonts or scripts from a
-  third party. `src/network.test.ts` fails the build if a source file addresses
-  a host other than `graph.microsoft.com`, `login.microsoftonline.com` and
-  `raw.githubusercontent.com`.
+  third party. `src/network.test.ts` fails the build if the source or the built
+  bundle requests a host other than the four the product needs:
+  `login.microsoftonline.com` (sign-in), `graph.microsoft.com` (the tenant's
+  data), `api.github.com` (whether the baseline author has a newer commit) and
+  `raw.githubusercontent.com` (the files of a baseline update under review).
+  Adding a host is a product decision, not a refactor.
 - **No tenant-derived data in the repository.** No sign-in names, object ids or
   tenant GUIDs, in fixtures, tests, screenshots or commit messages.
 - **Exclusions go through the exclusions group**, never an emergency-access
@@ -69,6 +72,8 @@ it covers the required `ci` check as much as the signature; it will be removed.
 
 ## Reporting a problem
 
-Security: `SECURITY.md`. Anything else — a wrong number, unclear wording, a step
-that does not match your tenant — **feedback@getiamai.com**, or an issue on this
-repository. Every page has a link in the footer that prefills the message.
+Security: report privately through GitHub's private vulnerability reporting, as
+`SECURITY.md` describes; not in a public issue. Anything else — a wrong number,
+unclear wording, a step that does not match your tenant —
+**feedback@getiamai.com**, or an issue on this repository. Every page has a link
+in the footer that prefills the message.

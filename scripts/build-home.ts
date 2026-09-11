@@ -206,6 +206,8 @@ export function renderHomeHtml(): string {
     <meta http-equiv="Expires" content="0" />
     <title>${esc(h.metaTitle)}</title>
     <meta name="description" content="${esc(h.metaDescription)}" />
+    <!-- Root-relative: src/network.test.ts reads an absolute link href as a request. og:url carries the absolute address. -->
+    <link rel="canonical" href="/" />
     <meta property="og:title" content="${esc(h.metaTitle)}" />
     <meta property="og:description" content="${esc(h.metaDescription)}" />
     <meta property="og:type" content="website" />

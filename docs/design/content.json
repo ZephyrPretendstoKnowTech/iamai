@@ -861,8 +861,8 @@
       "noAi": "No AI runs in these tools. Every plan is computed from the tenant's own records; the Export page writes prompts for your own assistant, not the other way round."
     },
     "home": {
-      "metaTitle": "IAMAI: tools for Microsoft Entra identity work",
-      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change would lock out before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
+      "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
+      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
       "brand": "IAMAI",
       "navHow": "How it works",
       "navSource": {
@@ -871,7 +871,7 @@
       },
       "eyebrow": "Microsoft identity security",
       "h1": "Strengthen identity security without guessing what will break.",
-      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. The plan is ordered so nobody is locked out on the way.",
+      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each policy runs in report-only first, to confirm its predicted impact before enforcement.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
       "heroMeta": [
@@ -997,7 +997,7 @@
         "product": {
           "wordmark": "IAMAI",
           "name": "IAMAI Planner",
-          "descriptor": "Conditional Access rollout planner"
+          "descriptor": "Microsoft Entra Planner"
         }
       },
       "error": {

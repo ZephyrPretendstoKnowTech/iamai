@@ -65,9 +65,10 @@ export const cleanup = content.cleanup
 export const phases = content.phases
 export const pages = content.pages
 /**
- * The product's name and descriptor: the app's wordmark and its page title. They
- * live with the app's own words (pages.app.shell.product) rather than on the home
- * page, which since task 016 introduces IAMAI by what it does, not by a tool card.
+ * The product's wordmark, name and descriptor. The wordmark and the descriptor make
+ * the page title (vite.config.ts); the name is the registered Entra application's.
+ * They live with the app's own words (pages.app.shell.product) rather than on the
+ * home page, which since task 016 introduces IAMAI by what it does, not by a tool card.
  */
 export const planner = (content.pages.app.shell as { product: { wordmark: string; name: string; descriptor: string } }).product
 
