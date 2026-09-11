@@ -60,18 +60,15 @@ export function membersAt(baseline: Baseline, goals: readonly string[]): Record<
  */
 export function driftOf(reviewed: Readonly<Record<string, string>> | undefined, reviewedPin: string | null, goals: readonly string[], pinned: Baseline): Drift {
   const now = membersAt(pinned, goals)
-  const drift: Drift = { status: 'current', reviewedPin, pinned: pinned.commit, unchanged: [], changed: [], removed: [], added: [] }
+  const base = { reviewedPin, pinned: pinned.commit }
   if (reviewed === undefined) {
-    drift.added = Object.keys(now)
-    drift.status = drift.added.length > 0 ? 'reviewNeeded' : 'current'
-    return drift
+    const added = Object.keys(now)
+    return { status: added.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged: [], changed: [], removed: [], added }
   }
-  for (const [key, fingerprint] of Object.entries(reviewed)) {
-    if (!(key in now)) drift.removed.push(key)
-    else if (now[key] === fingerprint) drift.unchanged.push(key)
-    else drift.changed.push(key)
-  }
-  for (const key of Object.keys(now)) if (!(key in reviewed)) drift.added.push(key)
-  drift.status = drift.removed.length > 0 ? 'held' : drift.changed.length > 0 ? 'reviewNeeded' : 'current'
-  return drift
+  const entries = Object.entries(reviewed)
+  const removed = entries.filter(([key]) => !(key in now)).map(([key]) => key)
+  const unchanged = entries.filter(([key, fingerprint]) => key in now && now[key] === fingerprint).map(([key]) => key)
+  const changed = entries.filter(([key, fingerprint]) => key in now && now[key] !== fingerprint).map(([key]) => key)
+  const added = Object.keys(now).filter((key) => !(key in reviewed))
+  return { status: removed.length > 0 ? 'held' : changed.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged, changed, removed, added }
 }
