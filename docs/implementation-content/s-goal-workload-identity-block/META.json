@@ -128,11 +128,10 @@
     },
     "partial": {
       "mode": "composeByMismatch",
+      "mismatchBinding": "policy.current.semanticMismatches",
       "requires": [
         "policy.current.id",
         "policy.current.semanticMismatches",
-        "location.current.id",
-        "location.current.semanticMismatches",
         "workload.cloudSync.servicePrincipalId",
         "location.syncServer.id",
         "location.syncServer.ipRanges"
@@ -144,26 +143,6 @@
         ]
       },
       "mismatches": {
-        "location.ip-ranges": {
-          "appliesWhen": "the existing sync-server named location IP range set differs from the approved canonical range set",
-          "entra": [
-            "entra.correct.location.ip-ranges"
-          ],
-          "json": [
-            "json.correct.report-only",
-            "json.correct.location"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Correct",
-              "corrections": [
-                "ReportOnly",
-                "Location"
-              ]
-            }
-          ]
-        },
         "workload.service-principal": {
           "facts": [
             "conditions.clientApplications"
