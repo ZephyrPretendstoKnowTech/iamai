@@ -374,12 +374,22 @@ export function ContentStep({
     ? {
         label: W.preview.label,
         lines: [
-          W.preview.text,
+          // Nothing to fix and nothing holding it: what stands between the step and
+          // Copy is values IAMAI cannot fill, not prerequisites (correction batch 1).
+          contract.fix.length === 0 && !contract.state.held ? W.preview.textValues : W.preview.text,
           ...(preview.hold && preview.hold.missingBindings.length > 0 ? [fillText(W.preview.values, { values: list([...new Set(preview.hold.missingBindings.map(bindingLabel))]) })] : []),
           ...(preview.hold && preview.hold.pendingPrerequisites.length > 0 ? [W.preview.checks] : []),
         ],
       }
     : null
+  // A channel the package withheld on its own (project.ts `degraded`), named with
+  // what it waits on, beside the channels that did project.
+  const withheld = packaged
+    ? ((preview ?? projection)?.degraded ?? []).map((d) => {
+        const channel = CHANNEL_TABS.find((t) => t.id === PACKAGE_CHANNEL[d.channel])?.label ?? d.channel
+        return d.invalid.length === 0 && d.missingBindings.length > 0 ? fillText(W.withheld.values, { channel, values: list([...new Set(d.missingBindings.map(bindingLabel))]) }) : fillText(W.withheld.fault, { channel })
+      })
+    : []
   // A step with nothing to implement by design — a decision, a question, a check —
   // draws no Implementation region at all: its What to do is the work, and "No
   // generated implementation" beside it said nothing (owner, 2026-09-11). A policy
@@ -538,6 +548,7 @@ export function ContentStep({
               artifacts={artifacts}
               drawnBy={packaged ? 'package' : 'translator'}
               preview={previewNote}
+              withheld={withheld}
               title={title}
               empty={empty}
               source={sourceLine}
@@ -709,12 +720,14 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
-function Implementation({ artifacts, drawnBy, preview, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
+function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
   /** A planning preview's note (stepPackage.ts planningPreview): the artifacts are the planned work and are not offered to copy. */
   preview: { label: string; lines: string[] } | null
+  /** One line per channel the package withheld on its own while the others project. */
+  withheld: string[]
   title: string
   empty: ImplementationEmpty
   /** "Source updated <date>", from the package's verified sources; null where there is no truthful date. */
@@ -768,6 +781,13 @@ function Implementation({ artifacts, drawnBy, preview, title, empty, source, onT
       ) : (
         <>
           {planning}
+          {withheld.length > 0 && (
+            <div className="impl-planning" data-withheld="true">
+              {withheld.map((line, i) => (
+                <span key={i}>{line}</span>
+              ))}
+            </div>
+          )}
           <TabList base={base} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${base}-panel`} className="tabs impl-tabs no-print" />
           {tab === 'ai' && (
             <div className="ai-warning">

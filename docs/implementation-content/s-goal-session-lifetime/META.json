@@ -26,6 +26,16 @@
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
     "intentionalMultiPolicySet": true,
+    "members": [
+      {
+        "role": "browser",
+        "memberStableId": "ea9459a9-91b6-4d2b-b929-03781ac81d54"
+      },
+      {
+        "role": "unmanaged",
+        "memberStableId": null
+      }
+    ],
     "browserPolicy": {
       "memberStableId": "ea9459a9-91b6-4d2b-b929-03781ac81d54",
       "targetResources": [

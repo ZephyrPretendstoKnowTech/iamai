@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { normalizeProjection, packageWarnings, parseBlocks, validatePackage, withholdInvalid } from './protocol.ts'
 import type { CompiledPackage, PackageMeta } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
-import { NO_ACTION_STATES, NO_RUNTIME, bindText, packageReadiness, projectImplementation, projectSafely, readinessSafely, troubleshootingFor, troubleshootingSafely } from './project.ts'
+import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, bindText, packageReadiness, projectImplementation, projectSafely, readinessSafely, troubleshootingFor, troubleshootingSafely } from './project.ts'
 import { packageSourceLine } from '../../ui/surfaces/stepPackage.ts'
 
 const block = (meta: Record<string, unknown>, body = 'Text.'): string => `@@IAMAI-BEGIN ${JSON.stringify(meta)}\n${body}\n@@IAMAI-END\n`
@@ -104,14 +104,50 @@ test('nothing a package does throws through the Plan: faults hold the implementa
   assert.deepEqual(reported, ['s-test: projection (partial)', 's-test: readiness (missing)', 's-test: troubleshooting (missing)'])
 })
 
-test('bodies that do not hold together as one request hold the projection instead of emitting two documents', () => {
-  const conflict = COMPOSE_CONTENT.replace('{ "conditions": { "users": { "includeUsers": ["All"] } } }', '{ "grantControls": { "operator": "AND" } }')
+test('bodies that do not hold together as one request withhold that channel instead of emitting two documents, and the other channels still project', () => {
+  const conflict = COMPOSE_CONTENT.replace('Open the policy.', 'Open policy {{policy.current.id}}.').replace('{ "conditions": { "users": { "includeUsers": ["All"] } } }', '{ "grantControls": { "operator": "AND" } }')
   const clash = projectImplementation(compile(COMPOSE_META, conflict), 'partial', { 'policy.current.id': 'p1', [CHANGED_FIELDS_BINDING]: ['grantControls.operator', 'conditions.users.includeUsers'] }, NO_RUNTIME)
-  assert.deepEqual(clash.channels, [])
-  assert.match(clash.hold?.invalid.join(' ') ?? '', /two bodies set grantControls/)
-  const elsewhere = COMPOSE_CONTENT.replace('"endpoint":"/identity/conditionalAccess/policies/{policy.current.id}"}\n{ "conditions"', '"endpoint":"/identity/conditionalAccess/namedLocations/{policy.current.id}"}\n{ "conditions"')
+  assert.deepEqual(clash.channels.map((c) => c.channel), ['entra'], 'the clashing JSON reached the page, or took the portal steps with it')
+  assert.equal(clash.hold, null)
+  assert.deepEqual(clash.degraded?.map((d) => d.channel), ['json'])
+  assert.match(clash.degraded?.[0].invalid.join(' ') ?? '', /two bodies set grantControls/)
+  const elsewhere = COMPOSE_CONTENT.replace('Open the policy.', 'Open policy {{policy.current.id}}.').replace('"endpoint":"/identity/conditionalAccess/policies/{policy.current.id}"}\n{ "conditions"', '"endpoint":"/identity/conditionalAccess/namedLocations/{policy.current.id}"}\n{ "conditions"')
   const split = projectImplementation(compile(COMPOSE_META, elsewhere), 'partial', { 'policy.current.id': 'p1', [CHANGED_FIELDS_BINDING]: ['grantControls.operator', 'conditions.users.includeUsers'] }, NO_RUNTIME)
-  assert.match(split.hold?.invalid.join(' ') ?? '', /different requests/)
+  assert.equal(split.channels.some((c) => c.channel === 'json'), false)
+  assert.match(split.degraded?.[0].invalid.join(' ') ?? '', /different requests/)
+})
+
+test('a channel withheld on its own names what it lacks; a value the state as a whole requires holds every channel', () => {
+  const pkg = compile(COMPOSE_META, COMPOSE_CONTENT.replace('Correct the grant.', 'Correct the grant to {{policy.target.grantWords}}.'))
+  pkg.meta.requiredBindings = [...(pkg.meta.requiredBindings ?? []), 'policy.target.grantWords']
+  const facts = { 'policy.current.id': 'p1', [CHANGED_FIELDS_BINDING]: ['grantControls.operator'] }
+  const one = projectImplementation(pkg, 'partial', facts, NO_RUNTIME)
+  assert.deepEqual(one.channels.map((c) => c.channel), ['json'])
+  assert.deepEqual(one.degraded, [{ channel: 'entra', missingBindings: ['policy.target.grantWords'], invalid: [] }])
+  const all = projectImplementation(pkg, 'partial', { [CHANGED_FIELDS_BINDING]: ['grantControls.operator'] }, NO_RUNTIME)
+  assert.deepEqual(all.channels, [])
+  assert.deepEqual(all.hold?.missingBindings, ['policy.current.id'])
+  // Portal steps that carry none of IAMAI's values are never offered alone, where
+  // every channel that does carry one is withheld.
+  const partial = COMPOSE_META.projection!.partial as Record<string, unknown>
+  const loose = compile({ ...COMPOSE_META, projection: { partial: { ...partial, requires: ['policy.current.semanticMismatches'] } } } as never, COMPOSE_CONTENT)
+  const alone = projectImplementation(loose, 'partial', { [CHANGED_FIELDS_BINDING]: ['grantControls.operator'] }, NO_RUNTIME)
+  assert.deepEqual(alone.channels, [], 'channels carrying none of IAMAI’s values were offered on their own')
+  assert.deepEqual(alone.hold?.missingBindings, ['policy.current.id'])
+})
+
+test('null is a value: a JSON binding the target sets to null renders null, and a sentence never prints it', () => {
+  const bound =bindText('{ "sessionControls": {{json:policy.target.sessionControls}} }', { 'policy.target.sessionControls': null }, new Set(['policy.target.sessionControls']))
+  assert.deepEqual(bound, { text: '{ "sessionControls": null }' })
+  assert.deepEqual(bindText('Session: {{policy.target.sessionControls}}', { 'policy.target.sessionControls': null }, new Set(['policy.target.sessionControls'])), { missing: ['policy.target.sessionControls'] })
+  assert.deepEqual(bindText('{ "x": {{json:policy.target.sessionControls}} }', {}, new Set(['policy.target.sessionControls'])), { missing: ['policy.target.sessionControls'] })
+})
+
+test('a script literal that opens with two braces is not an unresolved binding', () => {
+  assert.equal(UNRESOLVED.test("if ($value -like '{{*') { throw 'An IAMAI value was not bound.' }"), false)
+  assert.equal(UNRESOLVED.test('Name: {{policy.target.displayName}}'), true)
+  assert.equal(UNRESOLVED.test('{ "x": {{json:policy.target.conditions}} }'), true)
+  assert.equal(UNRESOLVED.test('Evidence line [omit this line when unavailable]'), true)
 })
 
 test('a package authored against another baseline pin applies, and its source line names both pins', () => {

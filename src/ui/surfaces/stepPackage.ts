@@ -18,7 +18,7 @@
 // the pin this build carries (`packageSourceLine`), and a block the author scoped
 // with a `baselineCommit` condition stays scoped to its own pin.
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
-import type { Step } from '../../roadmap/types.ts'
+import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { operationsOf } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
@@ -31,6 +31,8 @@ import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } fro
 import { fillText } from '../../content/render.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
+import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, implementationIsCurrent } from './stepContract.ts'
 import { tenantNameOf } from './stepVars.ts'
@@ -89,14 +91,27 @@ export function packageSourceLine(pkg: CompiledPackage, words: { sourceUpdated: 
 }
 
 /**
+ * The operations Foundation A resolved for the step, whether or not it offers
+ * them today: the plan's target, which is a fact about what the policy will be,
+ * and not an operation anybody may run (correction batch 1). Implementation is
+ * offered only through `operationsOf`; this is what a planning preview and a
+ * correction's changed fields read while something still holds the step.
+ */
+export function plannedOperationsOf(step: Step): PolicyOperation[] {
+  const offered = operationsOf(step)
+  return offered.length > 0 ? offered : (step.action.resolution?.policies ?? [])
+}
+
+/**
  * The fields the step's updates change on the tenant's policies: the engine's
  * semantic facts about a correction (roadmap/changedFields.ts), over every update
- * operation the step would run and the tenant policy each names.
+ * operation the step resolves and the tenant policy each names — held or not, so a
+ * correction a prerequisite still holds can be planned from what it will change.
  */
 export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null): string[] {
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const out = new Set<string>()
-  for (const op of operationsOf(step)) {
+  for (const op of plannedOperationsOf(step)) {
     if (op.mode !== 'update' || typeof op.policyId !== 'string') continue
     const current = rows.find((r) => r.id === op.policyId) ?? null
     for (const f of changedFieldsOf(op.body as Record<string, unknown>, current)) out.add(f)
@@ -153,6 +168,11 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
  * preparation step makes. Null where there is no eventual implementation to
  * preview: a delivered goal, a step set aside, a baseline that contradicts
  * itself, a decision or a check.
+ *
+ * A correction is read from what the resolved update will change, held or not:
+ * an enforced policy the plan must correct is planned as that correction
+ * (correction batch 1). It used to read the offered operations only, which a hold
+ * empties, so every held correction said "Nothing to submit yet".
  */
 export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: TenantSnapshot | null): PackageState | null {
   const s = c.state
@@ -195,52 +215,183 @@ export function planningPreview(pkg: CompiledPackage, step: Step, c: StepContrac
   return preview.preview && preview.channels.length > 0 ? preview : null
 }
 
-type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown } }; grantControls?: { authenticationStrength?: { id?: unknown } }; sessionControls?: unknown }
+const REFERENCE_ROOTS = ['conditions', 'grantControls', 'sessionControls'] as const
 
 /**
- * The package bindings IAMAI actually holds for a step, and only those.
+ * The target fields one resolved operation cannot state yet: where a step still
+ * waits on references (`action.missing` — a source group nobody has identified, an
+ * object a preparation step makes), Foundation A took each one out of the field
+ * that named it, and what is left of that field is not the target. Each waiting
+ * reference is found in the pinned baseline's own policy for the member (matched
+ * by member key, observation.ts `memberKeyOf`) down to the condition that holds it
+ * — `conditions.users`, `conditions.locations`. A reference another member's
+ * policy holds is that member's; one no source holds could be anywhere, and every
+ * field that can name an object is left open.
+ */
+export function incompleteFieldsOf(step: Step, op: PolicyOperation | null): ReadonlySet<string> {
+  const waiting = (step.action.missing ?? []).map((m) => m.token.toLowerCase())
+  if (waiting.length === 0 || op === null) return new Set()
+  const sourceOf = (o: PolicyOperation): Record<string, unknown> | undefined => PINNED.policies.find((p) => typeof p.id === 'string' && memberKeyOf(p.id, 0) === o.memberKey) as Record<string, unknown> | undefined
+  const holds = (v: unknown, token: string): boolean => JSON.stringify(v ?? null).toLowerCase().includes(token)
+  const own = sourceOf(op)
+  const others = plannedOperationsOf(step)
+    .filter((o) => o !== op)
+    .map(sourceOf)
+    .filter((s): s is Record<string, unknown> => s !== undefined)
+  const out = new Set<string>()
+  for (const token of waiting) {
+    const here = own ? REFERENCE_ROOTS.filter((root) => holds(own[root], token)) : []
+    if (here.length === 0) {
+      if (others.some((s) => REFERENCE_ROOTS.some((root) => holds(s[root], token)))) continue
+      for (const root of REFERENCE_ROOTS) out.add(root)
+      continue
+    }
+    for (const root of here) {
+      const value = own![root]
+      const children = root === 'conditions' && value !== null && typeof value === 'object' ? Object.entries(value as Record<string, unknown>).filter(([, v]) => holds(v, token)).map(([k]) => `conditions.${k}`) : []
+      for (const field of children.length > 0 ? children : [root]) out.add(field)
+    }
+  }
+  return out
+}
+
+/** Whether an open field (`incompleteFieldsOf`) is this field, inside it, or contains it. */
+export const touches = (open: ReadonlySet<string>, field: string): boolean => [...open].some((f) => f === field || f.startsWith(`${field}.`) || field.startsWith(`${f}.`))
+
+type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGroups?: unknown; includeUsers?: unknown; includeRoles?: unknown } } & Record<string, unknown>; grantControls?: { authenticationStrength?: { id?: unknown } } | null; sessionControls?: unknown }
+
+/**
+ * The package bindings IAMAI actually holds for a step, and only those, from the
+ * one place each fact is IAMAI's:
  *
- * The target is Foundation A's resolved operation: where it withholds the
- * operation — a source reference it cannot identify, a missing object — the
- * target is not resolved, and no target value is bound. The target's conditions,
- * grant and session controls, and the authentication strength its grant names,
- * are the pinned baseline's policy as Foundation A resolved it for this tenant,
- * so a package's request body renders that policy. The current policy is the
- * operation's own update identity, or the tracked policy. The fields a correction
- * changes are the engine's (`policy.current.changedFields`). The tenant-wide
- * device-registration MFA setting is read where the scan read it, and unbound
- * where it did not (a role that cannot read it is unknown, never "off"). Not
- * bound, because IAMAI does not hold them: `evidence.deviceRegistration` and
- * `evidence.enrollmentWorkflows`.
+ * - the pinned baseline's target, as Foundation A resolved it for this tenant —
+ *   conditions, grant and session controls, the authentication strength, who the
+ *   policy includes and excludes. Read from the operation it offers, or the one it
+ *   resolved while something holds the step: a target fact is not an executable
+ *   operation, and a hold does not make IAMAI forget what the policy will be. A
+ *   field the target sets to null is bound as null — the baseline's own "none";
+ * - the tenant's own objects the plan already holds: the operator's confirmed
+ *   exclusions group, the trusted network where it is one location, the allowed
+ *   countries, the service-accounts group, a single confirmed emergency account;
+ * - the step's own facts: the name it proposes, the accounts a preparation step
+ *   names, the policy it tracks, the fields a correction changes
+ *   (`policy.current.changedFields`).
+ *
+ * Not bound, because IAMAI does not hold them: evidence it never read, a choice
+ * nobody made, and a value the package names in prose with no meaning IAMAI can
+ * supply (`policy.target.mode`). Those stay unbound, and the package's own
+ * contract decides what that means.
  */
 export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract): Bindings {
-  const op = operationsOf(step)[0] ?? null
-  const target = (op?.target ?? op?.body ?? null) as PolicyShape | null
+  const op = plannedOperationsOf(step)[0] ?? null
   const body = (op?.body ?? null) as PolicyShape | null
+  // A resolution still waiting on references (`action.missing`: a source group
+  // nobody has identified, an object a preparation step makes) has had them
+  // taken out of the fields that name them, so what is left of its conditions,
+  // grant and users is not the target: an exclusion set short of the groups still
+  // to answer read as complete. Only the fields a waiting reference is in stay
+  // unbound (`incompleteFieldsOf`); every other field of the target still binds.
+  const target = (op?.target ?? op?.body ?? null) as PolicyShape | null
+  const open = incompleteFieldsOf(step, op)
+  const settled = (field: string): PolicyShape | null => (touches(open, field) ? null : target)
   const out: Record<string, unknown> = {}
   const put = (key: string, value: unknown): void => {
     if (value !== undefined && value !== null) out[key] = value
   }
+  /** A list of the tenant's objects the plan holds: an empty one is a choice nobody has made yet, not a value. */
+  const putSome = (key: string, value: readonly string[] | undefined): void => {
+    if (value && value.length > 0) out[key] = [...value]
+  }
+  // A whole policy — a create's body, or the target an update works towards —
+  // says everything about its material roots, so one it leaves out is none and
+  // binds as null: a session-only policy has no grant. A partial update's body
+  // leaves out what it does not change, and binds nothing for it.
+  const whole = op !== null && (op.mode === 'create' || op.target !== undefined)
+  /** A material root of the resolved target, null included. */
+  const putField = (key: string, holder: Record<string, unknown> | null, field: string): void => {
+    if (!holder) return
+    if (Object.hasOwn(holder, field)) out[key] = holder[field] ?? null
+    else if (whole) out[key] = null
+  }
+  const exclusionsGroupId = actionableExclusionsGroupId({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups ?? null, directory: ctx.directory })
   const name = typeof body?.displayName === 'string' ? body.displayName : target?.displayName
-  put('policy.target.displayName', typeof name === 'string' ? name : undefined)
-  const excl = target?.conditions?.users?.excludeGroups
-  put('policy.target.excludeGroups', Array.isArray(excl) ? excl.map(String) : undefined)
-  put('policy.target.conditions', target?.conditions)
-  put('policy.target.grantControls', target?.grantControls)
-  put('policy.target.sessionControls', target?.sessionControls)
-  const strength = target?.grantControls?.authenticationStrength?.id
+  put('policy.target.displayName', typeof name === 'string' ? name : step.naming?.proposed)
+  const users = settled('conditions.users')?.conditions?.users
+  const excl = users?.excludeGroups
+  if (Array.isArray(excl)) put('policy.target.excludeGroups', excl.map(String))
+  else if (target === null && exclusionsGroupId) put('policy.target.excludeGroups', [exclusionsGroupId])
+  if (Array.isArray(users?.includeUsers)) put('policy.target.includeUsers', users.includeUsers.map(String))
+  else if (target === null && step.kind === 'prerequisite') putSome('policy.target.includeUsers', step.population.ids)
+  put('policy.target.includeRoles', Array.isArray(users?.includeRoles) ? users.includeRoles.map(String) : undefined)
+  putField('policy.target.conditions', settled('conditions') as Record<string, unknown> | null, 'conditions')
+  putField('policy.target.grantControls', settled('grantControls') as Record<string, unknown> | null, 'grantControls')
+  putField('policy.target.sessionControls', settled('sessionControls') as Record<string, unknown> | null, 'sessionControls')
+  const strength = settled('grantControls')?.grantControls?.authenticationStrength?.id
   put('authStrength.target.id', typeof strength === 'string' ? strength : undefined)
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)
   put('policy.current.state', step.tracking?.state)
   const changed = correctionFieldsOf(step, ctx.snapshot)
   put(CHANGED_FIELDS_BINDING, changed.length > 0 ? changed : undefined)
+  // The tenant objects the plan holds. A value that is a list where the package
+  // names one object (the trusted network, the emergency account) binds only
+  // where the list holds exactly one: IAMAI does not pick one for the operator.
+  const trusted = ctx.mapping.trustedLocationIds ?? []
+  put('policy.target.trustedLocationId', trusted.length === 1 ? trusted[0] : undefined)
+  putSome('trustedLocations.ids', trusted)
+  // A preparation step's proposed name is the object it makes; a policy step's is the policy's.
+  if (step.kind === 'prerequisite') put('location.target.displayName', step.naming?.proposed)
+  putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
+  put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)
+  put('group.serviceAccounts.id', ctx.mapping.serviceAccountsGroupId)
+  put('emergency.target.exclusionsGroupId', exclusionsGroupId)
+  const emergency = ctx.mapping.breakGlassUserIds ?? []
+  if (emergency.length === 1) {
+    put('emergency.target.userId', emergency[0])
+    put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === emergency[0])?.userPrincipalName)
+  }
+  for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot))) out[key] = value
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
   const mfa = registration?.status === 'ok' ? (registration.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
   put('tenant.deviceRegistration.multiFactorAuthConfiguration', typeof mfa === 'string' ? mfa : undefined)
   put('tenant.displayName', tenantNameOf(ctx.snapshot))
   put('people.affected.count', stepPopulation(step)?.active)
   put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text) : undefined)
+  return out
+}
+
+/**
+ * The bindings of a multi-policy package's members (`policies.<family>.<role>.…`):
+ * each member the package names by the pinned baseline's stable id, bound to the
+ * operation Foundation A resolved for that member. The two meet at the member key
+ * both derive from the same id (observation.ts `memberKeyOf`) — never at a
+ * position or a display name, which is how a pair collapses into one policy. A
+ * member with no stable id, or none the step resolves, binds nothing.
+ */
+export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bindings {
+  const pkg = implementationPackageFor(step)
+  const members = pkg?.meta.baselineAuthority?.members ?? []
+  if (!pkg || members.length === 0) return {}
+  const declared = [...(pkg.meta.requiredBindings ?? []), ...((pkg.meta as { optionalBindings?: string[] }).optionalBindings ?? [])]
+  const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  const ops = plannedOperationsOf(step)
+  const out: Record<string, unknown> = {}
+  for (const m of members) {
+    if (typeof m.memberStableId !== 'string' || m.memberStableId === '') continue
+    const op = ops.find((o) => o.memberKey === memberKeyOf(m.memberStableId, 0))
+    const prefix = declared.map((b) => b.split('.')).find((parts) => parts[0] === 'policies' && parts[2] === m.role)?.slice(0, 3).join('.')
+    if (!op || !prefix) continue
+    const whole = (op.target ?? (op.mode === 'create' ? op.body : null)) as PolicyShape | null
+    const name = (op.body as PolicyShape).displayName ?? whole?.displayName
+    if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
+    // Users still waiting on a reference are not the target (see packageBindings).
+    if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
+    if (op.mode === 'update') {
+      out[`${prefix}.current.id`] = op.policyId
+      const state = rows.find((r) => r.id === op.policyId)?.state
+      if (typeof state === 'string') out[`${prefix}.current.state`] = state
+    }
+  }
   return out
 }
 

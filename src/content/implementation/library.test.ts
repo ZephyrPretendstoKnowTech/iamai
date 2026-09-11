@@ -8,7 +8,7 @@ import registry from './registry.generated.json' with { type: 'json' }
 import { compileLibrary, registryOf } from './library.ts'
 import { PACKAGE_STATES, validatePackage } from './protocol.ts'
 import type { CompiledPackage } from './protocol.ts'
-import { NO_ACTION_STATES, NO_RUNTIME, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
+import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
 import type { RuntimeContext } from './project.ts'
 import { contentStepFor, contentStepForPackage } from '../stepTitle.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
@@ -81,15 +81,24 @@ test('a policy IAMAI would create projects the package’s Entra, PowerShell, JS
   assert.deepEqual(json.conditions, target.conditions, 'the JSON does not carry the resolved policy’s conditions')
   const strength = (g: unknown): unknown => (g as { authenticationStrength?: { id?: unknown } } | undefined)?.authenticationStrength?.id
   assert.equal(strength(json.grantControls), strength(target.grantControls), 'the JSON does not name the resolved authentication strength')
-  for (const c of projection.channels) assert.equal(/\{\{|\[omit /.test(c.text), false, `${c.channel}: a placeholder reached the page`)
+  for (const c of projection.channels) assert.equal(UNRESOLVED.test(c.text), false, `${c.channel}: a placeholder reached the page`)
 })
 
-test('a required value IAMAI does not hold holds the implementation; a package with nothing for the state leaves the step its own channels', () => {
+test('a required value IAMAI does not hold withholds only the channel that names it; a package with nothing for the state leaves the step its own channels', () => {
+  // The registration package words its portal steps by a mode the resolved target
+  // does not settle (MFA outside trusted locations is neither of its two modes), so
+  // IAMAI binds no mode: the portal steps are withheld and say so, and the JSON and
+  // PowerShell rendered from the pinned target still project.
   const held = project(at(SMALL, 's-goal-register-info-protected'))
   assert.equal(held.state, 'missing')
-  assert.deepEqual(held.projection.channels, [])
-  assert.deepEqual(held.projection.hold?.missingBindings, ['policy.target.mode'])
+  assert.equal(held.projection.hold, null)
+  assert.equal(held.projection.channels.some((c) => c.channel === 'entra'), false)
+  assert.ok(held.projection.channels.some((c) => c.channel === 'json'), 'the JSON rendered from the pinned target was withheld with the portal steps')
+  assert.deepEqual(held.projection.degraded, [{ channel: 'entra', missingBindings: ['policy.target.mode'], invalid: [] }])
   assert.equal(packageDrawsImplementation(held.pkg, held.projection), true, 'a held package gave the step back channels it holds')
+  const none = projectSafely(held.pkg, 'missing', {}, NO_RUNTIME)
+  assert.deepEqual(none.channels, [], 'a projection with none of its values offered something')
+  assert.ok((none.hold?.missingBindings.length ?? 0) > 0)
   const silent = project(at(SMALL, 's-goal-admin-portals-protected'))
   assert.equal(silent.projection.hold?.noProjection, true)
   assert.equal(packageDrawsImplementation(silent.pkg, silent.projection), false)
@@ -133,5 +142,5 @@ test('the demo’s held Intune enrollment policy, prepared in report-only, offer
   const json = projection.channels.find((c) => c.channel === 'json')
   assert.ok(json, 'no JSON channel')
   assert.equal(typeof (JSON.parse(json.text) as { displayName?: unknown }).displayName, 'string')
-  for (const c of projection.channels) assert.equal(/\{\{|\[omit /.test(c.text), false, `${c.channel}: an authoring marker reached the page`)
+  for (const c of projection.channels) assert.equal(UNRESOLVED.test(c.text), false, `${c.channel}: an authoring marker reached the page`)
 })
