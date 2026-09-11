@@ -154,6 +154,13 @@ export type ScheduleOptions = {
   rhythm?: TenantRhythm | null
   /** The registration window in working days (campaign.ts); 0 or absent when nobody needs setting up. */
   registrationDays?: number
+  /**
+   * The first day deployment-capable work may land (Plan settings, owner
+   * 2026-09-11): the day the report-only policies are created and the
+   * registration window that opens with them. Preparation still begins on the
+   * start. Absent: the start itself.
+   */
+  firstDeployment?: string | null
 }
 
 /**
@@ -473,6 +480,12 @@ export function buildSchedule(
   // window that opens or closes on a weekend reads wrong on the plan.
   const day0End = toWeekday(addDays(day0, day0Days))
 
+  // ---- First deployment (owner, 2026-09-11) ----
+  // Preparation begins on the start. Deployment-capable work — the report-only
+  // policies, and the registration window that opens with them — begins on the
+  // first deployment day, never before the start.
+  const creationDay = options.firstDeployment ? max(day0, toWeekday(options.firstDeployment)) : day0
+
   // ---- Registration window (target-state §9) ----
   // Sized by the generator from who still needs a proven method: five a
   // working day, at most twenty working days. It runs ALONGSIDE the first
@@ -483,7 +496,7 @@ export function buildSchedule(
   const verifyStep = steps.find((s) => s.kind === 'verify') ?? null
   const verificationComplete = verifyStep === null || !isWork(verifyStep)
   const registrationDays = verifyStep !== null && !verificationComplete ? Math.max(0, options.registrationDays ?? 0) : 0
-  const creationDayForWindow = day0
+  const creationDayForWindow = creationDay
   const verificationEnd = addWorkingDays(creationDayForWindow, registrationDays, rhythmCtx)
   const verification = {
     start: creationDayForWindow,
@@ -525,7 +538,6 @@ export function buildSchedule(
   // closed, which with four or more prerequisites was the following Monday: a
   // week in which every observation window had not yet opened. Enforcement
   // still never lands on or before the day Day 0 closes (below).
-  const creationDay = day0
   const observationStart = creationDay
   const observation = { start: observationStart, end: toWeekday(addDays(observationStart, obsDays)), days: obsDays }
 

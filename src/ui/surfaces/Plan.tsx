@@ -21,20 +21,19 @@ import { waveLabels } from '../../derive/phases.ts'
 import { floorRows, phaseRows, undatedRows } from './planRows.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { headerLine1, startControl } from '../../derive/planHeader.ts'
+import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
-import { FINISH } from '../../copy/statements.ts'
-import { absoluteDate, dateRange } from '../../copy/dates.ts'
+import { list } from '../../copy/statements.ts'
+import { absoluteDate, dateSpan } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, NO_FOCUS, VIEWS, applyFocus, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, statusGroupOf, workTypeOf } from './planBoard.ts'
+import { BOARD, NO_FOCUS, VIEWS, WHEN, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, statusGroupOf, workTypeOf } from './planBoard.ts'
 import type { BoardGroup, BoardItem, Focus, RoadmapGroup, View } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
 import { cleanupStatusOf, statusOf } from './statusWord.ts'
-import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import { rowWho } from './rowWho.ts'
-import { whoLine as whoLineOf } from '../../derive/whoLine.ts'
+import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
@@ -45,7 +44,16 @@ import { PlanFooter } from './PlanFooter.tsx'
 import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
 
-type PlanPage = { h1: string; next: string; now: string; settingsLink: string; settings: { h3: string; start: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }; blocked: { after: string } }
+type PlanPage = {
+  h1: string
+  next: string
+  now: string
+  settingsLink: string
+  settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }
+  blocked: { after: string }
+  progress: { label: string; steps: string; inPlace: string; waiting: string; remaining: string; started: string }
+  howTo: { link: string; items: string[] }
+}
 const PP = pages.plan as unknown as PlanPage
 /** The undated group's heading, the same entry the print draws over the same rows (task 036). */
 const HELD = (app.plan as unknown as { held: { heading: string; lead: string } }).held
@@ -53,6 +61,8 @@ const S = app.shell
 
 /** The settings panel the Plan settings link opens in place. */
 const PLAN_SETTINGS_ID = 'plan-settings'
+/** The short how-to the "How to use this plan" link opens in place. */
+const PLAN_HOW_ID = 'plan-how'
 
 // The plan only renders once a mapping is loaded (usePlanData returns computed
 // only then), so this fallback is never the live value; it keeps ContentStep's
@@ -71,6 +81,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const onScan = (returnTo: string): void => void runScan(returnTo)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
+  const [showHow, setShowHow] = useState(false)
   // The board's three lenses (planBoard.ts). Roadmap is the default, because the
   // Plan's own subject is the sequence; the other two re-head the same rows.
   const [view, setView] = useState<View>('roadmap')
@@ -131,19 +142,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // itself (the answers complete the alerting row without a date).
   const answers = data.mapping?.breakGlassAnswers ?? null
   const { steps: total, done: inPlace } = stepFacts(c.steps, cleanupPhase, answers)
-  // What holds the plan: a readiness number where one does, else the steps whose
-  // policy cannot be written yet and the step each waits on.
-  const waiting = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map((id) => stepById[id]?.title ?? id), finish.unwritable.named)
   // Weeks derive from the finish date, not the last blocked wave (item 15); one derivation, shared with the print and the sample tile (derive/finish.ts).
   const weeks = planWeeks(finish, c.schedule)
   // Held work dates no end (derive/finish.ts): Cleanup, which follows it, is undated with it.
   const cannotFinish = finish.held
   const P = pages.plan as Record<string, string>
   const weeksText = `${weeks} week${weeks === 1 ? '' : 's'}`
-  // Until Start the plan is pressed (or a date is set in Plan settings), every
-  // visit proposes dates from today and the header says so in one small line;
-  // once started, the anchored start is on the line and a scan never moves it (§5, §9).
-  const line1 = headerLine1({ steps: total, inPlace, finish: finish.finish, weeks: weeksText, constraint: waiting, startedFrom: data.startedFrom })
   const start = startControl()
   // Filled once: one because, one full stop; the clause names steps by their content titles.
   // A plan that cannot finish explains its estimate, from the rollout the schedule
@@ -165,10 +169,32 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // itself: the wave's steps, less the floor's group and less the footer's. A
   // wave left with nothing draws no phase.
   const waveRows = c.schedule.waves
-    .map((w) => ({ wave: w, dates: dateRange(w.start, w.end), phase: w.phase, steps: phaseRows(c.steps, w) }))
+    .map((w) => ({ wave: w, dates: dateSpan(w.start, w.end), phase: w.phase, steps: phaseRows(c.steps, w) }))
     .filter((w) => w.steps.length > 0)
   const waveNames = waveLabels(waveRows)
   let nextMarked = false
+  // The progress tiles (owner, 2026-09-11): the steps and the in-place count the
+  // print cover and Connect share (derive/facts.ts), the rows waiting in the
+  // undated group the board draws below, and what is left.
+  const waitingCount = heldRows.length
+  const progressTiles = [
+    { key: 'steps', label: PP.progress.steps, value: total },
+    { key: 'inPlace', label: PP.progress.inPlace, value: inPlace },
+    { key: 'waiting', label: PP.progress.waiting, value: waitingCount },
+    { key: 'remaining', label: PP.progress.remaining, value: Math.max(0, total - inPlace - waitingCount) },
+  ]
+  // A group's span is the scheduler's own placement of its rows (schedule.startAt):
+  // a group nothing places reads Not scheduled rather than a borrowed date.
+  const placedSpan = (steps: readonly Step[]): string => {
+    const days = steps.map((s) => c.schedule.startAt?.[s.id]).filter((d): d is string => typeof d === 'string').sort()
+    return days.length > 0 ? dateSpan(days[0], days[days.length - 1]) : WHEN.notScheduled
+  }
+  // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
+  const stepsById = new Map(c.steps.map((s) => [s.id, s]))
+  const titleOf = (id: string): string | null => {
+    const s = stepsById.get(id)
+    return s ? s.plainTitle || s.title : null
+  }
 
   // ---- one canonical row set ----
   // Built once, in production's order, from the groups the Plan already draws.
@@ -195,7 +221,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // The board's reading of the timing column (planBoard.ts `boardWhenOf`): the
     // row's own value, with Held exactly where roadmap/holds.ts says the step is
     // held — never for a step merely sequenced after another.
-    const when = boardWhenOf(step, group.start)
+    const when = boardWhenOf(step, group.start, titleOf)
     renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} when={when} waveStart={group.start} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
@@ -211,13 +237,13 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // (planRows.ts undatedRows), and the floor is Microsoft's own recommendation
   // rather than the baseline author's. Both keep the names and the order they
   // already had; only the framing around them is this task's.
-  const heldGroup: RoadmapGroup = { key: 'held', label: HELD.heading, date: null, secondary: true, start: null }
+  const heldGroup: RoadmapGroup = { key: 'held', label: HELD.heading, date: placedSpan(heldRows), secondary: true, start: null }
   for (const step of heldRows) addStep(step, heldGroup, false)
-  const floorGroup: RoadmapGroup = { key: 'floor', label: phases.recommended, date: null, secondary: true, start: null }
+  const floorGroup: RoadmapGroup = { key: 'floor', label: phases.recommended, date: placedSpan(floor), secondary: true, start: null }
   for (const step of floor) addStep(step, floorGroup, false)
 
   if (cleanupPhase) {
-    const group: RoadmapGroup = { key: 'cleanup', label: phases.last, date: cannotFinish ? null : dateRange(cleanupPhase.start, cleanupPhase.end), secondary: false, start: null }
+    const group: RoadmapGroup = { key: 'cleanup', label: phases.last, date: cannotFinish ? WHEN.notScheduled : dateSpan(cleanupPhase.start, cleanupPhase.end), secondary: false, start: null }
     for (const r of cleanupPhase.rows) {
       const entry = cleanupEntry(r.kind)
       if (!entry) continue
@@ -251,10 +277,21 @@ export function Plan({ scan: lastScan, baseline, account }: {
   return (
     <section className="surface plan">
       <h1>{P.h1}</h1>
-      <p className="line">
-        {line1}
+      {/* Progress, as tiles (owner, 2026-09-11): the generated status sentence
+          repeated what the rows below already say and named blockers the board
+          names where they are. Why the plan is as long as it is stays one tip away. */}
+      <div className="plan-progress">
+        <dl className="plan-progress-tiles" aria-label={PP.progress.label}>
+          {progressTiles.map((t) => (
+            <div key={t.key} className="plan-progress-tile">
+              <dt>{t.label}</dt>
+              <dd>{t.value}</dd>
+            </div>
+          ))}
+        </dl>
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
-      </p>
+      </div>
+      {data.startedFrom !== null && <p className="line plan-started">{fillText(PP.progress.started, { date: absoluteDate(data.startedFrom) })}</p>}
       {/* Nothing sits between the header line and the board. The MFA readiness
           ladder was a tenant-wide diagnostic on a page whose job is the rollout,
           and it answered a question no step on this page asks; it stays on Today,
@@ -284,11 +321,23 @@ export function Plan({ scan: lastScan, baseline, account }: {
       {/* A link that opens a panel in place, so it says so: expanded state and
           the panel it controls, or a screen reader hears a navigation that goes
           nowhere (task 017). */}
-      <p className="line no-print">
+      <p className="line no-print plan-links">
         <a ref={settingsLink} href="#/plan" aria-expanded={showSettings} aria-controls={PLAN_SETTINGS_ID} onClick={(e) => { e.preventDefault(); setShowSettings((v) => !v) }}>
           {PP.settingsLink}
         </a>
+        <a href="#/plan" aria-expanded={showHow} aria-controls={PLAN_HOW_ID} onClick={(e) => { e.preventDefault(); setShowHow((v) => !v) }}>
+          {PP.howTo.link}
+        </a>
       </p>
+      {showHow && (
+        <div className="plan-how no-print" id={PLAN_HOW_ID}>
+          <ul>
+            {PP.howTo.items.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {showSettings && <Settings data={data} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
       {/* ---- the board's one row set, and the three lenses over it ----
@@ -405,7 +454,7 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
           <h2>{group.label}</h2>
           <div className="plan-group-meta">{groupSummary(group)}</div>
         </div>
-        {group.date && <div className="plan-group-date">{group.date}</div>}
+        {group.date !== null && <div className="plan-group-date">{group.date}</div>}
         <button type="button" className="plan-group-toggle no-print" aria-expanded={!closed} aria-controls={id} aria-label={`${closed ? BOARD.expandGroup : BOARD.collapseGroup}: ${group.label}`} onClick={onToggle}>
           <span aria-hidden="true">{closed ? '+' : '\u2212'}</span>
         </button>
@@ -453,7 +502,7 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
   // the first of them and called the same row Ready (task 042).
   const status = cleanupStatusOf(cleanupComplete(row, answers))
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
-  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null)
+  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null, IMPACT.configurationOnly)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
@@ -517,8 +566,8 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
         title={contentTitle(step)}
         who={rowWho(step, nameOf)}
         when={when}
-        whenReason={rowWhenWraps(step)}
-        reason={rowReason(step)}
+        whenReason={boardWhenWraps(step, when)}
+        reason={boardReasonOf(step, when)}
         nextLabel={isNext ? PP.next : null}
         open={open}
         onToggle={onToggle}
@@ -560,9 +609,28 @@ function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onC
   const browserZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const zone = data.timeZone ?? ''
   const options = zone && !zones.includes(zone) ? [zone, ...zones] : zones
+  const start = (data.computed?.schedule.start ?? data.startDate ?? '').slice(0, 10)
+  // The working days the scheduler places work on: Monday to Friday, and a
+  // weekend day only where the tenant's own sign-ins show it works one
+  // (roadmap/rhythm.ts; weekday indexes run from Monday = 0).
+  const weekend = [5, 6].filter((d) => data.computed?.schedule.rhythm?.workingDays.includes(d)).map((d) => new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 3 + (d - 5)))))
+  const workdays = weekend.length > 0 ? fillText(PP.settings.workdaysWith, { days: list(weekend) }) : PP.settings.workdaysWeek
   return (
     <div className="plan-settings" id={PLAN_SETTINGS_ID}>
       <h3>{PP.settings.h3}</h3>
+      <label className="rows">
+        <span>{PP.settings.planStarts}</span>
+        <input type="date" value={start} onChange={(e) => data.setStart(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
+      </label>
+      <label className="rows">
+        <span>{PP.settings.firstDeployment}</span>
+        <input type="date" min={start} value={(data.firstDeployment ?? '').slice(0, 10)} onChange={(e) => data.setFirstDeployment(e.currentTarget.value ? `${e.currentTarget.value}T12:00:00.000Z` : null)} />
+      </label>
+      <p className="reason">{PP.settings.firstDeploymentNote}</p>
+      <div className="rows">
+        <span>{PP.settings.workdays}</span>
+        <span>{workdays}</span>
+      </div>
       <label className="rows">
         <span>{PP.settings.freeze}</span>
         <span>{PP.settings.freezeFrom}</span>

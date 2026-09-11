@@ -463,11 +463,14 @@ try {
   await go('licensing')
   check('Licensing redirects to How', await waitFor(`location.hash === '#/how'`))
   await go('plan')
-  const __planOk = await waitFor(`/#\\/plan/.test(location.hash) && /[0-9]+ steps/.test(document.body.innerText)`)
+  const __planOk = await waitFor(`/#\\/plan/.test(location.hash) && document.querySelector('main.page .plan-progress-tile') !== null`)
   check('Plan renders at #/plan', __planOk, __planOk ? '' : `hash=${await evaluate('location.hash')} main=${(await evaluate(`(document.querySelector('main.page')||{}).innerText||'(no main)'`)).slice(0, 140).replace(/\s+/g, ' ')}`)
   // The Plan surface (target-state §5): two header lines, numbered phases, the footer.
   let pt = await text()
-  check('Plan: the header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes |the plan cannot finish|cannot finish until \S)/.test(pt), (pt.match(/[^\n]*in place[^\n]*/) ?? [''])[0])
+  // The header's progress tiles replaced the generated status sentence (owner, 2026-09-11).
+  const progressOf = () => evaluate(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => ((t.querySelector('dt') || {}).textContent || '').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ')`)
+  const planProgress = await progressOf()
+  check('Plan: the header shows progress tiles for steps, in place, waiting and remaining', /^Steps=\d+, In place=\d+, Waiting=\d+, Remaining=\d+$/.test(planProgress), planProgress)
   // The second header line left with docs/design/mockups/plan-top-v2.html; the tenant and the scan age live on Connect alone.
   check('Plan: no second header line; the tenant and the scan age live on Connect alone', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
   // Task 011: the Plan is the rollout board and nothing above it. The readiness
@@ -511,8 +514,11 @@ try {
   // and names what it comes after (roadmap/holds.ts). A date is never shown on a
   // Blocked row without that.
   const blockedWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').map((r) => ({ when: ((r.querySelector('.when') || {}).textContent || '').trim(), reason: ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim() }))`)
-  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === '' || when === 'Held' || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^after: /.test(reason))))
-  check('Plan: a Blocked row reads Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
+  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === 'Held' || when === 'Not scheduled' || /^After /.test(when) || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^after: /.test(reason))))
+  check('Plan: a Blocked row reads what it waits on or Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
+  // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
+  const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
+  check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
   check('Plan: opening a row shows the content-driven step', (await evaluate(`(() => { const r = document.querySelector('main.page .plan-row'); if (r) r.click(); return !!r })()`)) && (await waitFor(`/Why/.test(document.body.innerText) && /Readiness/.test(document.body.innerText) && /Implementation/.test(document.body.innerText) && /Done when/.test(document.body.innerText)`)))
   check('Plan: the step title is nine words at most', await evaluate(`[...document.querySelectorAll('main.page .step-title')].every((e) => (e.textContent || '').trim().split(/\s+/).length <= 9)`))
   // The opened step is one frame attached under the row that opened it, with a
@@ -843,12 +849,12 @@ try {
   check('Demo: entering lands on the plan under the sample-data banner', await waitFor(`location.hash === '#/plan' && /Sample data/.test(document.body.innerText)`))
   await sleep(600)
   let demoText = await text()
-  const demoDay1Header = (demoText.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
+  const demoDay1Header = await progressOf()
   check('Demo: the banner says nothing is from a real tenant and offers to leave', /Sample data . nothing here is from a real tenant/.test(demoText) && /Leave the demo/.test(demoText))
   // Three branches, and the held one has to name what holds it: a plan whose
   // policies wait on a safety object nobody has chosen is the ordinary first
   // visit, and 'cannot finish until' with nothing after it is a hole.
-  check('Demo: the plan header counts steps, in place and the finish', /\d+ steps . \d+ in place . (finishes \w|nothing is dated|cannot finish until \S)/.test(demoText), demoDay1Header)
+  check('Demo: the plan header shows progress tiles for steps, in place, waiting and remaining', /^Steps=\d+, In place=\d+, Waiting=\d+, Remaining=\d+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // Item 4: a readiness-held step renders as a Blocked row whose date column
@@ -1009,8 +1015,8 @@ try {
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
     return evaluate(`(document.querySelector('main.page') || document.body).innerText`)
   }
-  const headerOf = (body) => (body.match(/[^\n]*\d+ in place[^\n]*/) ?? [''])[0].trim()
-  const inPlaceOf = (body) => Number((body.match(/(\d+) in place/) ?? [])[1] ?? '0')
+  const headerOf = (body) => (body.match(/Steps\s*\d+\s*In place\s*\d+\s*Waiting\s*\d+\s*Remaining\s*\d+/) ?? [''])[0].replace(/\s+/g, ' ').trim()
+  const inPlaceOf = (body) => Number((body.match(/In place\s*(\d+)\s*Waiting/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
   // Each plan row as the visitor reads it, flattened in Node (a regex in an

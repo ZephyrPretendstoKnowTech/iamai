@@ -56,7 +56,7 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
       }
       const row = whoLine(of, nameOf)
       const m = row.match(/^(\d+) (?:person|people|accounts?)/)
-      const rowCount = m ? Number(m[1]) : row.startsWith('nobody affected') ? 0 : row.split(' · ')[0].split(/, | and /).length
+      const rowCount = m ? Number(m[1]) : /^(No user impact|Configuration only)/.test(row) ? 0 : row.split(' · ')[0].split(/, | and /).length
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)
       assert.equal(ex.n, view.active, `${name} ${s.id}: the lead's {n}`)
       assert.equal(ex.active, view.active, `${name} ${s.id}: the lead's {active}`)

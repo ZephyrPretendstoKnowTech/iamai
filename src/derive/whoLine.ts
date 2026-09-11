@@ -6,6 +6,15 @@
 // headline. Pure, so the agreement test reads exactly what the page renders.
 import type { StepPopulation } from '../roadmap/types.ts'
 import { count, list } from '../copy/statements.ts'
+import { pages } from '../content/content.ts'
+
+/**
+ * The Impact words that are not a count (owner, 2026-09-11): a reach nobody
+ * settled is Not established, never zero; a policy that reaches nobody has No
+ * user impact; a step that changes configuration and names no people is
+ * Configuration only.
+ */
+export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; configurationOnly: string } }).impact
 
 // A row names people only when they fit; otherwise the count, with the names on
 // the step (prompt 50 item 4). The gap on a row is one shortened clause; the
@@ -30,19 +39,23 @@ export function shortGap(gap: string): string {
   return s.slice(0, GAP_CHARS).replace(/[\s,]+\S*$/, '')
 }
 
-/** The row's who-line: names only when ≤2 and they fit in 28 characters, else the count. */
-export function whoLine(pop: StepPopulation, nameOf: (id: string) => string, gap: string | null = null): string {
+/**
+ * The row's who-line: names only when ≤2 and they fit in 28 characters, else the
+ * count. An empty reach reads `none`: No user impact for a policy, Configuration
+ * only for a step that names no people.
+ */
+export function whoLine(pop: StepPopulation, nameOf: (id: string) => string, gap: string | null = null, none: string = IMPACT.noUserImpact): string {
   gap = gap ? gap.replace(/\*/g, '') : gap
   const ids = affectedIds(pop)
   const names = list(ids.map(nameOf))
-  const head = ids.length === 0 ? 'nobody affected' : ids.length <= NAMED_AT_MOST && names.length <= NAME_CHARS ? names : count(ids.length, 'person', 'people')
+  const head = ids.length === 0 ? none : ids.length <= NAMED_AT_MOST && names.length <= NAME_CHARS ? names : count(ids.length, 'person', 'people')
   return gap ? `${head} · ${shortGap(gap)}` : head
 }
 
 /** The step's population line: the active count, then `covers N enabled` when more are in scope. */
 export function populationLine(pop: StepPopulation): string {
   const ids = affectedIds(pop)
-  if (ids.length === 0) return 'nobody affected'
+  if (ids.length === 0) return IMPACT.noUserImpact
   // "active people" when they are active; a naming step (dormant, shared) names accounts.
   const bits = [pop.active > 0 ? count(ids.length, 'active person', 'active people') : count(ids.length, 'account')]
   if (pop.admins > 0) bits.push(count(pop.admins, 'admin'))

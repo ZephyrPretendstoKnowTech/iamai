@@ -122,7 +122,7 @@ test('a rollout is the people the policy names, even where the goal is filed und
   assert.equal(step.population.active, 0, 'the goal population holds nobody active')
   const view = stepPopulation(step)
   assert.ok(view !== null && view.active > 0, 'the surfaces count the people the policy names')
-  assert.notEqual(rowWho(step, (id) => r.input.names!.label(id)), 'nobody affected', 'and the row does not report a rollout of nobody')
+  assert.notEqual(rowWho(step, (id) => r.input.names!.label(id)), 'No user impact', 'and the row does not report a rollout of nobody')
 })
 
 test('the same policy under a different goal population rolls out to the same people and says the same thing', () => {

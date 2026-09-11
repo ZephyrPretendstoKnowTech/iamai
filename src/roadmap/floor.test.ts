@@ -242,9 +242,10 @@ test('the Plan draws the floor as its own named group, after the phases and befo
   // are added to the one row set rather than the order of two JSX blocks.
   const group = src.slice(at('const floorGroup: RoadmapGroup'), at('const floorGroup: RoadmapGroup') + 260)
   assert.match(group, /label: phases\.recommended/, 'the group is named, from content.phases')
-  // Not a numbered, dated phase: it has no schedule of its own, and it says so
-  // with a null rather than with a placeholder or a borrowed wave date.
-  assert.match(group, /date: null/, 'the floor group claims a date it does not have')
+  // Not a numbered phase: its timeline is the scheduler's own placement of its
+  // rows, or Not scheduled where nothing places them (owner, 2026-09-11) — never
+  // a borrowed wave date.
+  assert.match(group, /date: placedSpan\(floor\)/, 'the floor group claims a date it does not have')
   assert.match(group, /secondary: true/, 'the floor group reads as part of the active rollout sequence')
   assert.ok(at('for (const [wi, w] of waveRows.entries())') < at('const floorGroup: RoadmapGroup'), 'the floor group follows the numbered phases')
   assert.match(src, /steps: phaseRows\(c\.steps, w\)/, 'a numbered phase decides its own rows')
