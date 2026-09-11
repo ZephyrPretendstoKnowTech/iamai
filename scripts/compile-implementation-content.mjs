@@ -16,6 +16,8 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { PackageError, bindingsUsed, maskJsonTemplate, normalizeProjection, packageWarnings, parseBlocks, validatePackage } from '../src/content/implementation/protocol.ts';
 import { LIBRARY_ROOT, compileLibrary, registryOf } from '../src/content/implementation/library.ts';
+import { stateCompatibility, stepClassOf } from '../src/content/implementation/states.ts';
+import { contentStepForPackage } from '../src/content/stepTitle.ts';
 
 function fail(message) { console.error(`ERROR: ${message}`); process.exit(1); }
 function readJson(file) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) { fail(`${file}: ${e.message}`); } }
@@ -97,7 +99,7 @@ if (args[0] === '--validate-library') {
     try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) { results.push({ package: rel, errors: [`META.json does not parse: ${e.message}`], warnings: [], pin: null }); continue; }
     try { blocks = parseBlocks(fs.readFileSync(path.join(dir, meta.contentFile || 'CONTENT.md'), 'utf8')); } catch (e) { results.push({ package: rel, errors: [`CONTENT.md: ${e.message}`], warnings: [], pin: null }); continue; }
     const pkg = { meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks };
-    results.push({ package: meta.stepId ?? rel, errors: validatePackage(pkg), warnings: packageWarnings(pkg), pin: meta.baselineAuthority?.pinCommit ?? null });
+    results.push({ package: meta.stepId ?? rel, errors: validatePackage(pkg), warnings: packageWarnings(pkg), pin: meta.baselineAuthority?.pinCommit ?? null, pkg });
   }
   const passed = results.filter((r) => r.errors.length === 0);
   const byFeature = {};
@@ -113,8 +115,16 @@ if (args[0] === '--validate-library') {
   const otherPin = results.filter((r) => r.pin && r.pin !== pinned);
   if (otherPin.length > 0) console.log(`  ${otherPin.length} authored against a baseline pin other than ${pinned8} (inactive in this build even when valid): ${otherPin.map((r) => r.package).join(', ')}`);
   console.log(`  passing: ${passed.map((r) => r.package).join(', ') || 'none'}`);
+  // Authored states the runtime never enters, reconciled with the nine it does
+  // (src/content/implementation/states.ts). No engine state is added.
+  const states = results.filter((r) => r.pkg).flatMap((r) => stateCompatibility(r.pkg, stepClassOf(contentStepForPackage(r.package)?.kind)));
+  const count = (pred) => states.filter(pred).length;
+  console.log(`authored states: ${states.length} in ${new Set(states.map((s) => s.package)).size} packages · ${count((s) => s.disposition === 'hold')} holds · ${count((s) => s.disposition === 'alias')} aliases · ${count((s) => s.disposition === 'process')} process stages · ${count((s) => s.problem === 'undefined')} undefined · ${count((s) => s.problem === 'unsafe')} unsafe`);
+  for (const s of states.filter((s) => s.problem !== null)) console.log(`  ${s.problem}: ${s.package}.${s.state}: ${s.detail}`);
+  const gaps = states.filter((s) => s.disposition === 'alias' && s.reachable && !s.runtimeAuthored);
+  if (gaps.length > 0) console.log(`  authored only under an alias, so the runtime shows nothing there: ${gaps.map((s) => `${s.package}.${s.state} (${s.runtime})`).join(', ')}`);
   const jsonAt = args.indexOf('--json');
-  if (jsonAt >= 0) fs.writeFileSync(path.resolve(args[jsonAt + 1]), JSON.stringify({ pinned, results, byFeature: Object.fromEntries(Object.entries(byFeature).map(([f, v]) => [f, { errors: v.errors, packages: [...v.packages] }])) }, null, 2) + '\n');
+  if (jsonAt >= 0) fs.writeFileSync(path.resolve(args[jsonAt + 1]), JSON.stringify({ pinned, results: results.map(({ pkg, ...r }) => r), byFeature: Object.fromEntries(Object.entries(byFeature).map(([f, v]) => [f, { errors: v.errors, packages: [...v.packages] }])) }, null, 2) + '\n');
   process.exit(0);
 }
 
