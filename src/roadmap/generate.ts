@@ -13,6 +13,25 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
+import { emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
+import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
+import { fillText, missingVars } from '../content/render.ts'
+import { stepById as contentStepById } from '../content/content.ts'
+
+/**
+ * The deferred emergency-access hardening as the Cleanup row lists it: each
+ * recommendation in the emergency step's own fix words, naming the account it is
+ * about. A line with a value the plan cannot fill is left out rather than shown
+ * with a hole.
+ */
+function deferredHardeningLines(step: Step, nameOf: (id: string) => string): string[] {
+  const templates = ((contentStepById[step.id] as unknown as { whatToDo?: { checkFixes?: Record<string, string> } } | undefined)?.whatToDo?.checkFixes ?? {}) as Record<string, string>
+  return (step.checks?.items ?? [])
+    .filter((it) => it.tier === 'hardening' && typeof templates[it.fix] === 'string')
+    .map((it) => ({ template: templates[it.fix], values: { ...it.values, ...(it.target ? { name: nameOf(it.target) } : {}) } }))
+    .filter(({ template, values }) => missingVars(template, values).length === 0)
+    .map(({ template, values }) => fillText(template, values))
+}
 import { BASELINE_CONFLICT, baselineConflicts } from './baselineConflict.ts'
 import type { TemplateBody, TemplatePlaceholder, TemplateValues } from './template.ts'
 import { policyFacts } from '../coverage/facts.ts'
@@ -240,6 +259,13 @@ export type RoadmapInput = {
    * emergency sign-ins from the recent-sign-in check.
    */
   cleanupRecord?: CleanupRecord
+  /**
+   * The operator's deferral of the emergency-access hardening (owner,
+   * 2026-09-11), as the plan record holds it: PlanDecisions.confirmations[the
+   * emergency step][hardening-deferred]. It lifts the hold only while it covers
+   * every recommendation outstanding now (validation/emergencyTiers.ts).
+   */
+  hardeningDeferral?: { at: string; basis: string } | null
 }
 
 export type RoadmapResult = {
@@ -1096,10 +1122,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   const bgReport = validationReports.find((r) => r.subject === 'breakGlass')
   const bgStep = steps.find((s) => s.id === bgStepId)
+  let bgStanding: EmergencyStanding | null = null
   if (bgStep && bgReport) {
-    bgStep.checks = stepChecks(bgReport)
+    const confirmed = mapping.breakGlassUserIds.length
+    bgStep.checks = stepChecks(bgReport, confirmed)
+    // Two tiers (owner, 2026-09-11): the minimum safety checks hold the rollout
+    // and nothing defers them; the hardening holds it until it is fixed or the
+    // operator defers it, and a deferral moves it to Cleanup (below).
+    bgStanding = emergencyStanding(bgReport, confirmed)
+    const deferred = hardeningDeferred(bgStanding.hardening, input.hardeningDeferral)
+    bgStep.emergency = { minimum: bgStanding.minimum.length, hardening: bgStanding.hardening.length, basis: hardeningBasis(bgStanding.hardening), deferredAt: deferred ? (input.hardeningDeferral?.at ?? null) : null }
     const results = bgReport.targets.flatMap((t) => t.results)
-    if (mapping.breakGlassUserIds.length > 0 && results.length > 0 && results.every((r) => r.outcome === 'pass')) {
+    if (confirmed > 0 && results.length > 0 && bgStanding.minimum.length === 0 && (bgStanding.hardening.length === 0 || deferred)) {
       setState(bgStep, { satisfied: true, inPlace: true })
       bgStep.deliveredBy = [...mapping.breakGlassUserIds]
     }
@@ -1110,7 +1144,10 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // mistakenly-satisfied status was enough to release every deny-capable step in
   // the plan. A step is In place because its checks passed; its checks do not
   // pass because it is In place.
-  let gate = canUseConditionalAccess ? gateReason(validationReports) : null
+  // Emergency access gates on its minimum safety checks; its hardening holds the
+  // plan through the step not being done until it is fixed or deferred.
+  const gatingReports = bgStanding ? validationReports.map((r) => (r === bgReport ? { ...r, blocking: bgStanding!.minimum } : r)) : validationReports
+  let gate = canUseConditionalAccess ? gateReason(gatingReports) : null
   if (gate === null && bgStep && bgStep.status !== 'done') gate = gateFor('breakGlass')
   if (gate === null && geStep && geStep.status !== 'done') gate = gateFor('exclusionGroup')
   // The step has to exist before the goal loop so a held step can name it; the
@@ -2059,6 +2096,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     organisation: input.coverage.organisation,
     superseded: supersededPolicies(steps),
     done: input.cleanupRecord?.done ?? {},
+    // Deferred emergency-access hardening stays in view until it passes (owner, 2026-09-11).
+    hardening: bgStep?.emergency?.deferredAt ? deferredHardeningLines(bgStep, nameOf) : [],
   })
   const waveStart = new Map(schedule.waves.map((w) => [w.wave, w.start]))
   for (const s of steps) {

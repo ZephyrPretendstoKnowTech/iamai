@@ -38,8 +38,9 @@ test('the drill date exempts the matching emergency sign-in from the recent-sign
   assert.ok(recent.length > 0, 'an emergency account signed in inside the drill window with no recorded drill: the step asks who and why')
   assert.match(String(recent[0].values.ago), /\d+ days ago/, 'the line says how long ago')
   const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => before.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
-  const ex = stepVars(bg, ctx) as { failingChecks: [string, Record<string, unknown>][] }
-  assert.ok(ex.failingChecks.some(([fix, vals]) => fix === 'recent-sign-in' && typeof vals.name === 'string' && /days ago/.test(String(vals.ago))), 'the check fix line fills {name} and {ago}')
+  // The recent sign-in is resilience hardening, so its line is under the step's hardening, not its minimum (validation/emergencyTiers.ts).
+  const ex = stepVars(bg, ctx) as { failingChecks: [string, Record<string, unknown>][]; hardeningChecks: [string, Record<string, unknown>][] }
+  assert.ok([...ex.failingChecks, ...ex.hardeningChecks].some(([fix, vals]) => fix === 'recent-sign-in' && typeof vals.name === 'string' && /days ago/.test(String(vals.ago))), 'the check fix line fills {name} and {ago}')
 
   const drilled = runFixture(f, { cleanupRecord: cleanupRecord(withCleanupDone([], 'drill', signIn.slice(0, 10), signIn)) })
   const bgAfter = drilled.steps.find((s) => s.id === 's-prereq-break-glass')!

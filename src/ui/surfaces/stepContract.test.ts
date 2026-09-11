@@ -118,7 +118,10 @@ test('contract 3: a passed check and a cleared prerequisite leave no Fix line be
   const day1 = contracts('demo').all.find(({ step }) => step.id === 's-prereq-break-glass')!
   const week2 = contracts('demo-week2').all.find(({ step }) => step.id === 's-prereq-break-glass')!
   assert.ok(day1.c.fix.length > 0, 'day one: the failing checks are Fix lines')
-  assert.equal(day1.c.fix.length, day1.step.checks!.failing, 'one Fix line per failing check, and no more')
+  // The minimum safety checks are Fix lines; emergency-access hardening is its own section (owner, 2026-09-11).
+  const items = day1.step.checks!.items
+  assert.equal(day1.c.fix.length, items.filter((it) => it.tier !== 'hardening').length, 'one Fix line per failing minimum check, and no more')
+  assert.equal(day1.c.hardening?.groups.flatMap((g) => g.items).length ?? 0, items.filter((it) => it.tier === 'hardening').length, 'one hardening line per failing hardening check')
   assert.equal(week2.step.checks!.failing, 0, 'week two: every check passes')
   assert.equal(week2.c.fix.length, 0, 'week two: nothing passed is left on screen')
   // And every plan: a Fix line is never a check that passed.

@@ -293,6 +293,13 @@ export type Step = {
    * Null on steps that carry no checks.
    */
   checks?: import('../validation/checkFixes.ts').StepChecks | null
+  /**
+   * The emergency-access step's two tiers (validation/emergencyTiers.ts): how
+   * many minimum safety checks and hardening recommendations are outstanding, the
+   * basis a deferral of the hardening is given against, and when the operator
+   * deferred it where a deferral covers what is outstanding now.
+   */
+  emergency?: { minimum: number; hardening: number; basis: string; deferredAt: string | null } | null
   history: StepHistoryEntry[]
   skipReason: string | null
   /** The person's reason this step does not apply here (mapping.notApplicable): the step sits in the footer's Doesn't apply here group. */

@@ -31,6 +31,8 @@ import { observationsOf } from '../../roadmap/tracking.ts'
 import type { PlanDecisions, StepDecision } from '../../roadmap/progress.ts'
 import { appliedMapping } from './pickerRows.ts'
 import { effectiveFirstDeployment, proposedStart } from '../../derive/planStart.ts'
+import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
+import { BREAK_GLASS_STEP_ID } from '../../roadmap/stepIds.ts'
 import { operatorUserId } from '../../derive/operator.ts'
 import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { loadPlanRecord, savePlanRecord } from '../../graph/collect/cache.ts'
@@ -308,6 +310,8 @@ export function usePlanData(
       goalMap: baseline.goalMap,
       // What the checkpoints record about Cleanup (E3): each row's Done, and the drill dates.
       cleanupRecord: cleanupRecord(saved?.checkpoints ?? []),
+      // The operator's deferral of the emergency-access hardening, where one is recorded (validation/emergencyTiers.ts).
+      hardeningDeferral: saved?.confirmations?.[BREAK_GLASS_STEP_ID]?.[HARDENING_DEFERRAL_ID] ?? null,
     })
     const { steps, schedule } = result
     // The one decision a regeneration cannot know, and the one observation (the

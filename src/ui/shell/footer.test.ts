@@ -39,7 +39,9 @@ test('"people" on Today, the Plan and Connect; "user" only for an Entra user obj
   // The consent rows are Microsoft's own wording and live with the permission
   // authority (src/copy/permissions.ts), not in the page's words (task 016), so
   // the page's words carry no "user" at all.
-  const words = JSON.stringify({ today: pages.readiness, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect })
+  // One owner-chosen exception (2026-09-11): the Impact column's "No user impact",
+  // which says a policy reaches no one without calling the reach zero.
+  const words = JSON.stringify({ today: pages.readiness, plan: pages.plan, connect: pages.connect, appReadiness: app.readiness, appPlan: app.plan, appConnect: app.connect }).replaceAll(JSON.stringify((pages.plan as { impact: { noUserImpact: string } }).impact.noUserImpact), '""')
   assert.ok(!/\busers?\b/i.test(words), `no "user" outside Microsoft's scope names: ${(words.match(/[^"]{0,40}\busers?\b[^"]{0,40}/i) ?? [''])[0]}`)
   // Microsoft's consent rows name the user object, as Microsoft does.
   assert.ok(JSON.stringify(consentRows()).includes("Read all users' basic profiles"))

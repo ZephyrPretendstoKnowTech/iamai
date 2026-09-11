@@ -35,7 +35,9 @@ test('every failing check renders a complete fix line on the demo and GetIAMAI s
       assert.ok(cs, `${f.name}: content step for ${step.goalId}`)
       const checkFixes = cs!.whatToDo.checkFixes
       const ex = stepVars(step, ctx) as Record<string, unknown>
-      const fails = (ex.failingChecks as [string, Record<string, unknown>][]) ?? []
+      // A fix line per failing check: the minimum under Fix before continuing, and
+      // emergency-access hardening in its own section (owner, 2026-09-11).
+      const fails = [...((ex.failingChecks as [string, Record<string, unknown>][]) ?? []), ...((ex.hardeningChecks as [string, Record<string, unknown>][]) ?? [])]
       // The count line equals the number of fail results, one fix line each.
       assert.equal(ex.failing, step.checks.failing, `${f.name} ${step.id}: {failing} matches the fail count`)
       assert.equal(fails.length, step.checks.failing, `${f.name} ${step.id}: one fix line per failing check`)

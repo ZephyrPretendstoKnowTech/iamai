@@ -7,6 +7,8 @@
 //
 // Pure: no DOM, no network.
 import type { SubjectReport } from './report.ts'
+import { emergencyTierOf } from './emergencyTiers.ts'
+import type { EmergencyTier } from './emergencyTiers.ts'
 
 /** rule id → the checkFixes key in content.json (s-prereq-break-glass / s-prereq-exclusion-group). */
 export const RULE_TO_FIX: Record<string, string> = {
@@ -28,6 +30,9 @@ export const RULE_TO_FIX: Record<string, string> = {
   'bg.noLicenceNeeded': 'no-licence-no-mailbox',
   'bg.nameIdentifiesPurpose': 'display-name',
   'bg.lastSignIn': 'recent-sign-in',
+  'bg.drilled': 'drill-due',
+  'bg.credentialStorage': 'credential-storage',
+  'bg.signInMonitoring': 'sign-in-alerting',
   'xg.containsEmergency': 'all-emergency-accounts',
   'xg.membersApproved': 'members-only-emergency',
   'xg.noExtraAdmins': 'no-admin-members',
@@ -51,9 +56,10 @@ export const ALTERNATE_FIXES = new Set(['members-only-emergency-unconfirmed', 'n
  * (an extra member) is the members-only-emergency line (step-audit item 2: one
  * fix line per fact).
  */
-export const RULES_WITHOUT_TEMPLATE = new Set(['bg.drilled', 'bg.credentialStorage', 'bg.signInMonitoring', 'bg.signInCountries', 'bg.mfaSeen', 'xg.sizeReasonable'])
+export const RULES_WITHOUT_TEMPLATE = new Set(['bg.signInCountries', 'bg.mfaSeen', 'xg.sizeReasonable'])
 
-export type StepCheckItem = { fix: string; subject: string; target: string | null; values: Record<string, unknown> }
+/** `tier`: an emergency-access check's tier (emergencyTiers.ts), which decides whether it holds the rollout or can be deferred; absent on every other subject. */
+export type StepCheckItem = { fix: string; subject: string; target: string | null; values: Record<string, unknown>; tier?: EmergencyTier }
 export type StepChecks = { failing: number; total: number; items: StepCheckItem[] }
 
 /**
@@ -64,13 +70,16 @@ export type StepChecks = { failing: number; total: number; items: StepCheckItem[
  * not-assessed check (a read that could not run) is neither, and renders
  * nothing. Names are resolved by the caller, which holds the directory.
  */
-export function stepChecks(report: SubjectReport): StepChecks {
+export function stepChecks(report: SubjectReport, confirmedAccounts = 0): StepChecks {
   const results = report.targets.flatMap((t) => t.results)
   const ran = results.filter((r) => RULE_TO_FIX[r.id] !== undefined && (r.outcome === 'pass' || r.outcome === 'fail'))
   const fails = ran.filter((r) => r.outcome === 'fail')
   return {
     failing: fails.length,
     total: ran.length,
-    items: fails.map((r) => ({ fix: r.fix && ALTERNATE_FIXES.has(r.fix) ? r.fix : RULE_TO_FIX[r.id], subject: r.subject, target: r.target, values: { ...(r.values ?? {}) } })),
+    items: fails.map((r) => {
+      const tier = emergencyTierOf(r, confirmedAccounts)
+      return { fix: r.fix && ALTERNATE_FIXES.has(r.fix) ? r.fix : RULE_TO_FIX[r.id], subject: r.subject, target: r.target, values: { ...(r.values ?? {}) }, ...(tier ? { tier } : {}) }
+    }),
   }
 }

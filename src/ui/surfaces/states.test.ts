@@ -15,9 +15,11 @@ import { stepExportView } from './stepExport.ts'
 // 'Needs decision' is the ninth: the `needs-decision` condition projects to the
 // `blocked` status and reads as its own word (statusWord.ts), because a step
 // waiting on the operator's own answer is not a step held by work elsewhere.
-const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Needs decision', 'Scheduled', 'Report-only', 'Ready to enforce', 'Enforced', 'Skipped'])
+// 'Needs attention' is the tenth (owner, 2026-09-11): a ready step whose own
+// checks fail is work on this row, and Ready beside failing checks contradicted it.
+const WORDS = new Set(['In place', 'Ready', 'Blocked', 'Needs decision', 'Needs attention', 'Scheduled', 'Report-only', 'Ready to enforce', 'Enforced', 'Skipped'])
 
-test('every step on every fixture carries exactly one of the nine status words', () => {
+test('every step on every fixture carries exactly one of the ten status words', () => {
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) assert.ok(WORDS.has(statusOf(s).word), `${f.name} ${s.id} → ${statusOf(s).word}`)
   }

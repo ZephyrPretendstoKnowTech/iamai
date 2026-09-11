@@ -57,7 +57,8 @@ import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty } from './stepContract.ts'
-import { AuthoredText, DoneWhen, FixBeforeContinuing, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
+import { AuthoredText, DoneWhen, FixBeforeContinuing, HardeningRecommendations, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
@@ -497,6 +498,16 @@ export function ContentStep({
               access a policy would reach, or could not be proven not to — the way
               the design reserves it for "Do not deploy" (V5). */}
           <FixBeforeContinuing fix={contract.fix} tone={!contract.implementation.offered && contract.implementation.reason !== null && UNSAFE_REASONS.has(contract.implementation.reason) ? 'danger' : 'warning'} />
+
+          {/* Emergency access in two tiers (owner, 2026-09-11): what holds the
+              rollout is under Fix before continuing above; the hardening is its
+              own section, deferrable once minimum access is available, and a
+              deferral is an owner confirmation (validation/emergencyTiers.ts). */}
+          <HardeningRecommendations
+            hardening={contract.hardening}
+            onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
+            onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
+          />
 
           {showWhatToDo && (
             <section className="step-section">

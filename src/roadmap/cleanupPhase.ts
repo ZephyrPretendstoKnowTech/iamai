@@ -46,6 +46,8 @@ export type CleanupPhaseInput = {
   superseded?: string[]
   /** Each row's recorded completion (cleanupDone.ts). */
   done?: CleanupDone
+  /** Deferred emergency-access hardening, worded (roadmap/generate.ts). */
+  hardening?: string[]
 }
 
 /** The convention as a name shape ("Core - Scope - Action - Target"), or null below the agreement floor. */
@@ -86,6 +88,7 @@ export function cleanupPhaseFor(input: CleanupPhaseInput): CleanupPhase | null {
     renames: convention ? naming.outliers.map((from) => renameLine(from, naming)) : [],
     overlaps,
     notAssessed: input.organisation.notAssessed.map((n) => n.name),
+    hardening: input.hardening ?? [],
   })
   if (rows.length === 0) return null
   const ctx = input.rhythm ? { rhythm: input.rhythm } : undefined

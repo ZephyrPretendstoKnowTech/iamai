@@ -34,6 +34,10 @@ export function statusOf(step: Step): StatusView {
       // the Plan's word for waiting on something else, beside the reason that
       // says what — never Ready under Waiting on something else.
       if (isHeld(step)) return { word: 'Blocked', tone: step.operatorSafe === false ? 'stop' : 'wait' }
+      // A step whose own checks fail is work on this row, but not work that is
+      // ready: Ready beside "3 remaining" under Fix before continuing was the
+      // screen contradicting itself (owner, 2026-09-11).
+      if ((step.checks?.failing ?? 0) > 0) return { word: 'Needs attention', tone: 'wait' }
       return { word: 'Ready', tone: 'ok' }
     case 'blocked':
       // Two states project to `blocked`, and they are not the same thing to act
