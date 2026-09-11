@@ -5,6 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
+import { CHANGED_FIELDS_BINDING, mismatchBindingOf } from './protocol.ts'
 import { projectSafely } from './project.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
@@ -29,6 +30,31 @@ test('every policy package that authors a correction registers it, and every mod
     const table = (p.meta.projection.partial as { mismatches: Record<string, { facts?: unknown; select?: unknown }> }).mismatches
     for (const [id, m] of Object.entries(table)) assert.ok(m.facts !== undefined || m.select !== undefined, `${p.meta.stepId}: ${id} cannot be selected`)
   }
+})
+
+test('the workload identity Partial names its one mismatch binding and composes the policy corrections its facts select', () => {
+  const pkg = PACKAGES['s-goal-workload-identity-block']
+  const partial = pkg.meta.projection.partial as Record<string, unknown> | undefined
+  assert.ok(partial, 'the Partial projection was withheld at compile time')
+  assert.equal(mismatchBindingOf(partial), 'policy.current.semanticMismatches')
+  const bindings = {
+    'policy.current.id': 'policy-1',
+    'policy.current.state': 'enabledForReportingButNotEnforced',
+    [CHANGED_FIELDS_BINDING]: ['conditions.locations'],
+    'workload.cloudSync.servicePrincipalId': 'sp-1',
+    'location.syncServer.id': 'location-1',
+    'location.syncServer.ipRanges': ['203.0.113.10/32'],
+    'location.syncServer.displayName': 'Sync server',
+    'policy.target.displayName': 'Workload block',
+    'tenant.displayName': 'Tenant',
+  }
+  const prerequisites = ((pkg.meta as { prerequisites?: { id: string }[] }).prerequisites ?? []).map((p) => p.id)
+  const p = projectSafely(pkg, 'partial', bindings, { satisfied: new Set(prerequisites), baselineCommit: null })
+  assert.deepEqual(p.hold?.invalid ?? [], [], JSON.stringify(p.hold))
+  assert.deepEqual(p.hold?.unknownMismatches ?? [], [])
+  const blocks = p.channels.flatMap((c) => c.blocks)
+  assert.ok(blocks.includes('entra.correct.policy.location-boundary'), `the selected correction is not composed: ${JSON.stringify(p.hold)} ${blocks.join(', ')}`)
+  assert.equal(blocks.some((b) => /location\.ip-ranges|json\.correct\.location$/.test(b)), false, 'a named-location correction no fact selects was composed')
 })
 
 test('an enforced policy whose exclusions differ from the plan plans the conditions correction, and only that', () => {

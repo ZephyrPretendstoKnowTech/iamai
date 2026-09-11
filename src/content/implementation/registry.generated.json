@@ -18177,6 +18177,135 @@
             ],
             "email": []
           },
+          "partial": {
+            "mode": "composeByMismatch",
+            "mismatchBinding": "policy.current.semanticMismatches",
+            "requires": [
+              "policy.current.id",
+              "policy.current.semanticMismatches",
+              "workload.cloudSync.servicePrincipalId",
+              "location.syncServer.id",
+              "location.syncServer.ipRanges"
+            ],
+            "sharedBefore": {
+              "entra": [
+                "entra.correct.open",
+                "entra.correct.ensure-report-only"
+              ]
+            },
+            "mismatches": {
+              "workload.service-principal": {
+                "facts": [
+                  "conditions.clientApplications"
+                ],
+                "appliesWhen": "the policy does not directly include the IAMAI-resolved Cloud Sync provisioning service principal Object ID",
+                "entra": [
+                  "entra.correct.policy.service-principal"
+                ],
+                "json": [
+                  "json.correct.report-only",
+                  "json.correct.policy-conditions"
+                ]
+              },
+              "target.all-resources": {
+                "facts": [
+                  "conditions.applications"
+                ],
+                "appliesWhen": "the workload policy target resources are not All resources",
+                "entra": [
+                  "entra.correct.policy.all-resources"
+                ],
+                "json": [
+                  "json.correct.report-only",
+                  "json.correct.policy-conditions"
+                ]
+              },
+              "conditions.location-boundary": {
+                "facts": [
+                  "conditions.locations"
+                ],
+                "appliesWhen": "the policy does not include Any location and exclude only the approved sync-server named location",
+                "entra": [
+                  "entra.correct.policy.location-boundary"
+                ],
+                "json": [
+                  "json.correct.report-only",
+                  "json.correct.policy-conditions"
+                ]
+              },
+              "conditions.client-app-types-all": {
+                "facts": [
+                  "conditions.clientAppTypes"
+                ],
+                "appliesWhen": "clientAppTypes differs from the retained all value",
+                "entra": [
+                  "entra.correct.policy.client-apps"
+                ],
+                "json": [
+                  "json.correct.report-only",
+                  "json.correct.policy-conditions"
+                ]
+              },
+              "conditions.remove-noncanonical": {
+                "facts": [
+                  "conditions.users",
+                  "conditions.platforms",
+                  "conditions.devices",
+                  "conditions.signInRiskLevels",
+                  "conditions.userRiskLevels",
+                  "conditions.servicePrincipalRiskLevels",
+                  "conditions.authenticationFlows",
+                  "conditions.insiderRiskLevels"
+                ],
+                "appliesWhen": "risk, user, device, platform, authentication-flow, or other noncanonical conditions are present",
+                "entra": [
+                  "entra.correct.policy.remove-noncanonical"
+                ],
+                "json": [
+                  "json.correct.report-only",
+                  "json.correct.policy-conditions"
+                ]
+              },
+              "grant.block": {
+                "facts": [
+                  "grantControls"
+                ],
+                "appliesWhen": "grant is not Block access",
+                "entra": [
+                  "entra.correct.policy.grant-block"
+                ],
+                "json": [
+                  "json.correct.report-only",
+                  "json.correct.policy-grant"
+                ]
+              },
+              "lifecycle.report-only": {
+                "select": {
+                  "equals": [
+                    "policy.current.state",
+                    "enabled"
+                  ]
+                },
+                "alongside": true,
+                "appliesWhen": "a semantically incorrect workload policy is not in Report-only while being corrected",
+                "entra": [
+                  "entra.correct.policy.report-only"
+                ],
+                "json": [
+                  "json.correct.report-only"
+                ]
+              }
+            },
+            "sharedAfter": {
+              "entra": [
+                "entra.correct.save-verify"
+              ]
+            },
+            "aiInfo": [
+              "ai.correct"
+            ],
+            "email": []
+          },
           "reportOnly": {
             "requires": [
               "policy.current.id",
@@ -18697,7 +18826,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp correct only the IAMAI-classified mismatch(es) on the existing Cloud Sync named location/workload policy.\n\nCURRENT STATE\nPolicy ID: {{policy.current.id}}\nPolicy mismatches: {{policy.current.semanticMismatches}}\nNamed-location ID: {{location.current.id}}\nNamed-location mismatches: {{location.current.semanticMismatches}}\n\nTARGET STATE\nApproved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; Report-only during material correction.\n\nDO NOT CHANGE\nDo not create duplicate objects. If the named-location IP ranges change, supply the complete approved range set. If the workload policy is On, return it to Report-only before changing the allowed address or material policy scope.\n\nYOUR ROLE\nApply only the supplied mismatch modules to the same stable objects and stop for IAMAI rescan.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp correct only the IAMAI-classified mismatch(es) on the existing Cloud Sync workload policy.\n\nCURRENT STATE\nPolicy ID: {{policy.current.id}}\nPolicy mismatches: {{policy.current.semanticMismatches}}\n\nTARGET STATE\nApproved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; Report-only during material correction.\n\nDO NOT CHANGE\nDo not create duplicate objects. If the named-location IP ranges change, supply the complete approved range set. If the workload policy is On, return it to Report-only before changing the allowed address or material policy scope.\n\nYOUR ROLE\nApply only the supplied mismatch modules to the same stable objects and stop for IAMAI rescan.\n"
         },
         "ai.observe": {
           "meta": {
