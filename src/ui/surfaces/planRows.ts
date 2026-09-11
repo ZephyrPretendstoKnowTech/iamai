@@ -13,6 +13,7 @@
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
 import type { WaveSchedule } from '../../roadmap/schedule.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { inWave } from '../../derive/phases.ts'
 
 /**
@@ -22,6 +23,23 @@ import { inWave } from '../../derive/phases.ts'
  */
 export function planPhases(schedule: { waves: WaveSchedule[]; phases?: WaveSchedule[] }): WaveSchedule[] {
   return schedule.phases ?? schedule.waves
+}
+
+/**
+ * The days a group of rows spans on the finished plan: each row's own scheduled
+ * span (roadmap/stepSchedule.ts), so a group's heading holds every day its rows
+ * read. Null where no row is dated.
+ */
+export function scheduledSpan(steps: readonly Step[]): { start: string; end: string } | null {
+  let start: string | null = null
+  let end: string | null = null
+  for (const s of steps) {
+    const r = s.scheduled ? scheduleOf(s).range : null
+    if (!r) continue
+    if (start === null || Date.parse(r.start) < Date.parse(start)) start = r.start
+    if (end === null || Date.parse(r.end) > Date.parse(end)) end = r.end
+  }
+  return start !== null && end !== null ? { start, end } : null
 }
 
 /** The steps a set of waves carries. */
