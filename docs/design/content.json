@@ -318,7 +318,7 @@
       }
     },
     "policyDoneWhenConfiguration": [
-      "The policy is in report-only with the configuration the plan asked for; Microsoft does not evaluate this user action in report-only, so no sign-in records are waited for."
+      "The policy is in report-only with the configuration the plan asked for. Microsoft does not evaluate this user action in report-only, so no sign-in records are waited for."
     ]
   },
   "phases": {
