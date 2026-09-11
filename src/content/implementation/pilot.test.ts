@@ -43,14 +43,13 @@ test('the pilot package compiles under the strict contract: every projected bloc
   assert.deepEqual(Object.keys(PKG.meta.projection).sort(), [...PACKAGE_STATES].sort())
 })
 
-test('the registry holds the pilot exactly as compiled, and the build renders it though it was authored against another baseline pin', () => {
+test('the registry holds the pilot exactly as compiled, authored against the baseline pin the build carries', () => {
   const packages = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
   assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(PKG)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
   assert.ok(REGISTERED_PACKAGE_STEP_IDS.includes(PILOT_STEP_ID))
-  // The build still pins baselines/*.pinned.json; the pilot names 8461e0f2, and the step names both (owner decision, 2026-09-11).
+  // Re-authored against the build's pin on 2026-09-11 (it named 8461e0f2 before).
   assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
-  assert.equal(PILOT_PIN, '8461e0f2fd10167bf034e7c20ed8ea293827d890')
-  assert.notEqual(BASELINE_COMMIT, PILOT_PIN)
+  assert.equal(PILOT_PIN, BASELINE_COMMIT)
   assert.equal(implementationPackageFor({ id: PILOT_STEP_ID, goalId: 'device-registration-mfa' }), packages[PILOT_STEP_ID])
 })
 
@@ -95,7 +94,7 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   assert.ok(by.powershell.text.startsWith('function Invoke-IAMAIStep {\n# IAMAI compact implementation script'))
   assert.ok(by.powershell.text.includes(authored('powershell.run')), 'the authored script is not carried whole')
   assert.ok(
-    by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -LegacyDeviceMfaToggleConfirmedNo -EnrollmentWorkflowsValidated -ExternalAuthenticationCompatibilityResolved`),
+    by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -AuthenticationStrengthId '${PILOT_IDS.strength}' -LegacyDeviceMfaToggleConfirmedNo -EnrollmentWorkflowsValidated -ExternalAuthenticationCompatibilityResolved`),
     by.powershell.text.slice(-300),
   )
   assert.deepEqual(by.json.blocks, ['json.enforce'])
@@ -225,9 +224,9 @@ test('Readiness is the package’s rules evaluated deterministically; nothing is
   assert.equal(tiles('readyToEnforce')['readiness.exclusions'].result, 'Ready')
   assert.equal(tiles('readyToEnforce')['readiness.exclusions'].gateKey, 'exclusions')
   assert.equal(tiles('readyToEnforce', { 'policy.target.excludeGroups': undefined })['readiness.exclusions'].result, 'Blocked')
-  // The authentication strength the package names belongs to its own baseline pin: shown only against it.
-  assert.equal(tiles('missing', {}, { satisfied: new Set(), baselineCommit: BASELINE_COMMIT })['readiness.authentication-strength'], undefined, 'the pilot’s strength is stated against a baseline that names another')
-  assert.equal(tiles('missing', {}, pilotRuntime([]))['readiness.authentication-strength'].result, 'Ready')
+  // The authentication strength: Ready from the strength IAMAI resolved, whichever baseline resolved it, and Blocked without one.
+  assert.equal(tiles('missing', {}, { satisfied: new Set(), baselineCommit: BASELINE_COMMIT })['readiness.authentication-strength'].result, 'Ready')
+  assert.equal(tiles('missing', { 'authStrength.target.id': undefined })['readiness.authentication-strength'].result, 'Blocked', 'a strength nobody resolved read as Ready')
   // Enrollment workflows: Unknown with no evidence, a confirmation the enforcement waits on, Ready once confirmed.
   const unconfirmed = tiles('readyToEnforce')['readiness.enrollment-workflows']
   assert.equal(unconfirmed.result, 'Unknown')
@@ -258,7 +257,7 @@ test('the source date comes from the package’s verified sources, never a clock
   const code = read('src/content/implementation/project.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
   const W = CONTRACT.implementation
-  assert.equal(packageSourceLine(PKG, W), `${fillText(W.sourceUpdated, { date: absoluteDate('2026-09-10T12:00:00Z') })} · ${fillText(W.sourcePins, { authored: '8461e0f2', pinned: BASELINE_COMMIT.slice(0, 8) })}`)
+  assert.equal(packageSourceLine(PKG, W), `${fillText(W.sourceUpdated, { date: absoluteDate('2026-09-10T12:00:00Z') })} · ${fillText(W.sourcePins, { authored: BASELINE_COMMIT.slice(0, 8), pinned: BASELINE_COMMIT.slice(0, 8) })}`)
   assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = pkg \? packageSourceLine\(pkg, W, baselineCommit\) : null/)
 })
 

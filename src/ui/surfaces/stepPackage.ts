@@ -18,6 +18,7 @@
 // the pin this build carries (`packageSourceLine`), and a block the author scoped
 // with a `baselineCommit` condition stays scoped to its own pin.
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
+import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { operationsOf } from '../../roadmap/operations.ts'
@@ -328,6 +329,13 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   putField('policy.target.sessionControls', settled('sessionControls') as Record<string, unknown> | null, 'sessionControls')
   const strength = settled('grantControls')?.grantControls?.authenticationStrength?.id
   put('authStrength.target.id', typeof strength === 'string' ? strength : undefined)
+  // The strength's name, where the tenant's scan or Microsoft's own list names it:
+  // never an id standing in for a name.
+  if (typeof strength === 'string') {
+    const rows = [...((ctx.snapshot?.config?.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown }[]), ...builtinStrengths.strengths]
+    const named = rows.find((s) => typeof s.id === 'string' && s.id.toLowerCase() === strength.toLowerCase() && typeof s.displayName === 'string' && s.displayName.length > 0)
+    put('authStrength.target.displayName', named?.displayName)
+  }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)
   put('policy.current.state', step.tracking?.state)
