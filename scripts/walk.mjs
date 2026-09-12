@@ -1329,7 +1329,7 @@ async function walkFixture(fx) {
           if (/^Use Separate Accounts for Admin Work$/.test(title)) {
             const named = (bodyText.match(/^.+ · (Outlook|Microsoft Teams)/gm) ?? []).length
             if (named < 2) add('P0', `${slabel}: the step lists ${named} admin(s) with mail or Teams sign-ins; the demo has two`)
-            if (!/^Exclude from rollout$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step offers no rollout exception`)
+            if (!/^Defer this step$/m.test(await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('\\n')`))) add('P0', `${slabel}: the step offers no rollout exception`)
           }
           if (/^Require Phishing-Resistant MFA for Admins$/.test(title) && !cannotWriteYet && !/see Use Separate Accounts for Admin Work/.test(bodyText)) add('P0', `${slabel}: the step assumes separate admin accounts instead of naming the people and the step`)
           // The lockout list (E8): the demo's admins not yet at Passkey or security
@@ -1660,16 +1660,17 @@ async function walkFixture(fx) {
           // of the header only where the plan finishes.
           // Pressing Start redraws the plan, so the header is read once it is back
           // in one of its two forms rather than the instant after the click.
-          // The progress tiles carry no sentence; the start is its own line under them
-          // (Plan.tsx `plan-started`), whether or not the plan can finish.
-          const settled = await waitFor(`/Started \\S.*\\d{4}/.test(((document.querySelector('main.page .plan-started') || {}).textContent || ''))`, 8000)
+          // The start is the Started tile's day (A1b decision 11: Steps · Completed ·
+          // Projected finish · Started), whether or not the plan can finish.
+          const STARTED_TILE = `[...document.querySelectorAll('main.page .plan-progress-tile')].filter((t) => ((t.querySelector('dt') || {}).textContent || '').trim() === 'Started').map((t) => ((t.querySelector('dd') || {}).textContent || '').trim())`
+          const settled = await waitFor(`${STARTED_TILE}.some((d) => /^[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}$/.test(d))`, 8000)
           if (!settled) add('P0', `${slabel}: the plan does not read Started <date> after Start the plan`)
           const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
           if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
           const after = await mainText()
           if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
-          const times = (after.match(/Started \S+ \d{1,2}, \d{4}/g) ?? []).length
-          if (settled && times !== 1) add('P0', `${slabel}: "Started <date>" appears ${times} times; once, under the progress tiles`)
+          const times = await evaluate(`${STARTED_TILE}.length`)
+          if (settled && times !== 1) add('P0', `${slabel}: the Started tile appears ${times} times; once, among the progress tiles`)
           checkText(slabel, after)
         }
       }
@@ -1780,8 +1781,10 @@ async function walkFixture(fx) {
         // and sits in On Hold; one only sequenced after the open decision names
         // the decision. Held on another step of the plan (the baseline's
         // unanswered groups, a missing object) reads that step in its lane label
-        // (Up Next · After …) or as its reason.
-        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (/^On Hold/.test(rowLabelsOpen[k] || '') || /^after: (?!Decide How Devices Are Managed)/.test(rowReasonsOpen[k] || '')))
+        // (Up Next · After …) or as its reason. A report-only device policy reads
+        // Ready · Observing: its enforcement waits on the decision, which the opened
+        // step names as a Prerequisite tile (A4, docs/qa/step-snapshots).
+        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (/^On Hold/.test(rowLabelsOpen[k] || '') || /^Up Next · After Decide How Devices Are Managed$/.test(rowLabelsOpen[k] || '') || /^Ready · Observing$/.test(rowLabelsOpen[k] || '') || /^after: (?!Decide How Devices Are Managed)/.test(rowReasonsOpen[k] || '')))
         if (!heldOpen && !reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
         if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
       }
