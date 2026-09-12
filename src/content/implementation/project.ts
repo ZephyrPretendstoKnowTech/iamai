@@ -12,7 +12,7 @@
 //
 // Pure: no DOM, no network, no clock.
 import type { Block, CompiledPackage, PackageState, Prerequisite, ProjectionRef, VerifiedSource } from './protocol.ts'
-import { BINDING, CHANGED_FIELDS_BINDING, PACKAGE_STATES, mismatchBindingOf, refsOf } from './protocol.ts'
+import { BINDING, CHANGED_FIELDS_BINDING, PACKAGE_STATES, memberChangedFieldsBinding, mismatchBindingOf, refsOf } from './protocol.ts'
 import type { Bindings, ConditionContext } from './conditions.ts'
 import { holds, present } from './conditions.ts'
 import { renderInvocation } from './invocation.ts'
@@ -185,9 +185,29 @@ export function selectMismatches(p: Record<string, unknown>, ctx: ConditionConte
   const changed = asStrings(ctx.bindings[CHANGED_FIELDS_BINDING])
   const table = (p.mismatches ?? {}) as Record<string, Record<string, unknown>>
   const ids = Object.keys(table)
-  const byFacts = ids.filter((id) => asStrings(table[id].facts).some((f) => changed.some((c) => covers(f, c))))
-  const bySelect = ids.filter((id) => !byFacts.includes(id) && table[id].select !== undefined && holds(table[id].select as never, ctx) && (table[id].alongside !== true || byFacts.length > 0))
-  const unknown = changed.filter((c) => !ids.some((id) => asStrings(table[id].facts).some((f) => covers(f, c))))
+  // A module scoped to one member of a multi-policy package (`member`, correction
+  // batch 2) reads that member's changed fields, never the set's: correcting the
+  // member that differs must not touch the sibling that does not.
+  const memberOf = (id: string): string | null => (typeof table[id].member === 'string' ? (table[id].member as string) : null)
+  const held = Object.keys(ctx.bindings)
+  const changedFor = (role: string | null): string[] => {
+    if (role === null) return changed
+    const key = memberChangedFieldsBinding(held, role)
+    return key === null ? [] : asStrings(ctx.bindings[key])
+  }
+  const coveredBy = (id: string, field: string): boolean => asStrings(table[id].facts).some((f) => covers(f, field))
+  const byFacts = ids.filter((id) => changedFor(memberOf(id)).some((c) => coveredBy(id, c)))
+  const bySelect = ids.filter((id) => !byFacts.includes(id) && table[id].select !== undefined && holds(table[id].select as never, ctx) && (table[id].alongside !== true || byFacts.some((b) => memberOf(b) === memberOf(id))))
+  const roles = [...new Set(ids.map(memberOf).filter((r): r is string => r !== null))]
+  let unknown: string[]
+  if (roles.length === 0) unknown = changed.filter((c) => !ids.some((id) => coveredBy(id, c)))
+  else {
+    // Each member's changes are covered by that member's modules; a change the set
+    // reports that no member's own changes account for belongs to nobody IAMAI can name.
+    unknown = roles.flatMap((role) => changedFor(role).filter((c) => !ids.some((id) => memberOf(id) === role && coveredBy(id, c))).map((c) => `${role}:${c}`))
+    const attributed = new Set(roles.flatMap((role) => changedFor(role)))
+    unknown.push(...changed.filter((c) => !attributed.has(c) && !ids.some((id) => memberOf(id) === null && coveredBy(id, c))))
+  }
   // In the table's own order, so the page reads the corrections the way the package lists them.
   return { selected: ids.filter((id) => byFacts.includes(id) || bySelect.includes(id)), unknown }
 }

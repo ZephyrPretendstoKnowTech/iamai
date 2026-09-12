@@ -13297,7 +13297,9 @@
           "evidence.sharedDevices",
           "policies.session.browser.current.state",
           "policies.session.unmanaged.current.state",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "policies.session.browser.operation",
+          "policies.session.unmanaged.operation"
         ],
         "projection": {
           "missing": {
@@ -13322,6 +13324,260 @@
             ],
             "aiInfo": [
               "ai.create"
+            ],
+            "email": []
+          },
+          "partial": {
+            "mode": "composeByMismatch",
+            "requires": [
+              "policies.session.semanticMismatches"
+            ],
+            "sharedBefore": {
+              "entra": [
+                "entra.correct.open"
+              ]
+            },
+            "mismatches": {
+              "browser.missing": {
+                "member": "browser",
+                "select": {
+                  "equals": [
+                    "policies.session.browser.operation",
+                    "create"
+                  ]
+                },
+                "requires": [
+                  "policies.session.browser.target.displayName",
+                  "policy.target.excludeGroups",
+                  "policy.target.excludeUsers"
+                ],
+                "entra": [
+                  "entra.correct.browser.missing"
+                ],
+                "json": [
+                  "json.browser.create"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CreateBrowser"
+                  }
+                ]
+              },
+              "browser.conditions": {
+                "member": "browser",
+                "facts": [
+                  "conditions"
+                ],
+                "requires": [
+                  "policies.session.browser.current.id",
+                  "policy.target.excludeGroups",
+                  "policy.target.excludeUsers"
+                ],
+                "entra": [
+                  "entra.correct.browser.conditions"
+                ],
+                "json": [
+                  "json.browser.conditions"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectBrowserConditions"
+                  }
+                ]
+              },
+              "browser.session": {
+                "member": "browser",
+                "facts": [
+                  "sessionControls"
+                ],
+                "requires": [
+                  "policies.session.browser.current.id"
+                ],
+                "entra": [
+                  "entra.correct.browser.session"
+                ],
+                "json": [
+                  "json.browser.session"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectBrowserSession"
+                  }
+                ]
+              },
+              "browser.grant-none": {
+                "member": "browser",
+                "facts": [
+                  "grantControls"
+                ],
+                "requires": [
+                  "policies.session.browser.current.id"
+                ],
+                "entra": [
+                  "entra.correct.browser.grant-none"
+                ],
+                "json": [
+                  "json.browser.grant-none"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectBrowserGrant"
+                  }
+                ]
+              },
+              "browser.lifecycle": {
+                "member": "browser",
+                "select": {
+                  "equals": [
+                    "policies.session.browser.current.state",
+                    "enabled"
+                  ]
+                },
+                "alongside": true,
+                "requires": [
+                  "policies.session.browser.current.id"
+                ],
+                "entra": [
+                  "entra.correct.browser.lifecycle"
+                ],
+                "json": [
+                  "json.browser.report-only"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "ReportOnlyBrowser"
+                  }
+                ]
+              },
+              "unmanaged.missing": {
+                "member": "unmanaged",
+                "select": {
+                  "equals": [
+                    "policies.session.unmanaged.operation",
+                    "create"
+                  ]
+                },
+                "requires": [
+                  "policies.session.unmanaged.target.displayName",
+                  "policy.target.excludeGroups",
+                  "policy.target.excludeUsers"
+                ],
+                "entra": [
+                  "entra.correct.unmanaged.missing"
+                ],
+                "json": [
+                  "json.unmanaged.create"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CreateUnmanaged"
+                  }
+                ]
+              },
+              "unmanaged.conditions": {
+                "member": "unmanaged",
+                "facts": [
+                  "conditions"
+                ],
+                "requires": [
+                  "policies.session.unmanaged.current.id",
+                  "policy.target.excludeGroups",
+                  "policy.target.excludeUsers"
+                ],
+                "entra": [
+                  "entra.correct.unmanaged.conditions"
+                ],
+                "json": [
+                  "json.unmanaged.conditions"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectUnmanagedConditions"
+                  }
+                ]
+              },
+              "unmanaged.session": {
+                "member": "unmanaged",
+                "facts": [
+                  "sessionControls"
+                ],
+                "requires": [
+                  "policies.session.unmanaged.current.id"
+                ],
+                "entra": [
+                  "entra.correct.unmanaged.session"
+                ],
+                "json": [
+                  "json.unmanaged.session"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectUnmanagedSession"
+                  }
+                ]
+              },
+              "unmanaged.grant-none": {
+                "member": "unmanaged",
+                "facts": [
+                  "grantControls"
+                ],
+                "requires": [
+                  "policies.session.unmanaged.current.id"
+                ],
+                "entra": [
+                  "entra.correct.unmanaged.grant-none"
+                ],
+                "json": [
+                  "json.unmanaged.grant-none"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectUnmanagedGrant"
+                  }
+                ]
+              },
+              "unmanaged.lifecycle": {
+                "member": "unmanaged",
+                "select": {
+                  "equals": [
+                    "policies.session.unmanaged.current.state",
+                    "enabled"
+                  ]
+                },
+                "alongside": true,
+                "requires": [
+                  "policies.session.unmanaged.current.id"
+                ],
+                "entra": [
+                  "entra.correct.unmanaged.lifecycle"
+                ],
+                "json": [
+                  "json.unmanaged.report-only"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "ReportOnlyUnmanaged"
+                  }
+                ]
+              }
+            },
+            "sharedAfter": {
+              "entra": [
+                "entra.correct.save-verify"
+              ]
+            },
+            "aiInfo": [
+              "ai.correct"
             ],
             "email": []
           },

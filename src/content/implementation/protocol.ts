@@ -102,7 +102,29 @@ const MATERIAL_ROOTS = ['conditions', 'grantControls', 'sessionControls']
 
 /** Every key a state projection may carry: its channels, the composition keys of a Partial projection, and inert documentation. */
 const PROJECTION_KEYS = new Set<string>(['requires', 'mode', 'sharedBefore', 'mismatches', 'sharedAfter', 'mismatchBinding', 'reason', 'appliesWhen', ...PROJECTION_CHANNELS])
-const MISMATCH_KEYS = new Set<string>(['requires', 'appliesWhen', 'facts', 'select', 'alongside', 'id', ...PROJECTION_CHANNELS])
+const MISMATCH_KEYS = new Set<string>(['requires', 'appliesWhen', 'facts', 'select', 'alongside', 'member', 'id', ...PROJECTION_CHANNELS])
+
+/**
+ * The member roles a multi-policy package names in its bindings
+ * (`policies.<family>.<role>.…`): the roles a correction module may be scoped to.
+ */
+export function memberRolesOf(bindings: Iterable<string>): Set<string> {
+  const out = new Set<string>()
+  for (const b of bindings) {
+    const parts = b.split('.')
+    if (parts[0] === 'policies' && parts.length > 3) out.add(parts[2])
+  }
+  return out
+}
+
+/** The binding IAMAI supplies with one member's changed fields (stepPackage.ts memberBindings), for a role, among the bindings it holds. */
+export function memberChangedFieldsBinding(bindings: Iterable<string>, role: string): string | null {
+  for (const b of bindings) {
+    const parts = b.split('.')
+    if (parts.length === 5 && parts[0] === 'policies' && parts[2] === role && parts[3] === 'current' && parts[4] === 'changedFields') return b
+  }
+  return null
+}
 
 const BEGIN = '@@IAMAI-BEGIN '
 const END = '@@IAMAI-END'
@@ -553,6 +575,7 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
         }
         if (m.select !== undefined) add(mod, ...conditionErrors(m.select, vocab, `${at}.select`))
         if (m.alongside !== undefined && typeof m.alongside !== 'boolean') add(mod, `${at}.alongside: true or false`)
+        if (m.member !== undefined && (typeof m.member !== 'string' || !memberRolesOf(declared).has(m.member))) add(mod, `${at}.member: a role the package's policies.<family>.<role> bindings name`)
         if (facts === undefined && m.select === undefined) add(mod, `${at}: IAMAI cannot select this module (it declares no facts and no select condition)`)
         for (const r of asStrings(m.requires)) if (!declared.has(r)) add(mod, `${at}.requires: undeclared binding ${r}`)
       }

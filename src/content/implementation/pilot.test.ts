@@ -258,7 +258,7 @@ test('the source date comes from the package’s verified sources, never a clock
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
   const W = CONTRACT.implementation
   assert.equal(packageSourceLine(PKG, W), `${fillText(W.sourceUpdated, { date: absoluteDate('2026-09-10T12:00:00Z') })} · ${fillText(W.sourcePins, { authored: BASELINE_COMMIT.slice(0, 8), pinned: BASELINE_COMMIT.slice(0, 8) })}`)
-  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = pkg \? packageSourceLine\(pkg, W, baselineCommit\) : null/)
+  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W, baselineCommit\) : null/)
 })
 
 // --------------------------------------------------------------- troubleshooting

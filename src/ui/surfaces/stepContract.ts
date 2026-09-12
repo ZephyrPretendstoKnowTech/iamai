@@ -41,6 +41,7 @@ import { badgeOf, barKeyOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
@@ -838,38 +839,10 @@ export const FOOTER = {
 } as const
 
 /**
- * Whether deploying is the step's CURRENT action, or whether something has to
- * clear first.
- *
- * It reads the condition and nothing else, and the condition union is closed
- * (roadmap/lifecycle.ts): `healthy` is the only one where the next thing to do
- * is the change itself. `blocked` waits on work elsewhere, `review-required`
- * waits on a person reading new evidence, `needs-decision` waits on the operator
- * choosing, and `baseline-conflict` waits on a source that contradicts itself.
- *
- * What this gates is the DISPLAY. The artifacts are untouched: Foundation A's
- * `implementation.offered` still says what exists, the JSON and the commands are
- * still generated from the step's own resolved operations, and the moment the
- * condition clears the same channels come back. A step that says "clear what
- * this is waiting on" under What to do and then prints seven numbered steps for
- * creating the policy is telling the operator to do two different things at
- * once, and the numbered steps are the louder of the two.
+ * Whether deploying is the step's CURRENT action (roadmap/nextSafeAction.ts, the
+ * one executability answer, where it lives beside the rule it feeds).
  */
-export function implementationIsCurrent(step: Step): boolean {
-  if (step.state.condition === 'healthy') return true
-  // The one exception, and it is the owner's (Step 5, dcd3518): a held policy
-  // nobody has deployed, which Foundation A still hands over, is created in
-  // report-only now — a policy in report-only denies nobody — and turning it on
-  // is what the hold keeps back. Foundation B already says so as the step's
-  // action (lifecycle.ts nextMilestone `prepareHeld`, kind `deploy`), and an
-  // Implementation region reading "Nothing to submit yet" under that action is
-  // the two-instructions contradiction the owner rejected. Only a blocked step,
-  // only before deployment, only where the next thing IS that deployment, and
-  // only where nothing submitted enforces the moment it lands.
-  if (step.state.condition !== 'blocked' || step.state.lifecycle !== 'not-deployed') return false
-  if (!implementationOffered(step) || nextMilestone(step).kind !== 'deploy') return false
-  return operationsOf(step).every((op) => !enforcesOnRun(op))
-}
+export { implementationIsCurrent }
 
 /**
  * Which family of work a step is, as a READING of what production already

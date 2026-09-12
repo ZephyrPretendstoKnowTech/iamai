@@ -24,7 +24,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"ea9459a9-91b6-4d2b-b929-03781ac81d54":"37d17a62"},
+    "reviewedMembers": {
+      "ea9459a9-91b6-4d2b-b929-03781ac81d54": "37d17a62"
+    },
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
     "intentionalMultiPolicySet": true,
     "members": [
@@ -85,7 +87,9 @@
     "evidence.sharedDevices",
     "policies.session.browser.current.state",
     "policies.session.unmanaged.current.state",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "policies.session.browser.operation",
+    "policies.session.unmanaged.operation"
   ],
   "projection": {
     "missing": {
@@ -125,6 +129,13 @@
       },
       "mismatches": {
         "browser.missing": {
+          "member": "browser",
+          "select": {
+            "equals": [
+              "policies.session.browser.operation",
+              "create"
+            ]
+          },
           "requires": [
             "policies.session.browser.target.displayName",
             "policy.target.excludeGroups",
@@ -144,6 +155,10 @@
           ]
         },
         "browser.conditions": {
+          "member": "browser",
+          "facts": [
+            "conditions"
+          ],
           "requires": [
             "policies.session.browser.current.id",
             "policy.target.excludeGroups",
@@ -163,6 +178,10 @@
           ]
         },
         "browser.session": {
+          "member": "browser",
+          "facts": [
+            "sessionControls"
+          ],
           "requires": [
             "policies.session.browser.current.id"
           ],
@@ -180,6 +199,10 @@
           ]
         },
         "browser.grant-none": {
+          "member": "browser",
+          "facts": [
+            "grantControls"
+          ],
           "requires": [
             "policies.session.browser.current.id"
           ],
@@ -197,6 +220,14 @@
           ]
         },
         "browser.lifecycle": {
+          "member": "browser",
+          "select": {
+            "equals": [
+              "policies.session.browser.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "requires": [
             "policies.session.browser.current.id"
           ],
@@ -214,6 +245,13 @@
           ]
         },
         "unmanaged.missing": {
+          "member": "unmanaged",
+          "select": {
+            "equals": [
+              "policies.session.unmanaged.operation",
+              "create"
+            ]
+          },
           "requires": [
             "policies.session.unmanaged.target.displayName",
             "policy.target.excludeGroups",
@@ -233,6 +271,10 @@
           ]
         },
         "unmanaged.conditions": {
+          "member": "unmanaged",
+          "facts": [
+            "conditions"
+          ],
           "requires": [
             "policies.session.unmanaged.current.id",
             "policy.target.excludeGroups",
@@ -252,6 +294,10 @@
           ]
         },
         "unmanaged.session": {
+          "member": "unmanaged",
+          "facts": [
+            "sessionControls"
+          ],
           "requires": [
             "policies.session.unmanaged.current.id"
           ],
@@ -269,6 +315,10 @@
           ]
         },
         "unmanaged.grant-none": {
+          "member": "unmanaged",
+          "facts": [
+            "grantControls"
+          ],
           "requires": [
             "policies.session.unmanaged.current.id"
           ],
@@ -286,6 +336,14 @@
           ]
         },
         "unmanaged.lifecycle": {
+          "member": "unmanaged",
+          "select": {
+            "equals": [
+              "policies.session.unmanaged.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "requires": [
             "policies.session.unmanaged.current.id"
           ],
