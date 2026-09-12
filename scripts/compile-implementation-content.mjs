@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
-import { PackageError, bindingsUsed, maskJsonTemplate, normalizeProjection, packageWarnings, parseBlocks, validatePackage } from '../src/content/implementation/protocol.ts';
+import { PackageError, bindingsUsed, maskJsonTemplate, normalizePackage, packageWarnings, parseBlocks, validatePackage } from '../src/content/implementation/protocol.ts';
 import { LIBRARY_ROOT, compileLibrary, registryOf } from '../src/content/implementation/library.ts';
 import { stateCompatibility, stepClassOf } from '../src/content/implementation/states.ts';
 import { driftOf } from '../src/content/implementation/drift.ts';
@@ -73,24 +73,32 @@ if (args[0] === '--validate-library') {
     for (const e of entries) if (e.isDirectory()) walk(path.join(dir, e.name), depth + 1);
   };
   walk(root, 0);
+  // Each family of what strict validation still refuses, with what it is: a defect
+  // to fix, an owner decision, a package model the runtime deliberately does not
+  // read, authoring still to do, or a rule the validator keeps on purpose.
   const FEATURES = [
-    [/unsupported channel/, 'channel the runtime does not render (manual)'],
-    [/mode .* is not a composition/, 'projection mode not in the authoring guide (selectByBinding)'],
-    [/cannot select this module/, 'correction module with no machine facts or select condition'],
-    [/names the binding its selected modules/, 'composed projection without a mismatch binding'],
-    [/invocation|mandatory parameter/, 'PowerShell invocation missing or out of step with the script'],
-    [/a support model is JSON|does not parse as JSON/, 'support model that is prose or does not parse'],
-    [/no machine condition|\.rules\[\d+\]\.result|\.rules: at least one|\.tiles: a list|\.tiles\[\d+\]: (an id|a label)/, 'readiness tile without machine conditions or vocabulary results'],
-    [/\.scenarios/, 'troubleshooting scenario without states, title or list fields'],
-    [/Email declares/, 'Email without audience or trigger'],
-    [/undeclared binding/, 'undeclared binding'],
-    [/unsupported key/, 'unsupported projection key'],
-    [/missing block|is a \w+ block|does not declare state/, 'projection names a block that does not fit'],
-    [/projected in a mode|corrections need/, 'script projected without a mode'],
-    [/prerequisites/, 'prerequisite shape'],
-    [/META\.json does not parse|CONTENT\.md|no META\.json/, 'package does not parse'],
+    [/unsupported channel/, 'channel the runtime does not render (manual)', 'intentional validator rule'],
+    [/mode .* is not a composition/, 'projection mode not in the authoring guide (selectByBinding)', 'intentional/unsupported package model'],
+    [/mismatches\.name\.canonical: IAMAI cannot select/, 'name.canonical correction module', 'owner decision (name.canonical)'],
+    [/cannot select this module/, 'correction module with no machine facts or select condition', 'later scope: a correction IAMAI holds no facts for'],
+    [/names the binding its selected modules/, 'composed projection without a mismatch binding', 'genuine remaining defect'],
+    [/is withheld by its invocation/, 'script mode withheld: an attestation or value shape IAMAI cannot supply', 'authoring exception'],
+    [/invocation|mandatory parameter/, 'PowerShell invocation missing or out of step with the script', 'genuine remaining defect'],
+    [/a support model is JSON|does not parse as JSON/, 'support model that is prose or does not parse', 'intentional/unsupported package model'],
+    [/no machine condition|\.rules\[\d+\]\.result|\.rules: at least one|\.tiles: a list|\.tiles\[\d+\]: (an id|a label)/, 'readiness tile whose result is a tenant fact, a sentence or a prose rule', 'intentional/unsupported package model (the runtime owns tenant facts)'],
+    [/\.scenarios\[\d+\]\.states: ".*" is not a runtime state/, 'troubleshooting scenario names a stage the runtime never enters (that stage alone is dropped)', 'intentional validator rule'],
+    [/\.scenarios/, 'troubleshooting scenario without states, title or list fields', 'later authoring'],
+    [/Email declares/, 'Email without audience or trigger', 'later authoring'],
+    [/undeclared binding/, 'undeclared binding', 'genuine remaining defect'],
+    [/unsupported key/, 'unsupported projection key', 'intentional/unsupported package model'],
+    [/missing block|is a \w+ block|does not declare state/, 'projection names a block that does not fit', 'genuine remaining defect'],
+    [/projected in a mode|corrections need/, 'script projected without a mode', 'genuine remaining defect'],
+    [/a correction is composed from the engine/, 'Partial that is not composed from changed fields', 'later authoring'],
+    [/prerequisites/, 'prerequisite shape', 'genuine remaining defect'],
+    [/META\.json does not parse|CONTENT\.md|no META\.json/, 'package does not parse', 'genuine remaining defect'],
   ];
-  const featureOf = (e) => (FEATURES.find(([re]) => re.test(e)) ?? [null, 'other'])[1];
+  const featureOf = (e) => (FEATURES.find(([re]) => re.test(e)) ?? [null, 'other', 'unclassified'])[1];
+  const classOf = (f) => (FEATURES.find(([, name]) => name === f) ?? [null, null, 'unclassified'])[2];
   const results = [];
   for (const dir of dirs) {
     const rel = path.relative(root, dir).replaceAll('\\', '/');
@@ -99,8 +107,9 @@ if (args[0] === '--validate-library') {
     let meta, blocks;
     try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch (e) { results.push({ package: rel, errors: [`META.json does not parse: ${e.message}`], warnings: [], pin: null }); continue; }
     try { blocks = parseBlocks(fs.readFileSync(path.join(dir, meta.contentFile || 'CONTENT.md'), 'utf8')); } catch (e) { results.push({ package: rel, errors: [`CONTENT.md: ${e.message}`], warnings: [], pin: null }); continue; }
-    const pkg = { meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks };
-    results.push({ package: meta.stepId ?? rel, errors: validatePackage(pkg), warnings: packageWarnings(pkg), pin: meta.baselineAuthority?.pinCommit ?? null, pkg });
+    const normal = normalizePackage(meta, blocks);
+    const pkg = { meta: normal.meta, blocks: normal.blocks };
+    results.push({ package: meta.stepId ?? rel, errors: validatePackage(pkg), warnings: packageWarnings(pkg), pin: meta.baselineAuthority?.pinCommit ?? null, normalized: normal.normalized, pkg });
   }
   const passed = results.filter((r) => r.errors.length === 0);
   const byFeature = {};
@@ -111,7 +120,10 @@ if (args[0] === '--validate-library') {
     byFeature[f].packages.add(r.package);
   }
   console.log(`implementation library: ${results.length} packages · ${passed.length} pass production validation · ${results.length - passed.length} fail`);
-  for (const [f, v] of Object.entries(byFeature).sort((a, b) => b[1].packages.size - a[1].packages.size)) console.log(`  ${String(v.packages.size).padStart(3)} packages · ${String(v.errors).padStart(4)} errors · ${f}`);
+  for (const [f, v] of Object.entries(byFeature).sort((a, b) => b[1].packages.size - a[1].packages.size)) console.log(`  ${String(v.packages.size).padStart(3)} packages · ${String(v.errors).padStart(4)} errors · ${f} [${classOf(f)}]`);
+  const rewrites = {};
+  for (const r of results) for (const n of r.normalized ?? []) rewrites[n] = (rewrites[n] ?? 0) + 1;
+  if (Object.keys(rewrites).length > 0) console.log(`  normalised into the runtime shape (the author's words unchanged): ${Object.entries(rewrites).sort((a, b) => b[1] - a[1]).map(([n, c]) => `${c} ${n}`).join(' · ')}`);
   const pinned8 = pinned.slice(0, 8);
   const otherPin = results.filter((r) => r.pin && r.pin !== pinned);
   if (otherPin.length > 0) console.log(`  ${otherPin.length} authored against a baseline pin other than ${pinned8}; each still applies unless a member it implements changed (semantic re-pin review below): ${otherPin.map((r) => r.package).join(', ')}`);
@@ -151,7 +163,8 @@ const bindingsArg = args.indexOf('--bindings');
 const bindingValues = bindingsArg >= 0 ? readJson(path.resolve(args[bindingsArg + 1])) : null;
 
 function lint() {
-  const pkg = { meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks };
+  const normal = normalizePackage(meta, blocks);
+  const pkg = { meta: normal.meta, blocks: normal.blocks };
   const errors = validatePackage(pkg);
   if (errors.length > 0) fail(errors.join('\n'));
   for (const w of packageWarnings(pkg)) console.log(`WARN: ${w}`);

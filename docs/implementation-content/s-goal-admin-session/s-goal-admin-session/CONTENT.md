@@ -144,7 +144,7 @@ Explain why **Shorten Admin Sessions** is not actionable using only these known 
 Explain the licensing blocker for **Shorten Admin Sessions** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"privileged-administrators"}
 Subject: Shorter admin sessions entering validation
 
 Admins,
@@ -154,7 +154,7 @@ We are validating shorter browser sessions for privileged accounts in {{tenant.d
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"privileged-administrators"}
 Subject: Shorter admin sessions ready to enforce
 
 Admins,

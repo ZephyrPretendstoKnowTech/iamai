@@ -140,13 +140,13 @@ Assess whether report-only evidence supports enabling the exact shared-device po
 Explain the blocker without inventing implementation: {{dependencies.blockers}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
 Subject: Confirm shared-device accounts before Conditional Access changes
 
 Please confirm which listed accounts are assigned to Teams Rooms, panels, shared phones, or other userless devices. IAMAI will not exempt an account from person policies from its name alone.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.change","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.change","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: Shared-device Conditional Access change
 
 We are enabling the dedicated shared-device Conditional Access policy after report-only validation. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.

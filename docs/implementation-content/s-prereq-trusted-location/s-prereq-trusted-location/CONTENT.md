@@ -111,7 +111,7 @@ Verify stable ID, exact CIDR set and trusted flag. If sign-in evidence no longer
 Explain the unresolved trusted-network prerequisite: {{dependencies.blockers}}. Never guess public ranges.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.network.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.network.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"network-owner"}
 Subject: Confirm public network ranges for Conditional Access
 
 Please confirm the public IPv4/IPv6 CIDR ranges that represent the office or VPN exits we are allowed to treat as trusted. Do not send private LAN ranges such as 10.x/172.16–31.x/192.168.x. If the public address is dynamic, note that as well so we do not create a trust boundary that silently goes stale.

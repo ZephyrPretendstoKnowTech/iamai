@@ -143,19 +143,19 @@ Explain why guest MFA is not actionable yet using only these blockers/decisions:
 Explain the Conditional Access licensing prerequisite and leave the guest MFA package non-actionable until licensing is resolved.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"guest-sponsors-and-help-desk"}
 Subject: Guest MFA validation is starting
 
 We are preparing guest and external-user MFA policies in Report-only first. External users may see different authentication behavior depending on their home tenant and identity type. No enforcement change is being made until representative guest access is validated.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.partner-trust","channel":"email","states":["partnerTrustRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.partner-trust","channel":"email","states":["partnerTrustRequired"],"format":"markdown","kind":"template","audience":"client-contact"}
 Subject: Confirm partner MFA trust change
 
 We are ready to trust MFA claims from the specifically approved partner tenant for ordinary B2B access. This change does not create a blanket external-user exception and does not apply to GDAP. Existing device-trust settings will be preserved.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: Guest MFA policies are ready to enforce
 
 The guest MFA policy pair has completed validation and is ready to be enabled. After enforcement, external users in scope must satisfy the MFA requirement appropriate to their guest policy path. Support should troubleshoot the external identity/home-tenant path rather than add permanent guest exclusions.

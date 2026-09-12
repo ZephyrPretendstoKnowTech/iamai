@@ -72,13 +72,16 @@ test('each package reaches the steps whose title comes from its content entry, a
   assert.equal(implementationPackageFor({ id: 'cleanup-drill', goalId: '' }), null)
 })
 
-test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON and AI Info, and the JSON is the pinned baseline’s policy', () => {
+test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON, AI Info and Email, and the JSON is the pinned baseline’s policy', () => {
   const p = at(SMALL, 's-goal-admins-phishing-resistant')
   const { pkg, state, projection } = project(p)
   assert.equal(pkg.meta.stepId, 's-goal-admins-phishing-resistant')
   assert.equal(state, 'missing')
   assert.equal(projection.hold, null)
-  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
+  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
+  // The rollout Email the package authored for the Report-only creation reaches the
+  // step (correction batch 2): its audience is the author's, its trigger the one state it is for.
+  assert.deepEqual(projection.channels.find((c) => c.channel === 'email')?.communication, { audience: 'administrators-in-scope', trigger: 'before-report-only', purpose: '' })
   const op = operationsOf(p.step)[0]
   const target = (op.target ?? op.body) as Record<string, unknown>
   const json = JSON.parse(projection.channels.find((c) => c.channel === 'json')!.text) as Record<string, unknown>

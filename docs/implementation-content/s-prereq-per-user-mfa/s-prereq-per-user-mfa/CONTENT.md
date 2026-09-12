@@ -56,7 +56,7 @@ Review the exact accounts {{mfa.perUser.accounts}} and replacement MFA summary {
 Verify the resolved users are disabled for per-user MFA and the replacement policy-based MFA path still protects them.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.cutover","channel":"email","states":["readyToDisablePerUser"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.cutover","channel":"email","states":["readyToDisablePerUser"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: MFA policy transition
 
 Your MFA requirement is moving from the older per-user setting to the tenant's Conditional Access / Authentication methods policy. MFA is not being removed. If you are prompted unexpectedly, contact the help desk with the application and time of the prompt.

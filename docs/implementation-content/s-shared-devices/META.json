@@ -81,6 +81,7 @@
     },
     "partial": {
       "mode": "composeByMismatch",
+      "mismatchBinding": "policy.current.semanticMismatches",
       "sharedBefore": {
         "entra": [
           "entra.correct.open"
@@ -88,6 +89,9 @@
       },
       "mismatches": {
         "users.shared-devices": {
+          "facts": [
+            "conditions.users"
+          ],
           "entra": [
             "entra.correct.population"
           ],
@@ -102,6 +106,9 @@
           ]
         },
         "target.all-resources": {
+          "facts": [
+            "conditions.applications"
+          ],
           "entra": [
             "entra.correct.apps"
           ],
@@ -116,6 +123,9 @@
           ]
         },
         "conditions.trusted-network-boundary": {
+          "facts": [
+            "conditions.locations"
+          ],
           "entra": [
             "entra.correct.location"
           ],
@@ -130,6 +140,9 @@
           ]
         },
         "grant.block": {
+          "facts": [
+            "grantControls"
+          ],
           "entra": [
             "entra.correct.grant"
           ],
@@ -144,6 +157,13 @@
           ]
         },
         "lifecycle.report-only": {
+          "select": {
+            "equals": [
+              "policy.current.state",
+              "enabled"
+            ]
+          },
+          "alongside": true,
           "entra": [
             "entra.correct.lifecycle"
           ],
@@ -158,6 +178,9 @@
           ]
         },
         "people-policy-exclusions": {
+          "select": {
+            "present": "peoplePolicies.resolvedPatches"
+          },
           "entra": [
             "entra.people-exclusions"
           ],

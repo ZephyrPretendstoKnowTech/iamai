@@ -221,7 +221,7 @@ Assess whether deterministic emergency-account state is ready for a human drill.
 Explain the IAMAI-supplied blockers for emergency access in {{tenant.displayName}}: {{dependencies.blockers}}. Do not provide implementation that bypasses an unresolved owner choice, unreadable evidence, or missing canonical exclusions-group identity.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.admins.drill","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.admins.drill","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"authorized-emergency-administrators"}
 Subject: Planned emergency access validation
 
 We are validating the tenant's emergency access process. Authorized administrators should confirm they can retrieve the approved emergency credentials, use the designated secure workstation/client path, complete a controlled sign-in and administrative check, and verify the monitoring alert. Do not send passwords, key PINs, recovery codes, safe combinations, or other secrets by email. Record only the validation result and date after the drill.

@@ -169,7 +169,7 @@ Explain why **Block Device Code Sign-in** is not actionable yet using only these
 Explain that **Block Device Code Sign-in** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"technical-owners"}
 Subject: Device-code sign-in blocking entering validation
 
 Hi,
@@ -179,7 +179,7 @@ We are validating a policy that blocks device-code sign-in in {{tenant.displayNa
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"technical-owners"}
 Subject: Device-code sign-in will be blocked
 
 Hi,

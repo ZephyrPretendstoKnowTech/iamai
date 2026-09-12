@@ -145,7 +145,7 @@ Explain why **Limit Unmanaged Devices in the Browser** is not actionable using o
 `license.defenderCloudApps` is {{license.defenderCloudApps}}. Explain exactly which part of the two-policy target remains unavailable. Do not claim Policy A alone satisfies the full merged baseline step.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Unmanaged-browser restrictions entering validation
 
 Hi,
@@ -155,7 +155,7 @@ We are validating limited browser access for {{tenant.displayName}} on unmanaged
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Unmanaged-browser restrictions ready to enforce
 
 Hi,
