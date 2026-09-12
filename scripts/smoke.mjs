@@ -209,6 +209,16 @@ const waitFor = async (expr, ms = 15000) => {
   }
   return false
 }
+// A navigation that ends the page it leaves. Page.navigate to the URL the tab is
+// already on, fragment and all, is a same-document navigation: nothing reloads,
+// and the old document keeps running whatever it had queued. The sign-in pass
+// leaves a queued loginRedirect on its page; when the authority answered slowly
+// that page survived "coming back" and left for login.microsoftonline.com in the
+// middle of the demo checks. Going through about:blank always starts a new document.
+const navigateFresh = async (url) => {
+  await send('Page.navigate', { url: 'about:blank' })
+  await send('Page.navigate', { url })
+}
 const text = () => evaluate('document.body.innerText')
 // Scoped to the page by default: the header carries a Plan tab of its own (prompt 47 Part 3), so a page click must not find it first.
 const clickText = (re, root = 'main.page') => evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const b = [...r.querySelectorAll('a, button, summary')].find(x => ${re}.test(x.textContent.trim())); if (b) b.click(); return !!b })()`)
@@ -787,7 +797,7 @@ try {
   // One pass of the sequence: land on Connect signed out, click the button while
   // it is still warming, then come back and read the trace MSAL left.
   const signInPass = async () => {
-    await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+    await navigateFresh(`${BASE}&state=signedOut#/connect`)
     // Click as soon as the button exists — during the warm — not after it settles.
     await waitFor(`!!document.querySelector('.connect .connect-step-actions button')`)
     // The warming button carries a spinner but is not disabled, so an early click lands.
@@ -796,7 +806,9 @@ try {
     await sleep(2800)
     // The queued click navigated away once ready; come back to the app's origin and
     // read the trace it left. The signed-out mock never runs initAuth, so nothing clears it.
-    await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+    // A fresh document: if the click has not navigated yet, this page must end here
+    // rather than carry its queued redirect into the checks that follow.
+    await navigateFresh(`${BASE}&state=signedOut#/connect`)
     await sleep(1000)
     const trace = await evaluate(`Object.keys(sessionStorage).filter((k) => /msal|login\\.windows|microsoftonline/.test(k)).length`)
     return { canClick, clicked, trace }
@@ -844,7 +856,7 @@ try {
     await evaluate(`location.hash = ${JSON.stringify('#/' + hash)}`)
     await sleep(900)
   }
-  await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
+  await navigateFresh(`${BASE}&state=signedOut#/connect`)
   await sleep(1500)
   const realBefore = await realKeys()
   check('Demo: Connect offers the sample-data entry (item 12)', await waitFor(`/Try it with sample data/.test(document.body.innerText)`))
