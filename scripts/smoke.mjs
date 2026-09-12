@@ -502,19 +502,38 @@ try {
   // whichever lens is showing (src/ui/surfaces/planBoard.ts).
   check('Plan: groups render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .plan-group').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
   check('Plan: the four zones are named over the rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-column-head')].slice(0, 1).flatMap((h) => [...h.children].map((c) => (c.textContent || '').trim())).join('|')`)) === 'State|Step|Impact|When')
-  // Roadmap is the default lens, and the three are one tab set.
-  check('Plan: Group by offers three lenses with Roadmap selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (t.textContent || '').trim() + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Roadmap:true Status:false Work type:false')
+  // The board draws one lane at a time (S3, src/ui/surfaces/planBoard.ts): Ready is
+  // the default tab, and the three are one tab set. A check that reads every row
+  // reads the three tabs in turn.
+  const LANES = ['Ready', 'Up Next', 'On Hold']
+  const tabText = `(t) => ((t.textContent || '').replace((t.querySelector('.tab-badge') || {}).textContent || '', '').trim())`
+  const showLane = async (name) => {
+    await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => (${tabText})(x) === ${JSON.stringify(name)}); if (t && t.getAttribute('aria-selected') !== 'true') t.click() })()`)
+    await sleep(150)
+  }
+  const acrossLanes = async (js) => {
+    const out = []
+    for (const lane of LANES) {
+      await showLane(lane)
+      out.push(...(await evaluate(js)))
+    }
+    await showLane(LANES[0])
+    return out
+  }
+  check('Plan: the three lanes are tabs with Ready selected', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls [role=tab]')].map((t) => (${tabText})(t) + ':' + t.getAttribute('aria-selected')).join(' ')`)) === 'Ready:true Up Next:false On Hold:false')
+  // Every row says its lane under its state word: `Lane · substatus/reason`.
+  const laneLabels = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row .lane')].map((e) => (e.textContent || '').trim())`)
+  check('Plan: every row carries a Lane · substatus label', laneLabels.length >= 3 && laneLabels.every((l) => /^(Ready|Up Next|On Hold) · \S/.test(l)), JSON.stringify(laneLabels.filter((l) => !/^(Ready|Up Next|On Hold) · \S/.test(l)).slice(0, 3)))
   // The focus controls are toggles over the same rows, and their counts come
   // from the board rather than from a constant.
-  check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Needs attention=\d+\/false \| Up next=\d+\/false \| Show completed=\d+\/false$/) !== null)
-  // Correction A: Up next is the Plan's own next marker — the row that draws the
-  // "next" pill — and not every step the engine calls ready. The two counts here
-  // are the whole point: before this, Up next held a dozen rows on the demo.
-  const upNextCount = Number(await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Up next/.test(x.textContent || '')); return b ? ((b.querySelector('.count') || {}).textContent || '0') : '0' })()`))
+  check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Needs attention=\d+\/false \| Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
+  check('Plan: Work type is a filter beside the toggles, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All work|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
+  // Correction A: the next marker is one row — the first Ready row in the
+  // engine's order — and not every step the engine calls ready.
   const nextPills = Number(await evaluate(`document.querySelectorAll('main.page .plan-row .next-mark').length`))
-  check('Plan: Up next counts the rows the plan marks next, not every ready row', upNextCount === nextPills && upNextCount >= 1, `Up next=${upNextCount} next pills=${nextPills}`)
+  check('Plan: one row is marked next, and it is in the Ready lane', nextPills === 1, `next pills=${nextPills}`)
   const readyRows = Number(await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Ready').length`))
-  check('Plan: ready work outnumbers the next step, so Up next is not a synonym for ready', readyRows > upNextCount, `Ready rows=${readyRows} Up next=${upNextCount}`)
+  check('Plan: ready work outnumbers the next step, so the marker is not a synonym for ready', readyRows > nextPills, `Ready rows=${readyRows} next=${nextPills}`)
   // Correction B: the board's timing column. The generic `now` every
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
@@ -878,7 +897,7 @@ try {
   // reads the reason in the 46 shape, not a date.
   // A create the plan still makes while the threshold gates its enforcement reads
   // its creation day there and the threshold on its reason line (roadmap/stepSchedule.ts).
-  const whenCols = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ((r.querySelector('.when') || {}).textContent || '').trim() + ' / ' + ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim()).join(' | ')`)
+  const whenCols = (await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ((r.querySelector('.when') || {}).textContent || '').trim() + ' / ' + ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)).join(' | ')
   // Any family: the demo's held rows are the MFA ones now that the device and admin session gates are gone (E9).
   check('Demo: a readiness-held step reads its reason in the date column, or on its reason line beside its creation day', /when [A-Za-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/[^|]*when [A-Za-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
 
@@ -902,7 +921,13 @@ try {
   let openNote = ''
   const openRow = async (re) => {
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 6000)
-    const i = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].findIndex((r) => ${re}.test(r.textContent) && r.closest('.plan-footer') === null)`)
+    // The row may sit in any of the three lanes (S3): show each tab until it is there.
+    let i = -1
+    for (const lane of LANES) {
+      await showLane(lane)
+      i = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].findIndex((r) => ${re}.test(r.textContent) && r.closest('.plan-footer') === null)`)
+      if (i >= 0) break
+    }
     const n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
     if (i < 0) {
       openNote = `no row matching ${re} among ${n} at ${await evaluate('location.hash')}: ${await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => e.textContent.trim()).slice(0, 6).join(' | ')`)}`
@@ -949,6 +974,8 @@ try {
       await sleep(400)
     }
   }
+  // A skipped step is deferred work: its row is drawn only while `Show deferred` is pressed (S3).
+  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show deferred/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
   check('Demo: a step is skipped', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Block the Admin Portals/.test(r.textContent) && /Skipped/.test(r.textContent))`, 4000)), skipNote || openNote)
   // A start date, in the plan settings.
   await demoGo('plan')
@@ -1089,7 +1116,11 @@ try {
   // engine. Its JSON copies exactly what the preview shows, with its ids, and parses.
   const INTUNE = JSON.stringify('Require a Fresh Sign-in for Intune Enrollment')
   const intuneStep = `(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return null; let n = t.closest('.plan-row').nextElementSibling; return n && (n.matches('.step') ? n : n.querySelector('.step')) })()`
-  await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return false; const r = t.closest('.plan-row'); r.scrollIntoView({ block: 'center' }); if (r.getAttribute('aria-expanded') !== 'true') r.click(); return true })()`)
+  // The row may sit in any lane (S3): show each tab until it is there, then open it.
+  for (const lane of LANES) {
+    await showLane(lane)
+    if (await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return false; const r = t.closest('.plan-row'); r.scrollIntoView({ block: 'center' }); if (r.getAttribute('aria-expanded') !== 'true') r.click(); return true })()`)) break
+  }
   const intuneJsonTab = await waitFor(`(() => { const st = ${intuneStep}; const tab = st && [...st.querySelectorAll('.implementation-section [role=tab]')].find((x) => x.textContent.trim() === 'JSON'); if (tab) tab.click(); return !!tab })()`, 8000)
   await sleep(300)
   const intunePreview = intuneJsonTab ? await evaluate(`(() => { const p = ${intuneStep}.querySelector('.implementation-section .impl-preview .preview-text'); return p ? p.innerText : '' })()`) : ''
