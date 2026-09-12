@@ -321,7 +321,8 @@ test('contract 12: every Plan row and every step body is drawn by the shared com
   assert.match(plan, /import \{ PlanRow \} from '\.\/StepSections\.tsx'/, 'Plan.tsx draws its rows with the shared row')
   assert.equal(plan.match(/<PlanRow/g)?.length, 2, 'both kinds of Plan row — a step and a Cleanup item — go through it')
   // And the step body renders the contract rather than re-reading the engine.
-  const body = read('./ContentStep.tsx')
+  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+  const body = read('./ContentStep.tsx') + read('./stepBody.ts')
   assert.match(body, /stepContract\(step, ctx/, 'the step body is built from the contract')
   assert.match(body, /<WhatToDoLead contract=\{contract\}/, 'and its action comes from there')
   assert.match(body, /<DoneWhen /, 'and its completion')

@@ -22,7 +22,8 @@ import type { StepContract } from './stepContract.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { enforcesOnRun, operationsOf } from '../../roadmap/operations.ts'
 
-const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+// The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
 const SECTIONS = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
 const CONTRACT_SRC = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
 const HANDOFF = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')

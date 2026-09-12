@@ -261,7 +261,7 @@ test('the source date comes from the package’s verified sources, never a clock
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
   const W = CONTRACT.implementation
   assert.equal(packageSourceLine(PKG, W), fillText(W.sourceChecked, { date: absoluteDate('2026-09-10T12:00:00Z') }))
-  assert.match(read('src/ui/surfaces/ContentStep.tsx'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W\) : null/)
+  assert.match(read('src/ui/surfaces/stepBody.ts'), /const sourceLine = sourcePkg \? packageSourceLine\(sourcePkg, W\) : null/)
 })
 
 // --------------------------------------------------------------- troubleshooting
@@ -337,7 +337,8 @@ test('where Foundation A withholds the operation, the target is unresolved and E
 // ------------------------------------------------------------------------ viewer
 
 test('the viewer draws every package channel through the one Implementation region, safely', () => {
-  const step = read('src/ui/surfaces/ContentStep.tsx')
+  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+  const step = read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')
   const ids = [...(step.match(/const CHANNEL_TABS: TabItem\[\] = \[[\s\S]*?\]/)?.[0] ?? '').matchAll(/id: '([a-z]+)'/g)].map((m) => m[1])
   assert.deepEqual(ids, ['portal', 'ps', 'json', 'ai', 'email'], 'Email is not the fifth member of the one selector')
   assert.match(step, /const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = \{ entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' \}/)

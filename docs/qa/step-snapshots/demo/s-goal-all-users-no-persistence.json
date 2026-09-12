@@ -1,0 +1,35 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "Baseline references an unmapped group",
+  "fact": null,
+  "badge": "On Hold · Baseline references an unmapped group",
+  "bar": "Baseline references an unmapped group",
+  "rail": "On Hold · Baseline references an unmapped group",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Baseline mapping",
+      "state": "Baseline references an unmapped group"
+    },
+    {
+      "label": "Prerequisite · Up Next",
+      "state": "Create or Correct Exclusions Group"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "—"
+}

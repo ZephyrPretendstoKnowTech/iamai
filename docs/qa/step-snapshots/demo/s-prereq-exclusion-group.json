@@ -1,0 +1,32 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": null,
+  "fact": null,
+  "badge": "Up Next · After Create or Correct Emergency Access Accounts",
+  "bar": "After Create or Correct Emergency Access Accounts",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Check",
+      "state": "Exclude the group from Core - Grant - MFA for all users, Core - Block - Legacy authentication, Core - Block - Device code flow, Core - Grant - Admins phishing-resistant, Core - Grant - Guests MFA: open each policy → Users → Exclude → Groups."
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "Aug 31, 2026"
+}

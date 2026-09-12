@@ -51,20 +51,24 @@ function keyOf(f: Fixture): string {
  * it: passing it makes this call the second scan of a sequence rather than a
  * first sighting, and it runs through the one `applyProgress` the app runs. A
  * run given one is never memoised — the record is part of what it derives from.
+ * `now` is the clock the tracking stamps its history with (tracking.ts
+ * trackExecution); a caller that needs a run that never moves with the run date
+ * (the per-step snapshots, A3) passes the fixture's own time, and such a run is
+ * not memoised either.
  */
-export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}, observations: Record<string, StepObservationRecord> | null = null): FixtureRun {
-  if (Object.keys(over).length > 0 || observations !== null) return derive(f, over, observations)
+export function runFixture(f: Fixture, over: Partial<RoadmapInput> = {}, observations: Record<string, StepObservationRecord> | null = null, now: string | null = null): FixtureRun {
+  if (Object.keys(over).length > 0 || observations !== null || now !== null) return derive(f, over, observations, now)
   const key = keyOf(f)
   let hit = memo.get(f.name)
   if (!hit || hit.key !== key) {
-    hit = { key, run: derive(f, over, null) }
+    hit = { key, run: derive(f, over, null, null) }
     memo.set(f.name, hit)
   }
   const { steps, schedule, housekeeping } = structuredClone({ steps: hit.run.steps, schedule: hit.run.schedule, housekeeping: hit.run.housekeeping })
   return { ...hit.run, steps, schedule, housekeeping }
 }
 
-function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<string, StepObservationRecord> | null): FixtureRun {
+function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<string, StepObservationRecord> | null, now: string | null): FixtureRun {
   const t0 = performance.now()
   const { snapshot } = f
   const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
@@ -114,7 +118,7 @@ function derive(f: Fixture, over: Partial<RoadmapInput>, observations: Record<st
   }
   const t1 = performance.now()
   const result = generateRoadmap(input)
-  applyProgress(result.steps, snapshot, coverage, f.planId, undefined, f.planCreatedAt, observations, {
+  applyProgress(result.steps, snapshot, coverage, f.planId, now ?? undefined, f.planCreatedAt, observations, {
     groupMembers: Object.fromEntries([...f.groups].filter(([, g]) => g.sampled !== true).map(([id, g]) => [id.toLowerCase(), g.memberIds])),
     activePeople: activePeopleIds(snapshot, snapshot.asOf, notPeopleIds(f.mapping)),
   })

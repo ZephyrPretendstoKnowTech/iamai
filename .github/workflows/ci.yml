@@ -31,7 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # The whole history: the change-scope step below reads every commit the
+      # push or the pull request brings, not only the one checked out.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -68,6 +72,24 @@ jobs:
       - name: Install
         id: install
         run: set -o pipefail; npm ci 2>&1 | tee "$RUNNER_TEMP/1-install.log"
+
+      # The change-scope lock on the per-step snapshots (A3,
+      # scripts/check-change-scope.mjs): over the commits this run brings, a
+      # package edit may change only its own step's snapshots and a src/ edit may
+      # change snapshots only under [snapshots]. The range is what the event
+      # brought — the pushed commits, or the pull request's commits over its base;
+      # a first push of a branch (no `before`) checks the one commit checked out.
+      - name: Change scope
+        id: scope
+        run: |
+          set -o pipefail
+          range="HEAD^..HEAD"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            range="origin/${{ github.base_ref }}..HEAD"
+          elif [ -n "${{ github.event.before }}" ] && git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
+            range="${{ github.event.before }}..HEAD"
+          fi
+          node scripts/check-change-scope.mjs --range "$range" 2>&1 | tee "$RUNNER_TEMP/1b-scope.log"
 
       # The types are the first deterministic thing that can be wrong, and were
       # the one check CI never ran: sessions run `npx tsc --noEmit` (CLAUDE.md)
@@ -106,6 +128,7 @@ jobs:
             echo "| Step | Result |"
             echo "| --- | --- |"
             echo "| Install | ${{ steps.install.outcome }} |"
+            echo "| Change scope | ${{ steps.scope.outcome }} |"
             echo "| Typecheck | ${{ steps.typecheck.outcome }} |"
             echo "| Unit tests | ${{ steps.test.outcome }} |"
             echo "| Build | ${{ steps.build.outcome }} |"
@@ -124,6 +147,12 @@ jobs:
                 grep '^  FAIL \|^FAIL ' "$RUNNER_TEMP/5-smoke.log" | head -30
                 echo '```'
               fi
+            fi
+            if [ "${{ steps.scope.outcome }}" = "failure" ] && [ -f "$RUNNER_TEMP/1b-scope.log" ]; then
+              echo "**A snapshot changed out of scope** — regenerate with \`node scripts/step-snapshots.mjs\`; a commit that also changes src/ says [snapshots]."
+              echo '```'
+              cat "$RUNNER_TEMP/1b-scope.log" | head -30
+              echo '```'
             fi
             if [ "${{ steps.test.outcome }}" = "failure" ] && [ -f "$RUNNER_TEMP/3-test.log" ]; then
               echo "**Failing tests**"

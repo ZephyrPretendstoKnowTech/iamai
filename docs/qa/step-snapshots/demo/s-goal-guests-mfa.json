@@ -1,0 +1,40 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "until both policies of the pair can be matched",
+  "fact": null,
+  "badge": "On Hold · Not supported",
+  "bar": "Not supported",
+  "rail": "On Hold · Not supported",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "0%"
+    },
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    },
+    {
+      "label": "Not supported",
+      "state": "Not supported"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "—"
+}

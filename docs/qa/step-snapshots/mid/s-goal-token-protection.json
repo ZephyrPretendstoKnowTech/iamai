@@ -1,0 +1,36 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Create or Correct Service Accounts Group",
+  "fact": null,
+  "badge": "Up Next · After Create or Correct Service Accounts Group",
+  "bar": "After Create or Correct Service Accounts Group",
+  "rail": "Up Next · After Create or Correct Service Accounts Group",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Service Accounts Group"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info"
+  ],
+  "when": "—"
+}

@@ -1,0 +1,40 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "Baseline references an unmapped group",
+  "fact": "Enforced",
+  "badge": "On Hold · Baseline references an unmapped group",
+  "bar": "Baseline references an unmapped group",
+  "rail": "On Hold · Baseline references an unmapped group",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "13%"
+    },
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Baseline mapping",
+      "state": "Baseline references an unmapped group"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info"
+  ],
+  "when": "—"
+}

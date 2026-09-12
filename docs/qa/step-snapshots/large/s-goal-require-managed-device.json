@@ -1,0 +1,36 @@
+{
+  "lane": "Ready",
+  "substatus": "Correct",
+  "reason": "when device readiness reaches 80% (now 29%)",
+  "fact": "Report-only",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
+  "rail": "Ready · Correct",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "29%"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Decide How Devices Are Managed"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "—"
+}

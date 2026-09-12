@@ -1,0 +1,32 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": null,
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Emergency access",
+      "state": "Not available"
+    },
+    {
+      "label": "Resilience",
+      "state": "Hardening open"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "Aug 31, 2026"
+}

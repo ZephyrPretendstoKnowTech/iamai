@@ -1,0 +1,35 @@
+{
+  "lane": "Ready",
+  "substatus": "Correct",
+  "reason": "after: Create or Correct Emergency Access Accounts",
+  "fact": "Report-only",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
+  "rail": "Ready · Correct",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "33%"
+    },
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "—"
+}

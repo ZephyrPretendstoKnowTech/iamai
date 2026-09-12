@@ -47,7 +47,8 @@ test('the Admin Portal source conflict shows its review, its source date, the co
     assert.equal(line?.includes(String(reviewed.meta.baselineAuthority?.pinCommit).slice(0, 8)) ?? false, false, 'the step names a pin')
   }
   // The page draws the review note and the source line even where there is nothing to implement.
-  const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+  const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
   const empty = src.slice(src.indexOf('<ImplementationEmptyBox empty={empty} />'), src.indexOf(') : (', src.indexOf('<ImplementationEmptyBox empty={empty} />')))
   assert.match(empty, /notes\.map/, 'the review note is drawn only beside artifacts')
   assert.match(src, /reviewedPackageFor\(step\)/, 'a set-aside package lost its source line')

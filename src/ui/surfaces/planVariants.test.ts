@@ -672,7 +672,8 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
 })
 
 test('§6a Portal, JSON and PowerShell are one authority chain the presentation only reads', () => {
-  const step = read('src/ui/surfaces/ContentStep.tsx')
+  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+  const step = read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')
   const sections = read('src/ui/surfaces/StepSections.tsx')
   // Every channel — the panel that shows it, the download that saves it, and
   // the rail that lists it — is gated on the ONE answer the contract carries

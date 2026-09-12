@@ -1,0 +1,37 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Create or Correct Allowed Countries Location",
+  "fact": null,
+  "badge": "Up Next · After Create or Correct Allowed Countries Location",
+  "bar": "After Create or Correct Allowed Countries Location",
+  "rail": "Up Next · After Create or Correct Allowed Countries Location",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Allowed Countries Location"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
+  "when": "—"
+}

@@ -1,0 +1,32 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": "when MFA readiness reaches 90% (now 12%)",
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "12%"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
+  "when": "Aug 31, 2026"
+}

@@ -1,0 +1,36 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": null,
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Emergency access",
+      "state": "Not available"
+    },
+    {
+      "label": "Check",
+      "state": "Break-glass 2 is inside Core - Grant - MFA for all users: add the exclusions group to each policy's Users → Exclude → Groups in Create or Correct Exclusions Group. Do not exclude the account itself."
+    },
+    {
+      "label": "Resilience",
+      "state": "Hardening open"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "Aug 31, 2026"
+}

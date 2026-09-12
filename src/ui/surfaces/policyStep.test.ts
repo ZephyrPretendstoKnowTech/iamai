@@ -24,7 +24,8 @@ import { absoluteDate } from '../../copy/dates.ts'
 
 import type { ContractStage, StepContract } from './stepContract.ts'
 
-const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+// The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
 const SECTIONS = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
 const CSS = readFileSync('src/ui/app.css', 'utf8')
 
