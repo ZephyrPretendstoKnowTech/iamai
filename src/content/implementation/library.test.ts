@@ -83,37 +83,49 @@ test('each package reaches the steps whose title comes from its content entry, a
   assert.equal(implementationPackageFor({ id: 'cleanup-drill', goalId: '' }), null)
 })
 
-test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON, AI Info and Email, and the JSON is the pinned baseline’s policy', () => {
+test('a policy IAMAI would create projects the package’s Entra, PowerShell, AI Info and Email; a JSON body authored with no request is withheld (S6)', () => {
   const p = at(SMALL, 's-goal-admins-phishing-resistant')
   const { pkg, state, projection } = project(p)
   assert.equal(pkg.meta.stepId, 's-goal-admins-phishing-resistant')
   assert.equal(state, 'missing')
   assert.equal(projection.hold, null)
-  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
+  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'aiInfo', 'email'])
+  // The package's JSON body names no method or endpoint: a bare body is not a
+  // request, so the channel is withheld (S6 task 3) rather than offered as one.
+  assert.match(projection.degraded?.find((d) => d.channel === 'json')?.invalid.join(' ') ?? '', /json\.target-policy: a JSON body with no request/)
   // The rollout Email the package authored for the Report-only creation reaches the
   // step (correction batch 2): its audience is the author's, its trigger the one state it is for.
   assert.deepEqual(projection.channels.find((c) => c.channel === 'email')?.communication, { audience: 'administrators-in-scope', trigger: 'before-report-only', purpose: '' })
-  const op = operationsOf(p.step)[0]
+  // The JSON the pilot authored with its request is the pinned baseline's policy, bound.
+  const pilot = at(SMALL, 's-goal-device-registration-mfa')
+  const piloted = project(pilot)
+  assert.equal(piloted.state, 'missing')
+  const op = operationsOf(pilot.step)[0]
   const target = (op.target ?? op.body) as Record<string, unknown>
-  const json = JSON.parse(projection.channels.find((c) => c.channel === 'json')!.text) as Record<string, unknown>
-  // The bound values are the resolved policy's; the grant around the strength is the package's own words (content audit).
-  assert.deepEqual(json.conditions, target.conditions, 'the JSON does not carry the resolved policy’s conditions')
+  const artifact = piloted.projection.channels.find((c) => c.channel === 'json')!
+  assert.deepEqual(artifact.requests, [{ method: 'POST', endpoint: '/identity/conditionalAccess/policies' }])
+  const json = JSON.parse(artifact.text) as { conditions: { users: Record<string, unknown>; applications: Record<string, unknown> }; grantControls: unknown }
+  const conditions = target.conditions as { users: Record<string, unknown>; applications: Record<string, unknown> }
+  // The package spells the body out in full (its empty arrays are Graph's own defaults); the values IAMAI holds are the resolved policy's.
+  assert.deepEqual(json.conditions.users.excludeGroups, conditions.users.excludeGroups, 'the JSON does not carry the resolved policy’s exclusions')
+  assert.deepEqual(json.conditions.users.includeUsers, conditions.users.includeUsers)
+  assert.deepEqual(json.conditions.applications.includeUserActions, conditions.applications.includeUserActions)
   const strength = (g: unknown): unknown => (g as { authenticationStrength?: { id?: unknown } } | undefined)?.authenticationStrength?.id
   assert.equal(strength(json.grantControls), strength(target.grantControls), 'the JSON does not name the resolved authentication strength')
-  for (const c of projection.channels) assert.equal(UNRESOLVED.test(c.text), false, `${c.channel}: a placeholder reached the page`)
+  for (const c of [...projection.channels, ...piloted.projection.channels]) assert.equal(UNRESOLVED.test(c.text), false, `${c.channel}: a placeholder reached the page`)
 })
 
 test('a required value IAMAI does not hold withholds only the channel that names it; a package with nothing for the state leaves the step its own channels', () => {
   // The registration package words its portal steps by a mode the resolved target
   // does not settle (MFA outside trusted locations is neither of its two modes), so
-  // IAMAI binds no mode: the portal steps are withheld and say so, and the JSON and
-  // PowerShell rendered from the pinned target still project.
+  // IAMAI binds no mode: the portal steps are withheld, and the PowerShell rendered
+  // from the pinned target still projects. Its JSON body names no request (S6).
   const held = project(at(SMALL, 's-goal-register-info-protected'))
   assert.equal(held.state, 'missing')
   assert.equal(held.projection.hold, null)
   assert.equal(held.projection.channels.some((c) => c.channel === 'entra'), false)
-  assert.ok(held.projection.channels.some((c) => c.channel === 'json'), 'the JSON rendered from the pinned target was withheld with the portal steps')
-  assert.deepEqual(held.projection.degraded, [{ channel: 'entra', missingBindings: ['policy.target.mode'], invalid: [] }])
+  assert.ok(held.projection.channels.some((c) => c.channel === 'powershell'), 'the PowerShell rendered from the pinned target was withheld with the portal steps')
+  assert.deepEqual(held.projection.degraded?.map((d) => [d.channel, d.missingBindings, d.invalid.length]), [['entra', ['policy.target.mode'], 0], ['json', [], 1]])
   assert.equal(packageDrawsImplementation(held.pkg, held.projection), true, 'a held package gave the step back channels it holds')
   const none = projectSafely(held.pkg, 'missing', {}, NO_RUNTIME)
   assert.deepEqual(none.channels, [], 'a projection with none of its values offered something')

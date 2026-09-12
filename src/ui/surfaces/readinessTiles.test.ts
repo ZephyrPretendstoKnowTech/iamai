@@ -18,7 +18,7 @@ import type { PrerequisiteBlocker } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import { BOARD, readinessBlockersOf } from './planBoard.ts'
-import { mergeReadiness, severalBindings } from './stepPackage.ts'
+import { mergeReadiness } from './stepPackage.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { returnToStep } from '../shell/routes.ts'
 
@@ -121,10 +121,10 @@ test('the Emergency Access step is Why → Readiness → account selection → I
   const { step, ctx, c } = opened('demo', EMERGENCY)
   assert.ok((ctx.mapping.breakGlassUserIds?.length ?? 0) > 1, 'the premise: two accounts are selected')
   assert.equal(c.whatToDo.kind, 'deploy')
-  // Two selected accounts each owing work: the one-account channel takes one, and the step says that, not that IAMAI lacks the account.
-  assert.deepEqual(severalBindings(step, ctx), ['emergency.target.userId', 'emergency.target.upn'])
-  assert.doesNotMatch(CONTRACT.implementation.withheld.several, /does not hold/)
-  assert.match(CONTENT_STEP, /d\.missingBindings\.every\(\(k\) => several\.has\(k\)\)\) return fillText\(W\.withheld\.several/, 'a held set still reads as a value IAMAI does not hold')
+  // Two selected accounts each owing work: the one-account channel takes one and is
+  // simply not offered (S6) — never a line saying IAMAI does not hold the account.
+  assert.equal(CONTENT_STEP.includes('W.withheld'), false, 'the step still draws a withheld-channel line')
+  assert.equal('withheld' in CONTRACT.implementation, false)
 })
 
 test('the package’s gates merge without a cap: unresolved before the hardening, satisfied as evidence', () => {

@@ -64,7 +64,7 @@ import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, severalBindings } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { prerequisiteBasis, projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -393,23 +393,14 @@ export function ContentStep({
         ],
       }
     : null
-  // A channel the package withheld on its own (project.ts `degraded`), named with
-  // what it waits on, beside the channels that did project. A value the plan
-  // holds as a set where the channel takes one (stepPackage.ts severalBindings)
-  // is said as that — never as a value IAMAI does not hold (S5).
-  const several = new Set(packaged ? severalBindings(step, ctx) : [])
-  const withheld = packaged
-    ? ((preview ?? projection)?.degraded ?? []).map((d) => {
-        const channel = CHANNEL_TABS.find((t) => t.id === PACKAGE_CHANNEL[d.channel])?.label ?? d.channel
-        if (d.invalid.length > 0 || d.missingBindings.length === 0) return fillText(W.withheld.fault, { channel })
-        if (d.missingBindings.every((k) => several.has(k))) return fillText(W.withheld.several, { channel, value: bindingLabel(d.missingBindings[0]) })
-        return fillText(W.withheld.values, { channel, values: list([...new Set(d.missingBindings.map(bindingLabel))]) })
-      })
-    : []
+  // A channel the package could not finish on its own (project.ts `degraded`) is
+  // not offered, and nothing stands in for it (S6, A1 §16.2): a line that only
+  // says a channel is missing is not implementation content, and whatever really
+  // holds the step is a Readiness tile already.
   // A package the semantic re-pin review set aside (stepPackage.ts packageReviewFor):
   // the step draws the baseline's own channels, and says why, before anything else.
   const review = packageReviewFor(step)
-  const notes = review ? [review.status === 'held' ? W.review.held : W.review.reviewNeeded, ...withheld] : withheld
+  const notes = review ? [review.status === 'held' ? W.review.held : W.review.reviewNeeded] : []
   // A step with nothing to implement by design — a decision, a question, a check —
   // draws no Implementation region at all: its What to do is the work, and "No
   // generated implementation" beside it said nothing (owner, 2026-09-11). A policy
@@ -447,12 +438,15 @@ export function ContentStep({
     const given = (pkg.meta.prerequisites ?? []).filter((pr) => tile.confirm!.prerequisites.includes(pr.id) && !byEvidence.has(pr.id))
     onConfirm(Object.fromEntries(given.map((pr) => [pr.id, { basis: prerequisiteBasis(pr, pkgBindings) }])))
   }
-  // The package's verified-source date and the baseline pin it was authored
-  // against beside this build's (stepPackage.ts packageSourceLine).
-  // A package the re-pin review set aside still says which pins it was reviewed
-  // between, beside why it is set aside (correction batch 2).
+  // The date the package's Microsoft sources were last checked (stepPackage.ts
+  // packageSourceLine), or no line: never a pin, never a fabricated date (S6). A
+  // package the re-pin review set aside keeps its date beside why it is set aside.
   const sourcePkg = pkg ?? (review ? reviewedPackageFor(step) : null)
-  const sourceLine = sourcePkg ? packageSourceLine(sourcePkg, W, baselineCommit) : null
+  const sourceLine = sourcePkg ? packageSourceLine(sourcePkg, W) : null
+  // The step's Microsoft Learn link (its content entry's `learn.url`): under
+  // Implementation, beside Troubleshooting, where the region is drawn (S6), and
+  // in Why on a step that draws no Implementation — one link per step.
+  const learnUrl: string | null = typeof learn.url === 'string' && learn.url !== '' ? learn.url : null
   // The footer's rollout exception: the existing skip, offered only where the
   // step's content entry marks it excludable, and Doesn't apply here where the
   // step is flagged for it. A step already set aside offers the way back.
@@ -490,8 +484,8 @@ export function ContentStep({
             <h4>{HEAD.why}</h4>
             <p>
               {contract.why}{' '}
-              {learn.url && (
-                <a href={learn.url} target="_blank" rel="noopener noreferrer">
+              {learnUrl && !showImplementation && (
+                <a href={learnUrl} target="_blank" rel="noopener noreferrer">
                   Learn →
                 </a>
               )}
@@ -567,10 +561,11 @@ export function ContentStep({
               artifacts={artifacts}
               drawnBy={packaged ? 'package' : 'translator'}
               preview={previewNote}
-              withheld={notes}
+              notes={notes}
               title={title}
               empty={empty}
               source={sourceLine}
+              learn={learnUrl}
               onTroubleshooting={scenarios.length > 0 && !printing ? () => setDialog('troubleshooting') : null}
               open={dialog === 'implementation'}
               onOpen={() => setDialog('implementation')}
@@ -739,18 +734,20 @@ export function ContentStep({
  * and the prompts' step context — and nothing is composed here. The preview,
  * the expanded viewer and Copy read the same text.
  */
-function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, source, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
+function Implementation({ artifacts, drawnBy, preview, notes, title, empty, source, learn, onTroubleshooting, open, onOpen, onClose, copy, copied }: {
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
   /** A planning preview's note (stepPackage.ts planningPreview): the artifacts are the planned work and are not offered to copy. */
   preview: { label: string; lines: string[] } | null
-  /** One line per channel the package withheld on its own while the others project. */
-  withheld: string[]
+  /** Why the package's own guidance is set aside (a re-pin review), where it is. */
+  notes: string[]
   title: string
   empty: ImplementationEmpty
-  /** "Source updated <date>", from the package's verified sources; null where there is no truthful date. */
+  /** "Source checked <date>", from the package's verified sources; null where there is no truthful date. */
   source: string | null
+  /** The step's Microsoft Learn page, where its content entry names one. */
+  learn: string | null
   onTroubleshooting: (() => void) | null
   open: boolean
   onOpen: () => void
@@ -783,7 +780,8 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
     ) : (
       <pre className={`${cls} mono`}>{active.text()}</pre>
     )
-  const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null
+  const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
+  const copyable = preview === null && active !== null
   const planning = preview && (
     <div className="impl-planning">
       <strong>{preview.label}</strong>
@@ -799,9 +797,9 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
         <>
           <ImplementationEmptyBox empty={empty} />
           {/* Why the written guidance is set aside, where it is (a re-pin review), even with nothing to implement. */}
-          {withheld.length > 0 && (
-            <div className="impl-planning" data-withheld="true">
-              {withheld.map((line, i) => (
+          {notes.length > 0 && (
+            <div className="impl-planning" data-review="true">
+              {notes.map((line, i) => (
                 <span key={i}>{line}</span>
               ))}
             </div>
@@ -810,9 +808,9 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
       ) : (
         <>
           {planning}
-          {withheld.length > 0 && (
-            <div className="impl-planning" data-withheld="true">
-              {withheld.map((line, i) => (
+          {notes.length > 0 && (
+            <div className="impl-planning" data-review="true">
+              {notes.map((line, i) => (
                 <span key={i}>{line}</span>
               ))}
             </div>
@@ -826,7 +824,7 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
           <div className="impl-preview" {...onePanelProps(base, tab)}>
             <div className="preview-actions no-print">
               {/* A planning preview is not executable: it is never offered to copy. */}
-              {preview === null && (
+              {copyable && (
                 <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', active?.text() ?? '')}>
                   <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
                 </button>
@@ -837,8 +835,18 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
             </div>
             {body('preview-text')}
           </div>
+          {/* The expanded viewer (S6): the same channel the preview shows, the
+              whole artifact at reading size, and a visible Copy where the
+              artifact is copyable — never on a planning preview. */}
           <StepDialog open={open} onClose={onClose} eyebrow={W.dialogEyebrow} title={title} sub={tabs.find((t) => t.id === tab)?.label ?? null} closeLabel={W.close} wide>
-            <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
+            <div className="dialog-toolbar">
+              <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
+              {copyable && (
+                <Button variant="secondary" icon={copied === 'implementation' ? 'check' : 'copy'} onClick={() => copy('implementation', active?.text() ?? '')}>
+                  {W.copy}
+                </Button>
+              )}
+            </div>
             {tab === 'ai' && (
               <div className="ai-warning">
                 <Callout kind="warning">{W.aiWarning}</Callout>
@@ -850,15 +858,28 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
           </StepDialog>
         </>
       )}
+      {/* The support line (S6): Microsoft Learn · Troubleshooting on the left,
+          the package's run note beside them, and the source-checked date on the
+          right — or nothing at all where the step has none of them. */}
       {support && (
         <div className="impl-support">
-          {artifacts.length > 0 && active?.note && <span className="impl-support-note">{active.note}</span>}
-          {onTroubleshooting && (
-            <button type="button" className="inline-link" onClick={onTroubleshooting}>
-              {W.troubleshooting}
-            </button>
+          {(learn || onTroubleshooting) && (
+            <span className="impl-support-links">
+              {learn && (
+                <a className="inline-link" href={learn} target="_blank" rel="noopener noreferrer">
+                  {W.learn}
+                </a>
+              )}
+              {learn && onTroubleshooting && <span aria-hidden="true">·</span>}
+              {onTroubleshooting && (
+                <button type="button" className="inline-link" onClick={onTroubleshooting}>
+                  {W.troubleshooting}
+                </button>
+              )}
+            </span>
           )}
-          {source && <span>{source}</span>}
+          {artifacts.length > 0 && active?.note && <span className="impl-support-note">{active.note}</span>}
+          {source && <span className="impl-support-source">{source}</span>}
         </div>
       )}
     </section>

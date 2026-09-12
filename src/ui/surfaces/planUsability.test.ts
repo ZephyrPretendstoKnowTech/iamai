@@ -206,8 +206,9 @@ test('a blocked policy with authored implementation shows its planning preview w
   assert.ok(preview.hold!.missingBindings.includes('policy.target.excludeGroups'), 'the preview does not name what is unresolved')
   for (const ch of preview.channels) assert.equal(/\{\{|\{policy\.|\[omit /.test(ch.text), false, `${ch.channel}: raw binding syntax reached the preview`)
   assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹exclusions group›/, 'an unknown value was filled silently')
-  // The copy control is not offered on a preview.
-  assert.match(CONTENT_STEP, /\{preview === null && \(\n\s*<button type="button" className="icon-btn" aria-label=\{W\.copy\}/)
+  // The copy control — inline and in the expanded viewer — is not offered on a preview.
+  assert.match(CONTENT_STEP, /const copyable = preview === null && active !== null/)
+  assert.match(CONTENT_STEP, /\{copyable && \(\n\s*<button type="button" className="icon-btn" aria-label=\{W\.copy\}/)
   // Resolved: the same package, the same state's blocks, executable and no longer a preview.
   const done = opened('small', 's-goal-device-registration-mfa', 'missing')
   const mstate = packageStateOf(done.step, done.c, done.f.snapshot)!

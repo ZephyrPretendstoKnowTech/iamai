@@ -150,11 +150,13 @@ test('a script literal that opens with two braces is not an unresolved binding',
   assert.equal(UNRESOLVED.test('Evidence line [omit this line when unavailable]'), true)
 })
 
-test('a package authored against another baseline pin applies, and its source line names both pins', () => {
-  const words = { sourceUpdated: 'Source updated {date}', sourcePins: 'Authored against baseline {authored} · plan pins {pinned}' }
+test('the source line is the date the sources were checked, or nothing: a baseline pin is provenance, never a line on the step (S6)', () => {
+  const words = { sourceChecked: 'Source checked {date}' }
   const entra = block({ id: 'e.x', channel: 'entra', states: ['missing'], format: 'markdown' })
-  assert.equal(packageSourceLine(compile({ baselineAuthority: { pinCommit: 'a'.repeat(40) } }, entra), words, 'b'.repeat(40)), 'Authored against baseline aaaaaaaa · plan pins bbbbbbbb')
-  assert.equal(packageSourceLine(compile({}, entra), words, 'b'.repeat(40)), null, 'a package naming no pin and no source was given a source line')
+  const source = { id: 's', title: 'Conditional Access', url: 'https://learn.microsoft.com/x', checkedOn: '2026-09-10', userFacing: true }
+  assert.equal(packageSourceLine(compile({ baselineAuthority: { pinCommit: 'a'.repeat(40) }, verifiedSources: [source] }, entra), words), 'Source checked Sep 10, 2026')
+  assert.equal(packageSourceLine(compile({ baselineAuthority: { pinCommit: 'a'.repeat(40) } }, entra), words), null, 'a package naming a pin and no checked date was given a source line')
+  assert.equal(packageSourceLine(compile({ verifiedSources: [{ ...source, checkedOn: 'last week' }] }, entra), words), null, 'a date that is not a date was shown')
 })
 
 // ------------------------------------------------------------------ withholding

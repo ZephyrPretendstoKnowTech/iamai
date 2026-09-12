@@ -18,8 +18,7 @@ export const PILOT_PACKAGE = (registry as unknown as { packages: Record<string, 
 
 /**
  * The baseline commit the pilot was authored against (META.json
- * `baselineAuthority.pinCommit`). The build pins another and names both beside the
- * step (ui/surfaces/stepPackage.ts packageSourceLine); the tests and the dev
+ * `baselineAuthority.pinCommit`). The build pins another; the tests and the dev
  * harness project the pilot as a build pinned to its own baseline would, so its
  * pin-scoped tiles show.
  */
