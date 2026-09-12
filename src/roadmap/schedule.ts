@@ -15,6 +15,7 @@ import { promptsPeople } from './strand.ts'
 import { addWorkingDays, nobodyAffected, toEnforcementDay as enforcementDay } from './timing.ts'
 import type { TenantRhythm } from './rhythm.ts'
 import { contentTitle } from '../content/stepTitle.ts'
+import { authoredObservationDays } from '../content/implementation/observation.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -222,10 +223,13 @@ export type BatchClass = 'zero' | 'mfa' | 'deviceSession' | 'other'
  *
  * Three days only where the evidence already says nobody is affected, which is
  * the same bar the 'zero' batch class uses: evidence.status 'ok' with an empty
- * affected set, never merely absent evidence. Everything else gets seven.
+ * affected set, never merely absent evidence. Everything else gets seven — unless
+ * the step's package authors its own window (META `observation.minDays`; A1 §7,
+ * RUN-CONTEXT-A decision 5). One reading for the schedule, the report-only time
+ * gate (tracking.ts) and the lane engine's evidence gate (ui/surfaces/planLanes.ts).
  */
 export function observationDaysFor(step: Step): number {
-  return batchClassOf(step) === 'zero' ? OBSERVATION_DAYS_ZERO : OBSERVATION_DAYS
+  return authoredObservationDays(step) ?? (batchClassOf(step) === 'zero' ? OBSERVATION_DAYS_ZERO : OBSERVATION_DAYS)
 }
 
 /**

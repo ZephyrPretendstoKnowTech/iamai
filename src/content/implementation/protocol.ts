@@ -60,6 +60,12 @@ export type PackageMeta = {
   verifiedSources?: VerifiedSource[]
   prerequisites?: Prerequisite[]
   /**
+   * The observation window's time component for this step (A1 §7): `minDays`, a
+   * positive whole number of days, or null for the plan's default (7 days; 3 where
+   * nobody is affected). Read by content/implementation/observation.ts.
+   */
+  observation?: { minDays?: number | null }
+  /**
    * `members`: each baseline policy a multi-policy package names, by its role in
    * the package's bindings (`policies.<family>.<role>.…`) and the pinned
    * baseline's stable id for it — null where the pin surfaces none, and then
@@ -552,6 +558,14 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
     if (p.evidence !== undefined) add(locus, ...conditionErrors(p.evidence, vocab, `${at}.evidence`))
     for (const b of asStrings(p.invalidatedBy)) if (!declared.has(b)) add(locus, `${at}.invalidatedBy: undeclared binding ${b}`)
   })
+
+  // ---- observation window (A1 §7) ----
+  if (meta.observation !== undefined) {
+    const o = meta.observation as { minDays?: unknown } | null
+    const days = o !== null && typeof o === 'object' ? o.minDays : undefined
+    const ok = o !== null && typeof o === 'object' && (days === undefined || days === null || (typeof days === 'number' && Number.isInteger(days) && days > 0))
+    if (!ok) add({ kind: 'prerequisite', index: -1 }, 'observation.minDays: a positive whole number of days, or null for the default')
+  }
 
   // ---- projections ----
   for (const [state, p] of Object.entries(meta.projection ?? {})) {

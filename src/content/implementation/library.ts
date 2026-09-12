@@ -76,7 +76,7 @@ export function compileLibrary(root: string = LIBRARY_ROOT): { registered: Libra
  * shipped, it was 40 fields of bundle nobody read, and one of them carried a host
  * the network allowlist refuses (correction batch 2).
  */
-export const RUNTIME_META_KEYS = ['stepId', 'title', 'relationship', 'contentFile', 'requiredBindings', 'optionalBindings', 'projection', 'supportBlocks', 'verifiedSources', 'prerequisites', 'baselineAuthority', 'email'] as const
+export const RUNTIME_META_KEYS = ['stepId', 'title', 'relationship', 'contentFile', 'requiredBindings', 'optionalBindings', 'projection', 'supportBlocks', 'verifiedSources', 'prerequisites', 'observation', 'baselineAuthority', 'email'] as const
 
 const runtimeMeta = (pkg: CompiledPackage): CompiledPackage => ({
   meta: Object.fromEntries(RUNTIME_META_KEYS.filter((k) => pkg.meta[k] !== undefined).map((k) => [k, pkg.meta[k]])) as CompiledPackage['meta'],
