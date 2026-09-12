@@ -101,15 +101,8 @@ export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
     withStage,
   })
   // A policy the tenant already enforces that cannot be brought up to the plan yet.
-  const waiting = (): PlanState => {
-    // An enforced policy a person has to look at (roadmap/lifecycle.ts
-    // heldForReview; tracking withdrew its delivery claim) says its stage and the
-    // condition, as the report-only row below does: "Enforced · Review required",
-    // never "Blocked" over a policy that is on, and never In place over one
-    // nobody has vouched for.
-    if (c === 'review-required' && step.state.lifecycle === 'enforced') return make('correction', `${LIFECYCLE.enforced} · ${CONDITION[c]}`, stop ? 'stop' : 'wait', true)
-    return step.kind === 'adjust' && step.state.lifecycle === 'enforced' ? make('correction', WORDS.needsCorrection, stop ? 'stop' : 'wait') : make('blocked', 'Blocked', stop ? 'stop' : 'wait')
-  }
+  const waiting = (): PlanState =>
+    step.kind === 'adjust' && step.state.lifecycle === 'enforced' ? make('correction', WORDS.needsCorrection, stop ? 'stop' : 'wait') : make('blocked', 'Blocked', stop ? 'stop' : 'wait')
   switch (step.status) {
     case 'done':
       if (step.emergency && step.emergency.deferredAt && step.emergency.hardening > 0) return make('deferred', WORDS.minimumInPlace, 'ok')

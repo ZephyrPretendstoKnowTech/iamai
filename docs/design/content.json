@@ -196,7 +196,6 @@
         "reportOnlyFound": "policy in report-only since {date}",
         "enforced": "policy enforced on {date}",
         "enforcedByOther": "{name} already enforces this",
-        "reviewWithdrawn": "{name} no longer means what the plan asked for; it is not counted as delivered until a person has reviewed it",
         "windowCloses": "the window closes {date}",
         "windowClosed": "the window closed {date}",
         "readyNow": "ready now: 0 failures in {n} days",

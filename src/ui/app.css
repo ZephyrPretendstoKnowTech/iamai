@@ -2661,10 +2661,10 @@ footer.app a {
   color: var(--secondary-text);
 }
 .step .impl-support-links {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 6px;
+  /* Inline, so "Microsoft Learn · Troubleshooting" is one line of text; flex
+     items would each read as a line of their own. */
+  display: inline;
+  white-space: pre-wrap;
 }
 .step .impl-support-links a.inline-link {
   text-decoration: none;

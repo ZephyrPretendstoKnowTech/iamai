@@ -998,6 +998,9 @@ try {
   )
   await demoGo('plan')
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  // The board draws one lane at a time and keeps the lane the last opened step
+  // put it on (S5 TabFollowsOpenStep), so both readings are taken on the same lane.
+  await showLane(LANES[0])
   const planTextBefore = await mainText()
   await demoGo('export')
   await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
@@ -1021,6 +1024,7 @@ try {
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   await sleep(500)
   const recordAfter = await planRecord()
+  await showLane(LANES[0])
   const planTextAfter = await mainText()
   const firstDiff = (a, b) => { const i = [...a].findIndex((ch, k) => ch !== b[k]); return i < 0 ? '' : `at ${i}: "${a.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}" vs "${b.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}"` }
   check('Demo: the loaded plan re-renders with the same decisions, start date and skips', recordAfter === recordBefore, recordAfter === recordBefore ? '' : firstDiff(String(recordBefore), String(recordAfter)))

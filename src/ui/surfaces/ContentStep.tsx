@@ -870,7 +870,9 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
                   {W.learn}
                 </a>
               )}
-              {learn && onTroubleshooting && <span aria-hidden="true">·</span>}
+              {/* A text separator, not a box of its own: a flex item reads as a line of
+                  its own ("·" alone) to anything that reads the step's text. */}
+              {learn && onTroubleshooting && ' · '}
               {onTroubleshooting && (
                 <button type="button" className="inline-link" onClick={onTroubleshooting}>
                   {W.troubleshooting}
