@@ -7,6 +7,9 @@
 # (a 5-hour window may have reset); if Fable is still limited it fails fast and Opus takes it.
 
 param(
+  [string]$Segments = "SEGMENTS.md",
+  [string]$Context = "RUN-CONTEXT.md",
+  [string[]]$Ids = @(),
   [int]$Start = 0,
   [int]$End = 8,
   [string]$Primary = "fable",
@@ -41,7 +44,7 @@ function Get-Dirty { return ((& git -C $Repo status --porcelain) -ne $null) }
 function Invoke-Segment([string]$seg, [string]$model, [string]$resumeNote) {
   $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
   $log = Join-Path $logDir "$seg-$model-$stamp.json"
-  $prompt = "Read $docs/RUN-CONTEXT.md, then execute segment $seg from $docs/SEGMENTS.md exactly as written. Do not read other segments. Follow the overnight failure protocol. End with the tree green and committed.$resumeNote"
+  $prompt = "Read $docs/$Context, then execute segment $seg from $docs/$Segments exactly as written. Do not read other segments. Follow the overnight failure protocol. End with the tree green and committed.$resumeNote"
   & claude -p $prompt `
       --model $model --effort $Effort `
       --dangerously-skip-permissions @promptsFlag `
@@ -50,7 +53,7 @@ function Invoke-Segment([string]$seg, [string]$model, [string]$resumeNote) {
   $code = $LASTEXITCODE
   $text = Get-Content $log -Raw
   return @{ code = $code; log = $log; model = $model
-            limited = ($text -match 'rate_limit|usage limit|limit reached|out of usage') }
+            limited = ($text -match 'session limit|rate_limit|usage limit|limit reached|out of usage|"api_error_status":429') }
 }
 
 function Stash-Leftovers([string]$seg, [string]$why) {
@@ -63,12 +66,17 @@ function Stash-Leftovers([string]$seg, [string]$why) {
 }
 
 $consecutiveFailures = 0
-for ($n = $Start; $n -le $End; $n++) {
-  $seg = "S$n"
+if ($Ids.Count -eq 0) { $Ids = @(); for ($n = $Start; $n -le $End; $n++) { $Ids += "S$n" } }
+foreach ($seg in $Ids) {
   Write-Host "=== $seg start $(Get-Date -Format u) ==="
 
   $r = $null
   $resumeNote = ""
+  $prior = (& git -C $Repo stash list) | Select-String -Pattern "auto-stash after $seg " | Select-Object -First 1
+  if ($prior) {
+    $name = ($prior.Line -replace '^stash@\{\d+\}: On [^:]+: ','')
+    $resumeNote = " NOTE: a previous attempt of this segment left uncommitted work in git stash '$name'. Run git stash list, inspect it, apply it if it is coherent and green, otherwise drop it and redo the task."
+  }
   $model = $Primary
   $waits = 0
   while ($true) {
