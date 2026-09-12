@@ -170,7 +170,8 @@ test('the Implementation region says "Source checked <date>" from the authored f
   const source = { id: 's', title: 'x', url: 'https://learn.microsoft.com/x', checkedOn: '2026-09-10', userFacing: true }
   assert.equal(packageSourceLine(compile({ verifiedSources: [source], baselineAuthority: { pinCommit: 'a'.repeat(40) } }, entra), W), 'Source checked Sep 10, 2026')
   assert.equal(packageSourceLine(compile({ baselineAuthority: { pinCommit: 'a'.repeat(40) } }, entra), W), null, 'a pin was shown as a source line')
-  assert.equal(packageSourceLine(compile({ verifiedSources: [{ ...source, userFacing: false }] }, entra), W), null, 'a research-only source dated the line')
+  // Every verified source with a checked date dates the line, user-facing or not (batch A decision 10).
+  assert.equal(packageSourceLine(compile({ verifiedSources: [{ ...source, userFacing: false }] }, entra), W), 'Source checked Sep 10, 2026', 'a checked source did not date the line')
   assert.equal(W.sourceChecked, 'Source checked {date}')
   assert.equal('sourcePins' in W, false)
   const words = JSON.stringify(CONTENT)

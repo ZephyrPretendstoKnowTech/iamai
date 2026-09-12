@@ -541,12 +541,14 @@ const userFacing = (pkg: CompiledPackage): VerifiedSource[] => (pkg.meta.verifie
 const sourceById = (pkg: CompiledPackage, id: string): VerifiedSource | null => userFacing(pkg).find((s) => s.id === id) ?? null
 
 /**
- * The date the package's user-facing Microsoft sources were last checked
- * (`verifiedSources[].checkedOn`, YYYY-MM-DD): the latest one, deterministically.
- * Never the build, the deploy, the browser or a file's time.
+ * The date the package's Microsoft sources were last checked
+ * (`verifiedSources[].checkedOn`, YYYY-MM-DD): the latest one over every
+ * verified source, user-facing or not, deterministically (batch A decision 10:
+ * the line renders wherever a checked date exists). Never the build, the
+ * deploy, the browser or a file's time.
  */
 export function sourceUpdatedOn(pkg: CompiledPackage): string | null {
-  const dates = userFacing(pkg)
+  const dates = (pkg.meta.verifiedSources ?? [])
     .map((s) => s.checkedOn)
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort()

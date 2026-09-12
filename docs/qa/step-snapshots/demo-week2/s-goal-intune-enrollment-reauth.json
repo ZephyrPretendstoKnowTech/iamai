@@ -1,11 +1,11 @@
 {
-  "lane": "Up Next",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Observing",
   "reason": "when 1 MFA grant on this policy exist (now 0)",
-  "fact": null,
-  "badge": "Up Next · After Decide How Devices Are Managed",
-  "bar": "After Decide How Devices Are Managed",
-  "rail": "Up Next · After Decide How Devices Are Managed",
+  "fact": "Report-only",
+  "badge": "Ready · Observing",
+  "bar": "Continue observation",
+  "rail": "Ready · Observing",
   "headings": [
     "Why",
     "Readiness",
@@ -14,22 +14,21 @@
   ],
   "tiles": [
     {
+      "label": "Observation",
+      "state": "Report-only"
+    },
+    {
       "label": "Prerequisite · Ready",
       "state": "Decide How Devices Are Managed"
     },
     {
       "label": "Prerequisites",
       "state": "when 1 MFA grant on this policy exist (now 0)"
-    },
-    {
-      "label": "Fresh sign-in proof",
-      "state": "Unknown"
     }
   ],
   "channels": [
     "Entra",
     "PowerShell",
-    "JSON",
     "AI Info"
   ],
   "when": "—"
