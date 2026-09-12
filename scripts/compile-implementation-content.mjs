@@ -110,8 +110,16 @@ if (args[0] === '--validate-library') {
     [/prerequisites/, 'prerequisite shape', 'genuine remaining defect'],
     [/META\.json does not parse|CONTENT\.md|no META\.json/, 'package does not parse', 'genuine remaining defect'],
   ];
-  const featureOf = (e) => (FEATURES.find(([re]) => re.test(e)) ?? [null, 'other', 'unclassified'])[1];
-  const classOf = (f) => (FEATURES.find(([, name]) => name === f) ?? [null, null, 'unclassified'])[2];
+  // A correction on a step that makes an object (a group, a location, a strength)
+  // is a Partial the runtime never enters for that kind of step (states.ts
+  // RUNTIME_REACH): IAMAI resolves no update for non-policy objects yet.
+  const OBJECT_PARTIAL = 'object correction the runtime never enters (no update is resolved for a non-policy object)';
+  const featureOf = (e, stepId) => {
+    const f = (FEATURES.find(([re]) => re.test(e)) ?? [null, 'other', 'unclassified'])[1];
+    const objectStep = stepClassOf(contentStepForPackage(stepId)?.kind) !== 'policy';
+    return objectStep && /^projection\.partial/.test(e) && /mismatch binding|no machine facts/.test(f) ? OBJECT_PARTIAL : f;
+  };
+  const classOf = (f) => (f === OBJECT_PARTIAL ? 'later scope (B2): non-policy object corrections' : (FEATURES.find(([, name]) => name === f) ?? [null, null, 'unclassified'])[2]);
   const results = [];
   for (const dir of dirs) {
     const rel = path.relative(root, dir).replaceAll('\\', '/');
@@ -127,7 +135,7 @@ if (args[0] === '--validate-library') {
   const passed = results.filter((r) => r.errors.length === 0);
   const byFeature = {};
   for (const r of results) for (const e of r.errors) {
-    const f = featureOf(e);
+    const f = featureOf(e, r.package);
     byFeature[f] ??= { errors: 0, packages: new Set() };
     byFeature[f].errors += 1;
     byFeature[f].packages.add(r.package);
