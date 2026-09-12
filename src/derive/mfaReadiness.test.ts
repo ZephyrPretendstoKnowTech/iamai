@@ -8,11 +8,13 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { bigFixtureSnapshot } from '../testing/bigFixture.ts'
-import { fixture } from '../roadmap/fixtures/index.ts'
-import { COMPAT_SHOW_KEYS, SHOW_KEYS, showKeyOf, shows, readinessView } from './mfaReadiness.ts'
+import { allFixtures, fixture } from '../roadmap/fixtures/index.ts'
+import { runFixture } from '../roadmap/fixtures/run.ts'
+import { COMPAT_SHOW_KEYS, DEFAULT_SHOW, SHOW_KEYS, showKeyOf, shows, readinessView } from './mfaReadiness.ts'
+import { stepMfaHold } from './stepMfaReadiness.ts'
 import { KINDS } from './ladder.ts'
 import { READINESS_STATES } from '../scoring/phishingResistant.ts'
-import { actionOf, footerParts, methodsCell, proofLines, readinessWord, stateTitle } from '../ui/surfaces/readinessCells.ts'
+import { actionOf, footerParts, methodsCell, passkeyStripParts, proofLines, readinessWord, stateTitle } from '../ui/surfaces/readinessCells.ts'
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
@@ -109,4 +111,75 @@ test('the accounts that are not people read not a person, with their kind, and a
   assert.equal(showKeyOf('rung-3'), null, 'the rung filters are gone')
   assert.equal(showKeyOf('needsProof'), 'needsProof')
   assert.equal(showKeyOf('nonsense'), null)
+})
+
+// Batch 2 §7: the passkey strip's numbers add up to its denominator. The demo read
+// "4 of 30 have a passkey · Show 25 without" with one person whose methods were
+// not read in neither count, and the hostile tenant read "0 of 34 have a passkey ·
+// None without" when nobody's methods were read at all.
+test('the passkey strip accounts for every active person: with, without, and methods not read', () => {
+  for (const f of allFixtures()) {
+    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const { have, without, unread } = v.passkeys
+    assert.equal(have + without + unread, v.facts.active, `${f.name}: the passkey parts do not sum to the active people`)
+    assert.equal(v.rows.filter((r) => shows(r, 'noPasskey')).length, without, `${f.name}: "Show ${without} without" filters to a different number of rows`)
+  }
+  const words = (name: 'demo' | 'demo-week2' | 'hostile'): string => {
+    const f = fixture(name)
+    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    const s = passkeyStripParts(v.passkeys)
+    return [s.without, ...s.rest].filter((x) => x !== null).join(' · ')
+  }
+  assert.equal(words('demo'), 'Show 25 without → · 1 unread')
+  assert.equal(words('demo-week2'), 'Show 22 without → · 1 unread')
+  assert.equal(words('hostile'), '34 unread', 'a tenant with no method read is never "None without"')
+  assert.deepEqual(passkeyStripParts({ without: 0, unread: 0 }), { without: null, rest: ['None without'] })
+})
+
+// Batch 2 §7: "No passkey" is a rollout fact, never a readiness one. Nobody holding
+// a passkey or FIDO2 key carries it; a Windows-Hello-only person does, and stays in
+// the readiness state the proof gives them (owner, Step 7: a passkey is recommended).
+test('no passkey or FIDO2 holder reads No passkey, and a Windows-Hello-only person keeps their readiness', () => {
+  let hello = 0
+  for (const f of allFixtures()) {
+    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    for (const r of v.rows) {
+      if (r.kind !== 'person') continue
+      const rows = f.snapshot.authMethods[r.user.id]
+      const registered = f.snapshot.registrationDetails.find((x) => x.id === r.user.id)?.methodsRegistered ?? []
+      const holds = Array.isArray(rows) ? rows.some((m) => m.kind === 'passkey' || m.kind === 'fido2') : registered.some((n) => n.startsWith('passKey') || n === 'fido2SecurityKey')
+      if (holds) {
+        assert.notEqual(methodsCell(r).note, 'No passkey', `${f.name}/${r.user.id}: a passkey holder reads No passkey`)
+        assert.equal(shows(r, 'noPasskey'), false, `${f.name}/${r.user.id}: a passkey holder is in No passkey`)
+      }
+      if (r.active && r.methods?.includes('windowsHello') && !r.methods.includes('passkey')) {
+        assert.equal(methodsCell(r).note, 'No passkey')
+        assert.equal(r.state, r.readiness?.state, 'No passkey moved a Windows Hello holder out of their readiness')
+        hello++
+      }
+    }
+  }
+  assert.ok(hello > 0, 'no Windows-Hello-only person in the fixtures: the premise is untested')
+})
+
+// Batch 2 §7: the counts, the footer and a Plan-scoped worklist agree in the demo's
+// two snapshots — "Filtered to the N people" is exactly the rows it shows.
+test('the demo snapshots: states sum to the summary, the footer accounts for everyone, and a step-scoped list shows the people it names', () => {
+  for (const name of ['demo', 'demo-week2'] as const) {
+    const f = fixture(name)
+    const v = readinessView(f.snapshot, f.snapshot.asOf, f.mapping)
+    assert.equal(READINESS_STATES.reduce((n, s) => n + v.counts[s], 0), v.facts.active, `${name}: the states do not sum to the summary`)
+    const footer = footerParts(v.facts).map((p) => Number(p.text.match(/^(\d+)/)?.[1]))
+    assert.equal(v.facts.active + footer.reduce((a, b) => a + b, 0), v.rows.length, `${name}: the footer and the active people are not every account`)
+    const r = runFixture(f)
+    let scoped = 0
+    for (const step of r.steps) {
+      const hold = stepMfaHold(step, r.viability ?? [])
+      if (!hold?.ids) continue
+      const ids = new Set(hold.ids)
+      assert.equal(v.rows.filter((row) => ids.has(row.user.id) && shows(row, DEFAULT_SHOW)).length, ids.size, `${name}/${step.id}: the scoped list shows a different number than it names`)
+      scoped++
+    }
+    assert.ok(scoped > 0, `${name}: no step scopes the worklist: the premise is untested`)
+  }
 })
