@@ -30,6 +30,7 @@ import { exclusionsGroupChoice, awaitsOperator, exclusionsGroupIdToVerify } from
 import { emergencySelection } from './mapping/emergencyChoice.ts'
 import { badgeLabel, stepContract } from './ui/surfaces/stepContract.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
+import { laneViewFor } from './ui/surfaces/planBoard.ts'
 import { statusOf } from './ui/surfaces/statusWord.ts'
 import { breakGlassFindings } from './validation/report.ts'
 import { implementationOffered, unavailableReason } from './roadmap/operations.ts'
@@ -434,22 +435,29 @@ test('043.12: the export view is the current scan’s, never the last one’s', 
   let differed = 0
   for (const t of transitions()) {
     for (const s of t.b.steps) {
-      const contract = stepContract(s, ctxFor(t.b, s))
-      const view = stepExportView(s, ctxFor(t.b, s))
-      assert.equal(view.status, contract.state.word, `${t.key}/${s.id}: the export view and the opened step give different status words`)
+      // The lane read over this scan's plan (planBoard.ts laneViewFor, A1c): the
+      // opened step and the export view state it, word for word.
+      const lane = laneViewFor(s, t.b.steps)
+      const contract = stepContract(s, ctxFor(t.b, s), undefined, lane)
+      const view = stepExportView(s, ctxFor(t.b, s), lane)
       assert.equal(view.state, badgeLabel(contract), `${t.key}/${s.id}: the export view and the opened step give different states`)
       const was = stepIn(t.a, s.id)
       if (!was) continue
-      const before = stepExportView(was, ctxFor(t.a, was))
-      // Where the step's semantics moved, the export moved with them; where they
-      // did not, it did not invent a difference.
-      if (`${s.state.lifecycle}/${s.state.condition}` !== `${was.state.lifecycle}/${was.state.condition}`) {
+      const before = stepExportView(was, ctxFor(t.a, was), laneViewFor(was, t.a.steps))
+      // Where the step's lane moved, the export moved with it; where it did not,
+      // it did not invent a difference (the state is the lane, A1c, never the
+      // lifecycle read again).
+      const laneBefore = laneViewFor(was, t.a.steps)
+      assert.equal(before.state, laneBefore.label, `${t.key}/${s.id}: the earlier scan's export view states a different lane from its board`)
+      if (laneBefore.label !== lane.label) {
         assert.notEqual(view.state, before.state, `${t.key}/${s.id}: the step moved and the export still speaks for the scan before it`)
         differed++
+      } else {
+        assert.equal(view.state, before.state, `${t.key}/${s.id}: the step's lane did not move and the export invented a difference`)
       }
     }
   }
-  assert.ok(differed > 0, 'no transition moved a step’s stage or condition: the assertion above is vacuous')
+  assert.ok(differed > 0, 'no transition moved a step’s lane: the assertion above is vacuous')
 })
 
 // ---- 13. a scan updates the record; it never deletes what it did not look at ----

@@ -57,6 +57,25 @@ export function undatedRows(steps: readonly Step[], waves: readonly { stepIds: s
 }
 
 /**
+ * The rows the printed document's Deferred section draws (A1c, decision 3): the
+ * steps the operator deferred. The screen's Deferred group is the lane engine's
+ * (planLanes.ts, a skipped step is owner-deferred); this is the same fact read
+ * for the document, which takes a deferred step out of its phase and prints it
+ * once, under the lane's own word.
+ */
+export function deferredRows(steps: readonly Step[]): Step[] {
+  return steps.filter((s) => inWave(s) && s.status === 'skipped')
+}
+
+/**
+ * The rows the printed document's Completed section draws: the finished steps,
+ * which the screen's Completed group holds and no phase dates.
+ */
+export function completedRows(steps: readonly Step[]): Step[] {
+  return steps.filter((s) => s.status === 'done' && !s.doesntApply)
+}
+
+/**
  * The rows the floor's own group draws (roadmap/floor.ts): a control Microsoft
  * recommends that the active baseline does not carry. It is provenance and
  * nothing else — the row still says whatever its own state says — but it decides

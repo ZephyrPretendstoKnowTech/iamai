@@ -431,8 +431,8 @@ export function scanTile(input: ScanInput): ScanTile {
 
 // ---- 4 Plan: ready, the last full plan, waiting for the scan, or the sample ----
 export type PlanInput =
-  /** A complete scan: the state with the step counts once the plan has computed, one line saying what was built, and Open the plan. The readiness ladder is MFA Readiness's, not Connect's (task 016). */
-  | { kind: 'ready'; at: string; counts: { steps: number; done: number } | null; now?: number }
+  /** A complete scan: the state with the step counts once the plan has computed — every step, and the Completed lane's count (planLanes.ts laneCountsOf, A1c) — one line saying what was built, and Open the plan. The readiness ladder is MFA Readiness's, not Connect's (task 016). */
+  | { kind: 'ready'; at: string; counts: { steps: number; completed: number } | null; now?: number }
   /** A scan with gaps kept the last full plan. */
   | { kind: 'last'; at: string }
   /** Signed in, no plan yet: the scan has not run, is running, or ended with gaps and nothing before it. */
@@ -462,7 +462,7 @@ export function planTile(input: PlanInput): PlanTile {
         kind: 'ready',
         title: P.title,
         // The step counts arrive once the plan has computed; until then the state carries the scan's age alone, never a placeholder.
-        state: input.counts ? fillText(R.stateCounted, { steps: input.counts.steps, done: input.counts.done, age }) : fillText(R.state, { age }),
+        state: input.counts ? fillText(R.stateCounted, { steps: input.counts.steps, completed: input.counts.completed, age }) : fillText(R.state, { age }),
         tone: 'done',
         lead: R.lead,
         actions: [{ label: R.open, weight: 'primary' }],

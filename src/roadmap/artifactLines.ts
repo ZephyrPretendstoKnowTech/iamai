@@ -31,12 +31,12 @@ function section(label: string, items: readonly string[]): string | null {
 }
 
 /**
- * Where the step is, in the words the opened step's badge carries (the export
- * view's `state`, ui/surfaces/planState.ts badgeOf). Nothing is joined here: the
- * badge already says the stage beside the state's own word where the two are
- * different facts, and the word alone where there is no stage, so a row reading
- * Needs attention never leaves as "Healthy" and a baseline conflict never leaves
- * as "· Baseline conflict" with nothing in front of it.
+ * Where the step is, in the words the row and the opened step's badge carry:
+ * the lane label (the export view's `state`, ui/surfaces/planBoard.ts
+ * laneLabelOf, A1c). Nothing is joined here: the label already reads `Lane ·
+ * substatus`, `Lane · After <step>` or `Lane · <blocker>`, so a row reading On
+ * Hold never leaves as "Healthy" and a baseline conflict never leaves as
+ * "· Baseline conflict" with nothing in front of it.
  */
 export function stateLine(v: Pick<ExportStep, 'state'>): string | null {
   return typeof v.state === 'string' && v.state.trim().length > 0 ? v.state : null

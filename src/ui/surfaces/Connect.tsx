@@ -66,6 +66,9 @@ import type { Action, BaselinePin, BaselineUpdate, ConnectStatus, PlanInput, Pla
 import { facts, stepFacts } from '../../derive/facts.ts'
 import { signInProofRead } from '../../scoring/fromSnapshot.ts'
 import { usePlanData } from './planData.ts'
+import { laneCountsOf, laneReadings } from './planLanes.ts'
+import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
+import { cleanupEntry } from './cleanupExport.ts'
 
 const C = app.connect
 const PACKAGE_HREF = '#/how#package'
@@ -494,7 +497,16 @@ function SignedIn({
   const computed = plan.computed
   // The destination's own count, including the Cleanup rows the emergency-access
   // answers complete (derive/facts.ts): the tile and the Plan header state one number.
-  const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null, plan.mapping?.breakGlassAnswers ?? null) : null
+  const cleanupAnswers = plan.mapping?.breakGlassAnswers ?? null
+  const steps = computed ? stepFacts(computed.steps, computed.schedule.cleanup ?? null, cleanupAnswers) : null
+  // The Completed lane's count, from the engine reading the Plan's own rows are
+  // built from (planLanes.ts laneReadings, A1c): the tile and the Plan header's
+  // Completed tile state one number, read once here for the tile's state line.
+  const laneTileCounts = useMemo(() => {
+    if (!computed || !steps) return null
+    const rows = (computed.schedule.cleanup?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ id: `cleanup-${r.kind}`, complete: cleanupComplete(r, cleanupAnswers) }))
+    return { steps: steps.steps, completed: laneCountsOf(laneReadings(computed.steps, rows)).Completed }
+  }, [computed, steps?.steps, cleanupAnswers])
   // What the complete scan produced, for the step's meta row. Each number comes
   // from the authority that already owns it: derive/facts.ts for the people (the
   // one denominator the Plan and MFA Readiness count against), the loaded
@@ -509,7 +521,7 @@ function SignedIn({
   const t3 = scanTile(scanInput.kind === 'complete' ? { ...scanInput, counts: scanCounts } : scanInput)
   const planInput: PlanInput =
     scanInput.kind === 'complete' && lastScan
-      ? { kind: 'ready', at: lastScan.at, counts: steps }
+      ? { kind: 'ready', at: lastScan.at, counts: laneTileCounts }
       : scanInput.kind === 'gaps' && lastScan
         ? { kind: 'last', at: lastScan.at }
         : { kind: 'waiting' }

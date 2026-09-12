@@ -23,7 +23,8 @@ come from `docs/design/content.json`; the plan comes from the tenant snapshot + 
 - While working: `npx tsc --noEmit` only. Tests once, before the push: `npm test`.
   Never run the walk (`npm run walk`), read a walk report, or add a walk invariant: CI runs
   the walk on every push to main (a job before deploy-pages; a P0 fails the job). A unit test
-  per item is the acceptance. CI runs smoke.
+  per item is the acceptance. CI runs smoke. The one exception is a batch's closing segment
+  (A6 in batch A), which runs the walk once locally to gate the deploy.
 - Commit per change, plain message. No reports.
 - Done means: the acceptance is visible on screen, a unit test asserts it, pushed, CI green
   (CI runs the walk).

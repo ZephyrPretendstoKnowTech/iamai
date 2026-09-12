@@ -69,9 +69,10 @@ export function buildIcs(steps: Step[], tenantName: string, planId: string, view
     lines.push(`DTSTART;VALUE=DATE:${icsDate(event.start)}`)
     lines.push(`DTEND;VALUE=DATE:${icsDate(endExclusive)}`)
     const v = view(s)
-    // What the day is for, as the Plan rail says it: its transition's words, or the
-    // milestone's own where the rail reads those (preparation, verification, review).
-    const action = TRANSITION[event.transition] ?? v.next?.replace(/\.$/, '') ?? null
+    // What the day is for, as the Plan rail says it: its transition's words, or
+    // the step's lane label where the rail has none (A1c): the same state the
+    // row and the badge show, never a sentence of the artifact's own.
+    const action = TRANSITION[event.transition] ?? v.state
     lines.push(fold(`SUMMARY:${escape(action ? `${v.title} · ${action}` : v.title)}`))
     // The calendar entry is the runbook: what the step says on screen, in the
     // order the screen states it (roadmap/artifactLines.ts). Where it is, what

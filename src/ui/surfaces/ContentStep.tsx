@@ -382,7 +382,7 @@ export function ContentStep({
         ? powershellFor(stepOperations(step))
         : ch === 'json'
           ? policyJsonText(step)
-          : stepContext(step, (s) => stepExportView(s, ctx))
+          : stepContext(step, (s) => stepExportView(s, ctx, laneView))
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.

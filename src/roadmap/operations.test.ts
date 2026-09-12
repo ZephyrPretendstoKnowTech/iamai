@@ -687,7 +687,7 @@ test('a stale unavailable step goes through the schedule and comes out of every 
   // No date, no calendar entry, no finish — whatever it still carries.
   assert.equal(rowWhen(stale, schedule.waves[0]?.start ?? null), '', 'no row date')
   assert.equal(planFinish([stale]).finish, null, 'no finish contribution')
-  const ics = buildIcs([stale], 'Contoso', 'plan-x', () => ({ title: 'Stale', why: '', state: '', status: '', next: null, who: null, population: null, whatToDo: [], fix: [], doneWhen: [], ifWrong: null, dates: null, implementation: false }))
+  const ics = buildIcs([stale], 'Contoso', 'plan-x', () => ({ title: 'Stale', why: '', state: '', lane: '', substatus: null, reason: null, fact: null, next: null, who: null, population: null, whatToDo: [], fix: [], doneWhen: [], ifWrong: null, dates: null, implementation: false }))
   assert.ok(!ics.includes(stale.id), 'no calendar entry')
   // And exactly one row, in the undated group.
   const undated = undatedRows(steps, schedule.waves)

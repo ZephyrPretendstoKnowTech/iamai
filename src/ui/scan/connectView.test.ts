@@ -292,9 +292,10 @@ const planOnlyItsOwn = (t: PlanTile): void => {
 const NO_MAPPING = { breakGlassUserIds: [] as string[], serviceAccountUserIds: [] as string[] }
 const L = factsOf(ladder(full, NO_MAPPING, full.asOf))
 
-test('tile 4, Plan, ready: "ready · N steps, N done · from the scan N ago", one line of what was built, Open the plan (primary) alone, the accent badge; no facts row, no drop line', () => {
-  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, now: twoMinutesLater })
-  assert.equal(t.state, 'ready · 33 steps, 8 done · from the scan 2 minutes ago')
+test('tile 4, Plan, ready: "ready · N steps, N completed · from the scan N ago", one line of what was built, Open the plan (primary) alone, the accent badge; no facts row, no drop line', () => {
+  // The completed count is the Completed lane's (planLanes.ts laneCountsOf, A1c): the Plan header's own word.
+  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, completed: 8 }, now: twoMinutesLater })
+  assert.equal(t.state, 'ready · 33 steps, 8 completed · from the scan 2 minutes ago')
   assert.equal(t.tone, 'done')
   assert.equal(t.lead, 'Built from this scan: every step in order, who it touches, and when to make it.')
   assert.equal(t.facts, undefined, 'the facts row left the tile')
@@ -311,7 +312,7 @@ test('tile 4, Plan, ready: "ready · N steps, N done · from the scan N ago", on
 // Plan stage carries one way on and no person-level readiness diagnostic. The
 // rung counts belong to MFA Readiness, which comes after the plan, not before.
 test('the Plan stage routes to the plan and to nothing before it', () => {
-  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 } })
+  const t = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, completed: 8 } })
   assert.deepEqual(
     t.actions.map((a) => a.label),
     ['Open the plan →'],
@@ -355,9 +356,9 @@ test('tile 4 after a scan with gaps: last full plan · date and Open the last fu
 test("the page renders the scan's age from the one stored timestamp: Scan says complete · N ago, Plan says from the scan N ago with the same words, and no words say scanned", () => {
   const now = Date.parse(full.asOf) + 57 * 60_000
   const scan = scanTile({ kind: 'complete', at: full.asOf, now })
-  const plan = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, done: 8 }, now })
+  const plan = planTile({ kind: 'ready', at: full.asOf, counts: { steps: 33, completed: 8 }, now })
   assert.equal(scan.state, 'complete · 57 minutes ago')
-  assert.equal(plan.state, 'ready · 33 steps, 8 done · from the scan 57 minutes ago')
+  assert.equal(plan.state, 'ready · 33 steps, 8 completed · from the scan 57 minutes ago')
   const age = scan.state.replace('complete · ', '')
   assert.ok(plan.state.endsWith(age), 'the two tiles read the same age')
   const page = [...tileStrings(accountTile({ tenant, upn, role: 'Global Administrator' })), ...tileStrings(scan), ...tileStrings(plan)].join('\n')

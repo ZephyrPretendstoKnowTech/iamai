@@ -480,7 +480,8 @@ try {
   // The header's progress tiles replaced the generated status sentence (owner, 2026-09-11).
   const progressOf = () => evaluate(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => ((t.querySelector('dt') || {}).textContent || '').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ')`)
   const planProgress = await progressOf()
-  check('Plan: the header shows progress tiles for steps, in place, waiting and remaining', /^Steps=\d+, In place=\d+, Waiting=\d+, Remaining=\d+$/.test(planProgress), planProgress)
+  // The four tiles (A1b decision 11): Steps · Completed · Projected finish · Started.
+  check('Plan: the header shows progress tiles for steps, completed, projected finish and started', /^Steps=\d+, Completed=\d+, Projected finish=.+, Started=.+$/.test(planProgress), planProgress)
   // The second header line left with docs/design/mockups/plan-top-v2.html; the tenant and the scan age live on Connect alone.
   check('Plan: no second header line; the tenant and the scan age live on Connect alone', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
   // Task 011: the Plan is the rollout board and nothing above it. The readiness
@@ -526,27 +527,26 @@ try {
   check('Plan: every row carries a Lane · substatus label', laneLabels.length >= 3 && laneLabels.every((l) => /^(Ready|Up Next|On Hold) · \S/.test(l)), JSON.stringify(laneLabels.filter((l) => !/^(Ready|Up Next|On Hold) · \S/.test(l)).slice(0, 3)))
   // The focus controls are toggles over the same rows, and their counts come
   // from the board rather than from a constant.
-  check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Needs attention=\d+\/false \| Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
+  check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
   check('Plan: Work type is a filter beside the toggles, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All work|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
   // Correction A: the next marker is one row — the first Ready row in the
   // engine's order — and not every step the engine calls ready.
   const nextPills = Number(await evaluate(`document.querySelectorAll('main.page .plan-row .next-mark').length`))
   check('Plan: one row is marked next, and it is in the Ready lane', nextPills === 1, `next pills=${nextPills}`)
-  const readyRows = Number(await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Ready').length`))
+  const readyRows = Number(await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => /^Ready( · |$)/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).length`))
   check('Plan: ready work outnumbers the next step, so the marker is not a synonym for ready', readyRows > nextPills, `Ready rows=${readyRows} next=${nextPills}`)
   // Correction B: the board's timing column. The generic `now` every
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
   check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
-  // A held row reads Held (or the threshold, review or records that hold it); a
-  // row only sequenced after a scheduled prerequisite is not held, keeps its date
-  // and names what it comes after (roadmap/holds.ts). A date is never shown on a
-  // Blocked row without that.
-  const blockedWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.status') || {}).textContent || '').trim() === 'Blocked').map((r) => ({ when: ((r.querySelector('.when') || {}).textContent || '').trim(), reason: ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim() }))`)
-  // A dated Blocked row is sequenced after something (after: …) or is a create the
-  // plan schedules while a threshold holds its enforcement (when …): roadmap/stepSchedule.ts.
-  const blockedWrong = blockedWhens.filter(({ when, reason }) => !(when === 'Held' || when === 'Not scheduled' || /^After /.test(when) || /reaches|held|ready/i.test(when) || (/\d{4}$/.test(when) && /^(after: |when )/.test(reason))))
-  check('Plan: a Blocked row reads what it waits on or Held, or its date beside what it comes after', blockedWrong.length === 0, JSON.stringify(blockedWrong.slice(0, 3)))
+  // The When column is a day or the placeholder (A1b): what holds a row lives in
+  // its lane label and its reason line, never in the date column. The chip is
+  // the tenant fact Report-only or Enforced, or nothing (decision 2).
+  const rowStates = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim(), chip: ((r.querySelector('.status') || {}).textContent || '').trim() }))`)
+  const whenWrong = rowStates.filter(({ when }) => !(when === '—' || /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
+  check('Plan: every row’s When is a day or the placeholder', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
+  const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
+  check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
   const blankCells = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.when') || {}).textContent || '').trim() === '' || ((r.querySelector('.who') || {}).textContent || '').trim() === '').map((r) => ((r.querySelector('.step-title') || {}).textContent || '').trim())`)
   check('Plan: no row leaves When or Impact blank', blankCells.length === 0, JSON.stringify(blankCells.slice(0, 3)))
@@ -562,7 +562,7 @@ try {
   // column. It carries the rollout exception where the step is excludable and the
   // scan; the row above the step is what closes it (the approved Plan design).
   check('Plan: the opened step ends in the frame’s own footer, under both columns', await evaluate(`(() => { const st = document.querySelector('main.page .step'); const f = st && st.querySelector(':scope > .step-footer'); const body = st && st.querySelector(':scope > .step-body'); return !!(f && body && body.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING) })()`))
-  check('Plan: the footer offers the rollout exception and the scan, and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Scan to update the plan')) return false; return b.every((t) => ['Scan to update the plan', 'Exclude from rollout', "Doesn't apply here", 'Put this step back'].includes(t)) && !f.querySelector('button[disabled]') })()`))
+  check('Plan: the footer offers the rollout exception and the scan, and nothing else', await evaluate(`(() => { const f = document.querySelector('main.page .step > .step-footer'); if (!f) return false; const b = [...f.querySelectorAll('button')].map((x) => (x.textContent || '').trim()); if (!b.includes('Scan to update the plan')) return false; return b.every((t) => ['Scan to update the plan', 'Defer this step', "Doesn't apply here", 'Put this step back'].includes(t)) && !f.querySelector('button[disabled]') })()`))
   // The Readiness region and the Next milestone rail are on every opened step.
   check('Plan: the opened step draws Readiness and the Next milestone rail', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return false; const tiles = st.querySelectorAll('.readiness-strip .readiness-tile').length; const rail = st.querySelector('.step-side'); return tiles >= 1 && tiles <= 3 && !!st.querySelector('.readiness-bar') && !!rail && /Next milestone/i.test(rail.textContent || '') && rail.querySelectorAll('.side-block').length === 1 })()`))
   // The head badge carries the lifecycle and the condition, once. The line that
@@ -590,7 +590,8 @@ try {
   }
   check('Plan: Plan settings opens the popover', (await clickText('/^Plan settings$/')) && (await waitFor(`document.querySelector('main.page .plan-settings') !== null`)))
   check('Plan: the footer names its groups', ((await evaluate(`[...document.querySelectorAll('main.page .plan-footer summary')].map((s) => s.textContent).join(' ')`)).match(/Already in place|Doesn't apply here|Not licensed|Housekeeping/g) || []).length >= 1)
-  check('Plan: one status word per row', await evaluate(`[...document.querySelectorAll('main.page .plan-row .chip.status')].length >= 3`))
+  // Every row's state is its lane label (A1c); the chip beside it is a fact or absent.
+  check('Plan: one lane label per row', await evaluate(`(() => { const rows = [...document.querySelectorAll('main.page .plan-row')]; return rows.length >= 3 && rows.every((r) => /^(Ready|Up Next|On Hold|Completed|Deferred)( · \\S.*)?$/.test(((r.querySelector('.lane') || {}).textContent || '').trim())) })()`))
   // The Plan → MFA Readiness handoff (task 012): a step whose own enforcement
   // waits on the people it reaches being able to sign in the way it asks says so
   // and links there. Opening the link filters the page to those people and keeps
@@ -890,7 +891,7 @@ try {
   // Three branches, and the held one has to name what holds it: a plan whose
   // policies wait on a safety object nobody has chosen is the ordinary first
   // visit, and 'cannot finish until' with nothing after it is a hole.
-  check('Demo: the plan header shows progress tiles for steps, in place, waiting and remaining', /^Steps=\d+, In place=\d+, Waiting=\d+, Remaining=\d+$/.test(demoDay1Header), demoDay1Header)
+  check('Demo: the plan header shows progress tiles for steps, completed, projected finish and started', /^Steps=\d+, Completed=\d+, Projected finish=.+, Started=.+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // Item 4: a readiness-held step renders as a Blocked row whose date column
@@ -966,17 +967,17 @@ try {
       await openRow('/Block the Admin Portals/')
     }
     skipNote = await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('|')`)
-    if (await clickText('/^Exclude from rollout$/', 'main.page .step .step-footer')) {
+    if (await clickText('/^Defer this step$/', 'main.page .step .step-footer')) {
       await waitFor(`!!document.querySelector('main.page .step dialog[open] textarea')`, 3000)
       await evaluate(`(() => { const el = document.querySelector('main.page .step dialog[open] textarea'); if (!el) return false; const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; set.call(el, 'Not needed for this tenant'); el.dispatchEvent(new Event('input', { bubbles: true })); return true })()`)
       await sleep(150)
-      skipped = await clickText('/^Exclude from rollout$/', 'main.page .step dialog[open] .dialog-actions-row')
+      skipped = await clickText('/^Defer this step$/', 'main.page .step dialog[open] .dialog-actions-row')
       await sleep(400)
     }
   }
-  // A skipped step is deferred work: its row is drawn only while `Show deferred` is pressed (S3).
+  // A deferred step's row reads Deferred (decision 3) and is drawn only while `Show deferred` is pressed (S3).
   await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show deferred/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
-  check('Demo: a step is skipped', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Block the Admin Portals/.test(r.textContent) && /Skipped/.test(r.textContent))`, 4000)), skipNote || openNote)
+  check('Demo: a step is deferred', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Block the Admin Portals/.test(r.textContent) && ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Deferred')`, 4000)), skipNote || openNote)
   // A start date, in the plan settings.
   await demoGo('plan')
   await clickText('/^Plan settings$/')
@@ -1061,7 +1062,7 @@ try {
   const demoCover = await evaluate(`(document.querySelector('.print-plan .print-cover') || {}).textContent || ''`)
   check(
     'Demo: print page 1 renders the posture summary',
-    demoPrinted && /Conditional Access rollout plan/.test(demoCover) && /Tenant/.test(demoCover) && /Scanned/.test(demoCover) && /Baseline/.test(demoCover) && /In place \(/.test(demoCover) && /To do \(/.test(demoCover) && /Doesn't apply \(/.test(demoCover),
+    demoPrinted && /Conditional Access rollout plan/.test(demoCover) && /Tenant/.test(demoCover) && /Scanned/.test(demoCover) && /Baseline/.test(demoCover) && /Completed \(/.test(demoCover) && /To do \(/.test(demoCover) && /Doesn't apply \(/.test(demoCover),
   )
   await evaluate(`window.dispatchEvent(new Event('afterprint'))`)
   await sleep(200)
@@ -1084,8 +1085,8 @@ try {
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
     return evaluate(`(document.querySelector('main.page') || document.body).innerText`)
   }
-  const headerOf = (body) => (body.match(/Steps\s*\d+\s*In place\s*\d+\s*Waiting\s*\d+\s*Remaining\s*\d+/) ?? [''])[0].replace(/\s+/g, ' ').trim()
-  const inPlaceOf = (body) => Number((body.match(/In place\s*(\d+)\s*Waiting/) ?? [])[1] ?? '0')
+  const headerOf = (body) => (body.match(/Steps\s*\d+\s*Completed\s*\d+\s*Projected finish\s*\S+\s*Started\s*\S+/) ?? [''])[0].replace(/\s+/g, ' ').trim()
+  const inPlaceOf = (body) => Number((body.match(/Completed\s*(\d+)\s*Projected finish/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
   // Each plan row as the visitor reads it, flattened in Node (a regex in an
@@ -1130,7 +1131,7 @@ try {
   const demoWeek2Header = headerOf(week2Body)
   check('Demo: the week-two plan differs in its rows from day one', week2Body !== day1Body, demoWeek2Header)
   check(
-    'Demo: week two raises the header in-place count',
+    'Demo: week two raises the header Completed count',
     inPlaceOf(week2Body) > inPlaceOf(day1Body),
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
   )

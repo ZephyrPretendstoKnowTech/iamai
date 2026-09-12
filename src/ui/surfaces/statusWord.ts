@@ -17,18 +17,3 @@ export function statusOf(step: Step): StatusView {
   const s = planStateOf(step, isHeld(step))
   return { word: s.word, tone: s.tone }
 }
-
-/**
- * A Cleanup row's status word (task 042). Cleanup rows are not steps — they
- * carry no lifecycle and no condition — but they sit in the same board and must
- * speak the same vocabulary, and the Plan and the printed document had each
- * written the two words into their own JSX.
- *
- * Complete is `roadmap/cleanupDone.ts` `cleanupComplete`, the one reading of the
- * two facts that finish a row; this only chooses the word for it. It is In place
- * and never Enforced: a Cleanup row deploys nothing, so the stronger claim has
- * nothing to rest on (the same reason `statusOf` reserves Enforced above).
- */
-export function cleanupStatusOf(complete: boolean): StatusView {
-  return complete ? { word: 'In place', tone: 'ok' } : { word: 'Ready', tone: 'ok' }
-}
