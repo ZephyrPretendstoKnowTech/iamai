@@ -774,6 +774,8 @@ export function renderPages(): string {
   )
   const pl = P.plan
   const s = pl.settings
+  /** Every word of one content record, its $comment left out. */
+  const words = (o: Record<string, string>): string[] => Object.entries(o).filter(([k]) => !k.startsWith('$')).map(([, v]) => v)
   sec(
     'Plan header, settings, blocked reasons, footer',
     `<h2 class="h1">${esc(pl.h1)}</h2>` +
@@ -791,6 +793,12 @@ export function renderPages(): string {
       kv(s.signature, 'IT') +
       btn(s.close) +
       '</div>' +
+      h('Header tiles (Steps · Completed · Projected finish · Started)') +
+      ul(words(pl.progress), exT) +
+      h('Lanes and Ready substatus (the one state vocabulary, A1b)') +
+      ul([...words(pl.lanes), ...words(pl.substatus).map((w) => `${pl.lanes.ready} · ${w}`)], exT) +
+      h('When column: a day, or the placeholder; the Up Next label’s tail') +
+      ul(words(pl.when), exT) +
       h('Blocked reasons (one per row)') +
       ul([pl.blocked.after, pl.blocked.readiness, pl.blocked.count, pl.blocked.baseline, pl.blocked.exclusionsGroup], exT) +
       h('Gap suffix on a partly-in-place row') +

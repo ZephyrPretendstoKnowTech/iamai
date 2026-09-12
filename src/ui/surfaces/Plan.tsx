@@ -18,25 +18,23 @@ import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
-import { isHeld } from '../../roadmap/holds.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneLabelOf, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
-import { planStateOf } from './planState.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, boardReasonOf, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
-import { cleanupStatusOf, statusOf } from './statusWord.ts'
 import { rowWho } from './rowWho.ts'
 import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
-import type { PrerequisiteBlocker } from './stepContract.ts'
+import { factOf } from './stepContract.ts'
+import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -55,7 +53,7 @@ type PlanPage = {
   settingsLink: string
   settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }
   blocked: { after: string }
-  progress: { label: string; steps: string; inPlace: string; waiting: string; remaining: string; started: string }
+  progress: { label: string; steps: string; completed: string; projectedFinish: string; started: string; none: string }
   howTo: { link: string; items: string[] }
 }
 const PP = pages.plan as unknown as PlanPage
@@ -144,11 +142,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // the last phase, Cleanup included (§9).
   const cleanupPhase = c.schedule.cleanup ?? null
   const finish = planFinish(c.steps, cleanupPhase?.end ?? null)
-  // One count for the header, the print cover and Connect (derive/facts.ts):
-  // the steps and the Cleanup rows, each row counted the way the row reads
-  // itself (the answers complete the alerting row without a date).
+  // The emergency-access attestations, the second fact that can complete the alerting Cleanup row.
   const answers = data.mapping?.breakGlassAnswers ?? null
-  const { steps: total, done: inPlace } = stepFacts(c.steps, cleanupPhase, answers)
   // Weeks derive from the finish date, not the last blocked wave (item 15); one derivation, shared with the print and the sample tile (derive/finish.ts).
   const weeks = planWeeks(finish, c.schedule)
   // Held work dates no end (derive/finish.ts): Cleanup, which follows it, is undated with it.
@@ -177,6 +172,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // (the footer holds it); a skipped step is a deferred one.
   const readings = laneReadings(c.steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete })))
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
+  // A prerequisite tile's label is the prerequisite's own lane (decision 12).
+  const prerequisiteLabel = prerequisiteLabelFor(readings)
   // The Plan's next marker: the first Ready step in the engine's own order (§13),
   // and the row that draws the "next" pill. A Cleanup row is never the marker.
   const nextId = rowSteps.filter((s) => readings.get(s.id)!.lane === 'Ready').sort((a, b) => readings.get(a.id)!.order - readings.get(b.id)!.order)[0]?.id ?? null
@@ -190,49 +187,44 @@ export function Plan({ scan: lastScan, baseline, account }: {
   for (const step of rowSteps) {
     const reading = readings.get(step.id)!
     const isNext = step.id === nextId
-    // The Plan's one presentation state (planState.ts): the row's word, its tone,
-    // whether the Needs attention focus holds it and whether it is Waiting.
-    const planState = planStateOf(step, isHeld(step))
-    const laneLabel = laneLabelOf(reading, titleOf)
+    // The one state reading (planBoard.ts laneViewOf, A1b decision 1): the row's
+    // label and tone, and the opened step's badge, bar and rail.
+    const laneView = laneViewOf(reading, titleOf)
     items.push({
       id: step.id,
       title: contentTitle(step),
       lane: reading.lane,
-      laneLabel,
+      laneLabel: laneView.label,
       hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
-      attention: planState.attention,
-      waiting: planState.waiting,
       workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null),
       isNext,
       order: reading.order,
     })
     // The board's reading of the timing column (planBoard.ts `boardWhenOf`): the
-    // row's own value, with Held exactly where roadmap/holds.ts says the step is
-    // held — never for a step merely sequenced after another. The phase is a
-    // secondary projection: the date reads it, the lane never does.
+    // row's own value — a date, or the placeholder — held back exactly where
+    // roadmap/holds.ts says the step is held. The phase is a secondary
+    // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
-    const when = boardWhenOf(step, waveStart, titleOf)
-    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} lane={laneLabel} blockers={readinessBlockersOf(reading, titleOf)} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    const when = boardWhenOf(step, waveStart)
+    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
     for (const { row: r, id, complete } of cleanupRows) {
       const entry = cleanupEntry(r.kind)!
       const reading = readings.get(id)!
+      const laneView = laneViewOf(reading, titleOf)
       items.push({
         id,
         title: entry.title,
         lane: reading.lane,
-        laneLabel: laneLabelOf(reading, titleOf),
+        laneLabel: laneView.label,
         hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
-        // A Cleanup row carries no lifecycle and no condition: it is finished, or it is not.
-        attention: false,
-        waiting: false,
         workType: 'setup',
         isNext: false,
         order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneLabelOf(reading, titleOf)} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
     }
   }
 
@@ -241,15 +233,16 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
   // tab follows the step; otherwise the link would open nothing on screen.
   const openTab = open ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
-  // The progress tiles (owner, 2026-09-11): the steps and the in-place count the
-  // print cover and Connect share (derive/facts.ts), the rows Waiting — the one
-  // classification the schedule's waiting result counts (planState.ts) — and what is left.
-  const waitingCount = items.filter((i) => i.waiting).length
-  const progressTiles = [
-    { key: 'steps', label: PP.progress.steps, value: total },
-    { key: 'inPlace', label: PP.progress.inPlace, value: inPlace },
-    { key: 'waiting', label: PP.progress.waiting, value: waitingCount },
-    { key: 'remaining', label: PP.progress.remaining, value: Math.max(0, total - inPlace - waitingCount) },
+  // The header's four tiles (A1b decision 11): every step (the one denominator,
+  // derive/facts.ts, which the board's rows equal), the Completed lane counted
+  // off the board's own rows, the projected finish (A2 fills it; the placeholder
+  // until then) and the day the plan started.
+  const counts = focusCounts(items)
+  const progressTiles: { key: string; label: string; value: string | number }[] = [
+    { key: 'steps', label: PP.progress.steps, value: stepFacts(c.steps, cleanupPhase, answers).steps },
+    { key: 'completed', label: PP.progress.completed, value: counts.complete },
+    { key: 'projectedFinish', label: PP.progress.projectedFinish, value: PP.progress.none },
+    { key: 'started', label: PP.progress.started, value: data.startedFrom !== null ? absoluteDate(data.startedFrom) : PP.progress.none },
   ]
 
   return (
@@ -269,7 +262,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
         </dl>
         <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </div>
-      {data.startedFrom !== null && <p className="line plan-started">{fillText(PP.progress.started, { date: absoluteDate(data.startedFrom) })}</p>}
       {/* Nothing sits between the header line and the board. The MFA readiness
           ladder was a tenant-wide diagnostic on a page whose job is the rollout,
           and it answered a question no step on this page asks; it stays on Today,
@@ -329,7 +321,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         onTab={setTab}
         focus={focus}
         onFocus={setFocus}
-        counts={focusCounts(items)}
+        counts={counts}
         base={boardBase}
       />
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
@@ -361,7 +353,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
 
 /**
  * The board's controls: the three lane tabs, the search, the work-type filter,
- * and the Needs attention focus beside the two visibility toggles.
+ * and the two visibility toggles. On Hold is the attention view (A1b decision
+ * 11): there is no separate Needs attention focus.
  *
  * They are a reading of the rows and change nothing about them — no sort, no
  * state, no engine call. The counts are counted off the board's own row set
@@ -405,11 +398,6 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
             ))}
           </select>
         </label>
-        <button type="button" className={`focus${focus.attention ? ' active' : ''}`} aria-pressed={focus.attention} onClick={() => onFocus({ ...focus, attention: !focus.attention })}>
-          <span className="dot dot-attention" aria-hidden="true" />
-          {BOARD.needsAttention}
-          <span className="count">{counts.attention}</span>
-        </button>
         <button type="button" className={`focus${focus.showCompleted ? ' active' : ''}`} aria-pressed={focus.showCompleted} onClick={() => onFocus({ ...focus, showCompleted: !focus.showCompleted })}>
           {BOARD.showCompleted}
           <span className="count">{counts.complete}</span>
@@ -476,12 +464,12 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
   )
 }
 
-/** A Cleanup row (§5): the content title, one status word, who it touches, its day (or the day it was marked done); opens in place. */
+/** A Cleanup row (§5): the content title, its lane, who it touches, its day (or the day it was marked done); opens in place. */
 function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
-  /** The row's lane label (planBoard.ts laneLabelOf). */
-  lane: string
+  /** The row's one state reading (planBoard.ts laneViewOf): the row and the opened head say its label. */
+  lane: LaneView
   /** The emergency-access attestations, the second fact that can complete the alerting row (roadmap/cleanupDone.ts). */
   answers: { signInMonitoring: boolean | null } | null
   nameOf: (id: string) => string
@@ -497,18 +485,18 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
 }) {
   const entry = cleanupEntry(row.kind)
   if (!entry) return null
-  // A row marked done is In place from its recorded date (E3); alerting is also
+  // A row marked done is complete from its recorded date (E3); alerting is also
   // the recorded attestation (prompt 49 item 5). Both facts are read in one
-  // place (roadmap/cleanupDone.ts `cleanupComplete`) and worded in one place
-  // (statusWord.ts `cleanupStatusOf`), because the printed document read only
-  // the first of them and called the same row Ready (task 042).
-  const status = cleanupStatusOf(cleanupComplete(row, answers))
+  // place (roadmap/cleanupDone.ts `cleanupComplete`), which the lane adapter
+  // reads for the row's lane; the row and its opened head say that lane (A1b).
+  const status = { word: lane.label, tone: lane.tone }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
   const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null, IMPACT.configurationOnly)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
-      <PlanRow word={status.word} tone={status.tone} lane={lane} title={entry.title} who={who} when={cleanupWhen(row, undated)} open={open} onToggle={onToggle} />
+      {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
+      <PlanRow lane={lane.label} tone={lane.tone} title={entry.title} who={who} when={lane.lane === 'Completed' ? WHEN.none : cleanupWhen(row, undated)} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )
@@ -516,13 +504,15 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, isNext, lane, blockers, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, isNext, lane, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   isNext: boolean
-  /** `Lane · substatus/reason`: the engine's lane for the row (planBoard.ts laneLabelOf). */
-  lane: string
+  /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
+  lane: LaneView
   /** The engine's unresolved prerequisites of the row's next action (planBoard.ts readinessBlockersOf): the opened step's Readiness tiles. */
   blockers: PrerequisiteBlocker[]
+  /** A prerequisite tile's label by the prerequisite's own lane (planBoard.ts prerequisiteLabelFor). */
+  prerequisiteLabel: (id: string) => string | null
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings: () => void
   /**
@@ -559,25 +549,23 @@ function Row({ step, isNext, lane, blockers, onOpenMappings, when, waveStart, op
   onUnconfirm: (prerequisites: string[]) => void
   onScan?: (returnTo: string) => void
 }) {
-  const status = statusOf(step)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow). It stays thin
           on purpose: at a baseline of ~38 policies the collapsed rows are what
           makes the Plan readable, so a row says only enough to decide whether to
-          open it — the state, the title, who it touches, when. The one binding
-          reason sits under it, already in a pages.plan.blocked shape (the engine
-          fills those); a readiness hold reads in the date column instead. */}
+          open it — the lane, the tenant fact, the title, who it touches, when.
+          The one binding reason sits under it, already in a pages.plan.blocked
+          shape (the engine fills those); a readiness hold reads in the date column instead. */}
       <PlanRow
-        word={status.word}
-        tone={status.tone}
-        lane={lane}
+        lane={lane.label}
+        tone={lane.tone}
+        chip={factOf(step)}
         wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}
         who={rowWho(step, nameOf)}
         when={when}
-        whenReason={boardWhenWraps(step, when)}
-        reason={boardReasonOf(step, when)}
+        reason={boardReasonOf(step)}
         nextLabel={isNext ? PP.next : null}
         open={open}
         onToggle={onToggle}
@@ -591,8 +579,9 @@ function Row({ step, isNext, lane, blockers, onOpenMappings, when, waveStart, op
           onUnskip={() => onUnskip(step.id)}
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}
           onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
-          when={when}
+          lane={lane}
           blockers={blockers}
+          prerequisiteLabel={prerequisiteLabel}
           onOpenMappings={onOpenMappings}
           decision={decision}
           onDecide={onDecide}

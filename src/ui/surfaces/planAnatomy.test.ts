@@ -39,6 +39,9 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
+import type { Lane, Substatus } from '../../actionability/lanes.ts'
+import type { LaneView } from './stepContract.ts'
+import { BOARD } from './planBoard.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
@@ -148,11 +151,9 @@ test('the title carries a quiet reason under it rather than a line under the who
 test('the metadata and date zones are right-aligned tracks of their own', () => {
   assert.match(read(PACK), /\.row-meta,\.row-date\{text-align:right\}/, 'the pack no longer right-aligns the two trailing zones')
   assert.match(rule('.plan-row .who,\n.plan-row .when'), /text-align: right;/, 'who and when are no longer their own right-aligned tracks')
-  // A date does not break; the timing column's sentence form does. That
-  // distinction is production's (rowWhenWraps) and it survives the restoration.
+  // A date does not break, and the column is a day or the placeholder (A1b): it never carries a sentence.
   assert.match(rule('.plan-row .when'), /white-space: nowrap;/)
-  assert.match(rule('.plan-row .when.when-reason'), /white-space: normal;/)
-  assert.match(ROW, /className=\{`when\$\{whenReason \? ' when-reason' : ''\}`\}/, 'the row stopped marking a timing value that is a sentence')
+  assert.match(ROW, /<span className="when">\{when\}<\/span>/, 'the row marks the timing value as something other than a day')
 })
 
 test('the row collapses at the breakpoint the pack collapses at, and drops nothing', () => {
@@ -179,12 +180,13 @@ test('the row collapses at the breakpoint the pack collapses at, and drops nothi
 
 // ------------------------------------------------ the row presents truth, it does not compute it
 
-test('the status zone consumes the authoritative Plan state and computes nothing', () => {
-  // The Plan hands the row `statusOf(step)` — the one projection of Step.state
-  // — and the row renders the word it is given. The row must not be able to
-  // disagree with the step.
-  assert.match(PLAN, /const status = statusOf\(step\)/, 'the Plan row no longer reads the one status authority')
-  assert.match(PLAN, /word=\{status\.word\}\n\s*tone=\{status\.tone\}/, 'the row is no longer handed the authoritative word and tone')
+test('the status zone consumes the one lane reading and computes nothing', () => {
+  // The Plan hands the row the board's one state reading (planBoard.ts
+  // laneViewOf, A1b decision 1) and the row renders the label it is given, over
+  // the one tenant fact (decision 2). The row must not be able to disagree with the step.
+  assert.match(PLAN, /const laneView = laneViewOf\(reading, titleOf\)/, 'the Plan row no longer reads the one lane reading')
+  assert.match(PLAN, /lane=\{lane\.label\}\n\s*tone=\{lane\.tone\}/, 'the row is no longer handed the lane label and tone')
+  assert.match(PLAN, /chip=\{factOf\(step\)\}/, 'the row chip is no longer the one tenant fact')
   // Nothing in the row markup reads a step, a lifecycle, a condition or a date.
   // A second reading here is how two answers to one question get on one screen.
   for (const forbidden of ['step.', 'state.lifecycle', 'state.condition', 'blockers', 'Date.', 'new Date', 'toLocale']) {
@@ -193,7 +195,7 @@ test('the status zone consumes the authoritative Plan state and computes nothing
 })
 
 test('the state is a word, never a colour alone, in every state the plan can be in', () => {
-  assert.match(ROW, /<Status tone=\{tone\}>\{word\}<\/Status>/, 'the state is no longer rendered as a word')
+  assert.match(ROW, /<span className=\{`lane lane-\$\{tone\}`\}>\{lane\}<\/span>/, 'the state is no longer rendered as a word')
   // Every status a step can project renders a non-empty word. A tone with no
   // word would be a row whose meaning is the dot's colour.
   // A step nothing holds: the word reads the hold (roadmap/holds.ts), which reads the step's kind and blockers.
@@ -234,16 +236,13 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   assert.match(PLAN, /title=\{contentTitle\(step\)\}/, 'the title is no longer the content entry')
   assert.match(PLAN, /who=\{rowWho\(step, nameOf\)\}/, 'the metadata zone no longer reads the one who-line authority')
   // The timing zone still reads `rowWhen` and nothing else — but through the
-  // board's own reading of it (planBoard.ts `boardWhenOf`), which drops the
-  // generic `now` and says `Held` exactly where roadmap/holds.ts holds the step.
-  // It takes the VALUE and chooses what to show; it computes no date, and every
-  // other surface still calls `rowWhen` directly.
-  assert.match(PLAN, /const when = boardWhenOf\(step, waveStart, titleOf\)/, 'the timing zone no longer reads the one when authority')
+  // board's own reading of it (planBoard.ts `boardWhenOf`), which shows a day or
+  // the placeholder (A1b). It takes the VALUE and chooses what to show; it
+  // computes no date, and every other surface still calls `rowWhen` directly.
+  assert.match(PLAN, /const when = boardWhenOf\(step, waveStart\)/, 'the timing zone no longer reads the one when authority')
   assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
-  // The reason and the wrap are the board's readings of the same two authorities
-  // (planBoard.ts boardReasonOf over rowReason, boardWhenWraps over rowWhenWraps).
-  assert.match(PLAN, /reason=\{boardReasonOf\(step, when\)\}/, 'the quiet line no longer reads the one reason authority')
-  assert.match(PLAN, /whenReason=\{boardWhenWraps\(step, when\)\}/)
+  // The reason is the board's reading of the one reason authority (planBoard.ts boardReasonOf over rowReason).
+  assert.match(PLAN, /reason=\{boardReasonOf\(step\)\}/, 'the quiet line no longer reads the one reason authority')
 })
 
 test('the lane order and grouping are still the engine\'s, not the row\'s', () => {
@@ -405,7 +404,7 @@ test('the frame has a main column and the step’s own rail, and the rail surviv
   // fact every step has, so the rail is never gated and never duplicated.
   assert.equal(CONTENT_STEP.split('<StepRail').length - 1, 1, 'the step draws more than one rail')
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
-  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} when=\{when\} \/>/, 'the rail is gated')
+  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
 })
 
 test('the Plan’s topbar sticks, through the one shell the product already has', () => {
@@ -652,9 +651,9 @@ test('the rail is the Next milestone only, from the same contract', () => {
     assert.equal(v.split('class="side-block"').length - 1, 1, `${id}: the pack’s rail holds more than one block`)
   }
   const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepRail('), SECTIONS.indexOf('export function StepFooter(')))
-  // The contract, and the row's When column it repeats for an undated held step (planState.ts), and nothing else.
-  assert.match(railSrc, /export function StepRail\(\{ contract, when = null \}: \{ contract: StepContract; when\?: string \| null \}\)/, 'the rail takes something other than the contract')
-  assert.match(railSrc, /railOf\(contract, when\)/, 'the rail does not read the contract’s one projection')
+  // The contract, whose lane view is the rail's word where it has no day (A1b), and nothing else.
+  assert.match(railSrc, /export function StepRail\(\{ contract \}: \{ contract: StepContract \}\)/, 'the rail takes something other than the contract')
+  assert.match(railSrc, /railOf\(contract\)/, 'the rail does not read the contract’s one projection')
   for (const forbidden of ['step.', 'snapshot', 'mapping', 'implementation', 'side-list', 'reduce(', 'Math.', 'Date.']) {
     assert.equal(railSrc.includes(forbidden), false, `the rail ${forbidden}: it is the Next milestone and nothing else`)
   }
@@ -686,8 +685,12 @@ test('the narrow widths collapse the approved regions and widen nothing', () => 
 
 type Mock = { step: Step; c: StepContract }
 
+/** The board's one state reading (planBoard.ts laneViewOf), as a mock: the lane, its substatus and its tail. */
+const laneOf = (lane: Lane, substatus: Substatus | null = null, tail: string | null = substatus): LaneView => ({ lane, substatus, label: tail ? `${lane} · ${tail}` : lane, tail, tone: 'ok' })
+
 /** A step and its contract in one canonical state, carrying only the fields the projections read. */
 function stateOf(o: {
+  lane: LaneView
   lifecycle: Lifecycle | null
   condition: string
   kind: StepContract['whatToDo']['kind']
@@ -705,7 +708,7 @@ function stateOf(o: {
   const s = step({ status: o.status ?? 'ready', action: {}, state: { lifecycle: o.lifecycle, condition: o.condition, satisfied: o.satisfied ?? false, inPlace: o.inPlace ?? false, setAside: false, members: [], observation: o.observation ? { note: o.observation } : null } })
   const stage = o.satisfied ? (o.inPlace || o.lifecycle !== 'enforced' ? CONTRACT.lifecycle['in-place'] : CONTRACT.lifecycle.enforced) : o.lifecycle ? CONTRACT.lifecycle[o.lifecycle] : ''
   const c = {
-    state: { lifecycle: o.lifecycle, condition: o.condition, stage, conditionLabel: CONTRACT.condition[o.condition], setAside: false, inPlace: o.inPlace ?? false, satisfied: o.satisfied ?? false, word: 'Blocked', tone: 'stop' },
+    state: { lifecycle: o.lifecycle, condition: o.condition, stage, conditionLabel: CONTRACT.condition[o.condition], setAside: false, inPlace: o.inPlace ?? false, satisfied: o.satisfied ?? false, word: 'x', tone: 'stop', lane: o.lane },
     milestone: { kind: o.kind, label: 'The milestone’s own words.', at: o.at ?? null, gatedBy: o.gatedBy ?? null, line: null },
     track: trackFor(s),
     why: 'Why.',
@@ -723,11 +726,11 @@ function stateOf(o: {
 }
 
 const STATES = {
-  'not-deployed': stateOf({ lifecycle: 'not-deployed', condition: 'healthy', kind: 'deploy', at: '2026-09-22T00:00:00.000Z', offered: true }),
-  'report-only': stateOf({ lifecycle: 'report-only', condition: 'healthy', status: 'in-report-only', kind: 'observe', at: '2026-09-17T00:00:00.000Z', hold: 'observation-incomplete' }),
-  'review-required': stateOf({ lifecycle: 'report-only', condition: 'review-required', status: 'in-report-only', kind: 'resolve', hold: 'observation-incomplete', observation: 'The policy changed since IAMAI last read it.', gatedBy: 'The policy changed since IAMAI last read it.', fix: 1 }),
-  'in-place': stateOf({ lifecycle: 'enforced', condition: 'healthy', status: 'done', satisfied: true, inPlace: true, kind: 'preserve' }),
-  'baseline-conflict': stateOf({ lifecycle: null, condition: 'baseline-conflict', status: 'blocked', kind: 'resolve', reason: 'baseline-conflict' }),
+  'not-deployed': stateOf({ lane: laneOf('Ready', 'Create'), lifecycle: 'not-deployed', condition: 'healthy', kind: 'deploy', at: '2026-09-22T00:00:00.000Z', offered: true }),
+  'report-only': stateOf({ lane: laneOf('Ready', 'Observing'), lifecycle: 'report-only', condition: 'healthy', status: 'in-report-only', kind: 'observe', at: '2026-09-17T00:00:00.000Z', hold: 'observation-incomplete' }),
+  'review-required': stateOf({ lane: laneOf('Ready', 'Correct'), lifecycle: 'report-only', condition: 'review-required', status: 'in-report-only', kind: 'resolve', hold: 'observation-incomplete', observation: 'The policy changed since IAMAI last read it.', gatedBy: 'The policy changed since IAMAI last read it.', fix: 1 }),
+  'in-place': stateOf({ lane: laneOf('Completed'), lifecycle: 'enforced', condition: 'healthy', status: 'done', satisfied: true, inPlace: true, kind: 'preserve' }),
+  'baseline-conflict': stateOf({ lane: laneOf('On Hold', null, BOARD.blockers.sourceConflict), lifecycle: null, condition: 'baseline-conflict', status: 'blocked', kind: 'resolve', reason: 'baseline-conflict' }),
 } as const
 
 test('the five canonical states are one frame whose content the state changes', () => {
@@ -745,12 +748,13 @@ test('the five canonical states are one frame whose content the state changes', 
   assert.equal(/<header className="app"|AppShell|<nav\b/.test(CONTENT_STEP + SECTIONS), false, 'the step draws a shell of its own')
 
   const S = STATES
-  // Lifecycle and condition stay apart: the badge composes them, the track is the
+  // The badge is the lane label the row says (A1b decision 1); the track is the
   // lifecycle alone, and a review moves no stage.
-  assert.equal(badgeLabel(S['not-deployed'].c), 'Not deployed')
-  assert.equal(badgeLabel(S['report-only'].c), 'Report-only')
-  assert.equal(badgeLabel(S['review-required'].c), 'Report-only · Review required')
-  assert.equal(badgeLabel(S['in-place'].c), 'In place')
+  assert.equal(badgeLabel(S['not-deployed'].c), 'Ready · Create')
+  assert.equal(badgeLabel(S['report-only'].c), 'Ready · Observing')
+  assert.equal(badgeLabel(S['review-required'].c), 'Ready · Correct')
+  assert.equal(badgeLabel(S['in-place'].c), 'Completed')
+  assert.equal(badgeLabel(S['baseline-conflict'].c), `On Hold · ${BOARD.blockers.sourceConflict}`)
   assert.deepEqual(S['review-required'].c.track, S['report-only'].c.track, 'a condition moved the lifecycle')
   assert.deepEqual(S['not-deployed'].c.track.map((t) => [t.reached, t.current]), [[false, true], [false, false], [false, false], [false, false]])
   assert.deepEqual(S['report-only'].c.track.map((t) => t.reached), [true, false, false, false])
@@ -772,9 +776,10 @@ test('the five canonical states are one frame whose content the state changes', 
   assert.deepEqual(satisfied(S['baseline-conflict']), ['people:info'])
   const bar = (m: Mock): string => readinessOf(m.step, m.c).bar.main
   const B = CONTRACT.readiness.bar
+  // The bar is keyed by the lane (A1b): the Ready substatus's words, the tenant fact on Completed, the blocker on On Hold.
   assert.deepEqual(
     [bar(S['not-deployed']), bar(S['report-only']), bar(S['review-required']), bar(S['in-place']), bar(S['baseline-conflict'])],
-    [B.deploy, B.observe, B.review, B.preserve, B.conflict],
+    [B.create, B.observing, B.correct, CONTRACT.lifecycle.enforced, BOARD.blockers.sourceConflict],
   )
 
   // Implementation only where it is the current action; otherwise the one box, at the weight of the reason.
@@ -788,13 +793,12 @@ test('the five canonical states are one frame whose content the state changes', 
     ['observe:neutral', 'review:warn', 'inPlace:good', 'conflict:danger'],
   )
 
-  // The Next milestone rail: the date where there is one, the standing word where there is not.
-  const W = CONTRACT.rail
+  // The Next milestone rail: the date where there is one, the lane label where there is not (A1b).
   assert.equal(railOf(S['not-deployed'].c).metric, absoluteDate('2026-09-22T00:00:00.000Z'))
   assert.equal(railOf(S['report-only'].c).metric, absoluteDate('2026-09-17T00:00:00.000Z'))
-  assert.equal(railOf(S['review-required'].c).metric, W.held)
-  assert.equal(railOf(S['in-place'].c).metric, W.noChange)
-  assert.equal(railOf(S['baseline-conflict'].c).metric, W.deferred)
+  assert.equal(railOf(S['review-required'].c).metric, 'Ready · Correct')
+  assert.equal(railOf(S['in-place'].c).metric, 'Completed')
+  assert.equal(railOf(S['baseline-conflict'].c).metric, `On Hold · ${BOARD.blockers.sourceConflict}`)
 })
 
 test('the opened step mutates nothing: its only actions are the exception, the scan, the decision and copying', () => {

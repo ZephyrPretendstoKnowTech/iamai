@@ -52,6 +52,9 @@ const contractAt = (m: (typeof MATRIX)[number], over: Partial<StepContract> = {}
     ...over,
   }) as unknown as StepContract
 
+/** The board's one state reading of a queued step (planBoard.ts laneViewOf), as the rail tests hand it in. */
+const UP_NEXT = { lane: 'Up Next', substatus: null, label: 'Up Next · After Create or Correct Emergency Access Accounts', tail: 'After Create or Correct Emergency Access Accounts', tone: 'wait' } as const
+
 const STAGE_WORD: Record<string, string> = {
   'not-deployed': 'Not deployed',
   'report-only': 'Report-only',
@@ -237,7 +240,7 @@ test('every step has the Next milestone rail beside its main column', () => {
   // The approved rail is Next milestone only, and every step has a next
   // milestone, so the rail is never optional and never empty.
   assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
-  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} when=\{when\} \/>/, 'the rail is gated')
+  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
   const one = CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? ''
   const two = CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? ''
   assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no rail leaves an empty column')
@@ -302,7 +305,7 @@ test('the Next caption is the dated milestone where there is one', () => {
 test('an undated blocked policy carries no caption: the rail names the move and Fix before continuing the blocker', () => {
   // Owner, 2026-09-11: one blocker, one place. The gate stays the row's reason
   // and Fix before continuing's; the caption restating it is gone.
-  const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts', kind: 'resolve', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
+  const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts', kind: 'resolve', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
   assert.equal(nextCaption(gated), null)
   assert.equal(railOf(gated).sub, CONTRACT.rail.resolveSub, 'the rail restates the blocker instead of naming the move')
 })
@@ -322,11 +325,11 @@ test('a state with no dated line gets no caption, and none is invented', () => {
   assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
 })
 
-test('the rail’s metric is the date where there is one, and the word for where the step stands where there is not', () => {
+test('the rail’s metric is the date where there is one, and the lane label where there is not', () => {
   // The caption says what happens next; the rail's headline says when, or — with
-  // no date — the one word for the step's standing, never the caption again.
-  const gated = { milestone: { at: null, gatedBy: 'after: something', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
-  assert.equal(railOf(gated).metric, CONTRACT.rail.held, 'an undated held step is not Held')
+  // no date — the lane label the row says (A1b), never the caption again.
+  const gated = { milestone: { at: null, gatedBy: 'after: something', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
+  assert.equal(railOf(gated).metric, UP_NEXT.label, 'an undated queued step’s rail is not its lane label')
   assert.equal((nextCaption(gated) ?? '').includes(railOf(gated).metric), false, 'the rail headline repeats the caption')
   const dated = { milestone: { at: '2026-09-17T00:00:00.000Z', gatedBy: null, label: 'Leave it in report-only until Sep 17.' }, state: { condition: 'healthy', setAside: false }, whatToDo: { kind: 'observe', text: 'x' } } as unknown as StepContract
   assert.equal(railOf(dated).metric, absoluteDate('2026-09-17T00:00:00.000Z'), 'a dated milestone does not lead with its date')

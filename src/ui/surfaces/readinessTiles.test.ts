@@ -18,7 +18,7 @@ import type { PrerequisiteBlocker } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
 import type { HoldBlockerKind } from '../../actionability/lanes.ts'
-import { BOARD, readinessBlockersOf } from './planBoard.ts'
+import { BOARD, laneViewOf, readinessBlockersOf } from './planBoard.ts'
 import { mergeReadiness } from './stepPackage.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { returnToStep } from '../shell/routes.ts'
@@ -37,8 +37,11 @@ function opened(name: 'demo' | 'demo-week2', id: string) {
   assert.ok(step, `${name} carries no ${id}`)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
   const readings = laneReadings(r.steps)
-  const blockers = readinessBlockersOf(readings.get(id), (x) => r.steps.find((s) => s.id === x)?.title ?? null)
-  return { f, r, step, ctx, c: stepContract(step, ctx), blockers, reading: readings.get(id)! }
+  const titleOf = (x: string): string | null => r.steps.find((s) => s.id === x)?.title ?? null
+  const blockers = readinessBlockersOf(readings.get(id), titleOf)
+  // The board's one state reading of the step (A1b): the bar is keyed by it.
+  const lane = laneViewOf(readings.get(id)!, titleOf)
+  return { f, r, step, ctx, c: stepContract(step, ctx, undefined, lane), blockers, reading: readings.get(id)!, lane }
 }
 
 test('one tile per outstanding fix, each linking to its step or to Baseline mappings; no count tile stands in for them', () => {
@@ -85,7 +88,7 @@ test('with nothing unresolved the region is its compact success line and the sat
   const r = readinessOf(step, c, blockers)
   assert.deepEqual(r.tiles, [])
   assert.deepEqual(r.satisfied.map((t) => `${t.key}:${t.tone}`), ['emergency:good', 'resilience:good', 'coverage:good'])
-  assert.equal(r.bar.main, CONTRACT.readiness.bar.preserve)
+  assert.equal(r.bar.main, CONTRACT.lifecycle['in-place'], 'a completed step’s bar is not the tenant fact (A1b)')
   const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
   assert.match(section, /readiness\.tiles\.length > 0 \? \(\s*strip\(readiness\.tiles, 'unresolved'\)\s*\) : \(\s*<p className="readiness-clear">/, 'nothing unresolved does not collapse to the success line')
   assert.match(section, /<details className="readiness-satisfied" open=\{printing \|\| undefined\}>/, 'the satisfied evidence is not behind its own disclosure')
@@ -149,7 +152,7 @@ test('the package’s gates merge without a cap: unresolved before the hardening
 test('the printed step and the screen read the same blockers, the row hands them to the step, and a tile’s link opens its step under its own tab', () => {
   assert.match(read('src/ui/surfaces/PrintPlan.tsx'), /blockers=\{blockersOf\(s\)\}/)
   const plan = read('src/ui/surfaces/Plan.tsx')
-  assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} onOpenMappings=\{openSettings\}/)
+  assert.match(plan, /blockers=\{readinessBlockersOf\(reading, titleOf\)\} prerequisiteLabel=\{prerequisiteLabel\} onOpenMappings=\{openSettings\}/)
   // A prerequisite in another lane: the tab follows the step the link opened, or the link would open nothing on screen.
   assert.match(plan, /const openTab = open \? \(TAB_OF\[readings\.get\(open\)\?\.lane \?\? 'Completed'\] \?\? null\) : null/)
   assert.match(plan, /<TabFollowsOpenStep open=\{open\} openTab=\{openTab\} tab=\{tab\} onTab=\{setTab\} \/>/)

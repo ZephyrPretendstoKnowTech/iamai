@@ -501,8 +501,10 @@ test('the one Plan row says it is a control and whether the step under it is ope
   // screen reader and a sighted reader both meet it under the step's name.
   assert.ok(row.indexOf('className="plan-row-title"') < row.indexOf('className="plan-row-reason"'), 'the reason is no longer inside the title zone')
   assert.ok(row.indexOf('className="plan-row-reason"') < row.indexOf('className="who"'), 'the reason is no longer read before who and when')
-  assert.match(row, /className=\{`when\$\{whenReason \? ' when-reason' : ''\}`\}/)
-  assert.match(row, /<Status tone=\{tone\}>\{word\}<\/Status>/)
+  // The state zone is the lane label over the one tenant fact (A1b); When is a day or the placeholder.
+  assert.match(row, /<span className="when">\{when\}<\/span>/)
+  assert.match(row, /<span className=\{`lane lane-\$\{tone\}`\}>\{lane\}<\/span>/)
+  assert.match(row, /\{chip && <Status tone=\{tone\}>\{chip\}<\/Status>\}/)
   assert.match(row, /<span className="next-mark" aria-label=\{nextLabel\}>/)
 })
 
@@ -697,7 +699,7 @@ test('a data table stays a table, and its labels are DOM structure rather than C
 test('the accessibility repair left the step body deciding nothing', () => {
   // The one action, the decision gate and the contract are read exactly where
   // they were; only the markup around them moved.
-  assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>\)/)
+  assert.match(contentStep, /const contract = stepContract\(step, ctx, ex as Record<string, unknown>, laneView\)/)
   assert.match(contentStep, /<WhatToDoLead contract=\{contract\} \/>/)
   assert.match(contentStep, /const decides = Boolean\(d\) && \(typeof d\.applies !== 'string' \|\| truthy\(ex\[d\.applies\]\)\)/)
   assert.match(contentStep, /\{decides && <Decision/)

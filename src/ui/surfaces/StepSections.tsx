@@ -19,7 +19,7 @@ import type { ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 
 /**
- * One row of the Plan: the state word, the title, who it touches and when.
+ * One row of the Plan: the lane, the tenant fact, the title, who it touches and when.
  *
  * The one row shape, for a step and for a Cleanup item alike — before this, each
  * surface built its own and they drifted apart a column at a time. It stays
@@ -29,29 +29,29 @@ import { fillText } from '../../content/render.ts'
  * Task 033 restored the four zones the approved Plan pack draws
  * (`docs/design/approved/anatomy/plan-step-v1.html`, `.roadmap-row`):
  *
- *     status | title over its quiet reason | who | when
+ *     state | title over its quiet reason | who | when
  *
- * The zones carry production's facts and nothing else — `statusOf`,
- * `contentTitle`, `rowReason`, `rowWho`, `rowWhen`, each already the one
- * authority for what it says. What changed is where the row puts them: the
- * reason was a full-width line under the whole row, so a blocked step's cause
- * sat under the state column rather than under the title it belongs to, and the
- * who and when floated at the end of a wrapping flex line instead of holding
- * columns that align down the page. Nothing here recomputes a state, a date or
- * a count.
+ * The state zone is the lane label (A1b decision 1: `Ready · Create`, `Up Next ·
+ * After …`, `On Hold · Baseline conflict`), the one producer of the row's state,
+ * and under it the one tenant fact the row can add — `Report-only` or
+ * `Enforced` — as a chip, or nothing (decision 2). The other zones carry
+ * production's facts and nothing else — `contentTitle`, `rowReason`, `rowWho`,
+ * `rowWhen`, each already the one authority for what it says. Nothing here
+ * recomputes a state, a date or a count.
  */
-export function PlanRow({ word, tone, lane = null, wave = null, title, who, when, whenReason = false, reason = null, nextLabel = null, open, onToggle }: {
-  word: string
+export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when, reason = null, nextLabel = null, open, onToggle }: {
+  /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
+  lane: string
+  /** The lane's tone (planBoard.ts LANE_TONE). */
   tone: StatusTone
-  /** `Lane · substatus/reason` under the state word: where the actionability engine puts the row (S3). */
-  lane?: string | null
+  /** The tenant fact beside the lane — Report-only or Enforced (stepContract.ts factOf) — or nothing. */
+  chip?: string | null
   /** The phase the finished plan places the step in, carried on the row as data only: a secondary projection the lane never reads. */
   wave?: number | null
   title: string
   who: string
+  /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. */
   when: string
-  /** The date column carries a reason rather than a date, so it wraps instead of pushing the row wide. */
-  whenReason?: boolean
   /** The one binding reason, under the row; null where the row has none. */
   reason?: string | null
   /** "Next" beside the title on the first step that is ready to be worked on. */
@@ -79,8 +79,8 @@ export function PlanRow({ word, tone, lane = null, wave = null, title, who, when
       }}
     >
       <span className="plan-row-status">
-        <Status tone={tone}>{word}</Status>
-        {lane && <span className="lane">{lane}</span>}
+        <span className={`lane lane-${tone}`}>{lane}</span>
+        {chip && <Status tone={tone}>{chip}</Status>}
       </span>
       {/* The pack's `.row-title`: the title, and under it the one quiet line
           that says why the row is in the state the first zone names. */}
@@ -94,7 +94,7 @@ export function PlanRow({ word, tone, lane = null, wave = null, title, who, when
         {reason && <span className="plan-row-reason">{reason}</span>}
       </span>
       <span className="who">{who}</span>
-      <span className={`when${whenReason ? ' when-reason' : ''}`}>{when}</span>
+      <span className="when">{when}</span>
     </div>
   )
 }
@@ -129,15 +129,17 @@ export function StepState({ contract }: { contract: StepContract }) {
   return <p className="step-next">{next}</p>
 }
 
-export function StepHead({ eyebrow = null, title, sub = null, badge, tone, track = [], children }: {
+export function StepHead({ eyebrow = null, title, sub = null, badge, tone, fact = null, track = [], children }: {
   /** What kind of step this is (pages.app.plan.stepContract.kind); null where the kind has no label. */
   eyebrow?: string | null
   title: string
   /** The one supporting line under the title; null where the step has none. */
   sub?: ReactNode
-  /** The composed lifecycle · condition label (`badgeLabel`), or the one status word. */
+  /** The lane label (`badgeLabel`): the same words the row says. */
   badge: string
   tone: StatusTone
+  /** The tenant fact beside the badge — Report-only or Enforced — or nothing (A1b decision 2). */
+  fact?: string | null
   track?: ContractStage[]
   /** Where the step is and what happens next — the pack's track caption, above the track it captions. */
   children?: ReactNode
@@ -150,9 +152,16 @@ export function StepHead({ eyebrow = null, title, sub = null, badge, tone, track
           <h3 className="step-title">{title}</h3>
           {sub}
         </div>
-        <Status tone={tone} pill>
-          {badge}
-        </Status>
+        <span className="step-head-state">
+          <Status tone={tone} pill>
+            {badge}
+          </Status>
+          {fact && (
+            <Status tone={tone} pill title={fact}>
+              {fact}
+            </Status>
+          )}
+        </span>
       </div>
       {children}
       <LifecycleTrack track={track} />
@@ -193,13 +202,13 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
  * The opened step's right rail (`.step-side` in the pack). In the approved
  * design it is one block, the Next milestone
  * (docs/design/approved/anatomy/plan-step-v1.html: "The right rail is Next
- * milestone only"). The metric is Foundation B's date where it holds one and the
- * one word for where the step stands where it does not, over the milestone's own
- * words (stepContract.ts `railOf`). Every step has a next milestone, so every
- * step has the rail, and nothing else is put in it.
+ * milestone only"). The metric is the day the plan schedules where it holds one
+ * and the lane's own label where it does not, over the milestone's own words
+ * (stepContract.ts `railOf`). Every step has a next milestone, so every step has
+ * the rail, and nothing else is put in it.
  */
-export function StepRail({ contract, when = null }: { contract: StepContract; when?: string | null }) {
-  const r = railOf(contract, when)
+export function StepRail({ contract }: { contract: StepContract }) {
+  const r = railOf(contract)
   return (
     <aside className="step-side surface-inset">
       <div className="side-block">

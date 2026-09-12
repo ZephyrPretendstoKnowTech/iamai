@@ -29,7 +29,7 @@ import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policy
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, engine, pages, stepById } from '../../content/content.ts'
+import { app, engine, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -37,8 +37,9 @@ import { list } from '../../copy/statements.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { badgeOf, barKeyOf, planStateOf } from './planState.ts'
+import { badgeOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
+import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
@@ -46,8 +47,23 @@ import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import type { BlockerKind } from '../../actionability/lanes.ts'
+import type { BlockerKind, Lane, Substatus } from '../../actionability/lanes.ts'
 import { returnToStep } from '../shell/routes.ts'
+
+/**
+ * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
+ * engine's lane, its substatus, the row's label for it and its tail (the
+ * substatus, `After <step>`, the blocker's label), and the tone it draws in.
+ * Built by the board (planBoard.ts `laneViewOf`) and handed to the contract; the
+ * badge, the readiness bar and the rail read it and nothing else for the state.
+ */
+export type LaneView = {
+  lane: Lane
+  substatus: Substatus | null
+  label: string
+  tail: string | null
+  tone: StatusTone
+}
 
 /** The contract's own words (pages.app.plan.stepContract). */
 type ContractWords = {
@@ -138,7 +154,8 @@ type ContractWords = {
   }
   troubleshooting: { eyebrow: string; close: string; seeing: string; cause: string; check: string; fix: string; doNot: string; then: string; sources: string }
   confirm: { control: string; confirmedControl: string; eyebrow: string; body: string; confirm: string; remove: string; cancel: string; confirmedOn: string }
-  rail: Record<string, string>
+  /** The rail's sub-lines where the metric is the lane label (A1b): the move a held step names, the decision a deciding one does. */
+  rail: Record<'resolveSub' | 'decideSub', string>
   /** The rail's sub-line under a day the plan schedules, by the transition it is for (roadmap/stepSchedule.ts). */
   railTransition: Record<'createReportOnly' | 'change' | 'enforce', string>
   rollout: Record<string, string>
@@ -176,12 +193,24 @@ export type ContractState = {
   /** The single word and tone the collapsed row shows (statusWord.ts): a projection, for scanning only. */
   word: string
   tone: StatusTone
-  /** The Plan's one presentation state (planState.ts) the word, the badge, the bar and the rail all read. */
+  /** The Plan's one presentation state (planState.ts): the export view's word, until A1c moves the exports to the lane. */
   kind: PlanStateKind
   /** Something holds the step (roadmap/holds.ts). */
   held: boolean
-  /** The opened step's badge: the stage beside the state's own word, never a word the row contradicts. */
+  /** The export view's composed state label (planState.ts badgeOf), until A1c; the screen's badge is `lane.label`. */
   badge: string
+  /**
+   * The lane engine's reading of the step (A1b decision 1): the one producer of
+   * the badge, the bar and the rail. Null only where no board handed one down
+   * (the export view), and then those three say nothing about the state.
+   */
+  lane: LaneView | null
+  /**
+   * The row's chip and the badge's companion (decision 2): the tenant fact
+   * `Report-only` or `Enforced` from the lifecycle, and nothing else — never a
+   * judgment. Null where the tenant holds no such fact.
+   */
+  fact: string | null
 }
 
 /**
@@ -708,11 +737,26 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
 }
 
 /**
+ * The tenant fact a row's chip and the badge's companion state (A1b decision 2):
+ * a policy the tenant holds in report-only (its evidence gathered or not) reads
+ * `Report-only`; one the tenant enforces reads `Enforced`; anything else reads
+ * nothing. A stage the plan has judged (ready to enforce) is not a fact of the
+ * tenant's and is the lane's to say.
+ */
+export function factOf(step: Pick<Step, 'state'>): string | null {
+  const l = step.state.lifecycle
+  if (l === 'enforced') return CONTRACT.lifecycle.enforced
+  if (l === 'report-only' || l === 'ready-to-enforce') return CONTRACT.lifecycle['report-only']
+  return null
+}
+
+/**
  * One step, as the Plan renders it. `vars` is the step's already-filled content
  * variables where the caller holds them (ContentStep builds them once); they are
- * built here otherwise.
+ * built here otherwise. `lane` is the board's one state reading of the step
+ * (planBoard.ts laneViewOf); the badge, the bar and the rail read it.
  */
-export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>): StepContract {
+export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<string, unknown>, lane: LaneView | null = null): StepContract {
   const ex = vars ?? stepVars(step, ctx)
   const cs = contentStepFor(step) as Record<string, unknown> | undefined
   const tenant = tenantNameOf(ctx.snapshot)
@@ -757,6 +801,8 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
       kind: word.kind,
       held,
       badge: badgeOf(stageOf(step), word, CONTRACT.condition[step.state.condition], step.state.condition === 'healthy'),
+      lane,
+      fact: factOf(step),
     },
     milestone,
     track: stepTrack(step),
@@ -824,22 +870,15 @@ function hardeningOf(step: Step, cs: Record<string, unknown> | undefined, ex: Re
 }
 
 /**
- * The head badge's words: the lifecycle stage and the condition, composed.
+ * The head badge's words: the lane label, exactly as the row says it (A1b
+ * decision 1). The tenant fact beside it is `state.fact`, drawn as its own chip.
  *
- * They stay two facts (Foundation B) and are composed only for display — the
- * contract still carries `stage`, `condition` and `word` separately, and the
- * export view and every row still read `state.word`. A step with no lifecycle
- * (a prerequisite, a check) has no stage to compose, so it shows the one status
- * word it has always shown.
- *
- * A condition of `healthy` says nothing beside a stage: "Report-only · Healthy"
- * reads as a claim, and the absence of a condition is already the claim.
+ * A contract no board handed a lane to (the export view, until A1c) keeps the
+ * composed stage-and-word label the exports carry.
  */
 export function badgeLabel(contract: StepContract): string {
   const s = contract.state
-  // The Plan's one presentation state composes it (planState.ts badgeOf), so the
-  // badge never says a word the row contradicts. A contract handed over without
-  // one composes the two axes the same way it always did.
+  if (s.lane != null) return s.lane.label
   if (typeof s.badge === 'string') return s.badge
   if (s.stage === '') return s.word
   return s.condition === 'healthy' ? s.stage : `${s.stage} · ${s.conditionLabel}`
@@ -1012,22 +1051,6 @@ export type ContractReadiness = {
 
 const R = (): ContractWords['readiness'] => CONTRACT.readiness
 
-/**
- * Where the step stands, as one key: the condition first, because it overrules
- * the lifecycle's own idea of the next move (Foundation B), then the action the
- * contract settled. The bar's headline, the rail's undated metric and the
- * implementation's empty box all read it, so the three cannot disagree.
- */
-export function standingOf(c: StepContract): string {
-  const s = c.state
-  if (s.condition === 'baseline-conflict') return 'conflict'
-  if (s.setAside) return 'restore'
-  if (s.condition === 'review-required') return 'review'
-  if (s.condition === 'needs-decision') return 'decide'
-  if (s.condition === 'blocked') return 'blocked'
-  return c.whatToDo.kind
-}
-
 /** The tile that says what the step's own state turns on, where the state turns on something. */
 function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   const s = c.state
@@ -1106,14 +1129,14 @@ const mappingsLink = (): ReadinessTile['link'] => ({ label: R().tiles.openMappin
  * composed. A fix that names a step links to it; one that names a mapping
  * links to Plan settings.
  */
-function fixTiles(c: StepContract): ReadinessTile[] {
+function fixTiles(c: StepContract, prerequisiteLabel: (id: string) => string | null): ReadinessTile[] {
   const t = R().tiles
   return c.fix.map((f): ReadinessTile => {
     const [kind, ...rest] = f.key.split(':')
     if (kind === 'step' || kind === 'missing') {
       const id = rest.join(':')
       const title = stepById[id]?.title ?? id
-      return { key: f.key, label: t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
+      return { key: f.key, label: prerequisiteLabel(id) ?? t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
     }
     if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
     if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
@@ -1129,7 +1152,7 @@ function fixTiles(c: StepContract): ReadinessTile[] {
  * healthy queued prerequisite (Up Next) is a wait, a §15 hold needs attention.
  * The step's own decision is its What to do, not a prerequisite of itself.
  */
-function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], present: ReadonlySet<string>): ReadinessTile[] {
+function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], present: ReadonlySet<string>, prerequisiteLabel: (id: string) => string | null): ReadinessTile[] {
   const out: ReadinessTile[] = []
   const seen = new Set<string>()
   for (const b of blockers) {
@@ -1139,7 +1162,7 @@ function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], 
     if (b.kind === 'step' || b.kind === 'suspendedPrerequisite') {
       if (present.has(`step:${b.id}`) || present.has(`missing:${b.id}`)) continue
       const title = stepById[b.id]?.title ?? b.title ?? b.id
-      out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: title, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: prerequisiteLabel(b.id) ?? b.label, tone, value: title, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
       continue
     }
     if (b.kind === 'sourceMapping') {
@@ -1175,63 +1198,93 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  * kept apart, readable and out of the way; a resolved prerequisite leaves the
  * unresolved list on its own because it is no longer in `fix` or `blockers`.
  */
-export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = []): ContractReadiness {
+export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
   const facts = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c), implementationTile(c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
-  const fixes = fixTiles(c)
+  const fixes = directFixes(fixTiles(c, prerequisiteLabel), blockers)
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
   const lead = facts.filter((t) => unresolved(t) && t.key !== 'resilience')
   const hardening = facts.filter((t) => unresolved(t) && t.key === 'resilience')
-  const tiles = [...lead, ...fixes, ...engineTiles(c, blockers, present), ...hardening]
+  const tiles = [...lead, ...fixes, ...engineTiles(c, blockers, present, prerequisiteLabel), ...hardening]
   const satisfied = facts.filter((t) => !unresolved(t))
-  // The bar says what the row and the badge say (planState.ts): a row reading
-  // Needs attention never opens onto "Ready now", and a step something holds
-  // never reads as ready. Where the state settles nothing of its own, the step's
-  // own action does — and a step that could deploy with fixes outstanding is not
-  // "Ready now" either.
-  const standing = standingOf(c)
-  const settled = barKeyOf({ kind: c.state.kind, held: c.state.held })
-  const key = settled ?? (c.state.held && (standing === 'deploy' || standing === 'verify') ? 'blocked' : standing === 'deploy' && c.fix.length > 0 ? 'attention' : standing)
-  return { tiles, satisfied, bar: { key, main: R().bar[key] ?? R().bar.none } }
+  return { tiles, satisfied, bar: barOf(c) }
+}
+
+/** The emergency-access gate step and the exclusions-group step (roadmap/blockerSteps.ts), by their subject. */
+const GATE_STEP: Readonly<Record<string, string>> = Object.fromEntries(GATING_SUBJECTS.map((s) => [s, blockerStepId(s)]))
+
+/**
+ * Readiness tiles name direct prerequisites only (decision 12, R-READY
+ * "Transitive vs direct"): the roadmap's emergency gate on a deny-capable policy
+ * is an ancestor through the exclusions group, so where the exclusions-group
+ * step is already a tile of this step — a fix, or the engine's own direct edge —
+ * the gate's tile is not drawn beside it.
+ */
+function directFixes(fixes: ReadinessTile[], blockers: readonly PrerequisiteBlocker[]): ReadinessTile[] {
+  const exclusions = GATE_STEP.exclusionGroup
+  const gate = GATE_STEP.breakGlass
+  if (!exclusions || !gate) return fixes
+  const namesExclusions = fixes.some((t) => t.key === `step:${exclusions}` || t.key === `missing:${exclusions}`) || blockers.some((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite') && b.id === exclusions)
+  if (!namesExclusions) return fixes
+  return fixes.filter((t) => t.key !== `step:${gate}` && t.key !== `missing:${gate}`)
 }
 
 /**
- * The Next milestone rail: the date where Foundation B holds one, and otherwise
- * the one word for where the step stands, over the milestone's own words.
+ * The readiness bar's headline, keyed by the lane (A1b decision 1): the Ready
+ * substatus's own words; Up Next names what it comes after; On Hold names its
+ * blocker; Completed states the tenant fact; Deferred says so. A contract no
+ * board handed a lane to says nothing is left.
  */
-export function railOf(c: StepContract, when: string | null = null): { metric: string; sub: string } {
+function barOf(c: StepContract): ContractReadiness['bar'] {
+  const l = c.state.lane
+  if (l == null) return { key: 'none', main: R().bar.none }
+  switch (l.lane) {
+    case 'Ready': {
+      const key = SUBSTATUS_KEY[l.substatus ?? 'Create']
+      return { key, main: R().bar[key] ?? R().bar.none }
+    }
+    case 'Up Next':
+      return { key: 'upNext', main: l.tail ?? l.label }
+    case 'On Hold':
+      return { key: 'onHold', main: l.tail ?? l.label }
+    case 'Completed':
+      return { key: 'completed', main: c.state.lifecycle === 'enforced' ? CONTRACT.lifecycle.enforced : CONTRACT.lifecycle['in-place'] }
+    case 'Deferred':
+      return { key: 'deferred', main: l.label }
+  }
+}
+
+/** The bar's content key for each Ready substatus (pages.app.plan.stepContract.readiness.bar). */
+const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Create: 'create', Correct: 'correct', 'Needs decision': 'needsDecision', Observing: 'observing', 'Ready to enforce': 'readyToEnforce' }
+
+/**
+ * The Next milestone rail: the day the plan schedules with what that day is for,
+ * a dated milestone with its own words, and otherwise the lane's own label over
+ * the milestone's words (A1b decision 1) — never a word the row does not say.
+ */
+export function railOf(c: StepContract): { metric: string; sub: string } {
   const m = c.milestone
   const w = CONTRACT.rail
-  if (m.at !== null) return { metric: absoluteDate(m.at), sub: m.gatedBy ?? m.label }
-  // Emergency access whose minimum is in place and whose hardening an owner
-  // deferred: never "No change needed" (owner, 2026-09-11).
-  if (c.state.kind === 'deferred') return { metric: CONTRACT.stateWords.hardeningDeferred, sub: m.label }
-  // One concise next milestone (owner, 2026-09-11): a held step's rail names the
-  // move — resolve its prerequisites, make its decision — and never restates the
-  // blocker the row, Readiness and Fix before continuing already carry.
-  const standing = standingOf(c)
-  const sub = m.kind === 'resolve' && (standing === 'blocked' || standing === 'resolve') ? w.resolveSub : standing === 'decide' ? w.decideSub : standing === 'review' ? (m.gatedBy ?? m.label) : m.label
+  const l = c.state.lane
   // A day the plan schedules (roadmap/stepSchedule.ts) is the rail's metric, with
-  // what that day is for — the same result the row's When and its phase read, so a
-  // dated row never opens onto Held. Sequenced after a prerequisite, the next
-  // milestone is still that day; what it comes after is the row's reason line.
-  // A decision keeps its own word, Needs decision (owner, 2026-09-11): it is the
-  // operator's to make, and never Held.
+  // what that day is for — the same result the row's When and its phase read.
+  // A decision keeps the lane's word (owner, 2026-09-11): it is the operator's to make.
   const s = c.schedule ?? null
   if (s !== null && s.transition !== 'decide' && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) {
     const T = CONTRACT.railTransition
     const words = s.transition === 'createReportOnly' || s.transition === 'change' || s.transition === 'enforce' ? T[s.transition] : m.label
     return { metric: absoluteDate(s.at), sub: words }
   }
+  if (m.at !== null) return { metric: absoluteDate(m.at), sub: m.gatedBy ?? m.label }
+  // One concise next milestone (owner, 2026-09-11): a held step's rail names the
+  // move — resolve its prerequisites, make its decision — and never restates the
+  // blocker the row and Readiness already carry.
+  const deciding = l?.lane === 'Ready' && l.substatus === 'Needs decision'
+  const sub = deciding ? w.decideSub : m.kind === 'resolve' && (l?.lane === 'Up Next' || l?.lane === 'On Hold') ? w.resolveSub : (m.gatedBy ?? m.label)
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
-  // the day its row's When reads — never Not scheduled beside a dated row.
-  if (s === null && c.scheduledOn && (standing === 'deploy' || standing === 'verify')) return { metric: absoluteDate(c.scheduledOn), sub }
-  // Undated and held, the rail says what the row's When column says — the step it
-  // waits on, or Held (planBoard.ts boardWhen) — so the two never read as two answers.
-  const whenWords = (pages.plan as unknown as { when: { after: string; afterPrerequisites: string } }).when
-  const heldMetric = when !== null && (when === w.held || when === whenWords.afterPrerequisites || when.startsWith(whenWords.after.split('{')[0])) ? when : w.held
-  const metric: Record<string, string> = { conflict: w.deferred, restore: w.setAside, decide: w.decision, preserve: w.noChange, review: heldMetric, blocked: heldMetric, resolve: heldMetric }
-  return { metric: metric[standingOf(c)] ?? w.undated, sub }
+  // the day its row's When reads — never the lane's word beside a dated row.
+  if (s === null && c.scheduledOn && l?.lane === 'Ready' && (l.substatus === 'Create' || l.substatus === null)) return { metric: absoluteDate(c.scheduledOn), sub }
+  return { metric: l?.label ?? m.label, sub }
 }
 
 export type ImplementationEmpty = { key: string; tone: 'neutral' | 'good' | 'warn' | 'danger'; title: string; text: string }
