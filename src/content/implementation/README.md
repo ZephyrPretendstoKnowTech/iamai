@@ -118,6 +118,21 @@ when their values change, and are never asked again for unchanged facts.
   its `select` holds (beside another selected module, if `alongside`).
 - A changed field no module covers holds the whole projection.
 - The selected module ids are bound to the projection's `mismatchBinding`.
+- In a multi-policy package a module may name the `member` it corrects (a role
+  of its `policies.<family>.<role>` bindings). Its facts are read against that
+  member's own changed fields (`policies.<family>.<role>.current.changedFields`,
+  bound by `stepPackage.ts memberBindings` beside `….operation`, create or
+  update), so a sibling that is right is never touched; a change the set reports
+  that no member accounts for holds. A set with one member to create beside one
+  already in the tenant is a Partial of the set.
+
+### Executability (`roadmap/nextSafeAction.ts`)
+
+`executableNow(step)` is the one answer to whether a step's next safe technical
+action can be executed today: it is the step's current action and Foundation A
+can write the policy. `nextSafeAction` names that action and answers separately
+whether the policy can be enforced now. `packageStateOf` reads it. Readiness holds
+enforcement, never report-only creation; no phase or date enters either answer.
 
 ### PowerShell invocation
 
