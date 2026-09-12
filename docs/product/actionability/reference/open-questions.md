@@ -1,0 +1,85 @@
+# Open questions — code vs playbook and RUN-CONTEXT
+
+## Sources
+- The ten reference files beside this one, each citing its own sources: `content-schema.md`, `package-example.md`, `step-renderer.md`, `state-model.md`, `readiness-taxonomy.md`, `schedule.md`, `contracts-and-walk.md`, `fixtures.md`, `plan-record.md`, `steps-inventory.md`, plus `audit-a1-a6.md`.
+- Compared against `docs/product/actionability/RUN-CONTEXT.md`, `docs/product/actionability/IAMAI-Actionability-Dependency-Playbook.md` (A1), `docs/design/approved/anatomy/plan-step-v1.html` (A2), `docs/product/actionability/BLOCKED.md` and `CLAUDE.md`.
+- Extracted at HEAD `4cde3e6` on 2026-09-12. One line per item, with the reference file that carries the detail in brackets.
+
+## RUN-CONTEXT.md
+- A3 line: the A1–A6 audit is not in the memory file RUN-CONTEXT names, which holds an unnumbered audit of `9a30372`. It is in session transcript `7f57a0aa…jsonl` (audit of `b61aac5`), now copied to `audit-a1-a6.md`. BLOCKED.md's S0/S1/S5 deferrals on A3 can be revisited. [audit-a1-a6]
+- MANIFEST: `LIBRARY.json` is not compiled into `registry.generated.json`. `--registry` reads the package folders, and `--library-index` rewrites `LIBRARY.json` from them. [content-schema]
+- MANIFEST: binding families are not declared in `protocol.ts`. Each package declares `requiredBindings`/`optionalBindings` in `META.json`, and the union is `LIBRARY.json bindings[]`. [content-schema]
+- MANIFEST: the device-registration package's bindings are `policy.target.*`, `policy.current.*` and `authStrength.target.*`, not the `policies.<family>.<role>.…` shape. [package-example]
+- MANIFEST: `library.ts` runs only under Node (compiler and tests). The app imports `registry.generated.json` directly in `stepPackage.ts:21`. [content-schema]
+- MANIFEST: 32 of 46 packages keep `META.json` one folder deeper, at `<step>/<step>/META.json`, not `<step>/META.json`. [content-schema, steps-inventory]
+- MANIFEST: there are two compilers. `scripts/compile-implementation-content.mjs` is current. `docs/authoring/compile-implementation-content.mjs` is an older copy with no `--validate-library`. [content-schema]
+- MANIFEST/validator: `--validate-library` exits 0 even when packages fail. Only an unreadable pinned baseline exits 1, and warnings appear only in `--json` output. [content-schema]
+- Correction batch 2 memory: there is no `normalize.ts`. `normalizePackage` lives in `protocol.ts`. [content-schema]
+- SOURCE-CHECKED-FIELD: `verifiedSources[].checkedOn` is in 13 of 46 `META.json`, not each, and only 5 registered packages have a user-facing source. Most steps show no "Source checked" line. [content-schema]
+- IMPL: the `{channel} is not shown` fault line no longer exists (no content key, `projection.degraded` unread, and `implementationChannels.test.ts` asserts its absence). A withheld channel simply has no tab. [step-renderer]
+- IMPL: `stepPackage.ts` is not the channel view. It computes package state, bindings, preview and the Readiness merge; the channel viewer is `Implementation` in `ContentStep.tsx`. [step-renderer]
+- PLANROW: `planRows.ts` is not the Plan's row model. Only `PrintPlan.tsx` (plus `forecast.ts` and `content.ts`) imports it. The Plan uses `planBoard.ts` `BoardItem`, and the When column comes from `boardWhenOf`. [step-renderer, schedule, state-model]
+- SCHED: `src/roadmap/forecast.ts settleForecast` is missing from the map. It is the only production caller of `settleSchedule`. [schedule]
+- SCHED: `phases.ts` phase labels are read only by print; the Plan screen shows lanes, not phases. [schedule]
+- OWNER: "Review required" on the Plan comes from `content.json stepContract.condition['review-required']`, not `READINESS_RESULTS`, which labels only package-authored tiles. The word has two sources. [state-model]
+- OWNER: `coverage.ts` never produces the words "In place". The row word is hard-coded at `planState.ts:111`, and the badge reads `content.json lifecycle['in-place']`. [state-model]
+- OWNER: `drift.ts` DriftStatus compares packages with the pin. Drift on a tenant policy is read in `planLanes.ts observe().drift`, `tracking.ts driftOutcomeOf` and member `reviewRequired`. [fixtures]
+- RUNTIME-ROWS: `s-prereq-source-references` is no longer a generated row (S4 removed it, and `sourceReferences.test.ts` asserts it is gone). It survives only as the Baseline mappings decision key. [steps-inventory, fixtures, plan-record]
+- RUNTIME-ROWS: the harden row's id is `cleanup-hardening`. `dependency-data.json` uses A1's `cleanup-harden-emergency-access`, so the engine never matches it and the lane falls back to Plan state. [steps-inventory]
+- FIXTURES: `pilotFixture` transforms one step and is not a tenant. `src/testing/uiSnapshot.ts`, the mock tenant under big and gaps, is missing from the map. [fixtures]
+- Decisions — Suspended: no internal `Suspended` state exists. Deferral is `PlanDecisions.skips` → status `skipped`/`setAside` → lane `Deferred`. The row reads "Skipped" while badge and rail read "Set aside"; only the blocker kind `suspendedPrerequisite` carries the word. [state-model, plan-record]
+- Decisions — "No runtime code special-cases step IDs": persistence does. `DECISION_STEPS` maps step ids to mapping fields, Baseline mappings are saved under `s-prereq-source-references`, and `applySkips` refuses skips only on emergency-access ids. [plan-record]
+- Decisions — "Source checked <Mon D, YYYY>" matches production, but the approved anatomy A2 says "Source updated {date}". [step-renderer]
+- Working rules vs CLAUDE.md: RUN-CONTEXT:44 lets S8 run the walk and build; CLAUDE.md says sessions never run the walk. [contracts-and-walk]
+
+## Playbook (A1)
+- §2: Completed is "never stored", yet Cleanup completion is stored as a `checkpoints` entry written by the Done button. [plan-record]
+- §2: "Foundation steps cannot be deferred", yet only emergency-access ids are refused. Other foundations rely on each content step's `skip` flag, which was not checked step by step. [plan-record]
+- §2: Deferred means owner-deferred, yet a baseline conflict shows "Deferred" in the When column, rail and readiness bar while sitting in On Hold. [state-model]
+- §3: started is per step and durable, yet the only persisted "started" is plan-wide `startedAt`. [plan-record]
+- §3: started work never returns to Up Next, yet `lanes.ts:296` puts any step in a dependency cycle in Up Next, and `planLanes.ts fallbackOf` sends an unheld enforced policy needing correction to Up Next. [state-model]
+- §4: a blocked decision is On Hold, yet `planLanes.ts:115` always reads a pending decision as actionable. [state-model]
+- §6/§7: evidence prerequisites read Ready · Observing, yet the engine maps `evidence`, `time/evidence-window` and `license/platform` edges to `fact` and reads them as blocked. Worked example 15 ("Required license missing") cannot occur. [readiness-taxonomy]
+- §7: no universal report-only duration, yet the code applies a fixed 7 days (3 when nobody is affected) at `constants.ts:50-53`, `schedule.ts:618` and `tracking.ts:481`. [schedule]
+- §8.1–§8.3: unresolved conditions have their own blocker kind and can become not-applicable, yet conditions are never passed in (`planLanes.ts:149`), so no edge is ever not-applicable. [readiness-taxonomy]
+- §8.4/§15: a missing object with no maker is a `fact`, yet the code has a separate `missingObject` kind and also uses it when a maker exists but is not a graph edge. [readiness-taxonomy, state-model]
+- §11: lists two runtime rows, yet the adapter treats more as unknown to the graph: `cleanup-alerting`, `cleanup-consolidation`, `cleanup-naming`, `s-goal-all-users-no-persistence`, `s-blocker-allowed-countries` and `s-ladder-*`. [fixtures]
+- §10.0: `s-goal-session-lifetime` is generated as `s-goal-all-users-no-persistence`, so the graph does not know it and the demo puts it On Hold by fallback. [steps-inventory]
+- §10.0/§18.2 (V7): `s-prereq-passkey-settings` and `s-ladder-operator-passkey` have packages and hard edges, including `s-verify-mfa:start ← s-prereq-passkey-settings`, but no code generates them. [steps-inventory]
+- §10.0: `s-goal-azure-management-mfa`, `s-goal-mobile-app-protection` and `s-goal-unmanaged-browser` are not in the pinned goal map, so they never become steps. [steps-inventory]
+- §10.0: `s-goal-workload-identity-block` reads not-applicable in every fixture, so no plan contains it. [steps-inventory]
+- §10.0: `runtime-source-reference-decision` has no package and no runtime row; `dependency-data.json` has 48 ids against 46 packages. [steps-inventory]
+- §10 device registration: pilot scope plus human validation is described, but the package has no pilot scope (All users in report-only plus three human checks). [package-example]
+- §10 device registration: the legacy "Require MFA to register or join devices = No" blocker has no stage; the package gates only enforcement. [package-example]
+- §10 device registration: the create lists one source-group dependency (`sourceMapping:62d67e66`), though the pinned policy excludes two further unexplained source groups (playbook line 877). [package-example]
+- §15: a healthy prerequisite is not on hold, yet every step prerequisite tile reads "Prerequisite on hold", including queued Up Next ones (`planBoard.ts:100`, `:217`). [readiness-taxonomy]
+- §15/§8.3: blocker labels differ from `BOARD.blockers`, e.g. "Required license or capability missing" vs "Licence or platform", and "Prerequisite was deferred" vs "Deferred prerequisite". [readiness-taxonomy, state-model]
+- §16 heading says "record only; not implemented", yet §16.1 is implemented (`readinessOf`, `ReadinessSection`). [readiness-taxonomy]
+- §16.1: a blocker is never shown twice, yet from reading the code (not seen on screen) `unmatched-pair`/`no-operation` can show both "Not supported" and "Implementation · Unavailable", and the break-glass gate tile duplicates the exclusion-group chain. [readiness-taxonomy]
+- §16.1 tiles name direct edges, but the emergency gate (`generate.ts:1561`) adds `s-prereq-break-glass` to deny-capable policies. That is transitive for mfa-all-users, and not in the chain at all for guests-mfa, mobile-app-protection, service-accounts-trusted-network, unmanaged-browser and workload-identity-block. [readiness-taxonomy]
+- §16.2: the "Planned work" preview exists only for steps with an active package. A held step without one shows only "Nothing to submit". [step-renderer]
+- §19: suggested dates and a phase forecast are deferred, yet `buildSchedule`, `stepSchedule.ts`, print phases and ICS already compute them. [schedule]
+- §19: dates derive from "the graph and cadence", but no cadence concept exists in code. [schedule]
+- §19/finish: a plan-level finish date exists (`src/derive/finish.ts planFinish`), shown only in print and the grounding bundle, not on the Plan. [schedule]
+- §20: a phase is never a dependency, yet the scheduler uses phase order to push dates (`schedule.ts:633-639`). Lanes are unaffected. [schedule]
+
+## Approved anatomy (A2) and BLOCKED.md
+- A2 puts `Learn →` inside Why on every variant; production shows it there only without an Implementation section, otherwise as "Microsoft Learn" on the support line. [step-renderer]
+- A2 rule 4 and V3 draw "Fix before continuing"; production has no such box, since those items are Readiness tiles. [step-renderer]
+- A2 draws four channel tabs; production adds Email when a package projects one. [step-renderer]
+- A2 excludes What IAMAI found, Who this touches and More from the opened step; print still renders them. [step-renderer]
+- BLOCKED.md S5 cites a `withheld.several` "JSON is not shown yet…" line that no longer exists in content.json or src. [step-renderer]
+
+## CLAUDE.md and CI
+- "CI runs the walk … a job before deploy-pages": the walk is the first job inside `deploy-pages.yml` (`walk` → `build` → `deploy`). The required `ci` workflow runs the smoke only. [contracts-and-walk]
+- The walk also fails on harness errors (exit 2), and a Learn-link 404 is a P0 that blocks deploy, contradicting the workflow comment that third-party checks never gate deploy. [contracts-and-walk]
+- `page-contracts.json` has unread entries: `rules.tipMax*`, `mockStates`, `allow.tiles`/`allow.columns`, several `forbid`/budget lists, and `enforceAll`'s stated meaning. [contracts-and-walk]
+- The walk checks an opened step against `.step-body`, not the contract's `.step`, and raises P0 on `CIS` chips the contract allows. [contracts-and-walk]
+
+## Defects noticed in passing (not contradictions; recorded so they are not lost)
+- The plan file omits `observations`, `planCreatedAt` and `firstDeployment`, and loading one replaces the stored record, so dates can move. [plan-record, schedule]
+- A freeze with only "from" set is silently dropped, and the freeze's last day is not blocked (midnight-UTC end vs noon enforcement). [schedule]
+- `tickAnswer` (emergency attestations) never reaches the step, and nothing calls `setBand`. [plan-record]
+- Forget leaves MSAL session storage in place; only Sign out clears it. [plan-record]
+- "Held" is a constant at `planBoard.ts:84`, not a content key. [schedule]
+- Hash links to Completed or Deferred rows open nothing until the matching Show toggle is pressed. [step-renderer]
