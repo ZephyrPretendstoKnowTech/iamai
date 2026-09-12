@@ -165,13 +165,13 @@ Explain why administrator phishing-resistant enforcement is not actionable yet u
 Explain the licensing prerequisite for Conditional Access/authentication-strength enforcement and keep the step non-actionable until licensing is resolved.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
 Subject: Admin strong-auth validation is starting
 
 We are placing the administrator strong-auth policy in Report-only first. Before enforcement, every administrator in scope must have a working passkey/security key, Windows Hello for Business, supported certificate, or approved Temporary Access Pass path that satisfies the baseline strength.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
 Subject: Administrator strong authentication is ready to enforce
 
 The administrator policy has completed validation and is ready to be enabled. Admin sign-ins in scope will need one of the baseline's accepted strong methods. If an admin is blocked, use the documented recovery/readiness path rather than adding a permanent exception.

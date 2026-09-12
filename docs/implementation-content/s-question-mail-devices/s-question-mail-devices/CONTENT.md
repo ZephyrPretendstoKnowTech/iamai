@@ -55,13 +55,13 @@ Summarize what must be proven before the old service account can leave the excep
 Explain the blocker without inventing a mail route, IP address, certificate, or credential: {{dependencies.blockers}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.owner","channel":"email","states":["routeDecisionRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.owner","channel":"email","states":["routeDecisionRequired"],"format":"markdown","kind":"template","audience":"device-owner"}
 Subject: Confirm mail-sending device requirements
 
 We need the current sending method, whether the device can use OAuth/TLS, whether it sends only internally or to internet recipients, and whether its network has a static public IP or suitable TLS certificate. We will choose a supported route from those facts rather than weaken Conditional Access.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.device-owner","channel":"email","states":["migrationRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.device-owner","channel":"email","states":["migrationRequired"],"format":"markdown","kind":"template","audience":"device-owner"}
 Subject: Mail-device migration and test
 
 We are moving the listed device/application off its current password-dependent mail path. Please provide a test window and a recipient we can verify. We will keep the existing route available until the replacement sends successfully and is visible in logs.

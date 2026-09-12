@@ -44,16 +44,13 @@
     "rule": "Preserve the two-policy merged IAMAI step and keep SharePoint/Defender service configuration separate from CA JSON. Never invent stable source GUIDs. After changing the SharePoint unmanaged-device tenant setting, stop and rescan before using any previously resolved CA policy ID."
   },
   "requiredBindings": [
-    "sharepoint.adminUrl",
     "sharepoint.unmanagedDevices.currentMode",
     "policies.unmanagedBrowser.a.target.displayName",
     "policies.unmanagedBrowser.a.target.conditions",
     "policies.unmanagedBrowser.a.target.sessionControls",
-    "policies.unmanagedBrowser.a.current.id",
     "policies.unmanagedBrowser.b.target.displayName",
     "policies.unmanagedBrowser.b.target.conditions",
     "policies.unmanagedBrowser.b.target.sessionControls",
-    "policies.unmanagedBrowser.b.current.id",
     "policies.unmanagedBrowser.semanticMismatches",
     "license.defenderCloudApps"
   ],
@@ -64,7 +61,10 @@
     "dependencies.blockers",
     "signature",
     "policies.unmanagedBrowser.a.current.state",
-    "policies.unmanagedBrowser.b.current.state"
+    "policies.unmanagedBrowser.b.current.state",
+    "sharepoint.adminUrl",
+    "policies.unmanagedBrowser.a.current.id",
+    "policies.unmanagedBrowser.b.current.id"
   ],
   "projection": {
     "configurePrerequisite": {

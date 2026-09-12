@@ -16,7 +16,7 @@ Summarize the already-saved owner device decision and its downstream consequence
 Explain why IAMAI cannot currently present/consume the device decision. Do not manufacture a default posture.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.decision-request","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.decision-request","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
 Subject: Device-management decision needed for the IAMAI plan
 
 IAMAI needs a business decision before it can scope the device controls. For phones, choose whether they will be enrolled in Intune, protected only inside supported apps, or not allowed to hold company data. For computers, choose Intune enrollment, Microsoft Entra hybrid join as the accepted managed state, or no management requirement. We will use the saved choice to build the downstream policy; we will not infer it from current device inventory.

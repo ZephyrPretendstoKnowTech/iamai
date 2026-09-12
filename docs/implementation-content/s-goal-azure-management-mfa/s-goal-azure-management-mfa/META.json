@@ -56,8 +56,7 @@
     "policy.target.grantControls",
     "policy.target.sessionControls",
     "policy.current.id",
-    "policy.current.semanticMismatches",
-    "group.serviceAccounts.id"
+    "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
     "tenant.displayName",
@@ -67,7 +66,8 @@
     "dependencies.blockers",
     "signature",
     "people.affected.count",
-    "automation.affected"
+    "automation.affected",
+    "group.serviceAccounts.id"
   ],
   "projection": {
     "missing": {

@@ -200,7 +200,7 @@ IAMAI has candidate emergency-access evidence for {{tenant.displayName}}, but th
 @@IAMAI-BEGIN {"id":"ai.implement","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the owner-confirmed emergency account {{emergency.target.upn}} (stable ID {{emergency.target.userId}}) for {{tenant.displayName}}. Target: cloud-only onmicrosoft.com identity, enabled, permanent active Global Administrator, phishing-resistant emergency authentication, canonical exclusions-group membership, independent secure custody, monitoring, and real drill proof. Machine actions may only ensure the deterministic role and group membership. Never request or expose credentials.
+Review the owner-confirmed emergency accounts {{emergency.target.accountsSummary}} for {{tenant.displayName}}, each on its own evidence. Target: cloud-only onmicrosoft.com identity, enabled, permanent active Global Administrator, phishing-resistant emergency authentication, canonical exclusions-group membership, independent secure custody, monitoring, and real drill proof. Machine actions may only ensure the deterministic role and group membership. Never request or expose credentials.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
@@ -221,7 +221,7 @@ Assess whether deterministic emergency-account state is ready for a human drill.
 Explain the IAMAI-supplied blockers for emergency access in {{tenant.displayName}}: {{dependencies.blockers}}. Do not provide implementation that bypasses an unresolved owner choice, unreadable evidence, or missing canonical exclusions-group identity.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.admins.drill","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.admins.drill","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"authorized-emergency-administrators"}
 Subject: Planned emergency access validation
 
 We are validating the tenant's emergency access process. Authorized administrators should confirm they can retrieve the approved emergency credentials, use the designated secure workstation/client path, complete a controlled sign-in and administrative check, and verify the monitoring alert. Do not send passwords, key PINs, recovery codes, safe combinations, or other secrets by email. Record only the validation result and date after the drill.

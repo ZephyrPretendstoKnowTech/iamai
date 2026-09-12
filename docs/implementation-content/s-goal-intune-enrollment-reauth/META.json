@@ -24,7 +24,12 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime":"183dce40"},
+    "reviewedMembers": {
+      "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime": "183dce40"
+    },
+    "reviewedIdentities": {
+      "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime": "conditions.applications:a3118c8a|conditions.clientApplications:-"
+    },
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
     "sourceMemberKey": "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime",
     "sourceStableId": null,

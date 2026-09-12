@@ -208,7 +208,7 @@ IAMAI has reached the enforcement state; do not rebuild the policy.
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","apiStability":"beta-exception"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","apiStability":"beta-exception","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -CompatibilityEvidenceReviewed and -UnsupportedDeviceFlowsResolved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # IAMAI compact implementation script — Require Token Protection on Windows
 # Token Protection's secureSignInSession field is currently a Graph beta-only session-control property.
 # Required module: Microsoft.Graph.Authentication

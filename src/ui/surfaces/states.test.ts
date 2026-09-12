@@ -10,6 +10,7 @@ import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { statusOf } from './statusWord.ts'
 import { planFinish } from '../../derive/finish.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
+import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import { stepExportView } from './stepExport.ts'
 
 // 'Needs decision' is the ninth: the `needs-decision` condition projects to the
@@ -43,8 +44,10 @@ test('the print finish and the ICS read the same rings the plan does', () => {
   const finish = planFinish(r.steps)
   // planFinish never dates a step past the schedule target.
   if (finish.finish) assert.ok(finish.finish <= r.schedule.targetEnd)
-  // The ICS emits an entry per scheduled step, from its rings — the same rows the plan shows.
+  // The ICS emits an entry per step the plan dates, from its one scheduling result
+  // (roadmap/stepSchedule.ts scheduledEventOf) — the same day the row and the rail read.
   const ics = buildIcs(r.steps, 'Tenant', r.input.planId, (s) => stepExportView(s, { snapshot: r.input.snapshot, mapping: r.input.mapping, nameOf: (id) => r.input.names?.label(id) ?? id, signature: 'IT', operatorId: null, now: r.input.snapshot.asOf }))
-  const scheduled = r.steps.filter((s) => s.status !== 'done' && s.status !== 'skipped' && s.rings.length > 0).length
-  assert.equal((ics.match(/BEGIN:VEVENT/g) ?? []).length, scheduled, 'one calendar entry per scheduled step')
+  const scheduled = r.steps.filter((s) => scheduledEventOf(s) !== null)
+  assert.equal((ics.match(/BEGIN:VEVENT/g) ?? []).length, scheduled.length, 'one calendar entry per scheduled step')
+  for (const s of scheduled) assert.ok(ics.includes(`DTSTART;VALUE=DATE:${scheduledEventOf(s)!.start.slice(0, 10).replace(/-/g, '')}`), `${s.id}: booked on another day`)
 })

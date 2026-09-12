@@ -144,7 +144,7 @@ Explain why **Block Sign-ins From Countries Not Allowed** is not actionable usin
 Explain the licensing blocker for **Block Sign-ins From Countries Not Allowed** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Country sign-in restrictions entering validation
 
 Hi,
@@ -154,7 +154,7 @@ We are validating sign-in restrictions for {{tenant.displayName}} so access from
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Country sign-in restrictions ready to enforce
 
 Hi,

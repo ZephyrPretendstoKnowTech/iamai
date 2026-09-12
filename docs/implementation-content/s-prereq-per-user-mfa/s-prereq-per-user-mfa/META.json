@@ -30,15 +30,15 @@
     "scope": "Only explicit per-user MFA read/update operations in this package; do not generalize beta use."
   },
   "requiredBindings": [
-    "tenant.displayName",
-    "mfa.perUser.userIds",
     "mfa.perUser.accounts",
     "dependencies.replacementMfaSummary"
   ],
   "optionalBindings": [
     "mfa.methodsMigrationState",
     "mfa.methodsCoverage",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "tenant.displayName",
+    "mfa.perUser.userIds"
   ],
   "projection": {
     "blocked": {

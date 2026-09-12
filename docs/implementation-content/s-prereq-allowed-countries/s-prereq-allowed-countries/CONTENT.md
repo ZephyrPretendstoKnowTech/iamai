@@ -110,7 +110,7 @@ Verify exact country set, stable ID, IP lookup, and unknown-country behavior bef
 Explain the unresolved prerequisite: {{dependencies.blockers}}. Do not create a country location from observed sign-ins alone.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.users.travel-confirmation","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.users.travel-confirmation","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
 Subject: Confirm countries where staff need to sign in
 
 We are preparing the approved-country list used by the tenant's geographic sign-in controls. Please confirm every country where staff legitimately work or travel. Historical sign-ins are being used only as review evidence; they will not automatically add a country. Temporary travel should follow the agreed travel-notice process before the downstream blocking policy is enforced.

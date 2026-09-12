@@ -24,6 +24,7 @@ import { conditionErrors } from './conditions.ts'
 import type { ConditionVocabulary } from './conditions.ts'
 import { invocationErrors } from './invocation.ts'
 import type { InvocationSpec } from './invocation.ts'
+import { AUTHORED_STATES } from './states.ts'
 
 export type BlockMeta = { id: string; channel: string; states?: string[]; format?: string; kind?: string; invocation?: InvocationSpec } & Record<string, unknown>
 export type Block = { meta: BlockMeta; text: string }
@@ -101,7 +102,29 @@ const MATERIAL_ROOTS = ['conditions', 'grantControls', 'sessionControls']
 
 /** Every key a state projection may carry: its channels, the composition keys of a Partial projection, and inert documentation. */
 const PROJECTION_KEYS = new Set<string>(['requires', 'mode', 'sharedBefore', 'mismatches', 'sharedAfter', 'mismatchBinding', 'reason', 'appliesWhen', ...PROJECTION_CHANNELS])
-const MISMATCH_KEYS = new Set<string>(['requires', 'appliesWhen', 'facts', 'select', 'alongside', 'id', ...PROJECTION_CHANNELS])
+const MISMATCH_KEYS = new Set<string>(['requires', 'appliesWhen', 'facts', 'select', 'alongside', 'member', 'id', ...PROJECTION_CHANNELS])
+
+/**
+ * The member roles a multi-policy package names in its bindings
+ * (`policies.<family>.<role>.…`): the roles a correction module may be scoped to.
+ */
+export function memberRolesOf(bindings: Iterable<string>): Set<string> {
+  const out = new Set<string>()
+  for (const b of bindings) {
+    const parts = b.split('.')
+    if (parts[0] === 'policies' && parts.length > 3) out.add(parts[2])
+  }
+  return out
+}
+
+/** The binding IAMAI supplies with one member's changed fields (stepPackage.ts memberBindings), for a role, among the bindings it holds. */
+export function memberChangedFieldsBinding(bindings: Iterable<string>, role: string): string | null {
+  for (const b of bindings) {
+    const parts = b.split('.')
+    if (parts.length === 5 && parts[0] === 'policies' && parts[2] === role && parts[3] === 'current' && parts[4] === 'changedFields') return b
+  }
+  return null
+}
 
 const BEGIN = '@@IAMAI-BEGIN '
 const END = '@@IAMAI-END'
@@ -222,6 +245,178 @@ export function normalizeProjection(meta: PackageMeta, blocks: Record<string, Bl
     }
   }
   return out
+}
+
+// ---- normalisation (correction batch 2) ----
+//
+// The library was authored in several shapes of one schema: an Email trigger
+// named `trigger`, or declared once in META.email for a list of blocks; a
+// troubleshooting scenario whose check is one sentence rather than a list, whose
+// states are its block's, and whose symptom is its title; readiness evidence
+// written as one paragraph (`whyIamaiSaysThis`) or as safe-now / safe-to-enforce
+// lines; content authored under another name for a state the runtime enters
+// (`groupMissing` for `missing`). Each is the same structure the runtime reads, so
+// it is rewritten into that structure — the author's words unchanged — before
+// validation. Nothing is inferred from prose: a tile whose result is a sentence or
+// a binding, or whose rule is prose, is still refused by the validator.
+
+/** When an Email authored for exactly one state is sent (guide §26.6): the transition that state leads to, or the stage itself for one the runtime never enters. */
+const TRIGGER_BY_STATE: Readonly<Record<string, string>> = { missing: 'before-report-only', partial: 'before-correction', reportOnly: 'during-report-only', readyToEnforce: 'before-enforcement', inPlace: 'after-enforcement' }
+
+const kebab = (s: string): string => s.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
+
+/** The scenario fields the runtime reads as lists (guide §30.3). */
+const SCENARIO_LISTS = ['likelyCauses', 'check', 'fix', 'doNot', 'then'] as const
+
+/** The readiness conclusions a model names by the decision it answers (guide §33.2), and the runtime states each answers in. */
+const CONCLUSION_STATES: Readonly<Record<string, (state: string) => boolean>> = {
+  nextSafeAction: () => true,
+  safeNow: (s) => s === 'missing' || s === 'partial' || s === 'reportOnly',
+  safeToEnforce: (s) => s === 'readyToEnforce',
+}
+
+const isRuntimeState = (s: unknown): s is PackageState => (PACKAGE_STATES as readonly string[]).includes(String(s))
+
+/** A state authored under another name for a runtime state (states.ts `alias`), with that state beside it. */
+function withAliases(states: readonly string[]): string[] {
+  const out = [...states]
+  for (const s of states) {
+    const known = AUTHORED_STATES[s]
+    if (known?.disposition === 'alias' && known.runtime !== null && !out.includes(known.runtime)) out.push(known.runtime)
+  }
+  return out
+}
+
+function normalizeScenario(s: Record<string, unknown>, blockStates: readonly string[], note: (what: string) => void): void {
+  for (const key of SCENARIO_LISTS) {
+    if (typeof s[key] === 'string') {
+      s[key] = [s[key]]
+      note(`troubleshooting ${key} as a list`)
+    }
+  }
+  if (s.sources === undefined && Array.isArray(s.sourceIds)) {
+    s.sources = s.sourceIds
+    delete s.sourceIds
+    note('troubleshooting sources')
+  }
+  if (s.states === undefined && blockStates.length > 0) {
+    s.states = [...blockStates]
+    note('troubleshooting states from its block')
+  }
+  if (Array.isArray(s.states)) s.states = withAliases(s.states.map(String))
+  // Written symptom-first, the symptom is the title (§30.4), and it is shown once.
+  if (typeof s.title !== 'string' && typeof s.symptom === 'string' && s.symptom.trim() !== '') {
+    s.title = s.symptom.trim().replace(/\.$/, '')
+    delete s.symptom
+    note('troubleshooting title from its symptom')
+  }
+}
+
+function normalizeReadiness(model: Record<string, unknown>, blockStates: readonly string[], note: (what: string) => void): void {
+  const runtime = blockStates.filter(isRuntimeState)
+  const why = model.whyIamaiSaysThis ?? model.whyIAMAI
+  if (model.whyIamAISaysThis === undefined && why !== undefined) {
+    const sections: Record<string, unknown> = {}
+    if (typeof why === 'string') sections.whyItMatters = why
+    else if (isObject(why)) {
+      if (typeof why.whyItMatters === 'string') sections.whyItMatters = why.whyItMatters
+      const unknown = [...asStrings(why.unknown), ...(typeof why.unknownRule === 'string' ? [why.unknownRule] : [])]
+      if (unknown.length > 0) sections.unknownCannotProve = unknown
+    }
+    if (Object.keys(sections).length > 0) {
+      model.whyIamAISaysThis = { sections }
+      note('readiness evidence sections')
+    }
+  }
+  if (model.conclusionByState === undefined) {
+    const conclusions: Record<string, string> = {}
+    const byState: Record<string, string> = {}
+    for (const [key, applies] of Object.entries(CONCLUSION_STATES)) {
+      if (typeof model[key] !== 'string') continue
+      conclusions[key] = model[key] as string
+      for (const s of runtime) if (applies(s)) byState[s] = key
+    }
+    if (Object.keys(byState).length > 0) {
+      model.conclusions = { ...(isObject(model.conclusions) ? model.conclusions : {}), ...conclusions }
+      model.conclusionByState = byState
+      note('readiness conclusions by state')
+    }
+  }
+  // A tile whose written result opens with a result the runtime knows ("Unknown
+  // until tested") is that result in every state its block declares. A result that
+  // is a binding or any other sentence stays as written, and the validator refuses it.
+  for (const t of Array.isArray(model.tiles) ? model.tiles : []) {
+    if (!isObject(t) || t.rules !== undefined || typeof t.result !== 'string' || typeof t.line !== 'string' || runtime.length === 0) continue
+    const text = t.result
+    const result = READINESS_RESULTS.find((r) => text === r || text.startsWith(`${r} `))
+    if (!result) continue
+    t.rules = [{ if: { state: [...runtime] }, result, line: t.line }]
+    note('readiness tile with a written result')
+  }
+}
+
+/** The Email metadata the runtime reads, on the block: `trigger` is the guide's `communicationTrigger`, META.email declares its blocks, and a one-state Email is sent for that state. */
+function normalizeEmail(id: string, meta: BlockMeta, email: PackageMeta['email'], note: (what: string) => void): BlockMeta {
+  const m: BlockMeta = { ...meta }
+  if (typeof m.communicationTrigger !== 'string' && typeof m.trigger === 'string') {
+    m.communicationTrigger = m.trigger
+    delete m.trigger
+    note('email trigger')
+  }
+  const declared = email ? [email.block, ...asStrings((email as Record<string, unknown>).blocks)] : []
+  if (email && declared.includes(id)) {
+    for (const key of ['audience', 'communicationTrigger', 'purpose'] as const) {
+      if (typeof m[key] !== 'string' && typeof email[key] === 'string') {
+        m[key] = email[key]
+        note(`email ${key} from META.email`)
+      }
+    }
+  }
+  const states = m.states ?? []
+  if (typeof m.communicationTrigger !== 'string' && states.length === 1) {
+    m.communicationTrigger = TRIGGER_BY_STATE[states[0]] ?? `during-${kebab(states[0])}`
+    note('email trigger from its one state')
+  }
+  return m
+}
+
+/**
+ * A package in the one shape the validator and the runtime read, and what was
+ * rewritten to get there. Only structure moves: every sentence, block and value
+ * is the author's.
+ */
+export function normalizePackage(meta: PackageMeta, source: Record<string, Block>): { meta: PackageMeta; blocks: Record<string, Block>; normalized: string[] } {
+  const normalized: string[] = []
+  const note = (what: string): void => void normalized.push(what)
+  const blocks: Record<string, Block> = {}
+  for (const [id, b] of Object.entries(source)) {
+    let block: Block = b
+    if (b.meta.channel === 'email') block = { meta: normalizeEmail(id, b.meta, meta.email, note), text: b.text }
+    if ((b.meta.channel === 'troubleshooting' || b.meta.channel === 'readiness') && (b.meta.format === 'json' || b.meta.format === 'json-template')) {
+      const own = b.meta.states ?? []
+      try {
+        block = editModel(block, (model) => {
+          if (b.meta.channel === 'readiness') normalizeReadiness(model, withAliases(own), note)
+          else for (const s of Array.isArray(model.scenarios) ? model.scenarios : []) if (isObject(s)) normalizeScenario(s, own, note)
+        })
+      } catch {
+        // A model that does not parse is left as written; the validator names it.
+      }
+    }
+    // Content authored for a state under another name is content for that state.
+    const states = block.meta.states ?? []
+    const aliased = withAliases(states)
+    if (aliased.length !== states.length) block = { meta: { ...block.meta, states: aliased }, text: block.text }
+    blocks[id] = block
+  }
+  const projection = normalizeProjection(meta, blocks)
+  for (const [state, p] of Object.entries({ ...projection })) {
+    const known = AUTHORED_STATES[state]
+    if (known?.disposition !== 'alias' || known.runtime === null || projection[known.runtime] !== undefined) continue
+    projection[known.runtime] = structuredClone(p)
+    note(`state ${state} authored for ${known.runtime}`)
+  }
+  return { meta: { ...meta, projection }, blocks, normalized }
 }
 
 /**
@@ -380,6 +575,7 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
         }
         if (m.select !== undefined) add(mod, ...conditionErrors(m.select, vocab, `${at}.select`))
         if (m.alongside !== undefined && typeof m.alongside !== 'boolean') add(mod, `${at}.alongside: true or false`)
+        if (m.member !== undefined && (typeof m.member !== 'string' || !memberRolesOf(declared).has(m.member))) add(mod, `${at}.member: a role the package's policies.<family>.<role> bindings name`)
         if (facts === undefined && m.select === undefined) add(mod, `${at}: IAMAI cannot select this module (it declares no facts and no select condition)`)
         for (const r of asStrings(m.requires)) if (!declared.has(r)) add(mod, `${at}.requires: undeclared binding ${r}`)
       }
@@ -396,6 +592,8 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
       if (channel === 'powershell' && b.meta.kind === 'deployableAfterBinding') {
         if (typeof ref.mode !== 'string') add(locus, `projection.${state}${at}: a deployable script is projected in a mode`)
         if ((ref.corrections ?? []).length > 0 && typeof b.meta.invocation?.correctionsParameter !== 'string') add(locus, `projection.${state}${at}: corrections need the invocation's correctionsParameter`)
+        const withheld = b.meta.invocation?.withheldModes
+        if (typeof ref.mode === 'string' && withheld && typeof withheld[ref.mode] === 'string') add(locus, `projection.${state}${at}: mode ${ref.mode} is withheld by its invocation: ${withheld[ref.mode]}`)
       }
       if (channel === 'email') {
         const own = typeof b.meta.audience === 'string' && typeof b.meta.communicationTrigger === 'string'
@@ -536,18 +734,25 @@ type ModelEdit = { entries: Set<number>; entryStates: Map<number, Set<string>>; 
  * JSON template keeps its whole-value bindings exactly where they were.
  */
 function editSupportModel(block: Block, list: 'tiles' | 'scenarios' | null, edit: ModelEdit): Block {
+  return editModel(block, (model) => {
+    if (list !== null && Array.isArray(model[list])) {
+      const entries = model[list] as unknown[]
+      for (const [index, drop] of edit.entryStates) {
+        const entry = entries[index]
+        if (isObject(entry) && Array.isArray(entry.states)) entry.states = entry.states.filter((s) => !drop.has(String(s)))
+      }
+      model[list] = entries.filter((_, i) => !edit.entries.has(i))
+    }
+    if (isObject(model.conclusionByState)) for (const state of edit.conclusions) delete model.conclusionByState[state]
+  })
+}
+
+/** A support block's JSON model edited as JSON; a JSON template keeps its whole-value bindings exactly where they were. Throws where the model does not parse. */
+function editModel(block: Block, edit: (model: Record<string, unknown>) => void): Block {
   const bindings: string[] = []
   const source = block.meta.format === 'json-template' ? block.text.replace(JSON_BINDING, (m) => JSON.stringify(`${TEMPLATE_TOKEN}${bindings.push(m) - 1}`)) : block.text
   const model = JSON.parse(source) as Record<string, unknown>
-  if (list !== null && Array.isArray(model[list])) {
-    const entries = model[list] as unknown[]
-    for (const [index, drop] of edit.entryStates) {
-      const entry = entries[index]
-      if (isObject(entry) && Array.isArray(entry.states)) entry.states = entry.states.filter((s) => !drop.has(String(s)))
-    }
-    model[list] = entries.filter((_, i) => !edit.entries.has(i))
-  }
-  if (isObject(model.conclusionByState)) for (const state of edit.conclusions) delete model.conclusionByState[state]
+  edit(model)
   const text = JSON.stringify(model, null, 2).replace(new RegExp(`"${TEMPLATE_TOKEN}(\\d+)"`, 'g'), (_m, i: string) => bindings[Number(i)])
   return { meta: block.meta, text: `${text}\n` }
 }
@@ -684,8 +889,8 @@ function parseMeta(metaJson: string): PackageMeta {
  */
 export function compilePackage(metaJson: string, contentMd: string): CompiledPackage {
   const meta = parseMeta(metaJson)
-  const blocks = parseBlocks(contentMd)
-  const pkg: CompiledPackage = { meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks }
+  const { meta: normalized, blocks } = normalizePackage(meta, parseBlocks(contentMd))
+  const pkg: CompiledPackage = { meta: normalized, blocks }
   const errors = validatePackage(pkg)
   if (errors.length > 0) throw new PackageError(`${meta.stepId ?? 'package'}:\n${errors.join('\n')}`)
   return pkg
@@ -696,8 +901,10 @@ export function compilePackage(metaJson: string, contentMd: string): CompiledPac
  * cannot project safely withheld (`withholdInvalid`). Only a package whose files
  * do not parse at all is refused.
  */
-export function compileLibraryPackage(metaJson: string, contentMd: string): { pkg: CompiledPackage; withheld: string[] } {
-  const meta = parseMeta(metaJson)
-  const blocks = parseBlocks(contentMd)
-  return withholdInvalid({ meta: { ...meta, projection: normalizeProjection(meta, blocks) }, blocks })
+export function compileLibraryPackage(metaJson: string, contentMd: string): { pkg: CompiledPackage; withheld: string[]; source: CompiledPackage; errors: string[] } {
+  const { meta, blocks } = normalizePackage(parseMeta(metaJson), parseBlocks(contentMd))
+  const source: CompiledPackage = { meta, blocks }
+  // `source` is the package as authored and normalised, `errors` what strict
+  // validation refuses in it: the library index (library.ts libraryIndexOf) reads both.
+  return { ...withholdInvalid(source), source, errors: validatePackage(source) }
 }

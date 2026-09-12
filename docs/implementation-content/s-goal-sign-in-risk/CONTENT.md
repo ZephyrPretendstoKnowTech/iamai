@@ -94,7 +94,7 @@ Leave the selected canonical policy in Report-only. Review ID Protection risky s
 @@IAMAI-BEGIN {"id":"json.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"FirstEnforcementMode":{"binding":"decision.signInRisk.firstEnforcementMode","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","Verify"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # IAMAI compact implementation script — Challenge High-Risk Sign-ins
 [CmdletBinding()]
 param(

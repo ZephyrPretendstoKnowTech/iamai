@@ -146,7 +146,7 @@ Explain why **Block Unsupported Device Platforms** is not actionable using only 
 Explain the licensing blocker for **Block Unsupported Device Platforms** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Unsupported device-platform blocking entering validation
 
 Hi,
@@ -156,7 +156,7 @@ We are validating a Conditional Access rule for {{tenant.displayName}} that bloc
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Unsupported device-platform blocking ready to enforce
 
 Hi,

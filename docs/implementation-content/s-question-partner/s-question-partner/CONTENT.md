@@ -66,13 +66,13 @@ Explain why this partner/MSP step does not apply. Do not invent a delegated rela
 Explain the blocker without inventing partner identity or policy scope: {{dependencies.blockers}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.decision","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.decision","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
 Subject: Confirm MSP delegated-access handling
 
 Please confirm whether the MSP/CSP should retain delegated access while the Conditional Access baseline is deployed. IAMAI will use the Service provider external-user type for approved GDAP access; it will not maintain a list of individual technician exclusions.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.change","channel":"email","states":["applyRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.change","channel":"email","states":["applyRequired"],"format":"markdown","kind":"template","audience":"partner-contact"}
 Subject: Conditional Access partner-scope change
 
 We are updating the resolved Conditional Access policy scope so approved service-provider delegated access continues without exempting named technicians. After the change, we will validate the delegated sign-in path and re-read the exact policies.

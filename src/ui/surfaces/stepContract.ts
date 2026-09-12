@@ -41,6 +41,7 @@ import { badgeOf, barKeyOf, planStateOf } from './planState.ts'
 import type { PlanStateKind } from './planState.ts'
 import { doneWhenTemplates } from './doneWhen.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
+import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
@@ -343,6 +344,8 @@ export type StepContract = {
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
   hardening: ContractHardening | null
+  /** Each confirmed emergency account's own standing, one line per account in confirmed order; empty on every other step. */
+  emergencyAccounts: string[]
 }
 
 const MEMBER_LABELS = 'ABCDEFGH'
@@ -758,7 +761,21 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     schedule: step.scheduled ? scheduleOf(step) : null,
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
+    emergencyAccounts: emergencyAccountLines(step, ctx.nameOf),
   }
+}
+
+/**
+ * Each confirmed emergency account's own standing (validation/emergencyTiers.ts
+ * emergencyAccountStanding): its minimum safety, its own hardening, or that no
+ * check about it ran. A finding about the set of accounts is no account's line.
+ */
+function emergencyAccountLines(step: Step, nameOf: (id: string) => string): string[] {
+  const t = CONTRACT.hardening.tiles
+  return (step.emergency?.accounts ?? []).map((a) => {
+    const words = !a.assessed ? t.accountUnchecked : a.minimum > 0 ? t.accountMinimum : a.hardening > 0 ? t.accountHardening : t.accountMeets
+    return fillText(words, { name: nameOf(a.id) })
+  })
 }
 
 /**
@@ -838,38 +855,10 @@ export const FOOTER = {
 } as const
 
 /**
- * Whether deploying is the step's CURRENT action, or whether something has to
- * clear first.
- *
- * It reads the condition and nothing else, and the condition union is closed
- * (roadmap/lifecycle.ts): `healthy` is the only one where the next thing to do
- * is the change itself. `blocked` waits on work elsewhere, `review-required`
- * waits on a person reading new evidence, `needs-decision` waits on the operator
- * choosing, and `baseline-conflict` waits on a source that contradicts itself.
- *
- * What this gates is the DISPLAY. The artifacts are untouched: Foundation A's
- * `implementation.offered` still says what exists, the JSON and the commands are
- * still generated from the step's own resolved operations, and the moment the
- * condition clears the same channels come back. A step that says "clear what
- * this is waiting on" under What to do and then prints seven numbered steps for
- * creating the policy is telling the operator to do two different things at
- * once, and the numbered steps are the louder of the two.
+ * Whether deploying is the step's CURRENT action (roadmap/nextSafeAction.ts, the
+ * one executability answer, where it lives beside the rule it feeds).
  */
-export function implementationIsCurrent(step: Step): boolean {
-  if (step.state.condition === 'healthy') return true
-  // The one exception, and it is the owner's (Step 5, dcd3518): a held policy
-  // nobody has deployed, which Foundation A still hands over, is created in
-  // report-only now — a policy in report-only denies nobody — and turning it on
-  // is what the hold keeps back. Foundation B already says so as the step's
-  // action (lifecycle.ts nextMilestone `prepareHeld`, kind `deploy`), and an
-  // Implementation region reading "Nothing to submit yet" under that action is
-  // the two-instructions contradiction the owner rejected. Only a blocked step,
-  // only before deployment, only where the next thing IS that deployment, and
-  // only where nothing submitted enforces the moment it lands.
-  if (step.state.condition !== 'blocked' || step.state.lifecycle !== 'not-deployed') return false
-  if (!implementationOffered(step) || nextMilestone(step).kind !== 'deploy') return false
-  return operationsOf(step).every((op) => !enforcesOnRun(op))
-}
+export { implementationIsCurrent }
 
 /**
  * Which family of work a step is, as a READING of what production already
@@ -1049,7 +1038,10 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
   const e = step.emergency
   if (!e || c.state.setAside) return []
   const t = CONTRACT.hardening.tiles
-  const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: null } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: null }
+  // With more than one account, each account's own standing: one account's
+  // minimum failure is not every account's, and one account's pass is not another's.
+  const perAccount = c.emergencyAccounts.length > 1 ? c.emergencyAccounts.join(' · ') : null
+  const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: perAccount } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: perAccount }
   const resilience: ReadinessTile =
     e.hardening === 0
       ? { key: 'resilience', label: t.resilience, tone: 'good', value: t.meets, note: null }
