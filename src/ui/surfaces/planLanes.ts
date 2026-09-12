@@ -101,8 +101,11 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   const lifecycle = step.state.lifecycle
   const done = step.status === 'done'
   const open = !done && step.status !== 'skipped'
-  // A policy exists in any deployed stage; an object with tiers exists once its minimum is met; anything else exists when it is delivered.
-  const exists = policy ? lifecycle !== null && lifecycle !== 'not-deployed' : step.emergency ? step.emergency.minimum === 0 : done
+  // A policy exists in any deployed stage; emergency access exists once the plan
+  // holds confirmed accounts (they are on the tenant) or its minimum is met;
+  // anything else exists when it is delivered.
+  const emergency = step.emergency ?? null
+  const exists = policy ? lifecycle !== null && lifecycle !== 'not-deployed' : emergency ? emergency.accounts.length > 0 || emergency.minimum === 0 : done
   const blockers: ObservedBlocker[] = []
   const gates: EvidenceGate[] = []
   const waitsOn: ObservedEdge[] = []
@@ -112,7 +115,9 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // corrects in something other than its state. An adjust step whose only
   // operation turns a report-only policy on is not drifted: it is being watched.
   const corrects = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && !submitsEnforcementOnly(o))
-  const drift = !done && (step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects))
+  // Accounts that exist and fail a minimum check are started work drifted from
+  // the target: the next action corrects them, it does not create them.
+  const drift = !done && (step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects) || (emergency !== null && exists && emergency.minimum > 0))
   const kind = step.state.condition === 'needs-decision' ? 'decision' : policy ? 'policy' : (GRAPH.kinds.get(step.id) ?? 'object')
   const action = nextActionOf(kind, { exists, drift })
   // The plan's own waits (the legacy `prerequisite` hold), each in the engine's terms: a

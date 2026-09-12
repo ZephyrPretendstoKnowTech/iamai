@@ -357,12 +357,16 @@ test('the opened emergency step agrees with its row: the bar and the badge are t
   const lane = laneViewFor(bg, r.steps)
   const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }, undefined, lane)
   assert.ok(c.fix.length > 0, 'the premise: a fix is outstanding')
-  // The bar is keyed by the lane (A1b, RUN-CONTEXT-A decision 1): Ready · Create
-  // reads Ready now, and the fixes are the work Readiness lists and What to do
-  // names; the badge says the same label the row says.
+  // The bar is keyed by the lane (A1b, RUN-CONTEXT-A decision 1). The demo's
+  // confirmed accounts exist and fail a minimum check: started work drifted from
+  // the target, so Ready · Correct (A6); the badge says the same label the row says.
   const bar = readinessOf(bg, c).bar
-  assert.equal(lane.substatus, 'Create', 'the premise: the engine reads the create as the next action')
-  assert.equal(bar.main, CONTRACT.readiness.bar.create, 'the bar is not the lane’s word')
+  assert.ok(bg.emergency!.accounts.length > 0, 'the premise: the demo plan holds confirmed emergency accounts')
+  assert.equal(lane.substatus, 'Correct', 'existing accounts with failing checks read Create, not Correct')
+  assert.equal(bar.main, CONTRACT.readiness.bar.correct, 'the bar is not the lane’s word')
+  // With no confirmed accounts nothing is started: the next action creates them.
+  const none = { ...bg, emergency: { ...bg.emergency!, accounts: [] } }
+  assert.equal(laneViewFor(none, r.steps.map((s) => (s.id === EMERGENCY ? none : s))).substatus, 'Create', 'emergency access with no accounts reads other than Create')
   assert.equal(badgeLabel(c), lane.label, 'the badge and the row disagree')
   // A recommendation about the set of accounts is not filed under the first account's name.
   const groups = c.hardening!.groups
