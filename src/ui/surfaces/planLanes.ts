@@ -41,6 +41,8 @@ export type LaneReading = {
   substatus: Substatus | null
   /** Up Next: the nearest unresolved prerequisite. On Hold: the primary blocker. Otherwise null. */
   reason: Blocker | null
+  /** On Hold: every §15 blocker, primary first. Ready / Up Next: the unresolved prerequisites of the next action. The opened step's Readiness tiles (A1 §16.1). */
+  blockers: readonly Blocker[]
   /** Position inside the lane: the engine's §13 / §14 order, then the rows the graph does not know, by id. */
   order: number
   /** False where the graph does not know the step and the Plan's own state stood in. */
@@ -185,14 +187,14 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   const known = new Set([...steps.filter((s) => !s.doesntApply).map((s) => s.id), ...rows.map((r) => r.id)])
   const counts: Record<Lane, number> = { Ready: 0, 'Up Next': 0, 'On Hold': 0, Completed: 0, Deferred: 0 }
   const place = (lane: Lane, list: readonly LaneRow[]): void => {
-    for (const r of list) if (known.has(r.id)) out.set(r.id, { lane, substatus: r.result.substatus, reason: r.result.reason, order: counts[lane]++, fromEngine: true })
+    for (const r of list) if (known.has(r.id)) out.set(r.id, { lane, substatus: r.result.substatus, reason: r.result.reason, blockers: r.result.blockers, order: counts[lane]++, fromEngine: true })
   }
   place('Ready', groups.ready)
   place('Up Next', groups.upNext)
   place('On Hold', groups.onHold)
   place('Completed', groups.completed)
   place('Deferred', groups.deferred)
-  const rest: { id: string; reading: Pick<LaneReading, 'lane' | 'substatus' | 'reason'> }[] = []
+  const rest: { id: string; reading: Pick<LaneReading, 'lane' | 'substatus' | 'reason' | 'blockers'> }[] = []
   const byId = new Map(steps.map((s) => [s.id, s]))
   for (const s of steps) {
     if (out.has(s.id) || s.doesntApply) continue
@@ -202,11 +204,11 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // reads "Baseline references an unmapped group" here too.
     const mapping = reading.lane === 'On Hold' ? (observe(s, byId).blockers ?? []).find((b) => b.kind === 'sourceMapping') : undefined
     const reason: Blocker | null = mapping ? { kind: 'sourceMapping', id: mapping.id, milestone: null, condition: null, abnormal: true, ordinal: 0, ...(mapping.role ? { role: mapping.role } : {}) } : null
-    rest.push({ id: s.id, reading: { ...reading, reason } })
+    rest.push({ id: s.id, reading: { ...reading, reason, blockers: reason ? [reason] : [] } })
   }
   for (const r of rows) {
     if (out.has(r.id)) continue
-    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null } : { lane: 'Ready', substatus: 'Create', reason: null } })
+    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null, blockers: [] } : { lane: 'Ready', substatus: 'Create', reason: null, blockers: [] } })
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })

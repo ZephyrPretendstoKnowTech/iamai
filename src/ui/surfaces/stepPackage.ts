@@ -321,6 +321,23 @@ type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGrou
  * supply (`policy.target.mode`). Those stay unbound, and the package's own
  * contract decides what that means.
  */
+/**
+ * The bindings `packageBindings` leaves unbound because the plan holds a SET
+ * where the package binds one object — several trusted locations, several
+ * confirmed emergency accounts with work of their own — and IAMAI does not pick
+ * one for the operator. These are values the plan holds, not values it lacks,
+ * and the step says so in those words (S5): a selected account is real input.
+ */
+export function severalBindings(step: Step, ctx: StepVarContext): string[] {
+  const out: string[] = []
+  if ((ctx.mapping.trustedLocationIds ?? []).length > 1) out.push('policy.target.trustedLocationId')
+  const emergency = ctx.mapping.breakGlassUserIds ?? []
+  const standing = (step.emergency?.accounts ?? []).filter((a) => emergency.includes(a.id))
+  const owed = standing.filter((a) => a.minimum + a.hardening > 0)
+  if (emergency.length > 1 && standing.length === emergency.length && standing.every((a) => a.assessed) && owed.length !== 1) out.push('emergency.target.userId', 'emergency.target.upn')
+  return out
+}
+
 export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract): Bindings {
   const op = plannedOperationsOf(step)[0] ?? null
   const body = (op?.body ?? null) as PolicyShape | null
@@ -490,34 +507,24 @@ export function artifactText(a: Pick<ChannelArtifact, 'channel' | 'text'>, share
 const RESULT_TONE: Record<string, ReadinessTone> ={ Ready: 'good', 'Review required': 'warn', Unknown: 'warn', Blocked: 'warn', 'Not applicable': 'info' }
 const SEVERITY: Record<string, number> = { Blocked: 0, 'Review required': 1, Unknown: 2, Ready: 3, 'Not applicable': 4 }
 
-/** The runtime tiles that state where the step stands; the package never displaces them. */
-const RUNTIME_STATE_KEYS = new Set(['baseline', 'evidence', 'decision', 'coverage', 'gate', 'observation', 'exclusions', 'emergency', 'resilience'])
-
 /**
- * Readiness with the package's gates in it. The runtime tiles that say where the
- * step stands and what blocks it keep their places; a package tile that states
- * the same fact as a runtime tile (`gateKey`) gives way to it; the package's
- * other gates fill the rest — a confirmation the next transition is waiting on
- * first, then the most pressing — and are drawn in the order the package authored
- * them. Never more than the approved three tiles.
+ * Readiness with the package's gates in it (A1 §16.1: one prerequisite surface,
+ * up to four across, wrapping). A package tile that states the same fact as a
+ * runtime tile (`gateKey`) gives way to it. A gate not yet satisfied — a
+ * confirmation the next transition is waiting on first, then the most pressing —
+ * is an unresolved tile, before the hardening, which stays last; a gate already
+ * satisfied is evidence. Nothing is dropped to fit.
  */
 export function mergeReadiness(runtime: ContractReadiness, pkg: PackageReadiness | null): ContractReadiness {
   if (!pkg || pkg.tiles.length === 0) return runtime
-  const lead = runtime.tiles.filter((t) => RUNTIME_STATE_KEYS.has(t.key))
-  const blocking = runtime.tiles.filter((t) => (t.key === 'blockers' || t.key === 'implementation') && t.tone === 'warn')
-  const offered = pkg.tiles.filter((t) => !(t.gateKey !== null && runtime.tiles.some((r) => r.key === t.gateKey)))
-  const room = Math.max(0, 3 - lead.length - blocking.length)
+  const present = new Set([...runtime.tiles, ...runtime.satisfied].map((t) => t.key))
+  const offered = pkg.tiles.filter((t) => !(t.gateKey !== null && present.has(t.gateKey)))
   const pressing = (t: (typeof offered)[number]): number => (t.confirm && !t.confirm.satisfied ? -1 : (SEVERITY[t.result] ?? 5))
-  const chosen = new Set(
-    [...offered]
-      .sort((a, b) => pressing(a) - pressing(b))
-      .slice(0, room)
-      .map((t) => t.id),
-  )
-  const packaged: ReadinessTile[] = offered
-    .filter((t) => chosen.has(t.id))
+  const packaged: ReadinessTile[] = [...offered]
+    .sort((a, b) => pressing(a) - pressing(b))
     .map((t) => ({ key: t.id, label: t.gate, tone: RESULT_TONE[t.result] ?? 'info', value: t.result, note: t.line, ...(t.confirm ? { confirm: t.confirm } : {}) }))
-  const tiles: ReadinessTile[] = [...lead, ...packaged, ...blocking]
-  for (const t of runtime.tiles) if (tiles.length < 3 && !tiles.includes(t)) tiles.push(t)
-  return { ...runtime, tiles: tiles.slice(0, 3) }
+  const open = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait' || (t.confirm !== undefined && !t.confirm.satisfied)
+  const hardening = runtime.tiles.filter((t) => t.key === 'resilience')
+  const rest = runtime.tiles.filter((t) => t.key !== 'resilience')
+  return { ...runtime, tiles: [...rest, ...packaged.filter(open), ...hardening], satisfied: [...runtime.satisfied, ...packaged.filter((t) => !open(t))] }
 }

@@ -547,7 +547,6 @@ test('every approved variant draws the same regions, and production runs them in
     ['why', at('<h4>{HEAD.why}</h4>')],
     ['readiness', at('<ReadinessSection')],
     ['conflict attention', at('{conflictWords && (')],
-    ['fix attention', at('<FixBeforeContinuing fix={contract.fix}')],
     ['what to do', at('{showWhatToDo && (')],
     ['implementation', at('<Implementation\n')],
     ['done when', at('<DoneWhen heading={HEAD.doneWhen}')],
@@ -574,25 +573,28 @@ test('Readiness is the pack’s tiles over its bar, from facts the contract alre
   assert.match(pack, /\.readiness-bar\{display:flex;justify-content:space-between/, 'the pack’s bar is gone')
   assert.match(pack, /Why IAMAI says this →/, 'the pack no longer opens the readiness evidence')
   assert.match(pack, /<dialog aria-labelledby="readiness-dialog-title" id="readiness-dialog">/, 'the pack’s readiness dialog is gone')
-  assert.match(rule('.step .readiness-strip'), /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/, 'production’s strip is not three tracks')
+  // A1 §16.1 widens the strip to four across, wrapping (S5); the pack's three is its sample's count.
+  assert.match(rule('.step .readiness-strip'), /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/, 'production’s strip is not four tracks')
   assert.match(rule('.step .readiness-tile'), /min-height: 104px;/)
   assert.match(rule('.step .readiness-bar'), /justify-content: space-between;/)
   // The component presents; it does not count, and a mark never carries a state on its own.
   const section = code(SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box')))
   for (const forbidden of ['step.', 'reduce(', 'Math.', 'implementation.offered']) assert.equal(section.includes(forbidden), false, `Readiness ${forbidden}`)
-  assert.match(section, /className=\{`readiness-strip tiles-\$\{readiness\.tiles\.length\}`\}/, 'the strip is padded to three tracks')
+  assert.match(section, /className=\{`readiness-strip \$\{cls\} tiles-\$\{tiles\.length < TRACKS \? tiles\.length : TRACKS\}`\}/, 'the strip is padded to a fixed track count')
   assert.match(section, /aria-hidden="true"/, 'the tile mark is announced as content')
   assert.match(section, /<strong>\{t\.value\}<\/strong>/, 'a tile’s state is not a word')
-  // And over every plan the fixtures build: one to three tiles, each a label over
-  // a value the contract holds, and a headline from the content file.
+  // And over every plan the fixtures build: one tile per unresolved prerequisite
+  // and the satisfied evidence apart (A1 §16.1), each a label over a value the
+  // contract holds, and a headline from the content file.
   const bars = new Set(Object.values(CONTRACT.readiness.bar))
   for (const name of ['demo', 'demo-week2', 'messy', 'hostile'] as const) {
     for (const { step: s, c } of contractsOf(name)) {
       const r = readinessOf(s, c)
-      assert.ok(r.tiles.length >= 1 && r.tiles.length <= 3, `${name}/${s.id}: ${r.tiles.length} tiles`)
-      for (const t of r.tiles) assert.ok(t.label.trim() !== '' && t.value.trim() !== '', `${name}/${s.id}: an empty tile`)
+      assert.equal(r.tiles.length, c.fix.length + r.tiles.filter((t) => !c.fix.some((f) => f.key === t.key)).length, `${name}/${s.id}: a fix without its tile`)
+      for (const t of [...r.tiles, ...r.satisfied]) assert.ok(t.label.trim() !== '' && t.value.trim() !== '', `${name}/${s.id}: an empty tile`)
+      assert.ok(r.satisfied.every((t) => t.tone === 'good' || t.tone === 'info'), `${name}/${s.id}: an unresolved tile among the satisfied`)
       assert.ok(bars.has(r.bar.main), `${name}/${s.id}: the bar’s headline is not the content file’s`)
-      const people = r.tiles.find((t) => t.key === 'people')
+      const people = [...r.tiles, ...r.satisfied].find((t) => t.key === 'people')
       if (people && c.who?.known) assert.equal(people.value, c.who.text, `${name}/${s.id}: the people tile counts on its own`)
     }
   }
@@ -669,7 +671,7 @@ test('the narrow widths collapse the approved regions and widen nothing', () => 
   const pack = read(PACK)
   assert.match(pack, /@media\(max-width:940px\)\{\.readiness-strip\{grid-template-columns:1fr\}\.readiness-bar\{align-items:flex-start;flex-direction:column\}\}/, 'the pack no longer collapses Readiness at 940')
   const narrow = atWidth(940)
-  assert.match(narrow, /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-2 \{\s*grid-template-columns: minmax\(0, 1fr\);/, 'Readiness does not stack at 940')
+  assert.match(narrow, /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-3 \{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/, 'Readiness does not halve at 940')
   assert.match(narrow, /\.step \.readiness-bar \{\s*flex-direction: column;/, 'the bar does not stack at 940')
   for (const gone of ['.readiness-strip', '.impl-preview', '.step-section', '.callout', '.tabs.impl-tabs']) {
     assert.equal(new RegExp(`\\${gone.replace(/\./g, '\\.')} \\{[^}]*display:\\s*none`).test(narrow), false, `${gone} is hidden at 940px rather than reflowed`)
@@ -757,13 +759,17 @@ test('the five canonical states are one frame whose content the state changes', 
   assert.equal(eyebrowOf(S['baseline-conflict'].c, 'policy'), CONTRACT.kind.resolution)
   for (const k of ['not-deployed', 'report-only', 'review-required', 'in-place'] as const) assert.equal(eyebrowOf(S[k].c, 'policy'), CONTRACT.kind.policy)
 
-  // Readiness: tiles and headline, per state.
+  // Readiness: the unresolved tiles, the satisfied evidence and the headline, per state (A1 §16.1).
   const tiles = (m: Mock): string[] => readinessOf(m.step, m.c).tiles.map((t) => `${t.key}:${t.tone}`)
-  assert.deepEqual(tiles(S['not-deployed']), ['people:info', 'blockers:good'])
-  assert.deepEqual(tiles(S['report-only']), ['observation:wait', 'people:info', 'blockers:good'])
-  assert.deepEqual(tiles(S['review-required']), ['evidence:warn', 'people:info', 'blockers:warn'])
-  assert.deepEqual(tiles(S['in-place']), ['coverage:good', 'people:info', 'blockers:good'])
-  assert.deepEqual(tiles(S['baseline-conflict']), ['baseline:warn', 'people:info', 'implementation:warn'])
+  const satisfied = (m: Mock): string[] => readinessOf(m.step, m.c).satisfied.map((t) => `${t.key}:${t.tone}`)
+  assert.deepEqual(tiles(S['not-deployed']), [])
+  assert.deepEqual(satisfied(S['not-deployed']), ['people:info'])
+  assert.deepEqual(tiles(S['report-only']), ['observation:wait'])
+  assert.deepEqual(tiles(S['review-required']), ['evidence:warn', ...S['review-required'].c.fix.map((f) => `${f.key}:warn`)])
+  assert.deepEqual(tiles(S['in-place']), [])
+  assert.deepEqual(satisfied(S['in-place']), ['coverage:good', 'people:info'])
+  assert.deepEqual(tiles(S['baseline-conflict']), ['baseline:warn'])
+  assert.deepEqual(satisfied(S['baseline-conflict']), ['people:info'])
   const bar = (m: Mock): string => readinessOf(m.step, m.c).bar.main
   const B = CONTRACT.readiness.bar
   assert.deepEqual(
@@ -823,6 +829,6 @@ test('the demo opens the same step body, with the same grammar', () => {
   for (const { step: s, c } of demo) {
     for (const f of c.found) assert.equal(f.label, CONTRACT.foundLabel[f.key], `demo/${s.id}: a finding with no key`)
     assert.ok(c.doneWhen.length > 0, `demo/${s.id}: no completion`)
-    assert.ok(readinessOf(s, c).tiles.length > 0, `demo/${s.id}: no readiness`)
+    assert.ok(readinessOf(s, c).bar.main.trim() !== '', `demo/${s.id}: no readiness`)
   }
 })

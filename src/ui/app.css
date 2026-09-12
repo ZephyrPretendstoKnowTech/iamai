@@ -2338,25 +2338,92 @@ footer.app a {
 }
 
 /* ---- Readiness: the approved `.readiness-strip` over `.readiness-bar` ----
-   One to three tiles, each a fact the contract holds, over the bar that says
-   where the step stands with its one action under it. The grid takes its track
-   count from the tiles the step has, so two facts are two tiles rather than two
-   tiles and a gap. A tile's mark is a glyph beside the tile's own words
-   (✓ ! …), never the state on its own. */
+   The one prerequisite surface (A1 §16.1): one tile per unresolved
+   prerequisite of the next action, up to four across and wrapping, over the
+   bar that says where the step stands with its one action under it. The grid
+   takes its track count from the tiles the step has, so two facts are two
+   tiles rather than two tiles and two gaps. A tile's mark is a glyph beside
+   the tile's own words (✓ ! …), never the state on its own. */
 .step .readiness-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   list-style: none;
   margin: 0;
   padding: 0;
   max-width: none;
 }
+.step .readiness-strip.tiles-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .step .readiness-strip.tiles-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .step .readiness-strip.tiles-1 {
   grid-template-columns: minmax(0, 1fr);
+}
+/* Nothing unresolved: the compact success line the pack's "Clear" tile said,
+   without a tile's height around it. */
+.step .readiness-clear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+  font-size: var(--t-1);
+}
+.step .readiness-clear span:last-child {
+  color: var(--secondary-text);
+  font-size: var(--t-0);
+}
+/* A tile's explanation, evidence and link stand behind its disclosure, so the
+   tile reads as a title and a state until it is asked. */
+.step .readiness-more {
+  margin-top: 6px;
+}
+.step .readiness-more > summary {
+  cursor: pointer;
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  color: var(--brand-secondary-text);
+}
+.step .readiness-more p,
+.step .readiness-more .hardening p,
+.step .readiness-more .hardening li {
+  margin: 5px 0 0;
+  font-size: var(--t-0);
+  line-height: 1.45;
+  color: var(--secondary-text);
+}
+.step .readiness-more .hardening h5 {
+  margin: 8px 0 0;
+  font-size: var(--t-0);
+}
+.step .readiness-more .hardening ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.step .readiness-more .actions {
+  margin-top: 8px;
+}
+.step .readiness-link a {
+  font-weight: var(--weight-strong);
+}
+/* The satisfied evidence: readable, out of the way, one disclosure. */
+.step .readiness-satisfied {
+  margin-top: 10px;
+}
+.step .readiness-satisfied > summary {
+  cursor: pointer;
+  font-size: var(--t-0);
+  font-weight: var(--weight-strong);
+  color: var(--secondary-text);
+}
+.step .readiness-satisfied .readiness-strip {
+  margin-top: 8px;
 }
 .step .readiness-tile {
   min-width: 0;
@@ -3981,9 +4048,14 @@ td .not-person {
   }
   /* The approved Readiness collapses at the same width
      (`.readiness-strip{grid-template-columns:1fr}`, `.readiness-bar{flex-direction:
-     column}`): one tile per row, and the evidence link under the bar's words. */
+     column}`): the tiles halve here and stack at the second breakpoint, so a
+     wrapping strip of four never squeezes a title into a column too narrow to
+     read; the evidence link goes under the bar's words. */
   .step .readiness-strip,
-  .step .readiness-strip.tiles-2 {
+  .step .readiness-strip.tiles-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .step .readiness-strip.tiles-1 {
     grid-template-columns: minmax(0, 1fr);
   }
   .step .readiness-bar {
@@ -4045,6 +4117,12 @@ td .not-person {
   }
   .step-footer .step-footer-scan {
     margin-left: 0;
+  }
+  /* One tile per row once two would be narrower than a sentence. */
+  .step .readiness-strip,
+  .step .readiness-strip.tiles-3,
+  .step .readiness-strip.tiles-2 {
+    grid-template-columns: minmax(0, 1fr);
   }
   .step .tabs.impl-tabs {
     gap: 6px;

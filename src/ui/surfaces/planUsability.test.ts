@@ -237,10 +237,11 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   assert.deepEqual(railOf(c), { metric: 'Held', sub: 'Resolve prerequisites' })
   assert.equal(c.doneWhen.length, 1)
   assert.match(c.doneWhen[0], /^The policy is enforced in /, 'Done when restates what clears the hold')
-  const blockers = readinessOf(step, c).tiles.find((t) => t.key === 'blockers')!
-  assert.equal(blockers.label, 'Prerequisites')
-  assert.match(blockers.value, /^\d+ remaining$/)
-  assert.equal(blockers.note, null, 'the tile points at Fix before continuing instead of stating a fact')
+  // One tile per prerequisite (A1 §16.1): each fix is its own tile, and a fix that names a step links to it.
+  const r = readinessOf(step, c)
+  assert.deepEqual(r.tiles.filter((t) => c.fix.some((f) => f.key === t.key)).map((t) => t.key), c.fix.map((f) => f.key), 'the Readiness tiles are not the fixes, one each')
+  for (const t of r.tiles) if (t.key.startsWith('step:') || t.key.startsWith('missing:')) assert.ok(t.link && 'href' in t.link && t.link.href.startsWith('#/plan/'), `${t.key} does not link to its step`)
+  assert.equal(r.tiles.some((t) => t.key === 'blockers'), false, 'a count tile stands in for the prerequisites')
   // Work the Plan schedules in a phase reads the phase's day on the rail, as the row's When does.
   const prep = opened('demo', 's-prereq-allowed-countries')
   const scheduled = stepContract(prep.step, { ...prep.ctx, scheduledOn: '2026-08-31T12:00:00.000Z' })
@@ -307,8 +308,10 @@ test('resilience hardening holds until fixed or deferred; a deferral releases th
   assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'hardening'), false, 'hardening reached Cleanup without a deferral')
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => d.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
   const c = stepContract(dbg, ctx)
-  const tiles = readinessOf(dbg, c).tiles.map((t) => `${t.label}: ${t.value}`)
+  const rd = readinessOf(dbg, c)
+  const tiles = [...rd.tiles, ...rd.satisfied].map((t) => `${t.label}: ${t.value}`)
   assert.ok(tiles.includes('Emergency access: Available') && tiles.includes('Resilience: Deferred to Cleanup'), tiles.join(' | '))
+  assert.equal(rd.tiles.at(-1)?.key, 'resilience', 'the hardening is not the last, secondary tile')
   assert.equal(c.doneWhen.length, 1)
   assert.doesNotMatch(c.doneWhen[0], /Already satisfied/, 'a deferral is read as full resilience')
   assert.equal(c.hardening?.deferredAt, at)

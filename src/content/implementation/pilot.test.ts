@@ -316,7 +316,10 @@ test('a real fixture step at Ready to enforce reaches all five channels through 
   assert.equal(p.hold, null)
   assert.deepEqual(p.channels.map((x) => x.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
   const merged = mergeReadiness(readinessOf(step, c), packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime))
-  assert.ok(merged.tiles.length <= 3)
+  // Every package gate is a tile (A1 §16.1): unresolved ones among the tiles, satisfied ones among the evidence, none dropped to fit.
+  const runtimeKeys = new Set([...readinessOf(step, c).tiles, ...readinessOf(step, c).satisfied].map((t) => t.key))
+  const mergedKeys = new Set([...merged.tiles, ...merged.satisfied].map((t) => t.key))
+  for (const t of packageReadiness(PKG, 'readyToEnforce', bindings, confirmed.runtime)!.tiles) assert.ok(mergedKeys.has(t.id) || (t.gateKey !== null && runtimeKeys.has(t.gateKey)), `${t.id} was dropped to fit`)
   const missing = pilotStepAt(base, 'missing')
   assert.equal(packageStateOf(missing, stepContract(missing, ctx), ctx.snapshot), 'missing')
 })

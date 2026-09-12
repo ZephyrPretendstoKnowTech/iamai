@@ -325,7 +325,7 @@ test('contract 12: every Plan row and every step body is drawn by the shared com
   assert.match(body, /stepContract\(step, ctx/, 'the step body is built from the contract')
   assert.match(body, /<WhatToDoLead contract=\{contract\}/, 'and its action comes from there')
   assert.match(body, /<DoneWhen /, 'and its completion')
-  assert.match(body, /<FixBeforeContinuing /, 'and its blockers')
+  assert.match(body, /readinessOf\(step, contract, blockers\)/, 'and its blockers, as Readiness tiles')
   for (const gone of ['implementationOffered', 'isPreserved', 'statusOf']) {
     assert.doesNotMatch(body, new RegExp(`\\b${gone}\\(`), `ContentStep still asks the engine ${gone}() itself`)
   }

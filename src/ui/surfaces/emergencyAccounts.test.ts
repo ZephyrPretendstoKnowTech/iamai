@@ -61,8 +61,8 @@ test('two confirmed accounts, one hardened and one not: each account carries its
   const d = run(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: step.emergency!.basis } })
   assert.equal(d.step.status, 'done')
   assert.equal(waitingOnEmergency(d.r), 0, 'deferred hardening still blocked the rollout')
-  // Readiness names each account's own standing.
-  const access = readinessOf(step, c).tiles.find((t) => t.key === 'emergency')!
+  // Readiness names each account's own standing: available, so it is satisfied evidence.
+  const access = readinessOf(step, c).satisfied.find((t) => t.key === 'emergency')!
   assert.equal(access.value, T.available)
   assert.equal(access.note, [fillText(T.accountMeets, { name: ctx.nameOf(a) }), fillText(T.accountHardening, { name: ctx.nameOf(b) })].join(' · '))
   // The package binds the whole set, and the one account whose own checks are outstanding.

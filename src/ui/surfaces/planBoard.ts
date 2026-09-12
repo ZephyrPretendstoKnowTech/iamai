@@ -33,6 +33,7 @@ import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import type { PlanStateFacts } from './planState.ts'
 import type { LaneReading } from './planLanes.ts'
 import { CONTRACT } from './stepContract.ts'
+import type { PrerequisiteBlocker } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 
 /** The When column's words where a row has no date or reason of its own (owner, 2026-09-11): the column is never blank. */
@@ -203,6 +204,17 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
 /** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
 export function holdGroupOf(r: LaneReading): string {
   return r.reason === null ? BOARD.held : BOARD.blockers[r.reason.kind]
+}
+
+/**
+ * The engine's unresolved prerequisites of the row's next action, labelled the
+ * way the board labels them, for the opened step's Readiness tiles (A1 §16.1:
+ * the one prerequisite surface). A step prerequisite carries its content title.
+ * Nothing in the row: null where the engine read nothing.
+ */
+export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: (id: string) => string | null): PrerequisiteBlocker[] {
+  if (!r) return []
+  return r.blockers.map((b) => ({ kind: b.kind, id: b.id, abnormal: b.abnormal, label: BOARD.blockers[b.kind], title: b.kind === 'step' || b.kind === 'suspendedPrerequisite' ? titleOf(b.id) : null }))
 }
 
 /**

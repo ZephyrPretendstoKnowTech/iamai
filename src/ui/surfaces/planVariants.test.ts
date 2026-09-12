@@ -587,15 +587,15 @@ test('§4b what IAMAI found is what this scan observed, never a padded card', ()
 test('§5 the rail and Readiness say only what the contract holds, on every variant', () => {
   // The approved rail is the Next milestone only, and every step has one.
   every('rail', (v) => railOf(v.c).metric.trim().length > 0 && railOf(v.c).sub.trim().length > 0, 'a step draws an empty Next milestone rail')
-  // Readiness is one to three tiles, each a label over a value, and a bar with
-  // a headline: never empty, never padded to three.
+  // Readiness is one tile per unresolved prerequisite and the satisfied evidence
+  // apart, each a label over a value, and a bar with a headline: never padded.
   every(
     'readiness',
     (v) => {
       const r = readinessOf(v.step, v.c)
-      return r.tiles.length >= 1 && r.tiles.length <= 3 && r.tiles.every((t) => t.label.trim() !== '' && t.value.trim() !== '') && r.bar.main.trim() !== ''
+      return [...r.tiles, ...r.satisfied].every((t) => t.label.trim() !== '' && t.value.trim() !== '') && r.tiles.every((t) => t.tone === 'warn' || t.tone === 'wait') && r.bar.main.trim() !== ''
     },
-    'a step draws an empty or padded Readiness region',
+    'a step draws a padded Readiness region',
   )
   // Task 036's own addition: the pack's In-place variant is defined by a rail
   // block naming the tenant's own policy. It is `Step.satisfiedBy` and nothing
