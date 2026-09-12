@@ -41,9 +41,13 @@ import { absoluteDate } from '../../copy/dates.ts'
  * columns that align down the page. Nothing here recomputes a state, a date or
  * a count.
  */
-export function PlanRow({ word, tone, title, who, when, whenReason = false, reason = null, nextLabel = null, open, onToggle }: {
+export function PlanRow({ word, tone, lane = null, wave = null, title, who, when, whenReason = false, reason = null, nextLabel = null, open, onToggle }: {
   word: string
   tone: StatusTone
+  /** `Lane · substatus/reason` under the state word: where the actionability engine puts the row (S3). */
+  lane?: string | null
+  /** The phase the finished plan places the step in, carried on the row as data only: a secondary projection the lane never reads. */
+  wave?: number | null
   title: string
   who: string
   when: string
@@ -66,6 +70,7 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
       role="button"
       aria-expanded={open}
       tabIndex={0}
+      data-wave={wave ?? undefined}
       onClick={onToggle}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -76,6 +81,7 @@ export function PlanRow({ word, tone, title, who, when, whenReason = false, reas
     >
       <span className="plan-row-status">
         <Status tone={tone}>{word}</Status>
+        {lane && <span className="lane">{lane}</span>}
       </span>
       {/* The pack's `.row-title`: the title, and under it the one quiet line
           that says why the row is in the state the first zone names. */}

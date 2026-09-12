@@ -31,7 +31,8 @@ import { powershellFor } from './stepPowerShell.ts'
 import { finalTargets, unavailableReason } from '../../roadmap/operations.ts'
 import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
-import { floorRows, phaseRows, scheduledIds, undatedRows } from './planRows.ts'
+import { floorRows, phaseRows, planPhases, scheduledIds, undatedRows } from './planRows.ts'
+import { laneReadings } from './planLanes.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
 import { readFileSync } from 'node:fs'
@@ -507,12 +508,18 @@ test('013.H: the document reads the Plan’s row rule and writes none of its own
   // floor group (task 025) — use the screen's own step body, which is what
   // withholds the implementation, the dates, the announcement and the rollback.
   assert.equal(src.match(/<ContentStep step=\{s\}/g)?.length, 3, 'a printed step section builds a body of its own')
-  // And the Plan reads the same rule, so neither surface can decide alone which
-  // steps a plan has.
+  // And the Plan draws the same steps, in lanes (S3, planLanes.ts): every step
+  // the print's three sections carry has a lane reading, and the Plan derives no
+  // phase, undated or floor grouping of its own.
   const plan = readFileSync(new URL('./Plan.tsx', import.meta.url), 'utf8')
-  assert.match(plan, /undatedRows\(c\.steps, phaseList\)/, 'the Plan no longer reads the undated group')
-  assert.match(plan, /floorRows\(c\.steps\)/, 'the Plan reads the same floor rule the document does')
-  assert.match(plan, /phaseRows\(c\.steps, w\)/, 'the Plan decides a phase\'s rows itself')
+  assert.match(plan, /const readings = laneReadings\(c\.steps, /, 'the Plan no longer reads the engine for its rows')
+  assert.match(plan, /const rowSteps = c\.steps\.filter\(\(s\) => readings\.has\(s\.id\)\)/, 'the Plan decides its rows somewhere else')
+  for (const own of ['phaseRows(', 'undatedRows(', 'floorRows(']) assert.equal(plan.includes(own), false, `the Plan still groups by ${own}`)
+  for (const c of CASES) {
+    const readings = laneReadings(c.run.steps)
+    const printed = [...planPhases(c.run.schedule).flatMap((w) => phaseRows(c.run.steps, w)), ...undatedRows(c.run.steps, planPhases(c.run.schedule)), ...floorRows(c.run.steps)]
+    for (const s of printed) assert.ok(readings.has(s.id), `${c.name}/${s.id}: printed, but the Plan draws it in no lane`)
+  }
 })
 
 test('013.H: the printed document draws every step exactly once, and never dates finished work', () => {

@@ -11,24 +11,23 @@ import type { Step } from '../../roadmap/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
 import type { DirectoryEvidence } from '../../mapping/safetyChoice.ts'
 import type { OwnerConfirmation, StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
-import { app, engine, pages, phases } from '../../content/content.ts'
+import { app, engine, pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
-import { waveLabels } from '../../derive/phases.ts'
-import { floorRows, phaseRows, planPhases, scheduledSpan, undatedRows } from './planRows.ts'
 import { planFinish, planWeeks } from '../../derive/finish.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
-import { absoluteDate, dateSpan } from '../../copy/dates.ts'
+import { absoluteDate } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, NO_FOCUS, VIEWS, WHEN, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, statusGroupFor, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneLabelOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { planStateOf } from './planState.ts'
-import type { BoardGroup, BoardItem, Focus, RoadmapGroup, View } from './planBoard.ts'
+import { laneReadings } from './planLanes.ts'
+import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -56,8 +55,6 @@ type PlanPage = {
   howTo: { link: string; items: string[] }
 }
 const PP = pages.plan as unknown as PlanPage
-/** The undated group's heading, the same entry the print draws over the same rows (task 036). */
-const HELD = (app.plan as unknown as { held: { heading: string; lead: string } }).held
 const S = app.shell
 
 /** The settings panel the Plan settings link opens in place. */
@@ -83,13 +80,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
   const [showHow, setShowHow] = useState(false)
-  // The board's three lenses (planBoard.ts). Roadmap is the default, because the
-  // Plan's own subject is the sequence; the other two re-head the same rows.
-  const [view, setView] = useState<View>('roadmap')
+  // The board's three lanes (planBoard.ts). Ready is the default, because the
+  // Plan's own subject is what can be done now; the other two hold the same rows.
+  const [tab, setTab] = useState<LaneTab>('ready')
   const [focus, setFocus] = useState<Focus>(NO_FOCUS)
-  // Which groups the operator has collapsed, keyed by lens and group, so
-  // collapsing Waiting in Roadmap does not also collapse it in Status. A group
-  // absent from this map takes its own default (planBoard.ts CLOSED_BY_DEFAULT).
+  // Which groups the operator has collapsed, keyed by lane and group, so
+  // collapsing Completed under Ready does not also collapse it under On Hold.
   const [toggled, setToggled] = useState<Record<string, boolean>>({})
   const boardBase = useId()
   // Close removes the panel, and with it the button that had focus. The link
@@ -156,128 +152,85 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const lengthReason = cannotFinish ? (c.schedule.estimate?.reason ?? null) : c.schedule.derivation.reason
   const lengthTip = lengthReason ? fillText(cannotFinish ? P.lengthTipEstimate : P.lengthTip, { weeks: weeksText, constraint: lengthReason }) : engine.critical.sentenceDone
 
-  // Done steps sit in the footer, not a wave (item 13). A skipped step stays in
-  // its wave, marked Skipped, so it can be found and put back (prompt 49.1 item 10).
-  // The drill sits in Cleanup when Cleanup renders it (§5). A floor step (target-state
-  // §13: Microsoft recommended, not in this baseline) sits in its own group after
-  // the phases, grouped as not the author's.
-  const floor = floorRows(c.steps)
-  // A policy the plan cannot write yet is in no wave: it has no date to sit
-  // under (roadmap/operations.ts). Its row still renders, in its own undated
-  // group after the phases, saying what it waits on (planRows.ts).
-  // The phases are read off each step's own scheduling result (roadmap/stepSchedule.ts
-  // phasesOf): a phase carries the steps that result places in it, and its range
-  // holds every one of their days.
-  const phaseList = planPhases(c.schedule)
-  const heldRows = undatedRows(c.steps, phaseList)
-  // A numbered phase draws the rows planRows.ts gives it and decides nothing
-  // itself: the wave's steps, less the floor's group and less the footer's. A
-  // wave left with nothing draws no phase.
-  const waveRows = phaseList
-    .map((w) => ({ wave: w, dates: dateSpan(w.start, w.end), phase: w.phase, steps: phaseRows(c.steps, w) }))
-    .filter((w) => w.steps.length > 0)
-  const waveNames = waveLabels(waveRows)
-  let nextMarked = false
-  // A group's span is its rows' own scheduled days (planRows.ts scheduledSpan): a
-  // floor row created in report-only while readiness gates it is dated, and its
-  // group says so; a group nothing dates reads Not scheduled rather than a borrowed date.
-  const placedSpan = (steps: readonly Step[]): string => {
-    const span = scheduledSpan(steps)
-    return span ? dateSpan(span.start, span.end) : WHEN.notScheduled
-  }
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   const stepsById = new Map(c.steps.map((s) => [s.id, s]))
   const titleOf = (id: string): string | null => {
     const s = stepsById.get(id)
     return s ? s.plainTitle || s.title : null
   }
+  // The Cleanup rows the plan draws (§5), by the id the board gives them; the
+  // drill is a Cleanup row and nothing else, so it counts once.
+  const cleanupRows = (cleanupPhase?.rows ?? []).filter((r) => cleanupEntry(r.kind) !== null).map((r) => ({ row: r, id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
+  // The lanes (planLanes.ts): the actionability engine read over the plan as
+  // this scan left it. A step's phase is not an input, so its tab cannot move
+  // when its dates do. A step the person said does not apply here is not a row
+  // (the footer holds it); a skipped step is a deferred one.
+  const readings = laneReadings(c.steps, cleanupRows.map((r) => ({ id: r.id, complete: r.complete })))
+  const rowSteps = c.steps.filter((s) => readings.has(s.id))
+  // The Plan's next marker: the first Ready step in the engine's own order (§13),
+  // and the row that draws the "next" pill. A Cleanup row is never the marker.
+  const nextId = rowSteps.filter((s) => readings.get(s.id)!.lane === 'Ready').sort((a, b) => readings.get(a.id)!.order - readings.get(b.id)!.order)[0]?.id ?? null
 
   // ---- one canonical row set ----
-  // Built once, in production's order, from the groups the Plan already draws.
-  // `renderById` holds the ONE renderer for each row, so a lens can only choose
-  // where a row goes, never what it says.
+  // Built once, in the engine's order, with the lane the engine read for each
+  // row. `renderById` holds the ONE renderer for each row, so a tab can only
+  // choose where a row goes, never what it says.
   const items: BoardItem[] = []
   const renderById = new Map<string, () => ReactNode>()
-  let order = 0
-  const addStep = (step: Step, group: RoadmapGroup, isNext: boolean): void => {
-    // `isNext` is the Plan's own next marker — the same boolean that draws the
-    // "next" pill on the row — and it is what puts a row in Up next. Nothing
-    // re-derives it: a step can be Ready without being the recommendation, and
-    // Up next saying otherwise is what this correction fixes.
-    // The Plan's one presentation state (planState.ts): the row's word, its Status
-    // group and whether the Needs attention focus holds it are the same reading.
+  for (const step of rowSteps) {
+    const reading = readings.get(step.id)!
+    const isNext = step.id === nextId
+    // The Plan's one presentation state (planState.ts): the row's word, its tone,
+    // whether the Needs attention focus holds it and whether it is Waiting.
     const planState = planStateOf(step, isHeld(step))
-    const status = statusGroupFor(planState, isNext)
+    const laneLabel = laneLabelOf(reading, titleOf)
     items.push({
       id: step.id,
       title: contentTitle(step),
-      roadmap: group,
-      status,
+      lane: reading.lane,
+      laneLabel,
+      hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
       attention: planState.attention,
+      waiting: planState.waiting,
       workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null),
       isNext,
-      order: order++,
+      order: reading.order,
     })
     // The board's reading of the timing column (planBoard.ts `boardWhenOf`): the
     // row's own value, with Held exactly where roadmap/holds.ts says the step is
-    // held — never for a step merely sequenced after another.
-    const when = boardWhenOf(step, group.start, titleOf)
-    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} when={when} waveStart={group.start} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    // held — never for a step merely sequenced after another. The phase is a
+    // secondary projection: the date reads it, the lane never does.
+    const waveStart = waveStartOf(step)
+    const when = boardWhenOf(step, waveStart, titleOf)
+    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} lane={laneLabel} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
-
-  for (const [wi, w] of waveRows.entries()) {
-    const group: RoadmapGroup = { key: `wave-${w.wave.wave}`, label: waveNames[wi], date: w.dates, secondary: false, start: w.wave.start }
-    for (const step of w.steps) {
-      const isNext = !nextMarked && step.status === 'ready' && !isHeld(step)
-      if (isNext) nextMarked = true
-      addStep(step, group, isNext)
-    }
-  }
-  // A policy the plan cannot write yet sits in no wave and under no date
-  // (planRows.ts undatedRows), and the floor is Microsoft's own recommendation
-  // rather than the baseline author's. Both keep the names and the order they
-  // already had; only the framing around them is this task's.
-  const heldGroup: RoadmapGroup = { key: 'held', label: HELD.heading, date: placedSpan(heldRows), secondary: true, start: null }
-  for (const step of heldRows) addStep(step, heldGroup, false)
-  const floorGroup: RoadmapGroup = { key: 'floor', label: phases.recommended, date: placedSpan(floor), secondary: true, start: null }
-  for (const step of floor) addStep(step, floorGroup, false)
 
   if (cleanupPhase) {
-    const group: RoadmapGroup = { key: 'cleanup', label: phases.last, date: cannotFinish ? WHEN.notScheduled : dateSpan(cleanupPhase.start, cleanupPhase.end), secondary: false, start: null }
-    for (const r of cleanupPhase.rows) {
-      const entry = cleanupEntry(r.kind)
-      if (!entry) continue
-      const id = `cleanup-${r.kind}`
-      const complete = cleanupComplete(r, answers)
+    for (const { row: r, id, complete } of cleanupRows) {
+      const entry = cleanupEntry(r.kind)!
+      const reading = readings.get(id)!
       items.push({
         id,
         title: entry.title,
-        roadmap: group,
-        // A Cleanup row carries no lifecycle and no condition, so it has only
-        // the two states it can be in: finished, or the next thing to do.
-        // A Cleanup row is never the Plan's next marker: the marker is set while
-        // walking the numbered phases, and Cleanup follows them all.
-        status: complete ? 'complete' : 'ready',
+        lane: reading.lane,
+        laneLabel: laneLabelOf(reading, titleOf),
+        hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
+        // A Cleanup row carries no lifecycle and no condition: it is finished, or it is not.
         attention: false,
+        waiting: false,
         workType: 'setup',
         isNext: false,
-        order: order++,
+        order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneLabelOf(reading, titleOf)} />)
     }
   }
-  // Finished work. It was the footer's first `<details>` and is now the board's
-  // last group: `Show completed` is the one control for it, in every lens, and
-  // it is a VISIBILITY control — the rows are the same rows, opening the same
-  // step, and nothing about them changed by being grouped rather than folded.
-  const completeGroup: RoadmapGroup = { key: 'complete', label: BOARD.status.complete, date: null, secondary: true, start: null }
-  for (const step of c.steps.filter((x) => x.status === 'done')) addStep(step, completeGroup, false)
 
-  const groups = groupsFor(view, applyFocus(items, focus))
+  const groups = groupsFor(tab, applyFocus(items, tab, focus))
   // The progress tiles (owner, 2026-09-11): the steps and the in-place count the
   // print cover and Connect share (derive/facts.ts), the rows Waiting — the one
-  // classification the Status lens's Waiting group counts — and what is left.
-  const waitingCount = items.filter((i) => i.status === 'waiting').length
+  // classification the schedule's waiting result counts (planState.ts) — and what is left.
+  const waitingCount = items.filter((i) => i.waiting).length
   const progressTiles = [
     { key: 'steps', label: PP.progress.steps, value: total },
     { key: 'inPlace', label: PP.progress.inPlace, value: inPlace },
@@ -351,26 +304,25 @@ export function Plan({ scan: lastScan, baseline, account }: {
       )}
       {showSettings && <Settings data={data} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
-      {/* ---- the board's one row set, and the three lenses over it ----
-          Every row is built once, here, with the group the Plan already draws it
-          in; `planBoard.ts` re-heads them and decides nothing else. `renderById`
-          is why there is one row renderer and not three: a lens hands back ids,
-          and the id comes back to the same `<Row>` or `<CleanupRow>` that would
-          have drawn it in the roadmap. */}
+      {/* ---- the board's one row set, and the three lanes over it ----
+          Every row is built once, here, with the lane the engine read for it;
+          `planBoard.ts` groups them and decides nothing else. `renderById` is why
+          there is one row renderer and not three: a tab hands back ids, and the
+          id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
       <PlanControls
-        view={view}
-        onView={setView}
+        tab={tab}
+        onTab={setTab}
         focus={focus}
         onFocus={setFocus}
         counts={focusCounts(items)}
         base={boardBase}
       />
-      <div className="plan-board" {...onePanelProps(boardBase, view)}>
-        {groups.length === 0 && focusActive(focus) && <p className="reason plan-board-empty">{BOARD.empty}</p>}
+      <div className="plan-board" {...onePanelProps(boardBase, tab)}>
+        {groups.length === 0 && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : BOARD.emptyLane}</p>}
         {groups.map((g) => {
-          const key = `${view}:${g.key}`
+          const key = `${tab}:${g.key}`
           // A group holding the open step is not collapsed by default: switching
-          // lens must not fold the step the operator is working on out of sight.
+          // tab must not fold the step the operator is working on out of sight.
           // An explicit collapse still wins — the operator's own press is the
           // one thing that outranks the default.
           const holdsOpen = open !== null && g.items.some((i) => i.id === open)
@@ -393,8 +345,8 @@ export function Plan({ scan: lastScan, baseline, account }: {
 }
 
 /**
- * The board's controls: the three lenses, the search, and the two focus filters
- * beside the completed toggle.
+ * The board's controls: the three lane tabs, the search, the work-type filter,
+ * and the Needs attention focus beside the two visibility toggles.
  *
  * They are a reading of the rows and change nothing about them — no sort, no
  * state, no engine call. The counts are counted off the board's own row set
@@ -404,21 +356,20 @@ export function Plan({ scan: lastScan, baseline, account }: {
  * sticky on the Plan; a second permanently-fixed bar under it would take another
  * ~60px from every opened step, which is the surface that needs the height.
  */
-function PlanControls({ view, onView, focus, onFocus, counts, base }: {
-  view: View
-  onView: (v: View) => void
+function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
+  tab: LaneTab
+  onTab: (t: LaneTab) => void
   focus: Focus
   onFocus: (f: Focus) => void
-  counts: { attention: number; upNext: number; complete: number }
+  counts: ReturnType<typeof focusCounts>
   base: string
 }) {
   return (
-    <section className="plan-controls no-print" aria-label={BOARD.groupBy}>
+    <section className="plan-controls no-print" aria-label={BOARD.lanesLabel}>
       <div className="view-wrap">
-        <span className="control-label">{BOARD.groupBy}</span>
         {/* The shared tab strip (task 017): one tab stop, arrows move and select,
             every tab names the panel it controls. The board is that panel. */}
-        <TabList base={base} tabs={VIEWS.map((v) => ({ id: v, label: BOARD.views[v] }))} active={view} onSelect={(id) => onView(id as View)} panelId={() => `${base}-panel`} className="tabs view-tabs" />
+        <TabList base={base} tabs={LANES.map((l) => ({ id: l, label: BOARD.lanes[l], badge: counts.lanes[l] }))} active={tab} onSelect={(id) => onTab(id as LaneTab)} panelId={() => `${base}-panel`} className="tabs view-tabs" />
       </div>
       <div className="plan-search">
         {/* The label is the accessible name rather than a hidden span: this
@@ -427,19 +378,30 @@ function PlanControls({ view, onView, focus, onFocus, counts, base }: {
         <input type="search" aria-label={BOARD.search} value={focus.search} placeholder={BOARD.searchPlaceholder} onChange={(e) => onFocus({ ...focus, search: e.currentTarget.value })} />
       </div>
       <div className="focuses">
-        <button type="button" className={`focus${focus.attention ? ' active' : ''}`} aria-pressed={focus.attention} onClick={() => onFocus({ ...focus, attention: !focus.attention, upNext: false })}>
+        {/* Work type is a filter over the rows of whichever lane is showing, never a lane of its own. */}
+        <label className="work-type">
+          <span className="control-label">{BOARD.workType}</span>
+          <select value={focus.workType ?? ''} onChange={(e) => onFocus({ ...focus, workType: (e.currentTarget.value || null) as WorkType | null })}>
+            <option value="">{BOARD.allWork}</option>
+            {TYPE_ORDER.map((t) => (
+              <option key={t} value={t}>
+                {BOARD.type[t]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className={`focus${focus.attention ? ' active' : ''}`} aria-pressed={focus.attention} onClick={() => onFocus({ ...focus, attention: !focus.attention })}>
           <span className="dot dot-attention" aria-hidden="true" />
           {BOARD.needsAttention}
           <span className="count">{counts.attention}</span>
         </button>
-        <button type="button" className={`focus${focus.upNext ? ' active' : ''}`} aria-pressed={focus.upNext} onClick={() => onFocus({ ...focus, upNext: !focus.upNext, attention: false })}>
-          <span className="dot dot-upnext" aria-hidden="true" />
-          {BOARD.upNext}
-          <span className="count">{counts.upNext}</span>
-        </button>
         <button type="button" className={`focus${focus.showCompleted ? ' active' : ''}`} aria-pressed={focus.showCompleted} onClick={() => onFocus({ ...focus, showCompleted: !focus.showCompleted })}>
           {BOARD.showCompleted}
           <span className="count">{counts.complete}</span>
+        </button>
+        <button type="button" className={`focus${focus.showDeferred ? ' active' : ''}`} aria-pressed={focus.showDeferred} onClick={() => onFocus({ ...focus, showDeferred: !focus.showDeferred })}>
+          {BOARD.showDeferred}
+          <span className="count">{counts.deferred}</span>
         </button>
       </div>
     </section>
@@ -447,14 +409,13 @@ function PlanControls({ view, onView, focus, onFocus, counts, base }: {
 }
 
 /**
- * One group of the board: its heading, the one line that summarises it, its date
- * range where production owns one, and the control that folds it.
+ * One group of the board: its heading, the one line that summarises it, and the
+ * control that folds it.
  *
  * The heading carries the group's identity by itself — there is no chip beside
- * it repeating it, and no sentence under it explaining what a group is for. The
- * date is rendered only where a wave actually dates the work; Preparation and
- * the held, floor and complete groups have no schedule of their own and show
- * nothing rather than a placeholder.
+ * it repeating it, and no sentence under it explaining what a group is for. A
+ * lane has no date range of its own: each row reads its own day in its When
+ * column (roadmap/stepSchedule.ts), and a lane is not a phase.
  */
 function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGroup; closed: boolean; onToggle: () => void; children: ReactNode }) {
   const id = `plan-group-${group.key}`
@@ -465,7 +426,6 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
           <h2>{group.label}</h2>
           <div className="plan-group-meta">{groupSummary(group)}</div>
         </div>
-        {group.date !== null && <div className="plan-group-date">{group.date}</div>}
         <button type="button" className="plan-group-toggle no-print" aria-expanded={!closed} aria-controls={id} aria-label={`${closed ? BOARD.expandGroup : BOARD.collapseGroup}: ${group.label}`} onClick={onToggle}>
           <span aria-hidden="true">{closed ? '+' : '\u2212'}</span>
         </button>
@@ -488,9 +448,11 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
 }
 
 /** A Cleanup row (§5): the content title, one status word, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant, undated }: {
+function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
+  /** The row's lane label (planBoard.ts laneLabelOf). */
+  lane: string
   /** The emergency-access attestations, the second fact that can complete the alerting row (roadmap/cleanupDone.ts). */
   answers: { signInMonitoring: boolean | null } | null
   nameOf: (id: string) => string
@@ -517,7 +479,7 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
-      <PlanRow word={status.word} tone={status.tone} title={entry.title} who={who} when={cleanupWhen(row, undated)} open={open} onToggle={onToggle} />
+      <PlanRow word={status.word} tone={status.tone} lane={lane} title={entry.title} who={who} when={cleanupWhen(row, undated)} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )
@@ -525,9 +487,11 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, isNext, lane, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   isNext: boolean
+  /** `Lane · substatus/reason`: the engine's lane for the row (planBoard.ts laneLabelOf). */
+  lane: string
   /**
    * What the BOARD shows in the timing column (planBoard.ts `boardWhen`), which
    * is `rowWhen`'s value with the board's own two rules applied. Handed in so
@@ -574,6 +538,8 @@ function Row({ step, isNext, when, waveStart, open, onToggle, schedule, tenantNa
       <PlanRow
         word={status.word}
         tone={status.tone}
+        lane={lane}
+        wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}
         who={rowWho(step, nameOf)}
         when={when}

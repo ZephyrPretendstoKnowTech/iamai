@@ -102,10 +102,10 @@ test('a phase reads its span compactly: one day, within a month, across months, 
   assert.equal(dateSpan('2026-09-11T12:00:00.000Z', '2026-09-16T12:00:00.000Z'), 'Sep 11–16')
   assert.equal(dateSpan('2026-09-29T12:00:00.000Z', '2026-10-03T12:00:00.000Z'), 'Sep 29–Oct 3')
   assert.equal(dateSpan('2026-12-29T12:00:00.000Z', '2027-01-04T12:00:00.000Z'), 'Dec 29, 2026–Jan 4, 2027')
+  // The numbered phases are the printed document's (S3: the Plan draws lanes, and a lane has no span).
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  assert.match(plan, /dates: dateSpan\(w\.start, w\.end\)/, 'the numbered phases do not read their span')
-  assert.match(plan, /date: cannotFinish \? WHEN\.notScheduled : dateSpan\(cleanupPhase\.start, cleanupPhase\.end\)/)
-  assert.match(plan, /key: 'held', label: HELD\.heading, date: placedSpan\(heldRows\)/, 'the waiting group has no timeline')
+  assert.equal(plan.includes('dateSpan('), false, 'the Plan dates a lane as though it were a phase')
+  assert.equal(plan.includes('plan-group-date'), false, 'a lane group carries a date range')
 })
 
 // ------------------------------------------------------------ WHEN and Impact
@@ -350,7 +350,10 @@ test('a day-0 row borrowing its phase day is not an enforcement date: the campai
   const DAY_ONLY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
   assert.ok(r.steps.some((s) => DAY_ONLY.test(boardWhenOf(s, day0.start))), 'the premise: a day-0 row reads the phase day')
   // The walk asks the email for its window only where a row outside day 0 is dated.
-  assert.match(readFileSync('scripts/walk.mjs', 'utf8'), /e\.closest\('#plan-group-wave-0'\) !== null/)
+  // The row carries its phase as data (StepSections.tsx PlanRow `data-wave`): the
+  // lanes replaced the phase groups (S3), and the phase stays a secondary projection.
+  assert.match(readFileSync('scripts/walk.mjs', 'utf8'), /e\.dataset\.wave === '0'/)
+  assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /data-wave=\{wave \?\? undefined\}/)
 })
 
 test('user-facing content spells enrollment the US way', () => {

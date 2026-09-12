@@ -238,7 +238,7 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   // generic `now` and says `Held` exactly where roadmap/holds.ts holds the step.
   // It takes the VALUE and chooses what to show; it computes no date, and every
   // other surface still calls `rowWhen` directly.
-  assert.match(PLAN, /const when = boardWhenOf\(step, group\.start, titleOf\)/, 'the timing zone no longer reads the one when authority')
+  assert.match(PLAN, /const when = boardWhenOf\(step, waveStart, titleOf\)/, 'the timing zone no longer reads the one when authority')
   assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
   // The reason and the wrap are the board's readings of the same two authorities
   // (planBoard.ts boardReasonOf over rowReason, boardWhenWraps over rowWhenWraps).
@@ -246,12 +246,12 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   assert.match(PLAN, /whenReason=\{boardWhenWraps\(step, when\)\}/)
 })
 
-test('the roadmap order and grouping are still the plan\'s, not the row\'s', () => {
-  // planRows.ts decides which rows each group draws; the restoration changed
-  // where a row's facts sit, not which rows exist or what order they come in.
-  assert.match(PLAN, /const floor = floorRows\(c\.steps\)/)
-  assert.match(PLAN, /const heldRows = undatedRows\(c\.steps, phaseList\)/)
-  assert.match(PLAN, /steps: phaseRows\(c\.steps, w\)/)
+test('the lane order and grouping are still the engine\'s, not the row\'s', () => {
+  // planLanes.ts reads the lanes and their order off the engine (S3); the
+  // restoration changed where a row's facts sit, not which rows exist or what
+  // order they come in.
+  assert.match(PLAN, /const readings = laneReadings\(c\.steps, /)
+  assert.match(PLAN, /order: reading\.order,/)
   // No sorting, filtering or grouping in the row component.
   for (const forbidden of ['.sort(', '.filter(', '.slice(']) {
     assert.equal(ROW.includes(forbidden), false, `the row ${forbidden} its own content instead of rendering what the plan gave it`)
