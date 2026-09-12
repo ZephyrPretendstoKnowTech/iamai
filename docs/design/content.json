@@ -193,6 +193,7 @@
         "matchedByRecord": "the policy this plan was already tracking",
         "correctionUnowned": "the correction targets {target}, not {owned}, the policy this step is tracking; a person decides which one this step delivers",
         "correctionShared": "{name} also satisfies {goal}; a person decides whether correcting it here is safe",
+        "correctionManual": "{name} is not what the plan asked for in {fields}, and IAMAI does not write that part; a person corrects it in the Entra admin center",
         "reportOnlyFound": "policy in report-only since {date}",
         "enforced": "policy enforced on {date}",
         "enforcedByOther": "{name} already enforces this",
@@ -256,6 +257,7 @@
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
         "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
+        "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
         "observe": "Leave it in report-only and watch it.",
         "observeUntil": "Leave it in report-only until {date}.",
         "observeRecords": "Leave it in report-only until the sign-in records are clear and complete.",
@@ -283,7 +285,25 @@
         "stateChangedExpected": "moved to {state} by {date}, as the plan asked",
         "semanticsChanged": "the policy itself changed by {date}: what was watched before this is no longer what is deployed",
         "artifactReplaced": "a different policy is delivering this as of {date}: the one watched before it is not the one deployed, so the window starts again",
-        "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now"
+        "continuityUnknown": "this plan does not record which policy it watched before {date}, so the window starts again on the one deployed now",
+        "differs": "not what the plan asked for in {fields}, and IAMAI does not write that part: a person corrects it in the Entra admin center, then scans again",
+        "dimensions": {
+          "$comment": "A policy's material dimensions by their Graph field names (roadmap/observation.ts semanticFieldsOf), for the sentence that names where a deployed policy is not what the plan asked for.",
+          "users": "who it applies to",
+          "applications": "target resources",
+          "clientAppTypes": "client apps",
+          "platforms": "device platforms",
+          "locations": "locations",
+          "devices": "the device filter",
+          "signInRiskLevels": "sign-in risk",
+          "userRiskLevels": "user risk",
+          "servicePrincipalRiskLevels": "service principal risk",
+          "insiderRiskLevels": "insider risk",
+          "authenticationFlows": "authentication flows",
+          "grantControls": "grant controls",
+          "sessionControls": "session controls",
+          "other": "a condition IAMAI does not read"
+        }
       },
       "detectionGap": {
         "groups": "some of the groups its policies name would not open",
@@ -670,6 +690,8 @@
         "sourceMapping": "Baseline references an unmapped group",
         "pairUnmatched": "until both policies of the pair can be matched",
         "noOperation": "until a scan rebuilds this step",
+        "manualCorrection": "until the policy is corrected by hand",
+        "unverifiedExclusion": "until the group {group} can be read",
         "emergency": "until emergency access is provably out of scope"
       },
       "gapSuffix": {
@@ -1180,6 +1202,7 @@
         "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
         "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
         "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
+        "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
         "emergencyUnproven": "IAMAI cannot prove this policy leaves {tenant}'s emergency access accounts out of scope, because it could not read who is in the group the policy excludes. Nothing is offered on a reading that did not finish: scan again.",
         "escapeHatchHeld": "Running this would turn the policy on straight away, and the way back in to {tenant} is not verified yet. Finish {steps} first; the instructions come back when its checks pass.",
@@ -1273,6 +1296,7 @@
           "doneEscapeHatch": "{steps} passes its checks, so the way back in to {tenant} is verified.",
           "doneEmergency": "Every emergency access account is provably out of scope of this policy.",
           "doneOperation": "A scan rebuilds this step with a policy IAMAI can write.",
+          "doneManual": "The policy holds what the plan asked for in {fields}.",
           "doneVerify": "You have looked at the accounts this step names and dealt with them.",
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",

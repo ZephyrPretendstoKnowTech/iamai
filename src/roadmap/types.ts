@@ -92,6 +92,14 @@ type PolicyOperationBase = {
    * a second actionable body and no channel submits it.
    */
   target?: Record<string, unknown>
+  /**
+   * The whole policy as the plan writes it for this member — the body a create
+   * would submit — carried on an update whose body is only a patch, so a scan can
+   * read the deployed object against every dimension the plan asked for and not
+   * only the ones the patch writes (roadmap/observation.ts `unwrittenDifferences`).
+   * Read for comparison only; no channel submits it.
+   */
+  intent?: Record<string, unknown>
 }
 
 /**
@@ -257,7 +265,13 @@ export type Blocker =
   | { kind: 'step'; stepId: string; label: string; binding?: string; held?: true }
   | { kind: 'setup'; questionNumber: number; label: string; binding?: string }
   | { kind: 'readiness'; label: string; binding?: string }
-  | { kind: 'evidence'; label: string; binding?: string }
+  /**
+   * `unverified`: the evidence is a tenant fact this scan could not read — a group
+   * a policy names whose members nobody could list — so the goal's coverage cannot
+   * be settled (roadmap/generate.ts). It holds the step until a scan reads it; it
+   * is never a gate the policy earns by being watched.
+   */
+  | { kind: 'evidence'; label: string; binding?: string; unverified?: true }
   /**
    * A question for the operator, on the step where they answer it: the step is
    * not waiting on work, on a number, or on another step, it is waiting on a
@@ -544,8 +558,13 @@ export type CorrectionSafety =
   | { safe: true }
   | {
       safe: false
-      /** `unowned-target`: the operation targets a policy this member does not own. `shared-satisfier`: another goal is satisfied by the policy it targets. */
-      reason: 'unowned-target' | 'shared-satisfier'
+      /**
+       * `unowned-target`: the operation targets a policy this member does not own.
+       * `shared-satisfier`: another goal is satisfied by the policy it targets.
+       * `manual`: the owned policy is not what the plan asked for in a dimension
+       * the operation does not write, so the correction is a person's to make.
+       */
+      reason: 'unowned-target' | 'shared-satisfier' | 'manual'
       /** One sentence saying why, from shared.engine.tracking. */
       note: string
     }

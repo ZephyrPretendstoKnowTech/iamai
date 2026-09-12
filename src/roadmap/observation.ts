@@ -149,6 +149,8 @@ export type ObservationChange = {
    * not a rollout in trouble.
    */
   reviewRequired: boolean
+  /** Where the deployed policy is not what the plan asked for in a part the operation does not write (`unwrittenDifferences`). Derived each scan, never stored. */
+  unwritten: readonly string[]
   /** One sentence for the step, from shared.engine.observation. */
   note: string
 }
@@ -320,6 +322,103 @@ export function intentOf(body: Record<string, unknown> | null | undefined): Inte
   return { controls: semanticFieldsOf(body) }
 }
 
+/**
+ * A value with nothing immaterial left in it: Graph answers every field of a
+ * policy, so a deployed policy says `locations: null`, `excludeUsers: []` and
+ * `applicationFilter: null` where the plan's own body says nothing at all, and
+ * the two mean the same thing. Empty lists, nulls, falses and empty strings go,
+ * and an object that empties out goes with them; a referenced authentication
+ * strength is its id, because Graph expands the object and the plan names it.
+ */
+function material(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const items = value.map(material).filter((v) => v !== undefined)
+    return items.length === 0 ? undefined : items
+  }
+  if (value && typeof value === 'object') {
+    const src = value as Record<string, unknown>
+    if (typeof src.id === 'string' && 'allowedCombinations' in src) return src.id
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(src).sort()) {
+      const v = material(src[key])
+      if (v !== undefined) out[key] = v
+    }
+    return Object.keys(out).length === 0 ? undefined : out
+  }
+  if (value === null || value === undefined || value === false || value === '') return undefined
+  return value
+}
+
+/** The dimension keys `semanticFieldsOf` uses, over the raw value of each. */
+function dimensionsOf(policy: Record<string, unknown> | null | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  if (!policy) return out
+  const conditions = policy.conditions
+  if (conditions && typeof conditions === 'object' && !Array.isArray(conditions)) {
+    for (const [k, v] of Object.entries(conditions as Record<string, unknown>)) out[`conditions.${k}`] = v
+  } else if (conditions !== undefined) out.conditions = conditions
+  out.grantControls = policy.grantControls
+  out.sessionControls = policy.sessionControls
+  return out
+}
+
+/** The order the dimensions are named in: who, what, how, then the controls. */
+const DIMENSION_ORDER = ['conditions.users', 'conditions.applications', 'conditions.clientAppTypes', 'conditions.platforms', 'conditions.locations', 'conditions.devices', 'conditions.signInRiskLevels', 'conditions.userRiskLevels', 'conditions.servicePrincipalRiskLevels', 'conditions.insiderRiskLevels', 'conditions.authenticationFlows', 'grantControls', 'sessionControls']
+const dimensionRank = (d: string): number => {
+  const i = DIMENSION_ORDER.indexOf(d)
+  return i === -1 ? DIMENSION_ORDER.length : i
+}
+
+/**
+ * Where a deployed policy is not what the plan asked for, in the dimensions the
+ * plan's operation does not write: every material dimension of `intent` — the
+ * whole policy as the plan writes it — that the deployed policy holds
+ * differently, less the ones `patch` submits, which the operation itself
+ * corrects. Empty where the policy is as planned everywhere the plan is not
+ * about to change it.
+ *
+ * This is the comparison the plan used to make only along the patch: a
+ * report-only policy someone had narrowed by location reached ready to enforce
+ * on a window watched over a different policy, an enforced block policy with a
+ * platform added read as an empty update held for a rebuild, and a rewritten
+ * name-matched policy read as missing. The difference is stated by dimension so
+ * the note can say where to look, and IAMAI writes none of it (the patch is what
+ * it writes); a person corrects it in the Entra admin center.
+ *
+ * `judged` names the dimensions another reading already settles for this policy
+ * and are therefore not compared here: for a policy coverage counted as a
+ * candidate of the goal, its scope and its controls (coverage/coverage.ts reads
+ * who it reaches, which resources, and whether the grant and session meet the
+ * floor, and the patch is written from that reading), so a narrower role list
+ * that still reaches every admin this tenant has is not a difference a person is
+ * sent to look at. What coverage does not judge — the conditions that confine
+ * when a policy applies — is compared here; a policy the goal never counted is
+ * compared on every dimension.
+ */
+export const COVERAGE_JUDGED: readonly string[] = ['conditions.users', 'conditions.applications', 'grantControls', 'sessionControls']
+
+export function unwrittenDifferences(intent: Record<string, unknown> | null | undefined, patch: Record<string, unknown> | null | undefined, deployed: Record<string, unknown> | null | undefined, judged: readonly string[] = []): string[] {
+  if (!intent || !deployed) return []
+  const patched = dimensionsOf(patch)
+  const written = new Set([...Object.keys(patched).filter((d) => patched[d] !== undefined), ...judged])
+  const wanted = dimensionsOf(intent)
+  const held = dimensionsOf(deployed)
+  const out: string[] = []
+  for (const d of new Set([...Object.keys(wanted), ...Object.keys(held)])) {
+    if (written.has(d)) continue
+    const a = material(canonical(wanted[d]))
+    const b = material(canonical(held[d]))
+    if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) out.push(d)
+  }
+  return out.sort((x, y) => dimensionRank(x) - dimensionRank(y) || x.localeCompare(y))
+}
+
+/** The dimensions in the operator's words, from shared.engine.observation.dimensions, in one list. */
+export function dimensionWords(dimensions: readonly string[]): string {
+  const words = dimensions.map((d) => OBS.dimensions[d.replace(/^conditions\./, '')] ?? OBS.dimensions.other)
+  return [...new Set(words)].join(', ')
+}
+
 // ---- the comparison ----
 
 /** The lifecycle direction: a move up this list is the plan's own work landing. */
@@ -339,6 +438,8 @@ export type Sighting = {
   fields?: Record<string, string>
   /** The dimensions the step's own operation asks to change, and to what (`intentOf`); null when the plan cannot tell. */
   intent?: IntentSemantics | null
+  /** The dimensions where the deployed policy is not what the plan asked for and the operation does not write (`unwrittenDifferences`); empty where none, or where the plan cannot tell. */
+  unwritten?: readonly string[]
 }
 
 const STATE_WORD: Record<ObservedState, string> = {
@@ -398,6 +499,13 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
   const intent = sighting.intent ?? null
   const fields = sighting.fields ?? {}
   const date = absoluteDate(at)
+  // Where the deployed policy is not what the plan asked for, in a part the plan
+  // does not write (`unwrittenDifferences`): a person looks, on the first scan
+  // as on any later one, and the note says where. It is a fact about the tenant
+  // against the plan, not about this scan against the last, so it is read before
+  // the history is.
+  const unwritten = sighting.unwritten ?? []
+  const differs = unwritten.length > 0 ? fillText(OBS.differs, { fields: dimensionWords(unwritten) }) : null
   if (!prior) {
     return {
       latest: { artifact, state, semantics, fields, firstSeenAt: at, since: 'first-scan', lastSeenAt: at, evidenceAt },
@@ -406,8 +514,9 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
       // A first sighting is nothing the plan can claim to have asked for.
       expected: false,
       continuity: 'first-scan',
-      reviewRequired: false,
-      note: fillText(OBS.firstScan, { state: STATE_WORD[state], date }),
+      reviewRequired: differs !== null,
+      unwritten,
+      note: differs ?? fillText(OBS.firstScan, { state: STATE_WORD[state], date }),
     }
   }
   // Is this the same object? Three answers, and only one of them is "yes".
@@ -459,7 +568,7 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
    * nothing about what happens to anybody. Continuity is a fact about history;
    * this is a fact about the tenant, and the two used to be one boolean.
    */
-  const reviewRequired = semanticsMoved && !expected
+  const reviewRequired = (semanticsMoved && !expected) || differs !== null
   // The window a state has earned survives anything that did not move it — and
   // begins again at this scan wherever it does not carry over at all.
   const moved = changed !== 'none' || continuity !== 'continues'
@@ -493,7 +602,8 @@ export function observe(prior: StepObservation | null, sighting: Sighting): Obse
     expected,
     continuity,
     reviewRequired,
-    note: noteFor(continuity, changed, expected, state, date, prior.artifact !== null),
+    unwritten,
+    note: differs ?? noteFor(continuity, changed, expected, state, date, prior.artifact !== null),
   }
 }
 

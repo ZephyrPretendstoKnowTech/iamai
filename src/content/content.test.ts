@@ -119,6 +119,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[16].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.noOperation',
+  // A4 (2026-09-12): the row reasons for a correction only a person can make and
+  // for a group the scan could not read (copy/reasons.ts BLOCKED_REASON).
+  '.pages.plan.blocked.manualCorrection',
+  '.pages.plan.blocked.unverifiedExclusion',
   // The Plan usability pass (2026-09-11): words the Plan, its settings and its
   // decision layout read that the review body does not draw.
   '.pages.plan.blocked.devicePlan',

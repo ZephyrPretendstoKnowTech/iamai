@@ -33,7 +33,7 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { advanceState, aggregateObservation, raiseCondition, setState } from './lifecycle.ts'
 import type { Lifecycle, MemberObservation, StepState } from './lifecycle.ts'
-import { artifactIdOf, historyReset, intentOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf } from './observation.ts'
+import { COVERAGE_JUDGED, artifactIdOf, dimensionWords, historyReset, intentOf, observe, observedStateOf, priorFor, semanticFieldsOf, semanticsOf, unwrittenDifferences } from './observation.ts'
 import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
 
@@ -835,6 +835,21 @@ export function trackExecution(
       const pr = policyRow ? snapshot.evidencePolicyResults.find((p) => p.policyId === policyRow.id) : undefined
       const observedState = observedStateOf(policyRow?.state ?? null)
       const artifact = artifactIdOf(policyRow?.id)
+      // Where the deployed object is not what the plan asked for in a part the
+      // operation does not write (observation.ts unwrittenDifferences). Read
+      // against a fully resolved intent only — a policy still waiting on a source
+      // reference holds on that, and the unresolved token is not a difference the
+      // tenant made — and only for an update, whose patch is the part the plan
+      // writes; a create beside a policy it does not own is Foundation A's case.
+      // A policy coverage counted for the goal has had its scope and controls
+      // judged there (observation.ts COVERAGE_JUDGED); one it never counted — a
+      // policy carrying the plan's tag or name that no longer matches the goal
+      // at all — is compared on every dimension.
+      const judged = (result?.candidates ?? []).some((c) => c.policyId === policyRow?.id) ? COVERAGE_JUDGED : []
+      const unwritten =
+        policyRow && m.op && m.op.mode === 'update' && (step.action.missing ?? []).length === 0 && (observedState === 'report-only' || observedState === 'enforced')
+          ? unwrittenDifferences(m.op.intent ?? null, m.op.body, policyRow as Record<string, unknown>, judged)
+          : []
       const change = observe(priorFor(record, m.key, artifact, sole), {
         // Which object this scan saw. The step id says which row of the plan this
         // is; it never says which policy is delivering it, and the two were being
@@ -853,6 +868,7 @@ export function trackExecution(
         // movement against Policy A's patch could call an unexpected rewrite
         // expected, or manufacture a review against a change nobody submitted.
         intent: m.op ? intentOf(m.op.body) : null,
+        unwritten,
       })
       observed.push(observedState)
       memberObservations.push({ key: m.key, sourceName: m.sourceName, change })
@@ -927,7 +943,7 @@ export function trackExecution(
       // Nor on a correction that is not safe to hand over (`correctionOf`): what
       // the operation would edit is not the policy this member owns, or another
       // goal is standing on it.
-      const correction = correctionOf(m, step, coverage)
+      const correction = correctionOf(m, step, coverage, unwritten)
       const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && correction?.safe !== false && memberGates.readyNow && !isHeld(step)
       memberTracking.push({
         key: m.key,
@@ -1114,7 +1130,7 @@ function satisfierOf(result: GoalResult | undefined): string | null {
  * corrected — a create, a member with no operation, or an update whose target
  * is not on the tenant (Foundation A's unavailable reason, not a drift).
  */
-function correctionOf(m: MemberMatch, step: Step, coverage: CoverageReport): CorrectionSafety | null {
+function correctionOf(m: MemberMatch, step: Step, coverage: CoverageReport, unwritten: readonly string[] = []): CorrectionSafety | null {
   if (!m.op || m.op.mode !== 'update' || !m.policy) return null
   const owned = m.policy
   if (m.op.policyId !== owned.id) {
@@ -1122,6 +1138,10 @@ function correctionOf(m: MemberMatch, step: Step, coverage: CoverageReport): Cor
   }
   const other = coverage.results.find((r) => r.goal.id !== step.goalId && (r.satisfaction?.policyIds ?? []).includes(owned.id as string))
   if (other) return { safe: false, reason: 'shared-satisfier', note: fillText(TRACK.correctionShared, { name: owned.displayName ?? owned.id ?? '', goal: other.goal.name }) }
+  // The owned policy is not what the plan asked for in a part the operation does
+  // not write (observation.ts unwrittenDifferences): what the patch would leave
+  // behind is still not the plan's policy, so the correction is a person's.
+  if (unwritten.length > 0) return { safe: false, reason: 'manual', note: fillText(TRACK.correctionManual, { name: owned.displayName ?? owned.id ?? '', fields: dimensionWords(unwritten) }) }
   return { safe: true }
 }
 

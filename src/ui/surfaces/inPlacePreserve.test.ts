@@ -45,6 +45,7 @@
 // implementation channels, the export view every artifact speaks from, and the
 // calendar. Nothing here builds a Step.
 import { test } from 'node:test'
+import { holdOf } from '../../roadmap/holds.ts'
 import assert from 'node:assert/strict'
 import { allFixtures, fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
@@ -585,15 +586,18 @@ test('a policy whose scope this scan cannot resolve makes the goal unknown, and 
   // goal is counted as the unknown it is.
   assert.equal(goal.satisfaction, null, 'an unknown goal was given a satisfying policy')
   assert.ok(goalCounts(run.coverage).unknown > 0, 'the goal is counted somewhere other than unknown')
-  // And no step anywhere claims it. A goal the classifier cannot read produces
-  // no step at all (roadmap/generate.ts), so there is nothing to render as
-  // preserved — and no other step's satisfaction quietly picks up the policy
-  // whose scope could not be resolved.
-  assert.equal(
-    run.steps.find((s) => s.id === MFA_STEP),
-    undefined,
-    'an unknown goal produced a step',
-  )
+  // And no step anywhere claims it. A goal the classifier cannot read keeps its
+  // step and holds it until a scan can read the group (roadmap/generate.ts; A2
+  // of the drift audit): nothing is rendered as preserved, nothing is written
+  // against a policy whose reach is unread — and no other step's satisfaction
+  // quietly picks up the policy whose scope could not be resolved.
+  const unknown = run.steps.find((s) => s.id === MFA_STEP)
+  assert.ok(unknown, 'an unknown goal was dropped from the plan')
+  assert.equal(unknown.state.satisfied, false, 'an unknown goal was presented as delivered')
+  assert.equal(isPreserved(unknown), false, 'an unknown goal was presented as in place')
+  assert.notEqual(holdOf(unknown), null, 'an unknown goal was offered as work')
+  assert.ok(unknown.blockers.some((b) => b.kind === 'evidence' && b.unverified === true), JSON.stringify(unknown.blockers))
+  assert.deepEqual(unknown.action.resolution?.policies ?? [], [], 'something was written against a policy whose reach is unread')
   for (const step of run.steps) {
     assert.ok(!(step.satisfiedBy?.policies ?? []).includes('Core - Grant - MFA for all users'), `${step.id}: the unreadable policy is named as satisfying a goal`)
     if (isPreserved(step)) assert.equal(step.state.satisfied, true, `${step.id}: preserved without being delivered`)
