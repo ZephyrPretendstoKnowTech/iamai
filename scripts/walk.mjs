@@ -227,8 +227,12 @@ const settle = async () => {
  * navigation, because the press is page state and a navigation drops it.
  */
 const revealCompleted = async () => {
-  await evaluate(`(() => { for (const re of [/Show completed/, /Show deferred/]) { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => re.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() } })()`)
-  await sleep(200)
+  // One press at a time: each toggle's handler spreads the focus it rendered
+  // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
+  for (const word of ['Show completed', 'Show deferred']) {
+    await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => (x.textContent || '').includes(${JSON.stringify(word)})); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
+    await sleep(200)
+  }
 }
 /**
  * The board draws one lane at a time (S3, ui/surfaces/planBoard.ts): Ready, Up

@@ -1002,11 +1002,19 @@ try {
   // put it on (S5 TabFollowsOpenStep), so both readings are taken on the same lane.
   // Both toggles pressed for both readings: the skip above pressed Show
   // deferred, and a loaded plan starts with neither pressed.
-  const revealAll = () => evaluate(`document.querySelectorAll('main.page .plan-controls .focus').forEach((b) => { if (/Show (completed|deferred)/.test(b.textContent || '') && b.getAttribute('aria-pressed') !== 'true') b.click() })`)
+  // One press at a time: each toggle's handler spreads the focus it rendered
+  // with, so two clicks in one tick keep only the second (Plan.tsx onFocus).
+  const revealAll = async () => {
+    for (const word of ['Show completed', 'Show deferred']) {
+      await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => (x.textContent || '').includes(${JSON.stringify(word)})); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
+      await sleep(250)
+    }
+  }
   await showLane(LANES[0])
   await revealAll()
   await sleep(150)
   const planTextBefore = await mainText()
+  const progressBefore = await progressOf()
   await demoGo('export')
   await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
   const dlBefore = await evaluate(`window.__dl.length`)
@@ -1027,6 +1035,10 @@ try {
     String(await evaluate(`window.__alerts.slice(-1)[0] || ''`)).slice(0, 120),
   )
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
+  // The load saves the record, then the mappings, and the plan regenerates on
+  // each (ui/actions.ts tenantTurn): the rows are read once the header's counts
+  // are back to what they were, not on the first render after the first save.
+  await waitFor(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => ((t.querySelector('dt') || {}).textContent || '').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ') === ${JSON.stringify(progressBefore)}`, 8000)
   await sleep(500)
   const recordAfter = await planRecord()
   await showLane(LANES[0])
