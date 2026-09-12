@@ -1101,6 +1101,32 @@ try {
   // inputs behind it (this run has already saved a decision and a skip on it).
   const day1Rows = await planRows()
   const day1Record = await planRecord()
+  // The public demo's implementation path: the initial scan's held Intune
+  // enrollment policy (waiting on the device decision, not deployed) is prepared
+  // in report-only (Step 5), through the normal engine. Its JSON copies exactly
+  // what the preview shows, with its ids, and parses. The follow-up scan holds
+  // this policy in report-only already (A4), where the package authors no JSON.
+  const INTUNE = JSON.stringify('Require a Fresh Sign-in for Intune Enrollment')
+  const intuneStep = `(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return null; let n = t.closest('.plan-row').nextElementSibling; return n && (n.matches('.step') ? n : n.querySelector('.step')) })()`
+  // The row may sit in any lane (S3): show each tab until it is there, then open it.
+  for (const lane of LANES) {
+    await showLane(lane)
+    if (await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return false; const r = t.closest('.plan-row'); r.scrollIntoView({ block: 'center' }); if (r.getAttribute('aria-expanded') !== 'true') r.click(); return true })()`)) break
+  }
+  const intuneJsonTab = await waitFor(`(() => { const st = ${intuneStep}; const tab = st && [...st.querySelectorAll('.implementation-section [role=tab]')].find((x) => x.textContent.trim() === 'JSON'); if (tab) tab.click(); return !!tab })()`, 8000)
+  await sleep(300)
+  const intunePreview = intuneJsonTab ? await evaluate(`(() => { const p = ${intuneStep}.querySelector('.implementation-section .impl-preview .preview-text'); return p ? p.innerText : '' })()`) : ''
+  const copiedBefore = await evaluate('window.__copied.length')
+  if (intuneJsonTab) await evaluate(`(() => { const b = ${intuneStep}.querySelector('.implementation-section .preview-actions button'); if (b) b.click(); return !!b })()`)
+  await waitFor(`window.__copied.length > ${copiedBefore}`, 3000)
+  const intuneCopied = await evaluate(`window.__copied.length > ${copiedBefore} ? window.__copied[window.__copied.length - 1] : ''`)
+  let intuneParses = false
+  try { intuneParses = typeof JSON.parse(intuneCopied).displayName === 'string' } catch {}
+  check(
+    'Demo: a held policy prepared in report-only offers JSON, and Copy copies the preview exactly and it parses',
+    intuneJsonTab && intuneCopied.length > 0 && intuneCopied.replace(/\s+/g, ' ').trim() === intunePreview.replace(/\s+/g, ' ').trim() && intuneParses && !/guid-\d{4}|REDACTED/.test(intuneCopied),
+    `tab ${intuneJsonTab}, preview ${intunePreview.length} chars, copied ${intuneCopied.length} chars, parses ${intuneParses}`,
+  )
   // The header has no scan control: the demo's Scan again lives on Connect's
   // Scan tile, and a hash change keeps the page (and the snapshot) alive.
   const demoScanAgain = async () => {
@@ -1136,30 +1162,6 @@ try {
     'Demo: week two raises the header Completed count',
     inPlaceOf(week2Body) > inPlaceOf(day1Body),
     `day one: "${day1Header}" -> week two: "${demoWeek2Header}"`,
-  )
-  // The public demo's implementation path: the follow-up scan's held Intune
-  // enrollment policy is prepared in report-only (Step 5), through the normal
-  // engine. Its JSON copies exactly what the preview shows, with its ids, and parses.
-  const INTUNE = JSON.stringify('Require a Fresh Sign-in for Intune Enrollment')
-  const intuneStep = `(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return null; let n = t.closest('.plan-row').nextElementSibling; return n && (n.matches('.step') ? n : n.querySelector('.step')) })()`
-  // The row may sit in any lane (S3): show each tab until it is there, then open it.
-  for (const lane of LANES) {
-    await showLane(lane)
-    if (await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); if (!t) return false; const r = t.closest('.plan-row'); r.scrollIntoView({ block: 'center' }); if (r.getAttribute('aria-expanded') !== 'true') r.click(); return true })()`)) break
-  }
-  const intuneJsonTab = await waitFor(`(() => { const st = ${intuneStep}; const tab = st && [...st.querySelectorAll('.implementation-section [role=tab]')].find((x) => x.textContent.trim() === 'JSON'); if (tab) tab.click(); return !!tab })()`, 8000)
-  await sleep(300)
-  const intunePreview = intuneJsonTab ? await evaluate(`(() => { const p = ${intuneStep}.querySelector('.implementation-section .impl-preview .preview-text'); return p ? p.innerText : '' })()`) : ''
-  const copiedBefore = await evaluate('window.__copied.length')
-  if (intuneJsonTab) await evaluate(`(() => { const b = ${intuneStep}.querySelector('.implementation-section .preview-actions button'); if (b) b.click(); return !!b })()`)
-  await waitFor(`window.__copied.length > ${copiedBefore}`, 3000)
-  const intuneCopied = await evaluate(`window.__copied.length > ${copiedBefore} ? window.__copied[window.__copied.length - 1] : ''`)
-  let intuneParses = false
-  try { intuneParses = typeof JSON.parse(intuneCopied).displayName === 'string' } catch {}
-  check(
-    'Demo: a held policy prepared in report-only offers JSON, and Copy copies the preview exactly and it parses',
-    intuneJsonTab && intuneCopied.length > 0 && intuneCopied.replace(/\s+/g, ' ').trim() === intunePreview.replace(/\s+/g, ' ').trim() && intuneParses && !/guid-\d{4}|REDACTED/.test(intuneCopied),
-    `tab ${intuneJsonTab}, preview ${intunePreview.length} chars, copied ${intuneCopied.length} chars, parses ${intuneParses}`,
   )
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-row .step-title')].find((x) => x.textContent.trim() === ${INTUNE}); const r = t && t.closest('.plan-row'); if (r && r.getAttribute('aria-expanded') === 'true') r.click(); return true })()`)
   // Scan again only ever moves forward; the way back to the initial scan is the
