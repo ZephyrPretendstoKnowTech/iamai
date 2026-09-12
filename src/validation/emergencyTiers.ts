@@ -20,6 +20,7 @@
 //
 // Pure: no DOM, no network.
 import type { SubjectReport } from './report.ts'
+import { SET_LEVEL } from './report.ts'
 
 type Result = SubjectReport['targets'][number]['results'][number]
 
@@ -53,6 +54,30 @@ export function emergencyStanding(report: SubjectReport, confirmedAccounts: numb
     minimum: all.filter((r) => emergencyTierOf(r, confirmedAccounts) === 'minimum'),
     hardening: all.filter((r) => emergencyTierOf(r, confirmedAccounts) === 'hardening'),
   }
+}
+
+/** One confirmed account's own standing: what its checks found about it alone, and whether any ran. */
+export type EmergencyAccountStanding = { id: string; minimum: number; hardening: number; assessed: boolean }
+
+/**
+ * Each confirmed emergency account's own standing, in the order the operator
+ * confirmed them. The report files a check about the set of accounts (report.ts
+ * SET_LEVEL: how many there are, whether their methods differ, where credentials
+ * are kept, whether sign-ins alert) under the first account; that finding is
+ * about every account and belongs to no one account's count, so the first
+ * account never carries the set's evidence and the second never borrows the
+ * first's. An account no check ran for is unassessed, never a pass.
+ */
+export function emergencyAccountStanding(report: SubjectReport, confirmedIds: readonly string[]): EmergencyAccountStanding[] {
+  return confirmedIds.map((id) => {
+    const own = report.targets.flatMap((t) => t.results).filter((r) => r.subject === 'breakGlass' && r.target === id && !SET_LEVEL.has(r.id))
+    return {
+      id,
+      minimum: own.filter((r) => emergencyTierOf(r, confirmedIds.length) === 'minimum').length,
+      hardening: own.filter((r) => emergencyTierOf(r, confirmedIds.length) === 'hardening').length,
+      assessed: own.some((r) => r.outcome === 'pass' || r.outcome === 'fail' || r.outcome === 'unknown'),
+    }
+  })
 }
 
 /** FNV-1a: a short fingerprint that carries no account id into the plan record. */

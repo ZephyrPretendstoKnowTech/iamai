@@ -200,7 +200,7 @@ IAMAI has candidate emergency-access evidence for {{tenant.displayName}}, but th
 @@IAMAI-BEGIN {"id":"ai.implement","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the owner-confirmed emergency account {{emergency.target.upn}} (stable ID {{emergency.target.userId}}) for {{tenant.displayName}}. Target: cloud-only onmicrosoft.com identity, enabled, permanent active Global Administrator, phishing-resistant emergency authentication, canonical exclusions-group membership, independent secure custody, monitoring, and real drill proof. Machine actions may only ensure the deterministic role and group membership. Never request or expose credentials.
+Review the owner-confirmed emergency accounts {{emergency.target.accountsSummary}} for {{tenant.displayName}}, each on its own evidence. Target: cloud-only onmicrosoft.com identity, enabled, permanent active Global Administrator, phishing-resistant emergency authentication, canonical exclusions-group membership, independent secure custody, monitoring, and real drill proof. Machine actions may only ensure the deterministic role and group membership. Never request or expose credentials.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
