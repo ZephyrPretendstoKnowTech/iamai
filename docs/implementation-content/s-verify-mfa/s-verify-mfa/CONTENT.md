@@ -77,19 +77,19 @@ Check that the campaign configuration and IAMAI readiness evidence are being tre
 Explain the blocker without inventing a user method, readiness result, or campaign setting: {{dependencies.blockers}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.everyone","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.everyone","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template","audience":"all-users"}
 Subject: Set up Microsoft Authenticator before MFA enforcement
 
 From {{campaign.mfaEnforceDate}}, sign-ins to {{tenant.displayName}} will require MFA. Please complete the Microsoft Authenticator setup when prompted. If you cannot register or no longer have access to your existing method, contact IT before the enforcement date so we can use the approved recovery process.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.admins","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.admins","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template","audience":"administrators"}
 Subject: Admin sign-in requires a passkey or security key
 
 The general campaign will help with Microsoft Authenticator, but admin sign-ins have a stronger requirement. If IAMAI lists you as needing action, register and prove a passkey or hardware security key before the admin-policy enforcement date.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.holdout","channel":"email","states":["holdoutReview"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.holdout","channel":"email","states":["holdoutReview"],"format":"markdown","kind":"template","audience":"rollout-administrators"}
 Subject: MFA enrollment holdout review
 
 The enrollment deadline has passed and one or more active people still lack proven readiness. Review each remaining account for status, contact/recovery needs, and manager follow-up. Do not create a policy exclusion as the default resolution.

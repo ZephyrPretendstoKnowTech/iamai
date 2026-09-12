@@ -169,7 +169,7 @@ Explain why **Protect Sign-in Method Registration** is not actionable yet using 
 Explain that **Protect Sign-in Method Registration** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Sign-in method registration policy entering validation
 
 Hi,
@@ -179,7 +179,7 @@ We are validating a policy that protects how sign-in methods are registered in {
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Sign-in method registration protection enforcement
 
 Hi,

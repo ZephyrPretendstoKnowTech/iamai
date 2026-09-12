@@ -169,7 +169,7 @@ Explain why **Block Authentication Transfer** is not actionable yet using only t
 Explain that **Block Authentication Transfer** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Authentication-transfer blocking entering validation
 
 Hi,
@@ -179,7 +179,7 @@ We are validating a policy that blocks authentication transfer in {{tenant.displ
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Authentication transfer will be blocked
 
 Hi,

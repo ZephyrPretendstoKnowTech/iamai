@@ -129,6 +129,11 @@ The artifact the viewer shows and Copy copies is the script, defined once as a
 function, then called once per projected run with IAMAI's values. A switch is
 passed only for a satisfied prerequisite.
 
+`withheldModes: { Mode: reason }` names a mode IAMAI cannot call: one the script
+runs only with an attestation the package declares no prerequisite for, or with a
+value in a shape IAMAI does not hold. A projection that runs it is withheld for
+that state, with the reason, rather than shown as a call that would throw.
+
 ### JSON requests
 
 Blocks that send to the same method and endpoint are merged into one request
@@ -138,11 +143,34 @@ projection.
 ### Email
 
 Email blocks declare `audience` and `communicationTrigger` (on the block or
-`META.email`).
+`META.email`). An audience is never guessed.
 
 ### Troubleshooting
 
 `scenarios[]` declare `id`, `title` and `states[]`.
+
+### Normalisation (`protocol.ts normalizePackage`)
+
+The library was authored in several shapes of one schema. Before validation each
+is rewritten into the shape above, structure only, every sentence the author's:
+
+- Email: `trigger` is `communicationTrigger`; `META.email.blocks` declares each
+  listed block; an Email authored for exactly one state is sent for that state
+  (`missing` → `before-report-only`, `readyToEnforce` → `before-enforcement`).
+- Troubleshooting: a sentence where a list is read is a one-item list,
+  `sourceIds` is `sources`, a scenario without states takes its block's, and a
+  scenario without a title is titled by its symptom (shown once).
+- Readiness: `whyIamaiSaysThis` / `whyIAMAI` become the evidence sections;
+  `nextSafeAction`, `safeNow` and `safeToEnforce` become conclusions for the states
+  each answers; a tile whose written result opens with a result
+  (`Unknown until tested`) is that result in its block's states. A tile whose
+  result is a binding or any other sentence is still refused: the runtime owns
+  tenant facts.
+- A state authored under an alias (`states.ts`, `groupMissing`) is content for
+  its runtime state, unless the author wrote that state too.
+
+The validator prints what it normalised and classifies every family it still
+refuses.
 
 ## 3. Compile and validate
 

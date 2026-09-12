@@ -154,7 +154,7 @@ Explain why **Require App Protection on Phones** is not actionable using only th
 Explain the licensing blocker for **Require App Protection on Phones** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Protected mobile apps entering validation
 
 Hi,
@@ -164,7 +164,7 @@ We are validating protected mobile-app access for {{tenant.displayName}}. Compan
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Protected mobile apps ready to enforce
 
 Hi,

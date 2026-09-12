@@ -76,7 +76,7 @@ Verify separation: dedicated admin account holds intended role; everyday account
 Explain the blocker without inventing an admin account, role assignment, or governance model: {{dependencies.blockers}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.admin","channel":"email","states":["actionRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.admin","channel":"email","states":["actionRequired"],"format":"markdown","kind":"template","audience":"affected-administrators"}
 Subject: Separate admin account setup
 
 We are moving privileged work to a dedicated admin account while leaving mail, Teams, files, and normal browsing on your everyday account. We will add and test the new admin path first, including a passkey/security key sign-in, before removing the role from your everyday account.
