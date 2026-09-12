@@ -14,7 +14,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
-import { emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
+import { emergencyAccountStanding, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
 import { fillText, missingVars } from '../content/render.ts'
 import { stepById as contentStepById } from '../content/content.ts'
@@ -1163,7 +1163,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // operator defers it, and a deferral moves it to Cleanup (below).
     bgStanding = emergencyStanding(bgReport, confirmed)
     const deferred = hardeningDeferred(bgStanding.hardening, input.hardeningDeferral)
-    bgStep.emergency = { minimum: bgStanding.minimum.length, hardening: bgStanding.hardening.length, basis: hardeningBasis(bgStanding.hardening), deferredAt: deferred ? (input.hardeningDeferral?.at ?? null) : null }
+    bgStep.emergency = {
+      minimum: bgStanding.minimum.length,
+      hardening: bgStanding.hardening.length,
+      basis: hardeningBasis(bgStanding.hardening),
+      deferredAt: deferred ? (input.hardeningDeferral?.at ?? null) : null,
+      // Each confirmed account's own evidence, never another's or the set's.
+      accounts: emergencyAccountStanding(bgReport, mapping.breakGlassUserIds),
+    }
     const results = bgReport.targets.flatMap((t) => t.results)
     if (confirmed > 0 && results.length > 0 && bgStanding.minimum.length === 0 && (bgStanding.hardening.length === 0 || deferred)) {
       setState(bgStep, { satisfied: true, inPlace: true })

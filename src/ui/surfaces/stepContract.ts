@@ -344,6 +344,8 @@ export type StepContract = {
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
   hardening: ContractHardening | null
+  /** Each confirmed emergency account's own standing, one line per account in confirmed order; empty on every other step. */
+  emergencyAccounts: string[]
 }
 
 const MEMBER_LABELS = 'ABCDEFGH'
@@ -759,7 +761,21 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     schedule: step.scheduled ? scheduleOf(step) : null,
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
+    emergencyAccounts: emergencyAccountLines(step, ctx.nameOf),
   }
+}
+
+/**
+ * Each confirmed emergency account's own standing (validation/emergencyTiers.ts
+ * emergencyAccountStanding): its minimum safety, its own hardening, or that no
+ * check about it ran. A finding about the set of accounts is no account's line.
+ */
+function emergencyAccountLines(step: Step, nameOf: (id: string) => string): string[] {
+  const t = CONTRACT.hardening.tiles
+  return (step.emergency?.accounts ?? []).map((a) => {
+    const words = !a.assessed ? t.accountUnchecked : a.minimum > 0 ? t.accountMinimum : a.hardening > 0 ? t.accountHardening : t.accountMeets
+    return fillText(words, { name: nameOf(a.id) })
+  })
 }
 
 /**
@@ -1022,7 +1038,10 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
   const e = step.emergency
   if (!e || c.state.setAside) return []
   const t = CONTRACT.hardening.tiles
-  const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: null } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: null }
+  // With more than one account, each account's own standing: one account's
+  // minimum failure is not every account's, and one account's pass is not another's.
+  const perAccount = c.emergencyAccounts.length > 1 ? c.emergencyAccounts.join(' · ') : null
+  const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: perAccount } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: perAccount }
   const resilience: ReadinessTile =
     e.hardening === 0
       ? { key: 'resilience', label: t.resilience, tone: 'good', value: t.meets, note: null }

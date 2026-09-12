@@ -395,10 +395,23 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)
   put('group.serviceAccounts.id', ctx.mapping.serviceAccountsGroupId)
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)
+  // The operator's confirmed emergency accounts, every one of them: the set the
+  // step's own words name. Only where the directory names each; a set short of an
+  // account is not the set.
   const emergency = ctx.mapping.breakGlassUserIds ?? []
-  if (emergency.length === 1) {
-    put('emergency.target.userId', emergency[0])
-    put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === emergency[0])?.userPrincipalName)
+  const labels = emergency.map((id) => ctx.snapshot.users.find((u) => u.id === id)).map((u) => (u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null))
+  if (labels.length > 0 && labels.every((l): l is string => l !== null)) put('emergency.target.accountsSummary', labels.join(', '))
+  // The one account the step's per-account work is about: the only confirmed
+  // account whose own checks are outstanding, where every account's checks ran
+  // (step.emergency.accounts, validation/emergencyTiers.ts). Two accounts owing
+  // work, an account nothing checked, or only a check about the set binds no
+  // account: IAMAI does not pick one for the operator, and an account that meets
+  // everything is not the object of a correction.
+  const standing = (step.emergency?.accounts ?? []).filter((a) => emergency.includes(a.id))
+  const owed = standing.filter((a) => a.minimum + a.hardening > 0)
+  if (standing.length === emergency.length && standing.every((a) => a.assessed) && owed.length === 1) {
+    put('emergency.target.userId', owed[0].id)
+    put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === owed[0].id)?.userPrincipalName)
   }
   for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot))) out[key] = value
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
