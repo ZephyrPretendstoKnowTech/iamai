@@ -524,6 +524,23 @@ export type StepEvents = { announce: StepEvent | null; remind: StepEvent | null;
  * for. So each member holds its own, and the step's aggregate below is derived
  * from all of them rather than taken from whichever one was found first.
  */
+/**
+ * Whether a member's correction may be handed over (tracking.ts `correctionOf`).
+ * A correction is an update, and an update edits one tenant object: it has to be
+ * the object this member owns, and no other goal may be counting that object
+ * towards its own satisfaction, or correcting it for this goal could take the
+ * other one out of place. Anything else is a person's decision.
+ */
+export type CorrectionSafety =
+  | { safe: true }
+  | {
+      safe: false
+      /** `unowned-target`: the operation targets a policy this member does not own. `shared-satisfier`: another goal is satisfied by the policy it targets. */
+      reason: 'unowned-target' | 'shared-satisfier'
+      /** One sentence saying why, from shared.engine.tracking. */
+      note: string
+    }
+
 export type MemberTracking = {
   /** The member's stable identity (observation.ts `memberKeyOf`). */
   key: string
@@ -537,13 +554,24 @@ export type MemberTracking = {
    * target (Foundation A already settled it), the member's own plan tag, a plan
    * tag from before members were tagged plus the name the plan gives this member,
    * or — on a step with a single member only — the goal's coverage fingerprint.
+   * `owned` is the object the member's own record from the last scan names, where
+   * nothing on the tenant proves the tie this scan (tracking.ts `matchMembers`):
+   * once associated, a drift never moves the member off it.
    */
-  matchedBy: 'operation-target' | 'member-tag' | 'step-tag' | 'member-name' | 'fingerprint' | null
+  matchedBy: 'operation-target' | 'member-tag' | 'step-tag' | 'member-name' | 'fingerprint' | 'owned' | null
   /**
    * The plan cannot say which object is this member: more than one candidate, or
    * a pair whose halves nothing tells apart. Nothing advances on a guess.
    */
   ambiguous: boolean
+  /**
+   * Whether the correction this member's own operation submits is safe to hand
+   * over: it targets the policy the member owns, and no other goal counts that
+   * policy towards its own satisfaction. Null where the member submits no
+   * correction (a create, or no operation). An unsafe one raises Review required
+   * on the step with its reason, and never substitutes another candidate.
+   */
+  correction: CorrectionSafety | null
   /** Where this member's own policy is; never another member's stage. */
   lifecycle: import('./lifecycle.ts').Lifecycle
   /** Graph's own state for the matched policy, or `absent` where none is. */
@@ -593,7 +621,8 @@ export type StepTracking = {
    */
   policyId: string | null
   policyName: string | null
-  matchedBy: 'tag' | 'fingerprint'
+  /** `owned`: at least one member is tied to its object only by the plan's own record of the last scan. */
+  matchedBy: 'tag' | 'fingerprint' | 'owned'
   note: string
   createdAt: string | null
   modifiedAt: string | null

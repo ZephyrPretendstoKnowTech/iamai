@@ -190,6 +190,9 @@
       "tracking": {
         "matchedByTag": "matched by its plan tag",
         "matchedByFingerprint": "this policy already existed and covers this step",
+        "matchedByRecord": "the policy this plan was already tracking",
+        "correctionUnowned": "the correction targets {target}, not {owned}, the policy this step is tracking; a person decides which one this step delivers",
+        "correctionShared": "{name} also satisfies {goal}; a person decides whether correcting it here is safe",
         "reportOnlyFound": "policy in report-only since {date}",
         "enforced": "policy enforced on {date}",
         "enforcedByOther": "{name} already enforces this",
