@@ -20,6 +20,9 @@ param(
   [int]$RateLimitRetries = 8
 )
 
+# -File passes "A1a,A1b" as one string; split it here.
+$Ids = @($Ids | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
 $docs    = "docs/product/actionability"
 $logDir  = Join-Path $Repo "$docs/logs"
 $blocked = Join-Path $logDir "runner-notes.md"   # runner notes live in logs/ (gitignored) so they never dirty the tree
