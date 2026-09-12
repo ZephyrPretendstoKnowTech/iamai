@@ -481,15 +481,20 @@ export type ExportStep = {
   title: string
   why: string
   /**
-   * Where the step is, as the opened step's badge says it (ui/surfaces/planState.ts
-   * badgeOf): the lifecycle stage beside the state's own word where the two are
-   * different facts, the word alone where there is no stage. The one state label
-   * an artifact carries; it never composes a second one from stage and condition,
-   * which is how a row reading Needs attention left as "Healthy".
+   * Where the step is: the lane label, word for word the row's and the opened
+   * step's badge (A1c, RUN-CONTEXT-A decision 1; ui/surfaces/planBoard.ts
+   * laneLabelOf). The one state label an artifact carries; it never composes a
+   * second one, which is how a row reading Needs attention once left as "Healthy".
    */
   state: string
-  /** The one word the Plan's collapsed row shows (ui/surfaces/statusWord.ts), for scanning. */
-  status: string
+  /** The lane's own word (pages.plan.lanes.*): Ready · Up Next · On Hold · Completed · Deferred, or Doesn't apply. */
+  lane: string
+  /** The Ready lane's substatus word (pages.plan.substatus.*); null on every other lane. */
+  substatus: string | null
+  /** The label's tail beyond the substatus: the step an Up Next row follows, the blocker an On Hold row names; null where the label is the lane word alone. */
+  reason: string | null
+  /** The tenant fact beside the state — Report-only or Enforced (ui/surfaces/stepContract.ts factOf) — or null (decision 2). */
+  fact: string | null
   /** Foundation B's dated next line, where it holds a date for one; null otherwise. */
   next: string | null
   /** Who the policy reaches, from the one population authority; null where the step reaches nobody. */

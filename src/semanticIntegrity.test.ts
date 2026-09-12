@@ -35,7 +35,9 @@ import { jsonOffered, policyJson, stepOperations } from './ui/surfaces/stepJson.
 import { powershellFor } from './ui/surfaces/stepPowerShell.ts'
 import { portalNamesFor, stepPortalLines } from './ui/surfaces/stepPortal.ts'
 import { rowReason, rowWhen } from './ui/surfaces/rowWhen.ts'
-import { statusOf, cleanupStatusOf } from './ui/surfaces/statusWord.ts'
+import { statusOf } from './ui/surfaces/statusWord.ts'
+import { laneViewFor } from './ui/surfaces/planBoard.ts'
+import { laneReadings } from './ui/surfaces/planLanes.ts'
 import { stepVars } from './ui/surfaces/stepVars.ts'
 import { contentStepFor } from './content/stepTitle.ts'
 import { shows } from './derive/mfaReadiness.ts'
@@ -167,11 +169,12 @@ test('042.4: nothing derives a lifecycle of its own, and no condition implies on
   const seen = new Map<string, Set<string>>()
   for (const c of corpus()) {
     for (const step of c.steps) {
-      const contract = stepContract(step, ctxFor(c, step))
-      const view = stepExportView(step, ctxFor(c, step))
+      // The lane read over the plan (planBoard.ts laneViewFor, A1c): the badge and the export view state it.
+      const lane = laneViewFor(step, c.steps)
+      const contract = stepContract(step, ctxFor(c, step), undefined, lane)
+      const view = stepExportView(step, ctxFor(c, step), lane)
       // The export's state is the contract's badge, word for word.
       assert.equal(view.state, badgeLabel(contract), `${c.label}/${step.id}: the export view states a different state from the Plan`)
-      assert.equal(view.status, contract.state.word, `${c.label}/${step.id}: the export view states a different status word`)
       // The track is a projection of the lifecycle and of nothing else: it is
       // empty exactly where there is no rollout to draw (a step set aside, or a
       // resolution step whose source contradicts itself), and its current stage
@@ -443,9 +446,14 @@ test('042.13: a Cleanup row reads the same on the Plan and in the printed plan',
       assert.equal(cleanupComplete(row, attested), row.done !== null || row.kind === 'alerting', `${c.label}: the attestation completed the wrong row`)
       assert.equal(cleanupComplete(row, silent), row.done !== null, `${c.label}: nothing recorded completed a row`)
       assert.equal(cleanupComplete(row, null), cleanupComplete(row, undefined), `${c.label}: an absent record and an unread one differ`)
-      // The word follows the completion and is the vocabulary the steps use.
-      assert.equal(cleanupStatusOf(cleanupComplete(row, attested)).word, cleanupComplete(row, attested) ? 'In place' : 'Ready', `${c.label}: a Cleanup row's word is not its state`)
-      assert.notEqual(cleanupStatusOf(true).word, 'Enforced', 'a Cleanup row claims a rollout it never had')
+      // The word is the lane the engine reads for the row (planLanes.ts, A1c), on
+      // the Plan and in the print alike: Completed once finished, a working lane
+      // (Ready, or Up Next behind a prerequisite the graph knows) until then.
+      for (const complete of [cleanupComplete(row, attested), cleanupComplete(row, silent)]) {
+        const lane = laneReadings(c.steps, [{ id: `cleanup-${row.kind}`, complete }]).get(`cleanup-${row.kind}`)
+        assert.ok(lane, `${c.label}: the Cleanup row ${row.kind} has no lane`)
+        assert.equal(lane!.lane === 'Completed', complete, `${c.label}: a Cleanup row's lane is not its state`)
+      }
     }
   }
 })
@@ -539,9 +547,9 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
 
   // A Cleanup row's completion and its word: roadmap/cleanupDone.ts, and the
   // word is the lane the engine read for the row (planBoard.ts laneViewOf, A1b
-  // decision 1) on the Plan; the print still reads statusWord.ts until A1c moves
-  // it to the lane. Neither surface writes the words.
-  for (const [name, src, word] of [['Plan', plan, 'laneViewOf('], ['PrintPlan', print, 'cleanupStatusOf(']] as const) {
+  // decision 1) on the Plan and in the print alike (A1c). Neither surface
+  // writes the words.
+  for (const [name, src, word] of [['Plan', plan, 'laneViewOf('], ['PrintPlan', print, 'laneViewOf(']] as const) {
     assert.ok(src.includes('cleanupComplete('), `${name} does not read the one Cleanup completion`)
     assert.ok(src.includes(word), `${name} does not read the one Cleanup status word`)
     assert.equal(/word: 'In place'|word: 'Ready'/.test(src), false, `${name} writes a status word into its own JSX`)

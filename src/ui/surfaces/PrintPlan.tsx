@@ -14,7 +14,6 @@ import { ContentStep } from './ContentStep.tsx'
 import type { StepVarContext } from './stepVars.ts'
 import { CleanupBody } from './CleanupStep.tsx'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
-import { cleanupStatusOf } from './statusWord.ts'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import { app, phases } from '../../content/content.ts'
 import { headerLine1 } from '../../derive/planHeader.ts'
@@ -24,9 +23,10 @@ import { fillText } from '../../content/render.ts'
 import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
-import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
-import { laneReadings } from './planLanes.ts'
-import { readinessBlockersOf } from './planBoard.ts'
+import { completedRows, deferredRows, floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
+import { LANE_ORDER, laneReadings } from './planLanes.ts'
+import { doesntApplyView, laneViewOf, laneWordOf, prerequisiteLabelFor, readinessBlockersOf } from './planBoard.ts'
+import type { LaneView } from './stepContract.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -48,8 +48,6 @@ import { readinessBlockersOf } from './planBoard.ts'
 // say it is.
 const noop = (): void => undefined
 const C = app.print
-/** The undated group's own words, which the screen draws too (app.plan.held, task 036). */
-const HELD = (app.plan as unknown as { held: { heading: string; lead: string } }).held
 
 export function PrintPlan({
   tenantName,
@@ -97,11 +95,23 @@ export function PrintPlan({
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
-  // The engine's blockers on each step's next action (planLanes.ts): the printed
-  // step's Readiness tiles are the screen's, from the same reading.
-  const readings = laneReadings(steps)
-  const blockersOf = (s: Step) => readinessBlockersOf(readings.get(s.id), (id) => steps.find((x) => x.id === id)?.title ?? null)
-  const done = steps.filter((s) => s.status === 'done')
+  // The lane engine's reading over the whole plan, the Cleanup rows included
+  // (planLanes.ts), exactly as the Plan builds its rows: every printed state word
+  // is a lane word (A1c, decision 1) — the badge, the bar, the rail, the
+  // Readiness tiles and the Cleanup rows' heads all read this one reading.
+  const cleanupInputs = (schedule.cleanup?.rows ?? []).map((r) => ({ id: `cleanup-${r.kind}`, complete: cleanupComplete(r, answers) }))
+  const readings = laneReadings(steps, cleanupInputs)
+  const laneTitleOf = (id: string): string | null => {
+    const s = steps.find((x) => x.id === id)
+    return s ? s.plainTitle || s.title : null
+  }
+  const laneOf = (id: string): LaneView => {
+    const r = readings.get(id)
+    return r ? laneViewOf(r, laneTitleOf) : doesntApplyView()
+  }
+  const prerequisiteLabel = prerequisiteLabelFor(readings)
+  const blockersOf = (s: Step) => readinessBlockersOf(readings.get(s.id), laneTitleOf)
+  const done = completedRows(steps)
   // A numbered phase's rows, the undated group and the floor group, all read
   // from the Plan's own rules (planRows.ts) and none of them recomputed here.
   //
@@ -115,9 +125,18 @@ export function PrintPlan({
   // never asked for it. `phaseRows` is the one rule that decides this, and the
   // screen reads it too, so a plan taken to PDF carries the same rows.
   const phaseList = planPhases(schedule)
-  const held = undatedRows(steps, phaseList)
-  const floor = floorRows(steps)
-  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w)
+  // A deferred step prints once, in the Deferred section under the lane's own
+  // word (A1c, decision 3), never under the phase that once dated it.
+  const deferred = deferredRows(steps)
+  const deferredIds = new Set(deferred.map((s) => s.id))
+  const notDeferred = (s: Step): boolean => !deferredIds.has(s.id)
+  const held = undatedRows(steps, phaseList).filter(notDeferred)
+  // The undated rows under their own lane's word (A1c): the phase is a projection
+  // the document may keep, and a step no phase dates is grouped by the state the
+  // Plan shows for it, never under a heading of the document's own.
+  const heldByLane = LANE_ORDER.map((lane) => ({ lane, rows: held.filter((s) => laneOf(s.id).lane === lane) })).filter((g) => g.rows.length > 0)
+  const floor = floorRows(steps).filter(notDeferred)
+  const phaseSteps = (w: Schedule['waves'][number]): Step[] => phaseRows(steps, w).filter(notDeferred)
   const waves = phaseList.filter((w) => phaseSteps(w).length > 0)
   const waveLabelByNumber = new Map(waves.map((w, i) => [w.wave, waveLabels(waves)[i]]))
   // Numbered phases (§5), never "Wave": Preparation / Phase N, from content.phases.
@@ -198,8 +217,12 @@ export function PrintPlan({
           {waves.map((w) => (
             <li key={w.wave}>{waveTitle(w)}</li>
           ))}
-          {held.length > 0 && <li>{HELD.heading}</li>}
+          {heldByLane.map((g) => (
+            <li key={g.lane}>{laneWordOf(g.lane)}</li>
+          ))}
           {floor.length > 0 && <li>{phases.recommended}</li>}
+          {done.length > 0 && <li>{laneWordOf('Completed')}</li>}
+          {deferred.length > 0 && <li>{laneWordOf('Deferred')}</li>}
           {schedule.cleanup && <li>{phases.last}</li>}
         </ol>
       </section>
@@ -249,26 +272,25 @@ export function PrintPlan({
           <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} blockers={blockersOf(s)} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
             </article>
           ))}
         </section>
       ))}
-      {/* The undated group: a step no wave carries because something has to be
-          cleared before its policy can be written. It prints in full — the same
-          body, with the blocker, the one action and the completion — and it
-          prints no date, because it has none. */}
-      {held.length > 0 && (
-        <section className="print-page">
-          <h2>{HELD.heading}</h2>
-          <p className="muted">{HELD.lead}</p>
-          {held.map((s) => (
+      {/* The undated rows: a step no wave carries because something has to be
+          cleared before its policy can be written. Each prints in full — the same
+          body, with the blockers, the one action and the completion — under its
+          own lane's word, and prints no date, because it has none. */}
+      {heldByLane.map((g) => (
+        <section key={g.lane} className="print-page">
+          <h2>{laneWordOf(g.lane)}</h2>
+          {g.rows.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} blockers={blockersOf(s)} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
             </article>
           ))}
         </section>
-      )}
+      ))}
       {/* The floor group (roadmap/floor.ts), after the phases and before Cleanup,
           as the Plan draws it: named for what it is, so the document never reads
           as if the baseline author asked for these. */}
@@ -277,19 +299,38 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} blockers={blockersOf(s)} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} lane={laneOf(s.id)} blockers={blockersOf(s)} prerequisiteLabel={prerequisiteLabel} printing />
             </article>
           ))}
         </section>
       )}
+      {/* Completed and Deferred (A1c): the rows the screen's two groups hold, as
+          a list under the lane's own word — the title and the lane label each row
+          shows — so the document states them once and dates neither. */}
+      {[{ lane: 'Completed' as const, rows: done }, { lane: 'Deferred' as const, rows: deferred }].filter((g) => g.rows.length > 0).map((g) => (
+        <section key={g.lane} className="print-page">
+          <h2>{laneWordOf(g.lane)}</h2>
+          <ul className="print-lane-rows">
+            {g.rows.map((s) => (
+              <li key={s.id}>
+                <span className="step-title">{s.plainTitle || s.title}</span> · {laneOf(s.id).label}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
       {schedule.cleanup && (
         <section className="print-page">
           <h2>{cannotFinish ? phases.last : fillText(phases.heading, { name: phases.last, start: absoluteDate(schedule.cleanup.start), end: absoluteDate(schedule.cleanup.end) })}</h2>
-          {schedule.cleanup.rows.map((r) => (
-            <article key={r.kind} className="print-step">
-              <CleanupBody phase={schedule.cleanup!} row={r} status={cleanupStatusOf(cleanupComplete(r, answers))} notes={notes} />
-            </article>
-          ))}
+          {schedule.cleanup.rows.map((r) => {
+            // The row's head says its lane (planBoard.ts laneViewOf), as the Plan's row does.
+            const lane = laneOf(`cleanup-${r.kind}`)
+            return (
+              <article key={r.kind} className="print-step">
+                <CleanupBody phase={schedule.cleanup!} row={r} status={{ word: lane.label, tone: lane.tone }} notes={notes} />
+              </article>
+            )
+          })}
         </section>
       )}
     </div>,

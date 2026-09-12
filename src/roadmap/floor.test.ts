@@ -12,7 +12,7 @@ import { PINNED_GOAL_MAP } from './goalMap.ts'
 import type { GoalMap } from './goalMap.ts'
 import { BREAK_GLASS_STEP_ID, stepIdForGoal } from './stepIds.ts'
 import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
-import { app, phases } from '../content/content.ts'
+import { pages, phases } from '../content/content.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
 import { groupsFor } from '../ui/surfaces/planBoard.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
@@ -271,25 +271,31 @@ test('the printed document carries the floor as the same named group, never unde
 test('the Plan page contract accepts the two named groups exactly, and nothing broader', () => {
   const contract = JSON.parse(readFileSync(new URL('../../docs/qa/page-contracts.json', import.meta.url), 'utf8')) as { surfaces: { id: string; allow: { headings: string[] } }[] }
   const headings = contract.surfaces.find((s) => s.id === 'plan')!.allow.headings
+  const lanes = (pages.plan as unknown as { lanes: Record<string, string> }).lanes
   assert.deepEqual(headings, [
     'Plan',
-    // The board's group heads carry the group's NAME and put its date range in
-    // its own slot beside it, so the headings are plain names where they used to
-    // be name-plus-dates patterns. The one pattern left is the phase number.
-    'Preparation',
-    're:^Phase \\d+$',
-    'Cleanup',
-    phases.recommended,
-    // Task 036 named the undated group on screen with the words the print has
-    // always used over the same rows (app.plan.held). Both entries are exact
-    // strings read from the content file: the guard this test is here for is a
-    // broad new PATTERN in the Plan's closed heading list, not a group the Plan
-    // stopped drawing anonymously.
-    (app.plan as unknown as { held: { heading: string } }).held.heading,
-    // Finished work is the board's last group now, not the footer's first
-    // details: a lens groups rows, and it cannot group a row that lives in
-    // another component.
-    'Complete',
+    // The board's group heads are the lane words (A1c, decision 11: the one
+    // vocabulary, pages.plan.lanes.*) and, under On Hold, the blocker kinds the
+    // rows are grouped by (planBoard.ts BOARD.blockers). Every entry is an exact
+    // string: the guard this test is here for is a broad new PATTERN in the
+    // Plan's closed heading list, not a group the Plan stopped drawing
+    // anonymously. The floor is a row of its lane on screen; the printed
+    // document alone keeps it as the named group (phases.recommended).
+    lanes.ready,
+    lanes.upNext,
+    lanes.onHold,
+    lanes.completed,
+    lanes.deferred,
+    'Baseline safety conflict',
+    'Baseline conflict',
+    'Baseline references an unmapped group',
+    'Licence or platform',
+    'Decision',
+    'Tenant fact',
+    'Missing object',
+    'Prerequisite on hold',
+    'Deferred prerequisite',
+    'Not supported',
   ], 'the contract gained the exact headings and no new pattern')
 })
 

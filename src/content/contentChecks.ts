@@ -72,12 +72,10 @@ export const RE = {
   /** The evidence gate with today's numbers, in each of its three forms. */
   gateEvidence:
     /Evidence: .+; today (ready now: 0 failures in \d+ days|\d+ failing or interrupted, \d+ of \d+ active people seen in \d+ days|no sign-in records read for this policy, \d+ of \d+ active people seen in \d+ days)\./,
-  /** A window that has closed: the row held until the records clear says the same. */
+  /** A window that has closed, on the step's time line. */
   gateWindowClosed: /the window closed \S.*\d{4}\./,
-  /** The row that reads "ready now" and the step's Done when that agrees. */
+  /** The Done when of a row reading Ready · Ready to enforce: the evidence gate says ready now. */
   gateReadyNow: /ready now: 0 failures in \d+ days/,
-  /** The date column of a report-only row. */
-  rowWhen: /^(ready now|held until the records clear|ready \S.*\d{4})$/,
   /** The readiness summary, in either tense: pluralise() may bend the verb to the count. */
   readinessSummary: /(\d+) of (\d+) (?:is|are) Ready\./,
   /** A tenant with nobody active says so instead, and has no numbers to state. */

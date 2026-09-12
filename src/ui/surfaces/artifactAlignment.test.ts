@@ -33,11 +33,12 @@ import { statedEnforcement } from '../../roadmap/forecast.ts'
 import { readinessTable } from './inventoryTables.ts'
 import { floorRows, phaseRows, planPhases, scheduledIds, undatedRows } from './planRows.ts'
 import { laneReadings } from './planLanes.ts'
+import { laneViewFor } from './planBoard.ts'
 import { inWave } from '../../derive/phases.ts'
 import { redactIdentifiers } from '../../redact.ts'
 import { readFileSync } from 'node:fs'
 
-type Case = { name: string; run: FixtureRun; ctx: (s: Step) => StepVarContext; view: (s: Step) => ReturnType<typeof stepExportView>; prompt: (s: Step) => string; entry: (s: Step) => string | undefined; snapshot: FixtureRun['input']['snapshot'] }
+type Case = { name: string; run: FixtureRun; ctx: (s: Step) => StepVarContext; lane: (s: Step) => ReturnType<typeof laneViewFor>; view: (s: Step) => ReturnType<typeof stepExportView>; prompt: (s: Step) => string; entry: (s: Step) => string | undefined; snapshot: FixtureRun['input']['snapshot'] }
 
 /** One answer per step, computed once. The readings are pure, and a sweep that
  *  recomputes them per assertion builds the same calendar once per step: on the
@@ -58,7 +59,9 @@ function load(named: string | Fixture): Case {
   const nameOf = (id: string): string => run.input.names?.label(id) ?? id
   const ctx = once((s: Step): StepVarContext =>
     ({ snapshot: f.snapshot, mapping: f.mapping, nameOf, signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, reportOnlyAt: run.schedule.reportOnlyAt[s.id] ?? null, groups: f.groups }) as StepVarContext)
-  const view = once((s: Step) => stepExportView(s, ctx(s)))
+  // The lane read over the whole plan (planBoard.ts laneViewFor, A1c), as the Export page hands it down.
+  const lane = once((s: Step) => laneViewFor(s, run.steps))
+  const view = once((s: Step) => stepExportView(s, ctx(s), lane(s)))
   let entries: Map<string, string> | null = null
   const entry = (s: Step): string | undefined => {
     if (entries === null) {
@@ -73,7 +76,7 @@ function load(named: string | Fixture): Case {
     }
     return entries.get(s.id)
   }
-  return { name, run, ctx, view, prompt: once((s: Step) => stepContext(s, view)), entry, snapshot: f.snapshot }
+  return { name, run, ctx, lane, view, prompt: once((s: Step) => stepContext(s, view)), entry, snapshot: f.snapshot }
 }
 
 /** Every fixture the repo ships, each loaded once: the whole state matrix, not a chosen example. */
@@ -86,11 +89,11 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
   for (const c of CASES) {
     for (const s of c.run.steps) {
       const v = c.view(s)
-      const k = stepContract(s, c.ctx(s))
+      const k = stepContract(s, c.ctx(s), undefined, c.lane(s))
       const where = `${c.name}/${s.id}`
-      // The one state label, its status word and its dated next line.
+      // The one state label (the lane label, A1c) and its dated next line.
       assert.equal(v.state, badgeLabel(k), `${where}: state`)
-      assert.equal(v.status, k.state.word, `${where}: status word`)
+      assert.equal(v.state, c.lane(s).label, `${where}: the export's state is the row's lane label`)
       assert.equal(v.next, k.milestone.line, `${where}: next line`)
       // Foundation A's reach, its outstanding prerequisites, its completion, and
       // the one answer the four implementation channels read.

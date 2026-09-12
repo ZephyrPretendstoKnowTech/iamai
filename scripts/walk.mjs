@@ -242,12 +242,22 @@ const revealCompleted = async () => {
  * inside that tab, and shows the row's tab again before it opens it.
  */
 const LANES = ['Ready', 'Up Next', 'On Hold']
+/** The When column's placeholder (pages.plan.when.none, A1b): a finished or undated row reads it. */
+const WHEN_NONE = pages.plan.when.none
+/** The lane vocabulary as a row states it (pages.plan.lanes.*, planBoard.ts laneLabelOf, A1c): `Lane`, or `Lane · substatus/reason`. */
+LANE_LABEL_RE = /^(Ready|Up Next|On Hold|Completed|Deferred)( · \S.*)?$|^Doesn't apply$/
+COMPLETED_RE = /^Completed$/
+READY_TO_ENFORCE_RE = /^Ready · Ready to enforce$/
+/** A day as the board prints it (copy/dates.ts absoluteDate). */
+DAY_RE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+/** The When column (A1b): a day or the placeholder, never a reason. */
+ROW_WHEN_RE = new RegExp(`^(?:${DAY_RE.source.slice(1, -1)}|${WHEN_NONE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`)
 const showLane = async (name) => {
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => ((x.textContent || '').replace((x.querySelector('.tab-badge') || {}).textContent || '', '').trim()) === ${JSON.stringify(name)}); if (t && t.getAttribute('aria-selected') !== 'true') t.click() })()`)
   await sleep(150)
 }
 // One row as the checks read it, flattened in Node: a regex in an evaluate() template loses its backslashes, so the day-0 reading is finished here.
-const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), status: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), reason: ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: e.closest('#plan-group-complete') !== null, aside: e.closest('#plan-group-complete, #plan-group-deferred') !== null, wave0: e.dataset.wave === '0' }))`
+const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), label: ((e.querySelector('.lane') || {}).textContent || '').trim(), chip: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), reason: ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: e.closest('#plan-group-complete') !== null, aside: e.closest('#plan-group-complete, #plan-group-deferred') !== null, wave0: e.dataset.wave === '0' }))`
 const readRows = async () => {
   const out = []
   for (const lane of LANES) {
@@ -467,7 +477,8 @@ async function walkFixture(fx) {
   const summary = []
   const routeContract = { connect: 'connect.signedIn', readiness: 'readiness', plan: 'plan', export: 'export', how: 'how', inventory: 'inventory', error: 'error' }
   let rowTitles = []
-  let rowStatuses = []
+  let rowLabels = []
+  let rowChips = []
   let rowWhens = []
   let rowReasons = []
   // Each row's tab, its index inside that tab, and whether it is day-0 work (readRows).
@@ -475,6 +486,7 @@ async function walkFixture(fx) {
   let rowLocal = []
   let rowDayZero = []
   let rowTitlesOpen = []
+  let rowLabelsOpen = []
   let rowReasonsOpen = []
   let rowWhensOpen = []
   // The steps whose policy the plan cannot write yet, by title, and the campaign's
@@ -688,8 +700,8 @@ async function walkFixture(fx) {
       }
       // The Plan header's counts, for the print cover to agree with (E4).
       if (route === 'plan') {
-        const m = text.match(/Steps\s*(\d+)\s*In place\s*(\d+)/)
-        if (m) planHeaderCounts = { steps: m[1], inPlace: m[2] }
+        const m = text.match(/Steps\s*(\d+)\s*Completed\s*(\d+)/)
+        if (m) planHeaderCounts = { steps: m[1], completed: m[2] }
       }
       // Connect's refusals: the scan line never renders an empty window and says
       // "sign-ins not read" when the records were not read; a scan that could not
@@ -987,15 +999,15 @@ async function walkFixture(fx) {
           for (const re of [/^Scan again$/, /^Scan tenant$/, /^Stop$/, /^Sign in with another account$/, /\bReads\b/, /IAMAI limitations/, /not read$/]) if (re.test(t4.text) || t4.buttons.some((b) => re.test(b.t))) add('P0', `${label}: tile 4 carries the Scan tile's ${re}`)
           if (wantPlan === 'ready') {
             // The state carries the step counts once the plan has computed:
-            // "ready · N steps, N done · from the scan <age>"; under it one line of what
+            // "ready · N steps, N completed · from the scan <age>"; under it one line of what
             // was built and one way on. No facts row, no drop line, and no readiness
             // ladder — MFA Readiness comes after the plan, not in front of it (task 016).
-            const counted = await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan /.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
+            const counted = await waitFor(`/ready · \\d+ steps, \\d+ completed · from the scan /.test((document.querySelector('main.page') || {}).innerText || '')`, 20000)
             if (!counted) add('P0', `${label}: the Plan tile never counted its steps in its state line`)
             const state = await evaluate(`((document.querySelector('main.page .connect-destination') || {}).querySelector('h2 .state') || {}).textContent || ''`)
-            const sm = state.match(/^ready · (\d+) steps, (\d+) done · from the scan /)
-            if (!sm) add('P0', `${label}: the Plan tile's state reads "${state}"; ready · N steps, N done · from the scan <age>`)
-            else if (Number(sm[2]) > Number(sm[1])) add('P0', `${label}: more done than steps: "${state}"`)
+            const sm = state.match(/^ready · (\d+) steps, (\d+) completed · from the scan /)
+            if (!sm) add('P0', `${label}: the Plan tile's state reads "${state}"; ready · N steps, N completed · from the scan <age>`)
+            else if (Number(sm[2]) > Number(sm[1])) add('P0', `${label}: more completed than steps: "${state}"`)
             if ((await evaluate(`document.querySelectorAll('main.page .connect-destination .facts').length`)) > 0) add('P0', `${label}: the Plan destination still renders a facts row`)
             if ((await evaluate(`document.querySelectorAll('main.page .rung-tiles, main.page .rung-tile').length`)) > 0) {
               add('P0', `${label}: the readiness ladder is back on the Plan tile; MFA Readiness comes after the plan`)
@@ -1008,9 +1020,9 @@ async function walkFixture(fx) {
               await evaluate(`location.hash = '#/plan'`)
               const onPlan = await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`, 15000)
               const headerNow = onPlan ? await evaluate(`((document.querySelector('main.page .plan-progress') || {}).textContent || '').replace(/\\s+/g, ' ')`) : ''
-              const hm = headerNow.match(/Steps\s*(\d+)\s*In place\s*(\d+)/)
+              const hm = headerNow.match(/Steps\s*(\d+)\s*Completed\s*(\d+)/)
               if (!hm) add('P0', `${label}: the Plan header could not be read for the count check: "${headerNow}"`)
-              else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} done; the Plan header ${hm[1]} · ${hm[2]}`)
+              else if (sm && (hm[1] !== sm[1] || hm[2] !== sm[2])) add('P0', `${label}: the Plan tile counts ${sm[1]} steps, ${sm[2]} completed; the Plan header ${hm[1]} · ${hm[2]}`)
               await evaluate(`location.hash = '#/connect'`)
               await waitFor(`document.querySelectorAll('main.page .connect-flow .connect-step').length === 3`, 15000)
             }
@@ -1118,7 +1130,8 @@ async function walkFixture(fx) {
       let rows = await readRows()
       let n = rows.length
       rowTitles = rows.map((r) => r.title)
-      rowStatuses = rows.map((r) => r.status)
+      rowLabels = rows.map((r) => r.label)
+      rowChips = rows.map((r) => r.chip)
       rowWhens = rows.map((r) => r.when)
       rowReasons = rows.map((r) => r.reason)
       rowLane = rows.map((r) => r.lane)
@@ -1126,6 +1139,7 @@ async function walkFixture(fx) {
       rowDayZero = rows.map((r) => r.dayZero)
       // The rows as first seen, with every decision still open (the loop re-reads the rows after a decision moves a step).
       rowTitlesOpen = [...rowTitles]
+      rowLabelsOpen = [...rowLabels]
       rowReasonsOpen = [...rowReasons]
       rowWhensOpen = [...rowWhens]
       let inFooter = rows.map((r) => r.footer)
@@ -1219,18 +1233,19 @@ async function walkFixture(fx) {
         // A policy the plan cannot write yet has nothing to enforce, so it carries
         // no completion gates; what it must carry is what it waits on.
         // Nor does one a readiness threshold holds: it is not being watched towards
-        // a day it may be turned on (roadmap/holds.ts), and its row says Held.
-        if (rowStatuses[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld) {
-          if (!RE.rowWhen.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it must say where it stands against its gates (ready <date> · ready now · held until the records clear)`)
+        // a day it may be turned on (roadmap/holds.ts).
+        // The chip is the tenant fact (decision 2); the lane label is the state (A1c),
+        // and the When column is a day or the placeholder (A1b): the gates' own
+        // words live on the step's Done when and on the reason line.
+        if (rowChips[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld) {
+          if (!LANE_LABEL_RE.test(rowLabels[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowLabels[i]}" as its state; a row's state is its lane label`)
+          if (!ROW_WHEN_RE.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it reads a day or the placeholder`)
           if (!RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
           // The evidence half reads records: with none read for this policy it says
           // so and still counts the people it has seen, rather than printing the zero
           // an empty set adds up to (roadmap/tracking.ts, readyWhen.ts readyBasis).
           if (!RE.gateEvidence.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the evidence gate with today's numbers`)
-          if (rowWhens[i] === 'ready now' && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads ready now but the step's Done when does not say so`)
-          // A row held for the records is a window that has closed on them, and the
-          // step says the same thing on its time line.
-          if (rowWhens[i] === 'held until the records clear' && !RE.gateWindowClosed.test(bodyText)) add('P0', `${slabel}: the row is held until the records clear and the step's Done when does not say the window has closed`)
+          if (READY_TO_ENFORCE_RE.test(rowLabels[i] || '') && !RE.gateReadyNow.test(bodyText)) add('P0', `${slabel}: the row reads Ready to enforce but the step's Done when does not say ready now`)
         }
         // One population per step: the row's who-line count is the lead's count.
         const rowWho = await evaluate(`((() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; return r ? ((r.querySelector('.who') || {}).textContent || '') : '' })())`)
@@ -1269,14 +1284,14 @@ async function walkFixture(fx) {
           // the campaign's email said so too, but it moved into More with the
           // names (task 011) and a tenant whose email is not whole carries none.
           // Read off the rows of every tab (readRows), because the policy's row may sit in another lane than the campaign's.
-          const mfaWord = rowStatuses[rowTitles.indexOf('Require MFA for Everyone')] ?? ''
+          const mfaLabel = rowLabels[rowTitles.indexOf('Require MFA for Everyone')] ?? ''
           // The campaign's groups are MFA Readiness's states (Step 7).
           campaignGroups = {
             label: slabel,
             noMethod: group(/^(\d+) (?:people|person) with no sign-in method;/m) ?? 0,
             needsSetup: group(/^(\d+) (?:people|person) with no phishing-resistant method;/m) ?? 0,
             needsProof: group(/^(\d+) (?:people|person) with a phishing-resistant method not yet proven/m) ?? 0,
-            mfaInPlace: /^(In place|Enforced)$/.test(mfaWord),
+            mfaInPlace: COMPLETED_RE.test(mfaLabel),
           }
         }
         // A count of one reads as one, noun and verb: never "1 people", never "1 person hold".
@@ -1339,12 +1354,12 @@ async function walkFixture(fx) {
               const b = await clickText('label', /^Hybrid join is sufficient$/, 'main.page .step-body')
               const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
-              // Saved, the step is In place and joins the board's Complete group;
+              // Saved, the step is Completed and joins the board's Completed group;
               // it opens there like any row, with its effect line. It is in the
               // document only while `Show completed` is pressed.
               if (c) await revealCompleted()
               const moved = c ? await waitFor(`[...document.querySelectorAll('main.page #plan-group-complete .plan-row .step-title')].some((e) => /Decide How Devices Are Managed/.test(e.textContent || ''))`, 8000) : false
-              if (c && !moved) add('P0', `${slabel}: the decided step did not join the Complete group as In place`)
+              if (c && !moved) add('P0', `${slabel}: the decided step did not join the Completed group`)
               if (moved) {
                 await evaluate(`document.querySelectorAll('main.page .plan-footer details').forEach((d) => { d.open = true })`)
                 // The step stays open as it moves (the page keeps the opened id); a click would close it, so click only when its body is not there.
@@ -1501,13 +1516,13 @@ async function walkFixture(fx) {
           if (/Emergency Access Drill/.test(title)) {
             // Marking it done completes it, and a completed row is in the
             // document only while `Show completed` is pressed.
-            const doneOnRow = async () => { await revealCompleted(); return waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && /^done \\S.*\\d{4}$/.test((r.querySelector('.when') || {}).textContent || ''))`, 8000) }
+            const doneOnRow = async () => { await revealCompleted(); return waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Emergency Access Drill/.test((r.querySelector('.step-title') || {}).textContent || '') && ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Completed')`, 8000) }
             if (fx.week2) {
-              if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read done <date>`)
+              if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read Completed`)
             } else {
               const pressed = await clickText('button', /^Done$/, 'main.page .step-body .decision')
               if (!pressed) add('P0', `${slabel}: no Done control on the Cleanup row`)
-              else if (!(await doneOnRow())) add('P0', `${slabel}: Done did not put "done <date>" on the row`)
+              else if (!(await doneOnRow())) add('P0', `${slabel}: Done did not put Completed on the row`)
             }
           }
           if (/Did Not Assess/.test(title)) {
@@ -1558,13 +1573,14 @@ async function walkFixture(fx) {
         const overflowStep = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
         if (overflowStep > 0) add('P1', `${slabel}: the opened step overflows the viewport by ${overflowStep}px`)
         if (decidedHere) {
-          // The decided step is In place and has moved to the Complete group; the
+          // The decided step is Completed and has moved to the Completed group; the
           // rows below it moved up one. Re-read them and take this index again.
           await sleep(300)
           await revealCompleted()
           rows = await readRows()
           rowTitles = rows.map((r) => r.title)
-          rowStatuses = rows.map((r) => r.status)
+          rowLabels = rows.map((r) => r.label)
+          rowChips = rows.map((r) => r.chip)
           rowWhens = rows.map((r) => r.when)
           rowLane = rows.map((r) => r.lane)
           rowLocal = rows.map((r) => r.k)
@@ -1618,18 +1634,17 @@ async function walkFixture(fx) {
         checkText(`${fx.name} @${width} /plan footer`, ft)
         for (const t of fd.titles) if (ABSENT_TITLES.has(t) || ABSENT_GOAL_NAMES.has(t)) add('P0', `${fx.name} @${width} /plan footer: "${t}" is a goal the baseline does not hold`)
         for (const row of fd.rows) for (const nm of ABSENT_GOAL_NAMES) if (row.text.includes(nm)) add('P0', `${fx.name} @${width} /plan footer: "${nm}" is a goal the baseline does not hold`)
-        // A done step's row shows no date word: blank, never "now".
-        // The done rows are the board's Complete group now, not the footer's
-        // first details (Plan.tsx). The invariant is the row's, not the
-        // container's: a done row's date column is blank, never "now".
+        // A Completed row's date column is the placeholder (A1b): never a day, never "now".
+        // The done rows are the board's Completed group (Plan.tsx). The invariant is
+        // the row's, not the container's.
         await revealCompleted()
         // A Cleanup row is not a step. It carries no lifecycle and no condition,
         // and its date column reads "done <date>" by design — the drill check
         // above asserts exactly that. Reading it here as well made two checks
         // demand opposite things of one row, so neither could pass.
-        const doneRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => /^(In place|Enforced)$/.test(((r.querySelector('.status') || {}).textContent || '').trim())).map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
-        const dated = doneRows.filter((r) => r.when !== 'Complete' && !CLEANUP_TITLES.has(r.title))
-        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} done step row(s) read "${dated[0].when}" on "${dated[0].title}"; a done row reads Complete`)
+        const doneRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Completed').map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
+        const dated = doneRows.filter((r) => r.when !== WHEN_NONE)
+        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} Completed row(s) read "${dated[0].when}" in the date column on "${dated[0].title}"; a Completed row reads the placeholder`)
       }
       // A started plan (E5), on day one: Start the plan locks the dates; the
       // Start date field and its note go, and "started <date>" stands in their
@@ -1712,41 +1727,41 @@ async function walkFixture(fx) {
     // there is no change to land until what holds it is settled, and the step
     // says what that is (`escapeHeld`, the same set the passkey email reads).
     const writable = (i) => !escapeHeld.has(rowTitles[i])
-    // A policy being watched that something holds reads "Report-only · Blocked" (ui/surfaces/planState.ts): still a Report-only row.
-    const inReportOnly = (s) => s === 'Report-only' || /^Report-only · /.test(s || '')
-    const reportOnly = rowStatuses.map((s, i) => (inReportOnly(s) ? rowWhens[i] : null)).filter((w) => w !== null)
-    const reportOnlyWritable = rowStatuses.map((s, i) => (inReportOnly(s) && writable(i) ? rowWhens[i] : null)).filter((w) => w !== null)
+    // Report-only is the row's chip (decision 2): a tenant fact beside whatever lane the engine read.
+    const inReportOnly = (s) => s === 'Report-only'
+    const reportOnly = rowChips.map((s, i) => (inReportOnly(s) ? rowWhens[i] : null)).filter((w) => w !== null)
+    const reportOnlyWritable = rowChips.map((s, i) => (inReportOnly(s) && writable(i) ? i : null)).filter((i) => i !== null)
     if (reportOnly.length === 0) add('P0', `${fx.name}: no plan row reads Report-only; the demo has a policy in report-only`)
-    if (!fx.week2 && reportOnlyWritable.length > 0 && !reportOnlyWritable.some((w) => /^ready \S.*\d{4}$/.test(w))) add('P0', `${fx.name}: no Report-only row reads ready <date> on week one`)
+    if (!fx.week2 && reportOnlyWritable.length > 0 && !reportOnlyWritable.some((i) => DAY_RE.test(rowWhens[i] || ''))) add('P0', `${fx.name}: no Report-only row reads a day in its date column on week one`)
     if (fx.week2) {
       // The reason lines are read once, with every decision still open, so they
       // are taken by title rather than by index (the rows move under a decision).
       const reasonByTitle = Object.fromEntries(rowTitlesOpen.map((t, k) => [t, rowReasonsOpen[k] ?? '']))
-      const ready = rowStatuses.map((s, i) => (s === 'Ready to enforce' ? i : -1)).filter((i) => i >= 0)
+      const ready = rowLabels.map((s, i) => (READY_TO_ENFORCE_RE.test(s || '') ? i : -1)).filter((i) => i >= 0)
       // A policy something holds is never Ready to enforce, however clean its
-      // records (roadmap/holds.ts): the row it would be is Report-only, and says
-      // what holds it. The check stands wherever a writable Report-only row's
-      // gates have closed and it still reads Report-only.
-      if (ready.length === 0 && reportOnlyWritable.includes('ready now')) add('P0', `${fx.name}: no plan row reads Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
+      // records (roadmap/holds.ts): the row it would be stays Report-only in its
+      // chip and says what holds it in its lane. The check stands wherever a
+      // writable Report-only row's reason line says its gates have closed.
+      if (ready.length === 0 && reportOnlyWritable.some((i) => /ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || ''))) add('P0', `${fx.name}: no plan row reads Ready · Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
       for (const i of ready.filter(writable)) {
-        if (!/^\S.*\d{4}$/.test(rowWhens[i] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" reads "${rowWhens[i]}" in its date column; it must read the day the enforcement lands`)
+        if (!DAY_RE.test(rowWhens[i] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" reads "${rowWhens[i]}" in its date column; it must read the day the enforcement lands`)
         if (!/ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" carries no evidence on its reason line; the row says a change is due and nothing about what earned it`)
       }
     }
     // The admins policy the tenant switched on between the two scans is the
     // tenant's own — it predates the plan and carries none of its tags — so its
-    // row reads In place, the word for a control that was already there. It
-    // used to read Enforced, from the lifecycle stage, which cannot tell a
-    // policy the tenant wrote and switched on from one IAMAI rolled out. And
-    // Enforced is a claim about this plan's rollout: week two's two
-    // IAMAI-created policies are both still in report-only, so no row may make
-    // it (ui/surfaces/statusWord.ts, ui/surfaces/inPlacePreserve.test.ts).
+    // row is Completed (the lane), and its chip is the tenant fact Enforced
+    // (decision 2: the chip is Report-only or Enforced from the lifecycle, never
+    // a claim about who rolled it out). Every chip on the board is one of those
+    // two facts or nothing.
     if (fx.week2) {
       const admins = rowTitles.indexOf('Require Phishing-Resistant MFA for Admins')
-      if (admins >= 0 && rowStatuses[admins] !== 'In place') add('P0', `${fx.name}: the admins row reads "${rowStatuses[admins]}" in week two; the tenant turned its own policy on, so it reads In place`)
-      const claimed = rowTitles.filter((_, i) => rowStatuses[i] === 'Enforced')
-      if (claimed.length > 0) add('P0', `${fx.name}: ${claimed.length} row(s) read Enforced in week two ("${claimed[0]}"); the plan's own policies are still in report-only, and Enforced says the plan rolled it out`)
+      if (admins >= 0 && rowLabels[admins] !== 'Completed') add('P0', `${fx.name}: the admins row reads "${rowLabels[admins]}" in week two; the tenant turned its own policy on, so it reads Completed`)
     }
+    const oddChip = rowChips.map((c, i) => (c === '' || c === 'Report-only' || c === 'Enforced' ? null : `${rowTitles[i]}: "${c}"`)).filter((x) => x !== null)
+    if (oddChip.length > 0) add('P0', `${fx.name}: ${oddChip.length} row(s) carry a chip that is not a tenant fact (${oddChip[0]}); a chip is Report-only or Enforced, or nothing`)
+    const oddLabel = rowLabels.map((l, i) => (LANE_LABEL_RE.test(l || '') ? null : `${rowTitles[i]}: "${l}"`)).filter((x) => x !== null)
+    if (oddLabel.length > 0) add('P0', `${fx.name}: ${oddLabel.length} row(s) read a state that is not a lane label (${oddLabel[0]})`)
   }
   // The device decision (E2): a Preparation row on the demo (phones and unjoined
   // computers sign in; the tenant holds Intune). While it is open, the
@@ -1761,12 +1776,12 @@ async function walkFixture(fx) {
     if (fx.week2) {
       // The foundations are done on week two, so the wait on the decision is the binding reason a row shows.
       for (const re of DEVICE_STEPS) {
-        // A device step something else holds says what holds it (roadmap/holds.ts,
-        // stateReason.ts holdReasonFor) and reads Held; one only sequenced after the
-        // open decision names the decision.
-        // Held on another step of the plan (the baseline's unanswered groups, a
-        // missing object) reads that step as its reason and After … as its When.
-        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (rowWhensOpen[k] === 'Held' || /^after: (?!Decide How Devices Are Managed)/.test(rowReasonsOpen[k] || '')))
+        // A device step something else holds says what holds it (roadmap/holds.ts)
+        // and sits in On Hold; one only sequenced after the open decision names
+        // the decision. Held on another step of the plan (the baseline's
+        // unanswered groups, a missing object) reads that step in its lane label
+        // (Up Next · After …) or as its reason.
+        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (/^On Hold/.test(rowLabelsOpen[k] || '') || /^after: (?!Decide How Devices Are Managed)/.test(rowReasonsOpen[k] || '')))
         if (!heldOpen && !reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
         if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
       }

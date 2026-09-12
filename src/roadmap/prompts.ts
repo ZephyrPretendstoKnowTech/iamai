@@ -241,8 +241,14 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
       enforcement: statedEnforcement(s),
       title: v.title,
       why: v.why,
+      // The one state label, the lane label the row and the badge show (A1c),
+      // and its parts — lane, substatus, reason, tenant fact — for a reader that
+      // keys on them rather than parsing the label.
       state: v.state,
-      statusWord: v.status,
+      lane: v.lane,
+      substatus: v.substatus,
+      reason: v.reason,
+      fact: v.fact,
       next: v.next,
       who: v.who,
       // The one denominator the screen states, read from the one population

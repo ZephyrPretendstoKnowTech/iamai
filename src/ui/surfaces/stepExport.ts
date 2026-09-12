@@ -16,7 +16,9 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
-import { badgeLabel, stepContract } from './stepContract.ts'
+import { badgeLabel, factOf, stepContract } from './stepContract.ts'
+import type { LaneView } from './stepContract.ts'
+import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
@@ -122,20 +124,32 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
   return line
 }
 
-/** The step as the screen says it, for an export. */
-export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
+/**
+ * The step as the screen says it, for an export.
+ *
+ * `lane` is the board's one state reading of the step (planBoard.ts laneViewOf,
+ * A1c: the lane engine states every surface, the exports included). The Export
+ * page hands down the reading it made over the whole plan; a caller with no
+ * board reads the step over the steps it holds, as the opened step does.
+ */
+export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView | null = null): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
-  // re-decided: the badge, the status word, the dated next line, the reach, the
-  // one action, the outstanding prerequisites, the completion and whether an
-  // implementation is offered are all its answers, and an artifact that carried
-  // its own reading of any of them would be a second authority. The state is the
-  // badge the opened step shows (planState.ts badgeOf), never the stage and the
-  // condition handed over separately for the artifact to join again.
-  const contract = stepContract(step, ctx)
+  // re-decided: the badge, the dated next line, the reach, the one action, the
+  // outstanding prerequisites, the completion and whether an implementation is
+  // offered are all its answers, and an artifact that carried its own reading of
+  // any of them would be a second authority. The state is the lane label the
+  // row and the opened step's badge show (planBoard.ts laneLabelOf), and the
+  // lane's parts travel beside it for a reader that keys on them.
+  const laneView = lane ?? laneViewFor(step)
+  const contract = stepContract(step, ctx, undefined, laneView)
   const shell = {
     state: badgeLabel(contract),
-    status: contract.state.word,
+    // The lane word alone; a step the person ruled out reads its own label (Doesn't apply).
+    lane: laneView.tail === null ? laneView.label : laneWordOf(laneView.lane),
+    substatus: laneView.substatus === null ? null : SUBSTATUS_WORD[laneView.substatus],
+    reason: laneView.lane === 'Ready' ? null : laneView.tail,
+    fact: factOf(step),
     next: contract.milestone.line,
     who: contract.who?.text ?? null,
     // The count behind that sentence, from the one population authority

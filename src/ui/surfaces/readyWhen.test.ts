@@ -40,13 +40,16 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 const DAY = 86_400_000
 
 // What the walk reads on every report-only row of the app's demo (scripts/walk.mjs):
-// the row's date column, and the two gate lines of the step's Done-when. The row
-// and time expectations are the walk's own objects, imported from the one place
-// that holds them (content/contentChecks.ts), so the wording of a gate cannot
-// move on one surface without failing here first. The time line speaks about the
+// the two gate lines of the step's Done-when. The time expectation is the walk's
+// own object, imported from the one place that holds it
+// (content/contentChecks.ts), so the wording of a gate cannot move on one
+// surface without failing here first. The time line speaks about the
 // observation window — closing on a date, or closed already — because readiness
 // is both gates together and no single line may claim it (derive/readyWhen.ts).
-const WALK_ROW = RE.rowWhen
+// The row's own timing value (rowWhen.ts) still takes one of three forms; the
+// board maps it to a day or the placeholder (planBoard.ts boardWhenOf, A1b), and
+// the walk reads that column, so the form is held here and nowhere else.
+const WALK_ROW = /^(ready now|held until the records clear|ready \S.*\d{4})$/
 const WALK_TIME = RE.gateTime
 // The evidence gate here accepts one form more than the walk's own regex does:
 // the short-window line, which no fixture the walk visits renders. Every form the

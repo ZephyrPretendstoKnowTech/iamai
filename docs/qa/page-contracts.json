@@ -465,45 +465,54 @@
         "exclude": ".step, details > *:not(summary)"
       },
       "allow": {
+        "$comment": "A1c: the one state vocabulary. Headings are the lane words (pages.plan.lanes.*) and, under On Hold, the blocker kinds the rows are grouped by (planBoard.ts BOARD.blockers). Tabs are the three working lanes. Tiles are the header's four. A row's state is its lane label (`.plan-row .lane`, `Lane · substatus/reason`); the only chips are the tenant facts Report-only and Enforced.",
         "headings": [
           "Plan",
-          "Preparation",
-          "re:^Phase \\d+$",
-          "Cleanup",
-          "Microsoft recommended, not in this baseline",
-          "Waiting on something else",
-          "Complete"
+          "Ready",
+          "Up Next",
+          "On Hold",
+          "Completed",
+          "Deferred",
+          "Baseline safety conflict",
+          "Baseline conflict",
+          "Baseline references an unmapped group",
+          "Licence or platform",
+          "Decision",
+          "Tenant fact",
+          "Missing object",
+          "Prerequisite on hold",
+          "Deferred prerequisite",
+          "Not supported"
         ],
         "tabs": [
-          "Roadmap",
-          "Status",
-          "Work type"
+          "Ready",
+          "Up Next",
+          "On Hold"
         ],
-        "tiles": [],
+        "tiles": [
+          "Steps",
+          "Completed",
+          "Projected finish",
+          "Started"
+        ],
         "columns": [
           "State",
           "Step",
           "Impact",
           "When"
         ],
-        "chips": [
-          "In place",
-          "Ready",
-          "Blocked",
-          "Scheduled",
-          "Report-only",
-          "Ready to enforce",
-          "Needs decision",
-          "Needs attention",
-          "Enforced",
-          "Skipped",
+        "lane": [
+          "re:^(Ready|Up Next|On Hold|Completed|Deferred)( · .+)?$",
           "Doesn't apply"
+        ],
+        "chips": [
+          "Report-only",
+          "Enforced"
         ],
         "buttons": [
           "Start the plan",
-          "re:^Needs attention\\s*\\d+$",
-          "re:^Up next\\s*\\d+$",
           "re:^Show completed\\s*\\d+$",
+          "re:^Show deferred\\s*\\d+$",
           "+",
           "−"
         ],
@@ -689,26 +698,20 @@
         ],
         "tiles": [],
         "columns": [],
+        "$comment": "A1c: the head's badge is the row's lane label (stepContract.ts badgeLabel = laneLabelOf) with the tenant fact Report-only / Enforced beside it; the footer's deferral is Defer this step, the question's is Doesn't apply here (decision 3).",
         "chips": [
-          "In place",
-          "Ready",
-          "Blocked",
-          "Scheduled",
-          "Report-only",
-          "Ready to enforce",
-          "Needs decision",
-          "Needs attention",
-          "Enforced",
-          "Skipped",
+          "re:^(Ready|Up Next|On Hold|Completed|Deferred)( · .+)?$",
           "Doesn't apply",
-          "re:^(Not deployed|Report-only|Ready to enforce|Enforced) · (Blocked|Review required|Needs decision|Baseline conflict)$",
+          "Report-only",
+          "Enforced",
+          "re:^Prerequisite · (Ready|Up Next|On Hold|Deferred)$",
           "re:^CIS \\d+(\\.\\d+)?$"
         ],
         "buttons": [
           "Why IAMAI says this →",
           "Export CSV",
           "Scan to update the plan",
-          "Exclude from rollout",
+          "Defer this step",
           "Doesn't apply here",
           "Put this step back"
         ],
@@ -815,7 +818,7 @@
         "buttons": [
           "Copy as prompt",
           "Copy",
-          "Skip this step"
+          "Defer this step"
         ],
         "summaries": [
           "More"

@@ -71,6 +71,13 @@ export type LaneReading = {
 /** A row that is not a roadmap step: a Cleanup row, by the id the board gives it. */
 export type LaneRowInput = { id: string; complete: boolean }
 
+/** How many rows each lane holds, counted off the readings (A1c): Connect's Plan tile and any other surface that states a lane count read this. */
+export function laneCountsOf(readings: ReadonlyMap<string, LaneReading>): Record<Lane, number> {
+  const out: Record<Lane, number> = { Ready: 0, 'Up Next': 0, 'On Hold': 0, Completed: 0, Deferred: 0 }
+  for (const r of readings.values()) out[r.lane] += 1
+  return out
+}
+
 /** The recorded answers the carve-out conditions resolve from (mapping.questionAnswers). */
 export type PlanAnswers = Pick<MappingState, 'questionAnswers'>
 
