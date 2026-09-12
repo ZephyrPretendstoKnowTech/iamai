@@ -1,8 +1,8 @@
 // The Step Contract's components (Foundation D). Every Plan step — and every
 // Plan row — is drawn with these, so a step answers the same questions in the
-// same order whatever it is: where it is now, why it matters, what IAMAI found,
-// who it touches, what to do, what to fix first, and how you will know it is
-// done.
+// same order whatever it is: where it is now, why it matters, what stands
+// between it and its next action (Readiness, the one prerequisite surface),
+// what to do, and how you will know it is done.
 //
 // They render a StepContract (stepContract.ts) and nothing else. There is no
 // engine reading here: no `implementationOffered`, no `unavailableReason`, no
@@ -11,13 +11,12 @@
 // question got onto one screen.
 import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Callout, Status } from '../components/index.ts'
+import { Button, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
-import type { ContractFix, ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTone, StepContract } from './stepContract.ts'
+import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, railOf, stageClass } from './stepContract.ts'
 import type { ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
-import { absoluteDate } from '../../copy/dates.ts'
 
 /**
  * One row of the Plan: the state word, the title, who it touches and when.
@@ -234,49 +233,65 @@ export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; 
   )
 }
 
+/** The strip's track count (A1 §16.1: up to four across, wrapping); fewer tiles take fewer tracks. */
+const TRACKS = 4
+
 /** A tile's mark beside its words: never the state on its own (design lint 5). */
 const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wait: '…', info: null }
 
 /**
- * The Readiness region (the approved `.readiness-strip` over `.readiness-bar`):
- * the contract's facts as one to three tiles, then the bar that says where the
- * step stands with the one action under it, and the link to the evidence where
- * there is evidence to open. The grid takes its track count from the tiles it
- * is handed, so nothing is padded to three.
+ * The Readiness region (the approved `.readiness-strip` over `.readiness-bar`),
+ * the one place a prerequisite is shown (A1 §16.1): the unresolved
+ * prerequisites of the next action as tiles, up to four across and wrapping,
+ * each expandable for its explanation, evidence and the link to its resolver;
+ * a compact success line when nothing is unresolved; the satisfied evidence
+ * under its own disclosure, readable and out of the way; then the bar that
+ * says where the step stands with the one action under it, and the link to
+ * the evidence where there is evidence to open. The grid takes its track
+ * count from the tiles it is handed, so nothing is padded.
  */
-export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, children = null }: {
+export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = null, onOpenMappings = null, extra = null, printing = false, children = null }: {
   readiness: ContractReadiness
   lead: ReactNode
   onWhy?: (() => void) | null
   /** Opens the confirmation of a tile's check (a package gate a person confirms); null where the step takes none. */
   onConfirm?: ((tileKey: string) => void) | null
+  /** Opens Plan settings → Baseline mappings, where a tile's link names it; null where the surface has no settings (print). */
+  onOpenMappings?: (() => void) | null
+  /** Evidence a tile carries beyond its sentence, by tile; null for every tile that has none. */
+  extra?: ((tile: ReadinessTile) => ReactNode) | null
+  /** Printing: every disclosure stands open, so the printed step is the whole step. */
+  printing?: boolean
   children?: ReactNode
 }) {
   const W = CONTRACT.readiness
+  const strip = (tiles: ReadinessTile[], cls: string) => (
+    <ul className={`readiness-strip ${cls} tiles-${tiles.length < TRACKS ? tiles.length : TRACKS}`}>
+      {tiles.map((t) => (
+        <Tile key={t.key} tile={t} open={printing} extra={extra ? extra(t) : null} onConfirm={onConfirm} onOpenMappings={onOpenMappings} />
+      ))}
+    </ul>
+  )
   return (
     <section className="step-section readiness-section">
       <h4>{W.heading}</h4>
-      <ul className={`readiness-strip tiles-${readiness.tiles.length}`}>
-        {readiness.tiles.map((t) => (
-          <li key={t.key} className={`readiness-tile readiness-tile-${t.tone}`}>
-            <span className="readiness-tile-head">
-              <span className="key-label">{t.label}</span>
-              {MARK[t.tone] && (
-                <span className={`readiness-status readiness-status-${t.tone}`} aria-hidden="true">
-                  {MARK[t.tone]}
-                </span>
-              )}
-            </span>
-            <strong>{t.value}</strong>
-            {t.note && <p>{t.note}</p>}
-            {t.confirm && onConfirm && (
-              <button type="button" className="inline-link readiness-confirm" onClick={() => onConfirm(t.key)}>
-                {t.confirm.satisfied ? CONTRACT.confirm.confirmedControl : CONTRACT.confirm.control}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {readiness.tiles.length > 0 ? (
+        strip(readiness.tiles, 'unresolved')
+      ) : (
+        <p className="readiness-clear">
+          <span className="readiness-status readiness-status-good" aria-hidden="true">
+            {MARK.good}
+          </span>
+          <strong>{W.tiles.clear}</strong>
+          <span>{W.tiles.clearNote}</span>
+        </p>
+      )}
+      {readiness.satisfied.length > 0 && (
+        <details className="readiness-satisfied" open={printing || undefined}>
+          <summary>{fillText(W.tiles.satisfied, { n: readiness.satisfied.length })}</summary>
+          {strip(readiness.satisfied, 'satisfied')}
+        </details>
+      )}
       <div className="readiness-bar">
         <div className="readiness-bar-main">
           <span className="readiness-bar-head">{readiness.bar.main}</span>
@@ -290,6 +305,51 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
       </div>
       {children}
     </section>
+  )
+}
+
+/**
+ * One readiness tile: its label and mark, its state in a word or a sentence,
+ * and behind a disclosure its explanation, its evidence and the link to where
+ * it is resolved (A1 §16.1). A tile with nothing to disclose draws no
+ * disclosure. `extra` is evidence a tile carries beyond its sentence — the
+ * hardening's own recommendations — handed in by the step, never read here.
+ */
+function Tile({ tile: t, open, extra, onConfirm, onOpenMappings }: {
+  tile: ReadinessTile
+  open: boolean
+  extra: ReactNode
+  onConfirm: ((tileKey: string) => void) | null
+  onOpenMappings: (() => void) | null
+}) {
+  const W = CONTRACT.readiness
+  const link = t.link === undefined ? null : 'href' in t.link ? <a href={t.link.href}>{t.link.label}</a> : onOpenMappings ? <button type="button" className="inline-link" onClick={onOpenMappings}>{t.link.label}</button> : null
+  const more = t.note !== null || link !== null || extra !== null
+  return (
+    <li className={`readiness-tile readiness-tile-${t.tone}`}>
+      <span className="readiness-tile-head">
+        <span className="key-label">{t.label}</span>
+        {MARK[t.tone] && (
+          <span className={`readiness-status readiness-status-${t.tone}`} aria-hidden="true">
+            {MARK[t.tone]}
+          </span>
+        )}
+      </span>
+      <strong>{t.value}</strong>
+      {more && (
+        <details className="readiness-more" open={open || undefined}>
+          <summary>{W.tiles.detail}</summary>
+          {t.note && <p>{t.note}</p>}
+          {extra}
+          {link && <p className="readiness-link">{link}</p>}
+        </details>
+      )}
+      {t.confirm && onConfirm && (
+        <button type="button" className="inline-link readiness-confirm" onClick={() => onConfirm(t.key)}>
+          {t.confirm.satisfied ? CONTRACT.confirm.confirmedControl : CONTRACT.confirm.control}
+        </button>
+      )}
+    </li>
   )
 }
 
@@ -521,79 +581,40 @@ export function WhatIamaiFound({ found }: { found: ContractFound[] }) {
 }
 
 /**
- * What must be fixed before the step can move.
- *
- * Only what is outstanding: a check that passes is not in the list the
- * validation authority hands over, so it disappears from here the moment it
- * passes rather than sitting as cleared clutter. It is a section of its own and
- * not advice inside another one, because a blocker that reads as optional is a
- * blocker somebody skips.
- */
-export function FixBeforeContinuing({ fix, tone = 'warning' }: { fix: ContractFix[]; tone?: 'warning' | 'danger' }) {
-  if (fix.length === 0) return null
-  return (
-    <section className="step-section">
-      {/* The pack's attention panel (`.attention` / `.attention.danger`), which
-          is the shared `.callout` role task 031 built: one object, drawn once,
-          used by the Plan and by MFA Readiness. A blocker rendered as ordinary
-          body text is a blocker that reads as background, which is what this
-          section looked like before.
-
-          The severity is production's, never the panel's: `tone` is handed down
-          from the step's own condition (Foundation B), and the heading and the
-          list stay full-contrast text inside it so the meaning is in the words
-          and not in the tint. */}
-      <Callout kind={tone}>
-        <h4>{CONTRACT.fixHeading}</h4>
-        <ol className="sections blocking">
-          {fix.map((f) => (
-            <li key={f.key}>{f.text}</li>
-          ))}
-        </ol>
-      </Callout>
-    </section>
-  )
-}
-
-/**
  * Emergency-access hardening (owner, 2026-09-11): the recommendations beyond the
- * minimum, grouped by the account each is about, under a prominent warning. Once
- * minimum emergency access is available the operator may defer them — the
- * rollout continues and they move to Cleanup, never out of view — and may undo
- * that. Nothing here repeats Fix before continuing.
+ * minimum, grouped by the account each is about, as the evidence behind the
+ * Resilience tile — secondary, and never a block. Once minimum emergency access
+ * is available the operator may defer them — the rollout continues and they
+ * move to Cleanup, never out of view — and may undo that. The tile's own note
+ * is the lead; nothing here says the state twice.
  */
-export function HardeningRecommendations({ hardening, onDefer, onUndo }: { hardening: ContractHardening | null; onDefer: (() => void) | null; onUndo: (() => void) | null }) {
+export function HardeningBody({ hardening, onDefer, onUndo }: { hardening: ContractHardening | null; onDefer: (() => void) | null; onUndo: (() => void) | null }) {
   if (!hardening) return null
   const H = CONTRACT.hardening
-  const lead = hardening.deferredAt ? fillText(H.deferredOn, { date: absoluteDate(hardening.deferredAt) }) : hardening.canDefer ? H.leadDefer : H.leadBlocked
   return (
-    <section className="step-section hardening">
-      <Callout kind="warning">
-        <h4>{H.heading}</h4>
-        <p>{lead}</p>
-        {hardening.groups.map((g) => (
-          <div key={g.key} className="hardening-group">
-            <h5>{g.title}</h5>
-            <ul className="sections">
-              {g.items.map((item, i) => (
-                <li key={i}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
-        {hardening.unchecked > 0 && <p className="reason">{fillText(H.unchecked, { n: hardening.unchecked })}</p>}
-        {!hardening.deferredAt && hardening.canDefer && onDefer && (
-          <p className="actions">
-            <Button variant="secondary" onClick={onDefer}>{H.defer}</Button>
-          </p>
-        )}
-        {hardening.deferredAt && onUndo && (
-          <p className="actions">
-            <Button variant="secondary" onClick={onUndo}>{H.undo}</Button>
-          </p>
-        )}
-      </Callout>
-    </section>
+    <div className="hardening">
+      {hardening.groups.map((g) => (
+        <div key={g.key} className="hardening-group">
+          <h5>{g.title}</h5>
+          <ul className="sections">
+            {g.items.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {hardening.unchecked > 0 && <p className="reason">{fillText(H.unchecked, { n: hardening.unchecked })}</p>}
+      {!hardening.deferredAt && hardening.canDefer && onDefer && (
+        <p className="actions">
+          <Button variant="secondary" onClick={onDefer}>{H.defer}</Button>
+        </p>
+      )}
+      {hardening.deferredAt && onUndo && (
+        <p className="actions">
+          <Button variant="secondary" onClick={onUndo}>{H.undo}</Button>
+        </p>
+      )}
+    </div>
   )
 }
 

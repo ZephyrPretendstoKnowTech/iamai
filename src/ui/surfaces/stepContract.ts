@@ -46,6 +46,8 @@ import type { StepSchedule } from '../../roadmap/stepSchedule.ts'
 import { heldByTitle, missingObjects, waitKindOf, waitingLine } from './stepJson.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import type { BlockerKind } from '../../actionability/lanes.ts'
+import { returnToStep } from '../shell/routes.ts'
 
 /** The contract's own words (pages.app.plan.stepContract). */
 type ContractWords = {
@@ -126,7 +128,7 @@ type ContractWords = {
     sourceUpdated: string
     sourcePins: string
     preview: { label: string; text: string; textValues: string; values: string; checks: string; value: string }
-    withheld: { values: string; fault: string }
+    withheld: { values: string; several: string; fault: string }
     review: { reviewNeeded: string; held: string }
     values: Record<string, string>
     troubleshooting: string
@@ -965,6 +967,7 @@ export type ReadinessTile = {
   label: string
   tone: ReadinessTone
   value: string
+  /** The tile's explanation, behind its disclosure; null where the value says it all. */
   note: string | null
   /**
    * A package gate a person confirms (content/implementation project.ts): the
@@ -972,11 +975,28 @@ export type ReadinessTile = {
    * they are satisfied now. Absent on every tile the runtime states itself.
    */
   confirm?: { prerequisites: string[]; satisfied: boolean }
+  /** Where the prerequisite is resolved (A1 §16.1): the step that makes it, or Plan settings → Baseline mappings. */
+  link?: { label: string; href: string } | { label: string; mappings: true }
 }
 
+/**
+ * One unresolved prerequisite of the step's next action as the actionability
+ * engine read it (src/actionability/lanes.ts `LaneResult.blockers`), labelled by
+ * the board (planBoard.ts `readinessBlockersOf`). `title` names a step
+ * prerequisite by its content title; `abnormal` is a §15 hold, the rest healthy
+ * queued work.
+ */
+export type PrerequisiteBlocker = { kind: BlockerKind; id: string; abnormal: boolean; label: string; title: string | null }
+
 export type ContractReadiness = {
-  /** One to three tiles, each a fact the contract holds; never padded to three. */
+  /**
+   * The unresolved prerequisites of the next action, one tile each (A1 §16.1):
+   * what the state turns on, the engine's blockers, every outstanding fix. Empty
+   * when nothing stands between the step and its next safe action.
+   */
   tiles: ReadinessTile[]
+  /** The evidence already satisfied — still readable, no longer in the way. */
+  satisfied: ReadinessTile[]
   /** The bar's headline, keyed by where the step stands; its sub-line is the contract's one action (`whatToDo`). */
   bar: { key: string; main: string }
 }
@@ -1046,10 +1066,15 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
   // minimum failure is not every account's, and one account's pass is not another's.
   const perAccount = c.emergencyAccounts.length > 1 ? c.emergencyAccounts.join(' · ') : null
   const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: perAccount } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: perAccount }
+  // The hardening's own lead (owner, 2026-09-11) is the tile's explanation: what
+  // deferring means, or that it was deferred, and when. Nonblocking, and never a
+  // claim of full resilience while it is outstanding.
+  const H = CONTRACT.hardening
+  const lead = c.hardening === null ? null : c.hardening.deferredAt ? fillText(H.deferredOn, { date: absoluteDate(c.hardening.deferredAt) }) : c.hardening.canDefer ? H.leadDefer : H.leadBlocked
   const resilience: ReadinessTile =
     e.hardening === 0
       ? { key: 'resilience', label: t.resilience, tone: 'good', value: t.meets, note: null }
-      : { key: 'resilience', label: t.resilience, tone: 'warn', value: e.deferredAt ? t.deferred : t.needsAttention, note: null }
+      : { key: 'resilience', label: t.resilience, tone: 'warn', value: e.deferredAt ? t.deferred : t.needsAttention, note: lead }
   return [access, resilience]
 }
 
@@ -1060,23 +1085,96 @@ function peopleTile(c: StepContract): ReadinessTile | null {
   return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: null } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
 }
 
+/** A step prerequisite's link: the step it names, opened on the Plan. */
+const stepLink = (id: string, title: string): ReadinessTile['link'] => ({ label: fillText(R().tiles.openStep, { step: title }), href: returnToStep(id) })
+/** The Baseline mappings link (Plan settings), where a reference of the baseline's waits on its mapping. */
+const mappingsLink = (): ReadinessTile['link'] => ({ label: R().tiles.openMappings, mappings: true })
+
 /**
- * The last tile: what stands in the way. Outstanding fixes where there are any;
- * where there are none and Foundation A still offers nothing, that is the fact,
- * and "Clear" beside it would be a claim the step cannot make.
+ * One tile per outstanding fix (`fixOf`): the step it waits on, the mapping it
+ * waits on, the policy held for review, a failing check, a blocker naming work.
+ * The tile's state is the sentence the contract already carries; nothing is
+ * composed. A fix that names a step links to it; one that names a mapping
+ * links to Plan settings.
  */
-function blockingTile(c: StepContract): ReadinessTile {
+function fixTiles(c: StepContract): ReadinessTile[] {
   const t = R().tiles
-  if (c.fix.length > 0) return { key: 'blockers', label: t.blockers, tone: 'warn', value: fillText(t.open, { n: c.fix.length }), note: null }
-  if (!c.implementation.offered && c.implementation.reason !== null) {
-    return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.reason === 'baseline-conflict' ? CONTRACT.implementation.empty.conflict[1] : null }
-  }
-  return { key: 'blockers', label: t.blockers, tone: 'good', value: t.clear, note: t.clearNote }
+  return c.fix.map((f): ReadinessTile => {
+    const [kind, ...rest] = f.key.split(':')
+    if (kind === 'step' || kind === 'missing') {
+      const id = rest.join(':')
+      const title = stepById[id]?.title ?? id
+      return { key: f.key, label: t.prerequisite, tone: 'warn', value: title, note: f.text, link: stepLink(id, title) }
+    }
+    if (kind === 'mapping') return { key: f.key, label: t.mapping, tone: 'warn', value: BLOCKED_REASON.sourceMapping, note: f.text, link: mappingsLink() }
+    if (kind === 'review') return { key: f.key, label: t.review, tone: 'warn', value: CONTRACT.condition['review-required'], note: f.text }
+    if (kind === 'check') return { key: f.key, label: t.check, tone: 'warn', value: f.text, note: null }
+    return { key: f.key, label: t.blockers, tone: 'warn', value: f.text, note: null }
+  })
 }
 
-/** The Readiness region: up to three tiles, and the bar's headline. */
-export function readinessOf(step: Step, c: StepContract): ContractReadiness {
-  const lead = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c)].filter((x): x is ReadinessTile => x !== null).slice(0, 2)
+/**
+ * The engine's unresolved prerequisites of the next action that the contract's
+ * own fixes do not already state (A1 §16.1: the same blocker is never shown
+ * twice). A step prerequisite links to the step; a mapping to Plan settings; a
+ * healthy queued prerequisite (Up Next) is a wait, a §15 hold needs attention.
+ * The step's own decision is its What to do, not a prerequisite of itself.
+ */
+function engineTiles(c: StepContract, blockers: readonly PrerequisiteBlocker[], present: ReadonlySet<string>): ReadinessTile[] {
+  const out: ReadinessTile[] = []
+  const seen = new Set<string>()
+  for (const b of blockers) {
+    if (seen.has(`${b.kind}:${b.id}`)) continue
+    seen.add(`${b.kind}:${b.id}`)
+    const tone: ReadinessTone = b.abnormal ? 'warn' : 'wait'
+    if (b.kind === 'step' || b.kind === 'suspendedPrerequisite') {
+      if (present.has(`step:${b.id}`) || present.has(`missing:${b.id}`)) continue
+      const title = stepById[b.id]?.title ?? b.title ?? b.id
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: title, note: fillText(CONTRACT.fixStep, { step: title }), link: stepLink(b.id, title) })
+      continue
+    }
+    if (b.kind === 'sourceMapping') {
+      if (present.has('mapping')) continue
+      out.push({ key: `engine:${b.kind}:${b.id}`, label: R().tiles.mapping, tone, value: b.label, note: CONTRACT.fixMapping, link: mappingsLink() })
+      continue
+    }
+    if ((b.kind === 'sourceConflict' || b.kind === 'baselineSafetyConflict') && present.has('baseline')) continue
+    if (b.kind === 'decision' && (present.has('decision') || c.state.condition === 'needs-decision')) continue
+    if (b.kind === 'missingObject' && [...present].some((k) => k.startsWith('missing:'))) continue
+    out.push({ key: `engine:${b.kind}:${b.id}`, label: b.label, tone, value: b.label, note: null })
+  }
+  return out
+}
+
+/**
+ * Where Foundation A still offers nothing and no fix names why: that is the
+ * fact, and a tile says it rather than "Clear" beside a step that cannot move.
+ */
+function implementationTile(c: StepContract): ReadinessTile | null {
+  const t = R().tiles
+  if (c.fix.length > 0 || c.implementation.offered || c.implementation.reason === null) return null
+  if (c.state.satisfied || c.state.setAside || c.state.condition === 'baseline-conflict' || c.state.condition === 'needs-decision' || c.state.condition === 'review-required') return null
+  return { key: 'implementation', label: t.implementation, tone: 'warn', value: t.unavailable, note: c.implementation.because }
+}
+
+/**
+ * The Readiness region (A1 §16.1): the unresolved prerequisites of the next
+ * action as tiles, one each — what the state turns on, the emergency boundary,
+ * the reach where it is not established, every outstanding fix, the engine's
+ * blockers the fixes do not already name, and last the hardening, which is
+ * secondary and never blocks — over the bar's headline. Satisfied evidence is
+ * kept apart, readable and out of the way; a resolved prerequisite leaves the
+ * unresolved list on its own because it is no longer in `fix` or `blockers`.
+ */
+export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = []): ContractReadiness {
+  const facts = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c), implementationTile(c)].filter((x): x is ReadinessTile => x !== null)
+  const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
+  const fixes = fixTiles(c)
+  const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
+  const lead = facts.filter((t) => unresolved(t) && t.key !== 'resilience')
+  const hardening = facts.filter((t) => unresolved(t) && t.key === 'resilience')
+  const tiles = [...lead, ...fixes, ...engineTiles(c, blockers, present), ...hardening]
+  const satisfied = facts.filter((t) => !unresolved(t))
   // The bar says what the row and the badge say (planState.ts): a row reading
   // Needs attention never opens onto "Ready now", and a step something holds
   // never reads as ready. Where the state settles nothing of its own, the step's
@@ -1085,7 +1183,7 @@ export function readinessOf(step: Step, c: StepContract): ContractReadiness {
   const standing = standingOf(c)
   const settled = barKeyOf({ kind: c.state.kind, held: c.state.held })
   const key = settled ?? (c.state.held && (standing === 'deploy' || standing === 'verify') ? 'blocked' : standing === 'deploy' && c.fix.length > 0 ? 'attention' : standing)
-  return { tiles: [...lead, blockingTile(c)], bar: { key, main: R().bar[key] ?? R().bar.none } }
+  return { tiles, satisfied, bar: { key, main: R().bar[key] ?? R().bar.none } }
 }
 
 /**

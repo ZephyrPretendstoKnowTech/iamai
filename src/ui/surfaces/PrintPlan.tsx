@@ -25,6 +25,8 @@ import { goalInMap } from '../../roadmap/goalMap.ts'
 import type { GoalMap } from '../../roadmap/goalMap.ts'
 import { notLicensedPrintLine, notLicensedRows } from '../../derive/notLicensed.ts'
 import { floorRows, phaseRows, planPhases, undatedRows } from './planRows.ts'
+import { laneReadings } from './planLanes.ts'
+import { readinessBlockersOf } from './planBoard.ts'
 
 // The step body prints through the one renderer the screen uses (ContentStep,
 // prompt 53 queue item 7: every step in full, the same content, with More open);
@@ -95,6 +97,10 @@ export function PrintPlan({
 }) {
   void baselinePin
   const today = absoluteDate(new Date().toISOString())
+  // The engine's blockers on each step's next action (planLanes.ts): the printed
+  // step's Readiness tiles are the screen's, from the same reading.
+  const readings = laneReadings(steps)
+  const blockersOf = (s: Step) => readinessBlockersOf(readings.get(s.id), (id) => steps.find((x) => x.id === id)?.title ?? null)
   const done = steps.filter((s) => s.status === 'done')
   // A numbered phase's rows, the undated group and the floor group, all read
   // from the Plan's own rules (planRows.ts) and none of them recomputed here.
@@ -243,7 +249,7 @@ export function PrintPlan({
           <p className="muted">{w.days === 0 ? absoluteDate(w.start) : dateRange(w.start, w.end)}</p>
           {phaseSteps(w).map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} blockers={blockersOf(s)} printing />
             </article>
           ))}
         </section>
@@ -258,7 +264,7 @@ export function PrintPlan({
           <p className="muted">{HELD.lead}</p>
           {held.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} blockers={blockersOf(s)} printing />
             </article>
           ))}
         </section>
@@ -271,7 +277,7 @@ export function PrintPlan({
           <h2>{phases.recommended}</h2>
           {floor.map((s) => (
             <article key={s.id} className="print-step">
-              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} printing />
+              <ContentStep step={s} ctx={stepCtx(s)} onSkip={noop} onUnskip={noop} blockers={blockersOf(s)} printing />
             </article>
           ))}
         </section>

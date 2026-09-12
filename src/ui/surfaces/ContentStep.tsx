@@ -3,9 +3,10 @@
 //
 // The anatomy is the approved Plan design's
 // (docs/design/approved/anatomy/plan-step-v1.html, owner update Sep 10, 2026):
-// the head with its lifecycle track, then Why, Readiness, what must be fixed
-// first, What to do where the step has instructions of its own, Implementation
-// and Done when, beside a rail that is the Next milestone only, over a footer
+// the head with its lifecycle track, then Why, Readiness — the one place a
+// prerequisite is shown, A1 §16.1 — What to do where the step has instructions
+// of its own, Implementation and Done when, beside a rail that is the Next
+// milestone only, over a footer
 // that carries the rollout exception and the scan. Every step draws those
 // regions with the same components; its state changes what they say, never which
 // component draws them. Every sentence is a string in content.json filled with
@@ -56,14 +57,14 @@ import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
-import type { ImplementationEmpty } from './stepContract.ts'
+import type { ImplementationEmpty, PrerequisiteBlocker } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, FixBeforeContinuing, HardeningRecommendations, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, HardeningBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor, severalBindings } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { prerequisiteBasis, projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -73,9 +74,8 @@ import { absoluteDate } from '../../copy/dates.ts'
 type Ex = Record<string, unknown>
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
+const NO_BLOCKERS: readonly PrerequisiteBlocker[] = []
 
-/** The unavailable reasons that make handing a change over unsafe, not merely early (roadmap/operations.ts policyResult's emergency-access boundary). */
-const UNSAFE_REASONS: ReadonlySet<string> = new Set(['unsafe-emergency-access', 'unverified-emergency-exclusion', 'escape-hatch-unverified'])
 type Channel = 'portal' | 'ps' | 'json' | 'ai' | 'email'
 
 /**
@@ -201,11 +201,17 @@ export function ContentStep({
   baselineCommit = BASELINE_COMMIT,
   printing = false,
   when = null,
+  blockers = NO_BLOCKERS,
+  onOpenMappings,
 }: {
   step: Step
   ctx: StepVarContext
   /** The row's When column (planBoard.ts boardWhenOf), which the rail repeats for an undated held step rather than saying something else. */
   when?: string | null
+  /** The engine's unresolved prerequisites of this step's next action (planBoard.ts readinessBlockersOf), each a Readiness tile the contract's own fixes do not already state. */
+  blockers?: readonly PrerequisiteBlocker[]
+  /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
+  onOpenMappings?: () => void
   /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
   onSkip: (reason: string) => void
   onUnskip: () => void
@@ -337,7 +343,12 @@ export function ContentStep({
   const whoFull = [...whoInline.map((b) => whoHeld.find((h) => h.key === b.key) ?? b), ...whoHeld.filter((h) => !whoInline.some((b) => b.key === h.key))]
   const pkgEvidence = pkgReadiness !== null && (pkgReadiness.conclusion !== null || pkgReadiness.whyItMatters !== null || pkgReadiness.unknowns.length > 0 || pkgReadiness.references.length > 0)
   const hasEvidence = contract.found.length > 0 || showWho || pkgEvidence
-  const readiness = mergeReadiness(readinessOf(step, contract), pkgReadiness)
+  // Readiness is the one prerequisite surface (A1 §16.1): the contract's own
+  // fixes and the engine's blockers on the next action, one tile each, with the
+  // package's gates merged in (stepPackage.ts mergeReadiness). Nothing below
+  // lists a prerequisite a second time.
+  const readiness = mergeReadiness(readinessOf(step, contract, blockers), pkgReadiness)
+  const allTiles = [...readiness.tiles, ...readiness.satisfied]
   // What to do, where the step has instructions of its own. On a step whose
   // action IS the implementation the approved design draws no What to do: the
   // action is the Readiness bar's line and the instructions are the channels.
@@ -379,16 +390,20 @@ export function ContentStep({
           // Copy is values IAMAI cannot fill, not prerequisites (correction batch 1).
           contract.fix.length === 0 && !contract.state.held ? W.preview.textValues : W.preview.text,
           ...(preview.hold && preview.hold.missingBindings.length > 0 ? [fillText(W.preview.values, { values: list([...new Set(preview.hold.missingBindings.map(bindingLabel))]) })] : []),
-          ...(preview.hold && preview.hold.pendingPrerequisites.length > 0 ? [W.preview.checks] : []),
         ],
       }
     : null
   // A channel the package withheld on its own (project.ts `degraded`), named with
-  // what it waits on, beside the channels that did project.
+  // what it waits on, beside the channels that did project. A value the plan
+  // holds as a set where the channel takes one (stepPackage.ts severalBindings)
+  // is said as that — never as a value IAMAI does not hold (S5).
+  const several = new Set(packaged ? severalBindings(step, ctx) : [])
   const withheld = packaged
     ? ((preview ?? projection)?.degraded ?? []).map((d) => {
         const channel = CHANNEL_TABS.find((t) => t.id === PACKAGE_CHANNEL[d.channel])?.label ?? d.channel
-        return d.invalid.length === 0 && d.missingBindings.length > 0 ? fillText(W.withheld.values, { channel, values: list([...new Set(d.missingBindings.map(bindingLabel))]) }) : fillText(W.withheld.fault, { channel })
+        if (d.invalid.length > 0 || d.missingBindings.length === 0) return fillText(W.withheld.fault, { channel })
+        if (d.missingBindings.every((k) => several.has(k))) return fillText(W.withheld.several, { channel, value: bindingLabel(d.missingBindings[0]) })
+        return fillText(W.withheld.values, { channel, values: list([...new Set(d.missingBindings.map(bindingLabel))]) })
       })
     : []
   // A package the semantic re-pin review set aside (stepPackage.ts packageReviewFor):
@@ -416,7 +431,7 @@ export function ContentStep({
             ? heldBox('packageFault')
             : heldBox('bindingMissing')
   // The check a person is confirming, from the Readiness tile that states it.
-  const confirmTile: ReadinessTile | null = confirmKey ? (readiness.tiles.find((t) => t.key === confirmKey) ?? null) : null
+  const confirmTile: ReadinessTile | null = confirmKey ? (allTiles.find((t) => t.key === confirmKey) ?? null) : null
   const closeConfirm = (): void => {
     setConfirmKey(null)
     setDialog(null)
@@ -483,15 +498,30 @@ export function ContentStep({
             </p>
           </section>
 
-          {/* Readiness: the contract's facts as tiles, the bar that says where the
-              step stands with its one action under it, and — where this step's
-              enforcement waits on the people it reaches — who they are, handed
-              to MFA Readiness (derive/stepMfaReadiness.ts). */}
+          {/* Readiness: the one prerequisite surface. Every unresolved
+              prerequisite of the next action is a tile — the state's own, the
+              emergency boundary, each fix, each engine blocker, and last the
+              hardening, secondary and never a block, with its recommendations
+              and its deferral as the Resilience tile's own evidence — over the
+              bar that says where the step stands with its one action under it,
+              and — where this step's enforcement waits on the people it reaches —
+              who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           <ReadinessSection
             readiness={readiness}
             lead={showWhatToDo ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
+            onOpenMappings={!printing && onOpenMappings ? onOpenMappings : null}
+            printing={printing}
+            extra={(t) =>
+              t.key === 'resilience' && contract.hardening ? (
+                <HardeningBody
+                  hardening={contract.hardening}
+                  onDefer={!printing && onConfirm ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
+                  onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
+                />
+              ) : null
+            }
           >
             <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
           </ReadinessSection>
@@ -510,25 +540,6 @@ export function ContentStep({
               </Callout>
             </section>
           )}
-
-          {/* What must be fixed first, at the weight the step's own condition
-              gives it (Foundation B). The severity is production's. */}
-          {/* Ordinary work before continuing is the approved attention (amber,
-              plan-step-v1.html V3 `.attention`); the danger treatment is kept
-              for what makes the change unsafe to hand over at all — emergency
-              access a policy would reach, or could not be proven not to — the way
-              the design reserves it for "Do not deploy" (V5). */}
-          <FixBeforeContinuing fix={contract.fix} tone={!contract.implementation.offered && contract.implementation.reason !== null && UNSAFE_REASONS.has(contract.implementation.reason) ? 'danger' : 'warning'} />
-
-          {/* Emergency access in two tiers (owner, 2026-09-11): what holds the
-              rollout is under Fix before continuing above; the hardening is its
-              own section, deferrable once minimum access is available, and a
-              deferral is an owner confirmation (validation/emergencyTiers.ts). */}
-          <HardeningRecommendations
-            hardening={contract.hardening}
-            onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
-            onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
-          />
 
           {showWhatToDo && (
             <section className="step-section">
@@ -579,7 +590,7 @@ export function ContentStep({
               {/* A finding the Readiness tiles already state, word for word, is
                   not printed twice: the tile is the reading, and the page keeps
                   every finding it does not already carry. */}
-              <WhatIamaiFound found={contract.found.filter((f) => !readiness.tiles.some((t) => t.note === f.text || t.value === f.text))} />
+              <WhatIamaiFound found={contract.found.filter((f) => !allTiles.some((t) => t.note === f.text || t.value === f.text))} />
               {showWho && (
                 <section className="step-section">
                   <h4>{HEAD.who}</h4>

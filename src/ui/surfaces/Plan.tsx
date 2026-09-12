@@ -24,10 +24,11 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneLabelOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, applyFocus, boardReasonOf, boardWhenOf, boardWhenWraps, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneLabelOf, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { planStateOf } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
+import { TAB_OF } from './planBoard.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { operatorIdOf, usePlanData } from './planData.ts'
 import type { PlanComputed } from './planData.ts'
@@ -35,6 +36,7 @@ import { cleanupStatusOf, statusOf } from './statusWord.ts'
 import { rowWho } from './rowWho.ts'
 import { IMPACT, whoLine as whoLineOf } from '../../derive/whoLine.ts'
 import { ContentStep } from './ContentStep.tsx'
+import type { PrerequisiteBlocker } from './stepContract.ts'
 import { PlanRow } from './StepSections.tsx'
 import { planDates } from './stepVars.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
@@ -81,6 +83,12 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const onScan = (returnTo: string): void => void runScan(returnTo)
   const [open, setOpen] = useState<string | null>(() => stepFromPlanHash(window.location.hash))
   const [showSettings, setShowSettings] = useState(false)
+  // A Readiness tile's link to Baseline mappings opens the settings panel and
+  // moves to it, from wherever on the board the step is open.
+  const openSettings = (): void => {
+    setShowSettings(true)
+    requestAnimationFrame(() => document.getElementById(PLAN_SETTINGS_ID)?.scrollIntoView({ block: 'start' }))
+  }
   const [showHow, setShowHow] = useState(false)
   // The board's three lanes (planBoard.ts). Ready is the default, because the
   // Plan's own subject is what can be done now; the other two hold the same rows.
@@ -204,7 +212,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // secondary projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart, titleOf)
-    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} lane={laneLabel} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} lane={laneLabel} blockers={readinessBlockersOf(reading, titleOf)} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -229,6 +237,10 @@ export function Plan({ scan: lastScan, baseline, account }: {
   }
 
   const groups = groupsFor(tab, applyFocus(items, tab, focus))
+  // A step opened by its hash — a Readiness tile's link to its prerequisite, a
+  // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
+  // tab follows the step; otherwise the link would open nothing on screen.
+  const openTab = open ? (TAB_OF[readings.get(open)?.lane ?? 'Completed'] ?? null) : null
   // The progress tiles (owner, 2026-09-11): the steps and the in-place count the
   // print cover and Connect share (derive/facts.ts), the rows Waiting — the one
   // classification the schedule's waiting result counts (planState.ts) — and what is left.
@@ -311,6 +323,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           `planBoard.ts` groups them and decides nothing else. `renderById` is why
           there is one row renderer and not three: a tab hands back ids, and the
           id comes back to the same `<Row>` or `<CleanupRow>` whichever tab shows it. */}
+      <TabFollowsOpenStep open={open} openTab={openTab} tab={tab} onTab={setTab} />
       <PlanControls
         tab={tab}
         onTab={setTab}
@@ -419,6 +432,20 @@ function PlanControls({ tab, onTab, focus, onFocus, counts, base }: {
  * lane has no date range of its own: each row reads its own day in its When
  * column (roadmap/stepSchedule.ts), and a lane is not a phase.
  */
+/**
+ * The tab follows the step the hash opened (a Readiness tile's link, a deep
+ * link): where the open step's lane is under another tab, that tab is chosen.
+ * A child with the one effect, because the Plan's rows are built after its
+ * early returns and a hook cannot sit there.
+ */
+function TabFollowsOpenStep({ open, openTab, tab, onTab }: { open: string | null; openTab: LaneTab | null; tab: LaneTab; onTab: (t: LaneTab) => void }) {
+  useEffect(() => {
+    if (open && openTab && openTab !== tab) onTab(openTab)
+    // Only when the opened step changes: choosing another tab afterwards is the person's.
+  }, [open, openTab])
+  return null
+}
+
 function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGroup; closed: boolean; onToggle: () => void; children: ReactNode }) {
   const id = `plan-group-${group.key}`
   return (
@@ -489,11 +516,15 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, isNext, lane, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, isNext, lane, blockers, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
   isNext: boolean
   /** `Lane · substatus/reason`: the engine's lane for the row (planBoard.ts laneLabelOf). */
   lane: string
+  /** The engine's unresolved prerequisites of the row's next action (planBoard.ts readinessBlockersOf): the opened step's Readiness tiles. */
+  blockers: PrerequisiteBlocker[]
+  /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
+  onOpenMappings: () => void
   /**
    * What the BOARD shows in the timing column (planBoard.ts `boardWhen`), which
    * is `rowWhen`'s value with the board's own two rules applied. Handed in so
@@ -561,6 +592,8 @@ function Row({ step, isNext, lane, when, waveStart, open, onToggle, schedule, te
           onDoesntApply={(reason) => onDoesntApply(step.id, reason)}
           onScan={() => (onScan ? onScan(returnToStep(step.id)) : (window.location.hash = '#/connect'))}
           when={when}
+          blockers={blockers}
+          onOpenMappings={onOpenMappings}
           decision={decision}
           onDecide={onDecide}
           confirmations={confirmations}

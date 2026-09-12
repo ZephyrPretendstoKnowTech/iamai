@@ -157,7 +157,7 @@ test('no ladder rung borrows a policy step content entry', () => {
 // its own would have to add a second renderer, and there is nowhere to put one.
 test('the Plan draws a step body one way, through the Step Contract components', () => {
   const cs = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  for (const c of ['<StepState', '<WhatIamaiFound', '<WhatToDoLead', '<FixBeforeContinuing', '<DoneWhen', '<PolicyMembers']) {
+  for (const c of ['<StepState', '<WhatIamaiFound', '<WhatToDoLead', '<ReadinessSection', '<DoneWhen', '<PolicyMembers']) {
     assert.equal(cs.split(c).length - 1, 1, `ContentStep draws ${c} other than exactly once`)
   }
   assert.doesNotMatch(cs, /return <div className="step-body" \/>/, 'a step without a content entry must still open to its contract, not to an empty panel')
@@ -266,7 +266,7 @@ test('a step waiting on a person says so as its one action, and never inside Mor
   // drawn above More in the body, never inside it.
   const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   const more = src.indexOf('<More')
-  for (const c of ['<WhatToDoLead', '<Decision', '<FixBeforeContinuing', '<DoneWhen']) {
+  for (const c of ['<WhatToDoLead', '<Decision', '<ReadinessSection', '<DoneWhen']) {
     const at = src.indexOf(c)
     assert.ok(at > 0 && at < more, `${c} must not be inside More`)
   }

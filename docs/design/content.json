@@ -1246,7 +1246,7 @@
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
           "doneSatisfied": "Already satisfied: {tenant} has this, and the step is to keep it that way.",
-          "doneBlocked": "Everything under Fix before continuing is cleared.",
+          "doneBlocked": "Everything Readiness lists is cleared.",
           "doneConflict": "A reviewed baseline version settles which of its two definitions of this policy is meant.",
           "doneDecision": "The question on this step is answered and saved.",
           "doneReadiness": "{measure} reaches {threshold}.",
@@ -1283,9 +1283,9 @@
           },
           "attentionConflict": "Do not deploy this policy from the current baseline",
           "hardening": {
-            "$comment": "Emergency access in two tiers (owner, 2026-09-11; validation/emergencyTiers.ts): the minimum safety checks stay under Fix before continuing and hold the rollout; the resilience hardening is its own section, which the operator may defer to Cleanup.",
+            "$comment": "Emergency access in two tiers (owner, 2026-09-11; validation/emergencyTiers.ts): the minimum safety checks are Readiness tiles and hold the rollout; the resilience hardening is its own Readiness tile, which the operator may defer to Cleanup.",
             "heading": "Hardening recommendations",
-            "leadBlocked": "These make emergency access more resilient. Clear Fix before continuing first; these can then be fixed or deferred.",
+            "leadBlocked": "These make emergency access more resilient. Clear the other Readiness items first; these can then be fixed or deferred.",
             "leadDefer": "Minimum emergency access is available, but less resilient than recommended. Fix these, or defer them: the rollout continues, and they stay in Cleanup until they pass.",
             "deferredOn": "Deferred to Cleanup on {date}. The rollout continues, and these stay in Cleanup until they pass.",
             "defer": "Defer hardening",
@@ -1328,9 +1328,16 @@
               "people": "Affected people",
               "peopleUnknown": "Not established",
               "blockers": "Prerequisites",
+              "prerequisite": "Prerequisite step",
+              "check": "Check",
+              "review": "Review",
+              "mapping": "Baseline mapping",
               "clear": "Clear",
               "clearNote": "Nothing outstanding changes the next action.",
-              "open": "{n} remaining",
+              "satisfied": "{n} satisfied",
+              "detail": "Why",
+              "openStep": "Open {step}",
+              "openMappings": "Open Baseline mappings",
               "implementation": "Implementation",
               "unavailable": "Unavailable"
             },
@@ -1387,7 +1394,7 @@
               ],
               "blocked": [
                 "Nothing to submit yet",
-                "Clear what is listed under Fix before continuing first."
+                "Clear what Readiness lists first."
               ],
               "unavailable": [
                 "Nothing to submit yet",
@@ -1434,6 +1441,7 @@
             "withheld": {
               "$comment": "A channel the package withholds on its own while the others project (project.ts `degraded`).",
               "values": "{channel} is not shown yet: IAMAI does not hold {values}.",
+              "several": "{channel} is not shown yet: it is written for one {value} at a time, and the plan holds several.",
               "fault": "{channel} is not shown: its content could not be projected safely."
             },
             "review": {
@@ -1845,7 +1853,7 @@
         "multi": true
       },
       "whatToDo": {
-        "lead": "Choose the emergency access accounts below and save, then clear what is under Fix before continuing.",
+        "lead": "Choose the emergency access accounts below and save, then clear what Readiness lists.",
         "create": [
           "Entra admin center → Entra ID → Users → New user. Name it so the purpose is obvious ({exampleName}).",
           "Sign-in address on the tenant's own onmicrosoft.com domain; cloud-only; no licence; no department, title or manager.",
@@ -1880,7 +1888,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Every check under Fix before continuing passes on the next scan.",
+        "Every minimum safety check passes on the next scan.",
         "Each hardening recommendation passes, or is deferred to Cleanup."
       ],
       "ifWrong": null,
