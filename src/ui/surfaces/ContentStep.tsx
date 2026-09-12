@@ -57,7 +57,8 @@ import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
-import type { ImplementationEmpty, PrerequisiteBlocker } from './stepContract.ts'
+import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
+import { laneViewFor } from './planBoard.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, HardeningBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
@@ -200,16 +201,23 @@ export function ContentStep({
   onUnconfirm,
   baselineCommit = BASELINE_COMMIT,
   printing = false,
-  when = null,
+  lane = null,
   blockers = NO_BLOCKERS,
+  prerequisiteLabel = null,
   onOpenMappings,
 }: {
   step: Step
   ctx: StepVarContext
-  /** The row's When column (planBoard.ts boardWhenOf), which the rail repeats for an undated held step rather than saying something else. */
-  when?: string | null
+  /**
+   * The board's one state reading of this step (planBoard.ts laneViewOf, A1b
+   * decision 1): the badge, the bar and the rail read it. A caller with no board
+   * (the printed step) gets the engine's reading of the step on its own.
+   */
+  lane?: LaneView | null
   /** The engine's unresolved prerequisites of this step's next action (planBoard.ts readinessBlockersOf), each a Readiness tile the contract's own fixes do not already state. */
   blockers?: readonly PrerequisiteBlocker[]
+  /** A prerequisite tile's label by the prerequisite's own lane (planBoard.ts prerequisiteLabelFor, decision 12); null keeps the tiles' own labels. */
+  prerequisiteLabel?: ((id: string) => string | null) | null
   /** Opens Plan settings → Baseline mappings, where a Readiness tile links there. */
   onOpenMappings?: () => void
   /** The rollout exception, with the operator's reason (roadmap/sets.ts skip). */
@@ -251,8 +259,10 @@ export function ContentStep({
   const ex = stepVars(step, ctx) as Ex
   // The Step Contract (stepContract.ts): the state, the next milestone, the one
   // action, the blockers and the completion, worked out once from Foundations A,
-  // B and C. Everything below renders it; nothing below asks them again.
-  const contract = stepContract(step, ctx, ex as Record<string, unknown>)
+  // B and C, with the lane engine's reading of the step as its one state (A1b).
+  // Everything below renders it; nothing below asks them again.
+  const laneView = lane ?? laneViewFor(step)
+  const contract = stepContract(step, ctx, ex as Record<string, unknown>, laneView)
   // The one title, from the one resolver the row reads (content/stepTitle.ts), so
   // the row and the body it opens can never disagree.
   const title = contentTitle(step)
@@ -347,7 +357,7 @@ export function ContentStep({
   // fixes and the engine's blockers on the next action, one tile each, with the
   // package's gates merged in (stepPackage.ts mergeReadiness). Nothing below
   // lists a prerequisite a second time.
-  const readiness = mergeReadiness(readinessOf(step, contract, blockers), pkgReadiness)
+  const readiness = mergeReadiness(readinessOf(step, contract, blockers, prerequisiteLabel ?? undefined), pkgReadiness)
   const allTiles = [...readiness.tiles, ...readiness.satisfied]
   // What to do, where the step has instructions of its own. On a step whose
   // action IS the implementation the approved design draws no What to do: the
@@ -447,9 +457,10 @@ export function ContentStep({
   // Implementation, beside Troubleshooting, where the region is drawn (S6), and
   // in Why on a step that draws no Implementation — one link per step.
   const learnUrl: string | null = typeof learn.url === 'string' && learn.url !== '' ? learn.url : null
-  // The footer's rollout exception: the existing skip, offered only where the
-  // step's content entry marks it excludable, and Doesn't apply here where the
-  // step is flagged for it. A step already set aside offers the way back.
+  // The footer's deferral (A1b decision 3): `Defer this step` is the existing
+  // skip, offered only where the step's content entry marks it deferrable, and
+  // `Doesn't apply here` where the step is flagged for it. A deferred step
+  // offers the way back.
   const RO = CONTRACT.rollout
   const exceptions: ReactNode[] = printing
     ? []
@@ -471,7 +482,7 @@ export function ContentStep({
                 title: what this change is, and the step it is done with. */}
             <Line s={cs.changeLine} ex={ex} cls="step-sub" />
             <Line s={cs.partner} ex={ex} cls="step-sub partner" />
-          </>} badge={badgeLabel(contract)} tone={contract.state.tone} track={contract.track}>
+          </>} badge={badgeLabel(contract)} tone={laneView.tone} fact={contract.state.fact} track={contract.track}>
         {/* What happens next: the track caption, above the track it captions. */}
         <StepState contract={contract} />
         <PolicyMembers members={contract.members} />
@@ -622,7 +633,7 @@ export function ContentStep({
         {/* The rail belongs to this step: beside the main column at full width
             and under it once the body collapses to one column. It is the Next
             milestone and nothing else. */}
-        <StepRail contract={contract} when={when} />
+        <StepRail contract={contract} />
       </div>
       <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
@@ -1245,13 +1256,13 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
           <p className="reason adapt no-print">{ADAPT_LINE}</p>
         </>
       )}
-      {/* Skip, and beside it Doesn't apply here on the content steps flagged for it:
-          never a foundation (emergency access, the exclusions group), never a policy
-          step whose subject exists. Pressing it asks one line, required, that goes
-          on the plan; the step then leaves its phase for the footer. */}
+      {/* Defer this step (decision 3), and beside it Doesn't apply here on the content
+          steps flagged for it: never a foundation (emergency access, the exclusions
+          group), never a policy step whose subject exists. Pressing it asks one line,
+          required, that goes on the plan; the step then leaves its phase for the footer. */}
       {step.status !== 'skipped' && (
         <p className="actions">
-          {cs.skip && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>Skip this step</Button>}
+          {cs.skip && <Button variant="tertiary" onClick={() => onSkip('Not needed for this tenant')}>{CONTRACT.rollout.control}</Button>}
           {offersDoesntApply(cs, step) && onDoesntApply && !asking && <Button variant="tertiary" onClick={() => setAsking(true)}>{SHARED.doesntApplyControl}</Button>}
         </p>
       )}

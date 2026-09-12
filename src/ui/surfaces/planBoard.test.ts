@@ -15,10 +15,8 @@ import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
-import { isHeld } from '../../roadmap/holds.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { stepById } from '../../content/content.ts'
-import { planStateOf } from './planState.ts'
 import { laneReadings } from './planLanes.ts'
 import {
   BOARD,
@@ -26,6 +24,7 @@ import {
   NO_FOCUS,
   TAB_OF,
   TYPE_ORDER,
+  WHEN,
   applyFocus,
   boardWhen,
   focusCounts,
@@ -58,8 +57,8 @@ function bodyOf(src: string, name: string): string {
 
 /**
  * The board's rows for a fixture, built the way Plan.tsx builds them: one item
- * per step, with the lane the engine read for it (planLanes.ts) and the Plan's
- * one presentation state for the rest.
+ * per step, with the lane the engine read for it (planLanes.ts), which is the
+ * row's one state (A1b).
  */
 function itemsFor(name: (typeof FIXTURES)[number]): BoardItem[] {
   const f = fixture(name)
@@ -70,15 +69,12 @@ function itemsFor(name: (typeof FIXTURES)[number]): BoardItem[] {
   const nextId = r.steps.filter((s) => readings.get(s.id)?.lane === 'Ready').sort((a, b) => readings.get(a.id)!.order - readings.get(b.id)!.order)[0]?.id ?? null
   return r.steps.filter((s) => readings.has(s.id)).map((s) => {
     const reading = readings.get(s.id)!
-    const state = planStateOf(s, isHeld(s))
     return {
       id: s.id,
       title: contentTitle(s),
       lane: reading.lane,
       laneLabel: laneLabelOf(reading, titleOf),
       hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
-      attention: state.attention,
-      waiting: state.waiting,
       workType: workTypeOf(s.id, (contentStepFor(s) as { kind?: string } | undefined)?.kind ?? null),
       isNext: s.id === nextId,
       order: reading.order,
@@ -138,7 +134,7 @@ test('On Hold groups by the primary blocker label and nothing else; the other tw
     for (const g of groupsFor('onHold', applyFocus(items, 'onHold', NO_FOCUS))) {
       assert.match(g.key, /^hold-\d+$/)
       for (const i of g.items) assert.equal(i.hold, g.label, `${name}/${i.id}: grouped under "${g.label}" while its blocker reads "${i.hold}"`)
-      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.held, `${name}: "${g.label}" is not a blocker label`)
+      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.lanes.onHold, `${name}: "${g.label}" is not a blocker label`)
     }
     for (const tab of ['ready', 'upNext'] as const) {
       const keys = groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)
@@ -155,7 +151,6 @@ test('a focus filters and never reorders, and search reads the title and nothing
     for (const tab of LANES) {
       const shown = applyFocus(items, tab, ALL)
       for (const f of [
-        { ...ALL, attention: true },
         { ...ALL, workType: 'ca' as const },
         { ...ALL, search: 'a' },
       ]) {
@@ -200,7 +195,7 @@ test('the counts are counted off the board, so a control cannot promise more tha
     }
     assert.equal(items.filter((i) => i.lane === 'Completed').length, counts.complete)
     assert.equal(items.filter((i) => i.lane === 'Deferred').length, counts.deferred)
-    assert.equal(items.filter((i) => i.attention).length, counts.attention)
+    assert.deepEqual(Object.keys(counts), ['complete', 'deferred', 'lanes'], 'the counts carry something other than lane counts (A1b)')
     assert.ok(counts.lanes.ready > 0, `${name}: nothing Ready, so this proves little`)
   }
 })
@@ -239,7 +234,8 @@ test('the board decides no lane: it reads planLanes.ts and re-derives nothing', 
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.match(plan, /const readings = laneReadings\(c\.steps, /, 'the Plan no longer reads the engine for its lanes')
   assert.match(plan, /lane: reading\.lane,/, 'a row carries a lane the engine did not read')
-  assert.match(plan, /planStateOf\(step, isHeld\(step\)\)/, 'the board no longer reads the one hold reading')
+  assert.match(plan, /const laneView = laneViewOf\(reading, titleOf\)/, 'the board no longer reads the one lane view')
+  assert.equal(plan.includes('planStateOf('), false, 'the Plan reads the legacy presentation state beside the lane (A1b)')
   assert.match(plan, /nextLabel=\{isNext \? PP\.next : null\}/, 'the pill and the marker no longer read the same boolean')
   assert.equal(plan.includes('phaseRows('), false, 'the Plan still groups by phase')
   assert.equal(plan.includes('undatedRows('), false, 'the Plan still draws the undated group')
@@ -326,32 +322,24 @@ test('the next marker is the first Ready step in the engine’s order, and exact
 
 // -------------------------------------------------- the board's timing column
 
-test('the generic now reads the day its phase begins, or Not scheduled, and the column is never blank', () => {
-  // Every prerequisite and check carries the same `now`. Repeated down nine
-  // Preparation rows it said nothing, and blank said less (owner, 2026-09-11):
-  // the board reads the day the row's phase begins. A real date and a real
-  // reason both survive.
-  assert.equal(boardWhen('now', { genericNow: true, held: false, carriesReason: false, groupDay: 'Sep 11, 2026' }), 'Sep 11, 2026')
-  assert.equal(boardWhen('now', { genericNow: true, held: false, carriesReason: false }), 'Not scheduled', 'a group with no first day of its own dates nothing')
-  assert.equal(boardWhen('now', { genericNow: true, held: true, carriesReason: false }), 'Not scheduled', 'the generic now wins over Held: there is no date to mislead with')
-  assert.equal(boardWhen('', { genericNow: false, held: false, carriesReason: false, complete: true }), 'Complete')
-  assert.equal(boardWhen('', { genericNow: false, held: false, carriesReason: false }), 'Not scheduled', 'no value is never a blank cell')
-  assert.equal(boardWhen('', { genericNow: false, held: false, carriesReason: false, waitsOn: 'After prerequisites' }), 'After prerequisites')
-  assert.equal(boardWhen('Sep 22, 2026', { genericNow: false, held: false, carriesReason: false }), 'Sep 22, 2026')
-  assert.equal(boardWhen('ready Sep 17, 2026', { genericNow: false, held: false, carriesReason: false }), 'ready Sep 17, 2026')
-  assert.equal(boardWhen('ready now', { genericNow: false, held: false, carriesReason: false }), 'ready now', 'a policy that may be enforced now is not the generic now')
-})
-
-test('a held row reads Held instead of borrowing its wave’s date, unless it already says why', () => {
-  assert.equal(boardWhen('Sep 10, 2026', { genericNow: false, held: true, carriesReason: false }), BOARD.held)
-  // …or the step it waits on, where the hold names one.
-  assert.equal(boardWhen('', { genericNow: false, held: true, carriesReason: false, waitsOn: 'After Exclusions Group' }), 'After Exclusions Group')
-  // A column that already carries a REASON keeps it: it is more specific than
-  // Held, and it is the fact the operator needs.
-  assert.equal(boardWhen('when MFA readiness reaches 90% (now 42%)', { genericNow: false, held: true, carriesReason: true }), 'when MFA readiness reaches 90% (now 42%)')
-  assert.equal(boardWhen('held until reviewed', { genericNow: false, held: true, carriesReason: true }), 'held until reviewed')
-  // Not held: the date stands.
-  assert.equal(boardWhen('Sep 10, 2026', { genericNow: false, held: false, carriesReason: false }), 'Sep 10, 2026')
+test('the column is a day or the placeholder: a dated value stands, words read the scheduled day, and nothing is blank', () => {
+  // A row's own dated value stands. A value that is words — the generic `now`
+  // every prerequisite carries, a threshold, "held until reviewed", "ready now"
+  // — reads the day the plan schedules the step where it schedules one (for
+  // preparation work the day its phase begins), and the placeholder otherwise:
+  // the reason a row cannot move is its lane label's and its reason line's
+  // (A1b, RUN-CONTEXT-A decision 1). A finished or deferred row reads the placeholder.
+  assert.equal(boardWhen('Sep 22, 2026', { dated: true }), 'Sep 22, 2026')
+  assert.equal(boardWhen('now', { dated: false, day: 'Sep 11, 2026' }), 'Sep 11, 2026')
+  assert.equal(boardWhen('now', { dated: false }), WHEN.none, 'a row with no scheduled day dates nothing')
+  assert.equal(boardWhen('when MFA readiness reaches 90% (now 42%)', { dated: false }), WHEN.none, 'a threshold is the lane label’s and the reason line’s, never the column’s')
+  assert.equal(boardWhen('held until reviewed', { dated: false }), WHEN.none)
+  assert.equal(boardWhen('ready now', { dated: false, day: 'Sep 17, 2026' }), 'Sep 17, 2026', 'a policy that may be enforced reads the day the plan schedules the enforcement')
+  assert.equal(boardWhen('', { dated: false }), WHEN.none, 'no value is never a blank cell')
+  assert.equal(boardWhen('', { dated: false, settled: true }), WHEN.none)
+  assert.equal(boardWhen('Sep 10, 2026', { dated: true, settled: true }), WHEN.none, 'a finished or deferred row reads the placeholder whatever it was dated')
+  // The column never says a state: none of the words it used to carry is the placeholder.
+  for (const word of ['Held', 'Not scheduled', 'Complete', 'Deferred', 'After prerequisites']) assert.notEqual(WHEN.none, word)
 })
 
 test('the board reads the timing value and never writes it: no date is recalculated', () => {
@@ -376,9 +364,7 @@ test('a group summary counts the rows under it, so the heading cannot disagree w
     for (const tab of LANES) {
       for (const g of groupsFor(tab, applyFocus(items, tab, ALL))) {
         const n = g.items.length
-        assert.match(groupSummary(g), new RegExp(`^${n} step${n === 1 ? '' : 's'}`), `${tab}/${g.key}: the summary does not count its own rows`)
-        const attention = g.items.filter((i) => i.attention).length
-        if (attention > 0) assert.match(groupSummary(g), new RegExp(`${attention} need`), `${tab}/${g.key}: the summary drops its attention count`)
+        assert.equal(groupSummary(g), `${n} step${n === 1 ? '' : 's'}`, `${tab}/${g.key}: the summary says more than its own row count (A1b: no attention count)`)
         assert.ok(g.items.length > 0, `${tab}/${g.key}: an empty group is drawn`)
       }
     }
@@ -388,7 +374,7 @@ test('a group summary counts the rows under it, so the heading cannot disagree w
 test('the board vocabulary is one record, and Ready is the default tab', () => {
   assert.deepEqual([...LANES], ['ready', 'upNext', 'onHold'], 'the tab order moved')
   assert.equal(LANES[0], 'ready', 'Ready is no longer the default')
-  assert.deepEqual(Object.values(BOARD.lanes), ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred'])
+  assert.deepEqual(Object.values(BOARD.lanes), ['Ready', 'Up Next', 'On Hold', 'Completed', 'Deferred', "Doesn't apply"])
   assert.deepEqual(Object.keys(BOARD.type), TYPE_ORDER, 'the work-type labels and the work-type order disagree')
   assert.equal(BOARD.showCompleted, 'Show completed')
   assert.equal(BOARD.showDeferred, 'Show deferred')

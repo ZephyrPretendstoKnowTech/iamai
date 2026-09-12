@@ -245,7 +245,7 @@
       },
       "milestone": {
         "$comment": "The single next thing on a step (roadmap/lifecycle.ts nextMilestone). One whole sentence each, because the Step Contract renders it as the step's What to do where nothing overrules the lifecycle (src/ui/surfaces/stepContract.ts); the state word and the date live beside it.",
-        "setAside": "This step is set aside.",
+        "setAside": "This step is deferred.",
         "conflict": "Wait for a reviewed baseline that settles the contradiction; there is nothing to submit.",
         "decide": "Answer the question this step is waiting on.",
         "resolve": "Clear what this step is waiting on.",
@@ -562,20 +562,36 @@
         "configurationOnly": "Configuration only"
       },
       "when": {
-        "$comment": "The board's When column where a row carries no date or reason of its own (planBoard.ts boardWhen): never blank (owner, 2026-09-11).",
-        "complete": "Complete",
-        "notScheduled": "Not scheduled",
+        "$comment": "The board's When column (planBoard.ts boardWhen): a date, or the placeholder (A1b). after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
+        "none": "—",
         "after": "After {step}",
         "afterPrerequisites": "After prerequisites"
       },
+      "lanes": {
+        "$comment": "The lane engine's five lanes as the Plan says them (A1b, decision 11): the tabs, the toggles, the row label, the badge, the bar and the rail all read these (planBoard.ts BOARD.lanes). A step the person said does not apply here reads doesntApply.",
+        "ready": "Ready",
+        "upNext": "Up Next",
+        "onHold": "On Hold",
+        "completed": "Completed",
+        "deferred": "Deferred",
+        "doesntApply": "Doesn't apply"
+      },
+      "substatus": {
+        "$comment": "The Ready lane's substatus words (A1b, decision 11), keyed by the engine's own literal (planBoard.ts SUBSTATUS_WORD).",
+        "create": "Create",
+        "correct": "Correct",
+        "needsDecision": "Needs decision",
+        "observing": "Observing",
+        "readyToEnforce": "Ready to enforce"
+      },
       "progress": {
-        "$comment": "The Plan header's progress tiles (Plan.tsx), which replaced the generated status sentence (owner, 2026-09-11).",
+        "$comment": "The Plan header's four tiles (A1b, decision 11): Steps, Completed (the lane count), Projected finish (A2 fills it; the placeholder until then) and Started.",
         "label": "Plan progress",
         "steps": "Steps",
-        "inPlace": "In place",
-        "waiting": "Waiting",
-        "remaining": "Remaining",
-        "started": "Started {date}"
+        "completed": "Completed",
+        "projectedFinish": "Projected finish",
+        "started": "Started",
+        "none": "—"
       },
       "howTo": {
         "link": "How to use this plan →",
@@ -1185,7 +1201,7 @@
             "ready-to-enforce": "Ready to enforce",
             "enforced": "Enforced",
             "in-place": "In place",
-            "set-aside": "Set aside"
+            "set-aside": "Deferred"
           },
           "kind": {
             "$comment": "The opened step's eyebrow (task 034; docs/design/approved/plan-step-v1.html draws `Policy step` and `Resolution step` above the title). One label per steps[].kind, so the label names what production already calls the step rather than a second taxonomy. A kind with no entry here shows no eyebrow.",
@@ -1264,7 +1280,7 @@
           "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
-          "doneSetAside": "Nothing is expected of this step while it is set aside.",
+          "doneSetAside": "Nothing is expected of this step while it is deferred.",
           "headings": {
             "$comment": "The section titles the Plan draws a step with, in the order the contract states them. One source: the opened step, the Cleanup rows and the review page all read these, so a heading cannot say one thing on one surface and another somewhere else.",
             "why": "Why",
@@ -1299,7 +1315,7 @@
               "unavailable": "Not available",
               "resilience": "Resilience",
               "meets": "Meets recommendations",
-              "needsAttention": "Needs attention",
+              "needsAttention": "Hardening open",
               "deferred": "Deferred to Cleanup",
               "accountMinimum": "{name}: minimum safety not met",
               "accountHardening": "{name}: minimum met, hardening open",
@@ -1342,20 +1358,12 @@
               "unavailable": "Unavailable"
             },
             "bar": {
-              "deploy": "Ready now",
-              "attention": "Needs attention",
-              "observe": "Continue observation",
-              "enforce": "Ready to enforce",
-              "verify": "Ready to check",
-              "preserve": "Already satisfied",
-              "decide": "Needs a decision",
-              "resolve": "Held",
-              "review": "Held for review",
-              "blocked": "Blocked",
-              "correction": "Needs correction",
-              "deferred": "Minimum in place, hardening deferred",
-              "conflict": "Deferred",
-              "restore": "Set aside",
+              "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",
+              "create": "Ready now",
+              "correct": "Needs correction",
+              "needsDecision": "Needs a decision",
+              "observing": "Continue observation",
+              "readyToEnforce": "Ready to enforce",
               "none": "Nothing left to do"
             },
             "package": {
@@ -1406,7 +1414,7 @@
               ],
               "setAside": [
                 "Nothing to submit",
-                "This step is set aside."
+                "This step is deferred."
               ],
               "none": [
                 "No generated implementation",
@@ -1557,13 +1565,7 @@
             "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
           },
           "rail": {
-            "$comment": "The Next milestone rail's metric where Foundation B holds no date for the milestone (docs/design/approved/anatomy/plan-step-v1.html V3–V5 `.metric`). The sub-line under it is the milestone's own words.",
-            "held": "Held",
-            "deferred": "Deferred",
-            "noChange": "No change needed",
-            "decision": "Needs decision",
-            "setAside": "Set aside",
-            "undated": "Not scheduled",
+            "$comment": "The Next milestone rail's sub-lines where the metric is the lane label rather than a day (A1b; docs/design/approved/anatomy/plan-step-v1.html `.metric-sub`). The metric itself is the schedule's day or the lane's own words (stepContract.ts railOf).",
             "resolveSub": "Resolve prerequisites",
             "decideSub": "Make the decision"
           },
@@ -1575,12 +1577,12 @@
           },
           "rollout": {
             "$comment": "The footer's rollout exception (docs/design/approved/anatomy/plan-step-v1.html `#rollout-dialog`). It is the existing skip (roadmap/sets.ts): the step leaves the rollout with the operator's reason recorded, and it never counts as implemented.",
-            "control": "Exclude from rollout",
+            "control": "Defer this step",
             "eyebrow": "Rollout exception",
-            "title": "Exclude this step from rollout",
-            "body": "An excluded step remains recorded as an exception. It does not count as implemented or as satisfying the baseline.",
+            "title": "Defer this step",
+            "body": "A deferred step remains recorded as an exception. It does not count as implemented or as satisfying the baseline.",
             "reason": "Reason",
-            "placeholder": "Record why this step is being excluded.",
+            "placeholder": "Record why this step is being deferred.",
             "cancel": "Cancel"
           },
           "troubleshooting": {

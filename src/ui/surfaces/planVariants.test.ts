@@ -42,6 +42,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { laneReadings } from './planLanes.ts'
+import { BOARD, doesntApplyView, laneViewOf } from './planBoard.ts'
 import {
   allCuratedFixtures,
   allFixtures,
@@ -116,9 +118,13 @@ function planOf(label: string, f: Fixture, over: { snapshot?: TenantSnapshot; re
     groups: f.groups,
     reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null,
   })
+  // The board's one state reading of every step (A1b), read over the whole plan as the Plan reads it.
+  const readings = laneReadings(r.steps)
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.plainTitle ?? null
   return r.steps.map((step) => {
     const one = ctx(step)
-    const c = stepContract(step, one)
+    const reading = readings.get(step.id)
+    const c = stepContract(step, one, undefined, reading ? laneViewOf(reading, titleOf) : doesntApplyView())
     return { where: `${label}/${step.id}`, step, ctx: one, c, shape: shapeOf(step, c), kind: kindOf(step) }
   })
 }
@@ -631,7 +637,7 @@ test('§5b a preserved goal draws the pack’s In-place variant: no change neede
   const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy')
   assert.ok(preserved.length > 0, 'no preserved goal in the sweep')
   for (const v of preserved) {
-    assert.equal(railOf(v.c).metric, CONTRACT.rail.noChange, `${v.where}: a preserved goal’s rail does not say no change is needed`)
+    assert.equal(railOf(v.c).metric, BOARD.lanes.completed, `${v.where}: a preserved goal’s rail does not say Completed (A1b: the lane label)`)
     assert.ok(v.c.track.every((t) => t.reached), `${v.where}: a preserved goal is drawn mid-rollout`)
     assert.equal(v.c.implementation.offered, false, `${v.where}: a preserved goal offers an implementation`)
   }

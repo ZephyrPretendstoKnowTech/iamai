@@ -537,11 +537,13 @@ test('042.15: no surface re-derives a fact that has an authority', () => {
     assert.ok(src.includes('planWeeks('), `${name} no longer states the plan's length at all`)
   }
 
-  // A Cleanup row's completion and its word: roadmap/cleanupDone.ts and
-  // statusWord.ts. Both surfaces read both, and neither writes the words.
-  for (const [name, src] of [['Plan', plan], ['PrintPlan', print]] as const) {
+  // A Cleanup row's completion and its word: roadmap/cleanupDone.ts, and the
+  // word is the lane the engine read for the row (planBoard.ts laneViewOf, A1b
+  // decision 1) on the Plan; the print still reads statusWord.ts until A1c moves
+  // it to the lane. Neither surface writes the words.
+  for (const [name, src, word] of [['Plan', plan, 'laneViewOf('], ['PrintPlan', print, 'cleanupStatusOf(']] as const) {
     assert.ok(src.includes('cleanupComplete('), `${name} does not read the one Cleanup completion`)
-    assert.ok(src.includes('cleanupStatusOf('), `${name} does not read the one Cleanup status word`)
+    assert.ok(src.includes(word), `${name} does not read the one Cleanup status word`)
     assert.equal(/word: 'In place'|word: 'Ready'/.test(src), false, `${name} writes a status word into its own JSX`)
   }
 

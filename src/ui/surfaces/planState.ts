@@ -9,10 +9,15 @@
 // Ready in the Status view, and open onto a bar reading Ready now.
 //
 // This module reads those facts once and says, for a step: its kind of standing,
-// the row word and tone, whether it is in the Needs attention focus, and the Status
-// group. The row (statusWord.ts), the opened step's badge, readiness bar and rail
-// (stepContract.ts), the board's filters, groups and counts (planBoard.ts) all read
-// it, and none of them decides any of it again.
+// a word and tone, and whether it is delivered.
+//
+// Since A1b (RUN-CONTEXT-A decision 1) the lane engine is the one producer of a
+// step's state on every Plan surface: the row, the badge, the bar, the rail and
+// the header tiles read the lane (planBoard.ts laneViewOf), never this word. What
+// still reads it: the lane adapter's fallback for a row the graph does not know
+// (planLanes.ts fallbackOf, by `kind` and `complete`) and the export view's
+// `status` / `state` (stepExport.ts), until A1c moves the exports to the lane.
+// The word fields go when nothing reads them.
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
@@ -133,9 +138,10 @@ export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
 }
 
 /**
- * The opened step's badge: the lifecycle stage beside the state's own word where
- * the two are different facts, and the word alone where there is no stage. The
- * row says the word; the badge never says anything the row contradicts.
+ * The export view's composed state label (stepExport.ts, until A1c): the
+ * lifecycle stage beside the state's own word where the two are different facts,
+ * and the word alone where there is no stage. The screen's badge is the lane
+ * label (stepContract.ts badgeLabel) and does not read this.
  */
 export function badgeOf(stage: string, s: PlanState, conditionLabel: string, healthy: boolean): string {
   if (stage === '' || s.complete || s.kind === 'skipped') return s.kind === 'deferred' ? WORDS.minimumInPlace : stage === '' ? s.word : stage
@@ -152,17 +158,3 @@ export function badgeOf(stage: string, s: PlanState, conditionLabel: string, hea
       return healthy && !s.held ? stage : `${stage} · ${healthy ? 'Blocked' : conditionLabel}`
   }
 }
-
-/** The readiness bar's key for a state the projection settles, or null where the step's own action decides it (stepContract.ts `standingOf`). */
-export function barKeyOf(s: Pick<PlanState, 'kind' | 'held'>): string | null {
-  if (s.kind === 'attention') return 'attention'
-  if (s.kind === 'decision') return 'decide'
-  if (s.kind === 'conflict') return 'conflict'
-  if (s.kind === 'deferred') return 'deferred'
-  if (s.kind === 'correction') return 'correction'
-  if (s.kind === 'blocked') return 'blocked'
-  return null
-}
-
-/** The rail's words for a deferred step: minimum in place, hardening in Cleanup. */
-export const DEFERRED_RAIL = { metric: (): string => WORDS.hardeningDeferred }

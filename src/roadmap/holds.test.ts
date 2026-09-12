@@ -38,7 +38,7 @@ import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { floorRows, phaseRows, planPhases, undatedRows } from '../ui/surfaces/planRows.ts'
 import { scheduleOf, scheduledEventOf } from './stepSchedule.ts'
-import { BOARD, boardWhenOf } from '../ui/surfaces/planBoard.ts'
+import { WHEN, boardWhenOf } from '../ui/surfaces/planBoard.ts'
 import { planStateOf } from '../ui/surfaces/planState.ts'
 import { cleanupExportViews } from '../ui/surfaces/cleanupExport.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
@@ -255,7 +255,7 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
   for (const read of ['undatedRows(', 'phaseRows(', 'floorRows(', 'planFinish(', 'planWeeks(finish, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
   // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  for (const read of ['laneReadings(', 'boardWhenOf(step, waveStart, titleOf)', 'planWeeks(finish, c.schedule)', 'finish.held', 'isHeld(step)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
+  for (const read of ['laneReadings(', 'boardWhenOf(step, waveStart)', 'planWeeks(finish, c.schedule)', 'finish.held', 'laneViewOf(reading, titleOf)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
 })
 
 // ---- the finish ----
@@ -329,22 +329,24 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   assert.equal(isHeld(sequenced), false)
   assert.ok(phased(g).has(sequenced.id), 'it stays in its numbered phase')
   assert.match(boardWhenOf(sequenced), YEAR, 'the board shows its date')
-  assert.notEqual(boardWhenOf(sequenced), BOARD.held, 'and never Held')
+  assert.notEqual(boardWhenOf(sequenced), WHEN.none, 'and never the placeholder')
   assert.match(rowReason(sequenced) ?? '', /^after: /, 'the row names what it comes after')
   const p = planOf(curatedFixture('demo'))
   const held = stepOf(p, 's-goal-service-accounts-trusted-network')
   assert.ok(isHeld(held), 'the premise: it waits on an object the tenant does not have')
-  assert.match(boardWhenOf(held), /^(After |Held$)/, 'the board says what it waits on, or Held')
+  assert.equal(boardWhenOf(held), WHEN.none, 'the board shows no day: the lane label says what it waits on (A1b)')
   assert.ok(undatedRows(p.r.steps, planPhases(p.r.schedule)).some((s) => s.id === held.id), 'under Waiting on something else')
   nothingIsDated(p, held)
   assert.ok((rowReason(held) ?? '').length > 0, 'and says what it waits on')
-  // Over every plan: Held on the board exactly where the step is held.
-  // Over every plan: Held — or what the hold waits on — on the board exactly where the step is held.
+  // Over every plan: the column is a day or the placeholder (A1b: the reason a
+  // step cannot move is its lane label's), and a step the schedule cannot date
+  // reads the placeholder exactly where the schedule says it waits.
   for (const q of plans()) {
     for (const s of q.r.steps.filter(open)) {
       const board = boardWhenOf(s)
-      // A baseline that contradicts itself reads Deferred, the rail's own word for it (planBoard.ts boardWhenOf).
-      assert.equal(board === BOARD.held || (waiting(s) && /^(After |Deferred$)/.test(board)), waiting(s) && !rowWhenWraps(s) && rowWhen(s) !== 'now', `${q.f.name}/${s.id}: the board's Held and the hold disagree`)
+      assert.ok(board === WHEN.none || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
+      if (waiting(s)) assert.equal(board, WHEN.none, `${q.f.name}/${s.id}: a step the schedule cannot date reads a day`)
+      else if (!rowWhenWraps(s) && rowWhen(s) !== '' && rowWhen(s) !== 'now') assert.match(board, YEAR, `${q.f.name}/${s.id}: a dated row reads the placeholder`)
     }
   }
 })
@@ -416,9 +418,8 @@ test('Step 4 correction 4: a step waiting on a held step is held too; waiting on
   assert.deepEqual(b.rings, [], 'and no rollout')
   assert.equal(phased({ ...g }).has(b.id), false, 'and sits in no numbered phase')
   assert.equal(b.blockedReason, BLOCKED_REASON.after(a.plainTitle || a.title), 'its reason names the held step it waits on')
-  // The board names what the hold waits on: the step itself where its title fits the column.
-  assert.equal(boardWhenOf(b), 'After prerequisites')
-  assert.equal(boardWhenOf(b, null, (id) => (id === a.id ? 'Emergency access' : null)), 'After Emergency access')
+  // The board's column is a day or the placeholder (A1b): the step it waits on is the lane label's (planBoard.ts laneTailOf).
+  assert.equal(boardWhenOf(b), WHEN.none)
   // And the mark is the hold's, not a record of it: clear A and B is sequenced again.
   a.blockers.pop()
   a.state = { ...a.state, condition: 'healthy' }

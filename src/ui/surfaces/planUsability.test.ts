@@ -10,13 +10,14 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { dateSpan } from '../../copy/dates.ts'
-import { boardWhenOf } from './planBoard.ts'
+import { BOARD, WHEN, boardWhenOf, laneViewFor } from './planBoard.ts'
+import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { rowWho } from './rowWho.ts'
 import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { holdWaitsOn } from '../../roadmap/stateReason.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { CONTRACT, nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, badgeLabel, nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
 import { cleanupWhen } from './cleanupExport.ts'
 import { planDates, type StepVarContext } from './stepVars.ts'
 import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, plannedPackageStateOf, planningPreview } from './stepPackage.ts'
@@ -112,32 +113,30 @@ test('a phase reads its span compactly: one day, within a month, across months, 
 
 const RUNS = (['small', 'demo', 'demo-week2', 'messy'] as const).map((name) => ({ name, r: runFixture(fixture(name)) }))
 
-test('every row reads a When value: a date, a reason, what it waits on, Complete or Not scheduled — never blank', () => {
+test('every row reads a When value: a day or the placeholder — never blank, never a reason', () => {
+  // The reason a row cannot move is its lane label's and its reason line's (A1b);
+  // the column is the day, or the placeholder.
   let complete = 0
-  let waits = 0
+  let placeholder = 0
   let dated = 0
+  const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
   for (const { name, r } of RUNS) {
-    const byId = new Map(r.steps.map((s) => [s.id, s]))
-    const titleOf = (id: string): string | null => {
-      const s = byId.get(id)
-      return s ? s.plainTitle || s.title : null
-    }
     for (const s of r.steps as Step[]) {
       const wi = r.schedule.waveOf?.[s.id]
-      const when = boardWhenOf(s, wi !== undefined ? (r.schedule.waves[wi]?.start ?? null) : null, titleOf)
-      assert.notEqual(when.trim(), '', `${name}/${s.id}: a blank When`)
+      const when = boardWhenOf(s, wi !== undefined ? (r.schedule.waves[wi]?.start ?? null) : null)
+      assert.ok(when === WHEN.none || DAY.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
       if (s.status === 'done') {
-        assert.equal(when, 'Complete', `${name}/${s.id}`)
+        assert.equal(when, WHEN.none, `${name}/${s.id}`)
         complete += 1
       }
-      if (isHeld(s) && holdWaitsOn(s).length > 0 && !/reaches|held until/.test(when)) {
-        assert.match(when, /^After /, `${name}/${s.id}: a hold that names the step it waits on reads "${when}"`)
-        waits += 1
+      if (isHeld(s) && holdWaitsOn(s).length > 0 && !(s.scheduled && scheduleOf(s).at)) {
+        assert.equal(when, WHEN.none, `${name}/${s.id}: a hold that names the step it waits on reads "${when}"; the lane label names it`)
+        placeholder += 1
       }
-      if (/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)) dated += 1
+      if (DAY.test(when)) dated += 1
     }
   }
-  assert.ok(complete > 0 && waits > 0 && dated > 0, `complete ${complete}, waits ${waits}, dated ${dated}`)
+  assert.ok(complete > 0 && placeholder > 0 && dated > 0, `complete ${complete}, placeholder ${placeholder}, dated ${dated}`)
 })
 
 test('every row reads an Impact value: people, No user impact, Configuration only, or Not established — never blank, never zero for unknown', () => {
@@ -167,14 +166,17 @@ test('every row reads an Impact value: people, No user impact, Configuration onl
 // ------------------------------------------------------------ header
 
 test('the Plan header is four progress tiles and a how-to link, not a generated sentence', () => {
+  // Steps · Completed · Projected finish · Started (A1b, RUN-CONTEXT-A decision 11): no Waiting, Remaining or In place tile, and no Needs attention toggle.
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
   assert.equal(plan.includes('headerLine1('), false, 'the Plan still composes the status sentence')
   assert.match(plan, /<dl className="plan-progress-tiles" aria-label=\{PP\.progress\.label\}>/)
-  for (const key of ['steps', 'inPlace', 'waiting', 'remaining']) assert.match(plan, new RegExp(`key: '${key}', label: PP\\.progress\\.${key}`))
+  for (const key of ['steps', 'completed', 'projectedFinish', 'started']) assert.match(plan, new RegExp(`key: '${key}', label: PP\\.progress\\.${key}`))
+  for (const gone of ['inPlace', 'waiting', 'remaining', 'attention']) assert.equal(plan.includes(`progress.${gone}`), false, `the header still draws the ${gone} tile`)
+  assert.equal(/Needs attention|attention:|showAttention/.test(plan.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the Needs attention toggle is still offered')
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
   const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8')) as { pages: { plan: { howTo: { items: string[] }; progress: Record<string, string> } } }
   assert.equal(content.pages.plan.howTo.items.length, 5)
-  assert.deepEqual([content.pages.plan.progress.steps, content.pages.plan.progress.inPlace, content.pages.plan.progress.waiting, content.pages.plan.progress.remaining], ['Steps', 'In place', 'Waiting', 'Remaining'])
+  assert.deepEqual([content.pages.plan.progress.steps, content.pages.plan.progress.completed, content.pages.plan.progress.projectedFinish, content.pages.plan.progress.started], ['Steps', 'Completed', 'Projected finish', 'Started'])
 })
 
 // ------------------------------------------------------------ the opened step
@@ -188,7 +190,9 @@ function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pil
   assert.ok(found, `${name} carries no ${id}`)
   const step = move ? pilotStepAt(found, move) : found
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, reportOnlyAt: r.schedule.reportOnlyAt[step.id] ?? null }
-  return { f, r, step, ctx, c: stepContract(step, ctx) }
+  // The board's one state reading of the step (A1b), read over the whole plan as the Plan reads it.
+  const lane = laneViewFor(step, r.steps)
+  return { f, r, step, ctx, lane, c: stepContract(step, ctx, undefined, lane) }
 }
 
 test('a blocked policy with authored implementation shows its planning preview with stand-ins and no Copy; resolved, the same work is executable', () => {
@@ -232,10 +236,11 @@ test('a decision or check with nothing to implement by design draws no Implement
 })
 
 test('one blocker, one place: no caption, a concise rail, Prerequisites in Readiness, and the end state as Done when', () => {
-  const { step, c } = opened('demo', 's-goal-device-registration-mfa')
-  assert.equal(statusOf(step).word, 'Blocked')
+  const { step, c, lane } = opened('demo', 's-goal-device-registration-mfa')
+  assert.equal(lane.lane, 'On Hold', 'the premise: the engine holds it')
   assert.equal(nextCaption(c), null, 'the head restates the hold')
-  assert.deepEqual(railOf(c), { metric: 'Held', sub: 'Resolve prerequisites' })
+  // The rail is the lane label over the move (A1b): never a word the row does not say.
+  assert.deepEqual(railOf(c), { metric: lane.label, sub: CONTRACT.rail.resolveSub })
   assert.equal(c.doneWhen.length, 1)
   assert.match(c.doneWhen[0], /^The policy is enforced in /, 'Done when restates what clears the hold')
   // One tile per prerequisite (A1 §16.1): each fix is its own tile, and a fix that names a step links to it.
@@ -245,14 +250,14 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   assert.equal(r.tiles.some((t) => t.key === 'blockers'), false, 'a count tile stands in for the prerequisites')
   // Work the Plan schedules in a phase reads the phase's day on the rail, as the row's When does.
   const prep = opened('demo', 's-prereq-allowed-countries')
-  const scheduled = stepContract(prep.step, { ...prep.ctx, scheduledOn: '2026-08-31T12:00:00.000Z' })
-  assert.notEqual(railOf(scheduled).metric, 'Not scheduled')
+  const scheduled = stepContract(prep.step, { ...prep.ctx, scheduledOn: '2026-08-31T12:00:00.000Z' }, undefined, prep.lane)
+  assert.match(railOf(scheduled).metric, /\d{4}$/, 'scheduled preparation work reads no day on its rail')
 })
 
 test('Decide How Devices Are Managed: Needs decision until answered, one structure per part, US spelling, and saved answers still count', () => {
-  const { step, c } = opened('demo', 's-prereq-device-plan')
-  assert.equal(statusOf(step).word, 'Needs decision', 'an unanswered decision reads as ready')
-  assert.deepEqual(railOf(c), { metric: 'Needs decision', sub: 'Make the decision' })
+  const { c, lane } = opened('demo', 's-prereq-device-plan')
+  assert.equal(lane.label, `${BOARD.lanes.ready} · Needs decision`, 'an unanswered decision is not Ready · Needs decision')
+  assert.deepEqual(railOf(c), { metric: lane.label, sub: CONTRACT.rail.decideSub })
   assert.equal(c.fix.length, 0, 'the decision is listed as something to fix')
   const d = (stepById['s-prereq-device-plan'] as unknown as { decision: { text: string; options: string[]; question: { text: string; options: string[] }; strict: { heading: string; text: string; help: string } } }).decision
   assert.equal(d.text, 'How should phones be managed?')
@@ -326,15 +331,20 @@ test('resilience hardening holds until fixed or deferred; a deferral releases th
   assert.match(CONTENT_STEP, /onConfirm\(\{ \[HARDENING_DEFERRAL_ID\]: \{ basis: contract\.hardening!\.basis \} \}\)/)
 })
 
-test('the opened emergency step agrees with its row: no Ready now with fixes outstanding, set-wide hardening under every account, and an undated Cleanup row says Not scheduled', () => {
+test('the opened emergency step agrees with its row: the bar and the badge are the lane’s, set-wide hardening under every account, and an undated Cleanup row reads the placeholder', () => {
   const f = fixture('demo')
   const r = runFixture(f)
   const bg = r.steps.find((s) => s.id === EMERGENCY)!
-  const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
+  const lane = laneViewFor(bg, r.steps)
+  const c = stepContract(bg, { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }, undefined, lane)
   assert.ok(c.fix.length > 0, 'the premise: a fix is outstanding')
-  const bar = readinessOf(bg, c).bar.main
-  assert.notEqual(bar, CONTRACT.readiness.bar.deploy, 'the Readiness bar says Ready now beside Fix before continuing')
-  assert.equal(bar, statusOf(bg).word, 'the bar and the badge disagree')
+  // The bar is keyed by the lane (A1b, RUN-CONTEXT-A decision 1): Ready · Create
+  // reads Ready now, and the fixes are the work Readiness lists and What to do
+  // names; the badge says the same label the row says.
+  const bar = readinessOf(bg, c).bar
+  assert.equal(lane.substatus, 'Create', 'the premise: the engine reads the create as the next action')
+  assert.equal(bar.main, CONTRACT.readiness.bar.create, 'the bar is not the lane’s word')
+  assert.equal(badgeLabel(c), lane.label, 'the badge and the row disagree')
   // A recommendation about the set of accounts is not filed under the first account's name.
   const groups = c.hardening!.groups
   const every = groups.find((g) => g.title === CONTRACT.hardening.everyAccount)
@@ -342,7 +352,7 @@ test('the opened emergency step agrees with its row: no Ready now with fixes out
   for (const g of groups.filter((x) => x !== every)) assert.equal(g.items.some((i) => /offline/.test(i)), false, `${g.title} carries a set-wide recommendation`)
   // Cleanup while the plan cannot finish: a word, not a blank.
   const row = { ...runFixture(fixture('small'), { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: runFixture(fixture('small')).steps.find((s) => s.id === EMERGENCY)!.emergency!.basis } }).schedule.cleanup!.rows[0], done: null }
-  assert.equal(cleanupWhen(row, true), 'Not scheduled')
+  assert.equal(cleanupWhen(row, true), WHEN.none)
   assert.notEqual(cleanupWhen(row, false).trim(), '')
 })
 

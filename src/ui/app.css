@@ -1937,21 +1937,33 @@ footer.app a {
   border: 1px solid var(--line);
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
 }
-/* The row's lane under its state word (S3): `Ready · Observing`, `Up Next · After
-   Emergency Access Accounts`, `On Hold · Baseline mapping`. Quiet, like the
-   reason line: the state word keeps the weight, the lane says where the row sits. */
+/* The row's state is its lane label (A1b decision 1): `Ready · Observing`, `Up
+   Next · After Emergency Access Accounts`, `On Hold · Baseline conflict`, in body
+   ink at the row's reading size. Under it, quiet, the one tenant fact the row can
+   add — the `Report-only` / `Enforced` chip (decision 2) — or nothing. */
 .plan-row-status {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 .plan-row .lane {
   display: block;
-  color: var(--quiet-text);
-  font-size: var(--t-micro);
+  color: var(--primary-text);
+  font-size: var(--t-1);
   line-height: 1.25;
+}
+.plan-row .status {
+  font-size: var(--t-micro);
+}
+/* The opened step's head: the lane badge, and beside it the tenant fact's chip where there is one. */
+.step-head-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .plan-row-title {
   min-width: 0;
@@ -1974,11 +1986,6 @@ footer.app a {
 }
 .plan-row .when {
   white-space: nowrap;
-}
-/* A readiness-held step reads its reason here, not a date (prompt 50.1 item 4):
-   a sentence rather than a date, so it wraps within the timing column. */
-.plan-row .when.when-reason {
-  white-space: normal;
 }
 /* ---- the approved expanded step (task 034) ----
    docs/design/approved/anatomy/plan-step-v1.html: the row opens into ONE frame attached

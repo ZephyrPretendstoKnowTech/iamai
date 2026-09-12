@@ -14,30 +14,45 @@
 //
 //   * `lane`, `laneLabel`, `hold` are the engine's lane, the row's label for
 //     it and the primary blocker's label (planLanes.ts).
-//   * `attention`, `waiting` are the Plan's one presentation state (planState.ts).
 //   * `workType` is a projection of the content file's own `kind`, plus the
 //     small explicit id list documented on WORK_TYPE_IDS below.
+//
+// The lane is the ONE producer of a row's state (A1b, RUN-CONTEXT-A decision
+// 1): the row's label, the opened step's badge, its readiness bar, its rail and
+// the header tiles all read the `LaneView` built here (`laneViewOf`), and no
+// surface composes a state word of its own.
 //
 // Nothing here reads a title to decide anything. A grouping built out of
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { Step } from '../../roadmap/types.ts'
-import type { Lane } from '../../actionability/lanes.ts'
-import { isHeld } from '../../roadmap/holds.ts'
-import { holdWaitsOn } from '../../roadmap/stateReason.ts'
+import type { Lane, Substatus } from '../../actionability/lanes.ts'
+import type { StatusTone } from '../components/index.ts'
 import { pages } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
 import type { PlanStateFacts } from './planState.ts'
+import { laneReadings } from './planLanes.ts'
 import type { LaneReading } from './planLanes.ts'
-import { CONTRACT } from './stepContract.ts'
-import type { PrerequisiteBlocker } from './stepContract.ts'
+import type { LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 
-/** The When column's words where a row has no date or reason of its own (owner, 2026-09-11): the column is never blank. */
-export const WHEN = (pages.plan as unknown as { when: { complete: string; notScheduled: string; after: string; afterPrerequisites: string } }).when
+/** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
+export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
+/** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
+const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'readyToEnforce', string> })
+/** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word). */
+export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
+  Create: LANE_WORDS.substatus.create,
+  Correct: LANE_WORDS.substatus.correct,
+  'Needs decision': LANE_WORDS.substatus.needsDecision,
+  Observing: LANE_WORDS.substatus.observing,
+  'Ready to enforce': LANE_WORDS.substatus.readyToEnforce,
+}
+/** The tone a lane draws in: Ready and Completed are fine, Up Next waits, On Hold is stopped by something abnormal, Deferred is out of the rollout. */
+export const LANE_TONE: Readonly<Record<Lane, StatusTone>> = { Ready: 'ok', 'Up Next': 'wait', 'On Hold': 'stop', Completed: 'ok', Deferred: 'idle' }
 
 /**
  * The three facts the Status projection reads, and no more. Named as a type so
@@ -56,32 +71,21 @@ export const TAB_OF: Readonly<Record<Lane, LaneTab | null>> = { Ready: 'ready', 
 /**
  * The board's own control and group vocabulary.
  *
- * These are interface control words rather than product prose, and they are the
- * words this task's approved reference names
- * (docs/design/approved/reference/iamai-plan-organization-final.html). They live
- * here rather than in docs/design/content.json because the task that specified
- * them holds content.json out of scope; a later content pass can move them
- * without touching a single component, because every one of them is read from
+ * The lane words are content (pages.plan.lanes, A1b decision 11): they are the
+ * state every surface says, so they live with every other word. The rest are
+ * interface control words this task's approved reference names
+ * (docs/design/approved/reference/iamai-plan-organization-final.html), read from
  * this one record.
  */
 export const BOARD = {
   lanesLabel: 'Lanes',
-  lanes: { ready: 'Ready', upNext: 'Up Next', onHold: 'On Hold', completed: 'Completed', deferred: 'Deferred' },
+  lanes: { ready: LANE_WORDS.lanes.ready, upNext: LANE_WORDS.lanes.upNext, onHold: LANE_WORDS.lanes.onHold, completed: LANE_WORDS.lanes.completed, deferred: LANE_WORDS.lanes.deferred, doesntApply: LANE_WORDS.lanes.doesntApply },
   search: 'Search steps',
   searchPlaceholder: 'Search steps...',
-  needsAttention: 'Needs attention',
   showCompleted: 'Show completed',
   showDeferred: 'Show deferred',
   workType: 'Work type',
   allWork: 'All work',
-  /**
-   * What the board's timing column says for a row production already holds back
-   * from advancing. It replaces the wave date such a row would otherwise borrow:
-   * a date on a row that cannot move reads as a commitment the plan has not
-   * made. The date itself is untouched and is still what the opened step, the
-   * printed plan and every export read.
-   */
-  held: 'Held',
   columns: { state: 'State', step: 'Step', impact: 'Impact', when: 'When' },
   collapseGroup: 'Collapse group',
   expandGroup: 'Expand group',
@@ -168,31 +172,72 @@ export function workTypeOf(stepId: string, contentKind: string | null): WorkType
 }
 
 /**
- * The row's label for its lane: `Lane · substatus` on Ready, `Lane · After
- * <step>` on Up Next, `Lane · <blocker>` on On Hold, the lane alone otherwise.
- * `titleOf` names a step the reason points at by its content title.
+ * The tail of a row's lane label: the substatus on Ready, `After <step>` (or the
+ * blocker's label, or `After prerequisites`) on Up Next, the primary blocker on
+ * On Hold, nothing on Completed and Deferred. `titleOf` names a step the reason
+ * points at by its content title.
  */
-export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
+export function laneTailOf(r: LaneReading, titleOf: (id: string) => string | null): string | null {
   switch (r.lane) {
     case 'Ready':
-      return r.substatus ? `${BOARD.lanes.ready} · ${r.substatus}` : BOARD.lanes.ready
+      return r.substatus ? SUBSTATUS_WORD[r.substatus] : null
     case 'Up Next': {
       const after = r.reason?.kind === 'step' ? titleOf(r.reason.id) : null
-      const tail = after !== null ? fillText(WHEN.after, { step: after }) : r.reason ? BOARD.blockers[r.reason.kind] : WHEN.afterPrerequisites
-      return `${BOARD.lanes.upNext} · ${tail}`
+      return after !== null ? fillText(WHEN.after, { step: after }) : r.reason ? BOARD.blockers[r.reason.kind] : WHEN.afterPrerequisites
     }
     case 'On Hold':
-      return `${BOARD.lanes.onHold} · ${holdLabelOf(r, titleOf)}`
+      return r.reason === null ? null : holdLabelOf(r, titleOf)
     case 'Completed':
-      return BOARD.lanes.completed
     case 'Deferred':
-      return BOARD.lanes.deferred
+      return null
   }
 }
 
-/** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. */
+/** The lane's own word (BOARD.lanes). */
+export function laneWordOf(lane: Lane): string {
+  return BOARD.lanes[LANE_KEY[lane]]
+}
+const LANE_KEY: Readonly<Record<Lane, keyof typeof BOARD.lanes>> = { Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: 'completed', Deferred: 'deferred' }
+
+/**
+ * The row's label for its lane: `Lane · substatus` on Ready, `Lane · After
+ * <step>` on Up Next, `Lane · <blocker>` on On Hold, the lane alone otherwise.
+ */
+export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
+  const tail = laneTailOf(r, titleOf)
+  return tail === null ? laneWordOf(r.lane) : `${laneWordOf(r.lane)} · ${tail}`
+}
+
+/**
+ * The one state reading every surface of a step consumes (A1b): the lane, its
+ * label, its tail and its tone, from the engine's reading and nothing else. The
+ * row draws the label, the opened step's badge repeats it, the readiness bar
+ * and the rail key off it (stepContract.ts). A step the person said does not
+ * apply here has no engine reading and reads `Doesn't apply` (decision 3).
+ */
+export function laneViewOf(r: LaneReading, titleOf: (id: string) => string | null): LaneView {
+  return { lane: r.lane, substatus: r.substatus, label: laneLabelOf(r, titleOf), tail: laneTailOf(r, titleOf), tone: LANE_TONE[r.lane] }
+}
+
+/** The view of a step the person said does not apply here: the Deferred lane, said as Doesn't apply. */
+export function doesntApplyView(): LaneView {
+  return { lane: 'Deferred', substatus: null, label: BOARD.lanes.doesntApply, tail: null, tone: LANE_TONE.Deferred }
+}
+
+/**
+ * The lane view of one step where no board handed one down (the printed step,
+ * a step opened on its own in a test): the engine read over the steps given,
+ * which is the whole plan where the caller has it and the step alone otherwise.
+ */
+export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf: (id: string) => string | null = (id) => steps.find((s) => s.id === id)?.title ?? null): LaneView {
+  if (step.doesntApply != null) return doesntApplyView()
+  const reading = laneReadings(steps.some((s) => s.id === step.id) ? steps : [...steps, step]).get(step.id)
+  return reading ? laneViewOf(reading, titleOf) : doesntApplyView()
+}
+
+/** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. The lane alone where the engine named no reason. */
 export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
-  if (r.reason === null) return BOARD.held
+  if (r.reason === null) return BOARD.lanes.onHold
   const kind = BOARD.blockers[r.reason.kind]
   if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
     const title = titleOf(r.reason.id)
@@ -203,13 +248,14 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
 
 /** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
 export function holdGroupOf(r: LaneReading): string {
-  return r.reason === null ? BOARD.held : BOARD.blockers[r.reason.kind]
+  return r.reason === null ? BOARD.lanes.onHold : BOARD.blockers[r.reason.kind]
 }
 
 /**
  * The engine's unresolved prerequisites of the row's next action, labelled the
  * way the board labels them, for the opened step's Readiness tiles (A1 §16.1:
- * the one prerequisite surface). A step prerequisite carries its content title.
+ * the one prerequisite surface). A step prerequisite carries its content title
+ * and its own lane (decision 12: a prerequisite tile reads `Prerequisite · <lane>`).
  * Nothing in the row: null where the engine read nothing.
  */
 export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: (id: string) => string | null): PrerequisiteBlocker[] {
@@ -218,40 +264,38 @@ export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: 
 }
 
 /**
+ * A prerequisite tile's label, by the prerequisite step's own lane (decision 12):
+ * `Prerequisite · Ready`, `Prerequisite · Up Next`, `Prerequisite · On Hold`,
+ * `Prerequisite · Deferred`; null where the board has no reading of the step,
+ * and the tile keeps its own label.
+ */
+export function prerequisiteLabelFor(readings: ReadonlyMap<string, LaneReading>): (id: string) => string | null {
+  return (id) => {
+    const r = readings.get(id)
+    return r ? `${PREREQUISITE} · ${laneWordOf(r.lane)}` : null
+  }
+}
+const PREREQUISITE = 'Prerequisite'
+
+/**
  * What the board's timing column shows, which is not always what the row's
  * timing value says. The value itself is `rowWhen`'s and is not touched: this
  * decides what the BOARD does with it, and nothing outside the board asks.
  *
- * The column is never blank (owner, 2026-09-11), and a date is a promise:
- *
- *   * a finished step reads Complete;
- *   * the generic `now` every prerequisite and check carries reads the day its
- *     phase begins — the day the work is scheduled — or Not scheduled where the
- *     row's group has none;
- *   * a row production is holding back never borrows its wave's date: it names
- *     the step it waits on (After …, or After prerequisites), else reads Held. A
- *     row whose column already carries a REASON — a readiness threshold, "held
- *     until reviewed" — keeps it: that is more specific;
- *   * anything else with no value of its own names what it waits on, or reads
- *     Not scheduled.
+ * The column is a date, or the placeholder (A1b, RUN-CONTEXT-A decision 1): the
+ * reason a row cannot move lives in its lane label and its reason line, never
+ * here. So a row's own dated value stands; a value that is words — the generic
+ * `now`, a readiness threshold, "held until reviewed", "ready now" — reads the
+ * day the plan schedules the step where it schedules one, and the placeholder
+ * otherwise. A finished or deferred step reads the placeholder: a step the
+ * operator deferred keeps the day the scheduler gave it before the deferral, and
+ * that day is not a day anything happens. A row production is holding back has
+ * no scheduled day, so it never borrows one.
  */
-export function boardWhen(when: string, o: { genericNow: boolean; held: boolean; carriesReason: boolean; complete?: boolean; groupDay?: string | null; waitsOn?: string | null }): string {
-  if (o.complete) return WHEN.complete
-  if (o.genericNow) return o.groupDay ?? WHEN.notScheduled
-  if (o.held && !o.carriesReason) return o.waitsOn ?? BOARD.held
-  if (when !== '') return when
-  return o.waitsOn ?? WHEN.notScheduled
-}
-
-/** Titles longer than this make the column a paragraph; the row's reason line names the step instead. */
-const AFTER_TITLE_CHARS = 32
-
-/** "After {step}" for one step waited on whose title fits the column, "After prerequisites" otherwise; null when nothing is waited on. */
-function waitsOnLabel(ids: readonly string[], titleOf: (id: string) => string | null): string | null {
-  const unique = [...new Set(ids)]
-  if (unique.length === 0) return null
-  const title = unique.length === 1 ? titleOf(unique[0]) : null
-  return title !== null && title.length <= AFTER_TITLE_CHARS ? fillText(WHEN.after, { step: title }) : WHEN.afterPrerequisites
+export function boardWhen(when: string, o: { dated: boolean; settled?: boolean; day?: string | null }): string {
+  if (o.settled) return WHEN.none
+  if (o.dated) return when
+  return o.day ?? WHEN.none
 }
 
 /**
@@ -266,51 +310,34 @@ export function waveStartOf(step: Step): string | null {
   return s.basis?.waveStarts.find((w) => w.wave === s.wave)?.start ?? null
 }
 
+/** The row's timing values that are words rather than a day (rowWhen.ts): the generic now, ready now, and the `ready {date}` prefix. */
+const WHEN_WORDS = pages.plan as { now: string; readyNow: string; readyOn: string }
+const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
+
 /**
- * The board's timing column for one step: the row's own value (rowWhen.ts), with
- * the step a hold waits on exactly where roadmap/holds.ts says the step is held
- * (stateReason.ts holdWaitsOn). A step sequenced after another is not held and
- * keeps its date; the board infers nothing about holds from a step's status word
- * or the group it sits in. `waveStart` is the first day of the step's own phase.
+ * The board's timing column for one step: the row's own value (rowWhen.ts)
+ * where it is a day, else the day the plan's one scheduling result gives the
+ * step (roadmap/stepSchedule.ts) — for preparation work the first day of its
+ * phase, `waveStart` — else the placeholder. A step sequenced after another
+ * keeps its date; a held step has no scheduled day and reads the placeholder.
+ * The board infers nothing about holds from a step's lane or the group it sits in.
  */
-export function boardWhenOf(step: Step, waveStart: string | null = null, titleOf: (id: string) => string | null = () => null): string {
-  // A baseline that defines the policy two ways has no rollout to date and nothing
-  // in the tenant to wait on: the column says Deferred, which is what the opened
-  // step's rail says (docs/design/approved/anatomy/plan-step-v1.html V5).
-  if (step.state.condition === 'baseline-conflict' && step.status !== 'done' && step.status !== 'skipped') return CONTRACT.rail.deferred
+export function boardWhenOf(step: Step, waveStart: string | null = null): string {
   const when = rowWhen(step, waveStart)
-  // Held in the column's sense is waiting in the schedule's (roadmap/stepSchedule.ts):
-  // a held create the plan still dates reads its day, not Held.
+  const words = when === '' || rowWhenWraps(step) || when === WHEN_WORDS.now || when === WHEN_WORDS.readyNow || when.startsWith(READY_ON_PREFIX)
   const scheduled = step.scheduled ? scheduleOf(step) : null
-  const held = scheduled ? scheduled.class === 'waiting' : isHeld(step)
-  const waits = held ? holdWaitsOn(step) : step.status === 'blocked' ? step.blockers.flatMap((b) => (b.kind === 'step' ? [b.stepId] : [])) : []
   // The generic `now` reads the step's own scheduled day, which is the phase's first day for preparation work.
-  const day = scheduled?.at ?? waveStart
+  const day = scheduled?.at ?? (when === WHEN_WORDS.now ? waveStart : null)
   return boardWhen(when, {
-    complete: step.status === 'done',
-    genericNow: when === (pages.plan as { now: string }).now,
-    held,
-    carriesReason: rowWhenWraps(step),
-    groupDay: day ? dayLabel(day) : null,
-    waitsOn: waitsOnLabel(waits, titleOf),
+    settled: step.status === 'done' || step.status === 'skipped',
+    dated: !words,
+    day: day ? dayLabel(day) : null,
   })
 }
 
-/** A When cell that is words rather than a date wraps inside its column rather than widening it. */
-export function boardWhenWraps(step: Step, when: string): boolean {
-  return rowWhenWraps(step) || when === WHEN.afterPrerequisites || when.startsWith(WHEN.after.split('{')[0])
-}
-
-/**
- * The reason under a row (rowWhen.ts rowReason), unless the When cell already
- * names the one step it comes after: "after: Create X" under "After Create X"
- * said the same thing twice on one row.
- */
-export function boardReasonOf(step: Step, when: string): string | null {
-  const reason = rowReason(step)
-  const lead = WHEN.after.split('{')[0]
-  if (reason !== null && when !== WHEN.afterPrerequisites && when.startsWith(lead) && reason === BLOCKED_REASON.after(when.slice(lead.length))) return null
-  return reason
+/** The reason under a row (rowWhen.ts rowReason). The When cell never names a step, so nothing here is said twice. */
+export function boardReasonOf(step: Step): string | null {
+  return rowReason(step)
 }
 
 /**
@@ -330,13 +357,6 @@ export type BoardItem = {
   laneLabel: string
   /** On Hold: the primary blocker's group label (holdGroupOf). Null elsewhere. */
   hold: string | null
-  /**
-   * In the Needs attention focus (planState.ts `attention`): the same reading that
-   * gives the row its word.
-   */
-  attention: boolean
-  /** Waiting in the schedule's one sense (planState.ts `waiting`): the Waiting tile counts exactly these. */
-  waiting: boolean
   workType: WorkType
   /**
    * The Plan's next marker: the one row the board recommends advancing, and the
@@ -362,17 +382,16 @@ export type BoardGroup = {
 
 export type Focus = {
   search: string
-  attention: boolean
   /** Work type as a filter, never a lane: null shows every kind. */
   workType: WorkType | null
   showCompleted: boolean
   showDeferred: boolean
 }
 
-export const NO_FOCUS: Focus = { search: '', attention: false, workType: null, showCompleted: false, showDeferred: false }
+export const NO_FOCUS: Focus = { search: '', workType: null, showCompleted: false, showDeferred: false }
 
 /** True when any focus control is on, which is what an empty board has to explain. */
-export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.attention || f.workType !== null
+export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.workType !== null
 
 /**
  * The rows the active tab and a focus leave.
@@ -388,22 +407,20 @@ export function applyFocus(items: readonly BoardItem[], tab: LaneTab, f: Focus):
   return items.filter((i) => {
     const own = TAB_OF[i.lane]
     if (own === null ? !(i.lane === 'Completed' ? f.showCompleted : f.showDeferred) : own !== tab) return false
-    if (f.attention && !i.attention) return false
     if (f.workType !== null && i.workType !== f.workType) return false
     if (q !== '' && !i.title.toLowerCase().includes(q)) return false
     return true
   })
 }
 
-/** How many rows each control would show, over the whole board. Never a constant. */
-export function focusCounts(items: readonly BoardItem[]): { attention: number; complete: number; deferred: number; lanes: Record<LaneTab, number> } {
+/** How many rows each control would show, over the whole board: lane counts only (A1b). Never a constant. */
+export function focusCounts(items: readonly BoardItem[]): { complete: number; deferred: number; lanes: Record<LaneTab, number> } {
   const lanes: Record<LaneTab, number> = { ready: 0, upNext: 0, onHold: 0 }
   for (const i of items) {
     const tab = TAB_OF[i.lane]
     if (tab !== null) lanes[tab] += 1
   }
   return {
-    attention: items.filter((i) => i.attention).length,
     complete: items.filter((i) => i.lane === 'Completed').length,
     deferred: items.filter((i) => i.lane === 'Deferred').length,
     lanes,
@@ -423,7 +440,7 @@ export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup
   if (tab === 'onHold') {
     const at = new Map<string, BoardGroup>()
     for (const i of own) {
-      const label = i.hold ?? BOARD.held
+      const label = i.hold ?? BOARD.lanes.onHold
       let g = at.get(label)
       if (!g) {
         g = { key: `hold-${at.size}`, label, secondary: false, closed: false, items: [] }
@@ -442,15 +459,8 @@ export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup
   return out
 }
 
-/**
- * The group's one supporting line: how many rows, and how many of them the
- * operator is needed on. Both are counted off the rows in the group, so the
- * summary cannot disagree with what is under it.
- */
+/** The group's one supporting line: how many rows, counted off the rows in the group, so the summary cannot disagree with what is under it. */
 export function groupSummary(g: BoardGroup): string {
   const n = g.items.length
-  const steps = `${n} step${n === 1 ? '' : 's'}`
-  const attention = g.items.filter((i) => i.attention).length
-  if (attention === 0) return steps
-  return `${steps} · ${attention} need${attention === 1 ? 's' : ''} attention`
+  return `${n} step${n === 1 ? '' : 's'}`
 }
