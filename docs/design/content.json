@@ -196,6 +196,7 @@
         "reportOnlyFound": "policy in report-only since {date}",
         "enforced": "policy enforced on {date}",
         "enforcedByOther": "{name} already enforces this",
+        "reviewWithdrawn": "{name} no longer means what the plan asked for; it is not counted as delivered until a person has reviewed it",
         "windowCloses": "the window closes {date}",
         "windowClosed": "the window closed {date}",
         "readyNow": "ready now: 0 failures in {n} days",
@@ -1919,19 +1920,19 @@
         "waits": "Every step that can deny access waits on this one."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "emergencyAccounts": [
-          "Breakglass (breakglass@getiamai.onmicrosoft.com)"
+          "Breakglass (breakglass@contoso.onmicrosoft.com)"
         ],
         "policiesNotExcluding": [
           "Core - Allow - MFA for Guests"
         ],
-        "operator": "Lachlan Robinette",
+        "operator": "Alex Morgan",
         "failing": 3,
         "total": 20,
         "exampleName": "Emergency Access 2",
-        "onmicrosoftDomain": "getiamai.onmicrosoft.com",
-        "tenantId": "8c1f…",
+        "onmicrosoftDomain": "contoso.onmicrosoft.com",
+        "tenantId": "1a2b…",
         "failingChecks": [
           [
             "second-account",
@@ -1951,13 +1952,13 @@
             {
               "name": "Breakglass",
               "device": "SM-S918U",
-              "otherAccount": "Lachlan Robinette"
+              "otherAccount": "Alex Morgan"
             }
           ]
         ],
         "from": "Aug 1",
         "emergencyCandidates": [
-          "Breakglass · breakglass@getiamai.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
+          "Breakglass · breakglass@contoso.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
         ]
       },
       "partner": "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes."
@@ -2035,7 +2036,7 @@
         "waits": "Every policy step waits on this one."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "exclusionsGroup": "Breakglass Exclusion",
         "memberCount": 1,
         "excludedFrom": 9,
@@ -2205,7 +2206,7 @@
         "waits": "Block Sign-ins From Countries Not Allowed waits on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "countries": "the United States",
         "countriesWithCounts": [
           "United States · 3 people, 41 sign-ins"
@@ -2292,7 +2293,7 @@
         "waits": "Protect Sign-in Method Registration waits on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "locationsWithMatches": [],
         "topRanges": "The most common sign-in addresses in the records are 67.166.x.x (28 sign-ins) and 174.52.x.x (9).",
         "proposedName": "Core - Trusted - Head office",
@@ -2499,7 +2500,7 @@
         "waits": "Every policy step waits on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "from": "Aug 1"
       },
       "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on."
@@ -2614,7 +2615,7 @@
         "waits": "Register Your Own Passkey, the registration campaign and every phishing-resistant policy wait on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "current": "enabled for all users, attestation not enforced, no key restrictions",
         "wanted": "enabled for all users, attestation enforced, no key restrictions",
         "attestation": "Yes",
@@ -2678,7 +2679,7 @@
         "waits": "Require Phishing-Resistant MFA for Admins, Challenge High-Risk Sign-ins, Require MFA at Every Role Activation and the partner tier of Require MFA for Guests wait on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "strengths": [],
         "strengthName": "Modern MFA + TAP",
         "from": "Aug 1"
@@ -2726,7 +2727,7 @@
         "waits": "Require Phishing-Resistant MFA for Admins waits on this."
       },
       "example": {
-        "operator": "Lachlan Robinette",
+        "operator": "Alex Morgan",
         "method": "Phishing-resistant",
         "evidence": "MFA completed 21 hours ago",
         "from": "Aug 1"
@@ -2809,7 +2810,7 @@
         "waits": "Require a Managed Device Outside the Office and Require a Fresh Sign-in for Intune Enrollment wait on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "n": 2,
         "from": "Aug 1",
         "phoneUsers": [
@@ -2864,7 +2865,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "travelAnswer": "Regularly: add: New Zealand"
       }
     },
@@ -2909,7 +2910,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "partnerAnswer": "Exclude service providers (they use their own tenant's MFA)"
       }
     },
@@ -2957,7 +2958,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "mailDevicesAnswer": "Yes: add: MFP Reception; the service-accounts group carries them",
         "mailDevices": [
           "MFP Reception"
@@ -3061,10 +3062,10 @@
         "waits": "Require MFA for Everyone, Require MFA at the Admin Portals and Require MFA to Register a Device wait on this."
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 4,
         "admins": [
-          "Lachlan Robinette",
+          "Alex Morgan",
           "Kaladin Stormblessed"
         ],
         "guests": 1,
@@ -3075,11 +3076,11 @@
         "noMethod": [],
         "needsSetup": [],
         "needsProof": [
-          "Lachlan Robinette (guest) · passkey not proven on Windows"
+          "Alex Morgan (guest) · passkey not proven on Windows"
         ],
         "readinessUnknown": [],
         "adminsList": [
-          "Lachlan Robinette · passkey registered",
+          "Alex Morgan · passkey registered",
           "Breakglass · see the emergency-access step"
         ],
         "enrollBy": "Fri Sep 4",
@@ -3091,9 +3092,9 @@
         ],
         "deviceSentence": "On your phone, use Outlook and Teams for work; nothing to enroll; on your computer, domain-joined computers are already covered.",
         "specialCare": [
-          "Lachlan Robinette · admin, phishing-resistant, proven",
+          "Alex Morgan · admin, phishing-resistant, proven",
           "Kaladin Stormblessed · admin, phishing-resistant, proven",
-          "Lachlan Robinette (guest) · registered, never prompted"
+          "Alex Morgan (guest) · registered, never prompted"
         ],
         "adminCount": 2,
         "pushOnly": [],
@@ -3167,13 +3168,13 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "admins": 1,
         "guests": 1,
         "noMethod": [],
         "unproven": [
-          "Lachlan Robinette (guest)"
+          "Alex Morgan (guest)"
         ],
         "operatorSignIns": 164,
         "policyName": "Core - Require - MFA for all users",
@@ -3257,7 +3258,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "admins": 2,
         "adminsWithout": [],
         "coreAdminRoles": [
@@ -3352,14 +3353,14 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "admins": [
-          "Lachlan Robinette",
+          "Alex Morgan",
           "Kaladin Stormblessed"
         ],
         "portalUsers": [
-          "Lachlan Robinette"
+          "Alex Morgan"
         ],
         "policyName": "Core - Block - Admin portals for non-admins",
         "signature": "IT",
@@ -3461,10 +3462,10 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "guests": 1,
         "guestsWithState": [
-          "Lachlan Robinette (guest) · registered, never prompted"
+          "Alex Morgan (guest) · registered, never prompted"
         ],
         "n": 0,
         "partners": 0,
@@ -3564,7 +3565,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "noMethodRemote": [],
@@ -3658,7 +3659,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "legacyUsers": [],
@@ -3730,7 +3731,7 @@
         }
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "deviceCodeUsers": [],
@@ -3799,7 +3800,7 @@
         }
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "transferUsers": [],
@@ -3883,7 +3884,7 @@
         }
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "countries": "the United States",
         "n": 0,
@@ -3970,7 +3971,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "admins": 1,
         "current": "weekly",
         "wanted": "4 hours",
@@ -4088,11 +4089,11 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 2,
         "unmanagedUsers": [
-          "Lachlan Robinette",
+          "Alex Morgan",
           "Kaladin Stormblessed"
         ],
         "policyNameA": "Core - Session - App-enforced restrictions",
@@ -4190,17 +4191,17 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "readiness": "0%",
         "n": 2,
         "unmanagedUsers": [
-          "Lachlan Robinette",
+          "Alex Morgan",
           "Kaladin Stormblessed"
         ],
-        "name": "Lachlan Robinette",
+        "name": "Alex Morgan",
         "serverUsers": [
-          "Lachlan Robinette"
+          "Alex Morgan"
         ],
         "serviceAccountsGroup": "Core - Exception - Service accounts",
         "policyName": "Core - Require - Compliant device for Office 365",
@@ -4273,7 +4274,7 @@
         }
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "apps": "",
@@ -4349,11 +4350,11 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 1,
         "phoneUsers": [
-          "Lachlan Robinette"
+          "Alex Morgan"
         ],
         "apps": "",
         "policyName": "Core - Require - App protection on mobile devices",
@@ -4424,11 +4425,11 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 1,
         "azureUsers": [
-          "Lachlan Robinette"
+          "Alex Morgan"
         ],
         "serviceAccountsGroup": "Core - Exception - Service accounts",
         "policyName": "Core - Require - Azure management",
@@ -4495,11 +4496,11 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 1,
         "registrars": [
-          "Lachlan Robinette"
+          "Alex Morgan"
         ],
         "policyName": "Core - Require - MFA for device registration",
         "existingPolicies": [],
@@ -4569,11 +4570,11 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 2,
         "unboundUsers": [
-          "Lachlan Robinette",
+          "Alex Morgan",
           "Kaladin Stormblessed"
         ],
         "serviceAccountsGroup": "Core - Exception - Service accounts",
@@ -4718,11 +4719,11 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 2,
         "browserUsers": [
-          "Lachlan Robinette",
+          "Alex Morgan",
           "Kaladin Stormblessed"
         ],
         "sharedDevices": [],
@@ -4880,7 +4881,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "enrollers": [],
@@ -4963,7 +4964,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "riskyUsers": [],
@@ -5045,7 +5046,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "atRiskUsers": [],
@@ -5113,7 +5114,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "riskyUsers": [],
@@ -5184,7 +5185,7 @@
         "waits": null
       },
       "example": {
-        "tenant": "GetIAMAI",
+        "tenant": "Contoso Pty Ltd",
         "active": 3,
         "n": 0,
         "atRiskUsers": [],
@@ -5255,7 +5256,7 @@
         "n": 2,
         "from": "Aug 1",
         "adminsWithWorkload": [
-          "Lachlan Robinette · Outlook, Microsoft Teams",
+          "Alex Morgan · Outlook, Microsoft Teams",
           "Kaladin Stormblessed · Microsoft Teams"
         ]
       }

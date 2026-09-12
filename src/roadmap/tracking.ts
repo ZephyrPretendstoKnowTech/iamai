@@ -981,6 +981,21 @@ export function trackExecution(
     // member keeps the policy it owns, the operation is not offered against
     // another, and a person decides (`correctionOf`, types.ts CorrectionSafety).
     if (memberTracking.some((m) => m.correction?.safe === false)) raiseCondition(step, 'review-required')
+    // A policy a person has to look at is not one the plan may call delivered.
+    // `satisfied` is the claim that the tenant holds what the baseline asked for,
+    // and the member just reported that what it holds now means something the
+    // plan did not ask for; so the claim is withdrawn until the review clears,
+    // and nothing below puts it back while the review stands. The lifecycle stays
+    // where the policy is (enforced stays enforced: it is a condition, never a
+    // stage), which is what lets the row say "Enforced · Review required" rather
+    // than "In place" over a policy nobody has vouched for (S7).
+    const needsReview = memberTracking.some((m) => m.reviewRequired || m.correction?.safe === false)
+    if (needsReview && step.state.satisfied) {
+      const from = step.status
+      const name = memberTracking.find((m) => m.reviewRequired || m.correction?.safe === false)?.policyName ?? step.title
+      setState(step, { satisfied: false, inPlace: false })
+      step.history.push({ at: now, from, to: step.status, note: fillText(TRACK.reviewWithdrawn, { name }) })
+    }
 
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
@@ -1056,7 +1071,7 @@ export function trackExecution(
       //
       // On a pair, `enforced` already means every required member is enforced:
       // one enforced policy has never finished a two-policy goal.
-      if (result?.verdict === 'inPlace') {
+      if (result?.verdict === 'inPlace' && !needsReview) {
         advance(step, { satisfied: true }, `${fillText(TRACK.enforced, { date: absoluteDate(tracking.enforcedAt ?? now) })}; ${tracking.note}`, now)
       }
       continue
@@ -1079,7 +1094,7 @@ export function trackExecution(
     // two policies it is admitted only where every required member is enforced —
     // one half of a pair has never finished a two-policy goal, whatever the
     // coverage of the goal as a whole adds up to.
-    if (goalStatus === 'enforced' && (memberTracking.length === 1 || observed.every((x) => x === 'enforced'))) {
+    if (goalStatus === 'enforced' && !needsReview && (memberTracking.length === 1 || observed.every((x) => x === 'enforced'))) {
       advance(step, { satisfied: true, inPlace: true }, fillText(TRACK.enforcedByOther, { name: satisfierOf(result) ?? 'an existing policy' }), now)
     }
   }

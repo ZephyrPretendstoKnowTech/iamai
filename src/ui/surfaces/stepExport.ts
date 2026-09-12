@@ -16,7 +16,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
-import { stepContract } from './stepContract.ts'
+import { badgeLabel, stepContract } from './stepContract.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
 import { isPreserved, unavailableReason } from '../../roadmap/operations.ts'
@@ -126,14 +126,15 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
 export function stepExportView(step: Step, ctx: StepVarContext): ExportStep {
   const cs = contentStepFor(step) as Record<string, any> | undefined
   // The frozen Step Contract, once, for every step. It is read and never
-  // re-decided: the stage, the condition, the status word, the dated next line,
-  // the reach, the one action, the outstanding prerequisites, the completion and
-  // whether an implementation is offered are all its answers, and an artifact
-  // that carried its own reading of any of them would be a second authority.
+  // re-decided: the badge, the status word, the dated next line, the reach, the
+  // one action, the outstanding prerequisites, the completion and whether an
+  // implementation is offered are all its answers, and an artifact that carried
+  // its own reading of any of them would be a second authority. The state is the
+  // badge the opened step shows (planState.ts badgeOf), never the stage and the
+  // condition handed over separately for the artifact to join again.
   const contract = stepContract(step, ctx)
   const shell = {
-    stage: contract.state.stage,
-    condition: contract.state.conditionLabel,
+    state: badgeLabel(contract),
     status: contract.state.word,
     next: contract.milestone.line,
     who: contract.who?.text ?? null,

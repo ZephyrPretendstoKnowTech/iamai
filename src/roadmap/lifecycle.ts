@@ -244,11 +244,15 @@ const CONDITION_RANK: Record<Condition, number> = { healthy: 0, 'review-required
  * `review-required` — a done step whose policy was deleted or turned off reopens
  * in exactly that state (tracking.ts `reopen`) — but nothing is being watched
  * there and its next move is still to deploy the policy, not to examine one.
+ *
+ * An enforced policy is deployed too. Tracking withdraws `satisfied` when the
+ * policy it enforces no longer means what the plan asked for (S7), so the step
+ * is held here, in its stage, rather than read as In place over that policy.
  */
 export function heldForReview(step: Pick<Step, 'state'>): boolean {
   const s = step.state
   if (s.condition !== 'review-required' || s.setAside || s.satisfied) return false
-  return s.lifecycle === 'report-only' || s.lifecycle === 'ready-to-enforce'
+  return s.lifecycle === 'report-only' || s.lifecycle === 'ready-to-enforce' || s.lifecycle === 'enforced'
 }
 
 /** Raise the condition to `next` if it binds harder than the one the step already carries. */

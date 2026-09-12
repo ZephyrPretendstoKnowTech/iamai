@@ -294,7 +294,7 @@ export function fill(text: unknown, ex: Ex, depth = 0): string {
     exclusionsGroup: 'Breakglass Exclusion',
     emergencyAccounts: ['Breakglass', 'Emergency Access 2'],
     policy: ex && ex.policyName !== undefined ? ex.policyName : '',
-    tenant: 'GetIAMAI',
+    tenant: 'Contoso Pty Ltd',
     from: 'Aug 1',
   }
   const subList = (_m: string, key: string): string => {
@@ -605,7 +605,7 @@ const kv = (label: string, val: any, ex: Ex = {}): string => `<div class="kv"><d
 export function renderPages(): string {
   const P = C.pages
   const out: string[] = []
-  const exT: Record<string, any> = { tenant: 'GetIAMAI', upn: 'admin@contoso.com', baselineName: 'Jon Hope — Defense in Depth', policyCount: 46, people: 12, policies: 10, from: 'Aug 1', to: 'Aug 31', emergencyAccounts: ['Breakglass'], signals: 'name, Global Administrator, excluded from 9 policies', exclusionsGroup: 'Breakglass Exclusion', n: 9, total: 10, countries: 'the United States', trustedLocations: [], serviceAccounts: [], sharedDevices: [], timezone: 'America/Denver', lane: 'Reading sign-in records', done: 3, steps: 31, inPlace: 7, finish: 'Sun Sep 27', weeks: '4 weeks', age: '17h ago', active: 4, enabled: 12, admins: 3, pct: '50%', date: 'Sep 1, 2026', blocker: 'Create or Correct Emergency Access Accounts', constraint: 'two changes prompt the same people, so Require a Fresh Sign-in for Intune Enrollment cannot enforce in the same window as Block Unsupported Device Platforms', stepTitle: 'Define the Trusted Network', reason: 'fully remote, no office network', licence: 'Microsoft Entra ID P2', policy: 'Monitor Kaladin using Forms', verdict: 'fine to keep', proposed: 'Core - Block - Copilot', current: 'weekly', wanted: '4 hours', name: 'Phase 1', start: 'Sep 8', end: 'Sep 13', measure: 'MFA readiness', threshold: '90%', value: '50%', thing: 'emergency access accounts', have: 1 }
+  const exT: Record<string, any> = { tenant: 'Contoso Pty Ltd', upn: 'admin@contoso.com', baselineName: 'Jon Hope — Defense in Depth', policyCount: 46, people: 12, policies: 10, from: 'Aug 1', to: 'Aug 31', emergencyAccounts: ['Breakglass'], signals: 'name, Global Administrator, excluded from 9 policies', exclusionsGroup: 'Breakglass Exclusion', n: 9, total: 10, countries: 'the United States', trustedLocations: [], serviceAccounts: [], sharedDevices: [], timezone: 'America/Denver', lane: 'Reading sign-in records', done: 3, steps: 31, inPlace: 7, finish: 'Sun Sep 27', weeks: '4 weeks', age: '17h ago', active: 4, enabled: 12, admins: 3, pct: '50%', date: 'Sep 1, 2026', blocker: 'Create or Correct Emergency Access Accounts', constraint: 'two changes prompt the same people, so Require a Fresh Sign-in for Intune Enrollment cannot enforce in the same window as Block Unsupported Device Platforms', stepTitle: 'Define the Trusted Network', reason: 'fully remote, no office network', licence: 'Microsoft Entra ID P2', policy: 'Monitor Kaladin using Forms', verdict: 'fine to keep', proposed: 'Core - Block - Copilot', current: 'weekly', wanted: '4 hours', name: 'Phase 1', start: 'Sep 8', end: 'Sep 13', measure: 'MFA readiness', threshold: '90%', value: '50%', thing: 'emergency access accounts', have: 1 }
   const sec = (title: string, body: string): void => {
     out.push(`<section class="page"><h3>${esc(title)}</h3>${body}</section>`)
   }
@@ -886,7 +886,7 @@ export function renderPages(): string {
       exCard('csv') +
       exCard('bundle') +
       h('Print page 1') +
-      ul([exP.printPage1.title, exP.printPage1.inPlace, exP.printPage1.toDo, exP.printPage1.doesntApply, exP.printPage1.notLicensed], { tenant: 'GetIAMAI', date: 'September 1, 2026', n: 7, finish: 'September 27' }) +
+      ul([exP.printPage1.title, exP.printPage1.inPlace, exP.printPage1.toDo, exP.printPage1.doesntApply, exP.printPage1.notLicensed], { tenant: 'Contoso Pty Ltd', date: 'September 1, 2026', n: 7, finish: 'September 27' }) +
       `<div class="tip">${esc(exP.tip)}<span class="q">?</span></div>`,
   )
   sec(
@@ -911,7 +911,7 @@ export function reviewBody(): string {
   // Conditional Access policy, so its rungs are steps and belong on this page.
   const rungs = stepsAll.filter((x) => x.kind === 'ladder')
   const body: string[] = []
-  body.push('<h1>IAMAI Planner — every sentence, for review</h1><p class="lede">One box per step in the order the plan shows them, then every non-step string. Nothing here works; only the words and their format are real. GetIAMAI names where GetIAMAI has the case, demo names where it does not.</p>')
+  body.push('<h1>IAMAI Planner — every sentence, for review</h1><p class="lede">One box per step in the order the plan shows them, then every non-step string. Nothing here works; only the words and their format are real. Contoso Pty Ltd names where the case has them, demo names where it does not.</p>')
   body.push('<div class="legend"><var class="v">Underlined green</var> is filled by the engine from the tenant; everything else is fixed text from the content file. Chips, buttons and pickers are drawn as they would appear. <var class="v miss">{orange}</var> marks a variable the example did not fill.</div>')
   body.push(
     '<h3>Titles</h3><ol class="index">' +
@@ -938,7 +938,7 @@ export function renderCleanup(c: Record<string, any>): string {
   parts.push(
     h(HEAD.whatToDo) +
       ol(c.whatToDo, {
-        emergencyAccountUpns: ['breakglass@getiamai.onmicrosoft.com', 'emergency2@getiamai.onmicrosoft.com'],
+        emergencyAccountUpns: ['breakglass@contoso.onmicrosoft.com', 'emergency2@contoso.onmicrosoft.com'],
         renames: ['ACME - APP - BLOCK - Copilot → Core - Block - Copilot'],
         convention: 'Core - Verb - Subject',
         overlaps: ['Core - Allow - MFA for Admins', 'Core - Require - Phishing-resistant MFA for admins'],
