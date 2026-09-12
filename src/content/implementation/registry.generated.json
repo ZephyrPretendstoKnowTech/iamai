@@ -47,7 +47,6 @@
           "microsoftCurrent": "Use sign-in activity as evidence, prefer lastSuccessfulSignInDateTime for actual access, consider legitimate inactivity, and disable only after investigation."
         },
         "requiredBindings": [
-          "tenant.displayName",
           "account.current.id",
           "account.current.displayName",
           "account.decision.disposition"
@@ -59,7 +58,8 @@
           "account.evidence.lastSignInDateTime",
           "account.evidence.activitySummary",
           "account.owner",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "tenant.displayName"
         ],
         "projection": {
           "needsDecision": {
@@ -922,8 +922,7 @@
           "policy.target.grantControls",
           "policy.target.sessionControls",
           "policy.current.id",
-          "policy.current.semanticMismatches",
-          "policy.target.includeRoles"
+          "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
           "tenant.displayName",
@@ -932,7 +931,8 @@
           "evidence.adminSessions",
           "dependencies.blockers",
           "signature",
-          "admins.affected.count"
+          "admins.affected.count",
+          "policy.target.includeRoles"
         ],
         "projection": {
           "missing": {
@@ -2230,8 +2230,7 @@
           "policy.target.grantControls",
           "policy.target.sessionControls",
           "policy.current.id",
-          "policy.current.semanticMismatches",
-          "group.serviceAccounts.id"
+          "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
           "tenant.displayName",
@@ -2241,7 +2240,8 @@
           "dependencies.blockers",
           "signature",
           "people.affected.count",
-          "automation.affected"
+          "automation.affected",
+          "group.serviceAccounts.id"
         ],
         "projection": {
           "missing": {
@@ -6569,8 +6569,7 @@
           "policy.target.grantControls",
           "policy.target.sessionControls",
           "policy.current.id",
-          "policy.current.semanticMismatches",
-          "location.allowedCountries.id"
+          "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
           "tenant.displayName",
@@ -6580,7 +6579,8 @@
           "dependencies.blockers",
           "signature",
           "decision.travel",
-          "decision.partner"
+          "decision.partner",
+          "location.allowedCountries.id"
         ],
         "projection": {
           "missing": {
@@ -7757,6 +7757,9 @@
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
             "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime": "183dce40"
+          },
+          "reviewedIdentities": {
+            "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime": "conditions.applications:a3118c8a|conditions.clientApplications:-"
           },
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
           "sourceMemberKey": "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime",
@@ -11749,8 +11752,7 @@
           "policy.target.sessionControls",
           "policy.current.id",
           "policy.current.semanticMismatches",
-          "intune.compliance.prerequisiteState",
-          "decision.devicePlan"
+          "intune.compliance.prerequisiteState"
         ],
         "optionalBindings": [
           "tenant.displayName",
@@ -11760,7 +11762,8 @@
           "evidence.serverSignIns",
           "evidence.autopilotImpact",
           "dependencies.blockers",
-          "signature"
+          "signature",
+          "decision.devicePlan"
         ],
         "projection": {
           "missing": {
@@ -16791,16 +16794,13 @@
           "rule": "Preserve the two-policy merged IAMAI step and keep SharePoint/Defender service configuration separate from CA JSON. Never invent stable source GUIDs. After changing the SharePoint unmanaged-device tenant setting, stop and rescan before using any previously resolved CA policy ID."
         },
         "requiredBindings": [
-          "sharepoint.adminUrl",
           "sharepoint.unmanagedDevices.currentMode",
           "policies.unmanagedBrowser.a.target.displayName",
           "policies.unmanagedBrowser.a.target.conditions",
           "policies.unmanagedBrowser.a.target.sessionControls",
-          "policies.unmanagedBrowser.a.current.id",
           "policies.unmanagedBrowser.b.target.displayName",
           "policies.unmanagedBrowser.b.target.conditions",
           "policies.unmanagedBrowser.b.target.sessionControls",
-          "policies.unmanagedBrowser.b.current.id",
           "policies.unmanagedBrowser.semanticMismatches",
           "license.defenderCloudApps"
         ],
@@ -16811,7 +16811,10 @@
           "dependencies.blockers",
           "signature",
           "policies.unmanagedBrowser.a.current.state",
-          "policies.unmanagedBrowser.b.current.state"
+          "policies.unmanagedBrowser.b.current.state",
+          "sharepoint.adminUrl",
+          "policies.unmanagedBrowser.a.current.id",
+          "policies.unmanagedBrowser.b.current.id"
         ],
         "projection": {
           "configurePrerequisite": {
@@ -19102,6 +19105,9 @@
           "reviewedMembers": {
             "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP": "ec1eed2b"
           },
+          "reviewedIdentities": {
+            "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP": "conditions.applications:763e2f90|conditions.clientApplications:6a1f63d7"
+          },
           "memberStableId": null,
           "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -19137,8 +19143,7 @@
           "policy.target.displayName",
           "policy.current.id",
           "policy.current.semanticMismatches",
-          "location.current.id",
-          "location.current.semanticMismatches"
+          "location.current.id"
         ],
         "optionalBindings": [
           "tenant.displayName",
@@ -19148,7 +19153,8 @@
           "location.current.displayName",
           "evidence.cloudSyncActivity",
           "evidence.syncAddresses",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "location.current.semanticMismatches"
         ],
         "projection": {
           "notApplicable": {
@@ -22235,8 +22241,6 @@
           "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027."
         },
         "requiredBindings": [
-          "tenant.displayName",
-          "passkey.profileOptInApproved",
           "passkey.target.fido2Configuration",
           "authenticator.target.configuration",
           "tap.target.configuration"
@@ -22246,7 +22250,9 @@
           "passkey.current.registeredAaguids",
           "passkey.target.profileSummary",
           "passkey.target.allowedAaguids",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "tenant.displayName",
+          "passkey.profileOptInApproved"
         ],
         "projection": {
           "needsDecision": {
@@ -22620,15 +22626,15 @@
           "scope": "Only explicit per-user MFA read/update operations in this package; do not generalize beta use."
         },
         "requiredBindings": [
-          "tenant.displayName",
-          "mfa.perUser.userIds",
           "mfa.perUser.accounts",
           "dependencies.replacementMfaSummary"
         ],
         "optionalBindings": [
           "mfa.methodsMigrationState",
           "mfa.methodsCoverage",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "tenant.displayName",
+          "mfa.perUser.userIds"
         ],
         "projection": {
           "blocked": {
@@ -25127,7 +25133,6 @@
           "policy.target.includeUsers",
           "policy.target.excludeGroups",
           "policy.target.trustedLocationId",
-          "policy.current.id",
           "peoplePolicies.resolvedPatches"
         ],
         "optionalBindings": [
@@ -25136,7 +25141,8 @@
           "policy.current.displayName",
           "policy.current.state",
           "policy.current.semanticMismatches",
-          "dependencies.blockers"
+          "dependencies.blockers",
+          "policy.current.id"
         ],
         "projection": {
           "needsDecision": {
@@ -26202,7 +26208,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-check-separate-admin-accounts": {
       "status": "current",
@@ -26213,7 +26220,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-admin-portals-protected": {
       "status": "reviewNeeded",
@@ -26226,7 +26234,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-admin-session": {
       "status": "current",
@@ -26239,7 +26248,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-admins-phishing-resistant": {
       "status": "current",
@@ -26252,7 +26262,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-azure-management-mfa": {
       "status": "current",
@@ -26263,7 +26274,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-block-auth-transfer": {
       "status": "current",
@@ -26276,7 +26288,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-block-device-code": {
       "status": "current",
@@ -26289,7 +26302,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-block-legacy-auth": {
       "status": "current",
@@ -26302,7 +26316,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-block-unsupported-platforms": {
       "status": "current",
@@ -26315,7 +26330,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-device-registration-mfa": {
       "status": "current",
@@ -26328,7 +26344,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-geo-restriction": {
       "status": "current",
@@ -26341,7 +26358,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-guests-mfa": {
       "status": "current",
@@ -26355,7 +26373,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-intune-enrollment-reauth": {
       "status": "current",
@@ -26370,7 +26389,8 @@
       "identityFallback": [
         "IAC - APP - SESSION - IntuneEnrollment-SIFEveryTime"
       ],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-mfa-all-users": {
       "status": "current",
@@ -26383,7 +26403,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-mobile-app-protection": {
       "status": "current",
@@ -26394,7 +26415,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-pim-activation-reauth": {
       "status": "current",
@@ -26407,7 +26429,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-register-info-protected": {
       "status": "current",
@@ -26418,7 +26441,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-require-managed-device": {
       "status": "current",
@@ -26431,7 +26455,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-service-accounts-trusted-network": {
       "status": "current",
@@ -26444,7 +26469,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-session-lifetime": {
       "status": "current",
@@ -26457,7 +26483,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-sign-in-risk": {
       "status": "current",
@@ -26470,7 +26497,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-sign-in-risk-medium": {
       "status": "current",
@@ -26483,7 +26511,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-token-protection": {
       "status": "current",
@@ -26496,7 +26525,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-unmanaged-browser": {
       "status": "current",
@@ -26507,7 +26537,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-user-risk": {
       "status": "current",
@@ -26520,7 +26551,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-user-risk-medium": {
       "status": "current",
@@ -26533,7 +26565,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-goal-workload-identity-block": {
       "status": "current",
@@ -26548,7 +26581,8 @@
       "identityFallback": [
         "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP"
       ],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-ladder-operator-passkey": {
       "status": "current",
@@ -26559,7 +26593,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-allowed-countries": {
       "status": "current",
@@ -26570,7 +26605,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-auth-strength": {
       "status": "current",
@@ -26581,7 +26617,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-break-glass": {
       "status": "current",
@@ -26592,7 +26629,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-device-plan": {
       "status": "current",
@@ -26603,7 +26641,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-exclusion-group": {
       "status": "current",
@@ -26614,7 +26653,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-passkey-settings": {
       "status": "current",
@@ -26625,7 +26665,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-per-user-mfa": {
       "status": "current",
@@ -26636,7 +26677,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-security-defaults": {
       "status": "current",
@@ -26647,7 +26689,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-service-accounts-group": {
       "status": "current",
@@ -26658,7 +26701,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-prereq-trusted-location": {
       "status": "current",
@@ -26669,7 +26713,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-question-mail-devices": {
       "status": "current",
@@ -26680,7 +26725,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-question-partner": {
       "status": "current",
@@ -26691,7 +26737,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-question-travel": {
       "status": "current",
@@ -26702,7 +26749,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-shared-devices": {
       "status": "current",
@@ -26713,7 +26761,8 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     },
     "s-verify-mfa": {
       "status": "current",
@@ -26724,7 +26773,54 @@
       "removed": [],
       "added": [],
       "identityFallback": [],
-      "renamed": []
+      "renamed": [],
+      "matchedByTarget": []
     }
+  },
+  "provenance": {
+    "s-check-dormant-accounts": "workflow-check",
+    "s-check-separate-admin-accounts": "workflow-check",
+    "s-goal-admin-portals-protected": "baseline-member",
+    "s-goal-admin-session": "baseline-member",
+    "s-goal-admins-phishing-resistant": "baseline-member",
+    "s-goal-azure-management-mfa": "microsoft-template-floor",
+    "s-goal-block-auth-transfer": "baseline-member",
+    "s-goal-block-device-code": "baseline-member",
+    "s-goal-block-legacy-auth": "baseline-member",
+    "s-goal-block-unsupported-platforms": "baseline-member",
+    "s-goal-device-registration-mfa": "baseline-member",
+    "s-goal-geo-restriction": "baseline-member",
+    "s-goal-guests-mfa": "baseline-member",
+    "s-goal-intune-enrollment-reauth": "baseline-member",
+    "s-goal-mfa-all-users": "baseline-member",
+    "s-goal-mobile-app-protection": "microsoft-template-floor",
+    "s-goal-pim-activation-reauth": "baseline-member",
+    "s-goal-register-info-protected": "microsoft-template-floor",
+    "s-goal-require-managed-device": "baseline-member",
+    "s-goal-service-accounts-trusted-network": "baseline-member",
+    "s-goal-session-lifetime": "baseline-member",
+    "s-goal-sign-in-risk": "baseline-member",
+    "s-goal-sign-in-risk-medium": "baseline-member",
+    "s-goal-token-protection": "baseline-member",
+    "s-goal-unmanaged-browser": "microsoft-template-floor",
+    "s-goal-user-risk": "baseline-member",
+    "s-goal-user-risk-medium": "baseline-member",
+    "s-goal-workload-identity-block": "baseline-member",
+    "s-ladder-operator-passkey": "workflow-check",
+    "s-prereq-allowed-countries": "tenant-prerequisite",
+    "s-prereq-auth-strength": "tenant-prerequisite",
+    "s-prereq-break-glass": "tenant-prerequisite",
+    "s-prereq-device-plan": "workflow-check",
+    "s-prereq-exclusion-group": "tenant-prerequisite",
+    "s-prereq-passkey-settings": "tenant-prerequisite",
+    "s-prereq-per-user-mfa": "tenant-prerequisite",
+    "s-prereq-security-defaults": "tenant-prerequisite",
+    "s-prereq-service-accounts-group": "tenant-prerequisite",
+    "s-prereq-trusted-location": "tenant-prerequisite",
+    "s-question-mail-devices": "workflow-check",
+    "s-question-partner": "workflow-check",
+    "s-question-travel": "workflow-check",
+    "s-shared-devices": "tenant-prerequisite",
+    "s-verify-mfa": "workflow-check"
   }
 }

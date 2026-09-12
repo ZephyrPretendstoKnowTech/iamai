@@ -878,7 +878,10 @@ export function compilePackage(metaJson: string, contentMd: string): CompiledPac
  * cannot project safely withheld (`withholdInvalid`). Only a package whose files
  * do not parse at all is refused.
  */
-export function compileLibraryPackage(metaJson: string, contentMd: string): { pkg: CompiledPackage; withheld: string[] } {
+export function compileLibraryPackage(metaJson: string, contentMd: string): { pkg: CompiledPackage; withheld: string[]; source: CompiledPackage; errors: string[] } {
   const { meta, blocks } = normalizePackage(parseMeta(metaJson), parseBlocks(contentMd))
-  return withholdInvalid({ meta, blocks })
+  const source: CompiledPackage = { meta, blocks }
+  // `source` is the package as authored and normalised, `errors` what strict
+  // validation refuses in it: the library index (library.ts libraryIndexOf) reads both.
+  return { ...withholdInvalid(source), source, errors: validatePackage(source) }
 }
