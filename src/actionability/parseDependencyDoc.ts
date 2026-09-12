@@ -112,23 +112,32 @@ function parseConditions(lines: string[]): Condition[] {
   return data.map((r) => ({ name: cell(r[0]!), ownedBy: cell(r[1]!), meaning: cell(r[2]!) }))
 }
 
-function parseStepIndex(lines: string[]): StepIndexEntry[] {
+/** §10.0, split by its `generated` column: the steps the data carries, and the ids it leaves out
+ *  (a goal the pinned baseline does not hold; RUN-CONTEXT-A decision 7). Every edge naming one is skipped. */
+function parseStepIndex(lines: string[]): { steps: StepIndexEntry[]; absent: Set<string> } {
   const body = section(lines, /^### 10\.0 Step index/)
   const [header, ...data] = rows(body)
-  const expected = ['step_id', 'title', 'work_type', 'scope_class', 'effort_kind', 'iamai_order']
+  const expected = ['step_id', 'title', 'work_type', 'scope_class', 'effort_kind', 'iamai_order', 'generated']
   if (!header || header.map(cell).join(',') !== expected.join(',')) fail('§10.0 header changed')
-  return data.map((r) => {
+  const steps: StepIndexEntry[] = []
+  const absent = new Set<string>()
+  for (const r of data) {
     if (r.length !== expected.length) fail(`§10.0 row has ${r.length} cells: ${r[0]}`)
+    const id = cell(r[0]!)
+    const generated = cell(r[6]!)
+    if (/^no\b/.test(generated)) { absent.add(id); continue }
+    if (generated !== 'yes') fail(`§10.0 ${id}: generated must be "yes" or "no — <reason>", got "${generated}"`)
     const order = cell(r[5]!)
-    return {
-      id: cell(r[0]!),
+    steps.push({
+      id,
       title: cell(r[1]!),
       workType: cell(r[2]!),
       scopeClass: cell(r[3]!),
       effortKind: cell(r[4]!),
       iamaiOrder: order === '' ? null : Number(order),
-    }
-  })
+    })
+  }
+  return { steps, absent }
 }
 
 /** §11 group letter → step ids under it, read from the `### X.` and `#### \`id\`` headings. */
@@ -168,7 +177,7 @@ function expandGated(raw: string, groups: Map<string, string[]>): { step: string
   return [{ step: raw.slice(0, at), action: oneOf(raw.slice(at + 1), ACTIONS, `action of ${raw}`) }]
 }
 
-function parseEdges(lines: string[], groups: Map<string, string[]>): Edge[] {
+function parseEdges(lines: string[], groups: Map<string, string[]>, absent: ReadonlySet<string>): Edge[] {
   const body = section(lines, /^## 10\. Canonical dependency edge table/)
   const expected = ['gated_action', 'prerequisite', 'prerequisite_kind', 'milestone', 'condition', 'edge_kind', 'source', 'status']
   const edges: Edge[] = []
@@ -185,6 +194,8 @@ function parseEdges(lines: string[], groups: Map<string, string[]>): Edge[] {
       const edgeKind = oneOf(cell(r[5]!), ['hard', 'conditional'] as const, `edge_kind of ${r[0]}`)
       if ((condition === '—') !== (edgeKind === 'hard')) fail(`§${label} ${cell(r[0]!)}: condition and edge_kind disagree`)
       for (const gated of expandGated(cell(r[0]!), groups)) {
+        // An edge on a step the data leaves out is documentation, not a gate.
+        if (absent.has(gated.step) || (cell(r[2]!) === 'step' && absent.has(cell(r[1]!)))) continue
         edges.push({
           ...gated,
           prerequisite: cell(r[1]!),
@@ -205,8 +216,8 @@ function parseEdges(lines: string[], groups: Map<string, string[]>): Edge[] {
 export function parseDependencyDoc(markdown: string): DependencyData {
   const lines = markdown.split(/\r?\n/)
   const conditions = parseConditions(lines)
-  const steps = parseStepIndex(lines)
-  const edges = parseEdges(lines, parseGroups(lines))
+  const { steps, absent } = parseStepIndex(lines)
+  const edges = parseEdges(lines, parseGroups(lines), absent)
   const ids = new Set(steps.map((s) => s.id))
   const names = new Set(conditions.map((c) => c.name))
   for (const e of edges) {

@@ -162,14 +162,6 @@
       "iamaiOrder": null
     },
     {
-      "id": "s-goal-azure-management-mfa",
-      "title": "Require MFA for Azure Management",
-      "workType": "CA policy",
-      "scopeClass": "admins",
-      "effortKind": "portal",
-      "iamaiOrder": null
-    },
-    {
       "id": "s-goal-admin-session",
       "title": "Shorten Admin Sessions",
       "workType": "CA policy",
@@ -250,15 +242,7 @@
       "iamaiOrder": null
     },
     {
-      "id": "s-goal-mobile-app-protection",
-      "title": "Require App Protection on Phones",
-      "workType": "CA + Intune composite",
-      "scopeClass": "devices",
-      "effortKind": "external-platform",
-      "iamaiOrder": null
-    },
-    {
-      "id": "s-goal-session-lifetime",
+      "id": "s-goal-all-users-no-persistence",
       "title": "Limit How Long Sessions Last",
       "workType": "CA policy pair",
       "scopeClass": "all-users",
@@ -271,14 +255,6 @@
       "workType": "CA session control",
       "scopeClass": "devices",
       "effortKind": "portal",
-      "iamaiOrder": null
-    },
-    {
-      "id": "s-goal-unmanaged-browser",
-      "title": "Limit Unmanaged Devices in the Browser",
-      "workType": "CA / Defender for Cloud Apps composite",
-      "scopeClass": "all-users",
-      "effortKind": "external-platform",
       "iamaiOrder": null
     },
     {
@@ -370,15 +346,7 @@
       "iamaiOrder": null
     },
     {
-      "id": "runtime-source-reference-decision",
-      "title": "Decide What the Baseline's Unidentified Groups Stand For",
-      "workType": "runtime row — not a primary Plan step in the future model; replaced by `sourceMapping` blockers (§18.1)",
-      "scopeClass": "n/a",
-      "effortKind": "decision",
-      "iamaiOrder": null
-    },
-    {
-      "id": "cleanup-harden-emergency-access",
+      "id": "cleanup-hardening",
       "title": "Harden Emergency Access",
       "workType": "conditional cleanup row produced when resilience hardening is deferred from the Emergency Access step",
       "scopeClass": "n/a",
@@ -412,7 +380,7 @@
       "table": "10.1"
     },
     {
-      "step": "cleanup-harden-emergency-access",
+      "step": "cleanup-hardening",
       "action": "start",
       "prerequisite": "s-prereq-break-glass",
       "prerequisiteKind": "step",
@@ -486,7 +454,7 @@
     {
       "step": "s-shared-devices",
       "action": "complete",
-      "prerequisite": "s-goal-session-lifetime",
+      "prerequisite": "s-goal-all-users-no-persistence",
       "prerequisiteKind": "step",
       "milestone": "created",
       "condition": "shared-devices-exist",
@@ -544,18 +512,6 @@
       "table": "10.1"
     },
     {
-      "step": "s-prereq-security-defaults",
-      "action": "start",
-      "prerequisite": "s-goal-azure-management-mfa",
-      "prerequisiteKind": "step",
-      "milestone": "ready-to-enforce",
-      "condition": "sd-enabled",
-      "edgeKind": "conditional",
-      "source": "ms-doc",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
       "step": "s-goal-mfa-all-users",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
@@ -570,19 +526,6 @@
     },
     {
       "step": "s-goal-admins-phishing-resistant",
-      "action": "enforce",
-      "expandedFrom": "<every CA policy step in §11 E–H>",
-      "prerequisite": "s-prereq-security-defaults",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": "sd-enabled",
-      "edgeKind": "conditional",
-      "source": "ms-doc",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-goal-azure-management-mfa",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
       "prerequisite": "s-prereq-security-defaults",
@@ -725,20 +668,7 @@
       "table": "10.1"
     },
     {
-      "step": "s-goal-mobile-app-protection",
-      "action": "enforce",
-      "expandedFrom": "<every CA policy step in §11 E–H>",
-      "prerequisite": "s-prereq-security-defaults",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": "sd-enabled",
-      "edgeKind": "conditional",
-      "source": "ms-doc",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-goal-session-lifetime",
+      "step": "s-goal-all-users-no-persistence",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
       "prerequisite": "s-prereq-security-defaults",
@@ -752,19 +682,6 @@
     },
     {
       "step": "s-goal-token-protection",
-      "action": "enforce",
-      "expandedFrom": "<every CA policy step in §11 E–H>",
-      "prerequisite": "s-prereq-security-defaults",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": "sd-enabled",
-      "edgeKind": "conditional",
-      "source": "ms-doc",
-      "status": "ok",
-      "table": "10.1"
-    },
-    {
-      "step": "s-goal-unmanaged-browser",
       "action": "enforce",
       "expandedFrom": "<every CA policy step in §11 E–H>",
       "prerequisite": "s-prereq-security-defaults",
@@ -957,30 +874,6 @@
       "step": "s-goal-admins-phishing-resistant",
       "action": "enforce",
       "prerequisite": "s-verify-mfa",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.2"
-    },
-    {
-      "step": "s-goal-azure-management-mfa",
-      "action": "create",
-      "prerequisite": "s-prereq-service-accounts-group",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.2"
-    },
-    {
-      "step": "s-goal-azure-management-mfa",
-      "action": "enforce",
-      "prerequisite": "s-prereq-exclusion-group",
       "prerequisiteKind": "step",
       "milestone": "complete",
       "condition": null,
@@ -1230,19 +1123,7 @@
       "table": "10.3"
     },
     {
-      "step": "s-goal-mobile-app-protection",
-      "action": "create",
-      "prerequisite": "s-prereq-device-plan",
-      "prerequisiteKind": "step",
-      "milestone": "complete",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "package",
-      "status": "ok",
-      "table": "10.3"
-    },
-    {
-      "step": "s-goal-session-lifetime",
+      "step": "s-goal-all-users-no-persistence",
       "action": "create",
       "prerequisite": "s-prereq-exclusion-group",
       "prerequisiteKind": "step",
@@ -1254,7 +1135,7 @@
       "table": "10.3"
     },
     {
-      "step": "s-goal-session-lifetime",
+      "step": "s-goal-all-users-no-persistence",
       "action": "enforce",
       "prerequisite": "s-shared-devices",
       "prerequisiteKind": "step",
@@ -1262,18 +1143,6 @@
       "condition": "shared-devices-exist",
       "edgeKind": "conditional",
       "source": "v2",
-      "status": "ok",
-      "table": "10.3"
-    },
-    {
-      "step": "s-goal-unmanaged-browser",
-      "action": "enforce",
-      "prerequisite": "baselineSafetyConflict:unmanaged-browser-emergency-exclusion",
-      "prerequisiteKind": "baselineSafetyConflict",
-      "milestone": "resolved",
-      "condition": null,
-      "edgeKind": "hard",
-      "source": "pinned",
       "status": "ok",
       "table": "10.3"
     },
@@ -1674,7 +1543,7 @@
       "table": "10.7"
     },
     {
-      "step": "s-goal-session-lifetime",
+      "step": "s-goal-all-users-no-persistence",
       "action": "create",
       "prerequisite": "sourceMapping:62d67e66",
       "prerequisiteKind": "sourceMapping",
