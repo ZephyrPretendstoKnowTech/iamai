@@ -15,6 +15,7 @@ import { FLOOR_GOAL_IDS, isFloorGoal } from './floor.ts'
 import { app, phases } from '../content/content.ts'
 import { floorRows, phaseRows, undatedRows } from '../ui/surfaces/planRows.ts'
 import { groupsFor } from '../ui/surfaces/planBoard.ts'
+import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { stepPortalLines, portalNamesFor } from '../ui/surfaces/stepPortal.ts'
 
 test('the pinned baseline lacks registration protection, so the floor renders it, flagged, from the template', () => {
@@ -215,43 +216,40 @@ test('a baseline holding both recommendations leaves no floor group to draw', ()
   const print = readFileSync(new URL('../ui/surfaces/PrintPlan.tsx', import.meta.url), 'utf8')
   assert.ok(print.includes('{floor.length > 0 && ('), 'PrintPlan.tsx draws the group unguarded')
   // The Plan does not need a guard any more, and this is the stronger fact: the
-  // board builds a group only where a row lands in it (planBoard.ts `byRoadmap`
-  // creates a group on first row; the keyed lenses drop empty groups outright),
-  // so an empty floor cannot produce a heading. Proven against the projection
-  // rather than against the JSX, because that is where the rule now lives.
+  // board builds a group only where a row lands in it (planBoard.ts `groupsFor`
+  // drops empty groups outright), so an empty floor cannot produce a heading.
+  // Proven against the projection rather than against the JSX, because that is
+  // where the rule now lives.
   const items = floorRows(r.steps).map((step, i) => ({
     id: step.id,
     title: step.title,
-    roadmap: { key: 'floor', label: phases.recommended, date: null, secondary: true, start: null },
-    status: 'waiting' as const,
+    lane: 'Ready' as const,
+    laneLabel: 'Ready · Create',
+    hold: null,
     attention: false,
+    waiting: false,
     workType: 'ca' as const,
     isNext: false,
     order: i,
   }))
-  assert.deepEqual(groupsFor('roadmap', items), [], 'an empty floor still produced a group')
-  assert.deepEqual(groupsFor('status', items), [], 'an empty floor still produced a group in the Status lens')
+  assert.deepEqual(groupsFor('ready', items), [], 'an empty floor still produced a group')
+  assert.deepEqual(groupsFor('onHold', items), [], 'an empty floor still produced a group under On Hold')
 })
 
 // ---- The group on the page and in the printed document ----
 
-test('the Plan draws the floor as its own named group, after the phases and before Cleanup', () => {
+test('the Plan draws a floor step as a row of its lane, never dressed as a numbered, dated phase', () => {
   assert.equal(phases.recommended, 'Microsoft recommended, not in this baseline')
   const src = readFileSync(new URL('../ui/surfaces/Plan.tsx', import.meta.url), 'utf8')
-  const at = (needle: string): number => { const i = src.indexOf(needle); assert.ok(i > 0, `${needle} renders`); return i }
-  // The board composes its groups in order, so placement is the order the rows
-  // are added to the one row set rather than the order of two JSX blocks.
-  const group = src.slice(at('const floorGroup: RoadmapGroup'), at('const floorGroup: RoadmapGroup') + 260)
-  assert.match(group, /label: phases\.recommended/, 'the group is named, from content.phases')
-  // Not a numbered phase: its timeline is the scheduler's own placement of its
-  // rows, or Not scheduled where nothing places them (owner, 2026-09-11) — never
-  // a borrowed wave date.
-  assert.match(group, /date: placedSpan\(floor\)/, 'the floor group claims a date it does not have')
-  assert.match(group, /secondary: true/, 'the floor group reads as part of the active rollout sequence')
-  assert.ok(at('for (const [wi, w] of waveRows.entries())') < at('const floorGroup: RoadmapGroup'), 'the floor group follows the numbered phases')
-  assert.match(src, /steps: phaseRows\(c\.steps, w\)/, 'a numbered phase decides its own rows')
-  assert.ok(at('const floorGroup: RoadmapGroup') < at('if (cleanupPhase) {'), 'and precedes Cleanup')
-  assert.equal(src.includes('phases.heading, { name: phases.recommended'), false, 'the floor group is not dressed as a numbered, dated phase')
+  // The lanes replaced the phase groups (S3): a floor step is a row in the lane
+  // the engine reads for it, and no group on the Plan borrows a wave's date.
+  assert.equal(src.includes('phases.heading, { name: phases.recommended'), false, 'the floor group is dressed as a numbered, dated phase')
+  assert.equal(src.includes('waveRows'), false, 'the Plan still draws numbered phases')
+  const r = runFixture(fixture('demo-week2'))
+  const readings = laneReadings(r.steps)
+  const floor = floorRows(r.steps)
+  assert.ok(floor.length > 0, 'the premise: the demo carries a floor step')
+  for (const s of floor) assert.ok(readings.has(s.id), `${s.id}: a floor step has no lane`)
 })
 
 test('the printed document carries the floor as the same named group, never under a numbered phase', () => {

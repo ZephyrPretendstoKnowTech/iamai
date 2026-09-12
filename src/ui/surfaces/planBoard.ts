@@ -1,20 +1,20 @@
-// The Plan board's organisation: one row set, three lenses over it.
+// The Plan board's organisation: one row set, three lanes over it.
 //
-// The board can be read three ways — Roadmap (when the work happens), Status
-// (what the work needs from the operator) and Work type (what kind of work it
-// is) — and the one rule this file exists to hold is that they are three
-// GROUPINGS and not three boards. A lens sorts the same rows into different
-// headings; it never changes a state, a date, an order or a count, and it never
-// produces a row the other two do not have.
+// The board is read by LANE (S3, the actionability playbook): Ready is the
+// work whose next action can be taken now, Up Next is the work queued behind a
+// healthy prerequisite, On Hold is the work an abnormal blocker stops. The lane
+// is the engine's reading (src/actionability, through planLanes.ts) and this
+// file decides nothing about it: it holds the words, the grouping inside each
+// lane and the two visibility toggles (`Show completed`, `Show deferred`).
+//
+// Work type is a row attribute and a filter, never a lane.
 //
 // So everything here is pure and everything here is a READING. Each field on a
 // `BoardItem` is copied from a fact production already computed:
 //
-//   * `roadmap` is the group the Plan already draws the row in — the wave, the
-//     undated group, the floor group, Cleanup, or done — handed in by the
-//     surface, which is where that decision has always been made (planRows.ts).
-//   * `status` is a projection of `Step.state.condition` and `Step.status`,
-//     which Foundation B already wrote. No readiness is recomputed here.
+//   * `lane`, `laneLabel`, `hold` are the engine's lane, the row's label for
+//     it and the primary blocker's label (planLanes.ts).
+//   * `attention`, `waiting` are the Plan's one presentation state (planState.ts).
 //   * `workType` is a projection of the content file's own `kind`, plus the
 //     small explicit id list documented on WORK_TYPE_IDS below.
 //
@@ -22,6 +22,7 @@
 // `title.includes('MFA')` is a classifier nobody maintains and that silently
 // mis-files the first step somebody renames.
 import type { Step } from '../../roadmap/types.ts'
+import type { Lane } from '../../actionability/lanes.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { holdWaitsOn } from '../../roadmap/stateReason.ts'
 import { pages } from '../../content/content.ts'
@@ -29,8 +30,8 @@ import { fillText } from '../../content/render.ts'
 import { absoluteDate as dayLabel } from '../../copy/dates.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
 import { rowReason, rowWhen, rowWhenWraps } from './rowWhen.ts'
-import { planStateOf } from './planState.ts'
-import type { PlanState, PlanStateFacts } from './planState.ts'
+import type { PlanStateFacts } from './planState.ts'
+import type { LaneReading } from './planLanes.ts'
 import { CONTRACT } from './stepContract.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 
@@ -44,9 +45,12 @@ export const WHEN = (pages.plan as unknown as { when: { complete: string; notSch
  */
 export type StatusFacts = PlanStateFacts
 
-/** The three lenses, in the order the control offers them. Roadmap is the default. */
-export const VIEWS = ['roadmap', 'status', 'type'] as const
-export type View = (typeof VIEWS)[number]
+/** The three tabs, in the order the control offers them. Ready is the default. */
+export const LANES = ['ready', 'upNext', 'onHold'] as const
+export type LaneTab = (typeof LANES)[number]
+
+/** The tab a lane is drawn under; Completed and Deferred are toggles, not tabs. */
+export const TAB_OF: Readonly<Record<Lane, LaneTab | null>> = { Ready: 'ready', 'Up Next': 'upNext', 'On Hold': 'onHold', Completed: null, Deferred: null }
 
 /**
  * The board's own control and group vocabulary.
@@ -60,13 +64,15 @@ export type View = (typeof VIEWS)[number]
  * this one record.
  */
 export const BOARD = {
-  groupBy: 'Group by',
-  views: { roadmap: 'Roadmap', status: 'Status', type: 'Work type' },
+  lanesLabel: 'Lanes',
+  lanes: { ready: 'Ready', upNext: 'Up Next', onHold: 'On Hold', completed: 'Completed', deferred: 'Deferred' },
   search: 'Search steps',
   searchPlaceholder: 'Search steps...',
   needsAttention: 'Needs attention',
-  upNext: 'Up next',
   showCompleted: 'Show completed',
+  showDeferred: 'Show deferred',
+  workType: 'Work type',
+  allWork: 'All work',
   /**
    * What the board's timing column says for a row production already holds back
    * from advancing. It replaces the wave date such a row would otherwise borrow:
@@ -79,15 +85,19 @@ export const BOARD = {
   collapseGroup: 'Collapse group',
   expandGroup: 'Expand group',
   empty: 'No steps match this search.',
-  status: {
-    attention: 'Needs attention',
-    upnext: 'Up next',
-    ready: 'Ready',
-    progress: 'In progress',
-    scheduled: 'Scheduled',
-    waiting: 'Waiting',
-    skipped: 'Skipped',
-    complete: 'Complete',
+  emptyLane: 'Nothing in this lane.',
+  /** The §15 blocker kinds as On Hold group headings, and the healthy prerequisite readings. */
+  blockers: {
+    baselineSafetyConflict: 'Baseline safety conflict',
+    sourceConflict: 'Baseline conflict',
+    sourceMapping: 'Baseline mapping',
+    'license/platform': 'Licence or platform',
+    decision: 'Decision',
+    fact: 'Tenant fact',
+    missingObject: 'Missing object',
+    step: 'Prerequisite on hold',
+    suspendedPrerequisite: 'Deferred prerequisite',
+    unsupported: 'Not supported',
   },
   type: {
     ca: 'Conditional Access',
@@ -97,44 +107,10 @@ export const BOARD = {
   },
 } as const
 
-export type StatusGroup = keyof typeof BOARD.status
 export type WorkType = keyof typeof BOARD.type
 
-/**
- * The Status lens's groups, most actionable first.
- *
- * `ready` sits between Up next and In progress and is the group this correction
- * created. Up next used to hold every step the engine calls ready, which made it
- * a synonym for "actionable" and told the operator that a dozen things were the
- * next thing. Up next is now the Plan's own next marker and nothing else, so the
- * ready work that is NOT the recommendation needs a heading of its own — and it
- * takes production's word for what it is rather than a new one.
- */
-export const STATUS_ORDER: StatusGroup[] = ['attention', 'upnext', 'ready', 'progress', 'scheduled', 'waiting', 'skipped', 'complete']
-/** The Work type lens's groups, in the order the reference draws them. */
+/** The Work type filter's options, in the order the reference draws them. */
 export const TYPE_ORDER: WorkType[] = ['ca', 'mfa', 'setup', 'resolution']
-
-/**
- * Which lens groups start collapsed.
- *
- * A numbered rollout phase is never one of them: the roadmap's job is to show
- * what is coming, and collapsing the future to save vertical space is the board
- * hiding the thing it exists to say. What starts closed is what is not the
- * active sequence — work held elsewhere and optional recommendations.
- *
- * Finished work is not one of them. Its group is drawn only while `Show
- * completed` is on, so the control already decides whether it shows; starting it
- * collapsed as well meant pressing Show completed added a folded heading and
- * showed no row at all.
- */
-export const CLOSED_BY_DEFAULT = new Set<string>([
-  // The Roadmap lens's keys: the undated held group, and Microsoft's own
-  // recommendations, which are not this baseline's sequence.
-  'held',
-  'floor',
-  // The Status lens's key for the same idea.
-  'waiting',
-])
 
 /**
  * The one place a step's work type is decided, and the only place an id is
@@ -190,63 +166,42 @@ export function workTypeOf(stepId: string, contentKind: string | null): WorkType
 }
 
 /**
- * Which Status group a step is in, read off Foundation B and nothing else.
- *
- * The order below is the rule, and it is the order the reference draws the
- * groups in:
- *
- *   complete    the goal is delivered (`status === 'done'`)
- *   attention   the step is waiting on the OPERATOR: a decision to make, a
- *               review to do, a baseline contradiction to resolve, or a change
- *               that would strand them (`operatorSafe === false`)
- *   upnext      the Plan's own next marker — `isNext`, the single fact that also
- *               draws the "next" pill on the row. It is handed in rather than
- *               derived, because the marker is a property of the row's POSITION
- *               in the roadmap and only the surface that walks the roadmap in
- *               order can know it. This function must never re-derive it.
- *   ready       ready work that is not the recommendation: `ready`, and
- *               `ready-to-enforce`, which has earned the right to be enforced
- *   progress    the policy is deployed and being watched (`in-report-only`)
- *   waiting     everything else: a step held by a prerequisite somewhere else in
- *               the plan, which production's own status word calls a waiting
- *               state and not a fault, and a step the operator set aside
- *
- * `blocked` deliberately does not go to `attention`. A step blocked by another
- * step is a step there is nothing to do on today; putting it under a heading
- * that says the operator is needed is how a focus list fills with rows nobody
- * can clear. What DOES go there is the condition set that says the answer is on
- * this row.
+ * The row's label for its lane: `Lane · substatus` on Ready, `Lane · After
+ * <step>` on Up Next, `Lane · <blocker>` on On Hold, the lane alone otherwise.
+ * `titleOf` names a step the reason points at by its content title.
  */
-export function statusGroupOf(step: StatusFacts, isNext: boolean, held = false): StatusGroup {
-  return statusGroupFor(planStateOf(step, held), isNext)
+export function laneLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
+  switch (r.lane) {
+    case 'Ready':
+      return r.substatus ? `${BOARD.lanes.ready} · ${r.substatus}` : BOARD.lanes.ready
+    case 'Up Next': {
+      const after = r.reason?.kind === 'step' ? titleOf(r.reason.id) : null
+      const tail = after !== null ? fillText(WHEN.after, { step: after }) : r.reason ? BOARD.blockers[r.reason.kind] : WHEN.afterPrerequisites
+      return `${BOARD.lanes.upNext} · ${tail}`
+    }
+    case 'On Hold':
+      return `${BOARD.lanes.onHold} · ${holdLabelOf(r, titleOf)}`
+    case 'Completed':
+      return BOARD.lanes.completed
+    case 'Deferred':
+      return BOARD.lanes.deferred
+  }
 }
 
-/**
- * The Status group of the Plan's one presentation state (planState.ts). The same
- * state gives the row its word, so a row reading Needs attention is never grouped
- * under Ready, and one reading Blocked on a baseline contradiction is never put
- * under Needs attention when nothing in the tenant is the operator's to do.
- */
-export function statusGroupFor(s: PlanState, isNext: boolean): StatusGroup {
-  if (s.complete) return 'complete'
-  if (s.kind === 'skipped') return 'skipped'
-  // Waiting has one meaning (roadmap/stepSchedule.ts): nothing schedules what the
-  // step waits on. It is the Waiting tile's count and the undated group's rows, so
-  // it comes before every other heading; the Needs attention focus still finds a
-  // waiting row the operator is needed on.
-  if (s.waiting) return 'waiting'
-  // A decision, a review or a change that would strand the operator: the answer is on this row.
-  if (s.attention && s.kind !== 'attention') return 'attention'
-  // The one place Up next is decided, and it reads the marker rather than the
-  // status. A step can be ready without being next; that is the whole point.
-  if (isNext) return 'upnext'
-  // Work on this row that is not ready: its own checks fail.
-  if (s.attention) return 'attention'
-  if (s.kind === 'ready' || s.kind === 'readyToEnforce') return 'ready'
-  if (s.kind === 'reportOnly') return 'progress'
-  // Open work the plan dates for later — sequenced after something, or created
-  // while its enforcement waits — is scheduled, not waiting.
-  return 'scheduled'
+/** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. */
+export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
+  if (r.reason === null) return BOARD.held
+  const kind = BOARD.blockers[r.reason.kind]
+  if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
+    const title = titleOf(r.reason.id)
+    return title !== null ? `${kind}: ${title}` : kind
+  }
+  return kind
+}
+
+/** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
+export function holdGroupOf(r: LaneReading): string {
+  return r.reason === null ? BOARD.held : BOARD.blockers[r.reason.kind]
 }
 
 /**
@@ -287,11 +242,23 @@ function waitsOnLabel(ids: readonly string[], titleOf: (id: string) => string | 
 }
 
 /**
+ * The first day of the phase the finished plan places a step in (roadmap/stepSchedule.ts),
+ * which a blocked step with no date of its own reads for its When column; null
+ * where the plan places it in none. The phase is a secondary projection here:
+ * the row's date reads it, the row's lane never does.
+ */
+export function waveStartOf(step: Step): string | null {
+  const s = step.scheduled
+  if (!s || s.wave === null) return null
+  return s.basis?.waveStarts.find((w) => w.wave === s.wave)?.start ?? null
+}
+
+/**
  * The board's timing column for one step: the row's own value (rowWhen.ts), with
  * the step a hold waits on exactly where roadmap/holds.ts says the step is held
  * (stateReason.ts holdWaitsOn). A step sequenced after another is not held and
  * keeps its date; the board infers nothing about holds from a step's status word
- * or the group it sits in. `waveStart` is the row's roadmap group's first day.
+ * or the group it sits in. `waveStart` is the first day of the step's own phase.
  */
 export function boardWhenOf(step: Step, waveStart: string | null = null, titleOf: (id: string) => string | null = () => null): string {
   // A baseline that defines the policy two ways has no rollout to date and nothing
@@ -334,59 +301,46 @@ export function boardReasonOf(step: Step, when: string): string | null {
 }
 
 /**
- * One row of the board, in every lens.
+ * One row of the board, in every lane.
  *
- * `roadmap` is handed in rather than derived: which group the Plan draws a row
- * in is planRows.ts's decision and the surface's composition, and re-deciding it
- * here would be a second answer to a question that already has one.
+ * `lane` is handed in rather than derived: which lane a row is in is the
+ * engine's decision (planLanes.ts), and re-deciding it here would be a second
+ * answer to a question that already has one.
  */
 export type BoardItem = {
-  /** The step id, or `cleanup-<kind>` for a Cleanup row. The row's identity in every lens. */
+  /** The step id, or `cleanup-<kind>` for a Cleanup row. The row's identity in every lane. */
   id: string
   /** The title the row shows, and the only text `search` reads. */
   title: string
-  roadmap: RoadmapGroup
-  status: StatusGroup
+  lane: Lane
+  /** `Lane · substatus/reason`, the row's own label for where it is (laneLabelOf). */
+  laneLabel: string
+  /** On Hold: the primary blocker's group label (holdGroupOf). Null elsewhere. */
+  hold: string | null
   /**
    * In the Needs attention focus (planState.ts `attention`): the same reading that
-   * gives the row its word. Kept beside `status` because the row the Plan marks
-   * next can need attention too, and Up next is its group while the focus still
-   * holds it.
+   * gives the row its word.
    */
   attention: boolean
+  /** Waiting in the schedule's one sense (planState.ts `waiting`): the Waiting tile counts exactly these. */
+  waiting: boolean
   workType: WorkType
   /**
    * The Plan's next marker: the one row the board recommends advancing, and the
-   * row that draws the "next" pill. It is the same boolean for both, so the
-   * pill and the Up next group can never disagree.
+   * row that draws the "next" pill. It is the first Ready step in the engine's
+   * own order.
    */
   isNext: boolean
-  /** Position within its roadmap group, so no lens can reorder production's sequence. */
+  /** Position within its lane (planLanes.ts order), so the board never re-sequences the engine. */
   order: number
-}
-
-/** A roadmap group, as the surface already composes it. */
-export type RoadmapGroup = {
-  /** Stable key: `wave-1`, `held`, `floor`, `cleanup`, `complete`. */
-  key: string
-  label: string
-  /** The group's date range, only where production owns real scheduling. Null otherwise. */
-  date: string | null
-  /** A supporting group rather than the active rollout sequence. */
-  secondary: boolean
-  /**
-   * The wave's start instant, which a blocked step with no date of its own reads
-   * for its When column (rowWhen.ts). Null on every group that is not a wave —
-   * the held, floor, cleanup and complete groups have no start to lend.
-   */
-  start: string | null
 }
 
 /** A rendered group: its heading, its summary and the row ids in it, in order. */
 export type BoardGroup = {
+  /** Stable key: `ready`, `upNext`, `hold-<n>`, `complete`, `deferred`. */
   key: string
   label: string
-  date: string | null
+  /** A supporting group rather than the active lane. */
   secondary: boolean
   /** Whether this group starts collapsed. */
   closed: boolean
@@ -396,82 +350,83 @@ export type BoardGroup = {
 export type Focus = {
   search: string
   attention: boolean
-  upNext: boolean
+  /** Work type as a filter, never a lane: null shows every kind. */
+  workType: WorkType | null
   showCompleted: boolean
+  showDeferred: boolean
 }
 
-export const NO_FOCUS: Focus = { search: '', attention: false, upNext: false, showCompleted: false }
+export const NO_FOCUS: Focus = { search: '', attention: false, workType: null, showCompleted: false, showDeferred: false }
 
 /** True when any focus control is on, which is what an empty board has to explain. */
-export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.attention || f.upNext
+export const focusActive = (f: Focus): boolean => f.search.trim() !== '' || f.attention || f.workType !== null
 
 /**
- * The rows a focus leaves.
+ * The rows the active tab and a focus leave.
  *
  * Order is never touched: this filters and nothing else, so a step's place in
- * its group is production's sequence whatever is typed in the search box.
- * Completed work is hidden unless `showCompleted` is on — which is a visibility
- * control and not a state change; the rows it reveals are the same rows, with
- * the same words, opening the same step.
+ * its lane is the engine's sequence whatever is typed in the search box.
+ * Completed and Deferred work are hidden unless their toggle is on — a
+ * visibility control and not a state change; the rows it reveals are the same
+ * rows, with the same words, opening the same step.
  */
-export function applyFocus(items: readonly BoardItem[], f: Focus): BoardItem[] {
+export function applyFocus(items: readonly BoardItem[], tab: LaneTab, f: Focus): BoardItem[] {
   const q = f.search.trim().toLowerCase()
   return items.filter((i) => {
-    if (i.status === 'complete' && !f.showCompleted) return false
+    const own = TAB_OF[i.lane]
+    if (own === null ? !(i.lane === 'Completed' ? f.showCompleted : f.showDeferred) : own !== tab) return false
     if (f.attention && !i.attention) return false
-    if (f.upNext && i.status !== 'upnext') return false
+    if (f.workType !== null && i.workType !== f.workType) return false
     if (q !== '' && !i.title.toLowerCase().includes(q)) return false
     return true
   })
 }
 
-/** How many rows each focus control would show, over the whole board. Never a constant. */
-export function focusCounts(items: readonly BoardItem[]): { attention: number; upNext: number; complete: number } {
+/** How many rows each control would show, over the whole board. Never a constant. */
+export function focusCounts(items: readonly BoardItem[]): { attention: number; complete: number; deferred: number; lanes: Record<LaneTab, number> } {
+  const lanes: Record<LaneTab, number> = { ready: 0, upNext: 0, onHold: 0 }
+  for (const i of items) {
+    const tab = TAB_OF[i.lane]
+    if (tab !== null) lanes[tab] += 1
+  }
   return {
     attention: items.filter((i) => i.attention).length,
-    upNext: items.filter((i) => i.status === 'upnext').length,
-    complete: items.filter((i) => i.status === 'complete').length,
+    complete: items.filter((i) => i.lane === 'Completed').length,
+    deferred: items.filter((i) => i.lane === 'Deferred').length,
+    lanes,
   }
 }
 
-/** The groups one lens draws, over the rows a focus left. Pure. */
-export function groupsFor(view: View, items: readonly BoardItem[]): BoardGroup[] {
-  if (view === 'status') return byKeyed(items, STATUS_ORDER, (i) => i.status, BOARD.status)
-  if (view === 'type') return byKeyed(items, TYPE_ORDER, (i) => i.workType, BOARD.type)
-  return byRoadmap(items)
-}
-
-/** The Roadmap lens: production's own groups, in production's own order. */
-function byRoadmap(items: readonly BoardItem[]): BoardGroup[] {
+/**
+ * The groups the board draws over the rows a tab and a focus left: the tab's
+ * own lane (On Hold split by the primary blocker's label, in the engine's own
+ * order of first appearance), then Completed and Deferred where their toggles
+ * revealed them. Pure.
+ */
+export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup[] {
+  const sorted = [...items].sort((a, b) => a.order - b.order)
   const out: BoardGroup[] = []
-  const at = new Map<string, BoardGroup>()
-  for (const i of items) {
-    let g = at.get(i.roadmap.key)
-    if (!g) {
-      g = { key: i.roadmap.key, label: i.roadmap.label, date: i.roadmap.date, secondary: i.roadmap.secondary, closed: CLOSED_BY_DEFAULT.has(i.roadmap.key), items: [] }
-      at.set(i.roadmap.key, g)
-      out.push(g)
+  const own = sorted.filter((i) => TAB_OF[i.lane] === tab)
+  if (tab === 'onHold') {
+    const at = new Map<string, BoardGroup>()
+    for (const i of own) {
+      const label = i.hold ?? BOARD.held
+      let g = at.get(label)
+      if (!g) {
+        g = { key: `hold-${at.size}`, label, secondary: false, closed: false, items: [] }
+        at.set(label, g)
+        out.push(g)
+      }
+      g.items.push(i)
     }
-    g.items.push(i)
+  } else if (own.length > 0) {
+    out.push({ key: tab, label: BOARD.lanes[tab], secondary: false, closed: false, items: own })
   }
-  for (const g of out) g.items.sort((a, b) => a.order - b.order)
+  const completed = sorted.filter((i) => i.lane === 'Completed')
+  if (completed.length > 0) out.push({ key: 'complete', label: BOARD.lanes.completed, secondary: true, closed: false, items: completed })
+  const deferred = sorted.filter((i) => i.lane === 'Deferred')
+  if (deferred.length > 0) out.push({ key: 'deferred', label: BOARD.lanes.deferred, secondary: true, closed: false, items: deferred })
   return out
-}
-
-function byKeyed<K extends string>(items: readonly BoardItem[], order: readonly K[], keyOf: (i: BoardItem) => K, labels: Record<K, string>): BoardGroup[] {
-  return order
-    .map((k) => ({
-      key: k,
-      label: labels[k],
-      date: null,
-      secondary: k === 'waiting' || k === 'skipped' || k === 'complete',
-      closed: CLOSED_BY_DEFAULT.has(k),
-      // Production's sequence, inside every lens: the roadmap group's position
-      // first, then the row's position in it. A lens re-heads the board; it
-      // never re-sequences it.
-      items: items.filter((i) => keyOf(i) === k).sort((a, b) => a.order - b.order),
-    }))
-    .filter((g) => g.items.length > 0)
 }
 
 /**
@@ -482,7 +437,7 @@ function byKeyed<K extends string>(items: readonly BoardItem[], order: readonly 
 export function groupSummary(g: BoardGroup): string {
   const n = g.items.length
   const steps = `${n} step${n === 1 ? '' : 's'}`
-  const attention = g.key === 'attention' ? 0 : g.items.filter((i) => i.attention).length
+  const attention = g.items.filter((i) => i.attention).length
   if (attention === 0) return steps
   return `${steps} · ${attention} need${attention === 1 ? 's' : ''} attention`
 }

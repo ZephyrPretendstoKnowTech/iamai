@@ -38,7 +38,8 @@ import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { floorRows, phaseRows, planPhases, undatedRows } from '../ui/surfaces/planRows.ts'
 import { scheduleOf, scheduledEventOf } from './stepSchedule.ts'
-import { BOARD, boardWhenOf, statusGroupOf } from '../ui/surfaces/planBoard.ts'
+import { BOARD, boardWhenOf } from '../ui/surfaces/planBoard.ts'
+import { planStateOf } from '../ui/surfaces/planState.ts'
 import { cleanupExportViews } from '../ui/surfaces/cleanupExport.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
 import { demoTenant } from '../ui/demo.ts'
@@ -110,7 +111,7 @@ function nothingIsDated(p: Plan, s: Step): void {
   assert.deepEqual(s.rings, [], `${where}: rollout rings`)
   assert.equal(s.reportOnlyAt ?? null, null, `${where}: a report-only day`)
   assert.equal(booked(p, s.id), false, `${where}: a calendar entry`)
-  assert.ok(!['ready', 'upnext'].includes(statusGroupOf(s, false, true)), `${where}: grouped as work that is ready`)
+  assert.notEqual(planStateOf(s, true).kind, 'ready', `${where}: reads as work that is ready`)
 }
 
 // ---- A. not deployed, with something holding it ----
@@ -252,8 +253,9 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
   // The printed plan draws the Plan's own rows and states the Plan's own length.
   const print = readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8')
   for (const read of ['undatedRows(', 'phaseRows(', 'floorRows(', 'planFinish(', 'planWeeks(finish, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
+  // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  for (const read of ['undatedRows(', 'phaseRows(', 'planWeeks(finish, c.schedule)', 'finish.held', 'isHeld(step)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
+  for (const read of ['laneReadings(', 'boardWhenOf(step, waveStart, titleOf)', 'planWeeks(finish, c.schedule)', 'finish.held', 'isHeld(step)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
 })
 
 // ---- the finish ----

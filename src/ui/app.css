@@ -1764,6 +1764,22 @@ footer.app a {
   background: var(--brand-soft);
   color: var(--brand-soft-text);
 }
+/* Work type is a filter over the showing lane (S3), in the same control family as the toggles beside it. */
+.plan-controls .work-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.plan-controls .work-type select {
+  height: var(--control);
+  border: 1px solid var(--strong-line);
+  border-radius: var(--radius-control);
+  background: var(--secondary-surface);
+  color: var(--primary-text);
+  font: inherit;
+  font-size: var(--t-2);
+  padding: 0 8px;
+}
 .plan-controls .count {
   min-width: 19px;
   height: 19px;
@@ -1920,6 +1936,22 @@ footer.app a {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+}
+/* The row's lane under its state word (S3): `Ready · Observing`, `Up Next · After
+   Emergency Access Accounts`, `On Hold · Baseline mapping`. Quiet, like the
+   reason line: the state word keeps the weight, the lane says where the row sits. */
+.plan-row-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.plan-row .lane {
+  display: block;
+  color: var(--quiet-text);
+  font-size: var(--t-micro);
+  line-height: 1.25;
 }
 .plan-row-title {
   min-width: 0;
