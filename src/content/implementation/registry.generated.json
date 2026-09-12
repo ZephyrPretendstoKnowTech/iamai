@@ -1013,7 +1013,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -1025,7 +1027,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -1037,7 +1041,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -1049,7 +1055,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -1061,7 +1069,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -1073,7 +1083,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -1593,7 +1605,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[],\"customAuthenticationFactors\":[],\"termsOfUse\":[],\"authenticationStrength\":{\"id\":{{json:authStrength.target.id}}}},\"sessionControls\":null}\n"
         },
@@ -1605,7 +1619,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -1617,7 +1633,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[],\"customAuthenticationFactors\":[],\"termsOfUse\":[],\"authenticationStrength\":{\"id\":{{json:authStrength.target.id}}}}}\n"
         },
@@ -1629,7 +1647,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -1641,7 +1661,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -1653,7 +1675,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -2160,7 +2184,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -2172,7 +2198,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -2184,7 +2212,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -2196,7 +2226,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -2208,7 +2240,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -2220,7 +2254,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -2723,7 +2759,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":null}\n"
         },
@@ -2735,7 +2773,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -2747,7 +2787,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -2759,7 +2801,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -2771,7 +2815,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -2783,7 +2829,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -3287,7 +3335,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":null}\n"
         },
@@ -3299,7 +3349,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -3311,7 +3363,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -3323,7 +3377,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -3335,7 +3391,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -3347,7 +3405,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -3852,7 +3912,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":null}\n"
         },
@@ -3864,7 +3926,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -3876,7 +3940,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -3888,7 +3954,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -3900,7 +3968,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -3912,7 +3982,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -4425,7 +4497,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -4437,7 +4511,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -4449,7 +4525,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -4461,7 +4539,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -4473,7 +4553,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -4485,7 +4567,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -5990,7 +6074,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -6002,7 +6088,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -6014,7 +6102,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -6026,7 +6116,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -6038,7 +6130,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -6050,7 +6144,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -7839,7 +7935,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"mfa\"],\"customAuthenticationFactors\":[],\"termsOfUse\":[]},\"sessionControls\":null}\n"
         },
@@ -7851,7 +7949,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -7863,7 +7963,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"mfa\"],\"customAuthenticationFactors\":[],\"termsOfUse\":[]}}\n"
         },
@@ -7875,7 +7977,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -7887,7 +7991,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -7899,7 +8005,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -8433,7 +8541,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -8445,7 +8555,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -8457,7 +8569,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -8469,7 +8583,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -8481,7 +8597,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -8493,7 +8611,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -10050,7 +10170,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":null}\n"
         },
@@ -10062,7 +10184,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -10074,7 +10198,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -10086,7 +10212,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -10098,7 +10226,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -10110,7 +10240,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -10652,7 +10784,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{{json:policy.target.conditions}},\"grantControls\":{{json:policy.target.grantControls}},\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -10664,7 +10798,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{{json:policy.target.conditions}}}\n"
         },
@@ -10676,7 +10812,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{{json:policy.target.grantControls}}}\n"
         },
@@ -10688,7 +10826,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":{{json:policy.target.sessionControls}}}\n"
         },
@@ -10700,7 +10840,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"displayName\":{{json:policy.target.displayName}}}\n"
         },
@@ -10712,7 +10854,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -11479,7 +11623,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\n  \"displayName\": {{json:policy.target.displayName}},\n  \"state\": \"enabledForReportingButNotEnforced\",\n  \"conditions\": {\n    \"users\": {\n      \"includeUsers\": [],\n      \"excludeUsers\": [],\n      \"includeGroups\": [{{json:serviceAccounts.group.id}}],\n      \"excludeGroups\": {{json:policy.target.excludeGroups}},\n      \"includeRoles\": [],\n      \"excludeRoles\": []\n    },\n    \"applications\": {\n      \"includeApplications\": [\"All\"],\n      \"excludeApplications\": [],\n      \"includeUserActions\": [],\n      \"includeAuthenticationContextClassReferences\": []\n    },\n    \"clientAppTypes\": [\"all\"],\n    \"locations\": {\n      \"includeLocations\": [\"All\"],\n      \"excludeLocations\": {{json:trustedLocations.ids}}\n    },\n    \"userRiskLevels\": [],\n    \"signInRiskLevels\": [],\n    \"servicePrincipalRiskLevels\": []\n  },\n  \"grantControls\": {\n    \"operator\": \"OR\",\n    \"builtInControls\": [\"block\"],\n    \"customAuthenticationFactors\": [],\n    \"termsOfUse\": []\n  },\n  \"sessionControls\": null\n}\n"
         },
@@ -11491,7 +11637,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\n  \"conditions\": {\n    \"users\": {\n      \"includeUsers\": [],\n      \"excludeUsers\": [],\n      \"includeGroups\": [{{json:serviceAccounts.group.id}}],\n      \"excludeGroups\": {{json:policy.target.excludeGroups}},\n      \"includeRoles\": [],\n      \"excludeRoles\": []\n    },\n    \"applications\": {\n      \"includeApplications\": [\"All\"],\n      \"excludeApplications\": [],\n      \"includeUserActions\": [],\n      \"includeAuthenticationContextClassReferences\": []\n    },\n    \"clientAppTypes\": [\"all\"],\n    \"locations\": {\n      \"includeLocations\": [\"All\"],\n      \"excludeLocations\": {{json:trustedLocations.ids}}\n    },\n    \"userRiskLevels\": [],\n    \"signInRiskLevels\": [],\n    \"servicePrincipalRiskLevels\": []\n  }\n}\n"
         },
@@ -11503,7 +11651,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"block\"],\"customAuthenticationFactors\":[],\"termsOfUse\":[]}}\n"
         },
@@ -11515,7 +11665,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -11527,7 +11679,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabledForReportingButNotEnforced\"}\n"
         },
@@ -11539,7 +11693,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -17279,7 +17435,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\n  \"displayName\": {{json:policy.target.displayName}},\n  \"state\": \"enabledForReportingButNotEnforced\",\n  \"conditions\": {\n    \"users\": {\n      \"includeUsers\": [\"All\"],\n      \"excludeUsers\": [],\n      \"includeGroups\": [],\n      \"excludeGroups\": {{json:policy.target.excludeGroups}},\n      \"includeRoles\": [],\n      \"excludeRoles\": [],\n      \"excludeGuestsOrExternalUsers\": {\n        \"guestOrExternalUserTypes\": \"internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider\",\n        \"externalTenants\": {\n          \"@odata.type\": \"#microsoft.graph.conditionalAccessAllExternalTenants\",\n          \"membershipKind\": \"all\"\n        }\n      }\n    },\n    \"applications\": {\n      \"includeApplications\": [\"All\"],\n      \"excludeApplications\": [],\n      \"includeUserActions\": [],\n      \"includeAuthenticationContextClassReferences\": []\n    },\n    \"clientAppTypes\": [\"all\"],\n    \"userRiskLevels\": [\"medium\"],\n    \"signInRiskLevels\": [],\n    \"servicePrincipalRiskLevels\": []\n  },\n  \"grantControls\": {\n    \"operator\": \"AND\",\n    \"builtInControls\": [\"mfa\", \"passwordChange\"],\n    \"customAuthenticationFactors\": [],\n    \"termsOfUse\": []\n  },\n  \"sessionControls\": null\n}\n"
         },
@@ -17291,7 +17449,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\n  \"conditions\": {\n    \"users\": {\n      \"includeUsers\": [\"All\"],\n      \"excludeUsers\": [],\n      \"includeGroups\": [],\n      \"excludeGroups\": {{json:policy.target.excludeGroups}},\n      \"includeRoles\": [],\n      \"excludeRoles\": [],\n      \"excludeGuestsOrExternalUsers\": {\n        \"guestOrExternalUserTypes\": \"internalGuest,b2bCollaborationGuest,b2bCollaborationMember,b2bDirectConnectUser,otherExternalUser,serviceProvider\",\n        \"externalTenants\": {\n          \"@odata.type\": \"#microsoft.graph.conditionalAccessAllExternalTenants\",\n          \"membershipKind\": \"all\"\n        }\n      }\n    },\n    \"applications\": {\n      \"includeApplications\": [\"All\"],\n      \"excludeApplications\": [],\n      \"includeUserActions\": [],\n      \"includeAuthenticationContextClassReferences\": []\n    },\n    \"clientAppTypes\": [\"all\"],\n    \"userRiskLevels\": [\"medium\"],\n    \"signInRiskLevels\": [],\n    \"servicePrincipalRiskLevels\": []\n  }\n}\n"
         },
@@ -17303,7 +17463,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{\"operator\":\"AND\",\"builtInControls\":[\"mfa\",\"passwordChange\"],\"customAuthenticationFactors\":[],\"termsOfUse\":[]}}\n"
         },
@@ -17315,7 +17477,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"sessionControls\":null}\n"
         },
@@ -17327,7 +17491,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabledForReportingButNotEnforced\"}\n"
         },
@@ -17339,7 +17505,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
@@ -22875,7 +23043,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
           "text": "{\"displayName\":\"{{policy.target.displayName}}\",\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{\"users\":{\"includeUsers\":{{json:policy.target.includeUsers}},\"excludeGroups\":{{json:policy.target.excludeGroups}}},\"applications\":{\"includeApplications\":[\"All\"]},\"clientAppTypes\":[\"all\"],\"locations\":{\"includeLocations\":[\"All\"],\"excludeLocations\":[\"{{policy.target.trustedLocationId}}\"]}},\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"block\"]},\"sessionControls\":null}\n"
         },
@@ -22887,7 +23057,9 @@
               "partial"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"conditions\":{\"users\":{\"includeUsers\":{{json:policy.target.includeUsers}},\"excludeGroups\":{{json:policy.target.excludeGroups}}},\"applications\":{\"includeApplications\":[\"All\"]},\"clientAppTypes\":[\"all\"],\"locations\":{\"includeLocations\":[\"All\"],\"excludeLocations\":[\"{{policy.target.trustedLocationId}}\"]}}}\n"
         },
@@ -22899,7 +23071,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"block\"]},\"sessionControls\":null}\n"
         },
@@ -22911,7 +23085,9 @@
               "partial"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabledForReportingButNotEnforced\"}\n"
         },
@@ -22923,7 +23099,9 @@
               "readyToEnforce"
             ],
             "format": "json",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"state\":\"enabled\"}\n"
         },
