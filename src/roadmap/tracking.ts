@@ -19,7 +19,7 @@
 // of them conservatively — never taken from whichever member came first.
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
 import { list } from '../copy/statements.ts'
-import { isHeld } from './holds.ts'
+import { holdOf, isHeld } from './holds.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import { findTaggedPolicies } from './generate.ts'
@@ -38,7 +38,7 @@ import type { ObservedState } from './observation.ts'
 import type { ObservationChange, StepObservation, StepObservationRecord } from './observation.ts'
 
 const TRACK = engine.tracking
-import type { MemberTracking, PolicyOperation, Step, StepTracking } from './types.ts'
+import type { CorrectionSafety, MemberTracking, PolicyOperation, Step, StepTracking } from './types.ts'
 
 type PolicyRow = { id?: string; displayName?: string; state?: string; createdDateTime?: string; modifiedDateTime?: string; conditions?: { users?: { includeUsers?: string[]; includeGroups?: string[] } } }
 
@@ -181,6 +181,15 @@ export function requiredMembers(step: Step): RequiredMember[] {
  *
  * The order is exactness, strongest first:
  *
+ *  0. the member's own record of the last scan (`record`, observation.ts). It
+ *     names the very object the member was delivered by, and the association
+ *     is kept for as long as that object is on the tenant: once a policy is a
+ *     member's, a drift in it never erases the tie or hands the member to
+ *     another candidate — however the object's grant, scope or state moved, and
+ *     whichever candidate a regeneration would now prefer. The tie is reported
+ *     by the strongest proof this scan still holds for it (the operation's
+ *     target, a tag), and as `owned` where the record is the only thing that
+ *     proves it;
  *  1. the operation's own target. Foundation A settled that association at
  *     generation and refuses to guess a pair, so where an update names a policy
  *     that policy is the member;
@@ -198,30 +207,55 @@ export function requiredMembers(step: Step): RequiredMember[] {
  * A pair the plan itself could not tell apart (`Action.unmatchedPair`) is not one
  * this can tell apart either: nothing is matched and nothing advances.
  */
-export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: CoverageReport, planId: string): MemberMatch[] {
+export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, record: StepObservationRecord | null = null): MemberMatch[] {
   const out: MemberMatch[] = requiredMembers(step).map((m) => ({ ...m, policy: null, matchedBy: null, ambiguous: false }))
   const all = rows(snapshot)
   const byId = new Map(all.filter((p) => typeof p.id === 'string').map((p) => [p.id as string, p]))
-  if (step.action.unmatchedPair === true) {
-    for (const m of out) m.ambiguous = true
-    return out
-  }
   const claimed = new Set<string>()
   const claim = (m: MemberMatch, policy: PolicyRow, by: MemberTracking['matchedBy']): void => {
     m.policy = policy
     m.matchedBy = by
     claimed.add(policy.id as string)
   }
+  const tagged = findTaggedPolicies(snapshot, planId, step.id)
+  const sole = out.length === 1
+
+  // 0. the member's own record of the last scan: the object it was delivered
+  // by, kept while that object is on the tenant. A pre-member record is the
+  // sole member's own; on a pair it is attributed only where identity proves it
+  // (observation.ts priorFor), and here the identity to prove is the object
+  // itself, so the record is read for its members alone.
+  for (const m of out) {
+    const artifact = (record?.members[m.key] ?? (sole ? record?.unattributed : null))?.artifact ?? null
+    if (artifact === null) continue
+    const policy = all.find((p) => artifactIdOf(p.id) === artifact)
+    if (!policy || claimed.has(policy.id as string)) continue
+    // The strongest proof this scan still holds for the tie, else the record.
+    const by: MemberTracking['matchedBy'] =
+      m.op && m.op.mode === 'update' && m.op.policyId === policy.id
+        ? 'operation-target'
+        : tagged.some((t) => t.policyId === policy.id && t.memberKey === m.key)
+          ? 'member-tag'
+          : sole && tagged.some((t) => t.policyId === policy.id && t.memberKey === null)
+            ? 'step-tag'
+            : 'owned'
+    claim(m, policy, by)
+  }
+
+  if (step.action.unmatchedPair === true) {
+    for (const m of out) if (!m.policy) m.ambiguous = true
+    return out
+  }
 
   // 1. the operation's own target
   for (const m of out) {
+    if (m.policy) continue
     const id = m.op && m.op.mode === 'update' ? m.op.policyId : null
     if (!id || claimed.has(id)) continue
     const policy = byId.get(id)
     if (policy) claim(m, policy, 'operation-target')
   }
 
-  const tagged = findTaggedPolicies(snapshot, planId, step.id)
   // 2. the member's own tag
   for (const m of out) {
     if (m.policy) continue
@@ -233,7 +267,6 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   }
 
   // 3. a tag written before members were tagged
-  const sole = out.length === 1
   const untagged = tagged.filter((t) => t.memberKey === null && !claimed.has(t.policyId))
   if (untagged.length > 0) {
     if (sole) {
@@ -274,11 +307,11 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
  * member's artifact. Null on a step the baseline implements with two policies —
  * no single object is that step, and returning Policy A would say it was.
  */
-export function matchPolicy(step: Step, snapshot: TenantSnapshot, coverage: CoverageReport, planId: string): { policy: PolicyRow; matchedBy: 'tag' | 'fingerprint' } | null {
-  const members = matchMembers(step, snapshot, coverage, planId)
+export function matchPolicy(step: Step, snapshot: TenantSnapshot, coverage: CoverageReport, planId: string, record: StepObservationRecord | null = null): { policy: PolicyRow; matchedBy: StepTracking['matchedBy'] } | null {
+  const members = matchMembers(step, snapshot, coverage, planId, record)
   if (members.length !== 1) return null
   const m = members[0]
-  return m.policy ? { policy: m.policy, matchedBy: m.matchedBy === 'fingerprint' ? 'fingerprint' : 'tag' } : null
+  return m.policy ? { policy: m.policy, matchedBy: m.matchedBy === 'fingerprint' ? 'fingerprint' : m.matchedBy === 'owned' ? 'owned' : 'tag' } : null
 }
 
 /**
@@ -672,8 +705,9 @@ function aggregateLifecycle(members: readonly MemberTracking[], observed: readon
  */
 function aggregateTracking(members: MemberTracking[], observed: ObservedState[], snapshot: TenantSnapshot): StepTracking {
   const anyFingerprint = members.some((m) => m.matchedBy === 'fingerprint')
-  const matchedBy: StepTracking['matchedBy'] = anyFingerprint ? 'fingerprint' : 'tag'
-  const note = matchedBy === 'tag' ? TRACK.matchedByTag : TRACK.matchedByFingerprint
+  const anyOwned = members.some((m) => m.matchedBy === 'owned')
+  const matchedBy: StepTracking['matchedBy'] = anyFingerprint ? 'fingerprint' : anyOwned ? 'owned' : 'tag'
+  const note = matchedBy === 'tag' ? TRACK.matchedByTag : matchedBy === 'owned' ? TRACK.matchedByRecord : TRACK.matchedByFingerprint
   if (members.length === 1) {
     const m = members[0]
     return {
@@ -782,9 +816,9 @@ export function trackExecution(
     if (step.kind !== 'create' && step.kind !== 'adjust') continue
     const result = resultByGoal.get(step.goalId)
     const goalStatus = result?.status
-    const matches = matchMembers(step, snapshot, coverage, planId)
-    const sole = matches.length === 1
     const record = observations[step.id] ?? null
+    const matches = matchMembers(step, snapshot, coverage, planId, record)
+    const sole = matches.length === 1
     const carried = step.tracking
 
     // ---- What this scan saw of each member, against what the last one saw of
@@ -890,7 +924,11 @@ export function trackExecution(
       // group nobody has confirmed among them — a decision, a readiness threshold
       // or a baseline that contradicts itself. A report-only policy goes on being
       // watched through a hold, and is not ready to turn on.
-      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && memberGates.readyNow && !isHeld(step)
+      // Nor on a correction that is not safe to hand over (`correctionOf`): what
+      // the operation would edit is not the policy this member owns, or another
+      // goal is standing on it.
+      const correction = correctionOf(m, step, coverage)
+      const ready = observedState === 'report-only' && !m.ambiguous && asPlanned && usable && !change.reviewRequired && correction?.safe !== false && memberGates.readyNow && !isHeld(step)
       memberTracking.push({
         key: m.key,
         sourceName: m.sourceName,
@@ -898,6 +936,7 @@ export function trackExecution(
         policyName: policyRow?.displayName ?? null,
         matchedBy: m.matchedBy,
         ambiguous: m.ambiguous,
+        correction,
         lifecycle: m.ambiguous ? 'not-deployed' : observedState === 'enforced' ? 'enforced' : observedState === 'report-only' ? (ready ? 'ready-to-enforce' : 'report-only') : 'not-deployed',
         state,
         createdAt,
@@ -938,6 +977,10 @@ export function trackExecution(
     // it put a healthy rollout into a condition it was not in (observation.ts
     // reviewRequired, kept apart from continuity).
     if (memberTracking.some((m) => m.reviewRequired)) raiseCondition(step, 'review-required')
+    // And when the correction the plan wrote is not one it may hand over: the
+    // member keeps the policy it owns, the operation is not offered against
+    // another, and a person decides (`correctionOf`, types.ts CorrectionSafety).
+    if (memberTracking.some((m) => m.correction?.safe === false)) raiseCondition(step, 'review-required')
 
     const since = step.history.at(-1)?.at ?? snapshot.asOf
     const sinceText = absoluteDate(since)
@@ -1053,4 +1096,56 @@ function satisfierOf(result: GoalResult | undefined): string | null {
   const by = result?.satisfaction
   if (!by || by.policyNames.length === 0) return null
   return by.sufficientName ?? list(by.policyNames)
+}
+
+// ---- ownership: a correction edits the policy the member owns, or nobody's ----
+
+/**
+ * Whether the correction a member's own operation submits may be handed over
+ * (types.ts CorrectionSafety). An update edits one tenant object, so it has to
+ * be the object this member owns — the policy the scan resolved for it, which
+ * the member's own record keeps across a drift (`matchMembers`). A regeneration
+ * that now prefers another candidate has written its update against a policy
+ * this member does not own, and handing that over would move the member: the
+ * step asks a person instead, and the candidate is never substituted. And no
+ * other goal may be counting the owned policy towards its own satisfaction
+ * (coverage/types.ts Satisfaction): correcting it for this goal could take that
+ * one out of place, which is a person's call too. Null where nothing is being
+ * corrected — a create, a member with no operation, or an update whose target
+ * is not on the tenant (Foundation A's unavailable reason, not a drift).
+ */
+function correctionOf(m: MemberMatch, step: Step, coverage: CoverageReport): CorrectionSafety | null {
+  if (!m.op || m.op.mode !== 'update' || !m.policy) return null
+  const owned = m.policy
+  if (m.op.policyId !== owned.id) {
+    return { safe: false, reason: 'unowned-target', note: fillText(TRACK.correctionUnowned, { target: nameOfOp(m.op) ?? m.op.policyId, owned: owned.displayName ?? owned.id ?? '' }) }
+  }
+  const other = coverage.results.find((r) => r.goal.id !== step.goalId && (r.satisfaction?.policyIds ?? []).includes(owned.id as string))
+  if (other) return { safe: false, reason: 'shared-satisfier', note: fillText(TRACK.correctionShared, { name: owned.displayName ?? owned.id ?? '', goal: other.goal.name }) }
+  return { safe: true }
+}
+
+/** What a drift in an owned policy comes to, and nothing else: it can be corrected now, a person has to look, or something holds the step. */
+export type DriftOutcome = 'correctable' | 'review-required' | 'on-hold'
+
+/**
+ * The one reading of what a deployed policy's drift from the plan comes to.
+ * Exactly three outcomes, never a fourth, and never a change of owner:
+ * `review-required` where a person has to look — a change the plan did not ask
+ * for (observation.ts `reviewRequired`), a regression (`reopen`), or a correction
+ * that is not safe to hand over (`correctionOf`); `on-hold` where anything else
+ * holds the step (roadmap/holds.ts); `correctable` otherwise — the step's own
+ * operation against the policy it owns is the correction, a report-only policy
+ * short of enforcement among them. Null where nothing owned has drifted: a step
+ * no policy delivers yet, one that is done, or one set aside.
+ */
+export function driftOutcomeOf(step: Step): DriftOutcome | null {
+  if (step.status === 'done' || step.status === 'skipped') return null
+  const members = step.tracking?.members ?? []
+  if (!members.some((m) => m.policyId !== null)) return null
+  // Read from the members, which is where the condition is raised from: a step
+  // already blocked on something else keeps that condition (lifecycle.ts
+  // raiseCondition ranks it harder), and the drift still needs a person.
+  if (step.state.condition === 'review-required' || members.some((m) => m.reviewRequired || m.correction?.safe === false)) return 'review-required'
+  return holdOf(step) !== null ? 'on-hold' : 'correctable'
 }

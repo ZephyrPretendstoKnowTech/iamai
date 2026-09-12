@@ -1446,11 +1446,23 @@ test('pair 12: a pair the tag cannot tell apart is left unresolved, never guesse
   assert.deepEqual(matched.map((m) => m.policy?.id ?? null), [null, null], 'no arbitrary first policy wins')
   assert.ok(matched.every((m) => m.ambiguous), 'both members say so rather than guessing')
 
+  // With the record of the last scan carried in, nothing is guessed either: the
+  // record names the very object each member was delivered by, and a rename
+  // between two scans does not move a member off the object it owns (S1
+  // ownership invariant, tracking.ts matchMembers stage 0).
   const step = pairScan(() => renamed, prior)
-  assert.ok(step.state.members.every((m) => m.change.latest.artifact === null), 'and no member claims an object')
-  assert.notEqual(step.status, 'ready-to-enforce', 'nothing advances on a guess')
-  assert.equal(step.state.lifecycle, 'not-deployed')
-  assert.ok(step.state.members.every((m) => m.change.latest.firstSeenAt === W2.snapshot.asOf), 'and no history is borrowed')
+  assert.deepEqual(
+    step.state.members.map((m) => m.change.latest.artifact),
+    [artifactIdOf(A_ID), artifactIdOf(B_PAIR_ID)],
+    'each member keeps the object its own record names',
+  )
+  assert.ok(step.tracking?.members.every((m) => m.matchedBy === 'owned'), 'and says the record is what ties it')
+  assert.ok(step.state.members.every((m) => m.change.continuity === 'continues'), 'a rename is not a change, so the history is its own')
+  assert.equal(step.state.lifecycle, 'report-only')
+  // Without a record, the same two objects are nobody's (asserted above).
+  const bare2 = pairScan(() => renamed, {})
+  assert.ok(bare2.state.members.every((m) => m.change.latest.artifact === null), 'and with no record no member claims an object')
+  assert.equal(bare2.state.lifecycle, 'not-deployed')
 
   // Two policies carrying one member's own tag are that member's ambiguity.
   const twice = structuredClone(bare)
