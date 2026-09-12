@@ -9,10 +9,14 @@
   "headings": [
     "Why",
     "Readiness",
-    "What to do",
+    "Implementation",
     "Done when"
   ],
   "tiles": [],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
   "when": "Aug 31, 2026"
 }
