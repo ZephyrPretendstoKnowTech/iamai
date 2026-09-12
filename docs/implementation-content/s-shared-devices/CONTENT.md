@@ -140,7 +140,7 @@ Assess whether report-only evidence supports enabling the exact shared-device po
 Explain the blocker without inventing implementation: {{dependencies.blockers}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
+@@IAMAI-BEGIN {"id":"email.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
 Subject: Confirm shared-device accounts before Conditional Access changes
 
 Please confirm which listed accounts are assigned to Teams Rooms, panels, shared phones, or other userless devices. IAMAI will not exempt an account from person policies from its name alone.

@@ -24,7 +24,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"a6b3b754-9079-48f0-abb2-9e79b2f41095":"d0f90a62"},
+    "reviewedMembers": {
+      "a6b3b754-9079-48f0-abb2-9e79b2f41095": "d0f90a62"
+    },
     "memberStableId": "a6b3b754-9079-48f0-abb2-9e79b2f41095",
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
     "initialState": "enabledForReportingButNotEnforced",
@@ -120,6 +122,12 @@
       },
       "mismatches": {
         "context.unpublished-or-wrong": {
+          "select": {
+            "equals": [
+              "authContext.current.isAvailable",
+              false
+            ]
+          },
           "requires": [
             "authContext.target.id",
             "authContext.target.displayName"

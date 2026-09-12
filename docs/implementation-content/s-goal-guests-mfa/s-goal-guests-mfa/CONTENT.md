@@ -143,7 +143,7 @@ Explain why guest MFA is not actionable yet using only these blockers/decisions:
 Explain the Conditional Access licensing prerequisite and leave the guest MFA package non-actionable until licensing is resolved.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"guest-sponsors-and-help-desk"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
 Subject: Guest MFA validation is starting
 
 We are preparing guest and external-user MFA policies in Report-only first. External users may see different authentication behavior depending on their home tenant and identity type. No enforcement change is being made until representative guest access is validated.
