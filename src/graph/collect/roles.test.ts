@@ -39,6 +39,14 @@ test('a source needing two scopes names the least role for each', () => {
   assert.deepEqual(rolesForSource('nothing:here').least, [])
 })
 
+test('the authentication methods policy asks for the role Microsoft Learn lists, never Security Reader (A5)', () => {
+  // GET /policies/authenticationMethodsPolicy: Global Reader or Authentication Policy Administrator.
+  assert.deepEqual(rolesForSource('config:authMethodsPolicy').least, [READ_EVERYTHING_ROLE])
+  assert.doesNotMatch(ACCESS.needsRole(rolesForSource('config:authMethodsPolicy').least), /Security Reader/)
+  // The scope's other reads keep their own least role.
+  assert.deepEqual(rolesForSource('config:caPolicies').least, ['Security Reader'])
+})
+
 test('a licence reason is never read as a missing role', () => {
   assert.equal(isPrivilegeDenial('not available on this licence (needs Entra ID P1)'), false)
   assert.equal(isPrivilegeDenial('Insufficient privileges to complete the operation.'), true)
