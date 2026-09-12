@@ -9,6 +9,7 @@ import { fixtureSnapshot } from '../testing/uiSnapshot.ts'
 import { fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
 import { operatorUserId } from './operator.ts'
+import { OPERATOR_PASSKEY_STEP_ID } from '../roadmap/passkeySettings.ts'
 import { activeUsers, notActiveUsers, personAccounts } from './sets.ts'
 import { readinessView } from './mfaReadiness.ts'
 import { facts } from './facts.ts'
@@ -46,7 +47,8 @@ test('a second signed-in account produces identical facts: MFA Readiness, the pa
     for (const other of rows.slice(1)) assert.deepEqual(other, rows[0], `${name}: Today's rows change with the signed-in account`)
     const care = runs.map((s) => contentLists({ snapshot: s, mapping: f.mapping, nameOf: (id) => id, now: s.asOf }).specialCareIds)
     for (const other of care.slice(1)) assert.deepEqual(other, care[0], `${name}: the special-care default changes with the signed-in account`)
-    const populations = runs.map((s) => runFixture({ ...f, snapshot: s }).steps.map((st) => [st.id, [...st.population.ids].sort().join(',')]))
+    // The operator's own passkey rung (A5 task 5) is the one step about the signed-in account itself; every other population is the same.
+    const populations = runs.map((s) => runFixture({ ...f, snapshot: s }).steps.filter((st) => st.id !== OPERATOR_PASSKEY_STEP_ID).map((st) => [st.id, [...st.population.ids].sort().join(',')]))
     for (const other of populations.slice(1)) assert.deepEqual(other, populations[0], `${name}: a step's population changes with the signed-in account`)
   }
 })

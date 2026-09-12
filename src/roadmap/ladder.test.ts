@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { LADDER_ITEMS, GLOBAL_ADMIN_ROLE_ID, ladderFacts, ladderStepId, ladderSteps } from './ladder.ts'
+import { OPERATOR_PASSKEY_STEP_ID } from './passkeySettings.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { emptyMappingState } from '../mapping/types.ts'
@@ -103,6 +104,7 @@ test('a free tenant gets the ladder as its plan, in ladder order, and no Conditi
 test('a licensed tenant gets no ladder steps', () => {
   for (const name of ['small', 'mid', 'messy'] as const) {
     const { steps } = runFixture(fixture(name))
-    assert.equal(steps.some((s) => s.id.startsWith('s-ladder-')), false, `${name}: no ladder without a free licence`)
+    // The operator's own passkey rung (A5 task 5) is not a free-tier ladder item: it is asked of a licensed tenant's operator.
+    assert.equal(steps.some((s) => s.id.startsWith('s-ladder-') && s.id !== OPERATOR_PASSKEY_STEP_ID), false, `${name}: no ladder without a free licence`)
   }
 })

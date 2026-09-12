@@ -103,7 +103,8 @@ test('A5.3 on the demo (passkeys not configured to the target) the step reads Re
   assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Create')
   assert.equal(label(CAMPAIGN), 'Up Next · After Set Up Passkeys to Match the Baseline')
   const { state, bindings } = packageOf(demo, r)
-  assert.equal(state, 'partial')
+  // An object step reaches `missing` only (states.ts RUNTIME_REACH); the package's one projection is `missingOrPartial`.
+  assert.equal(state, 'missing')
   assert.deepEqual(bindings['passkey.target.fido2Configuration'], PASSKEY_TARGET)
   assert.deepEqual(bindings['passkey.target.allowedAaguids'], [...PASSKEY_TARGET_AAGUIDS])
   assert.equal(bindings['passkey.current.state'], 'partial')
