@@ -39,7 +39,7 @@ import { app, pages } from '../../content/content.ts'
 import { contentTitle } from '../../content/stepTitle.ts'
 import { fillText } from '../../content/render.ts'
 import { monthDay } from '../../copy/dates.ts'
-import { actionOf, detailOf, footerParts, methodsCell, proofLines, readinessWord, recommendedWord, roleWord, searchText, showWord, stateTitle } from './readinessCells.ts'
+import { actionOf, detailOf, footerParts, methodsCell, passkeyStripParts, proofLines, readinessWord, recommendedWord, roleWord, searchText, showWord, stateTitle } from './readinessCells.ts'
 import type { ProofMark } from './readinessCells.ts'
 import { READINESS_CSV } from './inventoryTables.ts'
 import { useAppliedMapping, usePlanData } from './planData.ts'
@@ -187,6 +187,7 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
   const source = snapshot?.sources.signInEvidence
   const records = source?.coveredWindow ? fillText(C.lineRecords, { from: monthDay(source.coveredWindow.from), to: monthDay(source.coveredWindow.to) }) : source?.status === 'disabled' && source.reason ? fillText(C.lineNoRecordsReason, { reason: source.reason }) : C.lineNoRecords
   const parts = footerParts(facts)
+  const rollout = passkeyStripParts(passkeys)
   // The toolbar's filters; a link that arrived on a population the toolbar does not offer keeps its own pill, so the control still says what is on screen.
   const pills: ShowKey[] = SHOW_KEYS.includes(show) || (SUMMARY_STATES as readonly string[]).includes(show) ? [...SHOW_KEYS] : [...SHOW_KEYS, show]
 
@@ -316,7 +317,7 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
               <span>{fillText(S.rolloutLine, { have: passkeys.have, active: facts.active })}</span>
             </div>
             <div className="progress-value">
-              {passkeys.without > 0 ? (
+              {rollout.without !== null && (
                 <a
                   href={readinessHref('noPasskey')}
                   onClick={(e) => {
@@ -325,11 +326,15 @@ function ReadinessPage({ snapshot, context, gateStepId }: { snapshot: TenantSnap
                     toolbar.current?.scrollIntoView({ block: 'center' })
                   }}
                 >
-                  {fillText(S.rolloutWithout, { n: passkeys.without })}
+                  {rollout.without}
                 </a>
-              ) : (
-                S.rolloutNone
               )}
+              {rollout.rest.map((part, i) => (
+                <span key={i}>
+                  {(rollout.without !== null || i > 0) && ' · '}
+                  {part}
+                </span>
+              ))}
             </div>
           </div>
         </section>
