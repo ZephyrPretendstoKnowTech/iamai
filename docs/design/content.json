@@ -681,7 +681,8 @@
         "rollout": "Passkey rollout",
         "rolloutLine": "{have} of {active} have a passkey",
         "rolloutWithout": "Show {n} without →",
-        "rolloutNone": "None without"
+        "rolloutNone": "None without",
+        "rolloutUnread": "{n} unread"
       },
       "search": "Search people or methods",
       "show": {
