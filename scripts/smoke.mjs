@@ -337,11 +337,12 @@ try {
   // Tile 3 reads Scan complete · N ago once; tile 4 reads Plan ready · from the scan N ago with the same words, from the one stored timestamp; nothing says scanned.
   check(
     "Connect (scanned): the scan's age once as Scan complete · N ago, Plan ready · from the scan with the same age, and no scanned line",
-    (await waitFor(`/Plan\\s+ready · (\\d+ steps, \\d+ done · )?from the scan/.test(document.body.innerText)`)) &&
-      (await evaluate(`(() => { const t = document.querySelector('main.page').innerText; const m = t.match(/Scan\\s+complete · ([^\\n]+)/); if (!m) return false; const age = m[1].trim(); return (t.match(/complete · [^\\n]+/g) || []).length === 1 && /ready · (\\d+ steps, \\d+ done · )?from the scan /.test(t) && t.includes('from the scan ' + age) && !/scanned/.test(t) })()`)),
+    (await waitFor(`/Plan\\s+ready · (\\d+ steps, \\d+ completed · )?from the scan/.test(document.body.innerText)`)) &&
+      (await evaluate(`(() => { const t = document.querySelector('main.page').innerText; const m = t.match(/Scan\\s+complete · ([^\\n]+)/); if (!m) return false; const age = m[1].trim(); return (t.match(/complete · [^\\n]+/g) || []).length === 1 && /ready · (\\d+ steps, \\d+ completed · )?from the scan /.test(t) && t.includes('from the scan ' + age) && !/scanned/.test(t) })()`)),
     (t.match(/Plan\s+ready[^\n]*/) ?? [''])[0],
   )
-  check('Connect (scanned): the plan state counts the steps and how many are done', await waitFor(`/ready · \\d+ steps, \\d+ done · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ done[^\n]*/) ?? [''])[0])
+  // The tile counts the Completed lane (A1c, decision 1): `{steps} steps, {completed} completed`, never a done word of its own.
+  check('Connect (scanned): the plan state counts the steps and how many are completed', await waitFor(`/ready · \\d+ steps, \\d+ completed · from the scan/.test(document.body.innerText)`, 20000), ((await text()).match(/ready · \d+ steps, \d+ completed[^\n]*/) ?? [''])[0])
   check('Connect: Global Reader is the only role IAMAI names', !/Security Reader|Reports Reader/.test(t))
   check('Connect (scanned): Change baseline opens the picker with two choices', (await clickText('/^Change baseline$/')) && (await waitFor(`/Upload a package/.test(document.body.innerText) && /How to make one →/.test(document.body.innerText)`)))
   // MFA Readiness (Step 7): who can meet phishing-resistant MFA, what IAMAI can prove, and what each person needs next.
