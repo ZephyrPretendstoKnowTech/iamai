@@ -26,6 +26,7 @@ import { stepPopulation } from '../../derive/population.ts'
 import { list } from '../../copy/statements.ts'
 import { answerOf, effectLine } from '../../roadmap/answers.ts'
 import { isHeld } from '../../roadmap/holds.ts'
+import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 
 export type { ExportStep }
 
@@ -66,8 +67,10 @@ const SHARED = content.shared as unknown as { commsForecastNote: string }
 export function datesLineFor(step: Step, cs: Record<string, unknown>): string | null {
   // A step something holds has no Dates line at all (roadmap/holds.ts): nothing
   // it could be dated to happens until the hold clears, and the schedule has
-  // withdrawn its placement. The step says what it waits on instead.
-  if (isHeld(step) && !heldForReview(step)) return null
+  // withdrawn its placement. The step says what it waits on instead. The one held
+  // step the plan still dates is a create only readiness holds: its report-only
+  // creation day (roadmap/stepSchedule.ts scheduledEventOf), enforcement undated.
+  if (isHeld(step) && !heldForReview(step)) return scheduledEventOf(step)?.transition === 'createReportOnly' ? '{datesDeploy}' : null
   if (awaitingDeployment(step)) return '{datesDeploy}'
   // A policy held for review dates no review either: the window's own date says
   // when the *watching* would have been enough, and it was not counted on the
