@@ -2,7 +2,10 @@
 // tenant states; then the engine invariants (phase membership is not an input;
 // Completed / Deferred sit outside the three lanes), §12.1 unlock counts and the
 // §13 / §14 orderings. Where the example prose names an edge the frozen §10 placed
-// elsewhere (13, 15) the test follows §10, the authority (BLOCKED.md · S2 · Choices).
+// elsewhere (13, 15) the test follows §10, the authority (BLOCKED.md · S2 · Choices);
+// where it names a goal the pinned baseline does not hold (4, 13; decision 7) the test
+// uses the step that carries the same edge. Then the A1a additions: evidence gates
+// (§7), evidence edges, licence edges and observed step edges.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import data from './dependency-data.json' with { type: 'json' }
@@ -78,12 +81,14 @@ test('3. prerequisite Up Next several layers away: depth sorts, never holds', ()
 })
 
 test('4. prerequisite On Hold → dependent On Hold naming the prerequisite', () => {
+  // The example's dependent (Azure Management MFA) is not in the pinned baseline (decision 7); the
+  // service-accounts policy carries the same create edge.
   const s = state({
     's-prereq-service-accounts-group': { exists: false, blockers: [{ kind: 'fact', id: 'fact:service-account-inventory' }] },
-    's-goal-azure-management-mfa': ABSENT,
+    's-goal-service-accounts-trusted-network': ABSENT,
   })
   assert.equal(read(lane('s-prereq-service-accounts-group', s)), 'On Hold · fact:fact:service-account-inventory')
-  assert.equal(read(lane('s-goal-azure-management-mfa', s)), 'On Hold · step:s-prereq-service-accounts-group')
+  assert.equal(read(lane('s-goal-service-accounts-trusted-network', s)), 'On Hold · step:s-prereq-service-accounts-group')
 })
 
 test('5. prerequisite Deferred, applicable hard edge → started work goes On Hold, not Up Next', () => {
@@ -147,14 +152,18 @@ test('12. completed prerequisite → dependent Ready · Create', () => {
 })
 
 test('13. baseline safety conflict on enforce holds only once enforce is the next action', () => {
-  // §10.3 records the conflict on s-goal-unmanaged-browser:enforce (V2, resolved by S0).
-  const id = 's-goal-unmanaged-browser'
-  const unresolved = { prerequisites: { 'baselineSafetyConflict:unmanaged-browser-emergency-exclusion': 'blocked' as const } }
-  assert.equal(read(lane(id, state({ [id]: ABSENT }, unresolved))), 'Ready · Create')
-  assert.equal(read(lane(id, state({ [id]: REPORT_ONLY }, unresolved))), 'Ready · Observing')
-  const held = lane(id, state({ [id]: PREDICATE_MET }, unresolved))
-  assert.equal(read(held), 'On Hold · baselineSafetyConflict:baselineSafetyConflict:unmanaged-browser-emergency-exclusion')
+  // The example's step (Unmanaged Browser) is not in the pinned baseline (decision 7), and with it went
+  // the graph's one baselineSafetyConflict edge; the scan observes the conflict on the step itself,
+  // scoped to the action it makes unsafe (planLanes.ts: a policy reaching an emergency account).
+  const id = 's-goal-require-managed-device'
+  const conflict = { kind: 'baselineSafetyConflict' as const, id: 'baselineSafetyConflict:emergency-exclusion', action: 'enforce' as const }
+  assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [conflict] } }))), 'Ready · Create')
+  assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'Ready · Observing')
+  const held = lane(id, state({ [id]: { ...PREDICATE_MET, blockers: [conflict] } }))
+  assert.equal(read(held), 'On Hold · baselineSafetyConflict:baselineSafetyConflict:emergency-exclusion')
   assert.equal(held.nextAction, 'enforce')
+  // Unscoped, an observed blocker holds whichever action is next.
+  assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [{ ...conflict, action: undefined }] } }))).split(' · ')[0], 'On Hold')
 })
 
 test('14. unresolved source-group mapping blocks create → On Hold · sourceMapping', () => {
@@ -176,6 +185,63 @@ test('15. mixed prerequisite states: enforce-side gates do not affect a create; 
   const held = lane('s-goal-sign-in-risk', state(
     { 's-goal-sign-in-risk': { exists: false, blockers: [{ kind: 'license/platform', id: 'license/platform:entra-id-p2' }] }, 's-verify-mfa': REPORT_ONLY }))
   assert.equal(read(held), 'On Hold · license/platform:license/platform:entra-id-p2')
+  // Authored as a `license/platform` edge, the licence is the same §15 blocker — its own kind, never a fact.
+  const edge: DependencyData['edges'][number] = { step: 's-goal-sign-in-risk', action: 'create', prerequisite: 'license/platform:entra-id-p2', prerequisiteKind: 'license/platform', milestone: 'resolved', condition: null, edgeKind: 'hard', source: 'test', status: 'ok', table: 'test' }
+  const licensed = buildGraph({ ...(data as DependencyData), edges: [...(data as DependencyData).edges, edge] })
+  const [tenant, owner] = state({ 's-goal-sign-in-risk': ABSENT, 's-verify-mfa': REPORT_ONLY })
+  const byEdge = deriveLane('s-goal-sign-in-risk', licensed, tenant, owner)
+  assert.equal(read(byEdge), 'On Hold · license/platform:license/platform:entra-id-p2')
+  assert.equal(byEdge.reason?.abnormal, true)
+  assert.equal(read(deriveLane('s-goal-sign-in-risk', licensed, tenant, { resolved: ['license/platform:entra-id-p2'] })), 'Ready · Create')
+})
+
+test('§7 evidence gates: a started policy behind an open gate reads Ready · Observing with the gate as its reason; its create is never gated; closed gates give Ready to enforce', () => {
+  const id = 's-goal-block-device-code'
+  const threshold = { id: 'evidence:readiness:mfa', satisfied: false, minDays: null, reason: 'when MFA readiness reaches 90% (now 40%)' }
+  const window = { id: 'evidence:observation', satisfied: true, minDays: 7, reason: null }
+  const observing = lane(id, state({ [id]: { ...PREDICATE_MET, gates: [threshold, window] } }))
+  assert.equal(read(observing), 'Ready · Observing · evidence:evidence:readiness:mfa')
+  assert.equal(observing.reason?.text, threshold.reason)
+  assert.equal(observing.reason?.abnormal, false)
+  assert.equal(observing.nextAction, 'enforce')
+  assert.deepEqual(observing.blockers, [], 'a gate is not a prerequisite tile')
+  assert.deepEqual(observing.gates, [threshold, window], 'every gate is exposed with its time part')
+  assert.equal(read(lane(id, state({ [id]: { exists: false, gates: [threshold] } }))), 'Ready · Create')
+  assert.equal(read(lane(id, state({ [id]: { ...PREDICATE_MET, gates: [{ ...threshold, satisfied: true }, window] } }))), 'Ready · Ready to enforce')
+  // A correction comes before any gate.
+  assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))), 'Ready · Correct')
+})
+
+test('§7 an `evidence` or `time/evidence-window` edge is an evidence gate on enforce, never a fact and never a hold', () => {
+  const id = 's-goal-block-device-code'
+  const edges: DependencyData['edges'] = [
+    { step: id, action: 'enforce', prerequisite: 'evidence:sign-in-samples', prerequisiteKind: 'evidence', milestone: 'resolved', condition: null, edgeKind: 'hard', source: 'test', status: 'ok', table: 'test' },
+    { step: id, action: 'enforce', prerequisite: 'time/evidence-window:seven-days', prerequisiteKind: 'time/evidence-window', milestone: 'resolved', condition: null, edgeKind: 'hard', source: 'test', status: 'ok', table: 'test' },
+  ]
+  const g = buildGraph({ ...(data as DependencyData), edges: [...(data as DependencyData).edges, ...edges] })
+  const [tenant, owner] = state({ [id]: PREDICATE_MET }, { prerequisites: { 'evidence:sign-in-samples': 'blocked', 'time/evidence-window:seven-days': 'blocked' } })
+  const r = deriveLane(id, g, tenant, owner)
+  assert.equal(read(r), 'Ready · Observing · evidence:evidence:sign-in-samples')
+  assert.deepEqual(r.gates.map((x) => [x.id, x.satisfied]), [['evidence:sign-in-samples', false], ['time/evidence-window:seven-days', false]])
+  assert.deepEqual(r.blockers, [])
+  const [absent] = state({ [id]: ABSENT }, { prerequisites: { 'evidence:sign-in-samples': 'blocked', 'time/evidence-window:seven-days': 'blocked' } })
+  assert.equal(read(deriveLane(id, g, absent, owner)), 'Ready · Create')
+  assert.equal(read(deriveLane(id, g, tenant, { resolved: ['evidence:sign-in-samples', 'time/evidence-window:seven-days'] })), 'Ready · Ready to enforce')
+})
+
+test('an observed step edge reads as a graph edge: healthy queued work, On Hold when the prerequisite is, and enforcement-only when it gates enforce', () => {
+  const id = 's-goal-intune-enrollment-reauth'
+  const maker = 's-prereq-trusted-location'
+  const queued = lane(id, state({ [id]: { exists: false, waitsOn: [{ step: maker, action: 'create' }] }, [maker]: ABSENT }))
+  assert.equal(read(queued), `Up Next · step:${maker}`)
+  assert.equal(queued.layers, 1)
+  const held = lane(id, state({ [id]: { exists: false, waitsOn: [{ step: maker, action: 'create' }] }, [maker]: { exists: false, blockers: [{ kind: 'fact', id: 'fact:ranges' }] } }))
+  assert.equal(read(held), `On Hold · step:${maker}`)
+  const gate = lane(id, state({ [id]: { exists: false, waitsOn: [{ step: maker, action: 'enforce' }] }, [maker]: ABSENT }))
+  assert.equal(read(gate), 'Ready · Create', 'an enforce-side wait never gates the report-only create')
+  const observing = lane(id, state({ [id]: { ...PREDICATE_MET, waitsOn: [{ step: maker, action: 'enforce' }] }, [maker]: ABSENT }))
+  assert.equal(read(observing), `Ready · Observing · step:${maker}`)
+  assert.equal(observing.started, true)
 })
 
 test('invariant: a step keeps its lane when phase membership changes (phase is not an input)', () => {
@@ -204,19 +270,19 @@ test('invariant: Completed and Deferred are outside the three lanes; every step 
 test('§12.1 unlock counts: direct and transitive, Security Defaults cutover edges excluded', () => {
   const counts = unlockCounts(graph, { excludeConditions: ['sd-enabled'] })
   const expect = (id: string, direct: number, transitive: number): void => assert.deepEqual(counts.get(id), { direct, transitive }, id)
-  expect('s-prereq-break-glass', 3, 25)
-  expect('s-prereq-exclusion-group', 20, 22)
+  expect('s-prereq-break-glass', 3, 24)
+  expect('s-prereq-exclusion-group', 19, 21)
   expect('s-prereq-passkey-settings', 4, 10)
   expect('s-prereq-auth-strength', 8, 8)
   expect('s-verify-mfa', 7, 8)
   expect('s-prereq-trusted-location', 4, 5)
-  expect('s-prereq-device-plan', 2, 4)
-  expect('s-prereq-service-accounts-group', 3, 3)
+  expect('s-prereq-device-plan', 1, 3)
+  expect('s-prereq-service-accounts-group', 2, 2)
   expect('s-prereq-allowed-countries', 2, 2)
   expect('s-question-partner', 2, 2)
   expect('s-shared-devices', 2, 2)
   expect('s-goal-require-managed-device', 1, 2)
-  expect('s-goal-session-lifetime', 1, 2)
+  expect('s-goal-all-users-no-persistence', 1, 2)
   expect('s-question-mail-devices', 1, 1)
   expect('s-question-travel', 1, 1)
   expect('s-goal-mfa-all-users', 1, 1)
@@ -249,13 +315,13 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
     's-prereq-break-glass': ABSENT,                    // Create (ordinal 3)
     's-prereq-exclusion-group': ABSENT,                // 1 layer behind break-glass, unlocks 22
     'cleanup-drill': ABSENT,                           // 1 layer behind break-glass, unlocks 0
-    'cleanup-harden-emergency-access': ABSENT,         // 1 layer behind break-glass, unlocks 0
+    'cleanup-hardening': ABSENT,                       // 1 layer behind break-glass, unlocks 0
     's-prereq-trusted-location': ABSENT,               // Create (ordinal 3)
     's-shared-devices': ABSENT,                        // 1 layer behind trusted-location, unlocks 2
     's-goal-service-accounts-trusted-network': ABSENT, // 1 layer behind trusted-location, unlocks 0
     's-prereq-device-plan': {},                        // Needs decision (ordinal 4)
-    's-goal-mobile-app-protection': ABSENT,            // 1 layer behind device-plan
     's-goal-token-protection': ABSENT,                 // 2 layers (exclusion-group, break-glass)
+    's-goal-require-managed-device': ABSENT,           // 4 layers (device-plan, trusted-location, exclusion-group, break-glass)
   }, { conditions: { 'shared-devices-exist': 'unresolved' } })
   const results = deriveLanes(graph, tenant, owner)
   assert.equal(results.get('s-prereq-per-user-mfa')?.layers, 1, 'a created policy has passed its create gates')
@@ -264,8 +330,8 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
   assert.deepEqual(sorted.map((r) => r.id), [
     's-prereq-per-user-mfa',
     's-prereq-exclusion-group', 's-shared-devices',
-    'cleanup-drill', 'cleanup-harden-emergency-access', 's-goal-service-accounts-trusted-network',
-    's-goal-mobile-app-protection',
+    'cleanup-drill', 'cleanup-hardening', 's-goal-service-accounts-trusted-network',
     's-goal-token-protection',
+    's-goal-require-managed-device',
   ])
 })

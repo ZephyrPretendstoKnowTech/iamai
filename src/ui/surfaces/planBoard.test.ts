@@ -247,12 +247,12 @@ test('the board decides no lane: it reads planLanes.ts and re-derives nothing', 
 
 test('the row label is Lane · substatus or reason, from one function', () => {
   const titleOf = (id: string): string | null => (id === 's-prereq-break-glass' ? 'Emergency Access Accounts' : null)
-  const ready = { lane: 'Ready' as const, substatus: 'Observing' as const, reason: null, blockers: [], order: 0, fromEngine: true }
+  const ready = { lane: 'Ready' as const, substatus: 'Observing' as const, reason: null, blockers: [], gates: [], order: 0, fromEngine: true }
   assert.equal(laneLabelOf(ready, titleOf), 'Ready · Observing')
   const blocker = { kind: 'step' as const, id: 's-prereq-break-glass', milestone: null, condition: null, abnormal: false, ordinal: 5 }
-  const upNext = { lane: 'Up Next' as const, substatus: null, reason: blocker, blockers: [blocker], order: 0, fromEngine: true }
+  const upNext = { lane: 'Up Next' as const, substatus: null, reason: blocker, blockers: [blocker], gates: [], order: 0, fromEngine: true }
   assert.equal(laneLabelOf(upNext, titleOf), 'Up Next · After Emergency Access Accounts')
-  const held = { lane: 'On Hold' as const, substatus: null, reason: { ...blocker, kind: 'sourceMapping' as const, id: 'sourceMapping:62d67e66', abnormal: true }, blockers: [], order: 0, fromEngine: true }
+  const held = { lane: 'On Hold' as const, substatus: null, reason: { ...blocker, kind: 'sourceMapping' as const, id: 'sourceMapping:62d67e66', abnormal: true }, blockers: [], gates: [], order: 0, fromEngine: true }
   assert.equal(laneLabelOf(held, titleOf), `On Hold · ${BOARD.blockers.sourceMapping}`)
   assert.equal(holdGroupOf(held), BOARD.blockers.sourceMapping)
   const heldOnStep = { ...held, reason: { ...blocker, abnormal: true } }

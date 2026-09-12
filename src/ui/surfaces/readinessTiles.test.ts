@@ -17,6 +17,7 @@ import { CONTRACT, readinessOf, stepContract } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { laneReadings } from './planLanes.ts'
+import type { HoldBlockerKind } from '../../actionability/lanes.ts'
 import { BOARD, readinessBlockersOf } from './planBoard.ts'
 import { mergeReadiness } from './stepPackage.ts'
 import { BLOCKED_REASON } from '../../copy/reasons.ts'
@@ -159,5 +160,5 @@ test('the printed step and the screen read the same blockers, the row hands them
   assert.match(narrow(650), /\.step \.readiness-strip,\s*\.step \.readiness-strip\.tiles-3,\s*\.step \.readiness-strip\.tiles-2 \{\s*grid-template-columns: minmax\(0, 1fr\);/)
   const { reading, blockers } = opened('demo', 's-goal-mfa-all-users')
   assert.equal(blockers.length, reading.blockers.length)
-  for (const b of blockers) assert.equal(b.label, BOARD.blockers[b.kind])
+  for (const b of blockers) assert.equal(b.label, BOARD.blockers[b.kind as HoldBlockerKind])
 })
