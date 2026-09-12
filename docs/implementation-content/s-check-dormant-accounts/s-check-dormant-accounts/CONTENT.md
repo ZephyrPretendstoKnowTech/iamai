@@ -80,7 +80,7 @@ Verify the same stable account after the bounded change. Account-enabled evidenc
 Explain why IAMAI cannot safely resolve this dormant-account candidate: {{dependencies.blockers}}. Do not infer a disable decision from missing sign-in data.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.owner.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"account-owner-or-manager"}
+@@IAMAI-BEGIN {"id":"email.owner.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"account-owner"}
 Subject: Confirm whether this account is still needed
 
 IAMAI identified {{account.current.displayName}} as an account that may no longer be in use. Before any change is made, please confirm whether this account is still required. If it is needed, tell us what it is used for. If it is no longer needed, confirm that its sign-in can be disabled. No account will be deleted as part of this step.

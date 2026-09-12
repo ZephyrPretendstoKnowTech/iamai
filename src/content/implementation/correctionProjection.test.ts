@@ -16,7 +16,8 @@ import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { stepContract } from '../../ui/surfaces/stepContract.ts'
 import type { StepVarContext } from '../../ui/surfaces/stepVars.ts'
-import { correctionFieldsOf, implementationPackageFor, packageBindings, packageRuntime, packageStateOf, plannedOperationsOf, plannedPackageStateOf, planningPreview } from '../../ui/surfaces/stepPackage.ts'
+import { artifactText, correctionFieldsOf, implementationPackageFor, packageBindings, packageRuntime, packageStateOf, plannedOperationsOf, plannedPackageStateOf, planningPreview } from '../../ui/surfaces/stepPackage.ts'
+import { CONTRACT } from '../../ui/surfaces/stepContract.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -119,6 +120,58 @@ test('a real enforced policy missing its exclusions projects an executable corre
   assert.deepEqual([next.kind, next.executable], ['correct', false])
   assert.ok(step.blockedBy.includes('s-prereq-break-glass'), JSON.stringify(step.blockedBy))
   assert.equal(packageStateOf(step, c, f.snapshot), 'blocked')
+})
+
+test('an enforced policy that excludes one extra person, with emergency access sorted, is a Partial whose correction executes now and Copy copies exactly it (correction batch 2.1)', () => {
+  // Week two, the baseline's unsettled source references answered: emergency access
+  // is in place and the legacy-authentication block is enforced and correct. Then
+  // someone excludes one ordinary person from it by hand.
+  const raw = fixture('demo-week2')
+  const source = PREREQ_STEP_ID.sourceReferences
+  const pending = runFixture(raw).steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const base = { ...raw, mapping: applyStepDecisions(raw.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: raw.snapshot.asOf } }) }
+  const before = runFixture(base).steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  assert.equal(before.state.satisfied, true, 'the premise: the policy is in place before the change')
+  const person = (base.snapshot.users ?? []).find((u) => !JSON.stringify(base.mapping).includes(String(u.id)) && u.accountEnabled !== false)!.id
+  const f = structuredClone(base)
+  const row = (f.snapshot.config!.caPolicies!.rows as Record<string, unknown>[]).find((x) => x.id === before.tracking!.policyId)!
+  const tenantUsers = (row.conditions as { users: Record<string, unknown> }).users
+  tenantUsers.excludeUsers = [...((tenantUsers.excludeUsers as string[] | undefined) ?? []), person]
+  const untouched = { grantControls: structuredClone(row.grantControls), sessionControls: structuredClone(row.sessionControls ?? null), state: row.state }
+
+  const r = runFixture(f)
+  const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
+  const step = r.steps.find((s) => s.id === 's-goal-block-legacy-auth')!
+  const c = stepContract(step, ctx)
+  assert.equal(r.steps.find((s) => s.id === 's-prereq-break-glass')?.state.satisfied, true, 'emergency access is not sorted: the premise failed')
+  assert.deepEqual(correctionFieldsOf(step, f.snapshot), ['conditions.users.excludeUsers'], 'one material mismatch')
+  // Partial, and executable now: nothing holds the correction.
+  assert.equal(packageStateOf(step, c, f.snapshot), 'partial')
+  assert.deepEqual(nextSafeAction(step), { kind: 'correct', executable: true, blockedBy: null, enforceable: false })
+  assert.equal(c.implementation.offered, true)
+  const pkg = implementationPackageFor(step)!
+  const bindings = packageBindings(step, ctx, c)
+  const { runtime } = packageRuntime(pkg, 'partial', bindings, {})
+  const projection = projectSafely(pkg, 'partial', bindings, runtime)
+  assert.equal(projection.hold, null, JSON.stringify(projection.hold))
+  assert.equal(projection.preview, undefined)
+  assert.equal(planningPreview(pkg, step, c, f.snapshot, bindings, runtime, projection), null, 'the executable correction was replaced by a planning preview')
+  // Only the incorrect field projects, from the tenant's own policy and the plan.
+  const json = projection.channels.find((x) => x.channel === 'json')!
+  assert.deepEqual(json.blocks, ['json.correct-conditions'])
+  const body = JSON.parse(json.text) as { conditions: { users: { excludeUsers: string[]; excludeGroups: string[]; includeUsers: string[] } } } & Record<string, unknown>
+  assert.deepEqual(Object.keys(body), ['conditions'], 'grant, session or state was submitted beside the correction')
+  assert.deepEqual(body.conditions.users.excludeUsers, [], 'the extra person is still excluded')
+  assert.deepEqual(body.conditions.users.excludeGroups, (tenantUsers.excludeGroups as string[]), 'the exclusions group the tenant already had changed')
+  assert.deepEqual(body.conditions.users.includeUsers, ['All'])
+  assert.equal(projection.channels.some((x) => x.blocks.some((b) => /grant|session|name|report-only|lifecycle/.test(b))), false, 'an unrelated correction was composed')
+  assert.deepEqual({ grantControls: row.grantControls, sessionControls: row.sessionControls ?? null, state: row.state }, untouched)
+  // Copy copies the executable artifact itself.
+  for (const ch of projection.channels) {
+    assert.equal(artifactText(ch, CONTRACT.implementation.aiWarning), ch.channel === 'aiInfo' ? artifactText(ch, CONTRACT.implementation.aiWarning) : ch.text, `${ch.channel}: Copy differs from the artifact`)
+    assert.equal(UNRESOLVED.test(ch.text), false, `${ch.channel} carries a placeholder`)
+  }
+  assert.equal(artifactText(json, CONTRACT.implementation.aiWarning), json.text)
 })
 
 test('a two-policy set corrects only the member that differs, creates only the member that is missing, and never touches the sibling that is right (correction batch 2)', () => {
