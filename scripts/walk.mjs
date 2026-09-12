@@ -1229,7 +1229,7 @@ async function walkFixture(fx) {
           if (rowWhens[i] === 'held until the records clear' && !RE.gateWindowClosed.test(bodyText)) add('P0', `${slabel}: the row is held until the records clear and the step's Done when does not say the window has closed`)
         }
         // One population per step: the row's who-line count is the lead's count.
-        const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}].querySelector('.who') || {}).textContent || '' : '')`)
+        const rowWho = await evaluate(`((() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; return r ? ((r.querySelector('.who') || {}).textContent || '') : '' })())`)
         const bodyLines = bodyText.split('\n').map((x) => x.trim()).filter(Boolean)
         const leadAt = bodyLines.indexOf('Who this touches')
         const rowCount = countOf(rowWho, { names: true })
@@ -1421,7 +1421,7 @@ async function walkFixture(fx) {
             // method it accepts, so they are never more than the admins the step
             // says are not yet Ready (Step 7: two answers, one never exceeding the other).
             const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet Ready for phishing-resistant MFA/m)
-            const who = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}].querySelector('.who') || {}).textContent || '' : '')`)
+            const who = await evaluate(`((() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; return r ? ((r.querySelector('.who') || {}).textContent || '') : '' })())`)
             const suffix = who.match(/· (\d+) would be stopped$/)
             if (m && suffix && Number(suffix[1]) > Number(m[1])) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step says only ${m[1]} admins are not yet Ready`)
             else if (!m && suffix) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step names no admin who is not Ready`)
