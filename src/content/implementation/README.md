@@ -11,8 +11,9 @@ runtime cannot project safely withheld (§3).
 
 The library was authored against baseline pin `8461e0f2`; this build pins
 `90d9b890` (`baselines/*.pinned.json`). The packages apply anyway (owner
-decision, 2026-09-11): the source line names the authored pin beside the build's
-(`stepPackage.ts packageSourceLine`), the request bodies bind the policy
+decision, 2026-09-11): the pins are provenance kept here and in `LIBRARY.json`,
+never a line on the step (S6 — the step's one source line is `Source checked
+<date>`, `stepPackage.ts packageSourceLine`), the request bodies bind the policy
 Foundation A resolved from the build's pin, and a block the author scoped with a
 `baselineCommit` condition stays scoped to its own pin.
 

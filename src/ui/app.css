@@ -2647,23 +2647,35 @@ footer.app a {
 .step .implementation-empty-danger {
   border-color: var(--danger-line);
 }
-/* The approved support line under the preview (`.impl-support`): right-aligned,
-   quiet and small; a package's run note holds its left. */
+/* The support line under the preview (`.impl-support`, S6): left-aligned —
+   Microsoft Learn · Troubleshooting, then a package's run note — with the
+   source-checked date holding the right; quiet and small. */
 .step .impl-support {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 4px 12px;
   margin-top: 8px;
   font-size: var(--t-micro);
   color: var(--secondary-text);
 }
+.step .impl-support-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+.step .impl-support-links a.inline-link {
+  text-decoration: none;
+}
 .step .impl-support-note {
-  margin-right: auto;
   min-width: 0;
   font-family: var(--font-mono);
   overflow-wrap: anywhere;
+}
+.step .impl-support-source {
+  margin-left: auto;
 }
 /* Authored Markdown (a package's Entra, AI Info or Email block), line for line. */
 .authored p,
@@ -2701,10 +2713,27 @@ footer.app a {
   color: var(--primary-text);
   overflow: hidden;
 }
+/* The expanded implementation viewer (S6): materially larger than the inline
+   preview, taking the viewport's width and height less a margin, so a script
+   or a policy body reads whole; the inline preview is unchanged. */
 .step-dialog.step-dialog-wide {
-  width: min(1040px, 92vw);
-  height: min(760px, 86vh);
+  width: min(1400px, calc(100vw - 48px));
+  height: calc(100vh - 48px);
   max-width: none;
+  max-height: none;
+}
+/* The viewer's toolbar: the channel tabs on the left, Copy on the right where
+   the artifact is copyable (never on a planning preview). */
+.step-dialog .dialog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-bottom: 14px;
+}
+.step-dialog .dialog-toolbar .tabs.impl-tabs {
+  margin-bottom: 0;
 }
 .step-dialog .dialog-shell {
   display: grid;
@@ -2746,8 +2775,8 @@ footer.app a {
   border-radius: var(--radius-control);
   background: var(--code-surface);
   font-family: var(--font-mono);
-  font-size: var(--t-1);
-  line-height: 1.62;
+  font-size: var(--t-2);
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -4107,6 +4136,15 @@ td .not-person {
   .step-footer {
     padding-left: 18px;
     padding-right: 18px;
+  }
+  /* The expanded implementation viewer keeps a phone's whole screen less a
+     hairline margin, and its content the same tighter gutter (S6). */
+  .step-dialog.step-dialog-wide {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+  }
+  .step-dialog.step-dialog-wide .dialog-content {
+    padding: 14px;
   }
   /* The approved footer stacks at this width (`.step-footer{flex-direction:
      column;align-items:flex-start}`): the exception over the scan, both at the

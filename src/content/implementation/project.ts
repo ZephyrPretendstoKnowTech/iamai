@@ -149,6 +149,12 @@ function bindEndpoint(endpoint: string, bindings: Bindings): { endpoint: string 
 
 const asStrings = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : [])
 
+/** The request methods that change an object that exists, and so must name it. */
+const CHANGE_METHODS: ReadonlySet<string> = new Set(['PATCH', 'PUT', 'DELETE'])
+
+/** An endpoint template that names the object it addresses (`/policies/{policy.current.id}`). */
+const ENDPOINT_IDENTITY = /\{[A-Za-z0-9_.-]+\}/
+
 /** A projection list with each block once: a block several mismatches share is one correction, its script corrections merged. */
 function dedupe(refs: ProjectionRef[]): ProjectionRef[] {
   const out: ProjectionRef[] = []
@@ -348,6 +354,27 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
         runs.push(...ownRuns)
         texts.push(rendered.text)
         continue
+      }
+      // The JSON channel is a request or nothing (S6, A1 §16.2): a body with the
+      // method and endpoint it is sent with, and — for a change to an existing
+      // object — the identifier of the object it changes, bound from a value IAMAI
+      // holds (`bindEndpoint` refuses one it lacks; nothing invents an id). A bare
+      // body, or a PATCH with nowhere to send it, is not implementation content.
+      if (ch === 'json') {
+        const method = typeof block.meta.method === 'string' ? block.meta.method.toUpperCase() : ''
+        const endpoint = typeof block.meta.endpoint === 'string' ? block.meta.endpoint : ''
+        if (block.meta.format !== 'json' && block.meta.format !== 'json-template') {
+          bad.push(`${id}: a JSON channel block that is not a JSON body`)
+          continue
+        }
+        if (method === '' || endpoint === '') {
+          bad.push(`${id}: a JSON body with no request (method and endpoint)`)
+          continue
+        }
+        if (CHANGE_METHODS.has(method) && !ENDPOINT_IDENTITY.test(endpoint)) {
+          bad.push(`${id}: a ${method} whose endpoint names no target identifier`)
+          continue
+        }
       }
       if (block.meta.format === 'json' || block.meta.format === 'json-template') {
         let parsed: unknown

@@ -125,10 +125,11 @@ type ContractWords = {
     expand: string
     dialogEyebrow: string
     close: string
-    sourceUpdated: string
-    sourcePins: string
+    /** "Source checked <date>", from the package's verified sources (S6); the line is omitted where there is no date. */
+    sourceChecked: string
+    /** The Microsoft Learn link under Implementation, label exactly "Microsoft Learn" (S6). */
+    learn: string
     preview: { label: string; text: string; textValues: string; values: string; checks: string; value: string }
-    withheld: { values: string; several: string; fault: string }
     review: { reviewNeeded: string; held: string }
     values: Record<string, string>
     troubleshooting: string

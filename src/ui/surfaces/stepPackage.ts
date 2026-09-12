@@ -14,9 +14,10 @@
 // (src/content/implementation/registry.generated.json): the whole library, with
 // the parts the runtime cannot project safely withheld at compile time. A package
 // authored against another baseline pin still applies (owner decision,
-// 2026-09-11); the step's source line names the pin it was authored against beside
-// the pin this build carries (`packageSourceLine`), and a block the author scoped
-// with a `baselineCommit` condition stays scoped to its own pin.
+// 2026-09-11): the pins are provenance the library manifest keeps, never a line
+// on the step (S6), and a block the author scoped with a `baselineCommit`
+// condition stays scoped to its own pin. The step's one source line is the date
+// the package's Microsoft sources were last checked (`packageSourceLine`).
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
@@ -108,18 +109,13 @@ export function packageDrawsImplementation(pkg: CompiledPackage | null, projecti
 
 /**
  * The Implementation region's source line: the date the package's user-facing
- * Microsoft sources were last checked (set at midday UTC so no display time zone
- * moves it across a day), and the baseline pin the package was authored against
- * beside the pin this build carries.
+ * Microsoft sources were last checked (`verifiedSources[].checkedOn`, set at
+ * midday UTC so no display time zone moves it across a day), or null where the
+ * package records none — never a fabricated date, and never a baseline pin (S6).
  */
-export function packageSourceLine(pkg: CompiledPackage, words: { sourceUpdated: string; sourcePins: string }, baselineCommit: string = BASELINE_COMMIT): string | null {
+export function packageSourceLine(pkg: CompiledPackage, words: { sourceChecked: string }): string | null {
   const on = sourceUpdatedOn(pkg)
-  const pin = pkg.meta.baselineAuthority?.pinCommit
-  const parts = [
-    on ? fillText(words.sourceUpdated, { date: absoluteDate(`${on}T12:00:00Z`) }) : null,
-    typeof pin === 'string' && pin !== '' ? fillText(words.sourcePins, { authored: pin.slice(0, 8), pinned: baselineCommit.slice(0, 8) }) : null,
-  ].filter((x): x is string => x !== null)
-  return parts.length > 0 ? parts.join(' · ') : null
+  return on ? fillText(words.sourceChecked, { date: absoluteDate(`${on}T12:00:00Z`) }) : null
 }
 
 /**
@@ -321,23 +317,6 @@ type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGrou
  * supply (`policy.target.mode`). Those stay unbound, and the package's own
  * contract decides what that means.
  */
-/**
- * The bindings `packageBindings` leaves unbound because the plan holds a SET
- * where the package binds one object — several trusted locations, several
- * confirmed emergency accounts with work of their own — and IAMAI does not pick
- * one for the operator. These are values the plan holds, not values it lacks,
- * and the step says so in those words (S5): a selected account is real input.
- */
-export function severalBindings(step: Step, ctx: StepVarContext): string[] {
-  const out: string[] = []
-  if ((ctx.mapping.trustedLocationIds ?? []).length > 1) out.push('policy.target.trustedLocationId')
-  const emergency = ctx.mapping.breakGlassUserIds ?? []
-  const standing = (step.emergency?.accounts ?? []).filter((a) => emergency.includes(a.id))
-  const owed = standing.filter((a) => a.minimum + a.hardening > 0)
-  if (emergency.length > 1 && standing.length === emergency.length && standing.every((a) => a.assessed) && owed.length !== 1) out.push('emergency.target.userId', 'emergency.target.upn')
-  return out
-}
-
 export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract): Bindings {
   const op = plannedOperationsOf(step)[0] ?? null
   const body = (op?.body ?? null) as PolicyShape | null
@@ -406,8 +385,14 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const trusted = ctx.mapping.trustedLocationIds ?? []
   put('policy.target.trustedLocationId', trusted.length === 1 ? trusted[0] : undefined)
   putSome('trustedLocations.ids', trusted)
-  // A preparation step's proposed name is the object it makes; a policy step's is the policy's.
-  if (step.kind === 'prerequisite') put('location.target.displayName', step.naming?.proposed)
+  // A preparation step's proposed name is the object it makes — a named location,
+  // the baseline's authentication strength — under each name a package calls that
+  // object; a policy step's is the policy's. A package reads only the one it
+  // declares (S6: the strength's create instructions were withheld for want of it).
+  if (step.kind === 'prerequisite') {
+    put('location.target.displayName', step.naming?.proposed)
+    put('strength.target.displayName', step.naming?.proposed)
+  }
   putSome('location.target.countryCodes', (ctx.mapping.allowedCountries ?? []).map((code) => code.toUpperCase()))
   put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)
   put('group.serviceAccounts.id', ctx.mapping.serviceAccountsGroupId)

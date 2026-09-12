@@ -1438,12 +1438,6 @@
               "checks": "Checks to confirm first are under Readiness.",
               "value": "‹{value}›"
             },
-            "withheld": {
-              "$comment": "A channel the package withholds on its own while the others project (project.ts `degraded`).",
-              "values": "{channel} is not shown yet: IAMAI does not hold {values}.",
-              "several": "{channel} is not shown yet: it is written for one {value} at a time, and the plan holds several.",
-              "fault": "{channel} is not shown: its content could not be projected safely."
-            },
             "review": {
               "$comment": "A package the semantic re-pin review sets aside (src/content/implementation/drift.ts): the step draws the baseline's own channels instead.",
               "reviewNeeded": "IAMAI's written guidance for this step was reviewed against an earlier version of its baseline policy, which has changed since. Until it is reviewed again, these steps come from the baseline itself.",
@@ -1557,8 +1551,8 @@
               "workload.cloudSync.servicePrincipalId": "cloud sync service principal"
             },
             "email": "Email",
-            "sourceUpdated": "Source updated {date}",
-            "sourcePins": "Authored against baseline {authored} · plan pins {pinned}",
+            "sourceChecked": "Source checked {date}",
+            "learn": "Microsoft Learn",
             "troubleshooting": "Troubleshooting",
             "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
           },
