@@ -67,7 +67,7 @@ Leave the canonical policy in Report-only. Review that the intended user-driven 
 @@IAMAI-BEGIN {"id":"json.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["resourceMissing","missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["resourceMissing","missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved and -EnrollmentWorkflowsValidated, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # IAMAI compact implementation script — Require a Fresh Sign-in for Intune Enrollment
 [CmdletBinding()]
 param(

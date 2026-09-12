@@ -24,7 +24,12 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP":"ec1eed2b"},
+    "reviewedMembers": {
+      "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP": "ec1eed2b"
+    },
+    "reviewedIdentities": {
+      "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP": "conditions.applications:763e2f90|conditions.clientApplications:6a1f63d7"
+    },
     "memberStableId": null,
     "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -60,8 +65,7 @@
     "policy.target.displayName",
     "policy.current.id",
     "policy.current.semanticMismatches",
-    "location.current.id",
-    "location.current.semanticMismatches"
+    "location.current.id"
   ],
   "optionalBindings": [
     "tenant.displayName",
@@ -71,7 +75,8 @@
     "location.current.displayName",
     "evidence.cloudSyncActivity",
     "evidence.syncAddresses",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "location.current.semanticMismatches"
   ],
   "projection": {
     "notApplicable": {

@@ -63,7 +63,7 @@ import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import type { WhoBlock } from './whoBlocks.ts'
-import { BASELINE_COMMIT, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { prerequisiteBasis, projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -103,7 +103,8 @@ function packageArtifact(a: ChannelArtifact): Artifact {
       : a.channel === 'json' && a.requests.length > 0
         ? a.requests.map((r) => `${r.method} ${r.endpoint}`).join(' · ')
         : null
-  return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => a.text, note }
+  const text = artifactText(a, W.aiWarning)
+  return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => text, note }
 }
 
 /**
@@ -433,7 +434,10 @@ export function ContentStep({
   }
   // The package's verified-source date and the baseline pin it was authored
   // against beside this build's (stepPackage.ts packageSourceLine).
-  const sourceLine = pkg ? packageSourceLine(pkg, W, baselineCommit) : null
+  // A package the re-pin review set aside still says which pins it was reviewed
+  // between, beside why it is set aside (correction batch 2).
+  const sourcePkg = pkg ?? (review ? reviewedPackageFor(step) : null)
+  const sourceLine = sourcePkg ? packageSourceLine(sourcePkg, W, baselineCommit) : null
   // The footer's rollout exception: the existing skip, offered only where the
   // step's content entry marks it excludable, and Doesn't apply here where the
   // step is flagged for it. A step already set aside offers the way back.
@@ -781,7 +785,17 @@ function Implementation({ artifacts, drawnBy, preview, withheld, title, empty, s
     <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
       <h4>{W.heading}</h4>
       {artifacts.length === 0 ? (
-        <ImplementationEmptyBox empty={empty} />
+        <>
+          <ImplementationEmptyBox empty={empty} />
+          {/* Why the written guidance is set aside, where it is (a re-pin review), even with nothing to implement. */}
+          {withheld.length > 0 && (
+            <div className="impl-planning" data-withheld="true">
+              {withheld.map((line, i) => (
+                <span key={i}>{line}</span>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <>
           {planning}

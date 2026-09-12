@@ -681,7 +681,8 @@
         "rollout": "Passkey rollout",
         "rolloutLine": "{have} of {active} have a passkey",
         "rolloutWithout": "Show {n} without →",
-        "rolloutNone": "None without"
+        "rolloutNone": "None without",
+        "rolloutUnread": "{n} unread"
       },
       "search": "Search people or methods",
       "show": {
@@ -1262,7 +1263,11 @@
               "resilience": "Resilience",
               "meets": "Meets recommendations",
               "needsAttention": "Needs attention",
-              "deferred": "Deferred to Cleanup"
+              "deferred": "Deferred to Cleanup",
+              "accountMinimum": "{name}: minimum safety not met",
+              "accountHardening": "{name}: minimum met, hardening open",
+              "accountMeets": "{name}: meets recommendations",
+              "accountUnchecked": "{name}: not checked on this scan"
             }
           },
           "readiness": {
@@ -1411,6 +1416,7 @@
               "tenant.displayName": "tenant name",
               "emergency.target.userId": "emergency account",
               "emergency.target.upn": "emergency account sign-in name",
+              "emergency.target.accountsSummary": "emergency accounts",
               "emergency.target.exclusionsGroupId": "exclusions group",
               "location.target.displayName": "named location",
               "location.target.countryCodes": "allowed countries",

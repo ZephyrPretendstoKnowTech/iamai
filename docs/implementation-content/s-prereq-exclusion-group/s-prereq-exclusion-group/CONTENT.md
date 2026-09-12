@@ -227,7 +227,7 @@ Verify the canonical group and affected policies after the bounded change. Group
 Explain why IAMAI cannot safely act on the exclusions group in {{tenant.displayName}}: {{dependencies.blockers}}. Candidate groups and unreadable membership are not authority. Do not create, replace, remove members, or patch policies until the canonical stable identity and owner-confirmed member set are known.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.admins.exclusion-change","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.admins.exclusion-change","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"administrators"}
 Subject: Emergency access exclusion boundary updated
 
 The tenant's canonical emergency-access exclusions group or its Conditional Access references were updated. Please verify that only the approved emergency accounts are members and that the intended blocking/restrictive policies exclude the group before enforcement. No credentials or recovery secrets should be shared in this message.

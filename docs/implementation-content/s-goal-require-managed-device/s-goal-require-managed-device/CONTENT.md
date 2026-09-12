@@ -148,7 +148,7 @@ Explain why **Require a Managed Device Outside the Office** is not actionable us
 Explain the licensing blocker for **Require a Managed Device Outside the Office** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Managed-device access entering validation
 
 Hi,
@@ -158,7 +158,7 @@ We are validating managed-device access for {{tenant.displayName}} outside trust
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
 Subject: Managed-device access ready to enforce
 
 Hi,

@@ -45,19 +45,19 @@ Confirm the temporary travel country can be removed without deleting a permanent
 Explain the blocker: {{dependencies.blockers}}. Do not create a traveler-specific Conditional Access exclusion.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.approval-request","channel":"email","states":["approvalRequired"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.approval-request","channel":"email","states":["approvalRequired"],"format":"markdown","kind":"template","audience":"travel-approver"}
 Subject: Travel access approval needed
 
 Please confirm the traveler, destination country or countries, and exact travel dates. IAMAI handles approved travel by temporarily adding the destination to the allowed-countries location for the trip window; it does not exclude the traveler from Conditional Access.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.traveler-notice","channel":"email","states":["approvedPendingApply"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.traveler-notice","channel":"email","states":["approvedPendingApply"],"format":"markdown","kind":"template","audience":"traveler"}
 Subject: Travel access arranged for {{travel.countries}}
 
 Your access is scheduled for {{travel.startDate}} through {{travel.endDate}}. If sign-in is blocked while traveling, contact the help desk with the time, app, and network/VPN you were using. Do not work around the block by changing accounts or asking for a permanent exclusion.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.removal-check","channel":"email","states":["revertDue"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.removal-check","channel":"email","states":["revertDue"],"format":"markdown","kind":"template","audience":"administrators"}
 Subject: Remove temporary travel country
 
 The approved travel window for {{travel.traveler}} ended {{travel.endDate}}. Remove the trip-only country/countries {{travel.countries}} from the canonical allowed-countries location unless they are part of the permanent approved list, then verify and close the trip record.

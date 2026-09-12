@@ -14,14 +14,13 @@
       "packagePath": "docs/implementation-content/cleanup-drill/",
       "relationship": "rollout-proof",
       "status": "SELF-VERIFIED",
-      "validationResult": "self-verified",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 7,
       "outputs": {
         "entra": false,
         "json": false,
         "powershell": false,
-        "manual": true,
         "aiInfo": true,
         "email": true,
         "readiness": true,
@@ -40,7 +39,11 @@
       "packageSpecificMicrosoftSources": 1,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 2
+      "unresolvedIssues": 2,
+      "strictValidationErrors": 24,
+      "registered": false,
+      "provenance": "rollout-proof",
+      "review": "current"
     },
     {
       "stepId": "cleanup-notAssessed",
@@ -48,12 +51,12 @@
       "packagePath": "docs/implementation-content/cleanup-notAssessed/",
       "relationship": "baseline-source-review",
       "status": "SELF-VERIFIED",
-      "validationResult": "self-verified",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 6,
       "outputs": {
         "entra": true,
-        "json": "sourceOnly",
+        "json": true,
         "powershell": false,
         "aiInfo": true,
         "email": true,
@@ -64,7 +67,8 @@
         "reviewRequired",
         "complete",
         "blocked",
-        "sourceConflict"
+        "sourceConflict",
+        "inPlace"
       ],
       "correctionModules": 0,
       "requiredBindings": 2,
@@ -73,7 +77,11 @@
       "packageSpecificMicrosoftSources": 2,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 2
+      "unresolvedIssues": 2,
+      "strictValidationErrors": 11,
+      "registered": false,
+      "provenance": "source-review",
+      "review": "current"
     },
     {
       "stepId": "s-check-dormant-accounts",
@@ -81,7 +89,7 @@
       "packagePath": "docs/implementation-content/s-check-dormant-accounts/",
       "relationship": "remediation-prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 12,
       "outputs": {
@@ -102,13 +110,17 @@
         "blocked"
       ],
       "correctionModules": 0,
-      "requiredBindings": 4,
-      "optionalBindings": 7,
+      "requiredBindings": 3,
+      "optionalBindings": 8,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 13,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-check-separate-admin-accounts",
@@ -116,7 +128,7 @@
       "packagePath": "docs/implementation-content/s-check-separate-admin-accounts/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 13,
       "outputs": {
@@ -144,7 +156,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "supporting"
+      "family": "supporting",
+      "strictValidationErrors": 15,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-goal-admin-portals-protected",
@@ -152,7 +168,7 @@
       "packagePath": "docs/implementation-content/s-goal-admin-portals-protected/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 3,
       "outputs": {
@@ -177,7 +193,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 1,
-      "family": "policy-resolution"
+      "family": "policy-resolution",
+      "strictValidationErrors": 2,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "reviewNeeded"
     },
     {
       "stepId": "s-goal-admin-session",
@@ -185,7 +205,7 @@
       "packagePath": "docs/implementation-content/s-goal-admin-session/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -208,15 +228,19 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 0,
-      "requiredBindings": 7,
-      "optionalBindings": 7,
+      "correctionModules": 4,
+      "requiredBindings": 6,
+      "optionalBindings": 8,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-admins-phishing-resistant",
@@ -224,7 +248,7 @@
       "packagePath": "docs/implementation-content/s-goal-admins-phishing-resistant/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 26,
       "outputs": {
@@ -255,7 +279,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 4,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-azure-management-mfa",
@@ -263,7 +291,7 @@
       "packagePath": "docs/implementation-content/s-goal-azure-management-mfa/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -286,15 +314,19 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 0,
-      "requiredBindings": 7,
-      "optionalBindings": 8,
+      "correctionModules": 4,
+      "requiredBindings": 6,
+      "optionalBindings": 9,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "microsoft-template-floor",
+      "review": "current"
     },
     {
       "stepId": "s-goal-block-auth-transfer",
@@ -302,7 +334,7 @@
       "packagePath": "docs/implementation-content/s-goal-block-auth-transfer/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -333,7 +365,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-block-device-code",
@@ -341,7 +377,7 @@
       "packagePath": "docs/implementation-content/s-goal-block-device-code/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -372,7 +408,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-block-legacy-auth",
@@ -380,7 +420,7 @@
       "packagePath": "docs/implementation-content/s-goal-block-legacy-auth/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -411,7 +451,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-block-unsupported-platforms",
@@ -419,7 +463,7 @@
       "packagePath": "docs/implementation-content/s-goal-block-unsupported-platforms/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -442,7 +486,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 0,
+      "correctionModules": 4,
       "requiredBindings": 6,
       "optionalBindings": 7,
       "verifiedSourceCount": 6,
@@ -450,7 +494,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-device-registration-mfa",
@@ -458,7 +506,7 @@
       "packagePath": "docs/implementation-content/s-goal-device-registration-mfa/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "self-verified",
+      "validationResult": "pass",
       "sourceFiles": 3,
       "contentBlocks": 24,
       "outputs": {
@@ -482,13 +530,17 @@
         "notLicensed"
       ],
       "correctionModules": 6,
-      "requiredBindings": 4,
-      "optionalBindings": 7,
+      "requiredBindings": 6,
+      "optionalBindings": 8,
       "verifiedSourceCount": 15,
       "packageSpecificMicrosoftSources": 15,
       "sharedPrimitivesReused": 3,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 0,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-geo-restriction",
@@ -496,7 +548,7 @@
       "packagePath": "docs/implementation-content/s-goal-geo-restriction/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -519,15 +571,19 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 0,
-      "requiredBindings": 7,
-      "optionalBindings": 8,
+      "correctionModules": 4,
+      "requiredBindings": 6,
+      "optionalBindings": 9,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-guests-mfa",
@@ -535,7 +591,7 @@
       "packagePath": "docs/implementation-content/s-goal-guests-mfa/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 21,
       "outputs": {
@@ -559,7 +615,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 3,
+      "correctionModules": 0,
       "requiredBindings": 8,
       "optionalBindings": 9,
       "verifiedSourceCount": 8,
@@ -567,7 +623,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 9,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-intune-enrollment-reauth",
@@ -575,7 +635,7 @@
       "packagePath": "docs/implementation-content/s-goal-intune-enrollment-reauth/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS_WITH_LIMITATION",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 28,
       "outputs": {
@@ -606,7 +666,11 @@
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 1
+      "unresolvedIssues": 1,
+      "strictValidationErrors": 6,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-mfa-all-users",
@@ -614,7 +678,7 @@
       "packagePath": "docs/implementation-content/s-goal-mfa-all-users/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 26,
       "outputs": {
@@ -645,7 +709,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 4,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-mobile-app-protection",
@@ -653,7 +721,7 @@
       "packagePath": "docs/implementation-content/s-goal-mobile-app-protection/",
       "relationship": "baseline-goal-composite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 27,
       "outputs": {
@@ -677,7 +745,7 @@
         "notLicensed",
         "configurePrerequisite"
       ],
-      "correctionModules": 0,
+      "correctionModules": 4,
       "requiredBindings": 7,
       "optionalBindings": 9,
       "verifiedSourceCount": 9,
@@ -685,7 +753,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "microsoft-template-floor",
+      "review": "current"
     },
     {
       "stepId": "s-goal-pim-activation-reauth",
@@ -693,7 +765,7 @@
       "packagePath": "docs/implementation-content/s-goal-pim-activation-reauth/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 34,
       "outputs": {
@@ -726,7 +798,11 @@
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 6,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 16,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-register-info-protected",
@@ -734,7 +810,7 @@
       "packagePath": "docs/implementation-content/s-goal-register-info-protected/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -765,7 +841,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "microsoft-template-floor",
+      "review": "current"
     },
     {
       "stepId": "s-goal-require-managed-device",
@@ -773,7 +853,7 @@
       "packagePath": "docs/implementation-content/s-goal-require-managed-device/",
       "relationship": "baseline-goal-composite-prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 26,
       "outputs": {
@@ -796,15 +876,19 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 0,
-      "requiredBindings": 8,
-      "optionalBindings": 8,
+      "correctionModules": 4,
+      "requiredBindings": 7,
+      "optionalBindings": 9,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy"
+      "family": "policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-service-accounts-trusted-network",
@@ -812,7 +896,7 @@
       "packagePath": "docs/implementation-content/s-goal-service-accounts-trusted-network/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS_WITH_LIMITATION",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 28,
       "outputs": {
@@ -843,7 +927,11 @@
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 2
+      "unresolvedIssues": 2,
+      "strictValidationErrors": 12,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-session-lifetime",
@@ -851,7 +939,7 @@
       "packagePath": "docs/implementation-content/s-goal-session-lifetime/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 35,
       "outputs": {
@@ -876,12 +964,16 @@
       ],
       "correctionModules": 10,
       "requiredBindings": 7,
-      "optionalBindings": 8,
+      "optionalBindings": 10,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 4,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 5,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-sign-in-risk",
@@ -889,7 +981,7 @@
       "packagePath": "docs/implementation-content/s-goal-sign-in-risk/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS_WITH_LIMITATION",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 35,
       "outputs": {
@@ -919,7 +1011,11 @@
       "packageSpecificMicrosoftSources": 9,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 1
+      "unresolvedIssues": 1,
+      "strictValidationErrors": 14,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-sign-in-risk-medium",
@@ -927,7 +1023,7 @@
       "packagePath": "docs/implementation-content/s-goal-sign-in-risk-medium/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS_WITH_LIMITATION",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 26,
       "outputs": {
@@ -957,7 +1053,11 @@
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 6,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-token-protection",
@@ -965,7 +1065,7 @@
       "packagePath": "docs/implementation-content/s-goal-token-protection/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "self-verified",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 29,
       "outputs": {
@@ -995,7 +1095,11 @@
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 3,
       "betaDependencies": 1,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 5,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-unmanaged-browser",
@@ -1003,7 +1107,7 @@
       "packagePath": "docs/implementation-content/s-goal-unmanaged-browser/",
       "relationship": "baseline-goal-composite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 25,
       "outputs": {
@@ -1028,14 +1132,18 @@
         "notLicensed"
       ],
       "correctionModules": 0,
-      "requiredBindings": 12,
-      "optionalBindings": 7,
+      "requiredBindings": 9,
+      "optionalBindings": 10,
       "verifiedSourceCount": 10,
       "packageSpecificMicrosoftSources": 10,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "policy-composite"
+      "family": "policy-composite",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "microsoft-template-floor",
+      "review": "current"
     },
     {
       "stepId": "s-goal-user-risk",
@@ -1043,7 +1151,7 @@
       "packagePath": "docs/implementation-content/s-goal-user-risk/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS_WITH_LIMITATION",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 28,
       "outputs": {
@@ -1074,7 +1182,11 @@
       "packageSpecificMicrosoftSources": 10,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 1
+      "unresolvedIssues": 1,
+      "strictValidationErrors": 10,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-user-risk-medium",
@@ -1082,7 +1194,7 @@
       "packagePath": "docs/implementation-content/s-goal-user-risk-medium/",
       "relationship": "baseline-goal",
       "status": "SELF-VERIFIED",
-      "validationResult": "PASS_WITH_LIMITATION",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 29,
       "outputs": {
@@ -1113,7 +1225,11 @@
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 2
+      "unresolvedIssues": 2,
+      "strictValidationErrors": 12,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-goal-workload-identity-block",
@@ -1121,7 +1237,7 @@
       "packagePath": "docs/implementation-content/s-goal-workload-identity-block/",
       "relationship": "baseline-goal-composite",
       "status": "SELF-VERIFIED",
-      "validationResult": "self-verified",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 31,
       "outputs": {
@@ -1146,14 +1262,18 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 8,
-      "requiredBindings": 9,
-      "optionalBindings": 8,
+      "correctionModules": 7,
+      "requiredBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 4,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 7,
+      "registered": true,
+      "provenance": "baseline-member",
+      "review": "current"
     },
     {
       "stepId": "s-ladder-operator-passkey",
@@ -1161,7 +1281,7 @@
       "packagePath": "docs/implementation-content/s-ladder-operator-passkey/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 7,
       "outputs": {
@@ -1187,7 +1307,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "human-action"
+      "family": "human-action",
+      "strictValidationErrors": 7,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-allowed-countries",
@@ -1195,7 +1319,7 @@
       "packagePath": "docs/implementation-content/s-prereq-allowed-countries/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 19,
       "outputs": {
@@ -1222,7 +1346,11 @@
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 14,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-auth-strength",
@@ -1230,7 +1358,7 @@
       "packagePath": "docs/implementation-content/s-prereq-auth-strength/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 17,
       "outputs": {
@@ -1258,7 +1386,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "supporting"
+      "family": "supporting",
+      "strictValidationErrors": 8,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-break-glass",
@@ -1266,7 +1398,7 @@
       "packagePath": "docs/implementation-content/s-prereq-break-glass/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 22,
       "outputs": {
@@ -1293,7 +1425,11 @@
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 21,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-device-plan",
@@ -1301,7 +1437,7 @@
       "packagePath": "docs/implementation-content/s-prereq-device-plan/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 6,
       "outputs": {
@@ -1316,7 +1452,8 @@
       "statesSupported": [
         "needsDecision",
         "decided",
-        "blocked"
+        "blocked",
+        "inPlace"
       ],
       "correctionModules": 0,
       "requiredBindings": 2,
@@ -1326,7 +1463,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "decision"
+      "family": "decision",
+      "strictValidationErrors": 5,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-exclusion-group",
@@ -1334,7 +1475,7 @@
       "packagePath": "docs/implementation-content/s-prereq-exclusion-group/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 20,
       "outputs": {
@@ -1352,7 +1493,8 @@
         "partial",
         "verificationRequired",
         "inPlace",
-        "blocked"
+        "blocked",
+        "missing"
       ],
       "correctionModules": 4,
       "requiredBindings": 8,
@@ -1361,7 +1503,11 @@
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 23,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-passkey-settings",
@@ -1369,7 +1515,7 @@
       "packagePath": "docs/implementation-content/s-prereq-passkey-settings/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 15,
       "outputs": {
@@ -1377,7 +1523,7 @@
         "json": true,
         "powershell": true,
         "aiInfo": true,
-        "email": true,
+        "email": false,
         "readiness": true,
         "troubleshooting": true
       },
@@ -1386,17 +1532,22 @@
         "missingOrPartial",
         "verificationRequired",
         "inPlace",
-        "blocked"
+        "blocked",
+        "missing"
       ],
       "correctionModules": 0,
-      "requiredBindings": 5,
-      "optionalBindings": 5,
+      "requiredBindings": 3,
+      "optionalBindings": 7,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "supporting"
+      "family": "supporting",
+      "strictValidationErrors": 11,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-per-user-mfa",
@@ -1404,7 +1555,7 @@
       "packagePath": "docs/implementation-content/s-prereq-per-user-mfa/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 11,
       "outputs": {
@@ -1424,14 +1575,18 @@
         "inPlace"
       ],
       "correctionModules": 0,
-      "requiredBindings": 4,
-      "optionalBindings": 3,
+      "requiredBindings": 2,
+      "optionalBindings": 5,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 1,
       "unresolvedIssues": 0,
-      "family": "supporting"
+      "family": "supporting",
+      "strictValidationErrors": 12,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-security-defaults",
@@ -1439,7 +1594,7 @@
       "packagePath": "docs/implementation-content/s-prereq-security-defaults/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 10,
       "outputs": {
@@ -1465,7 +1620,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "supporting"
+      "family": "supporting",
+      "strictValidationErrors": 6,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-service-accounts-group",
@@ -1473,7 +1632,7 @@
       "packagePath": "docs/implementation-content/s-prereq-service-accounts-group/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 20,
       "outputs": {
@@ -1492,7 +1651,8 @@
         "partial",
         "verificationRequired",
         "inPlace",
-        "blocked"
+        "blocked",
+        "missing"
       ],
       "correctionModules": 3,
       "requiredBindings": 6,
@@ -1501,7 +1661,11 @@
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 19,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-prereq-trusted-location",
@@ -1509,7 +1673,7 @@
       "packagePath": "docs/implementation-content/s-prereq-trusted-location/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 19,
       "outputs": {
@@ -1537,7 +1701,11 @@
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
-      "unresolvedIssues": 0
+      "unresolvedIssues": 0,
+      "strictValidationErrors": 13,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-question-mail-devices",
@@ -1545,7 +1713,7 @@
       "packagePath": "docs/implementation-content/s-question-mail-devices/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 10,
       "outputs": {
@@ -1563,7 +1731,8 @@
         "relayConnectorReady",
         "verificationRequired",
         "inPlace",
-        "blocked"
+        "blocked",
+        "needsDecision"
       ],
       "correctionModules": 0,
       "requiredBindings": 3,
@@ -1573,7 +1742,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "external-admin"
+      "family": "external-admin",
+      "strictValidationErrors": 15,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-question-partner",
@@ -1581,7 +1754,7 @@
       "packagePath": "docs/implementation-content/s-question-partner/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 13,
       "outputs": {
@@ -1609,7 +1782,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "supporting"
+      "family": "supporting",
+      "strictValidationErrors": 9,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-question-travel",
@@ -1617,7 +1794,7 @@
       "packagePath": "docs/implementation-content/s-question-travel/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 12,
       "outputs": {
@@ -1635,7 +1812,8 @@
         "activeTrip",
         "revertDue",
         "inPlace",
-        "blocked"
+        "blocked",
+        "needsDecision"
       ],
       "correctionModules": 0,
       "requiredBindings": 5,
@@ -1645,7 +1823,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "operational"
+      "family": "operational",
+      "strictValidationErrors": 9,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     },
     {
       "stepId": "s-shared-devices",
@@ -1653,7 +1835,7 @@
       "packagePath": "docs/implementation-content/s-shared-devices/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 28,
       "outputs": {
@@ -1675,14 +1857,18 @@
         "blocked"
       ],
       "correctionModules": 6,
-      "requiredBindings": 7,
-      "optionalBindings": 6,
+      "requiredBindings": 6,
+      "optionalBindings": 7,
       "verifiedSourceCount": 4,
       "packageSpecificMicrosoftSources": 4,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "supporting-policy"
+      "family": "supporting-policy",
+      "strictValidationErrors": 3,
+      "registered": true,
+      "provenance": "tenant-prerequisite",
+      "review": "current"
     },
     {
       "stepId": "s-verify-mfa",
@@ -1690,7 +1876,7 @@
       "packagePath": "docs/implementation-content/s-verify-mfa/",
       "relationship": "prerequisite",
       "status": "SELF-VERIFIED",
-      "validationResult": "SELF-VERIFIED",
+      "validationResult": "parts-withheld",
       "sourceFiles": 3,
       "contentBlocks": 16,
       "outputs": {
@@ -1718,7 +1904,11 @@
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "family": "campaign"
+      "family": "campaign",
+      "strictValidationErrors": 20,
+      "registered": true,
+      "provenance": "workflow-check",
+      "review": "current"
     }
   ],
   "bindings": [
@@ -2037,6 +2227,7 @@
     {
       "binding": "authStrength.target.displayName",
       "requiredBy": [
+        "s-goal-device-registration-mfa",
         "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
@@ -2044,6 +2235,7 @@
         "s-goal-pim-activation-reauth"
       ],
       "packages": [
+        "s-goal-device-registration-mfa",
         "s-goal-pim-activation-reauth",
         "s-goal-sign-in-risk",
         "s-goal-user-risk"
@@ -2058,6 +2250,7 @@
       "binding": "authStrength.target.id",
       "requiredBy": [
         "s-goal-admins-phishing-resistant",
+        "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
         "s-goal-user-risk"
@@ -2067,6 +2260,7 @@
       ],
       "packages": [
         "s-goal-admins-phishing-resistant",
+        "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
         "s-goal-sign-in-risk",
@@ -2200,10 +2394,10 @@
     },
     {
       "binding": "decision.devicePlan",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-require-managed-device"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-require-managed-device"
       ],
@@ -3298,10 +3492,10 @@
     },
     {
       "binding": "group.serviceAccounts.id",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-azure-management-mfa"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-azure-management-mfa"
       ],
@@ -3474,10 +3668,10 @@
     },
     {
       "binding": "location.allowedCountries.id",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-geo-restriction"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-geo-restriction"
       ],
@@ -3584,10 +3778,10 @@
     },
     {
       "binding": "location.current.semanticMismatches",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-workload-identity-block"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-workload-identity-block"
       ],
@@ -3838,10 +4032,10 @@
     },
     {
       "binding": "mfa.perUser.userIds",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-prereq-per-user-mfa"
       ],
-      "optionalBy": [],
       "packages": [
         "s-prereq-per-user-mfa"
       ],
@@ -4030,10 +4224,10 @@
     },
     {
       "binding": "passkey.profileOptInApproved",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-prereq-passkey-settings"
       ],
-      "optionalBy": [],
       "packages": [
         "s-prereq-passkey-settings"
       ],
@@ -4277,6 +4471,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policies.session.browser.operation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.browser.target.displayName",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -4337,6 +4543,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policies.session.unmanaged.operation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.unmanaged.target.displayName",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -4353,10 +4571,10 @@
     },
     {
       "binding": "policies.unmanagedBrowser.a.current.id",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-unmanaged-browser"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-unmanaged-browser"
       ],
@@ -4413,10 +4631,10 @@
     },
     {
       "binding": "policies.unmanagedBrowser.b.current.id",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-unmanaged-browser"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-unmanaged-browser"
       ],
@@ -4531,10 +4749,11 @@
         "s-goal-user-risk",
         "s-goal-user-risk-medium",
         "s-goal-workload-identity-block",
-        "s-prereq-exclusion-group",
+        "s-prereq-exclusion-group"
+      ],
+      "optionalBy": [
         "s-shared-devices"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-admin-session",
         "s-goal-admins-phishing-resistant",
@@ -4885,10 +5104,10 @@
     },
     {
       "binding": "policy.target.includeRoles",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-admin-session"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-admin-session"
       ],
@@ -5183,10 +5402,10 @@
     },
     {
       "binding": "sharepoint.adminUrl",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-unmanaged-browser"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-unmanaged-browser"
       ],
@@ -5354,16 +5573,25 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "tenant.deviceRegistration.multiFactorAuthConfiguration",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-device-registration-mfa"
+      ],
+      "packages": [
+        "s-goal-device-registration-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "tenant.displayName",
       "requiredBy": [
-        "s-check-dormant-accounts",
         "s-check-separate-admin-accounts",
         "s-prereq-allowed-countries",
         "s-prereq-break-glass",
         "s-prereq-device-plan",
         "s-prereq-exclusion-group",
-        "s-prereq-passkey-settings",
-        "s-prereq-per-user-mfa",
         "s-prereq-security-defaults",
         "s-prereq-service-accounts-group",
         "s-prereq-trusted-location",
@@ -5375,6 +5603,7 @@
       "optionalBy": [
         "cleanup-drill",
         "cleanup-notAssessed",
+        "s-check-dormant-accounts",
         "s-goal-admin-portals-protected",
         "s-goal-admin-session",
         "s-goal-admins-phishing-resistant",
@@ -5402,6 +5631,8 @@
         "s-goal-user-risk-medium",
         "s-goal-workload-identity-block",
         "s-prereq-auth-strength",
+        "s-prereq-passkey-settings",
+        "s-prereq-per-user-mfa",
         "s-question-travel"
       ],
       "packages": [
@@ -5894,14 +6125,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 964,
-    "uniqueBindings": 264,
-    "bindingsRequiredByAtLeastOneProjection": 106,
-    "bindingsOptionalInAtLeastOnePackage": 162,
+    "uniqueBindings": 267,
+    "bindingsRequiredByAtLeastOneProjection": 96,
+    "bindingsOptionalInAtLeastOnePackage": 176,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 219,
+    "bindingDefinitionsPendingHolisticReview": 222,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 219,
+    "knownIAMAIInputUnreviewed": 222,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
@@ -5953,7 +6184,21 @@
       "s-goal-token-protection",
       "s-prereq-per-user-mfa"
     ],
-    "legacyDependencies": 0
+    "legacyDependencies": 0,
+    "packagesPassingStrictValidation": 1,
+    "packagesWithWithheldParts": 45,
+    "provenance": {
+      "baseline-member": 22,
+      "microsoft-template-floor": 4,
+      "rollout-proof": 1,
+      "source-review": 1,
+      "tenant-prerequisite": 10,
+      "workflow-check": 8
+    },
+    "review": {
+      "current": 45,
+      "reviewNeeded": 1
+    }
   },
   "validationLimitations": [
     "PowerShell AST/parser was unavailable in the authoring container for this authoring run. 40 packages expose PowerShell content; extracted scripts were statically/mechanically checked where package metadata records that check and should be AST-parsed by the implementation environment before use.",
@@ -6053,5 +6298,6 @@
     "canonicalVocabulary": "Binding names are the union declared by package META.json files.",
     "newDefinitions": "Bindings absent from the previous global registry are not guessed; they remain pending type/sensitivity/existing-IAMAI mapping review.",
     "integrationBoundary": "A pending binding definition is not permission to add a tenant read or new reasoning. Integration must map it to existing IAMAI facts or report a genuine gap."
-  }
+  },
+  "derivedBy": "scripts/compile-implementation-content.mjs --library-index regenerates every count, output, state, binding inventory, validationResult, provenance and review here from the packages; library.test.ts fails when they drift. Definitions, issues, primitives and caveats are the author’s."
 }

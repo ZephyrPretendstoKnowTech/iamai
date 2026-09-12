@@ -35,6 +35,13 @@ export type InvocationSpec = {
   modeParameter: string
   correctionsParameter?: string
   parameters: Record<string, InvocationParameter>
+  /**
+   * The modes IAMAI cannot call, each with the reason: a mode the script runs only
+   * with an attestation the package declares no prerequisite for, or with a value
+   * in a shape IAMAI does not hold. A projection that runs one is withheld, never
+   * shown as a call that would throw.
+   */
+  withheldModes?: Record<string, string>
 }
 
 export type ScriptRun = { mode: string; corrections: string[] }
@@ -87,6 +94,7 @@ export function invocationErrors(at: string, spec: unknown, script: string, voca
   for (const p of params) {
     if (p.mandatory && p.name !== s.modeParameter && !(p.name in (s.parameters ?? {}))) errors.push(`${at}: mandatory parameter ${p.name} has no invocation`)
   }
+  if (s.withheldModes !== undefined && (typeof s.withheldModes !== 'object' || Object.values(s.withheldModes).some((r) => typeof r !== 'string' || r.trim() === ''))) errors.push(`${at}.withheldModes: each withheld mode names its reason`)
   return errors
 }
 

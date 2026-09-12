@@ -5,7 +5,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
-import { compileLibrary, registryOf } from './library.ts'
+import { readFileSync } from 'node:fs'
+import { compileLibrary, libraryIndexOf, registryOf } from './library.ts'
+import type { LibraryIndex } from './library.ts'
 import { PACKAGE_STATES, validatePackage } from './protocol.ts'
 import type { CompiledPackage } from './protocol.ts'
 import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
@@ -54,6 +56,15 @@ test('the registry is the whole library compiled: every package for a Plan conte
   assert.deepEqual(LIBRARY.registered.find((p) => p.stepId === 's-goal-device-registration-mfa')?.withheld, [])
 })
 
+test('LIBRARY.json’s counts, binding inventory, validation, provenance and review are the library’s own, regenerated and never kept by hand', () => {
+  const current = JSON.parse(readFileSync('docs/implementation-content/LIBRARY.json', 'utf8')) as LibraryIndex
+  assert.deepEqual(current, JSON.parse(JSON.stringify(libraryIndexOf(LIBRARY, current))), 'LIBRARY.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --library-index')
+  // No required binding is one no part of its package names (correction batch 2).
+  const passing = current.packages.filter((p) => p.validationResult === 'pass').map((p) => p.stepId)
+  assert.ok(passing.includes('s-goal-device-registration-mfa'))
+  assert.equal(current.aggregate.packagesPassingStrictValidation, passing.length)
+})
+
 test('each package reaches the steps whose title comes from its content entry, a merged goal included', () => {
   let reached = 0
   let reviewed = 0
@@ -72,13 +83,16 @@ test('each package reaches the steps whose title comes from its content entry, a
   assert.equal(implementationPackageFor({ id: 'cleanup-drill', goalId: '' }), null)
 })
 
-test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON and AI Info, and the JSON is the pinned baseline’s policy', () => {
+test('a policy IAMAI would create projects the package’s Entra, PowerShell, JSON, AI Info and Email, and the JSON is the pinned baseline’s policy', () => {
   const p = at(SMALL, 's-goal-admins-phishing-resistant')
   const { pkg, state, projection } = project(p)
   assert.equal(pkg.meta.stepId, 's-goal-admins-phishing-resistant')
   assert.equal(state, 'missing')
   assert.equal(projection.hold, null)
-  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo'])
+  assert.deepEqual(projection.channels.map((c) => c.channel), ['entra', 'powershell', 'json', 'aiInfo', 'email'])
+  // The rollout Email the package authored for the Report-only creation reaches the
+  // step (correction batch 2): its audience is the author's, its trigger the one state it is for.
+  assert.deepEqual(projection.channels.find((c) => c.channel === 'email')?.communication, { audience: 'administrators-in-scope', trigger: 'before-report-only', purpose: '' })
   const op = operationsOf(p.step)[0]
   const target = (op.target ?? op.body) as Record<string, unknown>
   const json = JSON.parse(projection.channels.find((c) => c.channel === 'json')!.text) as Record<string, unknown>

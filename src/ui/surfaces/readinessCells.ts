@@ -34,8 +34,25 @@ type ReadinessWords = {
     string
   >
   ledger: Record<'notActive' | Kind, string>
+  strip: { rolloutWithout: string; rolloutNone: string; rolloutUnread: string }
 }
 const T = pages.readiness as unknown as ReadinessWords
+
+/**
+ * The passkey rollout strip's value beside "{have} of {active} have a passkey":
+ * the link to the people without one, and every other part of the active people
+ * the strip must account for. A person whose method inventory could not be read
+ * is neither with nor without a passkey, so they are named, never folded into
+ * "None without" — a tenant nobody's methods were read in is not one where
+ * everybody holds a passkey.
+ */
+export function passkeyStripParts(p: { without: number; unread: number }): { without: string | null; rest: string[] } {
+  const S = T.strip
+  return {
+    without: p.without > 0 ? fillText(S.rolloutWithout, { n: p.without }) : null,
+    rest: [...(p.without === 0 && p.unread === 0 ? [S.rolloutNone] : []), ...(p.unread > 0 ? [fillText(S.rolloutUnread, { n: p.unread })] : [])],
+  }
+}
 
 /** A state's own word: Ready, Needs proof, Needs setup, Unknown. */
 export function stateTitle(s: ReadinessState): string {

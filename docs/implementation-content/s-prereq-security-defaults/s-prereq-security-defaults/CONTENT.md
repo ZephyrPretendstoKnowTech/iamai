@@ -42,7 +42,7 @@ Review the same-day cutover for {{tenant.displayName}}. Replacement protection s
 Verify that Security Defaults is off and replacement Conditional Access protection remains active. Cutover checks: {{evidence.cutoverChecks}}.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.cutover","channel":"email","states":["readyToDisable"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.cutover","channel":"email","states":["readyToDisable"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: Microsoft Entra protection cutover
 
 Security Defaults is being replaced with the validated Conditional Access policy set in one controlled change window. If sign-in issues appear, record the affected account, application, time, and policy result; do not disable tenant-wide protection without the rollback owner.

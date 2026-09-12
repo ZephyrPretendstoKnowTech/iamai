@@ -14,7 +14,7 @@ import type { GrantFloor } from '../coverage/types.ts'
 import type { ResolvedPolicy } from './resolvePolicy.ts'
 import type { PolicyOperation, SourceReference } from './types.ts'
 import { BLOCKED_REASON, READINESS_MEASURE } from '../copy/reasons.ts'
-import { emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
+import { emergencyAccountStanding, emergencyStanding, hardeningBasis, hardeningDeferred } from '../validation/emergencyTiers.ts'
 import type { EmergencyStanding } from '../validation/emergencyTiers.ts'
 import { fillText, missingVars } from '../content/render.ts'
 import { stepById as contentStepById } from '../content/content.ts'
@@ -543,7 +543,8 @@ export function buildCreateAction(
     for (const m of whole.missing) if (!missing.some((x) => x.token === m.token)) missing.push(m)
     for (const a of whole.authorOnly) if (!authorOnly.includes(a)) authorOnly.push(a)
     for (const o of whole.omitted) if (!omitted.includes(o)) omitted.push(o)
-    for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id)) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
+    // A reference one member still waits on is pending for the step, whatever another member made of the answer.
+    for (const [id, d] of p.resolved.decisions ?? []) if (!sourceReferences.has(id) || (d.answer === 'pending' && sourceReferences.get(id)!.answer !== 'pending')) sourceReferences.set(id, { id, kind: d.kind, answer: d.answer })
     const wholeBaseline = deviated ? implementable(artifact(p.resolved.body, p, tag), p.resolved).policy : undefined
     const target = p.target ?? null
     if (target) {
@@ -1162,7 +1163,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     // operator defers it, and a deferral moves it to Cleanup (below).
     bgStanding = emergencyStanding(bgReport, confirmed)
     const deferred = hardeningDeferred(bgStanding.hardening, input.hardeningDeferral)
-    bgStep.emergency = { minimum: bgStanding.minimum.length, hardening: bgStanding.hardening.length, basis: hardeningBasis(bgStanding.hardening), deferredAt: deferred ? (input.hardeningDeferral?.at ?? null) : null }
+    bgStep.emergency = {
+      minimum: bgStanding.minimum.length,
+      hardening: bgStanding.hardening.length,
+      basis: hardeningBasis(bgStanding.hardening),
+      deferredAt: deferred ? (input.hardeningDeferral?.at ?? null) : null,
+      // Each confirmed account's own evidence, never another's or the set's.
+      accounts: emergencyAccountStanding(bgReport, mapping.breakGlassUserIds),
+    }
     const results = bgReport.targets.flatMap((t) => t.results)
     if (confirmed > 0 && results.length > 0 && bgStanding.minimum.length === 0 && (bgStanding.hardening.length === 0 || deferred)) {
       setState(bgStep, { satisfied: true, inPlace: true })
@@ -1868,6 +1876,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         if (s.id === sourceStepId || s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust')) continue
         for (const r of s.action.sourceReferences ?? []) {
           const at = byId.get(r.id) ?? { ...r, ...roleOf(r.id), stepIds: [] }
+          // An answer that stands for one policy and not for another (resolvePolicy.ts: leaving out the whole of who a policy reaches) is still a question.
+          if (r.answer === 'pending') at.answer = 'pending'
           if (!at.stepIds.includes(s.id)) at.stepIds.push(s.id)
           byId.set(r.id, at)
         }

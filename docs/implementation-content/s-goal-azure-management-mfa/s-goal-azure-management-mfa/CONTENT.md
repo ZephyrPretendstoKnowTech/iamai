@@ -146,7 +146,7 @@ Explain why **Require MFA for Azure Management** is not actionable using only th
 Explain the licensing blocker for **Require MFA for Azure Management** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"azure-administrators"}
 Subject: Azure management MFA entering validation
 
 Hello,
@@ -156,7 +156,7 @@ We are validating MFA for Azure management access in {{tenant.displayName}}. Azu
 {{signature}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"azure-administrators"}
 Subject: Azure management MFA ready to enforce
 
 Hello,

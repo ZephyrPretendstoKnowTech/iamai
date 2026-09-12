@@ -28,7 +28,7 @@ import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
-import type { Bindings, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
+import type { Bindings, ChannelArtifact, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
@@ -36,7 +36,8 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
-import { CONTRACT, implementationIsCurrent } from './stepContract.ts'
+import { CONTRACT } from './stepContract.ts'
+import { executableNow } from '../../roadmap/nextSafeAction.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -81,6 +82,15 @@ export function packageReviewFor(step: { id: string; goalId: string }): Drift | 
   const pkg = packageByEntry(step)
   const review = pkg ? REVIEWS[pkg.meta.stepId] : undefined
   return review !== undefined && review.status !== 'current' ? review : null
+}
+
+/**
+ * The package a re-pin review set aside for a step, for its provenance only — the
+ * pins it was reviewed between. Never projected: implementationPackageFor is the
+ * one door to what a step implements.
+ */
+export function reviewedPackageFor(step: { id: string; goalId: string }): CompiledPackage | null {
+  return packageReviewFor(step) !== null ? packageByEntry(step) : null
 }
 
 /** The step ids with a package in the registry. */
@@ -141,6 +151,9 @@ export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null):
   return [...out].sort()
 }
 
+/** A multi-policy set with a member to create beside a member the tenant already has. */
+const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o) => o.mode === 'create') && ops.some((o) => o.mode === 'update')
+
 /**
  * The package state a step is in, read from the contract IAMAI already built,
  * in the order the operator's question changes:
@@ -168,10 +181,14 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.setAside) return null
   if (s.condition === 'baseline-conflict') return 'sourceConflict'
   if (s.condition === 'needs-decision') return 'needsDecision'
-  if (!implementationIsCurrent(step)) return 'blocked'
-  if (!c.implementation.offered && c.implementation.reason !== null) return 'blocked'
+  // The one executability answer (roadmap/nextSafeAction.ts): the next technical
+  // action is not the step's to take today, or the policy cannot be written.
+  if (!executableNow(step)) return 'blocked'
   if (s.satisfied) return 'inPlace'
   if (correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+  // A set partly in the tenant — one member to create beside one already there —
+  // is a correction of the set, never a create of every member (correction batch 2).
+  if (partlyDeployed(operationsOf(step))) return 'partial'
   if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
   if (s.lifecycle === 'report-only') return 'reportOnly'
   if ((s.lifecycle === 'not-deployed' || s.lifecycle === null) && operationsOf(step).some((o) => o.mode === 'create')) return 'missing'
@@ -200,7 +217,7 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   const s = c.state
   if (s.setAside || s.satisfied || s.condition === 'baseline-conflict') return null
   if (step.kind === 'create' || step.kind === 'adjust') {
-    if (correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+    if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
     if (s.lifecycle === 'report-only') return 'reportOnly'
     return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
@@ -378,10 +395,23 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('serviceAccounts.group.id', ctx.mapping.serviceAccountsGroupId)
   put('group.serviceAccounts.id', ctx.mapping.serviceAccountsGroupId)
   put('emergency.target.exclusionsGroupId', exclusionsGroupId)
+  // The operator's confirmed emergency accounts, every one of them: the set the
+  // step's own words name. Only where the directory names each; a set short of an
+  // account is not the set.
   const emergency = ctx.mapping.breakGlassUserIds ?? []
-  if (emergency.length === 1) {
-    put('emergency.target.userId', emergency[0])
-    put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === emergency[0])?.userPrincipalName)
+  const labels = emergency.map((id) => ctx.snapshot.users.find((u) => u.id === id)).map((u) => (u?.userPrincipalName ? `${u.displayName ?? u.userPrincipalName} (${u.userPrincipalName})` : null))
+  if (labels.length > 0 && labels.every((l): l is string => l !== null)) put('emergency.target.accountsSummary', labels.join(', '))
+  // The one account the step's per-account work is about: the only confirmed
+  // account whose own checks are outstanding, where every account's checks ran
+  // (step.emergency.accounts, validation/emergencyTiers.ts). Two accounts owing
+  // work, an account nothing checked, or only a check about the set binds no
+  // account: IAMAI does not pick one for the operator, and an account that meets
+  // everything is not the object of a correction.
+  const standing = (step.emergency?.accounts ?? []).filter((a) => emergency.includes(a.id))
+  const owed = standing.filter((a) => a.minimum + a.hardening > 0)
+  if (standing.length === emergency.length && standing.every((a) => a.assessed) && owed.length === 1) {
+    put('emergency.target.userId', owed[0].id)
+    put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === owed[0].id)?.userPrincipalName)
   }
   for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot))) out[key] = value
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
@@ -419,10 +449,16 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
     if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
     // Users still waiting on a reference are not the target (see packageBindings).
     if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
+    // Whether this member is created or corrected, and — for a correction — the
+    // fields its own update changes (correction batch 2): a module scoped to this
+    // member reads these and never its sibling's.
+    out[`${prefix}.operation`] = op.mode
     if (op.mode === 'update') {
       out[`${prefix}.current.id`] = op.policyId
-      const state = rows.find((r) => r.id === op.policyId)?.state
-      if (typeof state === 'string') out[`${prefix}.current.state`] = state
+      const row = rows.find((r) => r.id === op.policyId) ?? null
+      if (typeof row?.state === 'string') out[`${prefix}.current.state`] = row.state
+      const changed = changedFieldsOf(op.body as Record<string, unknown>, row)
+      if (changed.length > 0) out[`${prefix}.current.changedFields`] = changed
     }
   }
   return out
@@ -434,7 +470,24 @@ export function packageRuntime(pkg: CompiledPackage, state: PackageState, bindin
   return { runtime: { satisfied: new Set(prerequisites.filter((p) => p.satisfied).map((p) => p.id)), baselineCommit }, prerequisites }
 }
 
-const RESULT_TONE: Record<string, ReadinessTone> = { Ready: 'good', 'Review required': 'warn', Unknown: 'warn', Blocked: 'warn', 'Not applicable': 'info' }
+/**
+ * A channel's text as the viewer shows and Copy copies it. The warning every
+ * package's AI Info repeats ("Contains tenant context…") is the one the AI tab
+ * already draws above the text (correction batch 2): it is said once, by the
+ * runtime, and a package line that says only that goes. A warning of the
+ * package's own, worded differently, stays.
+ */
+export function artifactText(a: Pick<ChannelArtifact, 'channel' | 'text'>, sharedWarning: string): string {
+  if (a.channel !== 'aiInfo') return a.text
+  const same = (line: string): boolean => line.replace(/[*_`]/g, '').trim() === sharedWarning.trim()
+  return a.text
+    .split('\n')
+    .filter((line) => !same(line))
+    .join('\n')
+    .replace(/^\s*\n/, '')
+}
+
+const RESULT_TONE: Record<string, ReadinessTone> ={ Ready: 'good', 'Review required': 'warn', Unknown: 'warn', Blocked: 'warn', 'Not applicable': 'info' }
 const SEVERITY: Record<string, number> = { Blocked: 0, 'Review required': 1, Unknown: 2, Ready: 3, 'Not applicable': 4 }
 
 /** The runtime tiles that state where the step stands; the package never displaces them. */

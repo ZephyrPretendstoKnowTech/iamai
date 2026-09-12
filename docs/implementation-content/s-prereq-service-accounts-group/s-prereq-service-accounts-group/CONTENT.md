@@ -124,7 +124,7 @@ Verify exact stable group identity and direct user membership. Note any password
 Explain why service-account membership cannot safely proceed: {{dependencies.blockers}}. Candidate detection is not owner confirmation.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.owners.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template"}
+@@IAMAI-BEGIN {"id":"email.owners.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"application-owners"}
 Subject: Confirm service accounts before Conditional Access changes
 
 IAMAI found accounts that may be used by unattended applications or services. Please confirm which of these are genuinely non-human accounts and what workload each one runs. Accounts will not be placed into the service-account exception group from naming or sign-in patterns alone. Where possible, note whether the workload can move to a managed identity or service principal.

@@ -19,7 +19,7 @@
 //
 // Pure: no DOM, no network.
 import { policyKey } from '../../roadmap/goalMap.ts'
-import { semanticsOf } from '../../roadmap/observation.ts'
+import { semanticFieldsOf, semanticsOf } from '../../roadmap/observation.ts'
 
 export type DriftStatus = 'current' | 'reviewNeeded' | 'held'
 
@@ -41,6 +41,13 @@ export type Drift = {
   identityFallback: string[]
   /** An id-less member the pin renamed without changing what it does: the reviewed name and the pin's. */
   renamed: { from: string; to: string }[]
+  /**
+   * The id-less reviewed members found across a rename by what they target, not by
+   * what they require (`memberIdentity`), because their requirements changed too:
+   * the same policy, changed, so its package needs review rather than being held.
+   * Each also appears in `renamed` and `changed`.
+   */
+  matchedByTarget: string[]
 }
 
 /** A baseline policy's stable id: the author's own GUID. A display name standing in for one is not. */
@@ -51,6 +58,37 @@ type Baseline = { commit: string; policies: readonly Policy[]; goalMap?: Record<
 
 /** The fingerprint of one baseline policy's material semantics. */
 export const memberFingerprint = (policy: Record<string, unknown>): string => semanticsOf(policy)
+
+/**
+ * The dimensions that say which policy a member is — the resources it applies to
+ * and the workload identities it names — as against what it requires of them.
+ */
+const TARGET_FIELDS = ['conditions.applications', 'conditions.clientApplications'] as const
+
+/**
+ * The identity an id-less member falls back to (correction batch 2): the
+ * fingerprints of what it targets (observation.ts semanticFieldsOf). Its name can
+ * change and so can its grant, exclusions or session; a member that still
+ * targets the same thing is the same member, changed. Never a stable id, and
+ * reported as a fallback wherever it is used.
+ */
+export function memberIdentity(policy: Record<string, unknown>): string {
+  const fields = semanticFieldsOf(policy)
+  return TARGET_FIELDS.map((f) => `${f}:${fields[f] ?? '-'}`).join('|')
+}
+
+/** The target identity of each id-less member a step implements at a pin, by its display-name key. */
+export function identitiesAt(baseline: Baseline, goals: readonly string[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const goal of goals) {
+    for (const key of baseline.goalMap?.[goal] ?? []) {
+      if (STABLE_ID.test(key)) continue
+      const policy = baseline.policies.find((p) => policyKey(p) === key)
+      if (policy) out[key] = memberIdentity(policy)
+    }
+  }
+  return out
+}
 
 /** The members a step implements at a pin — the policies its goals map to — each with its fingerprint. */
 export function membersAt(baseline: Baseline, goals: readonly string[]): Record<string, string> {
@@ -70,12 +108,12 @@ export function membersAt(baseline: Baseline, goals: readonly string[]): Record<
  * of them, and needs review; a step that implements none (a goal rendered from its
  * own template, a preparation step) has nothing to drift.
  */
-export function driftOf(reviewed: Readonly<Record<string, string>> | undefined, reviewedPin: string | null, goals: readonly string[], pinned: Baseline): Drift {
+export function driftOf(reviewed: Readonly<Record<string, string>> | undefined, reviewedPin: string | null, goals: readonly string[], pinned: Baseline, reviewedIdentities: Readonly<Record<string, string>> = {}): Drift {
   const now = membersAt(pinned, goals)
   const base = { reviewedPin, pinned: pinned.commit }
   if (reviewed === undefined) {
     const added = Object.keys(now)
-    return { status: added.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged: [], changed: [], removed: [], added, identityFallback: [], renamed: [] }
+    return { status: added.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged: [], changed: [], removed: [], added, identityFallback: [], renamed: [], matchedByTarget: [] }
   }
   const entries = Object.entries(reviewed)
   let removed = entries.filter(([key]) => !(key in now)).map(([key]) => key)
@@ -84,17 +122,29 @@ export function driftOf(reviewed: Readonly<Record<string, string>> | undefined, 
   let added = Object.keys(now).filter((key) => !(key in reviewed))
   // A member known only by its name that is gone under that name, while exactly one
   // new id-less member does the same thing, was renamed: a cosmetic rename alone is
-  // not a removal. A rename that also changed what it does cannot be told from a
-  // replacement, so it stays removed and holds the package.
+  // not a removal. Where what it requires changed too, exactly one new id-less member
+  // that still targets what the reviewed one targeted (`memberIdentity`, recorded at
+  // review) is that member, changed: it needs review. Anything else — no such
+  // member, or more than one — cannot be told from a replacement, stays removed and
+  // holds the package; a new member targeting something else is an unrelated addition.
   const renamed: { from: string; to: string }[] = []
+  const matchedByTarget: string[] = []
+  const targets = identitiesAt(pinned, goals)
   for (const key of removed.filter((k) => !STABLE_ID.test(k))) {
     const same = added.filter((a) => !STABLE_ID.test(a) && now[a] === reviewed[key])
-    if (same.length !== 1) continue
-    renamed.push({ from: key, to: same[0] })
-    unchanged.push(key)
+    const identity = reviewedIdentities[key]
+    const sameTarget = same.length === 0 && typeof identity === 'string' ? added.filter((a) => !STABLE_ID.test(a) && targets[a] === identity) : []
+    const match = same.length === 1 ? same[0] : sameTarget.length === 1 ? sameTarget[0] : null
+    if (match === null) continue
+    renamed.push({ from: key, to: match })
+    if (same.length === 1) unchanged.push(key)
+    else {
+      changed.push(key)
+      matchedByTarget.push(key)
+    }
     removed = removed.filter((k) => k !== key)
-    added = added.filter((a) => a !== same[0])
+    added = added.filter((a) => a !== match)
   }
   const identityFallback = Object.keys(reviewed).filter((k) => !STABLE_ID.test(k))
-  return { status: removed.length > 0 ? 'held' : changed.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged, changed, removed, added, identityFallback, renamed }
+  return { status: removed.length > 0 ? 'held' : changed.length > 0 ? 'reviewNeeded' : 'current', ...base, unchanged, changed, removed, added, identityFallback, renamed, matchedByTarget }
 }
