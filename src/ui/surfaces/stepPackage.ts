@@ -22,7 +22,7 @@ import registry from '../../content/implementation/registry.generated.json' with
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { operationsOf } from '../../roadmap/operations.ts'
+import { operationsOf, policyResult } from '../../roadmap/operations.ts'
 import { changedFieldsOf } from '../../roadmap/changedFields.ts'
 import { stepPopulation } from '../../derive/population.ts'
 import { PINNED } from '../../baseline/pinned.ts'
@@ -38,7 +38,7 @@ import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
-import { executableNow } from '../../roadmap/nextSafeAction.ts'
+import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -157,17 +157,18 @@ const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o
  *   1. set aside: no package state;
  *   2. a source that contradicts itself: sourceConflict;
  *   3. a question waiting on a person: needsDecision;
- *   4. nothing to implement now — a blocker, a review, or an implementation
- *      Foundation A will not hand over — blocked. The one held step whose
- *      current action is the implementation is the owner's report-only
- *      preparation (stepContract.ts implementationIsCurrent), and it continues;
- *   5. delivered: inPlace;
- *   6. a correction owed — an update that changes material fields of the tenant's
- *      policy — partial, whatever the lifecycle: a report-only or an enforced
- *      policy that is not what the plan asked for is corrected before anything
- *      else is done to it, and hiding that behind its stage hid the correction;
- *   7. the lifecycle: readyToEnforce, reportOnly;
- *   8. a policy IAMAI would create: missing.
+ *   4. an implementation Foundation A will not hand over: blocked;
+ *   5. a correction owed — an update that changes material fields of the tenant's
+ *      policy — partial, whatever the lifecycle and whatever holds the step: a
+ *      report-only or an enforced policy that is not what the plan asked for is
+ *      corrected before anything else is done to it, and hiding that behind its
+ *      stage or its hold hid the correction (A1a; A3 B3);
+ *   6. nothing to implement now — a blocker or a review — blocked. The one held
+ *      step whose current action is the implementation is the owner's report-only
+ *      preparation (nextSafeAction.ts implementationIsCurrent), and it continues;
+ *   7. delivered: inPlace;
+ *   8. the lifecycle: readyToEnforce, reportOnly;
+ *   9. a policy IAMAI would create: missing.
  *
  * Anything else — an enforced policy short of the baseline with no update to
  * offer — is blocked: nothing is projected rather than something invented.
@@ -177,11 +178,17 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.setAside) return null
   if (s.condition === 'baseline-conflict') return 'sourceConflict'
   if (s.condition === 'needs-decision') return 'needsDecision'
-  // The one executability answer (roadmap/nextSafeAction.ts): the next technical
-  // action is not the step's to take today, or the policy cannot be written.
-  if (!executableNow(step)) return 'blocked'
+  // Foundation A first: a policy that cannot be written projects nothing
+  // (roadmap/operations.ts policyResult).
+  if (policyResult(step).kind === 'unavailable') return 'blocked'
+  // A correction owed — an update that changes material fields of the tenant's
+  // policy — projects whatever holds the step (A1a; A3 B3 "creation vs
+  // enforcement"): the correction is safe to plan and to run today, and
+  // enforcement stays behind its own gates.
+  if (!s.satisfied && correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+  // The next technical action is not the step's to take today (roadmap/nextSafeAction.ts).
+  if (!implementationIsCurrent(step)) return 'blocked'
   if (s.satisfied) return 'inPlace'
-  if (correctionFieldsOf(step, snapshot).length > 0) return 'partial'
   // A set partly in the tenant — one member to create beside one already there —
   // is a correction of the set, never a create of every member (correction batch 2).
   if (partlyDeployed(operationsOf(step))) return 'partial'

@@ -118,7 +118,12 @@ test('a real enforced policy missing its exclusions projects an executable corre
   const next = nextSafeAction(step)
   assert.deepEqual([next.kind, next.executable], ['correct', false])
   assert.ok(step.blockedBy.includes('s-prereq-break-glass'), JSON.stringify(step.blockedBy))
-  assert.equal(packageStateOf(step, c, f.snapshot), 'blocked')
+  // A1a (task 6; A3 B3 "creation vs enforcement"): the package state projects the safe
+  // correction — the exclusions the policy is missing — whatever holds the step; the
+  // emergency gate holds enforcement, and this policy is already enforced. It used to
+  // read `blocked` here (correction batch 2), which hid the one change that makes the
+  // tenant safer behind the gate meant to keep it safe.
+  assert.equal(packageStateOf(step, c, f.snapshot), 'partial')
 })
 
 test('an enforced policy that excludes one extra person, with emergency access sorted, is a Partial whose correction executes now and Copy copies exactly it (correction batch 2.1)', () => {

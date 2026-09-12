@@ -87,3 +87,20 @@ test('the owner’s one held case: a held, undeployed policy whose next action i
   } as unknown as Step
   assert.equal(stateOf(held), 'missing')
 })
+
+test('A3 B3, creation vs enforcement: a report-only policy owing a safe correction projects the correction while a threshold holds its enforcement; one that cannot be written projects nothing', () => {
+  const { step, snapshot } = owingACorrection('report-only')
+  const held = {
+    ...step,
+    blockers: [{ kind: 'readiness', label: 'mfa-readiness', binding: 'when MFA readiness reaches 90% (now 5%)' }],
+    action: { ...step.action, readinessGate: { measure: 'MFA readiness', threshold: '90%', value: '5%' } },
+    state: { ...step.state, condition: 'blocked' },
+    status: 'blocked',
+  } as unknown as Step
+  assert.equal(correctionFieldsOf(held, snapshot).length > 0, true, 'the premise: a correction is owed')
+  assert.equal(stateOf(held, snapshot), 'partial', 'the hold is on enforcement; the correction is the executable action')
+  const reviewed = { ...held, state: { ...held.state, condition: 'review-required' } } as unknown as Step
+  assert.equal(stateOf(reviewed, snapshot), 'partial', 'a review names the correction, it does not hide it')
+  const unwritable = { ...held, action: { ...held.action, unmatchedPair: true } } as unknown as Step
+  assert.equal(stateOf(unwritable, snapshot), 'blocked', 'Foundation A still comes first')
+})
