@@ -14,6 +14,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { FixtureName } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { stepById } from '../../content/content.ts'
@@ -26,6 +27,7 @@ import {
   TYPE_ORDER,
   WHEN,
   applyFocus,
+  asideGroupsFor,
   boardWhen,
   focusCounts,
   groupSummary,
@@ -60,7 +62,7 @@ function bodyOf(src: string, name: string): string {
  * per step, with the lane the engine read for it (planLanes.ts), which is the
  * row's one state (A1b).
  */
-function itemsFor(name: (typeof FIXTURES)[number]): BoardItem[] {
+function itemsFor(name: FixtureName): BoardItem[] {
   const f = fixture(name)
   const r = runFixture(f)
   const readings = laneReadings(r.steps)
@@ -105,9 +107,11 @@ test('the Completed and Deferred groups are the two toggles and never a tab, dra
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     for (const tab of LANES) {
-      const hidden = groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)
-      assert.equal(hidden.includes('complete') || hidden.includes('deferred'), false, `${name}/${tab}: finished or deferred work is drawn with its toggle off`)
-      const shown = groupsFor(tab, applyFocus(items, tab, ALL))
+      const hidden = asideGroupsFor(applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)
+      assert.deepEqual(hidden, [], `${name}/${tab}: finished or deferred work is drawn with its toggle off`)
+      const inTab = groupsFor(tab, applyFocus(items, tab, ALL)).map((g) => g.key)
+      assert.equal(inTab.includes('complete') || inTab.includes('deferred'), false, `${name}/${tab}: finished or deferred work is drawn inside the tab`)
+      const shown = asideGroupsFor(applyFocus(items, tab, ALL))
       const complete = shown.find((g) => g.key === 'complete')
       assert.deepEqual(ids(complete?.items ?? []), ids(items.filter((i) => i.lane === 'Completed').sort((a, b) => a.order - b.order)), `${name}/${tab}: Show completed reveals something other than the completed rows`)
       const deferred = shown.find((g) => g.key === 'deferred')
@@ -116,11 +120,28 @@ test('the Completed and Deferred groups are the two toggles and never a tab, dra
   }
 })
 
+test('A6: on the Follow-up demo the Ready tab holds no Completed row, with or without Show completed, and the aside groups sit outside the tab panel', () => {
+  const items = itemsFor('demo-week2')
+  assert.ok(items.some((i) => i.lane === 'Completed'), 'the premise: the Follow-up demo has completed work')
+  for (const focus of [NO_FOCUS, ALL]) {
+    const inReady = groupsFor('ready', applyFocus(items, 'ready', focus)).flatMap((g) => g.items)
+    assert.ok(inReady.length > 0, 'the premise: the Ready tab draws rows')
+    assert.equal(inReady.filter((i) => i.lane === 'Completed').length, 0, `the Ready tab holds a Completed row (showCompleted=${focus.showCompleted})`)
+  }
+  assert.equal(asideGroupsFor(applyFocus(items, 'ready', ALL)).find((g) => g.key === 'complete')?.items.length, items.filter((i) => i.lane === 'Completed').length)
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  const panelAt = plan.indexOf('{...onePanelProps(boardBase, tab)}>')
+  const panel = plan.slice(panelAt, plan.indexOf('</div>', panelAt))
+  assert.ok(panelAt > 0 && !/aside/.test(panel), 'the Completed and Deferred groups are drawn inside the tab panel')
+  assert.match(plan.slice(plan.indexOf('</div>', panelAt)), /aside\.map\(drawGroup/, 'Plan.tsx does not draw the aside groups after the panel')
+})
+
 test('no tab reorders the engine: within a group, rows keep the order the lane gave them', () => {
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     for (const tab of LANES) {
-      for (const g of groupsFor(tab, applyFocus(items, tab, ALL))) {
+      const shown = applyFocus(items, tab, ALL)
+      for (const g of [...groupsFor(tab, shown), ...asideGroupsFor(shown)]) {
         const seen = g.items.map((i) => i.order)
         assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the group reordered the engine's sequence`)
       }
@@ -362,7 +383,8 @@ test('a group summary counts the rows under it, so the heading cannot disagree w
   for (const name of FIXTURES) {
     const items = itemsFor(name)
     for (const tab of LANES) {
-      for (const g of groupsFor(tab, applyFocus(items, tab, ALL))) {
+      const shown = applyFocus(items, tab, ALL)
+      for (const g of [...groupsFor(tab, shown), ...asideGroupsFor(shown)]) {
         const n = g.items.length
         assert.equal(groupSummary(g), `${n} step${n === 1 ? '' : 's'}`, `${tab}/${g.key}: the summary says more than its own row count (A1b: no attention count)`)
         assert.ok(g.items.length > 0, `${tab}/${g.key}: an empty group is drawn`)

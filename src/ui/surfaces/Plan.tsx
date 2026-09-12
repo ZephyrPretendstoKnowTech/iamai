@@ -23,7 +23,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, boardReasonOf, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardReasonOf, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -236,7 +236,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
     }
   }
 
-  const groups = groupsFor(tab, applyFocus(items, tab, focus))
+  // The tab panel draws its own lane; the Completed and Deferred groups the
+  // toggles reveal are drawn after it, never inside a tab.
+  const shown = applyFocus(items, tab, focus)
+  const groups = groupsFor(tab, shown)
+  const aside = asideGroupsFor(shown)
   // A step opened by its hash — a Readiness tile's link to its prerequisite, a
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
   // tab follows the step; otherwise the link would open nothing on screen.
@@ -246,6 +250,20 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
   // until then) and the day the plan started.
   const counts = focusCounts(items)
+  const drawGroup = (scope: string) => (g: BoardGroup) => {
+    const key = `${scope}:${g.key}`
+    // A group holding the open step is not collapsed by default: switching
+    // tab must not fold the step the operator is working on out of sight.
+    // An explicit collapse still wins — the operator's own press is the
+    // one thing that outranks the default.
+    const holdsOpen = open !== null && g.items.some((i) => i.id === open)
+    const closed = toggled[key] ?? (g.closed && !holdsOpen)
+    return (
+      <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))}>
+        {g.items.map((i) => renderById.get(i.id)?.() ?? null)}
+      </BoardGroupView>
+    )
+  }
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string }[] = [
     { key: 'steps', label: PP.progress.steps, value: stepFacts(c.steps, cleanupPhase, answers).steps },
     { key: 'completed', label: PP.progress.completed, value: counts.complete },
@@ -340,21 +358,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
       />
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
         {groups.length === 0 && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : BOARD.emptyLane}</p>}
-        {groups.map((g) => {
-          const key = `${tab}:${g.key}`
-          // A group holding the open step is not collapsed by default: switching
-          // tab must not fold the step the operator is working on out of sight.
-          // An explicit collapse still wins — the operator's own press is the
-          // one thing that outranks the default.
-          const holdsOpen = open !== null && g.items.some((i) => i.id === open)
-          const closed = toggled[key] ?? (g.closed && !holdsOpen)
-          return (
-            <BoardGroupView key={key} group={g} closed={closed} onToggle={() => setToggled((t) => ({ ...t, [key]: !closed }))}>
-              {g.items.map((i) => renderById.get(i.id)?.() ?? null)}
-            </BoardGroupView>
-          )
-        })}
+        {groups.map(drawGroup(tab))}
       </div>
+      {aside.length > 0 && <div className="plan-board plan-board-aside">{aside.map(drawGroup('aside'))}</div>}
 
       {/* What is left in the footer is what was never a row: the person's own
           Doesn't apply here answers, the licence ladder and housekeeping. The
