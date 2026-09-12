@@ -245,13 +245,13 @@ const LANES = ['Ready', 'Up Next', 'On Hold']
 /** The When column's placeholder (pages.plan.when.none, A1b): a finished or undated row reads it. */
 const WHEN_NONE = pages.plan.when.none
 /** The lane vocabulary as a row states it (pages.plan.lanes.*, planBoard.ts laneLabelOf, A1c): `Lane`, or `Lane · substatus/reason`. */
-LANE_LABEL_RE = /^(Ready|Up Next|On Hold|Completed|Deferred)( · \S.*)?$|^Doesn't apply$/
-COMPLETED_RE = /^Completed$/
-READY_TO_ENFORCE_RE = /^Ready · Ready to enforce$/
+const LANE_LABEL_RE = /^(Ready|Up Next|On Hold|Completed|Deferred)( · \S.*)?$|^Doesn't apply$/
+const COMPLETED_RE = /^Completed$/
+const READY_TO_ENFORCE_RE = /^Ready · Ready to enforce$/
 /** A day as the board prints it (copy/dates.ts absoluteDate). */
-DAY_RE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
+const DAY_RE = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
 /** The When column (A1b): a day or the placeholder, never a reason. */
-ROW_WHEN_RE = new RegExp(`^(?:${DAY_RE.source.slice(1, -1)}|${WHEN_NONE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`)
+const ROW_WHEN_RE = new RegExp(`^(?:${DAY_RE.source.slice(1, -1)}|${WHEN_NONE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})$`)
 const showLane = async (name) => {
   await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => ((x.textContent || '').replace((x.querySelector('.tab-badge') || {}).textContent || '', '').trim()) === ${JSON.stringify(name)}); if (t && t.getAttribute('aria-selected') !== 'true') t.click() })()`)
   await sleep(150)
@@ -983,7 +983,7 @@ async function walkFixture(fx) {
         // tile's "from the scan" carries the same words; nothing says scanned.
         const wantPlan = signedOut ? 'sample' : want === 'complete' ? 'ready' : want === 'gaps' ? 'last' : 'waiting'
         // The ready state carries the step counts once the plan has computed (docs/design/mockups/connect-v2.html).
-        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ done · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
+        const PLAN_STATES = { ready: /^Plan ready · (\d+ steps, \d+ completed · )?from the scan .+$/, last: /^Plan last full plan · [A-Z][a-z]{2} \d+$/, waiting: /^Plan after the scan$/, sample: /^Plan after the scan$/ }
         if (t4) {
           if (!PLAN_STATES[wantPlan].test(t4.h2)) add('P0', `${label}: tile 4 reads "${t4.h2}"; Plan in the ${wantPlan} state`)
           // The approved pack tints the destination only when the plan is actually
@@ -1030,7 +1030,7 @@ async function walkFixture(fx) {
             if (t4.buttons.length !== 1) add('P0', `${label}: the ready Plan tile has ${t4.buttons.length} buttons; Open the plan alone`)
             const age = ((t3 ? t3.state : '').match(/^complete · (.+)$/) || [])[1]
             if (!age) add('P0', `${label}: the Scan tile's state does not read complete · N ago: "${t3 ? t3.state : ''}"`)
-            else if (!new RegExp(`^ready · (\\d+ steps, \\d+ done · )?from the scan ${age.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).test(t4.state)) add('P0', `${label}: the Plan tile reads "${t4.state}"; ready · N steps, N done · from the scan ${age}, the Scan tile's age`)
+            else if (!new RegExp(`^ready · (\\d+ steps, \\d+ completed · )?from the scan ${age.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`).test(t4.state)) add('P0', `${label}: the Plan tile reads "${t4.state}"; ready · N steps, N completed · from the scan ${age}, the Scan tile's age`)
             // The age is the formatter's words: "this minute" for a fresh scan, "57 minutes ago", "3 days ago".
             const ageLines = (text.match(/\bcomplete · [^\n]+/g) || []).length
             if (ageLines !== 1) add('P0', `${label}: the scan's age line renders ${ageLines} times; once, as the Scan tile's state`)
