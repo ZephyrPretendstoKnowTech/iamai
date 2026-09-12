@@ -543,7 +543,8 @@
     },
     "plan": {
       "h1": "Plan",
-      "line1": "{steps} steps · {inPlace} in place · finishes {finish} · {weeks}",
+      "line1": "{steps} steps · {inPlace} in place · finishes {finish} at pace · {weeks}",
+      "line1Committed": "{steps} steps · {inPlace} in place · finishes {finish} at pace · committed {committed} · {weeks}",
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
       "lengthTip": "The plan is {weeks} because {constraint}.",
       "lengthTipEstimate": "Once nothing is held, the plan is about {weeks} because {constraint}.",
@@ -585,11 +586,13 @@
         "readyToEnforce": "Ready to enforce"
       },
       "progress": {
-        "$comment": "The Plan header's four tiles (A1b, decision 11): Steps, Completed (the lane count), Projected finish (A2 fills it; the placeholder until then) and Started.",
+        "$comment": "The Plan header's four tiles (A1b, decision 11): Steps, Completed (the lane count), Projected finish (A2: the estimate at pace, with the committed day under it when it differs; the placeholder without an estimate) and Started.",
         "label": "Plan progress",
         "steps": "Steps",
         "completed": "Completed",
         "projectedFinish": "Projected finish",
+        "atPace": "at pace",
+        "committed": "committed {date}",
         "started": "Started",
         "none": "—"
       },
@@ -617,6 +620,8 @@
         "freezeFrom": "from",
         "freezeTo": "to",
         "freezeNote": "No step enforces inside the freeze or on the last working day before it.",
+        "freezeNeedsTo": "Enter the day the freeze ends. A freeze with no end is not applied.",
+        "freezeOrder": "The freeze must end on or after the day it starts. It is not applied.",
         "timezone": "Time zone",
         "signature": "Emails signed as",
         "close": "Close",

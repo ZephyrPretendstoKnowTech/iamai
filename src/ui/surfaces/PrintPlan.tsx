@@ -168,8 +168,9 @@ export function PrintPlan({
   const constraint = FINISH.waiting(finish.waiting) || FINISH.unwritable(finish.unwritable.count, finish.unwritable.waitsOn.map(titleOf), finish.unwritable.named)
   // Held work dates no end: the cover, the Cleanup heading and the header all say so.
   const cannotFinish = finish.held
-  // The same header line the Plan shows (derive/planHeader.ts), without the anchored start.
-  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
+  // The Plan's header as one line (derive/planHeader.ts), without the anchored
+  // start: the same estimate / committed pair the Projected finish tile shows (A2).
+  const headerLine = headerLine1({ steps: totalCount, inPlace: inPlaceCount, finish: finish.finish, estimate: schedule.estimate?.targetEnd ?? null, weeks: `${weeks} week${weeks === 1 ? '' : 's'}`, constraint, startedFrom: null })
 
   // Portal onto <body>: the print stylesheet hides the whole app shell and
   // shows only this document, on every route.

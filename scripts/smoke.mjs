@@ -1085,7 +1085,8 @@ try {
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
     return evaluate(`(document.querySelector('main.page') || document.body).innerText`)
   }
-  const headerOf = (body) => (body.match(/Steps\s*\d+\s*Completed\s*\d+\s*Projected finish\s*\S+\s*Started\s*\S+/) ?? [''])[0].replace(/\s+/g, ' ').trim()
+  // The Projected finish tile reads a date, "at pace" and, when it differs, "committed <date>" (A2), so the tile is read up to the Started label.
+  const headerOf = (body) => (body.match(/Steps\s*\d+\s*Completed\s*\d+\s*Projected finish[\s\S]*?Started\s*\S+/) ?? [''])[0].replace(/\s+/g, ' ').trim()
   const inPlaceOf = (body) => Number((body.match(/Completed\s*(\d+)\s*Projected finish/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)

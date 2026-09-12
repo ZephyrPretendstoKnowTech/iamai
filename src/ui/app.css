@@ -1633,6 +1633,19 @@ footer.app a {
   line-height: 1.1;
   color: var(--primary-text);
 }
+/* The Projected finish tile's lines under the date (A2): at pace, and the committed day when it differs. */
+.plan-progress-tile dd small {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--t-1);
+  font-weight: var(--weight-body);
+  line-height: 1.3;
+  color: var(--quiet-text);
+}
+.plan-progress-tile dd .infotip {
+  margin-left: 4px;
+  vertical-align: middle;
+}
 .surface .plan-links {
   display: flex;
   flex-wrap: wrap;

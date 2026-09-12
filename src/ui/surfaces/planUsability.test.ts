@@ -174,9 +174,27 @@ test('the Plan header is four progress tiles and a how-to link, not a generated 
   for (const gone of ['inPlace', 'waiting', 'remaining', 'attention']) assert.equal(plan.includes(`progress.${gone}`), false, `the header still draws the ${gone} tile`)
   assert.equal(/Needs attention|attention:|showAttention/.test(plan.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')), false, 'the Needs attention toggle is still offered')
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
-  const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8')) as { pages: { plan: { howTo: { items: string[] }; progress: Record<string, string> } } }
+  const content = JSON.parse(readFileSync('docs/design/content.json', 'utf8')) as { pages: { plan: { line1: string; line1Committed: string; howTo: { items: string[] }; progress: Record<string, string>; settings: Record<string, string> } } }
   assert.equal(content.pages.plan.howTo.items.length, 5)
   assert.deepEqual([content.pages.plan.progress.steps, content.pages.plan.progress.completed, content.pages.plan.progress.projectedFinish, content.pages.plan.progress.started], ['Steps', 'Completed', 'Projected finish', 'Started'])
+  // Projected finish (A2): the estimate's day, "at pace" under it, "committed <day>" when the calendar names another day, the placeholder without an estimate; the tile's tip is the schedule's critical path.
+  assert.match(plan, /projectedFinish\(finish\.finish, c\.schedule\.estimate\?\.targetEnd \?\? null\)/)
+  assert.match(plan, /value: projected\.estimate !== null \? absoluteDate\(projected\.estimate\) : PP\.progress\.none/)
+  assert.match(plan, /sub: projected\.estimate !== null \? \[PP\.progress\.atPace, \.\.\.\(projected\.committed !== null \? \[fillText\(PP\.progress\.committed, \{ date: absoluteDate\(projected\.committed\) \}\)\] : \[\]\)\] : \[\], tip: lengthTip/)
+  assert.match(plan, /c\.schedule\.derivation\.criticalPath, \.\.\.c\.schedule\.derivation\.relaxed/)
+  assert.match(plan, /<div key=\{t\.key\} className="plan-progress-tile" title=\{t\.tip\}>/)
+  // The tip's button sits in the value cell beside the date, never in the label cell the smoke and the walk read the tile's name from.
+  assert.match(plan, /<dt>\{t\.label\}<\/dt>\s*<dd>\s*\{t\.value\}\s*\{t\.tip && <InfoTip title=\{app\.plan\.constraintTip\} text=\{t\.tip\} \/>\}/)
+  assert.equal(plan.includes('<InfoTip title={app.plan.constraintTip} text={lengthTip} />'), false, 'the length tip still stands beside the tiles instead of on the Projected finish tile')
+  assert.deepEqual([content.pages.plan.progress.atPace, content.pages.plan.progress.committed], ['at pace', 'committed {date}'])
+  // The printed cover's line reads the same pair (derive/planHeader.ts headerLine1).
+  assert.match(content.pages.plan.line1, /finishes \{finish\} at pace/)
+  assert.match(content.pages.plan.line1Committed, /finishes \{finish\} at pace · committed \{committed\}/)
+  assert.match(readFileSync('src/ui/surfaces/PrintPlan.tsx', 'utf8'), /headerLine1\(\{[^}]*estimate: schedule\.estimate\?\.targetEnd \?\? null/)
+  // The change freeze (A2, R-SCHED §6): the inputs go through freezeInputOf and a rejected freeze shows its message.
+  assert.match(plan, /freezeInputOf\(next\.from, next\.to\)\.freeze/)
+  assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)
+  assert.ok(content.pages.plan.settings.freezeNeedsTo && content.pages.plan.settings.freezeOrder)
 })
 
 // ------------------------------------------------------------ the opened step
