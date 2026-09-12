@@ -428,10 +428,10 @@ export function focusCounts(items: readonly BoardItem[]): { complete: number; de
 }
 
 /**
- * The groups the board draws over the rows a tab and a focus left: the tab's
- * own lane (On Hold split by the primary blocker's label, in the engine's own
- * order of first appearance), then Completed and Deferred where their toggles
- * revealed them. Pure.
+ * The groups a tab's panel draws over the rows a tab and a focus left: the tab's
+ * own lane only (On Hold split by the primary blocker's label, in the engine's
+ * own order of first appearance). A Completed or Deferred row is never inside a
+ * tab; `asideGroupsFor` draws those. Pure.
  */
 export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup[] {
   const sorted = [...items].sort((a, b) => a.order - b.order)
@@ -452,6 +452,16 @@ export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup
   } else if (own.length > 0) {
     out.push({ key: tab, label: BOARD.lanes[tab], secondary: false, closed: false, items: own })
   }
+  return out
+}
+
+/**
+ * The Completed and Deferred groups the toggles revealed among the rows a focus
+ * left, drawn after the tab panel and never inside it (A6). Pure.
+ */
+export function asideGroupsFor(items: readonly BoardItem[]): BoardGroup[] {
+  const sorted = [...items].sort((a, b) => a.order - b.order)
+  const out: BoardGroup[] = []
   const completed = sorted.filter((i) => i.lane === 'Completed')
   if (completed.length > 0) out.push({ key: 'complete', label: BOARD.lanes.completed, secondary: true, closed: false, items: completed })
   const deferred = sorted.filter((i) => i.lane === 'Deferred')
