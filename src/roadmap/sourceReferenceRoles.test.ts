@@ -15,7 +15,7 @@ import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { answerTextFor, referenceOptions } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf, unresolvedSourceMappings } from './sourceMappings.ts'
 import { implementationOffered, operationsOf } from './operations.ts'
 import { implementable, resolveTenantPolicy, tenantObjectsOf } from './resolvePolicy.ts'
 import type { RawPolicy } from './resolvePolicy.ts'
@@ -27,7 +27,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { implementationPackageFor, packageBindings, packageStateOf } from '../ui/surfaces/stepPackage.ts'
 import { prerequisiteBasis, prerequisiteStatus } from '../content/implementation/project.ts'
 
-const SOURCE = PREREQ_STEP_ID.sourceReferences
+const SOURCE = BASELINE_MAPPINGS_KEY
 const OMIT = (): string => referenceOptions()[0]
 const MAP = (id: string): string => answerTextFor(referenceOptions()[1], [id])
 const AT = '2026-09-11T00:00:00Z'
@@ -65,7 +65,7 @@ function resolve(policy: RawPolicy, answers: Record<string, string>) {
 
 test('an exception left out keeps the people it spared in scope; mapped, it is the tenant’s group', () => {
   const pending = resolve(policyOf(DEVICE_REGISTRATION), {})
-  assert.deepEqual(pending.waitsOn(BROAD), { token: pending.waitsOn(BROAD)?.token, stepId: SOURCE, decision: true })
+  assert.deepEqual(pending.waitsOn(BROAD), { token: pending.waitsOn(BROAD)?.token, stepId: null, decision: true })
   const omit = resolve(policyOf(DEVICE_REGISTRATION), { [BROAD]: OMIT() })
   assert.equal(omit.waitsOn(BROAD), undefined, 'an exception left out holds nothing')
   assert.ok(omit.whole.omitted.map((x) => x.toLowerCase()).includes(BROAD), 'and is reported as the person’s answer')
@@ -80,7 +80,7 @@ test('an exception left out keeps the people it spared in scope; mapped, it is t
 
 test('the whole of who a policy reaches is never left out: the reference is asked again and the policy waits', () => {
   const omit = resolve(policyOf(PASSKEY_REGISTRATION), { [PASSKEY_PILOT]: OMIT() })
-  assert.deepEqual(omit.waitsOn(PASSKEY_PILOT), { token: omit.waitsOn(PASSKEY_PILOT)?.token, stepId: SOURCE, decision: true }, 'a users condition with nobody included was handed over')
+  assert.deepEqual(omit.waitsOn(PASSKEY_PILOT), { token: omit.waitsOn(PASSKEY_PILOT)?.token, stepId: null, decision: true }, 'a users condition with nobody included was handed over')
   assert.equal(omit.resolved.decisions.get(PASSKEY_PILOT)?.answer, 'pending')
   assert.equal(omit.whole.omitted.map((x) => x.toLowerCase()).includes(PASSKEY_PILOT), false)
   assert.equal(omit.text.includes(PASSKEY_PILOT), false, 'the author’s id is in no body')
@@ -141,14 +141,13 @@ test('on the plan, a reference left out where it is a policy’s whole target ke
   users.includeGroups = [BROAD]
   users.excludeGroups = (users.excludeGroups as string[]).filter((g) => g.toLowerCase() !== BROAD)
   const f: Fixture = { ...base, baseline: { ...base.baseline, policies: base.baseline.policies.map((p) => (p.id === LEGACY ? (legacy as never) : p)) } }
-  const pending = stepOf(runFixture(f).steps, SOURCE).action.sourceReferences ?? []
+  const pending = sourceMappingsOf(runFixture(f).steps)
   const broad = pending.find((r) => r.id.toLowerCase() === BROAD)
   assert.equal(broad?.role, 'both', 'the premise: the group is a target in one policy and an exception in others')
   assert.ok(broad?.stepIds?.includes('s-goal-block-legacy-auth'), 'the premise: the legacy block names it')
   const r = runFixture(withAnswers(f, Object.fromEntries(pending.map((p) => [p.id, OMIT()]))))
-  const source = stepOf(r.steps, SOURCE)
-  assert.equal(source.action.sourceReferences?.find((x) => x.id.toLowerCase() === BROAD)?.answer, 'pending', 'an answer that does not stand for every policy is still open')
-  assert.equal(source.state.condition, 'needs-decision')
+  assert.equal(sourceMappingsOf(r.steps).find((x) => x.id.toLowerCase() === BROAD)?.answer, 'pending', 'an answer that does not stand for every policy is still open')
+  assert.ok(unresolvedSourceMappings(r.steps).length > 0, 'the mapping is still asked')
   const block = stepOf(r.steps, 's-goal-block-legacy-auth')
   assert.ok((block.action.missing ?? []).some((m) => m.decision && m.token.toLowerCase() === BROAD), 'the policy whose whole target it is waits on the answer')
   assert.equal(implementationOffered(block), false)
@@ -160,7 +159,7 @@ test('on the plan, a reference left out where it is a policy’s whole target ke
 
 test('a changed answer invalidates what was confirmed against the old one; taking it back unbinds the field it completed', () => {
   const base = fixture('demo')
-  const pending = stepOf(runFixture(base).steps, SOURCE).action.sourceReferences ?? []
+  const pending = sourceMappingsOf(runFixture(base).steps)
   const group = [...base.groups.keys()].find((id) => !pending.some((p) => p.id.toLowerCase() === id.toLowerCase()))!
   const others = Object.fromEntries(pending.filter((p) => p.id.toLowerCase() !== BROAD).map((p) => [p.id, OMIT()]))
   const read = (answers: Record<string, string>) => {
@@ -189,7 +188,7 @@ test('a changed answer invalidates what was confirmed against the old one; takin
 
 test('no author id reaches a package binding or an operation target, whichever answers are given or taken back', () => {
   const base = fixture('demo')
-  const pending = stepOf(runFixture(base).steps, SOURCE).action.sourceReferences ?? []
+  const pending = sourceMappingsOf(runFixture(base).steps)
   const ids = pending.map((p) => p.id.toLowerCase())
   const group = [...base.groups.keys()].find((id) => !ids.includes(id.toLowerCase()))!
   let checked = 0

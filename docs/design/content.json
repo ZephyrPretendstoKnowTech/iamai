@@ -603,7 +603,40 @@
         "freezeNote": "No step enforces inside the freeze or on the last working day before it.",
         "timezone": "Time zone",
         "signature": "Emails signed as",
-        "close": "Close"
+        "close": "Close",
+        "mappings": {
+          "h4": "Baseline mappings",
+          "intro": "The baseline names groups and locations of its author's own without saying what they are. For each one, pick the object in this tenant that stands in for it, or leave it out. Either answer can be changed here; until a reference has one, the policies that name it are on hold.",
+          "empty": "Every group and location the plan's policies name has an answer.",
+          "groupLabel": "Group {id}",
+          "locationLabel": "Named location {id}",
+          "status": {
+            "pending": "Unmapped",
+            "mapped": "Mapped",
+            "omitted": "Left out"
+          },
+          "role": {
+            "exclude": "Excluded from its policies",
+            "include": "Included in its policies",
+            "both": "Included in some of its policies, excluded from others"
+          },
+          "usedBy": "Named in {policies}.",
+          "roleExclude": "The baseline leaves it out of {n} of its {total} policies: an exception to who they reach.",
+          "roleInclude": "The baseline names it as who {n} of its {total} policies reach.",
+          "roleBoth": "The baseline names it in {n} of its {total} policies: as who some of them reach, and as an exception to others.",
+          "omitExclude": "Leaving it out makes these policies in this tenant without this exception: the people it spared stay in scope, unless another exclusion in this tenant covers them.",
+          "omitInclude": "Leaving it out makes these policies in this tenant without this group among who they reach: the people it stood for are not covered by them.",
+          "omitBoth": "Leaving it out makes these policies in this tenant without it: where it was an exception the people it spared stay in scope, and where it said who a policy reaches those people are not covered.",
+          "answered": "Your answer: {answer}",
+          "unanswered": "Not answered yet: the policies that name it are on hold.",
+          "clear": "Clear this answer",
+          "sourceId": "The baseline's identifier for it",
+          "options": [
+            "None needed here: leave it out",
+            "Use this tenant's own: {object}"
+          ],
+          "save": "Save"
+        }
       },
       "blocked": {
         "after": "after: {stepTitle}",
@@ -613,7 +646,7 @@
         "exclusionsGroup": "until you choose the exclusions group",
         "devicePlan": "until phones and computers are decided",
         "unsettled": "until the groups the source policy leaves out are identified",
-        "sourceReferences": "until the baseline's unidentified groups have answers",
+        "sourceMapping": "Baseline references an unmapped group",
         "pairUnmatched": "until both policies of the pair can be matched",
         "noOperation": "until a scan rebuilds this step",
         "emergency": "until emergency access is provably out of scope"
@@ -1121,7 +1154,7 @@
         "constraintTip": "What set the plan length",
         "putBack": "Put this step back",
         "jsonWaits": "{steps} first: this policy names an object {tenant} does not have yet.",
-        "jsonWaitsDecision": "{steps} first: the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
+        "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
         "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
         "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
@@ -1201,7 +1234,7 @@
           "memberWatched": "{name}: {lifecycle}, watched since {date}",
           "memberReview": "{name}: {lifecycle}, and it needs a look",
           "whoUnknown": "IAMAI cannot establish exactly who this reaches: this scan could not settle the policy's scope, so no count is shown.",
-          "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's unidentified groups have answers, so no count is shown.",
+          "whoUnknownDecision": "IAMAI cannot establish who this reaches until the baseline's references are mapped in Plan settings, so no count is shown.",
           "stateWords": {
             "$comment": "The Plan state words the one projection adds (src/ui/surfaces/planState.ts): a policy the tenant already enforces that the plan must change and cannot yet, and emergency access whose minimum is in place while its hardening is deferred to Cleanup.",
             "needsCorrection": "Needs correction",
@@ -1228,6 +1261,7 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
+          "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
           "doneSetAside": "Nothing is expected of this step while it is set aside.",
@@ -2782,69 +2816,6 @@
         "unjoinedUsers": [
           "Shallan Davar"
         ]
-      }
-    },
-    {
-      "id": "s-prereq-source-references",
-      "kind": "check",
-      "title": "Decide What the Baseline's Unidentified Groups Stand For",
-      "changeLine": null,
-      "why": "The baseline names some of its author's own groups without saying what they are. A copy made in {tenant} needs your answer for each: the group here that plays the same part, or none.",
-      "learn": {
-        "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-users-groups"
-      },
-      "who": null,
-      "decision": {
-        "label": "Baseline groups",
-        "text": "For each one, pick the group in {tenant} that stands in for it, or say none is needed here.",
-        "help": "Until a group is answered, the policies that name it wait on this step and offer nothing to deploy.",
-        "references": {
-          "groupLabel": "Group {n}",
-          "locationLabel": "Named location {n}",
-          "usedBy": "Named in {policies}.",
-          "roleExclude": "The baseline leaves it out of {n} of its {total} policies: an exception to who they reach.",
-          "roleInclude": "The baseline names it as who {n} of its {total} policies reach.",
-          "roleBoth": "The baseline names it in {n} of its {total} policies: as who some of them reach, and as an exception to others.",
-          "omitExclude": "Leaving it out makes these policies in {tenant} without this exception: the people it spared stay in scope, unless another exclusion in {tenant} covers them.",
-          "omitInclude": "Leaving it out makes these policies in {tenant} without this group among who they reach: the people it stood for are not covered by them.",
-          "omitBoth": "Leaving it out makes these policies in {tenant} without it: where it was an exception the people it spared stay in scope, and where it said who a policy reaches those people are not covered.",
-          "answered": "Your answer: {answer}",
-          "unanswered": "Not answered yet: the policies that name it wait on this answer.",
-          "clear": "Clear this answer",
-          "sourceId": "The baseline's identifier for it",
-          "options": [
-            "None needed here: leave it out",
-            "Use this tenant's own: {object}"
-          ]
-        },
-        "save": "Save"
-      },
-      "whatToDo": {
-        "lead": null,
-        "steps": []
-      },
-      "dates": null,
-      "doneWhen": [
-        "Every group the plan's policies name has an answer: a group in {tenant}, or none needed."
-      ],
-      "ifWrong": null,
-      "comms": null,
-      "doesntApply": false,
-      "skip": false,
-      "scanControl": true,
-      "more": {
-        "risks": [
-          {
-            "text": "Leaving out a group the baseline excludes keeps the people it spared in scope; leaving out one it names as who a policy reaches leaves those people uncovered.",
-            "applies": "always"
-          }
-        ],
-        "helpDesk": null,
-        "manager": null,
-        "waits": null
-      },
-      "example": {
-        "tenant": "GetIAMAI"
       }
     },
     {

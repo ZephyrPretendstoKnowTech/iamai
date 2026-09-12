@@ -74,8 +74,12 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // The maker steps the graph already queues this step's next action behind.
   const gatedBy = new Set((GRAPH.gates.get(step.id) ?? []).filter((e) => e.prerequisiteKind === 'step' && e.action === action).map((e) => e.prerequisite))
   for (const m of step.action.missing ?? []) {
-    // A source reference only a person can answer (resolvePolicy.ts unsettled / decisions) holds the policy until it is mapped.
-    if (m.unreadable || m.decision) blockers.push({ kind: 'sourceMapping', id: `sourceMapping:${m.token.slice(0, 8)}` })
+    // A source reference only a person can answer (resolvePolicy.ts unsettled / decisions) holds the policy
+    // until Plan settings -> Baseline mappings answers it; the blocker states the part it plays (§18.1).
+    if (m.unreadable || m.decision) {
+      const role = (step.action.sourceReferences ?? []).find((r) => r.id.toLowerCase() === m.token.toLowerCase())?.role
+      blockers.push({ kind: 'sourceMapping', id: `sourceMapping:${m.token.slice(0, 8)}`, ...(role ? { role } : {}) })
+    }
     else if (m.stepId === null || (!gatedBy.has(m.stepId) && byId.get(m.stepId)?.status !== 'done')) blockers.push({ kind: 'missingObject', id: `missingObject:${m.stepId ?? m.token}` })
   }
   const unavailable = policy && !done && step.status !== 'skipped' ? unavailableReason(step) : null
@@ -188,16 +192,23 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   place('On Hold', groups.onHold)
   place('Completed', groups.completed)
   place('Deferred', groups.deferred)
-  const rest: { id: string; reading: Pick<LaneReading, 'lane' | 'substatus'> }[] = []
+  const rest: { id: string; reading: Pick<LaneReading, 'lane' | 'substatus' | 'reason'> }[] = []
+  const byId = new Map(steps.map((s) => [s.id, s]))
   for (const s of steps) {
     if (out.has(s.id) || s.doesntApply) continue
-    rest.push({ id: s.id, reading: fallbackOf(planStateOf(s, isHeld(s))) })
+    const reading = fallbackOf(planStateOf(s, isHeld(s)))
+    // A pending Baseline mapping holds a runtime-only row the same way it holds
+    // an engine row (S4): the row carries the blocker as its reason, so the board
+    // reads "Baseline references an unmapped group" here too.
+    const mapping = reading.lane === 'On Hold' ? (observe(s, byId).blockers ?? []).find((b) => b.kind === 'sourceMapping') : undefined
+    const reason: Blocker | null = mapping ? { kind: 'sourceMapping', id: mapping.id, milestone: null, condition: null, abnormal: true, ordinal: 0, ...(mapping.role ? { role: mapping.role } : {}) } : null
+    rest.push({ id: s.id, reading: { ...reading, reason } })
   }
   for (const r of rows) {
     if (out.has(r.id)) continue
-    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null } : { lane: 'Ready', substatus: 'Create' } })
+    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null } : { lane: 'Ready', substatus: 'Create', reason: null } })
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
-  for (const { id, reading } of rest) out.set(id, { ...reading, reason: null, order: counts[reading.lane]++, fromEngine: false })
+  for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
   return out
 }

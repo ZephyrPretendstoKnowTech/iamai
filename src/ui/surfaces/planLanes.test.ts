@@ -145,11 +145,11 @@ test('the graph’s non-step prerequisites are read off the steps they gate, and
 test('a row the graph does not know takes the Plan’s own state, after the engine’s rows', () => {
   const r = runFixture(fixture('demo'))
   const readings = laneReadings(r.steps)
-  const source = readings.get('s-prereq-source-references')
-  assert.ok(source && !source.fromEngine, 'the premise: the source-references row is runtime-only')
-  const step = r.steps.find((s) => s.id === 's-prereq-source-references')!
-  const state = planStateOf(step, isHeld(step))
-  assert.equal(source.lane, state.complete ? 'Completed' : state.kind === 'decision' ? 'Ready' : source.lane)
+  // S4: the unidentified-groups row is gone; its question lives in Plan settings → Baseline mappings.
+  assert.equal(readings.has('s-prereq-source-references'), false, 'the source-references row is not a row')
   const persistence = readings.get('s-goal-all-users-no-persistence')
-  assert.ok(persistence && !persistence.fromEngine)
+  assert.ok(persistence && !persistence.fromEngine, 'the premise: the no-persistence row is runtime-only')
+  const step = r.steps.find((s) => s.id === 's-goal-all-users-no-persistence')!
+  const state = planStateOf(step, isHeld(step))
+  assert.equal(persistence.lane, state.complete ? 'Completed' : state.kind === 'skipped' ? 'Deferred' : persistence.lane)
 })

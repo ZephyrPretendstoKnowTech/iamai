@@ -10,21 +10,21 @@ import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { referenceOptions } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from './sourceMappings.ts'
 import { holdOf, isHeld } from './holds.ts'
 import { nextMilestone } from './lifecycle.ts'
 import { unavailableReason } from './operations.ts'
 import type { Schedule } from './schedule.ts'
 import type { Step } from './types.ts'
 
-const SOURCE = PREREQ_STEP_ID.sourceReferences
+const SOURCE = BASELINE_MAPPINGS_KEY
 const DEVICE_REGISTRATION = 's-goal-device-registration-mfa'
 const MANAGED_DEVICE = 's-goal-require-managed-device'
 const DAY = 86_400_000
 
 /** The fixture with every one of the baseline's unanswered references answered "none needed here", through the real decision path. */
 function omitted(f: Fixture): Fixture {
-  const pending = runFixture(f).steps.find((s) => s.id === SOURCE)?.action.sourceReferences ?? []
+  const pending = sourceMappingsOf(runFixture(f).steps)
   const answers = Object.fromEntries(pending.map((r) => [r.id, referenceOptions()[0]]))
   return { ...f, mapping: applyStepDecisions(f.mapping, { [SOURCE]: { answers, at: f.snapshot.asOf } }) }
 }

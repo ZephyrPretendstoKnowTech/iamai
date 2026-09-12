@@ -8,6 +8,7 @@ import type { ChangeFreeze } from './schedule.ts'
 import type { MappingState } from '../mapping/types.ts'
 import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyChoice.ts'
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
+import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
 import { answerKey, mailDevicesOf, questionLabels, referenceAnswer, travelCountriesOf } from './answers.ts'
 
@@ -114,7 +115,8 @@ export const DECISION_STEPS = {
   serviceAccounts: PREREQ_STEP_ID.serviceAccountsGroup,
   sharedDevices: 's-shared-devices',
   campaign: 's-verify-mfa',
-  sourceReferences: PREREQ_STEP_ID.sourceReferences,
+  /** Not a step: the Baseline mappings (Plan settings) persist under this key (sourceMappings.ts). */
+  sourceReferences: BASELINE_MAPPINGS_KEY,
 } as const
 
 /**
@@ -154,8 +156,8 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     if (typeof d.option === 'string') next.questionAnswers![labels.decision ? answerKey(stepId, labels.decision) : stepId] = d.option
     for (const [label, a] of Object.entries(d.answers ?? {})) if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
     if (stepId === DECISION_STEPS.sourceReferences) {
-      // The baseline's own references only a person can answer, one answer per
-      // source id: this tenant's object becomes that reference's confirmed record,
+      // The Baseline mappings (Plan settings): the baseline's own references only
+      // a person can answer, one answer per source id. This tenant's object becomes that reference's confirmed record,
       // which every policy naming it resolves through (resolvePolicy.ts rule 1);
       // "needs none here" leaves it out of those policies. An answer nothing
       // parses — the content changed since it was saved — changes nothing.
