@@ -37,7 +37,7 @@ import { datesLineFor, stepExportView, stepLines } from '../ui/surfaces/stepExpo
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { floorRows, phaseRows, planPhases, undatedRows } from '../ui/surfaces/planRows.ts'
-import { scheduleOf } from './stepSchedule.ts'
+import { scheduleOf, scheduledEventOf } from './stepSchedule.ts'
 import { BOARD, boardWhenOf, statusGroupOf } from '../ui/surfaces/planBoard.ts'
 import { cleanupExportViews } from '../ui/surfaces/cleanupExport.ts'
 import { demoFacts } from '../ui/demoFacts.ts'
@@ -85,7 +85,12 @@ function createdOnly(p: Plan, s: Step): void {
   assert.ok(planPhases(p.r.schedule).some((w) => w.wave === 0 && w.stepIds.includes(s.id)), `${where}: in Preparation`)
   assert.equal(s.events, null, `${where}: an enforcement or an announcement`)
   assert.deepEqual(s.rings, [], `${where}: rollout rings`)
-  assert.equal(booked(p, s.id), false, `${where}: a calendar entry`)
+  // The calendar and the Dates line book the same creation day and nothing of the enforcement.
+  const entry = p.ics.split('BEGIN:VEVENT').find((x) => x.includes(`-${s.id}@iamai`))
+  assert.ok(entry, `${where}: no calendar entry for its report-only creation`)
+  assert.ok(entry.includes(`DTSTART;VALUE=DATE:${sch.at!.slice(0, 10).replace(/-/g, '')}`), `${where}: the calendar books another day`)
+  assert.ok(entry.includes(`DTEND;VALUE=DATE:${new Date(Date.parse(sch.at!) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), `${where}: the creation is one day`)
+  assert.equal(datesLineFor(s, (contentStepFor(s) ?? {}) as Record<string, unknown>), '{datesDeploy}', `${where}: the Dates line`)
 }
 
 /** Everything a held step must not carry, on every surface that could date it. */
@@ -204,6 +209,27 @@ test('Step 4 E: once the exclusions group is answered the same policy is Ready t
   assert.ok(booked(p, token.id), 'and a calendar entry')
 })
 
+// ---- the calendar books the canonical event ----
+
+test('C5: the calendar books a readiness-gated create on its report-only creation day, in the Plan rail’s words, and dates no enforcement', () => {
+  const p = planOf(fixture('small'))
+  const s = stepOf(p, 's-goal-device-registration-mfa')
+  assert.ok(isHeld(s), 'the premise: a readiness threshold holds it')
+  const event = scheduledEventOf(s)
+  assert.deepEqual(event, { transition: 'createReportOnly', start: s.reportOnlyAt, end: s.reportOnlyAt }, 'the canonical event is its creation day')
+  assert.equal(scheduleOf(s).enforcement, 'gated')
+  const entries = p.ics.replace(/\r\n /g, '').split('BEGIN:VEVENT').filter((x) => x.includes(`-${s.id}@iamai`))
+  assert.equal(entries.length, 1, 'one entry for the step')
+  const day = s.reportOnlyAt!.slice(0, 10).replace(/-/g, '')
+  assert.ok(entries[0].includes(`DTSTART;VALUE=DATE:${day}`), 'on its creation day')
+  assert.ok(entries[0].includes(`DTEND;VALUE=DATE:${new Date(Date.parse(s.reportOnlyAt!) + 86_400_000).toISOString().slice(0, 10).replace(/-/g, '')}`), 'for that one day')
+  assert.match(entries[0], /SUMMARY:[^\r\n]* · Create in report-only\r?\n/, 'named for what the day is for')
+  assert.doesNotMatch(entries[0], /Turn the policy on/, 'no enforcement named')
+  assert.equal(s.events, null, 'no enforcement day on the step')
+  assert.deepEqual(s.rings, [], 'no rollout rings')
+  assert.equal(stepExportView(s, p.ctx(s)).dates?.includes(absoluteDate(s.reportOnlyAt!).split(' ').slice(0, 2).join(' ')) ?? false, true, 'the Dates line states the same creation day')
+})
+
 // ---- the one projection, over every plan ----
 
 const corpus = (): Plan[] => [...allFixtures(), ...allCuratedFixtures()].filter((f) => f.name !== 'huge').flatMap((f) => [planOf(f), planOf(noExclusionsAnswer(f), { mapping: noExclusionsAnswer(f).mapping })])
@@ -220,7 +246,7 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
       else if (isHeld(s)) createdOnly(p, s)
       else if (!s.floor) assert.ok(inPhase.has(s.id) !== undated.has(s.id), `${where}: drawn in a phase and undated at once, or in neither`)
       // A calendar entry exactly where the step has a day of its own.
-      assert.equal(booked(p, s.id), !isHeld(s) && (s.rings.length > 0 || s.events !== null), `${where}: the calendar and the step disagree about its day`)
+      assert.equal(booked(p, s.id), scheduledEventOf(s) !== null, `${where}: the calendar and the step's scheduling result disagree about its day`)
     }
   }
   // The printed plan draws the Plan's own rows and states the Plan's own length.

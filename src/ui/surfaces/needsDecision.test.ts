@@ -52,6 +52,7 @@ import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { nextMilestone } from '../../roadmap/lifecycle.ts'
 import { implementationOffered, unavailableReason } from '../../roadmap/operations.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
+import { scheduledEventOf } from '../../roadmap/stepSchedule.ts'
 import {
   EXCLUSIONS_RECORD_KEY,
   awaitsOperator,
@@ -266,11 +267,15 @@ test('needs decision: nothing is scheduled while the question is open', () => {
   // policy lands.
   assert.equal(rowWhen(c.step), 'now')
   assert.equal(stepContract(c.step, c.ctx).milestone.line, null, 'no Next line: Foundation B holds no date')
-  // Nothing in the plan has earned an enforcement instant, so the calendar is
-  // empty: no entry implies the final policy is known.
+  // Nothing in the plan has earned an enforcement instant, so the calendar books no
+  // policy work: no entry implies the final policy is known. What it still books is
+  // the plan's canonical events (roadmap/stepSchedule.ts scheduledEventOf) —
+  // preparation and checks that do not wait on the answer — and never the question.
   assert.equal(c.run.steps.some((s) => s.events !== null), false)
   const ics = buildIcs(c.run.steps, 'Tenant', c.run.input.planId, (s) => stepExportView(s, c.ctx))
-  assert.equal((ics.match(/BEGIN:VEVENT/g) ?? []).length, 0)
+  const booked = c.run.steps.filter((s) => ics.includes(`-${s.id}@iamai`))
+  assert.deepEqual(booked.map((s) => s.id), c.run.steps.filter((s) => scheduledEventOf(s) !== null).map((s) => s.id), 'the calendar books exactly the steps with a canonical event')
+  assert.deepEqual(booked.filter((s) => s.kind === 'create' || s.kind === 'adjust' || s.id === STEP_ID).map((s) => `${s.id}:${scheduledEventOf(s)?.transition}`), [], 'a policy, or the open question, booked on a day')
 })
 
 // ---- 6, 7, 12. the operator answers, through the real path ----

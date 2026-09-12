@@ -188,6 +188,28 @@ export function scheduleOf(step: Step): StepSchedule {
   return stepScheduleOf(step, step.scheduled?.basis ?? null)
 }
 
+/** A step's one dated event, as an export books it: what the day is for, and the days it spans. */
+export type ScheduledEvent = { transition: ScheduledTransition; start: string; end: string }
+
+/**
+ * The dated event a step hands to an export (the calendar, a Dates line): its
+ * scheduling result's next milestone and the days the plan gives it, or null
+ * where nothing dates it — finished, set aside, waiting, or undated. A readiness-
+ * gated create is its report-only creation day and nothing of its enforcement; a
+ * policy being watched is its review day. No export dates a step any other way.
+ */
+export function scheduledEventOf(step: Step): ScheduledEvent | null {
+  const s = scheduleOf(step)
+  if ((s.class !== 'scheduled' && s.class !== 'observing') || s.transition === null || s.at === null) return null
+  // A decision is the operator's to make and keeps its own word, never a day (the
+  // Plan rail, stepContract.ts railOf): no export books it.
+  if (s.transition === 'decide') return null
+  // Creation and review are one day's work; a rollout (a change, an enforcement, a
+  // preparation) runs to the end of the span the plan gives it.
+  const single = s.transition === 'createReportOnly' || s.transition === 'review'
+  return { transition: s.transition, start: s.at, end: single ? s.at : (s.range?.end ?? s.at) }
+}
+
 /** True where the Plan draws the row in a phase: open work, not a floor recommendation and not one the operator said does not apply. */
 const drawnInPhase = (s: Step): boolean => s.status !== 'done' && !s.floor && !s.doesntApply
 
