@@ -165,7 +165,7 @@ Explain why implementation is not actionable yet. Use only these known blockers/
 Explain that this Conditional Access implementation requires appropriate Microsoft Entra licensing and should remain non-actionable until licensing is resolved. Do not suggest weakening the baseline to force an implementation.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"managers-and-help-desk"}
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
 Subject: MFA rollout entering report-only validation
 
 We are preparing the tenant-wide MFA policy in Report-only first. No enforcement change is being made yet. Please make sure anyone who still needs help registering or proving an MFA method uses the established support path before enforcement.

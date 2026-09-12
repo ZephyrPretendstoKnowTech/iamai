@@ -624,7 +624,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 9,
+      "strictValidationErrors": 10,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -710,7 +710,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -799,7 +799,7 @@
       "sharedPrimitivesReused": 6,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "strictValidationErrors": 16,
+      "strictValidationErrors": 15,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -1387,7 +1387,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 8,
+      "strictValidationErrors": 9,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
@@ -1783,7 +1783,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 9,
+      "strictValidationErrors": 10,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -1865,7 +1865,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting-policy",
-      "strictValidationErrors": 3,
+      "strictValidationErrors": 4,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"
