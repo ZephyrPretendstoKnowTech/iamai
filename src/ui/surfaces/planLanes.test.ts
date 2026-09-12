@@ -147,9 +147,18 @@ test('a row the graph does not know takes the Plan’s own state, after the engi
   const readings = laneReadings(r.steps)
   // S4: the unidentified-groups row is gone; its question lives in Plan settings → Baseline mappings.
   assert.equal(readings.has('s-prereq-source-references'), false, 'the source-references row is not a row')
+  // A1a (decision 8): the graph carries the runtime's own ids, so Limit How Long Sessions Last is an engine row.
   const persistence = readings.get('s-goal-all-users-no-persistence')
-  assert.ok(persistence && !persistence.fromEngine, 'the premise: the no-persistence row is runtime-only')
-  const step = r.steps.find((s) => s.id === 's-goal-all-users-no-persistence')!
-  const state = planStateOf(step, isHeld(step))
-  assert.equal(persistence.lane, state.complete ? 'Completed' : state.kind === 'skipped' ? 'Deferred' : persistence.lane)
+  assert.ok(persistence && persistence.fromEngine, 'the no-persistence row is read by the engine')
+  // The free-tier ladder rows are runtime-only and take the Plan's own state.
+  const micro = runFixture(fixture('micro'))
+  const ladder = micro.steps.filter((s) => s.id.startsWith('s-ladder-') && !readings.has(s.id))
+  assert.ok(ladder.length > 0, 'the premise: micro carries ladder rows the graph does not know')
+  const microReadings = laneReadings(micro.steps)
+  for (const step of ladder) {
+    const v = microReadings.get(step.id)
+    assert.ok(v && !v.fromEngine, `${step.id}: a ladder row is runtime-only`)
+    const state = planStateOf(step, isHeld(step))
+    assert.equal(v.lane, state.complete ? 'Completed' : state.kind === 'skipped' ? 'Deferred' : v.lane)
+  }
 })

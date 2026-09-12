@@ -5,11 +5,18 @@
 // is dependency-data.json (parsed from A1 §8 and §10); nothing here names a step id.
 //
 // Inputs are observations, never stored state: TenantState says what the scan saw
-// (object exists, drift, evidence, conditions, non-step prerequisites), OwnerState
-// says what the owner chose (deferred steps, resolved mappings and decisions).
-// Anything unstated is read conservatively: an unlisted non-step prerequisite is
-// unresolved and blocking (§8.1 "never silently satisfy"); an unlisted condition is
-// unresolved and its edge participates.
+// (object exists, drift, evidence gates, conditions, non-step prerequisites, and the
+// step edges and blockers the graph cannot carry), OwnerState says what the owner
+// chose (deferred steps, resolved mappings and decisions). Anything unstated is read
+// conservatively: an unlisted non-step prerequisite is unresolved and blocking (§8.1
+// "never silently satisfy"); an unlisted condition is unresolved and its edge
+// participates.
+//
+// Evidence is never a hold (§7). An evidence gate — the observation predicate, a
+// readiness threshold, an `evidence` or `time/evidence-window` edge — gates `enforce`
+// only: a started policy behind an open one reads Ready · Observing with the gate as
+// its reason, and an unstarted policy's create never waits on it. Every kind of hold
+// the legacy roadmap/holds.ts knew has a counterpart here (A1a).
 
 import type { Action, DependencyData, Edge, Milestone, StepIndexEntry } from './parseDependencyDoc.ts'
 
@@ -22,6 +29,31 @@ export type StepKind = 'policy' | 'object' | 'decision'
 /** Caller-supplied abnormal blockers the graph cannot carry (§15 rows without an edge, or a
  *  conflict / mapping the scan found on the step itself rather than on a listed prerequisite). */
 export type ObservedBlockerKind = 'license/platform' | 'fact' | 'missingObject' | 'unsupported' | 'sourceConflict' | 'baselineSafetyConflict' | 'sourceMapping'
+
+export type ObservedBlocker = {
+  kind: ObservedBlockerKind
+  id: string
+  /** `sourceMapping` only: the part the reference plays in the policy (§18.1). */
+  role?: SourceRole
+  /** The one action it holds; unstated, it holds whichever action is next. */
+  action?: Action
+}
+
+/** A step edge the graph does not carry: the plan's own wait on a maker step, or the
+ *  emergency gate on a policy's enforcement (the legacy `prerequisite` hold). */
+export type ObservedEdge = { step: string; action: Action; milestone?: Milestone }
+
+/** An evidence predicate on `enforce` (§7): the observation window, a readiness threshold, an evidence edge. */
+export type EvidenceGate = {
+  /** `evidence:<what>`, or the graph edge's prerequisite id. */
+  id: string
+  satisfied: boolean
+  /** The predicate's time component in days where it has one (RUN-CONTEXT-A decision 5:
+   *  the package's `observation.minDays`, else the plan's 7 / 3); null where it has none. */
+  minDays: number | null
+  /** The gate's own words — a threshold, the records' state — or null. */
+  reason: string | null
+}
 
 export type StepObservation = {
   /** Overrides the ladder derived from the graph (gated actions / effort_kind). */
@@ -38,9 +70,12 @@ export type StepObservation = {
   complete?: boolean
   /** Named milestones reached short of complete (§9.1: 'minimum-satisfied', 'hardening-complete'). */
   milestones?: readonly Milestone[]
-  /** Abnormal blockers the scan found on this step itself (missing license, unresolved required fact…).
-   *  A `sourceMapping` one states the part the reference plays in the policy (§18.1). */
-  blockers?: readonly { kind: ObservedBlockerKind; id: string; role?: SourceRole }[]
+  /** Abnormal blockers the scan found on this step itself (missing license, unresolved required fact…). */
+  blockers?: readonly ObservedBlocker[]
+  /** Evidence gates on this policy's enforcement the graph does not carry (§7). */
+  gates?: readonly EvidenceGate[]
+  /** Step edges the graph does not carry; one the graph already has on the same action is read once. */
+  waitsOn?: readonly ObservedEdge[]
 }
 
 /** The part an unmapped source reference plays in the policy it holds: an exception, a target, or both. */
@@ -62,10 +97,17 @@ export type OwnerState = {
   resolved?: readonly string[]
 }
 
-/** §15 kinds, in primary-blocker order, plus the healthy prerequisite readings. */
+/** §15 kinds, in primary-blocker order, the healthy prerequisite readings, and `evidence`:
+ *  an open evidence gate, the reason of a Ready · Observing step and never a hold. */
 export type BlockerKind =
   | 'baselineSafetyConflict' | 'sourceConflict' | 'sourceMapping' | 'license/platform'
   | 'decision' | 'fact' | 'missingObject' | 'step' | 'suspendedPrerequisite' | 'unsupported'
+  | 'evidence'
+
+/** The kinds a prerequisite tile or an On Hold heading can carry: every kind but the evidence gate. */
+export type HoldBlockerKind = Exclude<BlockerKind, 'evidence'>
+/** A blocker that is a prerequisite, as the board and the Readiness tiles read it. */
+export type HoldBlocker = Blocker & { kind: HoldBlockerKind }
 
 export type Blocker = {
   kind: BlockerKind
@@ -79,6 +121,8 @@ export type Blocker = {
   ordinal: number
   /** `sourceMapping` only: include | exclude | both, as the observed blocker stated it. */
   role?: SourceRole
+  /** `evidence` only: the gate's own words (a threshold, the records' state). */
+  text?: string
 }
 
 export type LaneResult = {
@@ -86,17 +130,20 @@ export type LaneResult = {
   substatus: Substatus | null
   nextAction: Action | null
   started: boolean
-  /** On Hold: the primary blocker. Up Next: the nearest unresolved prerequisite. Otherwise null. */
+  /** On Hold: the primary blocker. Up Next: the nearest unresolved prerequisite.
+   *  Ready · Observing: the open evidence gate, else the nearest unresolved prerequisite. Otherwise null. */
   reason: Blocker | null
   /** On Hold: §15 order, primary first. Ready / Up Next: the unresolved prerequisites of the next action. */
   blockers: Blocker[]
+  /** Policy steps: every evidence gate on enforcement, satisfied or not, with its time part (§7). */
+  gates: EvidenceGate[]
   /** §14 rule 1: distinct not-yet-completed steps before the next action is executable. */
   layers: number
 }
 
 const BLOCKER_ORDER: readonly BlockerKind[] = [
   'baselineSafetyConflict', 'sourceConflict', 'sourceMapping', 'license/platform',
-  'decision', 'fact', 'missingObject', 'step', 'suspendedPrerequisite', 'unsupported',
+  'decision', 'fact', 'missingObject', 'step', 'suspendedPrerequisite', 'unsupported', 'evidence',
 ]
 
 /** §14 rule 2: nearest blocker closest to completion. */
@@ -160,6 +207,34 @@ function prerequisiteState(ctx: Ctx, id: string): PrerequisiteState {
 /** §8.1: an edge participates unless its condition is resolved not-applicable. */
 function applicable(ctx: Ctx, e: Edge): boolean { return conditionState(ctx, e.condition) !== 'not-applicable' }
 
+/** §7: an evidence predicate authored as an edge. Read as a gate on `enforce`, never as a fact. */
+function isEvidenceEdge(e: Edge): boolean { return e.prerequisiteKind === 'evidence' || e.prerequisiteKind === 'time/evidence-window' }
+
+/** The step's gating edges: the graph's, then the observed ones the graph does not already carry. */
+function edgesOf(ctx: Ctx, id: string): readonly Edge[] {
+  const own = ctx.graph.gates.get(id) ?? []
+  const observed = observation(ctx, id).waitsOn ?? []
+  if (observed.length === 0) return own
+  const extra: Edge[] = []
+  for (const w of observed) {
+    if (!ctx.graph.steps.has(w.step)) continue
+    if (own.some((e) => e.prerequisiteKind === 'step' && e.prerequisite === w.step && e.action === w.action)) continue
+    if (extra.some((e) => e.prerequisite === w.step && e.action === w.action)) continue
+    extra.push({ step: id, action: w.action, prerequisite: w.step, prerequisiteKind: 'step', milestone: w.milestone ?? 'complete', condition: null, edgeKind: 'hard', source: 'observed', status: 'ok', table: 'observed' })
+  }
+  return extra.length ? [...own, ...extra] : own
+}
+
+/** Every evidence gate on the step's enforcement: the observed ones, then the graph's evidence edges. */
+function gatesOf(ctx: Ctx, id: string): EvidenceGate[] {
+  const out: EvidenceGate[] = [...(observation(ctx, id).gates ?? [])]
+  for (const e of ctx.graph.gates.get(id) ?? []) {
+    if (!isEvidenceEdge(e) || !applicable(ctx, e)) continue
+    out.push({ id: e.prerequisite, satisfied: prerequisiteState(ctx, e.prerequisite) === 'resolved', minDays: null, reason: null })
+  }
+  return out
+}
+
 /** §2 / §8.2: terminal outcome reached this scan. */
 function isComplete(ctx: Ctx, id: string): boolean {
   const obs = observation(ctx, id)
@@ -192,8 +267,9 @@ function milestoneReached(ctx: Ctx, id: string, milestone: Milestone, requester:
     case 'minimum-satisfied': case 'hardening-complete': return obs.milestones?.includes(milestone) === true
     case 'ready-to-enforce': {
       if (!obs.exists || obs.drift || !obs.evidenceSatisfied) return false
-      return (ctx.graph.gates.get(id) ?? []).every((e) =>
-        e.action !== 'enforce' || e.prerequisite === requester || !applicable(ctx, e) || edgeSatisfied(ctx, e))
+      if (gatesOf(ctx, id).some((g) => !g.satisfied)) return false
+      return edgesOf(ctx, id).every((e) =>
+        e.action !== 'enforce' || isEvidenceEdge(e) || e.prerequisite === requester || !applicable(ctx, e) || edgeSatisfied(ctx, e))
     }
   }
 }
@@ -208,12 +284,20 @@ function blocker(kind: BlockerKind, id: string, e: Edge | null, abnormal: boolea
   return { kind, id, milestone: e?.milestone ?? null, condition: e?.condition ?? null, abnormal, ordinal }
 }
 
+/** An open evidence gate as the reason of a Ready · Observing step: healthy, never a hold. */
+function evidenceBlocker(g: EvidenceGate): Blocker {
+  return { kind: 'evidence', id: g.id, milestone: null, condition: null, abnormal: false, ordinal: SUBSTATUS_ORDINAL.Observing, ...(g.reason !== null ? { text: g.reason } : {}) }
+}
+
+/** The §15 kind of a non-step edge, each its own; evidence edges never reach here (§7). */
 function nonStepKind(e: Edge, state: PrerequisiteState): BlockerKind {
   switch (e.prerequisiteKind) {
-    case 'baselineSafetyConflict': case 'sourceConflict': case 'sourceMapping': case 'license/platform': case 'decision':
+    case 'baselineSafetyConflict': case 'sourceConflict': case 'sourceMapping': case 'license/platform': case 'decision': case 'suspendedPrerequisite':
       return e.prerequisiteKind
+    // §8.4: a required object no step produces holds; a fact still to be established holds too.
     case 'fact': return state === 'blocked' ? 'fact' : 'missingObject'
-    default: return 'fact'
+    case 'evidence': case 'time/evidence-window': return 'evidence'
+    case 'step': return 'step'
   }
 }
 
@@ -222,8 +306,8 @@ function nonStepKind(e: Edge, state: PrerequisiteState): BlockerKind {
  *  whichever action it gates: examples 5 and 10 hold an observing policy on an enforce-side edge). */
 function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
   const out: Blocker[] = []
-  for (const e of ctx.graph.gates.get(id) ?? []) {
-    if (edgeSatisfied(ctx, e)) continue
+  for (const e of edgesOf(ctx, id)) {
+    if (isEvidenceEdge(e) || edgeSatisfied(ctx, e)) continue
     if (e.action !== action) {
       if (e.prerequisiteKind === 'step' && derive(ctx, e.prerequisite).lane === 'Deferred') {
         out.push(blocker('suspendedPrerequisite', e.prerequisite, e, true))
@@ -273,7 +357,7 @@ function remainingActions(ctx: Ctx, id: string, milestone: Milestone): readonly 
 function layersOf(ctx: Ctx, id: string, action: Action): number {
   const seen = new Set<string>()
   const visit = (step: string, actions: readonly Action[]): void => {
-    for (const e of ctx.graph.gates.get(step) ?? []) {
+    for (const e of edgesOf(ctx, step)) {
       if (!actions.includes(e.action)) continue
       if (e.prerequisiteKind !== 'step' || edgeSatisfied(ctx, e)) continue
       if (e.prerequisite === id || seen.has(e.prerequisite)) continue
@@ -286,7 +370,7 @@ function layersOf(ctx: Ctx, id: string, action: Action): number {
 }
 
 function result(lane: Lane, partial: Partial<LaneResult> = {}): LaneResult {
-  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], layers: 0, ...partial }
+  return { lane, substatus: null, nextAction: null, started: false, reason: null, blockers: [], gates: [], layers: 0, ...partial }
 }
 
 function derive(ctx: Ctx, id: string): LaneResult {
@@ -314,32 +398,39 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   const nextAction = nextActionOf(kind, obs)
   const started = kind !== 'decision' && obs.exists === true
   const layers = layersOf(ctx, id, nextAction)
+  const gates = kind === 'policy' ? gatesOf(ctx, id) : []
 
   // 3. Abnormal blockers on the next action (§15), the step's own observed blockers included.
   const unresolved = unresolvedOn(ctx, id, nextAction)
   const abnormal = [
-    ...(obs.blockers ?? []).map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
+    ...(obs.blockers ?? [])
+      .filter((b) => b.action === undefined || b.action === nextAction)
+      .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
     ...unresolved.filter((b) => b.abnormal),
   ].sort(byTaxonomy)
   if (abnormal.length) {
     const healthy = unresolved.filter((b) => !b.abnormal).sort(nearest)
-    return result('On Hold', { nextAction, started, reason: abnormal[0]!, blockers: [...abnormal, ...healthy], layers })
+    return result('On Hold', { nextAction, started, reason: abnormal[0]!, blockers: [...abnormal, ...healthy], gates, layers })
   }
 
   const healthy = unresolved.sort(nearest)
-  // 4–5. Started and progressing normally.
+  // 4–5. Started and progressing normally. Evidence gates matter once the object is as pinned:
+  // a correction comes first, and enforcement waits for every gate to close (§7).
   if (started) {
-    const substatus: Substatus = nextAction === 'correct' ? 'Correct'
-      : nextAction === 'enforce' && healthy.length === 0 ? 'Ready to enforce'
-      : 'Observing'
-    return result('Ready', { substatus, nextAction, started, blockers: healthy, layers })
+    if (nextAction === 'correct') return result('Ready', { substatus: 'Correct', nextAction, started, blockers: healthy, gates, layers })
+    const open = gates.filter((g) => !g.satisfied)
+    if (nextAction === 'enforce' && healthy.length === 0 && open.length === 0) {
+      return result('Ready', { substatus: 'Ready to enforce', nextAction, started, gates, layers })
+    }
+    const reason = open[0] ? evidenceBlocker(open[0]) : healthy[0] ?? null
+    return result('Ready', { substatus: 'Observing', nextAction, started, reason, blockers: healthy, gates, layers })
   }
   // 6. Not started, next safe action executable now.
   if (healthy.length === 0) {
-    return result('Ready', { substatus: kind === 'decision' ? 'Needs decision' : 'Create', nextAction, started, layers })
+    return result('Ready', { substatus: kind === 'decision' ? 'Needs decision' : 'Create', nextAction, started, gates, layers })
   }
   // 7. Not started, chain healthy: queued behind its nearest unresolved prerequisite.
-  return result('Up Next', { nextAction, started, reason: healthy[0]!, blockers: healthy, layers })
+  return result('Up Next', { nextAction, started, reason: healthy[0]!, blockers: healthy, gates, layers })
 }
 
 export function deriveLane(step: string, graph: Graph, tenantState: TenantState, ownerState: OwnerState = {}): LaneResult {
