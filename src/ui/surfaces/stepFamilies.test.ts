@@ -455,5 +455,5 @@ test('the corpus reaches 0 and 3 channels, and a strip never has one tab', () =>
   // AI Info joins any channel set and never stands alone, so a strip always holds
   // a choice; a step with no channel draws the no-action box, never an empty strip.
   assert.match(rule, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info can stand alone or is never offered')
-  assert.match(CONTENT_STEP, /artifacts\.length === 0 \? \(\n\s*<ImplementationEmptyBox/, 'a step with no channel draws an empty strip')
+  assert.match(CONTENT_STEP, /artifacts\.length === 0 \? \(\n\s*(?:<>\n\s*)?<ImplementationEmptyBox/, 'a step with no channel draws an empty strip')
 })

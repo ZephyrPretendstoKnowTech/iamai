@@ -8,6 +8,7 @@
 // the viewer that draws it (ContentStep.tsx). The fixture supplies state, bindings
 // and confirmations; every word of content is read from the package itself.
 import { test } from 'node:test'
+import { RUNTIME_META_KEYS } from './library.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { CHANGED_FIELDS_BINDING, PackageError, compilePackage, parseBlocks, validatePackage } from './protocol.ts'
@@ -45,7 +46,9 @@ test('the pilot package compiles under the strict contract: every projected bloc
 
 test('the registry holds the pilot exactly as compiled, authored against the baseline pin the build carries', () => {
   const packages = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
-  assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(PKG)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
+  // The registry carries the META fields the product reads, and nothing of the author's evidence besides (library.ts RUNTIME_META_KEYS).
+  const shipped = { meta: Object.fromEntries(RUNTIME_META_KEYS.filter((k) => PKG.meta[k] !== undefined).map((k) => [k, PKG.meta[k]])), blocks: PKG.blocks }
+  assert.deepEqual(packages[PILOT_STEP_ID], JSON.parse(JSON.stringify(shipped)), 'registry.generated.json drifted from its sources: run scripts/compile-implementation-content.mjs --registry')
   assert.ok(REGISTERED_PACKAGE_STEP_IDS.includes(PILOT_STEP_ID))
   // Re-authored against the build's pin on 2026-09-11 (it named 8461e0f2 before).
   assert.equal(BASELINE_COMMIT, JSON.parse(read('baselines/jhope188-conditionalaccesspolicies.pinned.json')).commit)
