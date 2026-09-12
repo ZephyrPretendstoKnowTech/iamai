@@ -343,7 +343,7 @@ Extra `n` (n ≥ 6) is `Core - Extra n - <template n%6>`, report-only when `n%4 
 
 ## Expected lane counts on the current build
 
-**Build:** HEAD `4cde3e6` · computed 2026-09-12 · Node v24.20.0. The scratch script lives outside the repo and is not committed.
+**Build:** HEAD `4cde3e6` · computed 2026-09-12 · Node v24.20.0. The scratch script lives outside the repo and is not committed. **Recomputed for A1a (2026-09-12)** on the runFixture rows only; the Plan-page and MOCK rows are derived from the same per-row moves and marked as such. What moved, and why (A1a): `s-goal-all-users-no-persistence` is an engine row (decision 8: the graph carries the runtime id), so it leaves the fallback path; a missing object whose maker step the plan carries is a healthy step edge, never a `missingObject` hold (A1 §8.4; the legacy `prerequisite` hold maps to a step edge); the legacy device-decision wait on `s-goal-intune-enrollment-reauth` is a step edge on its create, so it queues behind `s-prereq-device-plan`; a started policy waiting on a maker stays Ready (§3).
 
 **How each chain was computed**
 
@@ -365,27 +365,27 @@ Extra `n` (n ≥ 6) is `Core - Extra n - <template n%6>`, report-only when `n%4 
 | Tenant / chain | Ready | Up Next | On Hold | Completed (Show completed) | Deferred (Show deferred) | Needs attention |
 |---|---:|---:|---:|---:|---:|---:|
 | demo Initial · Plan page, first visit | 11 | 3 | 15 | 1 | 0 | 3 |
-| demo Follow-up · Plan page, entered directly | 12 | 1 | 10 | 10 | 0 | 1 |
-| demo Follow-up · Plan page, after Initial then Scan again | 12 | 1 | 10 | 10 | 0 | 5 |
+| demo Follow-up · Plan page, entered directly (A1a: derived, not recomputed) | 11 | 2 | 10 | 10 | 0 | 1 |
+| demo Follow-up · Plan page, after Initial then Scan again (A1a: derived, not recomputed) | 11 | 2 | 10 | 10 | 0 | 5 |
 | `fixture('demo')` · runFixture | 11 | 3 | 15 | 1 | 0 | 19 |
 | `curatedFixture('demo')` · runFixture | 15 | 12 | 2 | 1 | 0 | — |
-| `fixture('demo-week2')` · runFixture | 10 | 0 | 10 | 10 | 0 | 12 |
-| `curatedFixture('demo-week2')` · runFixture | 16 | 3 | 1 | 10 | 0 | — |
+| `fixture('demo-week2')` · runFixture | 9 | 1 | 10 | 10 | 0 | 12 |
+| `curatedFixture('demo-week2')` · runFixture | 15 | 4 | 1 | 10 | 0 | — |
 | micro (plain = curated) | 7 | 0 | 0 | 7 | 0 | 0 |
-| small (plain = curated) | 14 | 2 | 0 | 7 | 0 | 8 |
-| getiamai (plain = curated) | 17 | 2 | 0 | 3 | 0 | 8 |
-| mid (plain = curated) | 20 | 2 | 2 | 8 | 0 | 11 |
+| small (plain = curated) | 15 | 1 | 0 | 7 | 0 | 8 |
+| getiamai (plain = curated) | 18 | 1 | 0 | 3 | 0 | 8 |
+| mid (plain = curated) | 21 | 2 | 1 | 8 | 0 | 11 |
 | large (plain = curated) | 18 | 2 | 0 | 8 | 0 | 10 |
-| huge, `HUGE=1` (plain = curated) | 19 | 2 | 0 | 8 | 0 | 10 |
-| messy (plain = curated) | 8 | 8 | 3 | 6 | 0 | 12 |
-| midflight (plain = curated) | 14 | 2 | 0 | 6 | 0 | 8 |
-| hostile (plain = curated) | 14 | 3 | 0 | 6 | 0 | 9 |
-| mock (`state=scanned`) · Plan page | 7 | 12 | 1 | 1 | 0 | 2 |
-| mock `?big=1` · Plan page | 7 | 12 | 1 | 1 | 0 | 2 |
-| mock `?policies=0` · Plan page | 16 | 2 | 1 | 2 | 0 | 1 |
-| mock `?denied=1` · Plan page | 6 | 12 | 4 | 0 | 0 | 1 |
-| mock `?licence=free` · Plan page | 10 | 0 | 0 | 3 | 0 | 0 |
-| gapsSnapshot (reference only; never on the Plan) | 7 | 13 | 1 | 1 | 0 | 1 |
+| huge, `HUGE=1` (plain = curated; A1a: derived, not recomputed) | 19 | 2 | 0 | 8 | 0 | 10 |
+| messy (plain = curated) | 9 | 10 | 0 | 6 | 0 | 12 |
+| midflight (plain = curated) | 15 | 1 | 0 | 6 | 0 | 8 |
+| hostile (plain = curated) | 15 | 2 | 0 | 6 | 0 | 9 |
+| mock (`state=scanned`) · Plan page (A1a: not recomputed; `s-goal-all-users-no-persistence` now an engine row in Up Next) | 7 | 12 | 1 | 1 | 0 | 2 |
+| mock `?big=1` · Plan page (A1a: not recomputed) | 7 | 12 | 1 | 1 | 0 | 2 |
+| mock `?policies=0` · Plan page (A1a: not recomputed) | 16 | 2 | 1 | 2 | 0 | 1 |
+| mock `?denied=1` · Plan page (A1a: not recomputed) | 6 | 12 | 4 | 0 | 0 | 1 |
+| mock `?licence=free` · Plan page (A1a: not recomputed) | 10 | 0 | 0 | 3 | 0 | 0 |
+| gapsSnapshot (reference only; never on the Plan; A1a: not recomputed) | 7 | 13 | 1 | 1 | 0 | 1 |
 | pilotFixture | not computed (not a tenant: one step transformer, no snapshot) | | | | | |
 
 No fixture has a skipped step, so Deferred is 0 everywhere.
@@ -408,17 +408,17 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
 - **Up Next (3):**
   - `s-prereq-exclusion-group` (after `s-prereq-break-glass`)
   - `cleanup-drill` (after `s-prereq-break-glass`)
-  - `s-goal-intune-enrollment-reauth` (after `s-prereq-exclusion-group`)
+  - `s-goal-intune-enrollment-reauth` (after `s-prereq-device-plan`; A1a — the legacy device-decision wait is a step edge on its create)
 - **On Hold (15):**
   - `s-goal-admin-portals-protected` · sourceConflict (the pinned admin-portals policy; id withheld)
   - `s-goal-guests-mfa` · unsupported:unmatched-pair
   - `s-goal-device-registration-mfa` and `s-goal-require-managed-device` · sourceMapping:2d25c298
   - `s-goal-admin-session`, `s-goal-admins-phishing-resistant`, `s-goal-block-auth-transfer`, `s-goal-block-device-code`, `s-goal-block-legacy-auth`, `s-goal-block-unsupported-platforms`, `s-goal-geo-restriction`, `s-goal-mfa-all-users`, `s-goal-service-accounts-trusted-network`, `s-goal-token-protection` · sourceMapping:62d67e66
-  - `s-goal-all-users-no-persistence` · sourceMapping:62d67e66 (runtime-only fallback)
+  - `s-goal-all-users-no-persistence` · sourceMapping:62d67e66 (an engine row since A1a, decision 8)
 - **Completed (1):** `s-prereq-trusted-location`
 
 **Follow-up (entered directly; the same lanes after Initial then Scan again)**
-- **Ready (12):**
+- **Ready (11; A1a):**
   - `s-verify-mfa` · Create
   - `s-prereq-device-plan` · Needs decision
   - `s-prereq-service-accounts-group` · Create
@@ -426,39 +426,37 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
   - `s-question-partner` · Needs decision
   - `s-shared-devices` · Create
   - `s-question-mail-devices` · Create
-  - `s-goal-intune-enrollment-reauth` · Create
   - `s-goal-register-info-protected` · Create
   - `cleanup-notAssessed` · Create
   - `s-check-dormant-accounts` · Create
   - `s-check-separate-admin-accounts` · Create
-- **Up Next (1):** `s-question-travel` (after `s-prereq-allowed-countries`)
+- **Up Next (2; A1a):** `s-question-travel` (after `s-prereq-allowed-countries`); `s-goal-intune-enrollment-reauth` (after `s-prereq-device-plan`)
 - **On Hold (10):**
   - `s-goal-admin-portals-protected` · sourceConflict
   - `s-goal-device-registration-mfa` and `s-goal-require-managed-device` · sourceMapping:2d25c298
   - `s-goal-admin-session`, `s-goal-block-auth-transfer`, `s-goal-block-unsupported-platforms`, `s-goal-geo-restriction`, `s-goal-service-accounts-trusted-network`, `s-goal-token-protection` · sourceMapping:62d67e66
-  - `s-goal-all-users-no-persistence` · sourceMapping:62d67e66 (fallback)
+  - `s-goal-all-users-no-persistence` · sourceMapping:62d67e66 (an engine row since A1a)
 - **Completed (10):** `s-prereq-break-glass`, `s-prereq-exclusion-group`, `cleanup-drill`, `s-prereq-trusted-location`, `s-goal-mfa-all-users`, `s-goal-admins-phishing-resistant`, `s-goal-block-device-code`, `s-goal-block-legacy-auth`, `s-goal-guests-mfa`, `cleanup-alerting`
 
-`runFixture` on `demo-week2` (10/0/10/10) lacks the three `s-question-*` rows that the seeded week-two answers create. That accounts for the difference from the Plan page (12/1/10/10).
+`runFixture` on `demo-week2` (9/1/10/10 since A1a) lacks the three `s-question-*` rows that the seeded week-two answers create. That accounts for the difference from the Plan page (11/2/10/10, derived).
 
-### Other fixtures: Up Next and On Hold
+### Other fixtures: Up Next and On Hold (A1a)
 
-- **small, getiamai, midflight, large, huge:** Up Next = `s-goal-geo-restriction` (after `s-prereq-allowed-countries`) and `s-goal-all-users-no-persistence` (fallback, no reason). On Hold is empty.
+- **small, getiamai, midflight, large, huge:** Up Next = `s-goal-geo-restriction` (after `s-prereq-allowed-countries`); `s-goal-all-users-no-persistence` is Ready · Create (an engine row). `large` (and huge) also queue `s-goal-intune-enrollment-reauth` after `s-prereq-device-plan`. On Hold is empty.
 - **hostile:** Up Next adds `cleanup-drill` (after `s-prereq-break-glass`). On Hold is empty.
 - **mid:**
-  - On Hold: `s-goal-service-accounts-trusted-network` · sourceMapping:00000014 (synthetic baseline), and `s-goal-token-protection` · missingObject: `s-prereq-service-accounts-group`.
-  - Up Next: as `small`.
+  - On Hold: `s-goal-service-accounts-trusted-network` · sourceMapping:00000014 (synthetic baseline).
+  - Up Next: `s-goal-geo-restriction` (after `s-prereq-allowed-countries`) and `s-goal-token-protection` (after `s-prereq-service-accounts-group`, the maker of the object its body names; §8.4).
 - **messy:**
-  - On Hold: `s-goal-admins-phishing-resistant` and `s-goal-register-info-protected` · missingObject: `s-prereq-exclusion-group`; `s-goal-all-users-no-persistence` (fallback).
-  - Up Next (8): `s-goal-admin-portals-protected`, `s-goal-admin-session`, `s-goal-block-auth-transfer`, `s-goal-block-unsupported-platforms`, `s-goal-device-registration-mfa` and `s-goal-token-protection` (each after `s-prereq-exclusion-group`); `s-goal-geo-restriction` (after `s-prereq-allowed-countries`); `s-prereq-security-defaults` (after `s-goal-admins-phishing-resistant`).
-- **mock, mock `?big=1`:**
+  - On Hold: empty. `s-goal-admins-phishing-resistant` (an existing policy waiting on `s-prereq-exclusion-group`) is Ready · Correct with the group as a healthy prerequisite (§3: started work stays Ready).
+  - Up Next (10): `s-goal-admin-portals-protected`, `s-goal-admin-session`, `s-goal-all-users-no-persistence`, `s-goal-block-auth-transfer`, `s-goal-block-unsupported-platforms`, `s-goal-device-registration-mfa`, `s-goal-register-info-protected` and `s-goal-token-protection` (each after `s-prereq-exclusion-group`); `s-goal-geo-restriction` (after `s-prereq-allowed-countries`); `s-prereq-security-defaults` (after `s-goal-admins-phishing-resistant`).
+- **mock, mock `?big=1`:** (not recomputed in A1a)
   - On Hold: `s-goal-block-legacy-auth` · sourceMapping:11111111.
-  - Up Next (12): `s-prereq-exclusion-group` and `cleanup-drill` (after `s-prereq-break-glass`), nine policy creates after `s-prereq-exclusion-group`, and `s-goal-all-users-no-persistence`.
+  - Up Next (12): `s-prereq-exclusion-group` and `cleanup-drill` (after `s-prereq-break-glass`), nine policy creates after `s-prereq-exclusion-group`, and `s-goal-all-users-no-persistence` (now read by the engine, after `s-prereq-exclusion-group`).
 - **micro, mock `?licence=free`:** all rows are Ready or Completed. Most rows are runtime-only `s-ladder-*` fallbacks.
 
 **Rows the lane adapter reads from the Plan's own state** (`fromEngine: false`: the dependency graph does not know them), seen across these runs:
 - `cleanup-alerting`, `cleanup-consolidation`, `cleanup-naming`
-- `s-goal-all-users-no-persistence`
 - `s-blocker-allowed-countries`
 - `s-ladder-app-passwords`, `s-ladder-guest-review`, `s-ladder-legacy-auth-inventory`, `s-ladder-stale-accounts`, `s-ladder-admin-accounts-separate`, `s-ladder-authenticator-over-sms`, `s-ladder-break-glass-accounts`, `s-ladder-global-admin-count`, `s-ladder-per-user-mfa-cleanup`, `s-ladder-security-defaults`
 
@@ -475,7 +473,8 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
 
   This runs over demo, demo-week2, small, mid, messy, midflight, curated getiamai and every curated fixture. **Agrees:** no skips, Deferred 0. The test injects its own two Cleanup rows, so its row set differs from Plan.tsx's.
 - `src/ui/surfaces/planLanes.test.ts`, "the graph's non-step prerequisites…": on demo, admin-portals is `baseline-conflict`, the `sourceMapping:62d67e66` prerequisite is `resolved` globally, and nothing is deferred. **Agrees.**
-- `src/ui/surfaces/planLanes.test.ts`, "a row the graph does not know…": `s-prereq-source-references` has no reading, and `s-goal-all-users-no-persistence` is runtime-only. **Agrees.**
+- `src/ui/surfaces/planLanes.test.ts`, "a row the graph does not know…": `s-prereq-source-references` has no reading, `s-goal-all-users-no-persistence` is an engine row (A1a), and micro's `s-ladder-*` rows are runtime-only. **Agrees.**
+- `src/ui/surfaces/planLanesHolds.test.ts` (A1a): one test per legacy `HoldKind`, each on a `small` policy step shaped to carry that hold alone, asserting the engine counterpart (conflict → `sourceConflict`, decision → Needs decision, review → Correct, unavailable → `unsupported`, readiness → an evidence gate on enforce with the threshold text, prerequisite → a step edge on enforce / create or a `fact`, evidence → the observation gate).
 - `src/roadmap/sourceReferences.test.ts`, "S4: the unidentified-groups row is gone from every plan": demo, demo-week2, small, mid, messy, midflight, curated demo and curated demo-week2. **Agrees.**
 - `src/roadmap/sourceReferences.test.ts`, "S4: each policy naming an unmapped reference is On Hold with the reason": demo and demo-week2 via runFixture, reason `sourceMapping` (or `sourceConflict` where the baseline conflicts). **Agrees:** 13 of demo's 15 On Hold rows are sourceMapping holds and one is the admin-portals sourceConflict. The 15th, `s-goal-guests-mfa`, is held by `unsupported:unmatched-pair`, which that test does not cover.
 - `src/ui/surfaces/planLanes.test.ts`, "a step the plan cannot act on is never Ready": **Agrees.** Every pending-mapping, conflict or unmatched-pair step above is On Hold.
