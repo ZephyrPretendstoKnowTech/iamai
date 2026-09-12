@@ -181,7 +181,8 @@ test('every registered Partial composes its corrections from the engine’s chan
 })
 
 test('the demo’s held Intune enrollment policy, prepared in report-only, offers the package’s JSON, and it parses', () => {
-  const { pkg, state, projection } = project(at(placed('demo-week2'), 's-goal-intune-enrollment-reauth'))
+  // The Initial scan: by week two the demo has this policy in report-only (A4), so the create is the day-one case.
+  const { pkg, state, projection } = project(at(DEMO, 's-goal-intune-enrollment-reauth'))
   assert.equal(pkg.meta.stepId, 's-goal-intune-enrollment-reauth')
   assert.equal(state, 'missing')
   assert.equal(projection.hold, null, JSON.stringify(projection.hold))

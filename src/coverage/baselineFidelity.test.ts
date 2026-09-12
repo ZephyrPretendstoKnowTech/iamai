@@ -350,7 +350,8 @@ test('a named placeholder becomes the object the author named, and never reaches
   // What must never happen is the token travelling: a body carrying the literal
   // string would be submitted to Graph as a group id. It is either the tenant's
   // object or it is reported missing, and it is never itself.
-  const step = runFixture(fixture('demo-week2')).steps.find((s) => s.goalId === 'intune-enrollment-reauth')
+  // The Initial scan: by week two the demo has this policy in report-only (A4), so the create body is day one's.
+  const step = runFixture(fixture('demo')).steps.find((s) => s.goalId === 'intune-enrollment-reauth')
   assert.ok(step, 'the intune-enrolment step is in the plan')
   const s = step as Step
   const json = s.action.json

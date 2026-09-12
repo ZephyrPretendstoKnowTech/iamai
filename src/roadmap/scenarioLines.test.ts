@@ -66,7 +66,7 @@ test('prompt 50 item 15 / 50.1 item 5: the week-two snapshot advances the tracki
   assert.ok(exclusionOnly.length > 0, 'day one has policies short only of the exclusions group')
   for (const s of exclusionOnly) assert.equal(week2.steps.find((x) => x.id === s.id)?.status, 'done', `${s.id} is in place once the chosen group is carved out`)
   assert.equal(inPlace(week2), inPlace(day1) + 3 + exclusionOnly.length, 'phishing-resistant enforced, emergency access and the exclusions group In place by week two, with the policies that lacked only that group')
-  assert.equal(reportOnly(week2), 2, 'two Wave 1 policies are in report-only in week two')
+  assert.equal(reportOnly(week2), 3, 'three plan-created policies are in report-only in week two (A4 added the Intune enrollment one)')
   // The step is on every plan. Day one: the group its technician chose is not
   // the one the tenant's policies carve out, so the step has a check to fix; by
   // week two the policies carve it out and the step is In place.

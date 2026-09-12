@@ -256,7 +256,8 @@ test('the source date comes from the package’s verified sources, never a clock
   assert.equal(sourceUpdatedOn(PKG), '2026-09-10')
   const later = structuredClone(PKG)
   later.meta.verifiedSources = [...(later.meta.verifiedSources ?? []), { id: 'x', title: 'x', url: 'https://learn.microsoft.com/x', checkedOn: '2026-10-01', userFacing: true }, { id: 'y', title: 'y', url: 'https://learn.microsoft.com/y', checkedOn: '2027-01-01', userFacing: false }]
-  assert.equal(sourceUpdatedOn(later), '2026-10-01', 'the latest user-facing source is not the date, or a research-only source moved it')
+  // Every verified source dates the line, user-facing or not (batch A decision 10): the latest checked date wins.
+  assert.equal(sourceUpdatedOn(later), '2027-01-01', 'the latest checked source is not the date')
   const code = read('src/content/implementation/project.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
   for (const clock of ['Date.now', 'new Date(', 'performance.now', 'mtime', 'import.meta.env']) assert.equal(code.includes(clock), false, `project.ts reads ${clock}`)
   const W = CONTRACT.implementation

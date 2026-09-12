@@ -298,6 +298,13 @@ export function nextMilestone(step: Step): Milestone {
   }
   // Held on its records, it is still being watched: until they are clear, with no date.
   if (hold?.kind === 'evidence') return { kind: 'observe', label: MILESTONE.observeRecords, at: null, gatedBy: null }
+  // Held on a readiness threshold while already in report-only: the threshold
+  // gates turning it on and nothing else (A1a; roadmap/operations.ts
+  // enforcementHeld), so the policy goes on being watched, and what the hold
+  // keeps back is said beside it. "Clear what this step is waiting on" over a
+  // policy that is only watching was two instructions pulling apart. No date:
+  // a held step names none (Step 4), and the window's own day is on the rail.
+  if (hold?.kind === 'readiness' && s.lifecycle === 'report-only') return { kind: 'observe', label: MILESTONE.observe, at: null, gatedBy: step.blockedReason }
   // Held and not deployed, and Foundation A still hands over its create: a policy
   // created in report-only denies nobody, so making it now is safe preparation
   // (roadmap/operations.ts policyResult; owner decision, Step 5). The next thing is

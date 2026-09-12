@@ -357,12 +357,12 @@ Projected output type `PackageReadinessTile = { id; gate; result; line; gateKey:
 | `title` | `string` | yes | Carried into `TroubleshootingScenario.sources` / `PackageReadiness.references` for rendering. |
 | `url` | `string` | yes | Same. |
 | `purpose` | `string` | no | not read |
-| `checkedOn` | `string` (`YYYY-MM-DD`) | yes | `sourceUpdatedOn` (548): the latest `userFacing` date that matches `^\d{4}-\d{2}-\d{2}$`, or null. Shown as `Source checked <date>` (`stepPackage.ts packageSourceLine` 116). |
-| `userFacing` | `boolean` | no | Only `=== true` entries are ever shown or dated (539). |
+| `checkedOn` | `string` (`YYYY-MM-DD`) | yes | `sourceUpdatedOn`: the latest date over every entry that matches `^\d{4}-\d{2}-\d{2}$`, user-facing or not (A4, decision 10), or null. Shown as `Source checked <date>` (`stepPackage.ts packageSourceLine`). |
+| `userFacing` | `boolean` | no | Only `=== true` entries are ever shown as references (539); every entry dates the `Source checked` line. |
 | `priority` | `string` | no | not read |
 | `audience` | `string[]` | no | not read |
 
-No rule validates this structure. The only check is the warning `verifiedSources: none is userFacing, so no source date and no reference is shown` (729). Library survey: 13 of 46 packages author `verifiedSources` (11 of the 44 registered; 5 registered packages have a `userFacing: true` entry). Other packages put sources under `microsoftSources` or `sources`, which nothing reads.
+No rule validates this structure. The only check is the warning `verifiedSources: none is userFacing, so no source date and no reference is shown` (729). Library survey (A4, 2026-09-12): 13 of 46 packages author `verifiedSources`, every entry with a `checkedOn` (11 of the 44 registered; 5 registered packages have a `userFacing: true` entry), so the line renders on all 13. Other packages put sources under `microsoftSources` or `sources`, which nothing reads.
 
 ---
 

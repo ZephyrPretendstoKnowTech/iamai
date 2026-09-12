@@ -87,7 +87,7 @@ Goal verdicts across the 27 coverage goal results (the pinned `goalMap` holds 22
     - the admins phishing-resistant policy is now enabled;
     - every policy carves out the confirmed exclusions group;
     - the MFA policy excludes the group rather than an account;
-    - two plan-created, plan-tagged policies sit in report-only: token protection (7 days, every person, no failures) and authentication transfer (2 days, 24 people).
+    - three plan-created, plan-tagged policies sit in report-only: token protection (7 days, every person, no failures), authentication transfer (2 days, 24 people) and, since A4, the Intune enrollment sign-in frequency (3 days, 20 people) — the one the product demo shows as Ready · Observing, because its goal names no source group the baseline has not settled.
   - **Readiness:** three of the unproven people now hold a proven passkey.
   - **Emergency access:** the emergency-access answers are confirmed, and the drill is recorded as a Cleanup checkpoint.
   - **Seeded decisions:**
@@ -102,15 +102,16 @@ Goal verdicts across the 27 coverage goal results (the pinned `goalMap` holds 22
 | Core - Block - Device code flow | enabled | **enforced.** `s-goal-block-device-code` done/healthy; fingerprint; satisfier `inPlace`. |
 | Core - Grant - Admins phishing-resistant | enabled | **enforced.** `s-goal-admins-phishing-resistant` done/healthy; fingerprint; satisfier `inPlace`. |
 | Core - Grant - Guests MFA | enabled | **Coverage only.** `mfa-all-users` and `guests-mfa` strong satisfier, `inPlace`. |
-| Core - Session - Token protection | enabledForReportingButNotEnforced | **report-only, drifted.** Plan-tagged. `s-goal-token-protection` adjust / `in-report-only` / `healthy`; lane drift true; `driftOutcomeOf` = `on-hold`; operation-target. Coverage: `token-protection` reportOnly, `partly`. Lane: On Hold · `sourceMapping:62d67e66`. |
-| Core - Block - Authentication transfer | enabledForReportingButNotEnforced | **report-only, drifted.** Plan-tagged. `s-goal-block-auth-transfer` adjust / in-report-only / healthy; on-hold; operation-target. Coverage: `block-auth-transfer` reportOnly, `partly`. Lane: On Hold · `sourceMapping:62d67e66`. |
+| Core - Session - Token protection | enabledForReportingButNotEnforced | **report-only, undrifted.** Plan-tagged. `s-goal-token-protection` adjust / `in-report-only` / `healthy`; the only operation turns it on, so the lane adapter reads no drift (A4); `driftOutcomeOf` = `on-hold`; operation-target. Coverage: `token-protection` reportOnly, `partly`. Lane: On Hold · `sourceMapping:62d67e66`. |
+| Core - Block - Authentication transfer | enabledForReportingButNotEnforced | **report-only, undrifted.** Plan-tagged. `s-goal-block-auth-transfer` adjust / in-report-only / healthy; no drift (A4); on-hold; operation-target. Coverage: `block-auth-transfer` reportOnly, `partly`. Lane: On Hold · `sourceMapping:62d67e66`. |
+| Core - Session - Intune enrollment sign-in frequency | enabledForReportingButNotEnforced | **report-only, undrifted, evidence maturing (A4).** Plan-tagged; 3 days in report-only, 18 of 30 active people seen, no failures. `s-goal-intune-enrollment-reauth` adjust / in-report-only / blocked (the device decision and the session-loop readiness item are enforcement gates); tag. Coverage: `intune-enrollment-reauth` reportOnly, `partly`. Lane: **Ready · Observing**, reason the open observation gate. Milestone: observe (no date; held on the readiness gate). |
 
 **Visiting Initial first, then Scan again.** This models the record that the Initial visit persisted, carried forward by `nextDemoRecord`. The four enforced policies (MFA for all users, Legacy authentication, Device code flow, Admins phishing-resistant) then read **enforced · review required**: the member's `reviewRequired` is true, it is matched by `owned`, and the step condition is `review-required` with status still `done`. The `s-goal-guests-mfa` member stays fingerprint/healthy. Nothing else changes.
 
-**Pinned goals with no deployed policy (missing):** 9 policy steps are `not-deployed`:
-`s-goal-register-info-protected`, `s-goal-service-accounts-trusted-network`, `s-goal-admin-session`, `s-goal-geo-restriction`, `s-goal-block-unsupported-platforms`, `s-goal-require-managed-device`, `s-goal-device-registration-mfa`, `s-goal-intune-enrollment-reauth`, `s-goal-all-users-no-persistence`.
+**Pinned goals with no deployed policy (missing):** 8 policy steps are `not-deployed`:
+`s-goal-register-info-protected`, `s-goal-service-accounts-trusted-network`, `s-goal-admin-session`, `s-goal-geo-restriction`, `s-goal-block-unsupported-platforms`, `s-goal-require-managed-device`, `s-goal-device-registration-mfa`, `s-goal-all-users-no-persistence`.
 
-Goal verdicts: inPlace 5, missing 13, partly 2, licenceLimited 5, notApplicable 2. Seven pinned policies are not assessed. The Plan page has 30 steps. `runFixture` has 27, because it does not apply the seeded week-two answers that add `s-question-partner`, `s-question-mail-devices` and `s-question-travel`.
+Goal verdicts: inPlace 5, missing 12, partly 3, licenceLimited 5, notApplicable 2 (A4: the Intune enrollment goal moved from missing to partly). Seven pinned policies are not assessed. The Plan page has 30 steps. `runFixture` has 27, because it does not apply the seeded week-two answers that add `s-question-partner`, `s-question-mail-devices` and `s-question-travel`.
 
 `src/ui/demoFacts.ts` runs `runFixture` over the shifted Initial snapshot for the signed-out Scan tile's facts. It computes no lanes.
 
@@ -365,11 +366,11 @@ Extra `n` (n ≥ 6) is `Core - Extra n - <template n%6>`, report-only when `n%4 
 | Tenant / chain | Ready | Up Next | On Hold | Completed (Show completed) | Deferred (Show deferred) | Needs attention |
 |---|---:|---:|---:|---:|---:|---:|
 | demo Initial · Plan page, first visit | 11 | 3 | 15 | 1 | 0 | 3 |
-| demo Follow-up · Plan page, entered directly (A1a: derived, not recomputed) | 11 | 2 | 10 | 10 | 0 | 1 |
-| demo Follow-up · Plan page, after Initial then Scan again (A1a: derived, not recomputed) | 11 | 2 | 10 | 10 | 0 | 5 |
+| demo Follow-up · Plan page, entered directly (A4: derived, not recomputed) | 12 | 1 | 10 | 10 | 0 | 1 |
+| demo Follow-up · Plan page, after Initial then Scan again (A4: derived, not recomputed) | 12 | 1 | 10 | 10 | 0 | 5 |
 | `fixture('demo')` · runFixture | 11 | 3 | 15 | 1 | 0 | 19 |
 | `curatedFixture('demo')` · runFixture | 15 | 12 | 2 | 1 | 0 | — |
-| `fixture('demo-week2')` · runFixture | 9 | 1 | 10 | 10 | 0 | 12 |
+| `fixture('demo-week2')` · runFixture (A4: recomputed 2026-09-12) | 10 | 0 | 10 | 10 | 0 | 12 |
 | `curatedFixture('demo-week2')` · runFixture | 15 | 4 | 1 | 10 | 0 | — |
 | micro (plain = curated) | 7 | 0 | 0 | 7 | 0 | 0 |
 | small (plain = curated) | 15 | 1 | 0 | 7 | 0 | 8 |
@@ -418,7 +419,8 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
 - **Completed (1):** `s-prereq-trusted-location`
 
 **Follow-up (entered directly; the same lanes after Initial then Scan again)**
-- **Ready (11; A1a):**
+- **Ready (12; A4):**
+  - `s-goal-intune-enrollment-reauth` · Observing (A4: the plan-created policy is in report-only, undrifted, its window open)
   - `s-verify-mfa` · Create
   - `s-prereq-device-plan` · Needs decision
   - `s-prereq-service-accounts-group` · Create
@@ -430,7 +432,7 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
   - `cleanup-notAssessed` · Create
   - `s-check-dormant-accounts` · Create
   - `s-check-separate-admin-accounts` · Create
-- **Up Next (2; A1a):** `s-question-travel` (after `s-prereq-allowed-countries`); `s-goal-intune-enrollment-reauth` (after `s-prereq-device-plan`)
+- **Up Next (1; A4):** `s-question-travel` (after `s-prereq-allowed-countries`)
 - **On Hold (10):**
   - `s-goal-admin-portals-protected` · sourceConflict
   - `s-goal-device-registration-mfa` and `s-goal-require-managed-device` · sourceMapping:2d25c298
@@ -438,7 +440,7 @@ No fixture has a skipped step, so Deferred is 0 everywhere.
   - `s-goal-all-users-no-persistence` · sourceMapping:62d67e66 (an engine row since A1a)
 - **Completed (10):** `s-prereq-break-glass`, `s-prereq-exclusion-group`, `cleanup-drill`, `s-prereq-trusted-location`, `s-goal-mfa-all-users`, `s-goal-admins-phishing-resistant`, `s-goal-block-device-code`, `s-goal-block-legacy-auth`, `s-goal-guests-mfa`, `cleanup-alerting`
 
-`runFixture` on `demo-week2` (9/1/10/10 since A1a) lacks the three `s-question-*` rows that the seeded week-two answers create. That accounts for the difference from the Plan page (11/2/10/10, derived).
+`runFixture` on `demo-week2` (10/0/10/10 since A4) lacks the three `s-question-*` rows that the seeded week-two answers create. That accounts for the difference from the Plan page (12/1/10/10, derived).
 
 ### Other fixtures: Up Next and On Hold (A1a)
 

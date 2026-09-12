@@ -218,7 +218,12 @@ test('042.5: whether an implementation is offered has exactly one answer', () =>
       // A hold is not a blocker: it names no work and asks for nothing.
       if (policyHold(step) !== null) {
         assert.equal(unavailableReason(step), null, `${c.label}/${step.id}: a hold and a reason at once`)
-        assert.notEqual(step.state.condition, 'blocked', `${c.label}/${step.id}: a policy waiting for its window reads as blocked`)
+        // A readiness threshold or a prerequisite step gates turning on a policy
+        // already in report-only and nothing else (A1a: the lane reads Observing,
+        // the milestone reads observe); the condition names the gate. Anything
+        // else blocking a policy that is only watching is a contradiction.
+        const gated = step.blockers.length > 0 && step.blockers.every((b) => b.kind === 'readiness' || b.kind === 'step')
+        if (!gated) assert.notEqual(step.state.condition, 'blocked', `${c.label}/${step.id}: a policy waiting for its window reads as blocked`)
       }
       // A blocker never becomes informational. The distinction the contract
       // draws is the one that matters here: a failing CHECK is this step's own

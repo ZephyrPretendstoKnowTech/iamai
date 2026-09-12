@@ -154,7 +154,7 @@ type Spec = {
   neverSignedIn?: number
   /** The demo tenant: a small business built to exercise the lockout scenarios (prompt 50 Part 2). */
   demo?: boolean
-  /** The demo, one week on: three of the unproven now proven, the second break-glass and the exclusions group created, two Wave 1 policies in report-only and one enforced (prompt 50 Part 4). */
+  /** The demo, one week on: three of the unproven now proven, the second break-glass and the exclusions group created, three plan-created policies in report-only and one enforced (prompt 50 Part 4; A4). */
   week2?: boolean
   expect: FixtureExpectations
 }
@@ -523,7 +523,7 @@ export function buildFixture(spec: Spec): Fixture {
   }
   for (let n = 0; n < (spec.disabledPolicies ?? 0); n++) policies.push(policy(500 + n, `Old - Disabled ${n}`, 'disabled', templates[n % templates.length][2]))
   for (let n = 0; n < (spec.reportOnlyPolicies ?? 0); n++) policies.push(policy(600 + n, `Test - Report only ${n}`, 'enabledForReportingButNotEnforced', templates[n % templates.length][2]))
-  // The demo, one week on (prompt 50 Part 4 item 14): the plan created two Wave 1
+  // The demo, one week on (prompt 50 Part 4 item 14): the plan created three
   // policies now sitting in report-only with sign-in evidence, and one enforced.
   const week2Results: PolicyAppliedResult[] = []
   if (spec.week2) {
@@ -539,6 +539,12 @@ export function buildFixture(spec: Spec): Fixture {
     // Report-only / Observe case (auth transfer), and offered as an update of
     // that same policy once the records close the gate, which is the canonical
     // Ready-to-enforce case (token protection).
+    //
+    // The third, the Intune enrollment sign-in frequency, is the one the product
+    // demo shows as Ready · Observing (A4): its goal names no source group the
+    // baseline has not settled, so nothing but its own open window holds it —
+    // created three days ago, seen for twenty people, undrifted from the pinned
+    // policy. The other two are held on the baseline's unmapped group.
     const tokenProtection = {
       conditions: {
         applications: {
@@ -560,6 +566,25 @@ export function buildFixture(spec: Spec): Fixture {
     }
     const advanced: { goalId: string; name: string; state: string; cls: PolicyResultClass; days: number; seenIds: string[]; body: Record<string, unknown> }[] = [
       { goalId: 'token-protection', name: 'Core - Session - Token protection', state: 'enabledForReportingButNotEnforced', cls: 'reportOnlySuccess', days: 7, seenIds: ids, body: tokenProtection },
+      {
+        goalId: 'intune-enrollment-reauth',
+        name: 'Core - Session - Intune enrollment sign-in frequency',
+        state: 'enabledForReportingButNotEnforced',
+        cls: 'reportOnlySuccess',
+        days: 3,
+        seenIds: ids.slice(0, 20),
+        body: {
+          conditions: {
+            applications: { excludeApplications: [], includeApplications: ['d4ebce55-015a-49b5-a083-c84d1797ae8c'], includeAuthenticationContextClassReferences: [], includeUserActions: [] },
+            clientAppTypes: ['all'],
+            servicePrincipalRiskLevels: [],
+            signInRiskLevels: [],
+            userRiskLevels: [],
+            users: { excludeGroups: [carveOut], excludeRoles: [], excludeUsers: [], includeGroups: [], includeRoles: [], includeUsers: ['All'] },
+          },
+          sessionControls: { signInFrequency: { authenticationType: 'primaryAndSecondaryAuthentication', frequencyInterval: 'everyTime', isEnabled: true } },
+        },
+      },
       {
         goalId: 'block-auth-transfer',
         name: 'Core - Block - Authentication transfer',
