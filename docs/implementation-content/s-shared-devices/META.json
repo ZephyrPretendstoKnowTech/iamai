@@ -36,7 +36,6 @@
     "policy.target.includeUsers",
     "policy.target.excludeGroups",
     "policy.target.trustedLocationId",
-    "policy.current.id",
     "peoplePolicies.resolvedPatches"
   ],
   "optionalBindings": [
@@ -45,7 +44,8 @@
     "policy.current.displayName",
     "policy.current.state",
     "policy.current.semanticMismatches",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "policy.current.id"
   ],
   "projection": {
     "needsDecision": {

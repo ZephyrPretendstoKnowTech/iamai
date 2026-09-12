@@ -5,7 +5,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
-import { compileLibrary, registryOf } from './library.ts'
+import { readFileSync } from 'node:fs'
+import { compileLibrary, libraryIndexOf, registryOf } from './library.ts'
+import type { LibraryIndex } from './library.ts'
 import { PACKAGE_STATES, validatePackage } from './protocol.ts'
 import type { CompiledPackage } from './protocol.ts'
 import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, projectSafely, readinessSafely, troubleshootingSafely } from './project.ts'
@@ -52,6 +54,15 @@ test('the registry is the whole library compiled: every package for a Plan conte
   // What was withheld is reported, never silently lost: the library's authored gaps are in the compiler's output.
   assert.ok(LIBRARY.registered.some((p) => p.withheld.length > 0))
   assert.deepEqual(LIBRARY.registered.find((p) => p.stepId === 's-goal-device-registration-mfa')?.withheld, [])
+})
+
+test('LIBRARY.json’s counts, binding inventory, validation, provenance and review are the library’s own, regenerated and never kept by hand', () => {
+  const current = JSON.parse(readFileSync('docs/implementation-content/LIBRARY.json', 'utf8')) as LibraryIndex
+  assert.deepEqual(current, JSON.parse(JSON.stringify(libraryIndexOf(LIBRARY, current))), 'LIBRARY.json drifted from docs/implementation-content: run scripts/compile-implementation-content.mjs --library-index')
+  // No required binding is one no part of its package names (correction batch 2).
+  const passing = current.packages.filter((p) => p.validationResult === 'pass').map((p) => p.stepId)
+  assert.ok(passing.includes('s-goal-device-registration-mfa'))
+  assert.equal(current.aggregate.packagesPassingStrictValidation, passing.length)
 })
 
 test('each package reaches the steps whose title comes from its content entry, a merged goal included', () => {

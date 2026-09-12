@@ -30,8 +30,6 @@
     "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027."
   },
   "requiredBindings": [
-    "tenant.displayName",
-    "passkey.profileOptInApproved",
     "passkey.target.fido2Configuration",
     "authenticator.target.configuration",
     "tap.target.configuration"
@@ -41,7 +39,9 @@
     "passkey.current.registeredAaguids",
     "passkey.target.profileSummary",
     "passkey.target.allowedAaguids",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "tenant.displayName",
+    "passkey.profileOptInApproved"
   ],
   "projection": {
     "needsDecision": {

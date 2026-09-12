@@ -43,7 +43,6 @@
     "microsoftCurrent": "Use sign-in activity as evidence, prefer lastSuccessfulSignInDateTime for actual access, consider legitimate inactivity, and disable only after investigation."
   },
   "requiredBindings": [
-    "tenant.displayName",
     "account.current.id",
     "account.current.displayName",
     "account.decision.disposition"
@@ -55,7 +54,8 @@
     "account.evidence.lastSignInDateTime",
     "account.evidence.activitySummary",
     "account.owner",
-    "dependencies.blockers"
+    "dependencies.blockers",
+    "tenant.displayName"
   ],
   "projection": {
     "needsDecision": {

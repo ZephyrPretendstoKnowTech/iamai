@@ -15,7 +15,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { PackageError, bindingsUsed, maskJsonTemplate, normalizePackage, packageWarnings, parseBlocks, validatePackage } from '../src/content/implementation/protocol.ts';
-import { LIBRARY_ROOT, compileLibrary, registryOf } from '../src/content/implementation/library.ts';
+import { LIBRARY_ROOT, compileLibrary, libraryIndexOf, registryOf } from '../src/content/implementation/library.ts';
 import { stateCompatibility, stepClassOf } from '../src/content/implementation/states.ts';
 import { driftOf } from '../src/content/implementation/drift.ts';
 import { contentStepForPackage } from '../src/content/stepTitle.ts';
@@ -52,6 +52,19 @@ if (args[0] === '--registry') {
   for (const r of library.registered) console.log(`  ${r.stepId.padEnd(42)} ${String(r.withheld.length).padStart(4)} withheld · ${r.drift.status}`);
   if (library.notSteps.length > 0) console.log(`  not a Plan content step, not registered: ${library.notSteps.map((r) => r.stepId).join(', ')}`);
   console.log(`registry: ${library.registered.length} packages -> ${out}`);
+  process.exit(0);
+}
+
+// --library-index [<file>]: regenerate LIBRARY.json's derived facts from the
+// packages (library.ts libraryIndexOf), keeping what only the author can say.
+if (args[0] === '--library-index') {
+  const file = path.resolve(args[1] ?? path.join(LIBRARY_ROOT, 'LIBRARY.json'));
+  const raw = fs.readFileSync(file, 'utf8');
+  const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+  const indent = /\n( +)"/.exec(raw)?.[1].length ?? 2;
+  const index = libraryIndexOf(compileLibrary(), JSON.parse(raw));
+  fs.writeFileSync(file, JSON.stringify(index, null, indent).replace(/\n/g, eol) + eol);
+  console.log(`library index: ${index.packages.length} packages · ${index.bindings.length} bindings · ${index.aggregate.packagesPassingStrictValidation} pass strict validation -> ${file}`);
   process.exit(0);
 }
 
@@ -132,12 +145,12 @@ if (args[0] === '--validate-library') {
   const reviews = results.filter((r) => r.pkg && contentStepForPackage(r.package)).map((r) => {
     const entry = contentStepForPackage(r.package);
     const authority = r.pkg.meta.baselineAuthority ?? {};
-    return { package: r.package, drift: driftOf(authority.reviewedMembers, authority.pinCommit ?? null, [entry.id, ...(entry.mergesGoals ?? [])], pinnedBaseline) };
+    return { package: r.package, drift: driftOf(authority.reviewedMembers, authority.pinCommit ?? null, [entry.id, ...(entry.mergesGoals ?? [])], pinnedBaseline, authority.reviewedIdentities ?? {}) };
   });
   const by = (s) => reviews.filter((r) => r.drift.status === s);
   console.log(`semantic re-pin review against ${pinned8}: ${by('current').length} current · ${by('reviewNeeded').length} review needed · ${by('held').length} held`);
   // Members the pin carries no stable id for are reviewed by display name: said, never assumed stable.
-  for (const r of reviews.filter((r) => r.drift.identityFallback.length > 0)) console.log(`  identity by display name (no stable id in the pin): ${r.package} · ${r.drift.identityFallback.join(', ')}${r.drift.renamed.length ? ` · renamed ${r.drift.renamed.map((x) => `${x.from} -> ${x.to}`).join(', ')}` : ''}`);
+  for (const r of reviews.filter((r) => r.drift.identityFallback.length > 0)) console.log(`  identity by display name, then by target (no stable id in the pin): ${r.package} · ${r.drift.identityFallback.join(', ')}${r.drift.renamed.length ? ` · renamed ${r.drift.renamed.map((x) => `${x.from} -> ${x.to}`).join(', ')}` : ''}${r.drift.matchedByTarget.length ? ` · matched by target, changed: ${r.drift.matchedByTarget.join(', ')}` : ''}`);
   for (const r of reviews.filter((r) => r.drift.status !== 'current' || r.drift.added.length > 0)) console.log(`  ${r.drift.status}: ${r.package}${r.drift.changed.length ? ` · changed ${r.drift.changed.join(', ')}` : ''}${r.drift.removed.length ? ` · removed ${r.drift.removed.join(', ')}` : ''}${r.drift.added.length ? ` · new member ${r.drift.added.join(', ')}` : ''}`);
   console.log(`  passing: ${passed.map((r) => r.package).join(', ') || 'none'}`);
   // Authored states the runtime never enters, reconciled with the nine it does

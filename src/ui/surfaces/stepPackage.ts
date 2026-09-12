@@ -28,7 +28,7 @@ import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
-import type { Bindings, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
+import type { Bindings, ChannelArtifact, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
@@ -81,6 +81,15 @@ export function packageReviewFor(step: { id: string; goalId: string }): Drift | 
   const pkg = packageByEntry(step)
   const review = pkg ? REVIEWS[pkg.meta.stepId] : undefined
   return review !== undefined && review.status !== 'current' ? review : null
+}
+
+/**
+ * The package a re-pin review set aside for a step, for its provenance only — the
+ * pins it was reviewed between. Never projected: implementationPackageFor is the
+ * one door to what a step implements.
+ */
+export function reviewedPackageFor(step: { id: string; goalId: string }): CompiledPackage | null {
+  return packageReviewFor(step) !== null ? packageByEntry(step) : null
 }
 
 /** The step ids with a package in the registry. */
@@ -434,7 +443,24 @@ export function packageRuntime(pkg: CompiledPackage, state: PackageState, bindin
   return { runtime: { satisfied: new Set(prerequisites.filter((p) => p.satisfied).map((p) => p.id)), baselineCommit }, prerequisites }
 }
 
-const RESULT_TONE: Record<string, ReadinessTone> = { Ready: 'good', 'Review required': 'warn', Unknown: 'warn', Blocked: 'warn', 'Not applicable': 'info' }
+/**
+ * A channel's text as the viewer shows and Copy copies it. The warning every
+ * package's AI Info repeats ("Contains tenant context…") is the one the AI tab
+ * already draws above the text (correction batch 2): it is said once, by the
+ * runtime, and a package line that says only that goes. A warning of the
+ * package's own, worded differently, stays.
+ */
+export function artifactText(a: Pick<ChannelArtifact, 'channel' | 'text'>, sharedWarning: string): string {
+  if (a.channel !== 'aiInfo') return a.text
+  const same = (line: string): boolean => line.replace(/[*_`]/g, '').trim() === sharedWarning.trim()
+  return a.text
+    .split('\n')
+    .filter((line) => !same(line))
+    .join('\n')
+    .replace(/^\s*\n/, '')
+}
+
+const RESULT_TONE: Record<string, ReadinessTone> ={ Ready: 'good', 'Review required': 'warn', Unknown: 'warn', Blocked: 'warn', 'Not applicable': 'info' }
 const SEVERITY: Record<string, number> = { Blocked: 0, 'Review required': 1, Unknown: 2, Ready: 3, 'Not applicable': 4 }
 
 /** The runtime tiles that state where the step stands; the package never displaces them. */

@@ -26,9 +26,11 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"f3f4ad30-86a8-4e29-8ec9-4efab1a459f5":"e205689f"},
+    "reviewedMembers": {
+      "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5": "e205689f"
+    },
     "memberStableId": "f3f4ad30-86a8-4e29-8ec9-4efab1a459f5",
-    "sourceDisplayName": "IAC - GLOBAL \u2013 BLOCK \u2013 Countries not Allowed",
+    "sourceDisplayName": "IAC - GLOBAL – BLOCK – Countries not Allowed",
     "sourceState": "enabled",
     "canonicalSemantics": {
       "users": "All users with IAMAI-resolved canonical exclusions, including service-account/partner overlays only when already resolved",
@@ -54,8 +56,7 @@
     "policy.target.grantControls",
     "policy.target.sessionControls",
     "policy.current.id",
-    "policy.current.semanticMismatches",
-    "location.allowedCountries.id"
+    "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
     "tenant.displayName",
@@ -65,7 +66,8 @@
     "dependencies.blockers",
     "signature",
     "decision.travel",
-    "decision.partner"
+    "decision.partner",
+    "location.allowedCountries.id"
   ],
   "projection": {
     "missing": {

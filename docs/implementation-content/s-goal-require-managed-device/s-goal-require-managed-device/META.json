@@ -28,7 +28,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"660ab461-0de5-4b00-baea-ec7325280f60":"8424f9ef"},
+    "reviewedMembers": {
+      "660ab461-0de5-4b00-baea-ec7325280f60": "8424f9ef"
+    },
     "memberStableId": "660ab461-0de5-4b00-baea-ec7325280f60",
     "sourceDisplayName": "IAC - INTUNE - GRANT - RequireCompliantDevice",
     "sourceState": "enabledForReportingButNotEnforced",
@@ -65,8 +67,7 @@
     "policy.target.sessionControls",
     "policy.current.id",
     "policy.current.semanticMismatches",
-    "intune.compliance.prerequisiteState",
-    "decision.devicePlan"
+    "intune.compliance.prerequisiteState"
   ],
   "optionalBindings": [
     "tenant.displayName",
@@ -76,7 +77,8 @@
     "evidence.serverSignIns",
     "evidence.autopilotImpact",
     "dependencies.blockers",
-    "signature"
+    "signature",
+    "decision.devicePlan"
   ],
   "projection": {
     "missing": {
