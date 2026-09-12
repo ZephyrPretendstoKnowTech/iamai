@@ -414,6 +414,30 @@ function stringsIn(value: unknown, out: Set<string> = new Set()): Set<string> {
   return out
 }
 
+/**
+ * The omitted references that are every entry of a collection saying who or
+ * where a policy applies (an `include…` list under `conditions`): leaving them
+ * out empties that collection rather than narrowing it. An entry that is not
+ * omitted — a tenant object, a pending reference, a keyword — keeps the
+ * collection, and then leaving out the rest is the narrowing it says it is.
+ */
+function omissionsEmptyingATarget(policy: RawPolicy, omitted: ReadonlySet<string>): Set<string> {
+  const out = new Set<string>()
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) return value.forEach(walk)
+    if (value === null || typeof value !== 'object') return
+    for (const [key, v] of Object.entries(value as RawPolicy)) {
+      if (Array.isArray(v) && key.startsWith('include')) {
+        const left = v.filter((x): x is string => typeof x === 'string' && omitted.has(x.toLowerCase()))
+        if (left.length > 0 && left.length === v.length) for (const x of left) out.add(x.toLowerCase())
+      }
+      walk(v)
+    }
+  }
+  walk(policy.conditions)
+  return out
+}
+
 /** Graph's own location words, which name no tenant object. */
 const LOCATION_KEYWORDS = new Set(['all', 'alltrusted'])
 
@@ -692,6 +716,18 @@ function dedupeCollections(value: unknown): unknown {
  */
 export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, goalId: string, policies: readonly CaPolicy[] = []): ResolvedPolicy {
   const { ids, unresolved, authorOnly, unsettled, decisions: packageDecisions, omitted } = substitutionsFor(referencesOf(policies), tokensOf(policies), strengthsOf(policies), tenant, goalId)
+  // "None needed here" is an answer about an exception or about part of who a
+  // policy reaches. Where the references left out are the whole of who or where
+  // this policy applies, it would not narrow the policy, it would empty the
+  // condition: a users condition with nobody included is not a policy, and a block
+  // whose only included location is gone blocks everywhere. That answer does not
+  // stand for this policy, so the reference is asked again and the policy waits.
+  for (const id of omissionsEmptyingATarget(policy, omitted)) {
+    omitted.delete(id)
+    unresolved.set(id, PREREQ_STEP_ID.sourceReferences)
+    const d = packageDecisions.get(id)
+    if (d) packageDecisions.set(id, { kind: d.kind, answer: 'pending' })
+  }
   // The references are the package's; the questions this policy raises are the
   // ones its own body names. A step lists, and waits on, only those.
   const named = stringsIn(policy)
