@@ -223,7 +223,7 @@
             ],
             "format": "markdown",
             "kind": "template",
-            "audience": "account-owner-or-manager",
+            "audience": "account-owner",
             "communicationTrigger": "during-needs-decision"
           },
           "text": "Subject: Confirm whether this account is still needed\n\nIAMAI identified {{account.current.displayName}} as an account that may no longer be in use. Before any change is made, please confirm whether this account is still required. If it is needed, tell us what it is used for. If it is no longer needed, confirm that its sign-in can be disabled. No account will be deleted as part of this step.\n"
@@ -6250,9 +6250,6 @@
             ],
             "aiInfo": [
               "ai.create"
-            ],
-            "email": [
-              "email.rollout"
             ]
           },
           "partnerTrustRequired": {
@@ -6608,7 +6605,6 @@
             ],
             "format": "markdown",
             "kind": "template",
-            "audience": "guest-sponsors-and-help-desk",
             "communicationTrigger": "before-report-only"
           },
           "text": "Subject: Guest MFA validation is starting\n\nWe are preparing guest and external-user MFA policies in Report-only first. External users may see different authentication behavior depending on their home tenant and identity type. No enforcement change is being made until representative guest access is validated.\n"
@@ -7524,9 +7520,6 @@
             ],
             "aiInfo": [
               "ai.create"
-            ],
-            "email": [
-              "email.rollout"
             ]
           },
           "partial": {
@@ -8008,7 +8001,6 @@
             ],
             "format": "markdown",
             "kind": "template",
-            "audience": "managers-and-help-desk",
             "communicationTrigger": "before-report-only"
           },
           "text": "Subject: MFA rollout entering report-only validation\n\nWe are preparing the tenant-wide MFA policy in Report-only first. No enforcement change is being made yet. Please make sure anyone who still needs help registering or proving an MFA method uses the established support path before enforcement.\n"
@@ -8757,6 +8749,30 @@
               ]
             },
             "mismatches": {
+              "context.unpublished-or-wrong": {
+                "select": {
+                  "equals": [
+                    "authContext.current.isAvailable",
+                    false
+                  ]
+                },
+                "requires": [
+                  "authContext.target.id",
+                  "authContext.target.displayName"
+                ],
+                "entra": [
+                  "entra.correct.context"
+                ],
+                "json": [
+                  "json.context.upsert"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "PrepareContext"
+                  }
+                ]
+              },
               "policy.users": {
                 "facts": [
                   "conditions.users"
@@ -19187,7 +19203,6 @@
             ],
             "format": "markdown",
             "kind": "template",
-            "audience": "administrators",
             "communicationTrigger": "before-correction"
           },
           "text": "Subject: Authentication strength change review\n\nWe are correcting the shared authentication strength used by Conditional Access. The change can affect every policy that references this object, so we are reviewing current usage first and will change only the pinned allowed methods.\n"
@@ -21975,9 +21990,6 @@
             ],
             "aiInfo": [
               "ai.apply"
-            ],
-            "email": [
-              "email.change"
             ]
           },
           "verificationRequired": {
@@ -22171,7 +22183,6 @@
             ],
             "format": "markdown",
             "kind": "template",
-            "audience": "partner-contact",
             "communicationTrigger": "during-apply-required"
           },
           "text": "Subject: Conditional Access partner-scope change\n\nWe are updating the resolved Conditional Access policy scope so approved service-provider delegated access continues without exempting named technicians. After the change, we will validate the delegated sign-in path and re-read the exact policies.\n"
@@ -22506,9 +22517,6 @@
             "powershell": [],
             "aiInfo": [
               "ai.decision"
-            ],
-            "email": [
-              "email.confirm"
             ]
           },
           "missing": {
@@ -23028,7 +23036,6 @@
             ],
             "format": "markdown",
             "kind": "template",
-            "audience": "client-contact",
             "communicationTrigger": "during-needs-decision"
           },
           "text": "Subject: Confirm shared-device accounts before Conditional Access changes\n\nPlease confirm which listed accounts are assigned to Teams Rooms, panels, shared phones, or other userless devices. IAMAI will not exempt an account from person policies from its name alone.\n"

@@ -510,7 +510,16 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
     if (!(BLOCK_CHANNELS as readonly string[]).includes(b.meta.channel)) add(at, `${id}: unsupported channel ${b.meta.channel} (not a channel the runtime renders)`)
     for (const used of bindingsUsed(b.text)) if (!declared.has(used)) add(at, `${id}: undeclared binding ${used}`)
     if (typeof b.meta.endpoint === 'string') {
-      for (const m of b.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) if (!declared.has(m[1])) add(at, `${id}: endpoint names undeclared binding ${m[1]}`)
+      // A request the author repeats once per value of a list (`repeatForBinding`)
+      // names its per-value variable in the endpoint. The runtime projects one
+      // request per block, so that is a request shape it does not implement — said
+      // as such, never as a binding the author forgot to declare.
+      const repeat = typeof b.meta.repeatForBinding === 'string' ? b.meta.repeatForBinding : null
+      for (const m of b.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) {
+        if (declared.has(m[1])) continue
+        if (repeat !== null) add(at, `${id}: a request repeated for each value of ${repeat} (repeatForBinding, per-value ${m[1]}) is not a request shape the runtime projects`)
+        else add(at, `${id}: endpoint names undeclared binding ${m[1]}`)
+      }
     }
     if (b.meta.format === 'json') {
       try {

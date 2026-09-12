@@ -102,6 +102,7 @@ if (args[0] === '--validate-library') {
     [/\.scenarios\[\d+\]\.states: ".*" is not a runtime state/, 'troubleshooting scenario names a stage the runtime never enters (that stage alone is dropped)', 'intentional validator rule'],
     [/\.scenarios/, 'troubleshooting scenario without states, title or list fields', 'later authoring'],
     [/Email declares/, 'Email without audience or trigger', 'later authoring'],
+    [/repeatForBinding/, 'request repeated once per list value (repeatForBinding)', 'intentional/unsupported package model'],
     [/undeclared binding/, 'undeclared binding', 'genuine remaining defect'],
     [/unsupported key/, 'unsupported projection key', 'intentional/unsupported package model'],
     [/missing block|is a \w+ block|does not declare state/, 'projection names a block that does not fit', 'genuine remaining defect'],

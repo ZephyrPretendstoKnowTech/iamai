@@ -95,7 +95,7 @@ Explain why this prerequisite is blocked without inventing a strength or tenant 
 Explain the source/resolution conflict. Do not choose among ambiguous tenant strengths or mutate a built-in strength.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.admin-change","channel":"email","states":["partial"],"format":"markdown","kind":"template","audience":"administrators"}
+@@IAMAI-BEGIN {"id":"email.admin-change","channel":"email","states":["partial"],"format":"markdown","kind":"template"}
 Subject: Authentication strength change review
 
 We are correcting the shared authentication strength used by Conditional Access. The change can affect every policy that references this object, so we are reviewing current usage first and will change only the pinned allowed methods.
