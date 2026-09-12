@@ -1,11 +1,11 @@
 {
   "lane": "Ready",
-  "substatus": "Correct",
+  "substatus": "Observing",
   "reason": "after: Create or Correct Emergency Access Accounts",
   "fact": "Report-only",
-  "badge": "Ready · Correct",
-  "bar": "Needs correction",
-  "rail": "Ready · Correct",
+  "badge": "Ready · Observing",
+  "bar": "Continue observation",
+  "rail": "Ready · Observing",
   "headings": [
     "Why",
     "Readiness",

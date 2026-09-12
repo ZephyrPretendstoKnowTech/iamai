@@ -22,6 +22,7 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { dimensionWords } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
 import type { PolicyHold, UnavailableReason } from '../../roadmap/operations.ts'
@@ -111,6 +112,7 @@ type ContractWords = {
   doneEscapeHatch: string
   doneEmergency: string
   doneOperation: string
+  doneManual: string
   doneVerify: string
   doneDeploy: string
   doneSetAside: string
@@ -405,6 +407,8 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string): stri
       return fillText(app.plan.pairUnmatched, { tenant })
     case 'no-operation':
       return fillText(app.plan.noOperation, { tenant })
+    case 'manual-correction':
+      return fillText(app.plan.manualCorrection, { tenant, fields: dimensionWords(step.state.observation?.unwritten ?? []) })
     case 'unsafe-emergency-access':
       return fillText(app.plan.emergencyUnsafe, { tenant })
     case 'unverified-emergency-exclusion':
@@ -441,6 +445,8 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       return CONTRACT.donePair
     case 'no-operation':
       return CONTRACT.doneOperation
+    case 'manual-correction':
+      return fillText(CONTRACT.doneManual, { fields: dimensionWords(step.state.observation?.unwritten ?? []) })
     case 'unsafe-emergency-access':
     case 'unverified-emergency-exclusion':
       return CONTRACT.doneEmergency

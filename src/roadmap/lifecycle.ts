@@ -29,9 +29,9 @@ import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
-import { historyReset } from './observation.ts'
+import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf } from './holds.ts'
-import { implementationOffered } from './operations.ts'
+import { implementationOffered, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 
@@ -290,6 +290,12 @@ export function nextMilestone(step: Step): Milestone {
   // is the next thing, and it has no date.
   const hold = holdOf(step)
   if (hold?.kind === 'decision') return { kind: 'decide', label: MILESTONE.decide, at: null, gatedBy: step.blockedReason }
+  // A deployed policy that is not what the plan asked for in a part IAMAI does not
+  // write (roadmap/operations.ts manual-correction): the next thing is a person's
+  // correction, named by where to look, and what has to clear is the observation.
+  if (hold?.kind === 'unavailable' && unavailableReason(step) === 'manual-correction') {
+    return { kind: 'resolve', label: fillText(MILESTONE.correctManual, { fields: dimensionWords(s.observation?.unwritten ?? []) }), at: null, gatedBy: s.observation?.note ?? null }
+  }
   // Held on its records, it is still being watched: until they are clear, with no date.
   if (hold?.kind === 'evidence') return { kind: 'observe', label: MILESTONE.observeRecords, at: null, gatedBy: null }
   // Held and not deployed, and Foundation A still hands over its create: a policy

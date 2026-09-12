@@ -8,15 +8,21 @@
 // (tracking.ts correctionOf). What a drift comes to is exactly one of three
 // outcomes (tracking.ts driftOutcomeOf).
 //
-// The audit items A1–A6 the segment names are not in the repository
-// (docs/product/actionability/BLOCKED.md); their tests are deferred with them.
-// The tests below are one per drift kind, and the invariants.
+// The audit's findings A1–A6 (docs/product/actionability/reference/audit-a1-a6.md)
+// are reproduced at the end of this file, each against the fixture the audit
+// names, asserting its correction direction (A4). Before them: one test per
+// drift kind, and the invariants.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { allFixtures } from './fixtures/index.ts'
+import { allFixtures, curatedFixture } from './fixtures/index.ts'
+import type { Fixture } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import { applyProgress } from './progress.ts'
 import { stepIdForGoal } from './generate.ts'
+import { holdOf } from './holds.ts'
+import { nextSafeAction } from './nextSafeAction.ts'
+import { unavailableReason } from './operations.ts'
+import { laneReadings } from '../ui/surfaces/planLanes.ts'
 import { artifactIdOf, semanticFieldsOf, semanticsOf } from './observation.ts'
 import type { StepObservation, StepObservationRecord } from './observation.ts'
 import { SOLE_MEMBER, driftOutcomeOf, matchMembers } from './tracking.ts'
@@ -222,4 +228,136 @@ test('drift:report-only-before-enforcement — an enforced policy moved back to 
   assert.equal(step.state.observation?.reviewRequired, false)
   assert.equal(step.state.lifecycle, 'report-only')
   assert.notEqual(outcome, 'review-required', 'it is corrected by enforcing it again, or held by whatever holds enforcement')
+})
+
+// ---- the audit's findings, each against the fixture it names (A4) ----
+//
+// "demo-week2 with references answered" is the curated week-two demo: the
+// same tenant with the baseline's unsettled source groups answered, so nothing
+// but the drift holds a step. Each case mutates one tenant policy the way the
+// audit's Evidence column describes and asserts its Correction direction
+// (docs/product/actionability/reference/audit-a1-a6.md).
+
+const ANSWERED = curatedFixture('demo-week2')
+const MFA_ALL = 'Core - Grant - MFA for all users'
+const LEGACY = 'Core - Block - Legacy authentication'
+const TOKEN = 'Core - Session - Token protection'
+
+/** The week-two demo with one policy edited, derived afresh with no record of an earlier scan — the audit's own probe. */
+function mutated(edit: (policy: Row, snapshot: Fixture['snapshot']) => void, name: string): ReturnType<typeof runFixture> {
+  const snapshot = structuredClone(ANSWERED.snapshot)
+  const row = rowsOf(snapshot).find((p) => p.displayName === name)
+  assert.ok(row, `the premise: the demo carries ${name}`)
+  edit(row, snapshot)
+  return runFixture({ ...ANSWERED, snapshot })
+}
+
+const stepOf = (run: ReturnType<typeof runFixture>, goal: string): Step => run.steps.find((s) => s.id === stepIdForGoal(goal))!
+const goalOf = (run: ReturnType<typeof runFixture>, goal: string) => run.coverage.results.find((r) => r.goal.id === goal)!
+const conditions = (row: Row): Row => row.conditions as Row
+const users = (row: Row): Row => conditions(row).users as Row
+
+test('A1: when the MFA-for-all policy drifts, the correction never edits another goal’s policy', () => {
+  const run = mutated((row) => {
+    row.grantControls = { operator: 'OR', builtInControls: ['compliantDevice'] }
+  }, MFA_ALL)
+  const step = stepOf(run, 'mfa-all-users')
+  assert.equal(goalOf(run, 'admins-phishing-resistant').verdict, 'inPlace', 'the premise: the admins goal is still delivered by its own policy')
+  const claimed = new Set(run.coverage.results.filter((r) => r.goal.id !== 'mfa-all-users').flatMap((r) => r.satisfaction?.policyIds ?? []))
+  let foreign = 0
+  for (const m of step.tracking?.members ?? []) {
+    const op = step.action.resolution?.policies.find((o) => o.memberKey === m.key) ?? step.action.resolution?.policies[0]
+    if (!op || op.mode !== 'update' || (op.policyId === m.policyId && !claimed.has(op.policyId))) continue
+    foreign += 1
+    // Only a policy the goal itself owns and no other goal claims is corrected; otherwise the step holds with the reason.
+    assert.equal(m.correction?.safe, false, JSON.stringify(m.correction))
+    assert.ok(m.correction && !m.correction.safe && m.correction.note.length > 0, 'the hold explains itself')
+    assert.equal(m.ready, false)
+  }
+  assert.equal(foreign, 1, 'the premise: the regeneration wrote its update against the admins policy')
+  assert.equal(driftOutcomeOf(step), 'review-required')
+  assert.equal(nextSafeAction(step).executable, false, 'nothing against another goal’s policy is handed over')
+})
+
+test('A2: a policy excluding a group the scan cannot resolve keeps its goal on the plan, held until the exclusion can be verified', () => {
+  const before = runFixture(ANSWERED).steps.map((s) => s.id)
+  const run = mutated((row) => {
+    users(row).excludeGroups = [...(users(row).excludeGroups as string[]), '11111111-2222-4333-8444-555555555555']
+  }, LEGACY)
+  assert.deepEqual(run.steps.map((s) => s.id).filter((id) => !before.includes(id)), [], 'no step appeared')
+  assert.deepEqual(before.filter((id) => !run.steps.some((s) => s.id === id)), [], 'no baseline goal was dropped')
+  const step = stepOf(run, 'block-legacy-auth')
+  assert.equal(goalOf(run, 'block-legacy-auth').status, 'unknown', 'the premise: coverage cannot settle the goal')
+  assert.notEqual(holdOf(step), null, 'the step is held, not dropped')
+  assert.ok(step.blockers.some((b) => b.kind === 'evidence' && b.unverified === true && /group/i.test(b.binding ?? '')), JSON.stringify(step.blockers))
+  assert.equal(laneReadings(run.steps).get(step.id)?.lane, 'On Hold')
+  assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'no duplicate policy is proposed')
+})
+
+for (const [what, edit] of [
+  ['client apps', (row: Row): void => { conditions(row).clientAppTypes = ['exchangeActiveSync'] }],
+  ['grant', (row: Row): void => { row.grantControls = { operator: 'OR', builtInControls: ['mfa'] } }],
+] as const) {
+  test(`A3: ${what} drift on the name-matched legacy-auth policy reads as drift to review or correct, never as a missing policy`, () => {
+    const run = mutated(edit, LEGACY)
+    const step = stepOf(run, 'block-legacy-auth')
+    const policy = rowsOf(ANSWERED.snapshot).find((p) => p.displayName === LEGACY)!
+    assert.ok(!(step.action.resolution?.policies ?? []).some((o) => o.mode === 'create'), 'no "(2)" duplicate is offered')
+    assert.equal(step.tracking?.policyId, policy.id, 'the step tracks the policy that carries its name')
+    assert.notEqual(step.status, 'done')
+    const outcome = driftOutcomeOf(step)
+    assert.ok(outcome === 'review-required' || outcome === 'correctable', String(outcome))
+  })
+}
+
+for (const [what, edit] of [
+  ['location', (row: Row): void => { conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] } }],
+  ['platform', (row: Row): void => { conditions(row).platforms = { includePlatforms: ['windows'], excludePlatforms: [] } }],
+] as const) {
+  test(`A4: ${what} drift on an enforced block policy is a stated manual correction, not an empty update held for a rebuild`, () => {
+    const run = mutated(edit, LEGACY)
+    const step = stepOf(run, 'block-legacy-auth')
+    assert.notEqual(unavailableReason(step), 'no-operation', 'the row no longer waits for a scan to rebuild the step')
+    const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
+    const submits = update !== undefined && Object.keys(update.body).length > 0
+    if (!submits) {
+      assert.equal(step.state.condition, 'review-required', 'a change the plan does not write is said plainly')
+      assert.match(step.state.observation?.note ?? '', new RegExp(what === 'location' ? 'locations' : 'platforms', 'i'))
+      assert.equal(step.tracking?.members[0].correction?.safe, false)
+    }
+  })
+}
+
+test('A5: a report-only policy whose conditions drifted is not offered for enforcement', () => {
+  const clean = stepOf(runFixture(ANSWERED), 'token-protection')
+  assert.equal(clean.state.lifecycle, 'ready-to-enforce', 'the premise: undrifted, the policy is ready to enforce')
+  const run = mutated((row) => {
+    conditions(row).locations = { includeLocations: ['All'], excludeLocations: ['AllTrusted'] }
+  }, TOKEN)
+  const step = stepOf(run, 'token-protection')
+  assert.notEqual(step.state.lifecycle, 'ready-to-enforce')
+  assert.equal(step.tracking?.members[0].ready, false)
+  assert.equal(nextSafeAction(step).enforceable, false)
+  assert.equal(step.state.condition, 'review-required', 'the conditions were compared before enforcement was offered')
+  assert.match(step.state.observation?.note ?? '', /locations/i)
+})
+
+test('A6: an ordinary person excluded from MFA-for-all is a coverage gap, as it is for the legacy-auth block', () => {
+  const member = ANSWERED.snapshot.users.find((u) => (u.userPrincipalName ?? '').startsWith('user10@'))!
+  assert.equal(member.userType, 'member')
+  for (const name of [MFA_ALL, LEGACY]) {
+    const goal = name === MFA_ALL ? 'mfa-all-users' : 'block-legacy-auth'
+    const run = mutated((row) => {
+      users(row).excludeUsers = [member.id]
+    }, name)
+    const result = goalOf(run, goal)
+    assert.notEqual(result.verdict, 'inPlace', `${goal}: an unauthorised exclusion left the goal in place`)
+    assert.ok(result.reasons.some((r) => r.kind === 'excluded' && !r.expected && r.userIds.includes(member.id)), JSON.stringify(result.reasons))
+    assert.equal(stepOf(run, goal).kind, 'adjust', 'the correction is offered on the policy')
+  }
+  // The audit's `user4` is one of the demo's two guests, and Guests MFA covers
+  // guests: excluding them from the all-users policy leaves the goal delivered.
+  const guest = ANSWERED.snapshot.users.find((u) => (u.userPrincipalName ?? '').startsWith('user4@'))!
+  assert.equal(guest.userType, 'guest')
+  assert.equal(goalOf(mutated((row) => { users(row).excludeUsers = [guest.id] }, MFA_ALL), 'mfa-all-users').verdict, 'inPlace')
 })

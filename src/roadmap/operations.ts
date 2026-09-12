@@ -1035,6 +1035,7 @@ export type UnavailableReason =
   | 'unmatched-pair'
   | 'baseline-conflict'
   | 'no-operation'
+  | 'manual-correction'
   | 'unsafe-emergency-access'
   | 'unverified-emergency-exclusion'
   | 'escape-hatch-unverified'
@@ -1197,6 +1198,11 @@ export function policyResult(step: PolicyStep): PolicyResult {
   }
   const declared = step.action.resolution?.policies ?? []
   const valid = validOperations(step.action)
+  // A deployed policy that is not what the plan asked for in a part IAMAI does
+  // not write (observation.ts unwrittenDifferences), with nothing left for the
+  // update to submit: the correction is a person's, and the step says so rather
+  // than waiting for a scan to rebuild it, which names no work.
+  if ((step.state?.observation?.unwritten.length ?? 0) > 0 && declared.some((o) => o.mode === 'update' && !isSubmittablePatch(o.body))) return { kind: 'unavailable', reason: 'manual-correction' }
   if (declared.length > 0 && valid.length === 0) return { kind: 'unavailable', reason: 'no-operation' }
   if (valid.length === 0) return step.status === 'done' ? { kind: 'preserved' } : { kind: 'unavailable', reason: 'no-operation' }
   if (step.status === 'done') return { kind: 'preserved' }

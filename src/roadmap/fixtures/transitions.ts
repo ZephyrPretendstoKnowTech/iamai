@@ -413,9 +413,10 @@ const BUILDERS: Builder[] = [
       // `groupPresence` answers `unknown` rather than `absent`, which is a
       // request that failed and not an object proved gone. Every goal whose
       // deployed policies name the group then has an unresolved population, so
-      // its coverage cannot be settled — and a goal with an unknown result
-      // produces no step at all (generate.ts). This is the scan that sees less
-      // of the tenant than the one before it.
+      // its coverage cannot be settled — and a goal with an unknown result keeps
+      // its step and holds it until the group can be read (generate.ts; A2 of
+      // the drift audit). This is the scan that sees less of the tenant than the
+      // one before it.
       const groups: GroupMembers = new Map(f.groups)
       groups.delete(chosen)
       return { fixture: { ...f, groups }, focus: { groupId: chosen } }

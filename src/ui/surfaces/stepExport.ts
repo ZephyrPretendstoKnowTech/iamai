@@ -9,6 +9,7 @@
 //
 // Pure: no DOM, no network. Runs in Node tests and in the browser.
 import type { ExportStep, Step } from '../../roadmap/types.ts'
+import { dimensionWords } from '../../roadmap/observation.ts'
 import { content } from '../../content/content.ts'
 import { contentStepFor, contentTitle } from '../../content/stepTitle.ts'
 import { fillText, listCountVars, whole } from '../../content/render.ts'
@@ -194,6 +195,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   const conflicted = reason === 'baseline-conflict'
   const conflictWords = baselineConflictWords(step)
   const noOperation = reason === 'no-operation'
+  const manual = reason === 'manual-correction'
   const emergencyUnsafe = reason === 'unsafe-emergency-access'
   const emergencyUnproven = reason === 'unverified-emergency-exclusion'
   const escapeHatch = reason === 'escape-hatch-unverified'
@@ -216,6 +218,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // whichever goal the active baseline hands that source.
   else if (conflicted && conflictWords !== null) lines.push(fillText(conflictWords, ex))
   else if (noOperation) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.noOperation), { tenant: String(ex.tenant ?? '') }))
+  else if (manual) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.manualCorrection), { tenant: String(ex.tenant ?? ''), fields: dimensionWords(step.state.observation?.unwritten ?? []) }))
   else if (emergencyUnsafe) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnsafe), { tenant: String(ex.tenant ?? '') }))
   else if (emergencyUnproven) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.emergencyUnproven), { tenant: String(ex.tenant ?? '') }))
   else if (escapeHatch) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.escapeHatchHeld), { tenant: String(ex.tenant ?? ''), steps: heldByTitle(step) }))

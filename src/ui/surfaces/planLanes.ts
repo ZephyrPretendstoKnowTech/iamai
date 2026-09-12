@@ -36,7 +36,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { isHeld } from '../../roadmap/holds.ts'
-import { unavailableReason } from '../../roadmap/operations.ts'
+import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { QUESTION_STEP, answerOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
@@ -108,7 +108,11 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   const waitsOn: ObservedEdge[] = []
   const conflict = step.state.condition === 'baseline-conflict'
   if (conflict) blockers.push({ kind: 'sourceConflict', id: step.state.conflictSource ?? 'baseline-conflict' })
-  const drift = !done && (step.state.condition === 'review-required' || (step.kind === 'adjust' && exists))
+  // Drift is a policy a person has to look at, or one the plan's own update
+  // corrects in something other than its state. An adjust step whose only
+  // operation turns a report-only policy on is not drifted: it is being watched.
+  const corrects = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && !submitsEnforcementOnly(o))
+  const drift = !done && (step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects))
   const kind = step.state.condition === 'needs-decision' ? 'decision' : policy ? 'policy' : (GRAPH.kinds.get(step.id) ?? 'object')
   const action = nextActionOf(kind, { exists, drift })
   // The plan's own waits (the legacy `prerequisite` hold), each in the engine's terms: a
@@ -126,6 +130,10 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
       if (!graphGates(step.id, b.stepId, on)) waitsOn.push({ step: b.stepId, action: on, milestone: 'complete' })
     }
     else if (b.kind === 'readiness' && b.binding) gates.push({ id: `evidence:readiness:${b.label}`, satisfied: false, minDays: null, reason: b.binding })
+    // A tenant fact this scan could not read — a group a policy names whose
+    // members nobody could list — holds the step; it is not a gate the policy
+    // earns by being watched (§8.4: a fact still to be established holds).
+    else if (b.kind === 'evidence' && b.unverified === true) blockers.push({ kind: 'fact', id: `fact:${b.label}` })
     else if (b.kind === 'evidence' && !conflict) gates.push({ id: `evidence:${b.label}`, satisfied: false, minDays: null, reason: b.binding ?? b.label })
   }
   if (policy && open && step.action.readinessGate && !gates.some((g) => g.id.startsWith('evidence:readiness:'))) {

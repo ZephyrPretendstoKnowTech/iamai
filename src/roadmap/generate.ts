@@ -562,6 +562,10 @@ export function buildCreateAction(
         body: patch,
         baseline: wholeBaseline ? patchOf(wholeBaseline, sections) : undefined,
         target: current ? withPatch(current, patch) : undefined,
+        // The whole policy as the plan writes it, so a scan can read the deployed
+        // object against every dimension the plan asked for and not only the
+        // ones this patch writes (roadmap/tracking.ts, observation.ts).
+        intent: whole.policy,
       })
     } else {
       operations.push({ sourceName: p.sourceName, memberKey, mode: 'create', policyId: null, body: whole.policy, baseline: wholeBaseline })
@@ -1209,7 +1213,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // ---- Goal steps ----
 
   for (const result of input.coverage.results) {
-    if (result.status === 'not-applicable' || result.status === 'licence-limited' || result.status === 'unknown') continue
+    if (result.status === 'not-applicable' || result.status === 'licence-limited') continue
     const goal = result.goal
     // A goal this baseline does not hold has no step: the catalogue keeps intent
     // only, and the plan renders the baseline (walk-51 item 9) — except the floor
@@ -1255,6 +1259,19 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     const templatePolicy = (): StepPolicyInput[] => [{ sourceName: goal.id, sourceKey: `template:${goal.id}`, resolved: resolveOne(resolveTemplate(impl.template as TemplateBody, templateValues).body as RawPolicy, []) }]
     const named = (policies: StepPolicyInput[], first: string): StepPolicyInput[] =>
       policies.map((p, i) => ({ ...p, displayName: i === 0 ? first : policyPairNames(first, p.sourceName, naming ?? null).b }))
+    /**
+     * The live tenant policy that is this goal's whatever its contents: one this
+     * plan tagged for the step, else one carrying the exact name the plan gives
+     * the goal's policy. Null where the tenant has neither, or only a disabled one.
+     */
+    const claimedPolicy = (): RawPolicy | null => {
+      const live = (p: RawPolicy | undefined): p is RawPolicy => p !== undefined && (p.state === 'enabled' || p.state === 'enabledForReportingButNotEnforced')
+      const all = (snapshot.config.caPolicies?.rows ?? []) as RawPolicy[]
+      const tagged = findTaggedPolicies(snapshot, planId, stepId).map((t) => all.find((p) => p.id === t.policyId)).find(live)
+      if (tagged) return tagged
+      const want = proposedPolicyName(goal, naming).trim().toLowerCase()
+      return all.find((p) => live(p) && String(p.displayName ?? '').trim().toLowerCase() === want) ?? null
+    }
 
     const whoKey = impl.expectedWho.kind
     // The service accounts are the mapping's, and the one population every other
@@ -1341,6 +1358,40 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         json: null,
         portalSteps: [],
       }
+    } else if (result.status === 'unknown') {
+      // Coverage could not settle the goal: a live policy that stands for it
+      // names a group this scan could not read, so who it reaches — and whether
+      // the goal is delivered — is not known. The step stays on the plan and
+      // holds until a scan can read the group (A2 of the drift audit): a goal
+      // the plan cannot assess is not a goal the plan may drop, and nothing is
+      // written against a policy whose reach is unread.
+      kind = 'adjust'
+      action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [] }
+      const known = input.groupMembers ?? new Map()
+      const unread = new Set<string>()
+      for (const c of result.candidates) {
+        if (c.state !== 'enabled' && c.state !== 'enabledForReportingButNotEnforced') continue
+        const row = (snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === c.policyId) as RawPolicy | undefined
+        const who = ((row?.conditions as RawPolicy | undefined)?.users ?? {}) as { includeGroups?: unknown; excludeGroups?: unknown }
+        for (const g of [...(Array.isArray(who.includeGroups) ? who.includeGroups : []), ...(Array.isArray(who.excludeGroups) ? who.excludeGroups : [])]) {
+          if (typeof g === 'string' && !known.has(g)) unread.add(g)
+        }
+      }
+      const groups = [...unread].map((g) => g.slice(0, 8))
+      blockers.push({ kind: 'evidence', label: 'unverified-exclusion', binding: BLOCKED_REASON.unverifiedExclusion(groups.length > 0 ? groups.join(', ') : '?'), unverified: true })
+      state = { ...state, condition: conditionFor(blockers) }
+    } else if (result.status === 'absent' && claimedPolicy() !== null && source && stepPolicies().length === 1) {
+      // A live tenant policy carrying this step's plan tag, or the very name the
+      // plan gives this goal's policy, is this goal's policy however far it has
+      // drifted from the goal's signature (A3 of the drift audit). The step
+      // corrects it — or says a person has to (roadmap/tracking.ts) — and never
+      // proposes "(2)" beside it.
+      kind = 'adjust'
+      const claimed = claimedPolicy() as RawPolicy
+      existingRaw = claimed
+      const one = named(stepPolicies(), String(claimed.displayName ?? proposedPolicyName(goal, naming)))
+      one[0] = { ...one[0], target: { policyId: String(claimed.id), state: String(claimed.state ?? 'enabled'), policy: claimed } }
+      action = changesFor(buildCreateAction(one, mapping, planId, stepId, goal.id, { sections: new Set() }), new Set(), claimed)
     } else if (result.status === 'absent') {
       kind = 'create'
       if (source) {

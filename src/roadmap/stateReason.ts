@@ -106,6 +106,8 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
           return BLOCKED_REASON.pairUnmatched
         case 'no-operation':
           return BLOCKED_REASON.noOperation
+        case 'manual-correction':
+          return BLOCKED_REASON.manualCorrection
         case 'unsafe-emergency-access':
         case 'unverified-emergency-exclusion':
           return after(BREAK_GLASS_STEP_ID) ?? BLOCKED_REASON.emergency

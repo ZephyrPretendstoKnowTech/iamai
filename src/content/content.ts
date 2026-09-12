@@ -111,7 +111,7 @@ export type EngineWords = {
   /** The contradiction a reviewed baseline source carries, one entry per reviewed source (roadmap/baselineConflict.ts). */
   baselineConflict: Record<string, string>
   /** What this scan saw against what the last one saw (roadmap/observation.ts). */
-  observation: Record<string, string> & { states: { absent: string; disabled: string; reportOnly: string; enforced: string; unknown: string } }
+  observation: Record<string, string> & { states: { absent: string; disabled: string; reportOnly: string; enforced: string; unknown: string }; dimensions: Record<string, string> }
   /** Which half of a safety choice's detection came up short (mapping/safetyChoice.ts). */
   detectionGap: { groups: string; policies: string }
   /** The value a readiness threshold is stated against where the scan measured none (roadmap/generate.ts). */

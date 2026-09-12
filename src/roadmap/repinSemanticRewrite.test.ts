@@ -20,6 +20,7 @@
 // submits Modern MFA + TAP, and reached ready to enforce on a window earned
 // against the weaker one.
 import { test } from 'node:test'
+import { nextSafeAction } from './nextSafeAction.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { fixture } from './fixtures/index.ts'
@@ -167,5 +168,16 @@ test('a tenant still on the built-in strength does not inherit that window', () 
   const step = deployed(BUILTIN)
   assert.notEqual(step.state?.lifecycle, 'ready-to-enforce', 'the window was earned against a requirement the baseline no longer makes')
   assert.equal(step.state?.lifecycle, 'report-only')
-  assert.notEqual(step.action.resolution?.policies?.[0]?.mode, 'update', 'and the tenant is not told the policy it has is the policy the plan asked for')
+  // The policy carries the name the plan gives this goal's policy, so it is the
+  // goal's policy however far it has drifted (A3 of the drift audit): the step
+  // reads it against the whole plan intent, names the grant as the part a person
+  // corrects, and hands nothing over — the tenant is not told the policy it has
+  // is the policy the plan asked for.
+  assert.equal(step.action.resolution?.policies?.[0]?.mode, 'update', 'the goal\'s own policy is corrected, never re-created beside itself')
+  // On this baseline the policy still names source groups nobody has mapped, so
+  // the step holds on those and the plan does not read the object against an
+  // intent it has not resolved; the review that names the grant is the curated
+  // case (tracking.drift.test.ts A3).
+  assert.equal(step.tracking?.members[0]?.ready, false)
+  assert.equal(nextSafeAction(step).executable, false, 'nothing is handed over against a policy that is not the plan\'s')
 })

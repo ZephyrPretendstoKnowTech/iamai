@@ -18,13 +18,14 @@
 // production authority a question rather than by naming an object. The last test
 // asserts that by reading this file's and the corpus's own bytes.
 import { test } from 'node:test'
+import { holdOf } from './roadmap/holds.ts'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { TRANSITION_KEYS, adminsIn, advance, ctxFor, rescan, rowIn, stepIn, transition, transitions, watchedStep } from './roadmap/fixtures/transitions.ts'
 import type { Scan, Transition, TransitionKey } from './roadmap/fixtures/transitions.ts'
 import { curatedFixture } from './roadmap/fixtures/index.ts'
 import { runFixture } from './roadmap/fixtures/run.ts'
-import { observationsOf } from './roadmap/tracking.ts'
+import { SOLE_MEMBER, observationsOf } from './roadmap/tracking.ts'
 import { historyReset } from './roadmap/observation.ts'
 import { exclusionsGroupChoice, awaitsOperator, exclusionsGroupIdToVerify } from './mapping/safetyChoice.ts'
 import { emergencySelection } from './mapping/emergencyChoice.ts'
@@ -107,8 +108,9 @@ test('043.0: the corpus builds every transition it names, and both scans of each
   // The corpus has to contain a case where the second scan sees LESS of the
   // tenant than the first, because that is the case a record can lose history
   // to; and one where a deployed object is replaced, because that is the case a
-  // fingerprint cannot see.
-  assert.ok(transition('coverageUnreadable').b.steps.length < transition('coverageUnreadable').a.steps.length, 'the corpus has no scan that could assess less than the one before it')
+  // fingerprint cannot see. A goal the scan cannot assess keeps its step and
+  // holds it (A2 of the drift audit), so "less" is a goal coverage cannot settle.
+  assert.ok(transition('coverageUnreadable').b.run.coverage.results.some((r) => r.status === 'unknown'), 'the corpus has no scan that could assess less than the one before it')
   assert.equal(watchedPair(transition('policyReplaced'))?.b.state.observation?.changed, 'artifact', 'the corpus has no replaced deployed object')
 })
 
@@ -467,10 +469,13 @@ test('043.13: a scan that could assess less of the tenant loses no rollout histo
   const watched = watchedStep(t.a.run)!
   const first = t.a.observations[watched.id]
   assert.ok(first, 'scan A recorded nothing about the step it was watching')
-  assert.equal(stepIn(t.b, watched.id), null, 'the case did not make the step unassessable: it is testing something else')
-  // The step is not in this plan, so this scan saw nothing of it — and saw
-  // nothing is not the same as saw it gone.
-  assert.deepEqual(t.b.observations[watched.id], first, 'a scan that could not assess a goal deleted the history of the policy already deployed for it')
+  const blind = stepIn(t.b, watched.id)
+  assert.ok(blind, 'a goal the scan could not assess was dropped from the plan')
+  assert.notEqual(holdOf(blind), null, 'the case did not make the step unassessable: it is testing something else')
+  // The step is held, not gone: this scan still saw the deployed policy, so the
+  // record carries on — and saw less is not the same as saw it gone.
+  assert.equal(blind.state.observation?.changed, 'none', 'a scan that could not assess a goal called the policy it was still watching changed')
+  assert.equal(t.b.observations[watched.id]?.members[SOLE_MEMBER]?.firstSeenAt, first.members[SOLE_MEMBER]?.firstSeenAt, 'a scan that could not assess a goal restarted the window of the policy already deployed for it')
 
   // The third scan: the read succeeds again, and the window is the window it was.
   const back = rescan(t.b, advance(t.a.fixture, t.days * 2))
