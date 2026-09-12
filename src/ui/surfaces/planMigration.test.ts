@@ -122,7 +122,8 @@ test('the row and the body it opens read one title resolver, and it answers for 
   // the content entry directly, which is the same answer for a step that has one
   // and no answer at all for the two families that do not.
   assert.match(readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'), /title=\{contentTitle\(step\)\}/, 'the row reads contentTitle')
-  const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+  const body = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
   assert.match(body, /const title = contentTitle\(step\)/, 'the body reads contentTitle')
   assert.doesNotMatch(body, /step-title">\{cs\.title\}/, 'the body reads the content entry directly')
 })

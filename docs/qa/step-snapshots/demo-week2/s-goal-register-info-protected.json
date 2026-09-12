@@ -1,0 +1,28 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": "when MFA readiness reaches 90% (now 23%)",
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "23%"
+    }
+  ],
+  "channels": [
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
+  "when": "Aug 31, 2026"
+}

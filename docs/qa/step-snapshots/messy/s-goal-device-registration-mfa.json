@@ -1,0 +1,48 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Create or Correct Exclusions Group",
+  "fact": null,
+  "badge": "Up Next · After Create or Correct Exclusions Group",
+  "bar": "After Create or Correct Exclusions Group",
+  "rail": "Up Next · After Create or Correct Exclusions Group",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "4%"
+    },
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Exclusions Group"
+    },
+    {
+      "label": "Exclusions",
+      "state": "Blocked"
+    },
+    {
+      "label": "Authentication strength",
+      "state": "Blocked"
+    },
+    {
+      "label": "Enrollment workflows",
+      "state": "Unknown"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info"
+  ],
+  "when": "—"
+}

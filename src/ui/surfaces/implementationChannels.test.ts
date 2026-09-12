@@ -21,7 +21,8 @@ import { implementationPackageFor, packageBindings, packageRuntime, packageSourc
 import { projectSafely } from '../../content/implementation/project.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8')
-const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx')
+// The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')
 const CONTENT = JSON.parse(read('docs/design/content.json')) as Record<string, unknown>
 const W = CONTRACT.implementation
 

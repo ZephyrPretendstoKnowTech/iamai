@@ -1,0 +1,28 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": null,
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Check",
+      "state": "Remove Jamie Wilson, Riley Garcia, Sasha Chen, Taylor Kim, Alex Nguyen, Avery Haddad, Kai Taylor, Kai Garcia, Avery Chen, Priya Patel, Taylor Nair, Taylor Garcia, Riley Morgan, Riley Garcia, Jamie Garcia, Avery Singh, Jamie Nguyen, Taylor Kim, Rowan Brown, Kai Walker, Noor Nguyen, Noor Ivanova, Jamie Brown, Kai Patel, Casey Lee, Casey Taylor, Casey Morgan, Kai Morgan, Avery Taylor, Avery Okafor, Alex Brown, Avery Walker, Casey Morgan, Noor Lee, Drew Brown, Casey Haddad, Jamie Wilson, Taylor Ivanova, Riley Haddad, Kai Brown, Sam Nair, Kai Haddad, Jamie Ivanova, Morgan Nair, Priya Brown, Quinn Brown, Quinn Okafor, Taylor Garcia, Drew Nguyen, Quinn Haddad, Alex Kim, Riley Walker, Avery Brown, Jamie Haddad, Priya Nguyen, Drew Taylor, Jamie Walker, Priya Brown, Sasha Chen, Drew Ivanova, Avery Ivanova, Morgan Morgan, Riley Ivanova, Taylor Haddad, Quinn Ivanova, Taylor Singh, Sasha Walker, Jamie Nair, Jordan Wilson, Sam Okafor, Morgan Wilson, Casey Singh, Sam Nair, Morgan Chen, Jamie Haddad, Jordan Nguyen, Priya Lee, Avery Singh, Avery Lee, Kai Chen, Sam Morgan, Kai Patel, Alex Patel, Avery Taylor, Morgan Nair, Priya Nair, Avery Chen, Drew Walker, Priya Ivanova, Quinn Kim, Quinn Okafor, Alex Garcia, Quinn Garcia, Morgan Brown, Riley Chen, Jamie Chen, Taylor Chen, Alex Patel, Alex Chen, Priya Taylor, Rowan Okafor, Rowan Garcia, Jamie Taylor, Riley Haddad, Riley Nguyen, Riley Taylor, Alex Morgan, Alex Kim, Drew Brown, Jordan Kim, Riley Nguyen, Avery Wilson, Casey Ivanova, Sasha Brown: only the emergency accounts belong here, and anyone else in this group is outside every policy it is excluded from."
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "AI Info"
+  ],
+  "when": "Aug 31, 2026"
+}

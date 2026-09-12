@@ -1,0 +1,24 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": "after: Create or Correct Emergency Access Accounts",
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [],
+  "when": "Aug 31, 2026"
+}

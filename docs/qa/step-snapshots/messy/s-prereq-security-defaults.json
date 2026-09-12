@@ -1,0 +1,23 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": null,
+  "fact": null,
+  "badge": "Up Next · After Require Phishing-Resistant MFA for Admins",
+  "bar": "After Require Phishing-Resistant MFA for Admins",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Require Phishing-Resistant MFA for Admins"
+    }
+  ],
+  "channels": [],
+  "when": "Aug 31, 2026"
+}

@@ -1,0 +1,17 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": null,
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Done when"
+  ],
+  "tiles": [],
+  "channels": [],
+  "when": "Aug 31, 2026"
+}

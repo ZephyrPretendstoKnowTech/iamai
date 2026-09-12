@@ -1,0 +1,33 @@
+{
+  "lane": "Ready",
+  "substatus": "Create",
+  "reason": "when admin readiness reaches 100% (now not measured)",
+  "fact": null,
+  "badge": "Ready · Create",
+  "bar": "Ready now",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Threshold",
+      "state": "not measured"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
+  "when": "Aug 31, 2026"
+}

@@ -1,0 +1,28 @@
+{
+  "lane": "On Hold",
+  "substatus": null,
+  "reason": "the baseline defines this policy two ways",
+  "fact": null,
+  "badge": "On Hold · Baseline conflict",
+  "bar": "Baseline conflict",
+  "rail": "On Hold · Baseline conflict",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Do not deploy this policy from the current baseline",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Baseline definition",
+      "state": "Conflict unresolved"
+    },
+    {
+      "label": "Affected people",
+      "state": "Not established"
+    }
+  ],
+  "channels": [],
+  "when": "—"
+}

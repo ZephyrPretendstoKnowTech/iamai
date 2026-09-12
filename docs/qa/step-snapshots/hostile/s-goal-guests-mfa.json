@@ -1,0 +1,19 @@
+{
+  "lane": "Completed",
+  "substatus": null,
+  "reason": "Satisfied by Core - Grant - MFA for all users — no change needed",
+  "fact": "Enforced",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [],
+  "channels": [],
+  "when": "—"
+}

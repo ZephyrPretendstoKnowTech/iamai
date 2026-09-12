@@ -49,7 +49,8 @@ const PACK = 'docs/design/approved/anatomy/plan-step-v1.html'
 const SECTIONS = read('src/ui/surfaces/StepSections.tsx')
 const PLAN = read('src/ui/surfaces/Plan.tsx')
 const CSS = read('src/ui/app.css')
-const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx')
+// The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+const CONTENT_STEP = read('src/ui/surfaces/ContentStep.tsx') + read('src/ui/surfaces/stepBody.ts')
 const CLEANUP_STEP = read('src/ui/surfaces/CleanupStep.tsx')
 const SHELL = read('src/ui/shell/AppShell.tsx')
 const CONTRACT_SRC = read('src/ui/surfaces/stepContract.ts')

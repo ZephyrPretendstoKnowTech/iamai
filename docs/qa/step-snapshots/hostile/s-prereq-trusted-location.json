@@ -1,0 +1,18 @@
+{
+  "lane": "Completed",
+  "substatus": null,
+  "reason": null,
+  "fact": null,
+  "badge": "Completed",
+  "bar": "In place",
+  "rail": "Completed",
+  "headings": [
+    "Why",
+    "Readiness",
+    "What to do",
+    "Done when"
+  ],
+  "tiles": [],
+  "channels": [],
+  "when": "—"
+}

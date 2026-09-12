@@ -1,0 +1,32 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Create or Correct Emergency Access Accounts",
+  "fact": null,
+  "badge": "Up Next · After Decide How Devices Are Managed",
+  "bar": "After Decide How Devices Are Managed",
+  "rail": "Aug 31, 2026",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Decide How Devices Are Managed"
+    },
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Emergency Access Accounts"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info"
+  ],
+  "when": "Aug 31, 2026"
+}

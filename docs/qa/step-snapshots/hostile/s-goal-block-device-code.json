@@ -1,0 +1,18 @@
+{
+  "lane": "Completed",
+  "substatus": null,
+  "reason": "Satisfied by Core - Block - Device code flow — no change needed",
+  "fact": "Enforced",
+  "badge": "Completed",
+  "bar": "Enforced",
+  "rail": "Completed",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [],
+  "channels": [],
+  "when": "—"
+}

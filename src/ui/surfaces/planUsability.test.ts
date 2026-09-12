@@ -199,7 +199,8 @@ test('the Plan header is four progress tiles and a how-to link, not a generated 
 
 // ------------------------------------------------------------ the opened step
 
-const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+// The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
+const CONTENT_STEP = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
 
 function opened(name: 'demo' | 'small', id: string, move?: Parameters<typeof pilotStepAt>[1]) {
   const f: Fixture = fixture(name)
