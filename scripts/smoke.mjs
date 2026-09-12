@@ -1000,7 +1000,12 @@ try {
   await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
   // The board draws one lane at a time and keeps the lane the last opened step
   // put it on (S5 TabFollowsOpenStep), so both readings are taken on the same lane.
+  // Both toggles pressed for both readings: the skip above pressed Show
+  // deferred, and a loaded plan starts with neither pressed.
+  const revealAll = () => evaluate(`document.querySelectorAll('main.page .plan-controls .focus').forEach((b) => { if (/Show (completed|deferred)/.test(b.textContent || '') && b.getAttribute('aria-pressed') !== 'true') b.click() })`)
   await showLane(LANES[0])
+  await revealAll()
+  await sleep(150)
   const planTextBefore = await mainText()
   await demoGo('export')
   await waitFor(`document.querySelectorAll('main.page .export-card').length >= 6`)
@@ -1025,6 +1030,8 @@ try {
   await sleep(500)
   const recordAfter = await planRecord()
   await showLane(LANES[0])
+  await revealAll()
+  await sleep(150)
   const planTextAfter = await mainText()
   const firstDiff = (a, b) => { const i = [...a].findIndex((ch, k) => ch !== b[k]); return i < 0 ? '' : `at ${i}: "${a.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}" vs "${b.slice(Math.max(0, i - 40), i + 60).replace(/\s+/g, ' ')}"` }
   check('Demo: the loaded plan re-renders with the same decisions, start date and skips', recordAfter === recordBefore, recordAfter === recordBefore ? '' : firstDiff(String(recordBefore), String(recordAfter)))

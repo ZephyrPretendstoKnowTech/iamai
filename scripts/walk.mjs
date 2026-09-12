@@ -1144,12 +1144,16 @@ async function walkFixture(fx) {
         // The press does not survive the navigation above, and nor does the tab.
         await revealCompleted()
         await showLane(rowLane[i])
-        const rowThere = await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${rowLocal[i]}`)
+        // The row by its title first, its recorded index second: a row marked done
+        // earlier in this loop (the drill's Done, E3) left its lane for the
+        // Completed group, and every index after it moved up one.
+        const byTitle = `[...document.querySelectorAll('main.page .plan-row')].find((e) => ((e.querySelector('.step-title') || {}).textContent || '').trim() === ${JSON.stringify(title)})`
+        const rowThere = await waitFor(`${byTitle} !== undefined || document.querySelectorAll('main.page .plan-row').length > ${rowLocal[i]}`)
         if (!rowThere) {
           add('P0', `${slabel}: the row is not on the Plan`)
           continue
         }
-        await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; r.scrollIntoView({ block: 'center' }); r.click() })()`)
+        await evaluate(`(() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; r.scrollIntoView({ block: 'center' }); r.click() })()`)
         const opened = await waitFor(`document.querySelector('main.page .step-body') !== null`, 4000)
         if (!opened) {
           add('P0', `${slabel}: the row does not open`)
