@@ -24,6 +24,8 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 const WORDS = (app.plan as unknown as { stepContract: { stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string> } }).stepContract.stateWords
 /** The condition's own words, which the badge beside the stage uses (pages.app.plan.stepContract.condition). */
 const CONDITION = (app.plan as unknown as { stepContract: { condition: Record<string, string> } }).stepContract.condition
+/** The lifecycle stages' own words, for a held row that says its stage beside the condition (pages.app.plan.stepContract.lifecycle). */
+const LIFECYCLE = (app.plan as unknown as { stepContract: { lifecycle: Record<string, string> } }).stepContract.lifecycle
 
 /**
  * Where a step stands, as one kind:
@@ -99,8 +101,15 @@ export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
     withStage,
   })
   // A policy the tenant already enforces that cannot be brought up to the plan yet.
-  const waiting = (): PlanState =>
-    step.kind === 'adjust' && step.state.lifecycle === 'enforced' ? make('correction', WORDS.needsCorrection, stop ? 'stop' : 'wait') : make('blocked', 'Blocked', stop ? 'stop' : 'wait')
+  const waiting = (): PlanState => {
+    // An enforced policy a person has to look at (roadmap/lifecycle.ts
+    // heldForReview; tracking withdrew its delivery claim) says its stage and the
+    // condition, as the report-only row below does: "Enforced · Review required",
+    // never "Blocked" over a policy that is on, and never In place over one
+    // nobody has vouched for.
+    if (c === 'review-required' && step.state.lifecycle === 'enforced') return make('correction', `${LIFECYCLE.enforced} · ${CONDITION[c]}`, stop ? 'stop' : 'wait', true)
+    return step.kind === 'adjust' && step.state.lifecycle === 'enforced' ? make('correction', WORDS.needsCorrection, stop ? 'stop' : 'wait') : make('blocked', 'Blocked', stop ? 'stop' : 'wait')
+  }
   switch (step.status) {
     case 'done':
       if (step.emergency && step.emergency.deferredAt && step.emergency.hardening > 0) return make('deferred', WORDS.minimumInPlace, 'ok')
@@ -125,7 +134,8 @@ export function planStateOf(step: PlanStateFacts, held: boolean): PlanState {
       // is healthy and something else holds it. The kind stays: the policy is being watched.
       return held ? make('reportOnly', `Report-only · ${c === 'healthy' ? 'Blocked' : CONDITION[c]}`, stop ? 'stop' : 'wait', true) : make('reportOnly', 'Report-only', 'wait')
     case 'ready-to-enforce':
-      return make('readyToEnforce', 'Ready to enforce', 'ok')
+      // Held for review, the row says so beside the stage, as the report-only row does.
+      return held && c === 'review-required' ? make('readyToEnforce', `${LIFECYCLE['ready-to-enforce']} · ${CONDITION[c]}`, 'wait', true) : make('readyToEnforce', 'Ready to enforce', 'ok')
   }
 }
 

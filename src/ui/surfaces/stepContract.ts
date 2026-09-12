@@ -581,11 +581,19 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
     else if (m.decision) out.push({ key: 'mapping', text: CONTRACT.fixMapping })
   }
   const threshold = thresholdBinding(step)
+  // Readiness gates enforcement, not creation (owner, 2026-09-11). While the
+  // step's next action is the report-only create the plan dates (the one
+  // scheduling result, roadmap/stepSchedule.ts createsWhileGated), every
+  // readiness wait is the enforcement's and none of it is fixed before
+  // continuing: listing "when 1 trusted location exist (now 0)" under Fix on a
+  // step whose What to do says to create the policy today claimed the creation
+  // was blocked when only the enforcement is.
+  const creating = scheduleOf(step).transition === 'createReportOnly'
   for (const b of step.blockers) {
     // The threshold this step waits on — its own gate, or a percentage stated in
     // the shape the row's date column reads (derive/finish.ts heldByReadiness) —
     // is a wait, not a fix. Everything else a readiness blocker names is work.
-    if (b.kind === 'readiness' && (b.binding === threshold || (threshold === null && typeof b.binding === 'string' && /readiness reaches/.test(b.binding)))) continue
+    if (b.kind === 'readiness' && (creating || b.binding === threshold || (threshold === null && typeof b.binding === 'string' && /readiness reaches/.test(b.binding)))) continue
     if (b.kind === 'step') {
       const title = stepById[b.stepId]?.title ?? b.stepId
       out.push({ key: `step:${b.stepId}`, text: fillText(CONTRACT.fixStep, { step: title }) })

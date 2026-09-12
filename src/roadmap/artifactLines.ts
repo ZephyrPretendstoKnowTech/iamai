@@ -23,8 +23,6 @@ type Headings = { why: string; who: string; whatToDo: string; dates: string; don
 const SC = (content.pages.app as unknown as { plan: { stepContract: { headings: Headings; fixHeading: string } } }).plan.stepContract
 const HEAD = SC.headings
 
-/** The separator between two facts on one line, as every other surface joins them. */
-const DOT = ' · '
 
 /** `Label: a | b`, or nothing where the step has nothing under that label. */
 function section(label: string, items: readonly string[]): string | null {
@@ -33,15 +31,15 @@ function section(label: string, items: readonly string[]): string | null {
 }
 
 /**
- * Where the step is, in the two words the Plan's own header carries: the
- * lifecycle stage and the condition, joined only where both have something to
- * say. A baseline conflict has no stage left to be at, and "· Baseline conflict"
- * with nothing in front of it is the empty-value shape the walk reads as a
- * missing fact.
+ * Where the step is, in the words the opened step's badge carries (the export
+ * view's `state`, ui/surfaces/planState.ts badgeOf). Nothing is joined here: the
+ * badge already says the stage beside the state's own word where the two are
+ * different facts, and the word alone where there is no stage, so a row reading
+ * Needs attention never leaves as "Healthy" and a baseline conflict never leaves
+ * as "· Baseline conflict" with nothing in front of it.
  */
-export function stateLine(v: Pick<ExportStep, 'stage' | 'condition'>): string | null {
-  const bits = [v.stage, v.condition].filter((x) => typeof x === 'string' && x.trim().length > 0)
-  return bits.length === 0 ? null : bits.join(DOT)
+export function stateLine(v: Pick<ExportStep, 'state'>): string | null {
+  return typeof v.state === 'string' && v.state.trim().length > 0 ? v.state : null
 }
 
 /**

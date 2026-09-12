@@ -28,7 +28,7 @@ import { observationsOf } from './roadmap/tracking.ts'
 import { historyReset } from './roadmap/observation.ts'
 import { exclusionsGroupChoice, awaitsOperator, exclusionsGroupIdToVerify } from './mapping/safetyChoice.ts'
 import { emergencySelection } from './mapping/emergencyChoice.ts'
-import { stepContract } from './ui/surfaces/stepContract.ts'
+import { badgeLabel, stepContract } from './ui/surfaces/stepContract.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
 import { statusOf } from './ui/surfaces/statusWord.ts'
 import { breakGlassFindings } from './validation/report.ts'
@@ -437,15 +437,14 @@ test('043.12: the export view is the current scan’s, never the last one’s', 
       const contract = stepContract(s, ctxFor(t.b, s))
       const view = stepExportView(s, ctxFor(t.b, s))
       assert.equal(view.status, contract.state.word, `${t.key}/${s.id}: the export view and the opened step give different status words`)
-      assert.equal(view.stage, contract.state.stage, `${t.key}/${s.id}: the export view and the opened step give different stages`)
-      assert.equal(view.condition, contract.state.conditionLabel, `${t.key}/${s.id}: the export view and the opened step give different conditions`)
+      assert.equal(view.state, badgeLabel(contract), `${t.key}/${s.id}: the export view and the opened step give different states`)
       const was = stepIn(t.a, s.id)
       if (!was) continue
       const before = stepExportView(was, ctxFor(t.a, was))
       // Where the step's semantics moved, the export moved with them; where they
       // did not, it did not invent a difference.
       if (`${s.state.lifecycle}/${s.state.condition}` !== `${was.state.lifecycle}/${was.state.condition}`) {
-        assert.notEqual(`${view.stage}/${view.condition}`, `${before.stage}/${before.condition}`, `${t.key}/${s.id}: the step moved and the export still speaks for the scan before it`)
+        assert.notEqual(view.state, before.state, `${t.key}/${s.id}: the step moved and the export still speaks for the scan before it`)
         differed++
       }
     }

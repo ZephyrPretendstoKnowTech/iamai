@@ -19,17 +19,36 @@ function escape(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
 }
 
-/** Fold lines at 75 octets as RFC 5545 asks. */
-function fold(line: string): string {
+const utf8 = new TextEncoder()
+
+/**
+ * Fold lines at 75 octets as RFC 5545 asks. The limit is octets, not
+ * characters: a title with " · " or an accented name is longer in UTF-8 than in
+ * code units, and a fold counted in code units could exceed the limit or split a
+ * multi-byte character across the CRLF. Each line holds at most 73 octets of
+ * content (a continuation line's leading space is the 74th), and a character is
+ * never split.
+ */
+export function foldIcsLine(line: string): string {
   const out: string[] = []
-  let rest = line
-  while (rest.length > 73) {
-    out.push(rest.slice(0, 73))
-    rest = ' ' + rest.slice(73)
+  let current = ''
+  let octets = 0
+  for (const ch of line) {
+    const n = utf8.encode(ch).length
+    if (octets + n > 73) {
+      out.push(current)
+      current = ' ' + ch
+      octets = 1 + n
+    } else {
+      current += ch
+      octets += n
+    }
   }
-  out.push(rest)
+  out.push(current)
   return out.join('\r\n')
 }
+
+const fold = foldIcsLine
 
 export function buildIcs(steps: Step[], tenantName: string, planId: string, view: StepView, cleanup: CleanupExport[] = []): string {
   const lines: string[] = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IAMAI//Conditional Access rollout plan//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', `X-WR-CALNAME:${escape(`${tenantName} Conditional Access rollout`)}`]

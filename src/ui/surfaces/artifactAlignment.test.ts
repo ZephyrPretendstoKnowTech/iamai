@@ -21,7 +21,7 @@ import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepExportView } from './stepExport.ts'
-import { NO_POLICY_REASONS, stepContract } from './stepContract.ts'
+import { NO_POLICY_REASONS, badgeLabel, stepContract } from './stepContract.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
 import { cleanupText, groundingBundle, promptPack, promptPackMarkdown, stepContext } from '../../roadmap/prompts.ts'
@@ -88,9 +88,8 @@ test('013.A: every artifact reads one step, and that step is the frozen Step Con
       const v = c.view(s)
       const k = stepContract(s, c.ctx(s))
       const where = `${c.name}/${s.id}`
-      // Foundation B's two axes, its status word and its dated next line.
-      assert.equal(v.stage, k.state.stage, `${where}: stage`)
-      assert.equal(v.condition, k.state.conditionLabel, `${where}: condition`)
+      // The one state label, its status word and its dated next line.
+      assert.equal(v.state, badgeLabel(k), `${where}: state`)
       assert.equal(v.status, k.state.word, `${where}: status word`)
       assert.equal(v.next, k.milestone.line, `${where}: next line`)
       // Foundation A's reach, its outstanding prerequisites, its completion, and
@@ -407,7 +406,7 @@ test('013.G: the bundle carries the screen’s reading of a step and none of the
   const bundle = groundingBundle({ view: c.view, tenant: 'Tenant', snapshot: c.snapshot, coverage: c.run.coverage, steps: c.run.steps, schedule: c.run.schedule, redacted: false, generated: 'Sep 7, 2026' }) as unknown as { plan: { steps: Record<string, unknown>[] } }
   for (const row of bundle.plan.steps) {
     for (const key of ['rings', 'events', 'plainTitle', 'forManager']) assert.equal(key in row, false, `the bundle carries the engine's ${key}`)
-    for (const key of ['stage', 'condition', 'next', 'who', 'fix', 'doneWhen', 'implementation']) assert.ok(key in row, `the bundle drops the contract's ${key}`)
+    for (const key of ['state', 'next', 'who', 'fix', 'doneWhen', 'implementation']) assert.ok(key in row, `the bundle drops the contract's ${key}`)
   }
 })
 

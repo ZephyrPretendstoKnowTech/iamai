@@ -480,11 +480,15 @@ export type Step = {
 export type ExportStep = {
   title: string
   why: string
-  /** Foundation B's lifecycle stage in words, or the outcome that stands in its place. */
-  stage: string
-  /** Foundation B's condition in words: Healthy, Blocked, Needs decision, Review required, Baseline conflict. */
-  condition: string
-  /** The one word the Plan's collapsed row shows; a projection of the two above, for scanning. */
+  /**
+   * Where the step is, as the opened step's badge says it (ui/surfaces/planState.ts
+   * badgeOf): the lifecycle stage beside the state's own word where the two are
+   * different facts, the word alone where there is no stage. The one state label
+   * an artifact carries; it never composes a second one from stage and condition,
+   * which is how a row reading Needs attention left as "Healthy".
+   */
+  state: string
+  /** The one word the Plan's collapsed row shows (ui/surfaces/statusWord.ts), for scanning. */
   status: string
   /** Foundation B's dated next line, where it holds a date for one; null otherwise. */
   next: string | null

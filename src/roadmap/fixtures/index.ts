@@ -302,7 +302,7 @@ export function buildFixture(spec: Spec): Fixture {
   }
   // Break-glass accounts: cloud-only GAs, excluded everywhere; SMS-only when messy.
   for (const [k, id] of bgIds.entries()) {
-    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${seed}.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
+    users.push({ id, displayName: `Break-glass ${k + 1}`, userPrincipalName: `bg${k + 1}@${seed}-fixture.onmicrosoft.com`, userType: 'member', usageLocation: 'AU', createdDateTime: daysAgo(400), lastSuccessfulSignIn: daysAgo(spec.breakGlassSmsOnly ? 120 : 10), accountEnabled: true, mail: null, assignedPlans: [], onPremisesSyncEnabled: false, externalUserState: null, department: null, jobTitle: null, officeLocation: null })
     registrationDetails.push({ id, userPrincipalName: `bg${k + 1}@${seed}.example.com`, isMfaCapable: true, isMfaRegistered: true, isPasswordlessCapable: !spec.breakGlassSmsOnly, methodsRegistered: spec.breakGlassSmsOnly ? ['mobilePhone'] : ['fido2SecurityKey'], defaultMfaMethod: null, userPreferredMethodForSecondaryAuthentication: null, isAdmin: true, userType: 'member' })
     // The demo's two accounts use two method kinds, so what its emergency-access
     // step has left to fix is the one exclusion below, not method diversity.
@@ -635,7 +635,7 @@ export function buildFixture(spec: Spec): Fixture {
         ...(p2 ? [{ skuId: 'sku-p2', skuPartNumber: 'AAD_PREMIUM_P2', prepaidUnits: { enabled: Math.round(spec.users / 2) }, consumedUnits: Math.round(spec.users * 0.4), servicePlans: [{ servicePlanId: AAD_P2, servicePlanName: 'AAD_PREMIUM_P2', provisioningStatus: 'Success' }] }] : []),
       ]),
       me: section([{ id: ids[0], displayName: 'Operator', userPrincipalName: `user0@${seed}.example.com` }]),
-      organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${seed}.example.com`, isInitial: false }, { name: `${seed}.onmicrosoft.com`, isInitial: true }] }]),
+      organization: section([{ displayName: spec.demo ? 'Contoso Pty Ltd' : `Fixture ${spec.name}`, verifiedDomains: [{ name: `${seed}.example.com`, isInitial: false }, { name: `${seed}-fixture.onmicrosoft.com`, isInitial: true }] }]),
       meMemberOf: section([]),
     },
     // The person whose methods could not be read is not in the registration report either: nothing says what they hold.

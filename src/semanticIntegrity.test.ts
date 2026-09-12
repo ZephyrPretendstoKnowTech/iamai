@@ -29,7 +29,7 @@ import { implementationOffered, operationsOf, policyHold, unavailableReason } fr
 import { emergencySelection, operatorConfirmedEmergency } from './mapping/emergencyChoice.ts'
 import { DECISION_STEPS } from './roadmap/decisions.ts'
 import { defaultDecisions } from './ui/surfaces/pickerRows.ts'
-import { existingOf, stepContract } from './ui/surfaces/stepContract.ts'
+import { badgeLabel, existingOf, stepContract } from './ui/surfaces/stepContract.ts'
 import { stepExportView } from './ui/surfaces/stepExport.ts'
 import { jsonOffered, policyJson, stepOperations } from './ui/surfaces/stepJson.ts'
 import { powershellFor } from './ui/surfaces/stepPowerShell.ts'
@@ -169,9 +169,8 @@ test('042.4: nothing derives a lifecycle of its own, and no condition implies on
     for (const step of c.steps) {
       const contract = stepContract(step, ctxFor(c, step))
       const view = stepExportView(step, ctxFor(c, step))
-      // The export's stage is the contract's stage, word for word.
-      assert.equal(view.stage, contract.state.stage, `${c.label}/${step.id}: the export view states a different stage from the Plan`)
-      assert.equal(view.condition, contract.state.conditionLabel, `${c.label}/${step.id}: the export view states a different condition`)
+      // The export's state is the contract's badge, word for word.
+      assert.equal(view.state, badgeLabel(contract), `${c.label}/${step.id}: the export view states a different state from the Plan`)
       assert.equal(view.status, contract.state.word, `${c.label}/${step.id}: the export view states a different status word`)
       // The track is a projection of the lifecycle and of nothing else: it is
       // empty exactly where there is no rollout to draw (a step set aside, or a
