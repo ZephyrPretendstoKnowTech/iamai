@@ -67,6 +67,25 @@ export type Derivation = {
 
 export type ChangeFreeze = { from: string; to: string }
 
+/**
+ * The change freeze as Plan settings' two date inputs give it (R-SCHED §6, A2).
+ *
+ * A freeze is two days or it is nothing: a from-only freeze is rejected here,
+ * with the reason the input shows, rather than stored and then dropped without
+ * a word at `buildSchedule` (`from < to`). The `from` is stored at midnight and
+ * the `to` at noon, because schedule cursors carry `T12:00`: a `to` at midnight
+ * left the last freeze day outside the freeze. A one-day freeze (from = to) is
+ * accepted for the same reason.
+ */
+export type FreezeInput = { freeze: ChangeFreeze | null; reason: 'needsTo' | 'order' | null }
+
+export function freezeInputOf(from: string, to: string): FreezeInput {
+  if (!from) return { freeze: null, reason: null }
+  if (!to) return { freeze: null, reason: 'needsTo' }
+  if (to < from) return { freeze: null, reason: 'order' }
+  return { freeze: { from: `${from}T00:00:00.000Z`, to: `${to}T12:00:00.000Z` }, reason: null }
+}
+
 export type Schedule = {
   band: SizeBand
   bandSource: 'auto' | 'override'

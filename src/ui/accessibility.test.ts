@@ -32,7 +32,7 @@ const button = read('src/ui/components/Button.tsx')
 const contentStep = read('src/ui/surfaces/ContentStep.tsx')
 const readiness = read('src/ui/surfaces/MfaReadiness.tsx')
 const contracts = JSON.parse(read('docs/qa/page-contracts.json')) as {
-  surfaces: { id: string; allow: Record<string, string[]> }[]
+  surfaces: { id: string; allow: Record<string, string[] | string> }[]
 }
 
 /** Every .tsx under the shell and the surfaces: the markup a browser runs. */
@@ -279,6 +279,8 @@ test('the shell page contract lists exactly the header the shell renders', () =>
 test('no page contract still freezes a visible Today', () => {
   for (const s of contracts.surfaces) {
     for (const [kind, list] of Object.entries(s.allow)) {
+      // A contract's allow map carries a $comment beside its lists (A1c); only the lists are readings.
+      if (!Array.isArray(list)) continue
       const stale = list.filter((v) => v === 'Today' || /(^|\s)Today(\s|$)/.test(v))
       assert.deepEqual(stale, [], `${s.id}.${kind} still allows the retired Today surface`)
     }

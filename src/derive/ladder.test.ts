@@ -126,6 +126,7 @@ test("Require MFA for Everyone in place empties the ordinary-MFA list and no rea
     assert.deepEqual([...under.unproven].sort(), inPlace ? [] : [...base.unproven].sort(), `${name}: the ordinary-MFA list under the policy`)
     for (const k of ['noMethod', 'needsSetup', 'needsProof', 'readinessUnknown'] as const) assert.deepEqual([...under[k]].sort(), [...base[k]].sort(), `${name}: ${k} is the same under the policy`)
   }
+  // The row's state is its lane label (A1c, RUN-CONTEXT-A decision 1): a finished policy reads Completed, never a status word of the walk's own.
   const walkLine = (readFileSync('scripts/walk.mjs', 'utf8').match(/^\s*mfaInPlace: .*$/m) ?? [''])[0]
-  assert.match(walkLine, /In place\|Enforced/, `the walk reads the row's word, and reads "${walkLine.trim()}"`)
+  assert.match(walkLine, /COMPLETED_RE\.test\(mfaLabel\)/, `the walk reads the row's lane label, and reads "${walkLine.trim()}"`)
 })

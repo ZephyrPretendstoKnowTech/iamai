@@ -133,6 +133,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.impact.notEstablished',
   '.pages.plan.settings.firstDeployment',
   '.pages.plan.settings.firstDeploymentNote',
+  // The change freeze's two rejection messages (A2, R-SCHED §6): a from-only
+  // freeze, or one ending before it starts, shown by Plan settings alone.
+  '.pages.plan.settings.freezeNeedsTo',
+  '.pages.plan.settings.freezeOrder',
   '.pages.plan.settings.workdays',
   '.pages.plan.settings.workdaysWeek',
   '.pages.plan.settings.workdaysWith',

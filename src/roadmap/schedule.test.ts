@@ -3,7 +3,7 @@
 // path is stated. Authored steps only.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { batchClassOf, buildSchedule, dependencyGraph, nextMonday, observationDaysFor, toEnforcementDay } from './schedule.ts'
+import { batchClassOf, buildSchedule, dependencyGraph, freezeInputOf, nextMonday, observationDaysFor, toEnforcementDay } from './schedule.ts'
 import { bandForActiveUsers } from './constants.ts'
 import { initialState, setState, stateForStatus } from './lifecycle.ts'
 import type { Ring, Step } from './types.ts'
@@ -359,4 +359,34 @@ test('phase order (ux-review-07 §3): no step starts before the last start of an
   const phases = s.waves.filter((w) => w.wave > 0).map((w) => w.phase)
   assert.deepEqual([...phases], [...phases].sort((a, b) => a - b), 'waves read in phase order')
   assert.ok(!phases.includes(0), 'no enforcement wave is named Foundations')
+})
+
+// ------------------------------------------------------------ the freeze as typed (A2, R-SCHED §6)
+
+test('a from-only freeze, or one ending before it starts, is rejected with its reason rather than stored and dropped', () => {
+  // The from input used to copy itself into `to`, and buildSchedule then dropped the freeze (`from < to`) without a word.
+  assert.deepEqual(freezeInputOf('', ''), { freeze: null, reason: null })
+  assert.deepEqual(freezeInputOf('', '2026-09-11'), { freeze: null, reason: null })
+  assert.deepEqual(freezeInputOf('2026-09-07', ''), { freeze: null, reason: 'needsTo' })
+  assert.deepEqual(freezeInputOf('2026-09-07', '2026-09-04'), { freeze: null, reason: 'order' })
+  // A freeze is stored from midnight on its first day to noon on its last: schedule cursors carry T12:00.
+  assert.deepEqual(freezeInputOf('2026-09-07', '2026-09-11'), { freeze: { from: '2026-09-07T00:00:00.000Z', to: '2026-09-11T12:00:00.000Z' }, reason: null })
+  // A one-day freeze is a freeze (from < to holds at buildSchedule because to is at noon).
+  const oneDay = freezeInputOf('2026-09-07', '2026-09-07').freeze
+  assert.ok(oneDay && oneDay.from < oneDay.to)
+})
+
+test('the last freeze day is inside the freeze: a ring the calendar would start on it starts after it', () => {
+  const block = { family: 'block', percent: null, lines: [] } as Step['readiness']
+  const plain = [step({ id: 'a', phase: 1, readiness: block })]
+  buildSchedule(plain, MON, 12, null, {})
+  const day = plain[0].rings[0].plannedStart.slice(0, 10)
+  // A one-day freeze on the very day the ring would start. With `to` at midnight the T12:00 cursor compared greater than the freeze and the ring landed inside it.
+  const { freeze } = freezeInputOf(day, day)
+  assert.ok(freeze)
+  const steps = [step({ id: 'a', phase: 1, readiness: block })]
+  const s = buildSchedule(steps, MON, 12, null, { freeze })
+  assert.ok(s.freeze, 'the one-day freeze is accepted')
+  for (const r of steps[0].rings) assert.ok(r.plannedStart.slice(0, 10) !== day && r.plannedStart > freeze.to, `${r.plannedStart} is not inside the freeze that ends ${freeze.to}`)
+  assert.equal(s.derivation.constraint, 'freeze')
 })

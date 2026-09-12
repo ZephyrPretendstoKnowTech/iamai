@@ -11,6 +11,7 @@
 import { pages } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 import { absoluteDate } from '../copy/dates.ts'
+import { projectedFinish } from './finish.ts'
 export type HeaderInput = {
   /** Rows the plan is measured against (trackable steps plus Cleanup rows). */
   steps: number
@@ -18,6 +19,8 @@ export type HeaderInput = {
   inPlace: number
   /** ISO end of the last phase, or null when a readiness threshold holds the plan. */
   finish: string | null
+  /** The rollout's estimate (`schedule.estimate.targetEnd`), the date at pace; the line reads it first and names `finish` as committed when that is another day (A2). */
+  estimate?: string | null
   /** "4 weeks", already worded. */
   weeks: string
   /** What holds the plan when it cannot finish, already worded. */
@@ -26,7 +29,7 @@ export type HeaderInput = {
   startedFrom: string | null
 }
 
-type PlanCopy = { line1: string; line1CannotFinish: string; line1Started: string; startControl: string }
+type PlanCopy = { line1: string; line1Committed: string; line1CannotFinish: string; line1Started: string; startControl: string }
 const copy = (): PlanCopy => pages.plan as unknown as PlanCopy
 
 /** The first header line, in the branch the plan is in. */
@@ -34,9 +37,13 @@ export function headerLine1(i: HeaderInput): string {
   const P = copy()
   // The content names the clause {blocker}; the page had filled `constraint`, so
   // a held plan's line ended at "cannot finish until" (found by this branch's test).
-  if (i.finish === null) return fillText(P.line1CannotFinish, { steps: i.steps, inPlace: i.inPlace, weeks: i.weeks, blocker: i.constraint })
-  if (i.startedFrom !== null) return fillText(P.line1Started, { steps: i.steps, done: i.inPlace, start: absoluteDate(i.startedFrom), finish: absoluteDate(i.finish) })
-  return fillText(P.line1, { steps: i.steps, inPlace: i.inPlace, finish: absoluteDate(i.finish), weeks: i.weeks })
+  // The same estimate / committed pair the Plan's Projected finish tile shows (derive/finish.ts projectedFinish).
+  const pair = projectedFinish(i.finish, i.estimate ?? null)
+  const shown = pair.estimate ?? i.finish
+  if (shown === null) return fillText(P.line1CannotFinish, { steps: i.steps, inPlace: i.inPlace, weeks: i.weeks, blocker: i.constraint })
+  if (i.startedFrom !== null) return fillText(P.line1Started, { steps: i.steps, done: i.inPlace, start: absoluteDate(i.startedFrom), finish: absoluteDate(shown) })
+  if (pair.estimate !== null && pair.committed !== null) return fillText(P.line1Committed, { steps: i.steps, inPlace: i.inPlace, finish: absoluteDate(pair.estimate), committed: absoluteDate(pair.committed), weeks: i.weeks })
+  return fillText(P.line1, { steps: i.steps, inPlace: i.inPlace, finish: absoluteDate(shown), weeks: i.weeks })
 }
 
 /** The start control's label, shown only while dates are proposals (docs/design/mockups/plan-top-v2.html: no line under it). */

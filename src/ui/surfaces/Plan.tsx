@@ -17,7 +17,7 @@ import { CleanupBody, cleanupEntry, cleanupWhen } from './CleanupStep.tsx'
 import type { NotAssessedNotes } from './CleanupStep.tsx'
 import type { CleanupPhase } from '../../roadmap/cleanupPhase.ts'
 import { cleanupComplete } from '../../roadmap/cleanupDone.ts'
-import { planFinish, planWeeks } from '../../derive/finish.ts'
+import { planFinish, planWeeks, projectedFinish } from '../../derive/finish.ts'
 import { startControl } from '../../derive/planHeader.ts'
 import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
@@ -43,6 +43,7 @@ import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
 import { BaselineMappings } from './BaselineMappings.tsx'
 import { BASELINE_MAPPINGS_KEY } from '../../roadmap/sourceMappings.ts'
+import { freezeInputOf } from '../../roadmap/schedule.ts'
 import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
 
@@ -51,9 +52,9 @@ type PlanPage = {
   next: string
   now: string
   settingsLink: string
-  settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; timezone: string; signature: string; close: string }
+  settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; close: string }
   blocked: { after: string }
-  progress: { label: string; steps: string; completed: string; projectedFinish: string; started: string; none: string }
+  progress: { label: string; steps: string; completed: string; projectedFinish: string; atPace: string; committed: string; started: string; none: string }
   howTo: { link: string; items: string[] }
 }
 const PP = pages.plan as unknown as PlanPage
@@ -154,8 +155,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // Filled once: one because, one full stop; the clause names steps by their content titles.
   // A plan that cannot finish explains its estimate, from the rollout the schedule
   // drew before anything held was withdrawn (roadmap/schedule.ts `estimate`).
+  //
+  // The Projected finish tile's tip (A2): the critical-path sentences the schedule
+  // derives, so the person sees which chain sets the date. While held work is
+  // withdrawn the schedule's own chain no longer measures the estimate the tile
+  // shows, so the tip reads the estimate's reason instead.
   const lengthReason = cannotFinish ? (c.schedule.estimate?.reason ?? null) : c.schedule.derivation.reason
-  const lengthTip = lengthReason ? fillText(cannotFinish ? P.lengthTipEstimate : P.lengthTip, { weeks: weeksText, constraint: lengthReason }) : engine.critical.sentenceDone
+  const lengthTip = cannotFinish ? (lengthReason ? fillText(P.lengthTipEstimate, { weeks: weeksText, constraint: lengthReason }) : engine.critical.sentenceDone) : [c.schedule.derivation.criticalPath, ...c.schedule.derivation.relaxed].join(' ')
+  // The estimate at pace, and the committed day when it is another day (derive/finish.ts projectedFinish; the printed cover reads the same pair).
+  const projected = projectedFinish(finish.finish, c.schedule.estimate?.targetEnd ?? null)
 
   // The step a row waits on, by the title its reason line names it with (roadmap/stateReason.ts).
   const stepsById = new Map(c.steps.map((s) => [s.id, s]))
@@ -238,10 +246,11 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // off the board's own rows, the projected finish (A2 fills it; the placeholder
   // until then) and the day the plan started.
   const counts = focusCounts(items)
-  const progressTiles: { key: string; label: string; value: string | number }[] = [
+  const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string }[] = [
     { key: 'steps', label: PP.progress.steps, value: stepFacts(c.steps, cleanupPhase, answers).steps },
     { key: 'completed', label: PP.progress.completed, value: counts.complete },
-    { key: 'projectedFinish', label: PP.progress.projectedFinish, value: PP.progress.none },
+    // A2: the estimate at pace; committed {date} under it when the calendar names another day; the placeholder without an estimate.
+    { key: 'projectedFinish', label: PP.progress.projectedFinish, value: projected.estimate !== null ? absoluteDate(projected.estimate) : PP.progress.none, sub: projected.estimate !== null ? [PP.progress.atPace, ...(projected.committed !== null ? [fillText(PP.progress.committed, { date: absoluteDate(projected.committed) })] : [])] : [], tip: lengthTip },
     { key: 'started', label: PP.progress.started, value: data.startedFrom !== null ? absoluteDate(data.startedFrom) : PP.progress.none },
   ]
 
@@ -254,13 +263,18 @@ export function Plan({ scan: lastScan, baseline, account }: {
       <div className="plan-progress">
         <dl className="plan-progress-tiles" aria-label={PP.progress.label}>
           {progressTiles.map((t) => (
-            <div key={t.key} className="plan-progress-tile">
+            <div key={t.key} className="plan-progress-tile" title={t.tip}>
               <dt>{t.label}</dt>
-              <dd>{t.value}</dd>
+              <dd>
+                {t.value}
+                {t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}
+                {t.sub?.map((line) => (
+                  <small key={line}>{line}</small>
+                ))}
+              </dd>
             </div>
           ))}
         </dl>
-        <InfoTip title={app.plan.constraintTip} text={lengthTip} />
       </div>
       {/* Nothing sits between the header line and the board. The MFA readiness
           ladder was a tenant-wide diagnostic on a page whose job is the rollout,
@@ -618,6 +632,17 @@ function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType
   // (roadmap/rhythm.ts; weekday indexes run from Monday = 0).
   const weekend = [5, 6].filter((d) => data.computed?.schedule.rhythm?.workingDays.includes(d)).map((d) => new Intl.DateTimeFormat('en', { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 3 + (d - 5)))))
   const workdays = weekend.length > 0 ? fillText(PP.settings.workdaysWith, { days: list(weekend) }) : PP.settings.workdaysWeek
+  // The change freeze's two days as typed (A2, R-SCHED §6): a from-only freeze,
+  // or one that ends before it starts, is rejected here with its message and the
+  // plan carries no freeze, rather than stored and dropped without a word at
+  // buildSchedule. The days as typed stay in the inputs until both are given.
+  const [freezeDays, setFreezeDays] = useState({ from: (data.freeze?.from ?? '').slice(0, 10), to: (data.freeze?.to ?? '').slice(0, 10) })
+  const freezeInput = freezeInputOf(freezeDays.from, freezeDays.to)
+  const setFreezeDay = (key: 'from' | 'to', day: string) => {
+    const next = { ...freezeDays, [key]: day }
+    setFreezeDays(next)
+    data.setFreeze(freezeInputOf(next.from, next.to).freeze)
+  }
   return (
     <div className="plan-settings" id={PLAN_SETTINGS_ID}>
       <h3>{PP.settings.h3}</h3>
@@ -637,10 +662,11 @@ function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType
       <label className="rows">
         <span>{PP.settings.freeze}</span>
         <span>{PP.settings.freezeFrom}</span>
-        <input type="date" value={(data.freeze?.from ?? '').slice(0, 10)} onChange={(e) => data.setFreeze(e.currentTarget.value ? { from: new Date(e.currentTarget.value).toISOString(), to: data.freeze?.to ?? new Date(e.currentTarget.value).toISOString() } : null)} />
+        <input type="date" value={freezeDays.from} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('from', e.currentTarget.value)} />
         <span>{PP.settings.freezeTo}</span>
-        <input type="date" value={(data.freeze?.to ?? '').slice(0, 10)} onChange={(e) => data.freeze && e.currentTarget.value && data.setFreeze({ from: data.freeze.from, to: new Date(e.currentTarget.value).toISOString() })} />
+        <input type="date" value={freezeDays.to} min={freezeDays.from || undefined} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('to', e.currentTarget.value)} />
       </label>
+      {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
       <p className="reason">{PP.settings.freezeNote}</p>
       <label className="rows">
         <span>{PP.settings.timezone}</span>

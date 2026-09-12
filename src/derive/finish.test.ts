@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { allFixtures } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
-import { heldByReadiness, planFinish } from './finish.ts'
+import { heldByReadiness, planFinish, projectedFinish } from './finish.ts'
 import { unavailableReason } from '../roadmap/operations.ts'
 import { isHeld } from '../roadmap/holds.ts'
 import { FINISH } from '../copy/statements.ts'
@@ -44,4 +44,26 @@ test('the header line says the date and what waits, in the words given', () => {
   assert.equal(FINISH.line('Sep 20', [{ measure: 'device readiness', count: 3, family: 'device' }]), 'finishes Sep 20 · 3 device steps wait for device readiness')
   assert.equal(FINISH.line('Sep 20', [{ measure: 'MFA readiness', count: 1, family: 'mfa' }]), 'finishes Sep 20 · 1 MFA step waits for MFA readiness')
   assert.equal(FINISH.line(null, [{ measure: 'admin readiness', count: 2, family: 'admin' }]), 'nothing is dated · 2 admin steps wait for admin readiness')
+})
+
+// ------------------------------------------------------------ the projected finish (A2)
+
+test('the projected finish is the estimate at pace, and the committed day only when the calendar names another day', () => {
+  const estimate = '2026-10-05T12:00:00.000Z'
+  assert.deepEqual(projectedFinish(null, null), { estimate: null, committed: null })
+  // A held plan has no committed finish; the estimate stands alone.
+  assert.deepEqual(projectedFinish(null, estimate), { estimate, committed: null })
+  // The same day is said once, whatever the hour.
+  assert.deepEqual(projectedFinish('2026-10-05T09:00:00.000Z', estimate), { estimate, committed: null })
+  // Another day is the committed line under the estimate.
+  assert.deepEqual(projectedFinish('2026-10-12T12:00:00.000Z', estimate), { estimate, committed: '2026-10-12T12:00:00.000Z' })
+  // No estimate at all: the tile reads the placeholder; the committed day is still a fact.
+  assert.deepEqual(projectedFinish('2026-10-12T12:00:00.000Z', null), { estimate: null, committed: '2026-10-12T12:00:00.000Z' })
+  // Every fixture's plan carries an estimate once the forecast is settled (roadmap/forecast.ts), so the header tile shows a date on every tenant, held or not.
+  for (const f of allFixtures()) {
+    const r = runFixture(f)
+    const p = projectedFinish(planFinish(r.steps, r.schedule.cleanup?.end ?? null).finish, r.schedule.estimate?.targetEnd ?? null)
+    assert.ok(p.estimate !== null, `${f.name}: the Projected finish tile has no date`)
+    if (p.committed !== null) assert.notEqual(p.committed.slice(0, 10), p.estimate.slice(0, 10), `${f.name}: the committed day repeats the estimate`)
+  }
 })

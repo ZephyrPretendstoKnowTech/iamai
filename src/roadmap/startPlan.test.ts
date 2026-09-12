@@ -18,7 +18,7 @@ const START = '2026-09-07T12:00:00.000Z'
 
 test('the header line has three branches, each a content string: proposed, cannot finish, started', () => {
   const base = { steps: 23, inPlace: 5, weeks: '5 weeks', constraint: '2 device steps wait for device readiness' }
-  assert.equal(headerLine1({ ...base, finish: FINISH, startedFrom: null }), `23 steps · 5 in place · finishes ${absoluteDate(FINISH)} · 5 weeks`)
+  assert.equal(headerLine1({ ...base, finish: FINISH, startedFrom: null }), `23 steps · 5 in place · finishes ${absoluteDate(FINISH)} at pace · 5 weeks`)
   assert.equal(headerLine1({ ...base, finish: null, startedFrom: null }), '23 steps · 5 in place · cannot finish until 2 device steps wait for device readiness')
   assert.equal(headerLine1({ ...base, finish: FINISH, startedFrom: START }), `23 steps · 5 done · started ${absoluteDate(START)} · finishes ${absoluteDate(FINISH)}`)
   // A started plan that cannot finish still says what holds it, never a hole.

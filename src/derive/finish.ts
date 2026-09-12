@@ -5,6 +5,7 @@
 // §9): when the calendar dates the whole rollout, a dated Cleanup ends the plan.
 // Pure.
 import { READINESS_MEASURE } from '../copy/reasons.ts'
+import { absoluteDate } from '../copy/dates.ts'
 import { holdOf, isHeld } from '../roadmap/holds.ts'
 import { holdWaitsOn } from '../roadmap/stateReason.ts'
 import type { Schedule } from '../roadmap/schedule.ts'
@@ -110,4 +111,22 @@ export function planFinish(steps: Step[], cleanupEnd: string | null = null): Pla
 export function planWeeks(finish: PlanFinish, schedule: Pick<Schedule, 'start' | 'weeks' | 'estimate'>): number {
   if (finish.finish === null) return schedule.estimate?.weeks ?? schedule.weeks
   return Math.max(1, Math.ceil((Date.parse(finish.finish) - Date.parse(schedule.start)) / (7 * 86_400_000)))
+}
+
+/**
+ * The Plan's projected finish (A2): the rollout's estimate, and the day the
+ * calendar has committed to when that is a different day.
+ *
+ * `estimate` is `schedule.estimate.targetEnd`, the end the schedule drew before
+ * anything held or unearned was withdrawn (roadmap/forecast.ts settleForecast):
+ * the date at pace. `committed` is `planFinish().finish` — the last ring end,
+ * extended to Cleanup, and null while anything required is held — when it names
+ * a different day than the estimate; the same day is said once. The header tile
+ * and the printed cover both read this pair, so they cannot say two dates.
+ */
+export type ProjectedFinish = { estimate: string | null; committed: string | null }
+
+export function projectedFinish(finish: string | null, estimate: string | null): ProjectedFinish {
+  const committed = finish !== null && (estimate === null || absoluteDate(finish) !== absoluteDate(estimate)) ? finish : null
+  return { estimate, committed }
 }
