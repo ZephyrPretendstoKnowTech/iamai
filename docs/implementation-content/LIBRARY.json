@@ -964,13 +964,13 @@
       ],
       "correctionModules": 10,
       "requiredBindings": 7,
-      "optionalBindings": 8,
+      "optionalBindings": 10,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 4,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
-      "strictValidationErrors": 15,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -4471,6 +4471,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policies.session.browser.operation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.browser.target.displayName",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -4529,6 +4541,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "policies.session.unmanaged.operation",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
       "binding": "policies.session.unmanaged.target.displayName",
@@ -6101,14 +6125,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 964,
-    "uniqueBindings": 265,
+    "uniqueBindings": 267,
     "bindingsRequiredByAtLeastOneProjection": 96,
-    "bindingsOptionalInAtLeastOnePackage": 174,
+    "bindingsOptionalInAtLeastOnePackage": 176,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 220,
+    "bindingDefinitionsPendingHolisticReview": 222,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 220,
+    "knownIAMAIInputUnreviewed": 222,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

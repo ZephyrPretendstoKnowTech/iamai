@@ -36,7 +36,8 @@ import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
 import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
-import { CONTRACT, implementationIsCurrent } from './stepContract.ts'
+import { CONTRACT } from './stepContract.ts'
+import { executableNow } from '../../roadmap/nextSafeAction.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -150,6 +151,9 @@ export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null):
   return [...out].sort()
 }
 
+/** A multi-policy set with a member to create beside a member the tenant already has. */
+const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o) => o.mode === 'create') && ops.some((o) => o.mode === 'update')
+
 /**
  * The package state a step is in, read from the contract IAMAI already built,
  * in the order the operator's question changes:
@@ -177,10 +181,14 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.setAside) return null
   if (s.condition === 'baseline-conflict') return 'sourceConflict'
   if (s.condition === 'needs-decision') return 'needsDecision'
-  if (!implementationIsCurrent(step)) return 'blocked'
-  if (!c.implementation.offered && c.implementation.reason !== null) return 'blocked'
+  // The one executability answer (roadmap/nextSafeAction.ts): the next technical
+  // action is not the step's to take today, or the policy cannot be written.
+  if (!executableNow(step)) return 'blocked'
   if (s.satisfied) return 'inPlace'
   if (correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+  // A set partly in the tenant — one member to create beside one already there —
+  // is a correction of the set, never a create of every member (correction batch 2).
+  if (partlyDeployed(operationsOf(step))) return 'partial'
   if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
   if (s.lifecycle === 'report-only') return 'reportOnly'
   if ((s.lifecycle === 'not-deployed' || s.lifecycle === null) && operationsOf(step).some((o) => o.mode === 'create')) return 'missing'
@@ -209,7 +217,7 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   const s = c.state
   if (s.setAside || s.satisfied || s.condition === 'baseline-conflict') return null
   if (step.kind === 'create' || step.kind === 'adjust') {
-    if (correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+    if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
     if (s.lifecycle === 'report-only') return 'reportOnly'
     return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
@@ -428,10 +436,16 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
     if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
     // Users still waiting on a reference are not the target (see packageBindings).
     if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
+    // Whether this member is created or corrected, and — for a correction — the
+    // fields its own update changes (correction batch 2): a module scoped to this
+    // member reads these and never its sibling's.
+    out[`${prefix}.operation`] = op.mode
     if (op.mode === 'update') {
       out[`${prefix}.current.id`] = op.policyId
-      const state = rows.find((r) => r.id === op.policyId)?.state
-      if (typeof state === 'string') out[`${prefix}.current.state`] = state
+      const row = rows.find((r) => r.id === op.policyId) ?? null
+      if (typeof row?.state === 'string') out[`${prefix}.current.state`] = row.state
+      const changed = changedFieldsOf(op.body as Record<string, unknown>, row)
+      if (changed.length > 0) out[`${prefix}.current.changedFields`] = changed
     }
   }
   return out
