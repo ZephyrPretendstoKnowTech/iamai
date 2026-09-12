@@ -73,8 +73,7 @@
     },
     "missing": {
       "requires": [
-        "emergency.target.userId",
-        "emergency.target.upn",
+        "emergency.target.accountsSummary",
         "emergency.target.exclusionsGroupId"
       ],
       "entra": [

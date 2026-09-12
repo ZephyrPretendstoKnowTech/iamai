@@ -336,7 +336,20 @@ export type Step = {
    * basis a deferral of the hardening is given against, and when the operator
    * deferred it where a deferral covers what is outstanding now.
    */
-  emergency?: { minimum: number; hardening: number; basis: string; deferredAt: string | null } | null
+  emergency?: {
+    minimum: number
+    hardening: number
+    basis: string
+    deferredAt: string | null
+    /**
+     * Each confirmed account's own standing, in the order the operator confirmed
+     * them (validation/emergencyTiers.ts emergencyAccountStanding): the minimum
+     * safety checks and hardening recommendations about that account alone, and
+     * whether any check about it ran. A check about the set of accounts is in
+     * neither account's counts.
+     */
+    accounts: { id: string; minimum: number; hardening: number; assessed: boolean }[]
+  } | null
   history: StepHistoryEntry[]
   skipReason: string | null
   /** The person's reason this step does not apply here (mapping.notApplicable): the step sits in the footer's Doesn't apply here group. */
