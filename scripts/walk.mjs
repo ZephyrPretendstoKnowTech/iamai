@@ -1156,6 +1156,10 @@ async function walkFixture(fx) {
           continue
         }
         await settle()
+        // A Readiness tile keeps its explanation and evidence behind a Why
+        // disclosure (S5, the approved Plan design); innerText leaves a closed
+        // one out, so every disclosure in the step is opened before it is read.
+        await evaluate(`document.querySelectorAll('main.page .step-body details').forEach((d) => { d.open = true })`)
         let bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
         // What IAMAI found and who the step touches are the evidence behind the
         // step's Readiness, and open from it (the approved Plan design, Sep 10,
@@ -1182,7 +1186,7 @@ async function walkFixture(fx) {
           // A policy waiting on an answer about one of the baseline's own groups:
           // not an object the tenant lacks, and nothing to write until it is
           // answered (ui/surfaces/stepJson.ts waitKindOf, jsonWaitsDecision).
-          / first: the baseline names a group of its author's, and IAMAI does not yet know /.test(bodyText) ||
+          /the baseline names a group of its author's, and IAMAI does not yet know /.test(bodyText) ||
           // The same fact for a source object no settled reading of the baseline
           // explains: nothing this tenant does ends the wait, so the step names
           // no step and says what it is waiting on in words
