@@ -20450,10 +20450,50 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-authenticator-passkey",
+            "authority": "Microsoft Learn",
+            "title": "Enable passkeys in Microsoft Authenticator",
+            "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-authenticator-passkey",
+            "purpose": "Microsoft Authenticator AAGUIDs for iOS and Android, pinned as the key-restriction allow list (decision 9). Page dated 2026-07-05.",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "Enable the passkey, Microsoft Authenticator, and Temporary Access Pass capabilities needed for the IAMAI baseline without invalidating already-approved security keys.",
-          "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027."
+          "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027.",
+          "passkeyTarget": {
+            "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12): the product's passkey target, deviating from the pinned baseline. The AAGUIDs are copied from the Microsoft Learn page in verifiedSources (ms-authenticator-passkey), never from memory. roadmap/passkeySettings.ts reads this object; stepPackage.ts binds it as passkey.target.fido2Configuration.",
+            "fido2Configuration": {
+              "@odata.type": "#microsoft.graph.fido2AuthenticationMethodConfiguration",
+              "id": "Fido2",
+              "state": "enabled",
+              "isSelfServiceRegistrationAllowed": true,
+              "isAttestationEnforced": true,
+              "keyRestrictions": {
+                "isEnforced": true,
+                "enforcementType": "allow",
+                "aaGuids": [
+                  "90a3ccdf-635c-4729-a248-9b709135078f",
+                  "de1e552d-db1d-4423-a619-566b625cdc84"
+                ]
+              },
+              "includeTargets": [
+                {
+                  "targetType": "group",
+                  "id": "all_users",
+                  "isRegistrationRequired": false
+                }
+              ]
+            },
+            "aaguids": {
+              "microsoftAuthenticatorIos": "90a3ccdf-635c-4729-a248-9b709135078f",
+              "microsoftAuthenticatorAndroid": "de1e552d-db1d-4423-a619-566b625cdc84"
+            }
+          }
         }
       },
       "blocks": {
