@@ -65,8 +65,13 @@ export type ReadinessView = {
   rows: ReadinessRow[]
   /** The active people by state; they sum to `facts.active`. */
   counts: Record<ReadinessState, number>
-  /** Passkey rollout over the active people: who holds one now, and who is known to hold none. Unknown inventories are in neither. */
-  passkeys: { have: number; without: number }
+  /**
+   * Passkey rollout over the active people: who holds one now, who is known to
+   * hold none, and whose method inventory could not be read (in neither). The
+   * three partition the active people, so the strip's numbers add up to its
+   * denominator.
+   */
+  passkeys: { have: number; without: number; unread: number }
 }
 
 const STATE_ORDER: readonly ReadinessState[] = ['needsProof', 'needsSetup', 'unknown', 'ready']
@@ -103,7 +108,11 @@ export function readinessView(snapshot: TenantSnapshot, now: string, mapping: La
   rows.sort((a, b) => order(a) - order(b) || (a.admin === b.admin ? 0 : a.admin ? -1 : 1) || (name(a.user) < name(b.user) ? -1 : name(a.user) > name(b.user) ? 1 : 0))
   const counts = Object.fromEntries(READINESS_STATES.map((s) => [s, l.states[s].length])) as Record<ReadinessState, number>
   const counted = rows.filter((r) => r.state !== null)
-  const passkeys = { have: counted.filter((r) => r.readiness?.hasPasskey === true).length, without: counted.filter((r) => r.readiness?.hasPasskey === false).length }
+  const passkeys = {
+    have: counted.filter((r) => r.readiness?.hasPasskey === true).length,
+    without: counted.filter((r) => r.readiness?.hasPasskey === false).length,
+    unread: counted.filter((r) => (r.readiness?.hasPasskey ?? null) === null).length,
+  }
   return { facts: factsOf(l), ladder: l, rows, counts, passkeys }
 }
 
