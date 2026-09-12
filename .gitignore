@@ -16,3 +16,5 @@ docs/reports/
 
 # IAMAI Overnight Runner V3.2 runtime and live queue
 /overnight/tasks/
+
+docs/product/actionability/logs/
