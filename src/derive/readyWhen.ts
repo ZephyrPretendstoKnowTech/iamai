@@ -9,6 +9,17 @@
 import type { Step } from '../roadmap/types.ts'
 import { engine } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
+import { observationDaysFor } from '../roadmap/schedule.ts'
+
+/**
+ * The time gate's length for a step, in days: the observation window the plan
+ * asks for (roadmap/schedule.ts observationDaysFor — the package's authored
+ * `observation.minDays`, else 7, or 3 where nobody is affected). The lane
+ * engine's evidence gate carries it as its time part (A1 §7).
+ */
+export function observationWindowDays(step: Step): number {
+  return observationDaysFor(step)
+}
 
 export type ReadyWhen = {
   /**
