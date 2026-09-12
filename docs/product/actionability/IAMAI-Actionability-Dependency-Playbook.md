@@ -160,7 +160,7 @@ Observation is a Ready substatus, not a lane. A started policy whose next progre
 
 An observation requirement is an **evidence predicate**, control-specific, possibly with a time component. Components in use across the library: elapsed observation time (only where a control genuinely requires it), sufficient sign-in samples, no unexpected failures, compatibility confirmation, readiness threshold, human validation, pilot-scope validation where Report-only is not evaluated for the policy's scope (user-action policies; Appendix A V9), and PIM's pilot-role validation where Report-only is not meaningful at all.
 
-No universal Report-only duration exists in this document.
+No universal Report-only duration exists in this document. The runtime's default time component is 7 days of observation (3 where nobody is affected); a package may override it per step with the META field `observation.minDays` (null = the default), and the evidence gate carries that number as its time part (A1a, decision 5).
 
 ---
 
@@ -199,7 +199,7 @@ A missing object that a plan step produces is a healthy prerequisite (Up Next te
 
 ### 9.1 Milestones
 - `emergency-access.minimum-satisfied` — the safety minimum the Emergency Access step requires before its own scan completes. **May gate downstream rollout.**
-- `emergency-access.hardening-complete` — deferrable resilience work, closed by the runtime row `cleanup-harden-emergency-access`. **Never a generic rollout prerequisite.** Only an independently proven per-control requirement may reference it, recorded explicitly with its source.
+- `emergency-access.hardening-complete` — deferrable resilience work, closed by the runtime row `cleanup-hardening`. **Never a generic rollout prerequisite.** Only an independently proven per-control requirement may reference it, recorded explicitly with its source.
 
 Do not require the whole Emergency Access step to be complete when minimum safety is satisfied. No new visible step is created for this.
 
@@ -232,58 +232,57 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 
 ### 10.0 Step index (static fields)
 
-`baseline_order` was removed (Appendix A V6, owner answer): the source author's listing order is incidental and is not a tie-break. `iamai_order` is an empty owner-authored field reserved for a later product-authored ordering; it is not populated and no values are proposed. `scope_class` and `effort_kind` are static classifications used by §13–§14; runtime affected population is never recorded here.
+`baseline_order` was removed (Appendix A V6, owner answer): the source author's listing order is incidental and is not a tie-break. `iamai_order` is an empty owner-authored field reserved for a later product-authored ordering; it is not populated and no values are proposed. `scope_class` and `effort_kind` are static classifications used by §13–§14; runtime affected population is never recorded here. `generated` says whether `dependency-data.json` carries the step: `yes`, or `no — <reason>` for a goal the pinned baseline does not hold (A1a, decision 7); every edge naming a `no` step is skipped by the build, on either side. Ids are the runtime's own (`s-goal-all-users-no-persistence`, `cleanup-hardening`; decision 8).
 
-| step_id | title | work_type | scope_class | effort_kind | iamai_order |
-|---|---|---|---|---|---|
-| `s-check-dormant-accounts` | Disable or Confirm Dormant Accounts | identity hygiene | all-users | portal | |
-| `s-check-separate-admin-accounts` | Use Separate Accounts for Admin Work | privileged identity hygiene | admins | portal | |
-| `s-prereq-device-plan` | Decide How Devices Are Managed | owner decision | decision | decision | |
-| `cleanup-notAssessed` | Review Baseline Policies IAMAI Did Not Assess | source review / cleanup | n/a | portal | |
-| `s-prereq-break-glass` | Create or Correct Emergency Access Accounts | foundation safety | admins | portal | |
-| `s-prereq-exclusion-group` | Create or Correct Exclusions Group | foundation object | n/a | portal | |
-| `cleanup-drill` | Run the Emergency Access Drill | rollout proof / cleanup | admins | operational | |
-| `s-prereq-passkey-settings` | Set Up Passkeys to Match the Baseline | authentication-method foundation | all-users | portal | |
-| `s-ladder-operator-passkey` | Register Your Own Passkey | operator readiness | admins | portal | |
-| `s-prereq-auth-strength` | Create the Baseline's Authentication Strength | foundation object | n/a | portal | |
-| `s-verify-mfa` | Create and Enforce the MFA Registration Campaign | readiness / registration | all-users | portal | |
-| `s-prereq-trusted-location` | Define the Trusted Network | foundation object | n/a | portal | |
-| `s-prereq-allowed-countries` | Create or Correct Allowed Countries Location | foundation object | n/a | portal | |
-| `s-prereq-service-accounts-group` | Create or Correct Service Accounts Group | foundation object | service-accounts | portal | |
-| `s-question-mail-devices` | Set Up an SMTP Relay for Mail-Sending Devices | conditional remediation | devices | external-platform | |
-| `s-question-partner` | Exclude the Partner or MSP Accounts | owner decision / exception design | guests | decision | |
-| `s-question-travel` | Add a Travel Notice and Exclusion | operational exception workflow | all-users | operational | |
-| `s-shared-devices` | Give Shared Devices Their Own Policy | supporting policy / exception design | devices | portal | |
-| `s-goal-mfa-all-users` | Require MFA for Everyone | CA policy | all-users | portal | |
-| `s-goal-admins-phishing-resistant` | Require Phishing-Resistant MFA for Admins | CA policy | admins | portal | |
-| `s-goal-azure-management-mfa` | Require MFA for Azure Management | CA policy | admins | portal | |
-| `s-goal-admin-session` | Shorten Admin Sessions | CA policy | admins | portal | |
-| `s-goal-admin-portals-protected` | Block the Admin Portals for Non-Admins | CA policy | all-users | portal | |
-| `s-goal-block-auth-transfer` | Block Authentication Transfer | CA policy | all-users | portal | |
-| `s-goal-block-device-code` | Block Device Code Sign-in | CA policy | all-users | portal | |
-| `s-goal-block-legacy-auth` | Block Legacy Authentication | CA policy | all-users | portal | |
-| `s-goal-block-unsupported-platforms` | Block Unsupported Device Platforms | CA policy | devices | portal | |
-| `s-goal-device-registration-mfa` | Require MFA to Register a Device | CA user-action policy | devices | portal | |
-| `s-goal-intune-enrollment-reauth` | Require a Fresh Sign-in for Intune Enrollment | CA policy | devices | portal | |
-| `s-goal-register-info-protected` | Protect Sign-in Method Registration | CA user-action policy | all-users | portal | |
-| `s-goal-require-managed-device` | Require a Managed Device Outside the Office | CA + Intune composite | all-users | external-platform | |
-| `s-goal-mobile-app-protection` | Require App Protection on Phones | CA + Intune composite | devices | external-platform | |
-| `s-goal-session-lifetime` | Limit How Long Sessions Last | CA policy pair | all-users | portal | |
-| `s-goal-token-protection` | Require Token Protection on Windows | CA session control | devices | portal | |
-| `s-goal-unmanaged-browser` | Limit Unmanaged Devices in the Browser | CA / Defender for Cloud Apps composite | all-users | external-platform | |
-| `s-goal-geo-restriction` | Block Sign-ins From Countries Not Allowed | CA policy | all-users | portal | |
-| `s-goal-guests-mfa` | Require MFA for Guests | CA policy pair | guests | portal | |
-| `s-goal-service-accounts-trusted-network` | Restrict Service Accounts to the Trusted Network | CA policy | service-accounts | portal | |
-| `s-goal-workload-identity-block` | Restrict the Entra Connect Sync Account to Its Address | identity-type-dependent | workload-identity (pending) | portal | |
-| `s-goal-sign-in-risk` | Challenge High-Risk Sign-ins | Identity Protection CA | all-users | portal | |
-| `s-goal-sign-in-risk-medium` | Challenge Medium-Risk Sign-ins | Identity Protection CA | all-users | portal | |
-| `s-goal-user-risk` | Remediate High-Risk Users | Identity Protection CA | all-users | portal | |
-| `s-goal-user-risk-medium` | Reset Passwords for Medium-Risk Users | Identity Protection CA | all-users | portal | |
-| `s-goal-pim-activation-reauth` | Require MFA at Every Role Activation | CA + PIM composite | admins | portal | |
-| `s-prereq-security-defaults` | Turn Off Security Defaults | cutover | all-users | portal | |
-| `s-prereq-per-user-mfa` | Finish Moving Off Per-User MFA | cutover / legacy cleanup | all-users | portal | |
-| `runtime-source-reference-decision` | Decide What the Baseline's Unidentified Groups Stand For | runtime row — **not a primary Plan step in the future model**; replaced by `sourceMapping` blockers (§18.1) | n/a | decision | |
-| `cleanup-harden-emergency-access` | Harden Emergency Access | conditional cleanup row produced when resilience hardening is deferred from the Emergency Access step | n/a | portal | |
+| step_id | title | work_type | scope_class | effort_kind | iamai_order | generated |
+|---|---|---|---|---|---|---|
+| `s-check-dormant-accounts` | Disable or Confirm Dormant Accounts | identity hygiene | all-users | portal | | yes |
+| `s-check-separate-admin-accounts` | Use Separate Accounts for Admin Work | privileged identity hygiene | admins | portal | | yes |
+| `s-prereq-device-plan` | Decide How Devices Are Managed | owner decision | decision | decision | | yes |
+| `cleanup-notAssessed` | Review Baseline Policies IAMAI Did Not Assess | source review / cleanup | n/a | portal | | yes |
+| `s-prereq-break-glass` | Create or Correct Emergency Access Accounts | foundation safety | admins | portal | | yes |
+| `s-prereq-exclusion-group` | Create or Correct Exclusions Group | foundation object | n/a | portal | | yes |
+| `cleanup-drill` | Run the Emergency Access Drill | rollout proof / cleanup | admins | operational | | yes |
+| `s-prereq-passkey-settings` | Set Up Passkeys to Match the Baseline | authentication-method foundation | all-users | portal | | yes |
+| `s-ladder-operator-passkey` | Register Your Own Passkey | operator readiness | admins | portal | | yes |
+| `s-prereq-auth-strength` | Create the Baseline's Authentication Strength | foundation object | n/a | portal | | yes |
+| `s-verify-mfa` | Create and Enforce the MFA Registration Campaign | readiness / registration | all-users | portal | | yes |
+| `s-prereq-trusted-location` | Define the Trusted Network | foundation object | n/a | portal | | yes |
+| `s-prereq-allowed-countries` | Create or Correct Allowed Countries Location | foundation object | n/a | portal | | yes |
+| `s-prereq-service-accounts-group` | Create or Correct Service Accounts Group | foundation object | service-accounts | portal | | yes |
+| `s-question-mail-devices` | Set Up an SMTP Relay for Mail-Sending Devices | conditional remediation | devices | external-platform | | yes |
+| `s-question-partner` | Exclude the Partner or MSP Accounts | owner decision / exception design | guests | decision | | yes |
+| `s-question-travel` | Add a Travel Notice and Exclusion | operational exception workflow | all-users | operational | | yes |
+| `s-shared-devices` | Give Shared Devices Their Own Policy | supporting policy / exception design | devices | portal | | yes |
+| `s-goal-mfa-all-users` | Require MFA for Everyone | CA policy | all-users | portal | | yes |
+| `s-goal-admins-phishing-resistant` | Require Phishing-Resistant MFA for Admins | CA policy | admins | portal | | yes |
+| `s-goal-azure-management-mfa` | Require MFA for Azure Management | CA policy | admins | portal | | no — not in pinned baseline |
+| `s-goal-admin-session` | Shorten Admin Sessions | CA policy | admins | portal | | yes |
+| `s-goal-admin-portals-protected` | Block the Admin Portals for Non-Admins | CA policy | all-users | portal | | yes |
+| `s-goal-block-auth-transfer` | Block Authentication Transfer | CA policy | all-users | portal | | yes |
+| `s-goal-block-device-code` | Block Device Code Sign-in | CA policy | all-users | portal | | yes |
+| `s-goal-block-legacy-auth` | Block Legacy Authentication | CA policy | all-users | portal | | yes |
+| `s-goal-block-unsupported-platforms` | Block Unsupported Device Platforms | CA policy | devices | portal | | yes |
+| `s-goal-device-registration-mfa` | Require MFA to Register a Device | CA user-action policy | devices | portal | | yes |
+| `s-goal-intune-enrollment-reauth` | Require a Fresh Sign-in for Intune Enrollment | CA policy | devices | portal | | yes |
+| `s-goal-register-info-protected` | Protect Sign-in Method Registration | CA user-action policy | all-users | portal | | yes |
+| `s-goal-require-managed-device` | Require a Managed Device Outside the Office | CA + Intune composite | all-users | external-platform | | yes |
+| `s-goal-mobile-app-protection` | Require App Protection on Phones | CA + Intune composite | devices | external-platform | | no — not in pinned baseline |
+| `s-goal-all-users-no-persistence` | Limit How Long Sessions Last | CA policy pair | all-users | portal | | yes |
+| `s-goal-token-protection` | Require Token Protection on Windows | CA session control | devices | portal | | yes |
+| `s-goal-unmanaged-browser` | Limit Unmanaged Devices in the Browser | CA / Defender for Cloud Apps composite | all-users | external-platform | | no — not in pinned baseline |
+| `s-goal-geo-restriction` | Block Sign-ins From Countries Not Allowed | CA policy | all-users | portal | | yes |
+| `s-goal-guests-mfa` | Require MFA for Guests | CA policy pair | guests | portal | | yes |
+| `s-goal-service-accounts-trusted-network` | Restrict Service Accounts to the Trusted Network | CA policy | service-accounts | portal | | yes |
+| `s-goal-workload-identity-block` | Restrict the Entra Connect Sync Account to Its Address | identity-type-dependent | workload-identity (pending) | portal | | yes |
+| `s-goal-sign-in-risk` | Challenge High-Risk Sign-ins | Identity Protection CA | all-users | portal | | yes |
+| `s-goal-sign-in-risk-medium` | Challenge Medium-Risk Sign-ins | Identity Protection CA | all-users | portal | | yes |
+| `s-goal-user-risk` | Remediate High-Risk Users | Identity Protection CA | all-users | portal | | yes |
+| `s-goal-user-risk-medium` | Reset Passwords for Medium-Risk Users | Identity Protection CA | all-users | portal | | yes |
+| `s-goal-pim-activation-reauth` | Require MFA at Every Role Activation | CA + PIM composite | admins | portal | | yes |
+| `s-prereq-security-defaults` | Turn Off Security Defaults | cutover | all-users | portal | | yes |
+| `s-prereq-per-user-mfa` | Finish Moving Off Per-User MFA | cutover / legacy cleanup | all-users | portal | | yes |
+| `cleanup-hardening` | Harden Emergency Access | conditional cleanup row produced when resilience hardening is deferred from the Emergency Access step | n/a | portal | | yes |
 
 ### 10.1 Foundation, cutover, and question steps
 
@@ -291,13 +290,13 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 |---|---|---|---|---|---|---|---|
 | `s-prereq-exclusion-group:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | package | ok |
 | `cleanup-drill:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | package | ok |
-| `cleanup-harden-emergency-access:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | audit | ok |
+| `cleanup-hardening:start` | `s-prereq-break-glass` | step | `minimum-satisfied` | — | hard | audit | ok |
 | `s-ladder-operator-passkey:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | package | ok |
 | `s-verify-mfa:start` | `s-prereq-passkey-settings` | step | `complete` | — | hard | owner | ok |
 | `s-question-travel:start` | `s-prereq-allowed-countries` | step | `complete` | — | hard | package | ok |
 | `s-shared-devices:start` | `s-prereq-trusted-location` | step | `complete` | — | hard | package | ok |
 | `s-shared-devices:complete` | `s-goal-require-managed-device` | step | `created` | `shared-devices-exist` | conditional | v2 | ok |
-| `s-shared-devices:complete` | `s-goal-session-lifetime` | step | `created` | `shared-devices-exist` | conditional | v2 | ok |
+| `s-shared-devices:complete` | `s-goal-all-users-no-persistence` | step | `created` | `shared-devices-exist` | conditional | v2 | ok |
 | `s-prereq-per-user-mfa:start` | `s-goal-mfa-all-users` | step | `enforced` | — | hard | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-mfa-all-users` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
 | `s-prereq-security-defaults:start` | `s-goal-admins-phishing-resistant` | step | `ready-to-enforce` | `sd-enabled` | conditional | ms-doc | ok |
@@ -343,8 +342,8 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-require-managed-device:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-require-managed-device:enforce` | `s-shared-devices` | step | `complete` | `shared-devices-exist` | conditional | package | ok |
 | `s-goal-mobile-app-protection:create` | `s-prereq-device-plan` | step | `complete` | — | hard | package | ok |
-| `s-goal-session-lifetime:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
-| `s-goal-session-lifetime:enforce` | `s-shared-devices` | step | `complete` | `shared-devices-exist` | conditional | v2 | ok |
+| `s-goal-all-users-no-persistence:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
+| `s-goal-all-users-no-persistence:enforce` | `s-shared-devices` | step | `complete` | `shared-devices-exist` | conditional | v2 | ok |
 | `s-goal-unmanaged-browser:enforce` | `baselineSafetyConflict:unmanaged-browser-emergency-exclusion` | baselineSafetyConflict | `resolved` | — | hard | pinned | ok |
 | `s-goal-token-protection:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | package | ok |
 
@@ -384,7 +383,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 
 ### 10.6 Edges removed from v1
 
-- All 18 direct `s-prereq-break-glass` enforcement edges on policy steps. Each is implied by `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied` plus the policy's own exclusions-group edge (§9.2). Removing them also fixes the v1 inconsistency where four steps carried both edges and `s-goal-session-lifetime` carried only one.
+- All 18 direct `s-prereq-break-glass` enforcement edges on policy steps. Each is implied by `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied` plus the policy's own exclusions-group edge (§9.2). Removing them also fixes the v1 inconsistency where four steps carried both edges and `s-goal-all-users-no-persistence` carried only one.
 - `s-prereq-auth-strength:enforce ← s-prereq-passkey-settings`. A strength object has no enforce state; method readiness is already gated on the policies that consume the strength.
 
 ### 10.7 Source-mapping blockers (from V11)
@@ -403,7 +402,7 @@ Each row is scoped to the `exclude` role: the pinned object excludes `62d67e66` 
 | `s-goal-block-unsupported-platforms:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
 | `s-goal-geo-restriction:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
 | `s-goal-service-accounts-trusted-network:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
-| `s-goal-session-lifetime:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
+| `s-goal-all-users-no-persistence:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
 | `s-goal-require-managed-device:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
 | `s-goal-device-registration-mfa:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
 | `s-goal-token-protection:create` | `sourceMapping:62d67e66` | sourceMapping | `resolved` | — | hard | pinned | ok |
@@ -444,7 +443,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 
 #### `s-prereq-break-glass` — Create or Correct Emergency Access Accounts
 - Work type: foundation safety · scope_class: admins · effort_kind: portal · actions: start → complete
-- Milestones: `minimum-satisfied` (what this step requires before its own scan completes); `hardening-complete` (closed by `cleanup-harden-emergency-access`).
+- Milestones: `minimum-satisfied` (what this step requires before its own scan completes); `hardening-complete` (closed by `cleanup-hardening`).
 - Non-step blockers: `fact:` at least two cloud-only accounts with permanent active Global Administrator; `evidence:` sign-in validated; `decision:` custody and method posture where the baseline leaves it open.
 - Rationale: account creation does not depend on the exclusions group; the group is downstream. Any package binding implying the reverse must not become dependency truth. Cannot be deferred.
 
@@ -596,7 +595,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 - Observation predicate: Report-only shows in-scope mobile sign-ins satisfying the APP requirement.
 - Emergency-access relationship: none (V2 — composite package with no pinned member in evidence).
 
-#### `s-goal-session-lifetime` — Limit How Long Sessions Last
+#### `s-goal-all-users-no-persistence` — Limit How Long Sessions Last
 - Work type: CA policy pair · scope_class: all-users · effort_kind: portal · actions: create → observe → enforce
 - Non-step blockers: `fact:` both policy members have stable semantic identity (the unmanaged member currently lacks a stable baseline ID — a projection problem, not a tenant prerequisite); `fact:` direct user exclusions resolve.
 - Observation predicate: Report-only impact reviewed.
@@ -678,12 +677,7 @@ Observation predicates are written as the kind of evidence required, never as a 
 
 ### Runtime-generated Plan rows (not in the 46-package manifest)
 
-#### `runtime-source-reference-decision` — Decide What the Baseline's Unidentified Groups Stand For
-- Role today: runtime row that gathers every unresolved source group / named-location reference into one visible step.
-- Future model: **not a primary Plan step.** The ambiguity is preserved, the presentation is not. Each unresolved source reference becomes a typed `sourceMapping` blocker on the specific policies whose pinned objects reference it, resolved through Plan settings → Baseline mappings (§18.1). A blocker is scoped to the affected target field (include, exclude, or both) and must never hold unrelated controls. A "leave it out" mapping changes scope and stays explicit and reversible.
-- Current unresolved references: `62d67e66` (`decisionRequired`, group) and `1267ac22` (`decisionRequired`, named location). The affected-policy map and each reference's role are recorded in §18.1 and the resulting `sourceMapping` rows in §10.7 (Appendix A V11). Do not reclassify without evidence.
-
-#### `cleanup-harden-emergency-access` — Harden Emergency Access
+#### `cleanup-hardening` — Harden Emergency Access
 - Role: conditional cleanup row produced when resilience hardening is deferred from the Emergency Access step · effort_kind: portal
 - Closes: `emergency-access.hardening-complete`. Gates nothing (§9.1).
 
@@ -727,23 +721,23 @@ Baseline mapping for 62d67e66 (Plan settings) ─→ 14 policy creates whose pin
 
 ### 12.1 Unlock counts by step
 
-Computed over action nodes, counting distinct downstream steps. **Excludes** the Security Defaults cutover edges, which when `sd-enabled` add the full policy set to `s-prereq-security-defaults` and to its four inputs and would swamp every other number. Regenerated by S0 (2026-09-11) from the frozen §10 (Appendix A cleared); conditional edges are counted; non-step prerequisites (`sourceConflict`, `decision`, `sourceMapping`, `baselineSafetyConflict`) have no row.
+Computed over action nodes, counting distinct downstream steps. **Excludes** the Security Defaults cutover edges, which when `sd-enabled` add the full policy set to `s-prereq-security-defaults` and to its four inputs and would swamp every other number. Regenerated by S0 (2026-09-11) from the frozen §10 (Appendix A cleared) and by A1a (2026-09-12) after the three goals the pinned baseline does not hold left the data (§10.0 `generated`); conditional edges are counted; non-step prerequisites (`sourceConflict`, `decision`, `sourceMapping`, `baselineSafetyConflict`) have no row.
 
 | step | direct unlocks | transitive unlocks | direct dependents |
 |---|---|---|---|
-| `s-prereq-break-glass` | 3 | 25 | exclusion-group (@minimum-satisfied), cleanup-drill (@minimum-satisfied), cleanup-harden-emergency-access (@minimum-satisfied) |
-| `s-prereq-exclusion-group` | 20 | 22 | 20 policies (18 create, 2 enforce) |
+| `s-prereq-break-glass` | 3 | 24 | exclusion-group (@minimum-satisfied), cleanup-drill (@minimum-satisfied), cleanup-hardening (@minimum-satisfied) |
+| `s-prereq-exclusion-group` | 19 | 21 | 19 policies (18 create, 1 enforce) |
 | `s-prereq-passkey-settings` | 4 | 10 | operator-passkey, verify-mfa, admins-phishing-resistant, register-info-protected |
 | `s-prereq-auth-strength` | 8 | 8 | admins-phishing-resistant, device-registration-mfa, register-info-protected, guests-mfa, sign-in-risk, user-risk, user-risk-medium, pim-activation-reauth |
 | `s-verify-mfa` | 7 | 8 | mfa-all-users, admins-phishing-resistant, register-info-protected, sign-in-risk, sign-in-risk-medium, user-risk, user-risk-medium |
 | `s-prereq-trusted-location` | 4 | 5 | shared-devices, register-info-protected, require-managed-device, service-accounts-trusted-network |
-| `s-prereq-device-plan` | 2 | 4 | require-managed-device, mobile-app-protection |
-| `s-prereq-service-accounts-group` | 3 | 3 | azure-management-mfa, block-legacy-auth, service-accounts-trusted-network |
+| `s-prereq-device-plan` | 1 | 3 | require-managed-device |
+| `s-prereq-service-accounts-group` | 2 | 2 | block-legacy-auth, service-accounts-trusted-network |
 | `s-prereq-allowed-countries` | 2 | 2 | travel, geo-restriction |
 | `s-question-partner` | 2 | 2 | geo-restriction (conditional), guests-mfa (conditional) |
-| `s-shared-devices` | 2 | 2 | require-managed-device (conditional), session-lifetime (conditional) |
+| `s-shared-devices` | 2 | 2 | require-managed-device (conditional), all-users-no-persistence (conditional) |
 | `s-goal-require-managed-device` | 1 | 2 | shared-devices (conditional, @created) |
-| `s-goal-session-lifetime` | 1 | 2 | shared-devices (conditional, @created) |
+| `s-goal-all-users-no-persistence` | 1 | 2 | shared-devices (conditional, @created) |
 | `s-question-mail-devices` | 1 | 1 | block-legacy-auth (conditional) |
 | `s-question-travel` | 1 | 1 | geo-restriction (conditional) |
 | `s-goal-mfa-all-users` | 1 | 1 | per-user-mfa (@enforced) |
@@ -872,7 +866,7 @@ Each example gives next action · applicable blockers · started? · lane · sub
 
 ### 18.1 Source reference handling
 Unresolved source group and named-location references in pinned policies are modelled as `sourceMapping` blockers on the specific actions that need them, resolved through Plan settings → Baseline mappings. The visible "Decide What the Baseline's Unidentified Groups Stand For" row and any "Group 1 … Group N" labelling are not the user's operational roadmap in the future model. For each reference the record must state: reference ID, affected policies, role (include / exclude / both), and current status. Current references (from `pinned-refs.tsv` and `interpretation.json`, S0 2026-09-11):
-- `62d67e66` — group, `decisionRequired`, role **exclude** everywhere, included by no policy. Affected primary steps (14, all `create`): `s-goal-mfa-all-users` (a66e8427), `s-goal-admins-phishing-resistant` (f893f39f), `s-goal-admin-portals-protected` (fafaa50c), `s-goal-admin-session` (04b969aa), `s-goal-block-auth-transfer` (fa005ec2), `s-goal-block-device-code` (8b42eda3), `s-goal-block-legacy-auth` (9eab445f), `s-goal-block-unsupported-platforms` (9e21fa64), `s-goal-geo-restriction` (f3f4ad30), `s-goal-service-accounts-trusted-network` (99eabebd), `s-goal-session-lifetime` (ea9459a9), `s-goal-require-managed-device` (660ab461), `s-goal-device-registration-mfa` (aeb49474), `s-goal-token-protection` (8bb25c6a). Also excluded by 9 pinned policies that implement no goal (1f960ec9, 1d3a7677, 9bc2ad69, b13dd393, 30a1edce, a53c4c2b, 1eaf943a, 2dd84b12, 8417ec17), which are Cleanup material and get no row. Status: unresolved; rows in §10.7.
+- `62d67e66` — group, `decisionRequired`, role **exclude** everywhere, included by no policy. Affected primary steps (14, all `create`): `s-goal-mfa-all-users` (a66e8427), `s-goal-admins-phishing-resistant` (f893f39f), `s-goal-admin-portals-protected` (fafaa50c), `s-goal-admin-session` (04b969aa), `s-goal-block-auth-transfer` (fa005ec2), `s-goal-block-device-code` (8b42eda3), `s-goal-block-legacy-auth` (9eab445f), `s-goal-block-unsupported-platforms` (9e21fa64), `s-goal-geo-restriction` (f3f4ad30), `s-goal-service-accounts-trusted-network` (99eabebd), `s-goal-all-users-no-persistence` (ea9459a9), `s-goal-require-managed-device` (660ab461), `s-goal-device-registration-mfa` (aeb49474), `s-goal-token-protection` (8bb25c6a). Also excluded by 9 pinned policies that implement no goal (1f960ec9, 1d3a7677, 9bc2ad69, b13dd393, 30a1edce, a53c4c2b, 1eaf943a, 2dd84b12, 8417ec17), which are Cleanup material and get no row. Status: unresolved; rows in §10.7.
 - `1267ac22` — named location ("IAC - Blocked Countries"), `decisionRequired`, role **include** in one policy only, `IAC - GLOBAL – BLOCK – Countries not Allowed - NoExclusions` (1eaf943a), which implements no goal. Affected primary steps: none. Status: unresolved; no `sourceMapping` row.
 - Other `decisionRequired` references exist in `interpretation.json` (`e663a7ce`, `9ee031a3`, `902993ed`, `5628ad67`, `2d25c298`, `cc7f9bb7`, `8d0564e5`, `1178bb5d`, `5f96c57d`, `0de51b52`); V11 names only the two above, so they are recorded in BLOCKED.md as deferred rather than mapped here.
 
@@ -965,11 +959,11 @@ Findings (S0, 2026-09-11, against `pinned-refs.tsv` at pin 90d9b890 and `docs/im
 
 ## Appendix B. Edge changes since v1 (with reasons)
 
-- **Removed: 18 direct `s-prereq-break-glass` enforcement edges on policy steps.** Each is implied by `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied` plus the policy's own exclusions-group edge, under the §9.3 invariant. Also removes the v1 inconsistency where four steps carried both edges and `s-goal-session-lifetime` carried neither.
+- **Removed: 18 direct `s-prereq-break-glass` enforcement edges on policy steps.** Each is implied by `s-prereq-exclusion-group:start ← s-prereq-break-glass@minimum-satisfied` plus the policy's own exclusions-group edge, under the §9.3 invariant. Also removes the v1 inconsistency where four steps carried both edges and `s-goal-all-users-no-persistence` carried neither.
 - **Removed: `s-prereq-auth-strength:enforce ← s-prereq-passkey-settings`.** A strength object has no enforce state; method readiness is gated on the consuming policies (`admins-phishing-resistant`, `register-info-protected`).
 - **Added: Security Defaults cutover edges both directions, conditional on `sd-enabled`.** v1 showed the relationship in the spine but encoded no edges.
 - **Added: `s-goal-block-legacy-auth:enforce ← s-question-mail-devices [mail-devices-incompatible-path]`, `s-goal-geo-restriction:enforce ← s-question-partner [partner-accounts-exist]`, `s-goal-geo-restriction:enforce ← s-question-travel [travel-exceptions-allowed]`.** v1 carried these only in prose.
-- **Added (V8): `s-shared-devices:complete ← s-goal-require-managed-device@created`, `← s-goal-session-lifetime@created` [shared-devices-exist].** v1 stated the object-existence dependency in prose; it is why start and complete are separate nodes.
+- **Added (V8): `s-shared-devices:complete ← s-goal-require-managed-device@created`, `← s-goal-all-users-no-persistence@created` [shared-devices-exist].** v1 stated the object-existence dependency in prose; it is why start and complete are separate nodes.
 - **Made conditional (V7): `s-verify-mfa:start ← s-prereq-passkey-settings [campaign-targets-passkey]`.** v1 hard; an Authenticator-only campaign does not need passkey settings. Returned to hard by S0 on the owner's answer (campaign always passkey-targeted, §18.2).
 - **Flagged (V1): 14 exclusions-group `enforce` edges** may move to `create` under the construction rule. Resolved by S0: 12 moved, 2 stay (Appendix A findings).
 - **Held (V2): emergency-access relationships** for four high-lockout controls, with the two-outcome rule. Resolved by S0 (Appendix A findings).
