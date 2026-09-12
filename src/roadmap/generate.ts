@@ -282,6 +282,7 @@ const EXTRAS = STEP_EXTRAS
 // importing the engine); re-exported here for the modules that import them from the engine.
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
+import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf } from './passkeySettings.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
@@ -1054,6 +1055,35 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       s.blockers = [...s.blockers, { kind: 'decision', label: 'device-plan', binding: BLOCKED_REASON.devicePlan }]
       setState(s, { condition: conditionFor(s.blockers) })
     }
+    steps.push(s)
+  }
+
+  // Passkey settings (A5, RUN-CONTEXT-A decision 9): the authentication-method
+  // foundation the verification campaign and the phishing-resistant enforcements
+  // wait on (actionability/dependency-data.json). A foundation like the exclusions
+  // group: on every plan that can hold Conditional Access, In place when the
+  // tenant's Fido2 configuration matches the target in every field, otherwise
+  // Ready. A methods policy the scan could not read holds the step on that fact;
+  // an unread configuration is never a match.
+  if (canUseConditionalAccess) {
+    const s = prereq(PASSKEY_SETTINGS_STEP_ID)
+    const passkey = passkeyReadingOf(snapshot)
+    if (passkey.state === 'inPlace') setState(s, { satisfied: true, inPlace: true })
+    else if (passkey.state === 'unread') {
+      s.blockers = [{ kind: 'evidence', label: 'passkey-settings-unread', binding: BLOCKED_REASON.methodsPolicyUnread, unverified: true }]
+      setState(s, { condition: conditionFor(s.blockers) })
+    }
+    steps.push(s)
+  }
+  // The operator's own passkey (A5): only where the scan read the signed-in
+  // account's methods and found no passkey. Their account makes every change, so
+  // the admin policies reach it first.
+  const operatorPasskey = operatorPasskeyOf(snapshot)
+  if (canUseConditionalAccess && operatorPasskey !== null && !operatorPasskey.holds) {
+    const s = prereq(OPERATOR_PASSKEY_STEP_ID)
+    s.kind = 'check'
+    s.action = { ...s.action, kind: 'check' }
+    s.population = population([operatorPasskey.operatorId], popIndex)
     steps.push(s)
   }
 

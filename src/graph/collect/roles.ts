@@ -38,6 +38,17 @@ export const ROLE_FOR_SCOPE: Record<string, ScopeRoles> = {
   'UserAuthenticationMethod.Read.All': { least: READ_EVERYTHING_ROLE, also: ['Authentication Administrator', 'Privileged Authentication Administrator'] },
 }
 
+/**
+ * A source whose read Microsoft Learn documents under other roles than its
+ * scope's. The authentication methods policy (GET /policies/authenticationMethodsPolicy)
+ * lists Global Reader or Authentication Policy Administrator; Security Reader, the
+ * least role for Policy.Read.All's other reads, may be refused it
+ * (docs/product/actionability/reference/goal-gaps.md).
+ */
+export const ROLE_FOR_SOURCE: Readonly<Record<string, ScopeRoles>> = {
+  'config:authMethodsPolicy': { least: READ_EVERYTHING_ROLE, also: ['Authentication Policy Administrator'] },
+}
+
 /** The collector a scan progress source stands for; `config:<key>` for lane 0. */
 export function collectorForSource(source: string): CollectorSpec | null {
   if (source.startsWith('config:')) {
@@ -58,6 +69,8 @@ export function scopesForSource(source: string): string[] {
  * set of each scope's least role.
  */
 export function rolesForSource(source: string): { least: string[]; covering: string } {
+  const own = ROLE_FOR_SOURCE[source]
+  if (own) return { least: [own.least], covering: READ_EVERYTHING_ROLE }
   const scopes = scopesForSource(source)
   const least: string[] = []
   for (const scope of scopes) {

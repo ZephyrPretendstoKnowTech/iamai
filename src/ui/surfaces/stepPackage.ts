@@ -39,6 +39,7 @@ import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
+import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings, passkeyReadingOf } from '../../roadmap/passkeySettings.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 
@@ -198,8 +199,13 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // A preparation step makes the object it names: until it is in place, that
   // object is missing (owner, 2026-09-11). Its package decides nothing more, and a
   // value IAMAI does not hold still produces nothing executable.
-  if (step.kind === 'prerequisite') return 'missing'
+  if (step.kind === 'prerequisite') return preparationStateOf(step, snapshot)
   return 'blocked'
+}
+
+/** What a preparation step's object is short of: missing, or — the passkey settings with the method on and a field that differs (A5) — partial. */
+function preparationStateOf(step: Step, snapshot: TenantSnapshot | null): PackageState {
+  return step.id === PASSKEY_SETTINGS_STEP_ID && passkeyReadingOf(snapshot).state === 'partial' ? 'partial' : 'missing'
 }
 
 /**
@@ -225,7 +231,7 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
     if (s.lifecycle === 'report-only') return 'reportOnly'
     return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
   }
-  return step.kind === 'prerequisite' ? 'missing' : null
+  return step.kind === 'prerequisite' ? preparationStateOf(step, snapshot) : null
 }
 
 /** What an unresolved value is called in a planning preview: the content's name for the binding, else its own key in words. */
@@ -423,6 +429,8 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === owed[0].id)?.userPrincipalName)
   }
   for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot))) out[key] = value
+  // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
+  if (step.id === PASSKEY_SETTINGS_STEP_ID) for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
   const mfa = registration?.status === 'ok' ? (registration.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
   put('tenant.deviceRegistration.multiFactorAuthConfiguration', typeof mfa === 'string' ? mfa : undefined)
