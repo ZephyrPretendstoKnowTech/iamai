@@ -599,8 +599,10 @@ function substitutionsFor(
         unsettled.add(r.id)
         return
       }
+      // No step answers it: the mapping is given in Plan settings → Baseline
+      // mappings (roadmap/sourceMappings.ts), and the policy holds until then.
       if (needsAnswer && kind) {
-        unresolved.set(r.id, PREREQ_STEP_ID.sourceReferences)
+        unresolved.set(r.id, null)
         decisions.set(r.id, { kind, answer: 'pending' })
       }
     }
@@ -724,7 +726,7 @@ export function resolveTenantPolicy(policy: RawPolicy, tenant: TenantObjects, go
   // stand for this policy, so the reference is asked again and the policy waits.
   for (const id of omissionsEmptyingATarget(policy, omitted)) {
     omitted.delete(id)
-    unresolved.set(id, PREREQ_STEP_ID.sourceReferences)
+    unresolved.set(id, null)
     const d = packageDecisions.get(id)
     if (d) packageDecisions.set(id, { kind: d.kind, answer: 'pending' })
   }
@@ -819,7 +821,7 @@ export function implementable(
       return
     }
     const stepId = unresolved.get(key) ?? PLACEHOLDER_STEP[token as keyof typeof PLACEHOLDER_STEP] ?? null
-    // A reference only a person can answer waits on the step where they answer it.
+    // A reference only a person can answer waits on their Baseline mapping (Plan settings), which no step ends.
     missing.push(refs.decisions?.get(key)?.answer === 'pending' ? { token, stepId, decision: true } : { token, stepId })
   }
   const walk = (v: unknown): unknown => {

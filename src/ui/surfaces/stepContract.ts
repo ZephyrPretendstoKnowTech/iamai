@@ -98,6 +98,8 @@ type ContractWords = {
   doneSetAside: string
   setAsideAction: string
   fixStep: string
+  /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
+  fixMapping: string
   fixReview: string
   doneReview: string
   attentionConflict: string
@@ -572,6 +574,8 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // prerequisite under Fix.
   for (const m of step.action.missing ?? []) {
     if (m.stepId && stepById[m.stepId]) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixStep, { step: stepById[m.stepId].title }) })
+    // A reference awaiting its Baseline mapping (Plan settings, S4): no step makes it; the fix names the mapping, never the author's id.
+    else if (m.decision) out.push({ key: 'mapping', text: CONTRACT.fixMapping })
   }
   const threshold = thresholdBinding(step)
   for (const b of step.blockers) {

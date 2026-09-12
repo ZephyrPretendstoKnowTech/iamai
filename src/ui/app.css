@@ -2941,6 +2941,27 @@ footer.app a {
   flex: 1;
   min-width: 0;
 }
+/* Baseline mappings (S4): one block per reference of the baseline's a person
+   maps or leaves out, under the settings' rows; the block's own rule keeps each
+   reference's answer with its words. */
+.plan-settings .baseline-mappings {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.plan-settings .baseline-mappings h4 {
+  margin: 0 0 4px;
+}
+.plan-settings .baseline-mapping {
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+}
+.plan-settings .baseline-mapping .dlabel {
+  font-weight: var(--weight-strong);
+}
+.plan-settings .baseline-mapping .mapping-status {
+  margin-top: 0;
+}
 .plan-footer {
   margin-top: 32px;
   border-top: 1px solid var(--line);

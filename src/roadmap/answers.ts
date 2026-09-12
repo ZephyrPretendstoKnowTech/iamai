@@ -12,6 +12,7 @@
 // decisions module and the surfaces can all read an answer.
 import type { MappingState } from '../mapping/types.ts'
 import { contentStepFor } from '../content/stepTitle.ts'
+import { pages } from '../content/content.ts'
 import { PREREQ_STEP_ID, stepIdForGoal } from './stepIds.ts'
 
 /** The mapping key a step's answer persists under: questionAnswers[stepId + ':' + label]. */
@@ -30,14 +31,13 @@ function contentDecision(stepId: string): ContentDecision | null {
 const str = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null)
 
 /**
- * The two answers every reference on the source-references step is given in
- * (content.json decision.references.options), in order: this tenant needs no
+ * The two answers every Baseline mapping is given in (content.json
+ * pages.plan.settings.mappings.options), in order: this tenant needs no
  * counterpart, or this tenant's own object, picked into the option's variable.
- * An answer persists as questionAnswers[stepId:<source id>] like any other.
+ * An answer persists under the mappings key, one per source id (sourceMappings.ts).
  */
 export function referenceOptions(): string[] {
-  const d = contentStepFor({ id: PREREQ_STEP_ID.sourceReferences, goalId: '' })?.decision as { references?: { options?: unknown } } | null | undefined
-  const raw = d?.references?.options
+  const raw = ((pages.plan as { settings?: { mappings?: { options?: unknown } } }).settings?.mappings?.options)
   return Array.isArray(raw) ? raw.filter((o): o is string => typeof o === 'string') : []
 }
 

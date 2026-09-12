@@ -181,11 +181,11 @@ test('1: the author’s four exclusion groups on one policy come to the tenant�
   // And the three the author's own tenant carved out hold the policy. Nothing
   // here says who they are, so nothing can say who a copy of this policy made in
   // another tenant would newly reach; they are reported as missing, each waiting
-  // on the step where a person answers what it stands for, and none of them is
+  // on a person's Baseline mapping (no step of the plan), and none of them is
   // the author's to leave out (`authorOnly` takes a settled reading and there is none).
   const others = authorGroups.filter((g) => g !== authorIdFor(source, 'exclusionsGroup')).sort()
   assert.deepEqual(impl.missing.map((m) => m.token.toLowerCase()).sort(), others, 'the three hold the policy')
-  assert.ok(impl.missing.every((m) => m.decision === true && m.stepId === PREREQ_STEP_ID.sourceReferences), 'each waits on a person’s answer')
+  assert.ok(impl.missing.every((m) => m.decision === true && m.stepId === null), 'each waits on a person’s answer, and on no step')
   assert.deepEqual(impl.authorOnly, [], 'and none of them is left out as the author’s own')
 })
 

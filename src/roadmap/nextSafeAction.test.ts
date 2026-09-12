@@ -11,14 +11,14 @@ import { executableNow, implementationIsCurrent, nextSafeAction } from './nextSa
 import { unavailableReason } from './operations.ts'
 import { applyStepDecisions } from './decisions.ts'
 import { referenceOptions } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from './sourceMappings.ts'
 
 const NAMES: FixtureName[] = ['demo', 'demo-week2', 'small', 'messy', 'midflight']
 /** Week two with its baseline's unsettled source references answered, so its report-only policies are not waiting on them. */
 function answeredWeekTwo() {
   const raw = fixture('demo-week2')
-  const source = PREREQ_STEP_ID.sourceReferences
-  const pending = runFixture(raw).steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const source = BASELINE_MAPPINGS_KEY
+  const pending = sourceMappingsOf(runFixture(raw).steps)
   return { ...raw, mapping: applyStepDecisions(raw.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: raw.snapshot.asOf } }) }
 }
 const PLANS = [...NAMES.map((name) => ({ name: name as string, steps: runFixture(fixture(name)).steps })), { name: 'demo-week2-answered', steps: runFixture(answeredWeekTwo()).steps }]

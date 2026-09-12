@@ -90,7 +90,8 @@ export const BOARD = {
   blockers: {
     baselineSafetyConflict: 'Baseline safety conflict',
     sourceConflict: 'Baseline conflict',
-    sourceMapping: 'Baseline mapping',
+    /** The hold's reason, word for word (pages.plan.blocked.sourceMapping): the group heading and the row read the same. */
+    sourceMapping: BLOCKED_REASON.sourceMapping,
     'license/platform': 'Licence or platform',
     decision: 'Decision',
     fact: 'Tenant fact',

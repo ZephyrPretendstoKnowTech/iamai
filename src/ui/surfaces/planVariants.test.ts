@@ -386,7 +386,6 @@ const INVENTORY: string[] = [
   'policy · create · not-deployed · healthy · open · do:deploy · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-admin-session
   'policy · create · not-deployed · blocked · open · do:deploy · track · implementation · found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-device-registration-mfa
   'policy · adjust · ready-to-enforce · healthy · open · do:enforce · track · implementation · no-found · no-fix · one-policy · who-known', // demo-week2+curated/s-goal-token-protection
-  'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // demo/s-prereq-source-references (correction batch 1: the baseline's unread references, answered by a person)
   'policy · adjust · report-only · healthy · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2/s-goal-block-auth-transfer (waits on the source-references answer, named under Fix)
   'policy · create · not-deployed · healthy · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-unknown', // demo-week2/s-goal-admin-session
 ]

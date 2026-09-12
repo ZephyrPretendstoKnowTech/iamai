@@ -1053,20 +1053,6 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     steps.push(s)
   }
 
-  // The baseline's own groups and locations no settled reading explains
-  // (resolvePolicy.ts `decisions`): what each stands for in this tenant is a
-  // person's answer, asked once in Preparation. The step is put on the plan here,
-  // so the goal loop below can make each policy that names an unanswered one wait
-  // on it; after the loop it keeps the references the plan's open policies
-  // actually name, and leaves the plan where they name none.
-  const sourceStepId = PREREQ_STEP_ID.sourceReferences
-  if (canUseConditionalAccess) {
-    const s = prereq(sourceStepId)
-    s.kind = 'check'
-    s.action = { ...s.action, kind: 'check' }
-    steps.push(s)
-  }
-
   // The three questions the operator can answer (prompt 48 item 10), read from
   // their stored answers, questionAnswers[stepId:label] (answers.ts): an answer
   // that changes the plan adds its carve-out step, whose words are a content
@@ -1854,45 +1840,25 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     })
   }
 
-  // The source-references step answers for the references the plan's open
-  // policies name, and lists the steps that name each one. Where no open policy
-  // names one it leaves the plan: there is nothing to ask. While any is
-  // unanswered it needs a decision; once every one is answered it is in place,
-  // and its answers stay open to change.
+  // The baseline's own references only a person can answer (resolvePolicy.ts
+  // `decisions`) are answered in Plan settings → Baseline mappings, not on a
+  // step of the plan (S4, playbook §18.1). Each open policy that names one
+  // carries it in `action.sourceReferences`; here every one is told the part it
+  // plays across the baseline, read off the source policies themselves, so the
+  // mapping surface can say what leaving it out does. A pending one is in
+  // `missing` and holds its policy (planLanes.ts observe: a `sourceMapping`
+  // blocker); no step is waited on.
   {
-    const src = steps.find((s) => s.id === sourceStepId)
-    if (src) {
-      const byId = new Map<string, SourceReference & { stepIds: string[] }>()
-      // The part each reference plays across the baseline, read off the source
-      // policies themselves: what leaving it out does is asked with it.
-      const usage = new Map(referenceUsage(input.baseline.policies).map((u) => [u.id, u]))
-      const roleOf = (id: string): Pick<SourceReference, 'role' | 'baselinePolicies' | 'baselineTotal'> => {
-        const u = usage.get(id.toLowerCase())
-        if (!u) return {}
-        const role = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
-        return { role, baselinePolicies: new Set([...u.includedIn, ...u.excludedFrom]).size, baselineTotal: input.baseline.policies.length }
-      }
-      for (const s of steps) {
-        if (s.id === sourceStepId || s.status === 'done' || s.status === 'skipped' || (s.kind !== 'create' && s.kind !== 'adjust')) continue
-        for (const r of s.action.sourceReferences ?? []) {
-          const at = byId.get(r.id) ?? { ...r, ...roleOf(r.id), stepIds: [] }
-          // An answer that stands for one policy and not for another (resolvePolicy.ts: leaving out the whole of who a policy reaches) is still a question.
-          if (r.answer === 'pending') at.answer = 'pending'
-          if (!at.stepIds.includes(s.id)) at.stepIds.push(s.id)
-          byId.set(r.id, at)
-        }
-      }
-      if (byId.size === 0) steps.splice(steps.indexOf(src), 1)
-      else {
-        const references = [...byId.values()].sort((a, b) => b.stepIds.length - a.stepIds.length || a.id.localeCompare(b.id))
-        src.action = { ...src.action, sourceReferences: references }
-        if (references.some((r) => r.answer === 'pending')) {
-          src.blockers = [...src.blockers, { kind: 'decision', label: 'source-references', binding: BLOCKED_REASON.sourceReferences }]
-          setState(src, { condition: conditionFor(src.blockers) })
-        } else {
-          setState(src, { satisfied: true, inPlace: true })
-        }
-      }
+    const usage = new Map(referenceUsage(input.baseline.policies).map((u) => [u.id, u]))
+    const roleOf = (id: string): Pick<SourceReference, 'role' | 'baselinePolicies' | 'baselineTotal'> => {
+      const u = usage.get(id.toLowerCase())
+      if (!u) return {}
+      const role = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
+      return { role, baselinePolicies: new Set([...u.includedIn, ...u.excludedFrom]).size, baselineTotal: input.baseline.policies.length }
+    }
+    for (const s of steps) {
+      if (!s.action.sourceReferences?.length) continue
+      s.action = { ...s.action, sourceReferences: s.action.sourceReferences.map((r) => ({ ...r, ...roleOf(r.id) })) }
     }
   }
 

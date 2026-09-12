@@ -41,6 +41,8 @@ import { contentTitle } from '../../content/stepTitle.ts'
 import { stepById } from '../../content/content.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { PlanFooter } from './PlanFooter.tsx'
+import { BaselineMappings } from './BaselineMappings.tsx'
+import { BASELINE_MAPPINGS_KEY } from '../../roadmap/sourceMappings.ts'
 import { returnToStep, stepFromPlanHash } from '../shell/routes.ts'
 import { scan as runScan } from '../actions.ts'
 
@@ -302,7 +304,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
           </ul>
         </div>
       )}
-      {showSettings && <Settings data={data} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
+      {showSettings && <Settings data={data} steps={c.steps} snapshot={scan.snapshot} nameOf={nameOf} onClose={() => { setShowSettings(false); settingsLink.current?.focus() }} />}
 
       {/* ---- the board's one row set, and the three lanes over it ----
           Every row is built once, here, with the lane the engine read for it;
@@ -572,11 +574,12 @@ function Row({ step, isNext, lane, when, waveStart, open, onToggle, schedule, te
 
 
 
-function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onClose: () => void }) {
+function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType<typeof usePlanData>; steps: readonly Step[]; snapshot: TenantSnapshot; nameOf: (id: string) => string; onClose: () => void }) {
   // pages.plan.settings in full, and nothing else: the change freeze (from and
   // to on one line, its note under it), the display time zone the plan stores,
-  // the signature every Tell your people box signs with, Close. The start date
-  // is in the header, above Start the plan.
+  // the signature every Tell your people box signs with, the Baseline mappings
+  // (S4: the baseline's own references a person maps or leaves out), Close. The
+  // start date is in the header, above Start the plan.
   const zones = useMemo<string[]>(() => {
     try {
       return (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
@@ -632,6 +635,7 @@ function Settings({ data, onClose }: { data: ReturnType<typeof usePlanData>; onC
         <span>{PP.settings.signature}</span>
         <input type="text" value={data.signature} onChange={(e) => data.setSignature(e.currentTarget.value)} />
       </label>
+      {data.mapping && <BaselineMappings steps={steps} snapshot={snapshot} mapping={data.mapping} nameOf={nameOf} groups={data.groups} saved={data.stepDecisions[BASELINE_MAPPINGS_KEY] ?? null} onDecide={(d) => data.onDecide(BASELINE_MAPPINGS_KEY, d)} />}
       <p className="actions">
         <Button variant="secondary" onClick={onClose}>
           {PP.settings.close}

@@ -1,4 +1,4 @@
-// The source-references step, truthfully (correction batch 1.1): each reference is
+// The Baseline mappings, truthfully (correction batch 1.1; S4 moved them from a step to Plan settings): each reference is
 // answered on its own and can be changed or taken back without the rest; taking one
 // back returns the policies that name it to waiting and withdraws their schedule;
 // leaving out an exception and leaving out a target say different things; and a
@@ -12,18 +12,19 @@ import { runFixture } from './fixtures/run.ts'
 import { applyStepDecisions } from './decisions.ts'
 import type { StepDecision } from './decisions.ts'
 import { answerTextFor, referenceOptions } from './answers.ts'
-import { PREREQ_STEP_ID } from './stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf, unresolvedSourceMappings } from './sourceMappings.ts'
 import { implementationOffered, operationsOf } from './operations.ts'
 import { referenceUsage } from '../baseline/interpretation.ts'
 import { pinnedPackage } from '../baseline/pinned.ts'
 import type { Step } from './types.ts'
 import { waitingLine, waitKindOf } from '../ui/surfaces/stepJson.ts'
-import { sourceReferenceRowsOf, tenantNameOf } from '../ui/surfaces/stepVars.ts'
+import { tenantNameOf } from '../ui/surfaces/stepVars.ts'
+import { mappingRowOf, mappingRowsOf } from '../ui/surfaces/baselineMappings.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { CONTRACT, stepContract } from '../ui/surfaces/stepContract.ts'
 import { app } from '../content/content.ts'
 
-const SOURCE = PREREQ_STEP_ID.sourceReferences
+const SOURCE = BASELINE_MAPPINGS_KEY
 const OMIT = (): string => referenceOptions()[0]
 const MAP = (id: string): string => answerTextFor(referenceOptions()[1], [id])
 
@@ -39,7 +40,7 @@ function withDecisions(f: Fixture, decisions: Record<string, StepDecision>): Fix
 }
 
 const base = fixture('demo')
-const pending = stepOf(runFixture(base).steps, SOURCE).action.sourceReferences ?? []
+const pending = sourceMappingsOf(runFixture(base).steps)
 const at = base.snapshot.asOf
 const group = [...base.groups.keys()].find((id) => !pending.some((r) => r.id.toLowerCase() === id.toLowerCase()))!
 
@@ -53,7 +54,7 @@ test('each reference is answered on its own; taking one back leaves the others a
   assert.ok(pending.length >= 2, 'the premise: more than one reference is asked')
   const [a, b] = pending
   const both = runFixture(withDecisions(base, { [SOURCE]: { answers: { [a.id]: OMIT(), [b.id]: MAP(group) }, at } }))
-  const refs = (steps: Step[]) => new Map((stepOf(steps, SOURCE).action.sourceReferences ?? []).map((r) => [r.id, r.answer]))
+  const refs = (steps: Step[]) => new Map(sourceMappingsOf(steps).map((r) => [r.id, r.answer]))
   assert.equal(refs(both.steps).get(a.id), 'omitted')
   assert.equal(refs(both.steps).get(b.id), 'mapped')
   const cleared = withDecisions(base, { [SOURCE]: { answers: { [b.id]: MAP(group) }, at } })
@@ -69,7 +70,7 @@ test('each reference is answered on its own; taking one back leaves the others a
     assert.equal(s.scheduled?.class, 'waiting', `${s.id} keeps a schedule`)
     assert.equal((r.schedule.phases ?? []).some((p) => p.stepIds.includes(s.id)), false, `${s.id} is still in a phase`)
   }
-  assert.equal(stepOf(r.steps, SOURCE).state.condition, 'needs-decision', 'the step asks again')
+  assert.ok(unresolvedSourceMappings(r.steps).some((x) => x.id === a.id), 'the mapping is asked again')
 })
 
 test('changing an answer replaces it in every policy that names the reference', () => {
@@ -110,9 +111,8 @@ test('no source identifier becomes a tenant object, whichever answers are given 
 test('each reference says the part it plays, and leaving out an exception reads differently from leaving out a target', () => {
   const r = runFixture(base)
   const ctx: Pick<StepVarContext, 'snapshot' | 'mapping' | 'nameOf'> = { snapshot: base.snapshot, mapping: base.mapping, nameOf: (x) => r.input.names!.label(x) }
-  const source = stepOf(r.steps, SOURCE)
   const usage = new Map(referenceUsage(pinnedPackage().policies).map((u) => [u.id, u]))
-  const rows = sourceReferenceRowsOf(source, ctx)
+  const rows = mappingRowsOf(r.steps, ctx)
   assert.equal(rows.length, pending.length)
   for (const row of rows) {
     const u = usage.get(row.id.toLowerCase())
@@ -125,14 +125,14 @@ test('each reference says the part it plays, and leaving out an exception reads 
     assert.equal(row.roleLine.includes(row.id) || row.omitLine.includes(row.id) || row.answerLine.includes(row.id), false, 'the author’s id is never the words')
   }
   // The same reference, as a target instead of an exception.
-  const first = source.action.sourceReferences![0]
-  const asTarget = { ...source, action: { ...source.action, sourceReferences: [{ ...first, role: 'include' as const }, { ...first, role: 'exclude' as const }] } }
-  const [include, exclude] = sourceReferenceRowsOf(asTarget, ctx)
+  const first = sourceMappingsOf(r.steps)[0]
+  const include = mappingRowOf({ ...first, role: 'include' }, ctx)
+  const exclude = mappingRowOf({ ...first, role: 'exclude' }, ctx)
   assert.notEqual(include.omitLine, exclude.omitLine)
   assert.notEqual(include.roleLine, exclude.roleLine)
   // Answered, the row says the answer; taken back, it says it has none.
   const answered = runFixture(withDecisions(base, { [SOURCE]: { answers: { [first.id]: OMIT() }, at } }))
-  const row = sourceReferenceRowsOf(stepOf(answered.steps, SOURCE), ctx).find((x) => x.id === first.id)!
+  const row = mappingRowsOf(answered.steps, ctx).find((x) => x.id === first.id)!
   assert.ok(row.answerLine.includes(OMIT()))
   assert.notEqual(row.answerLine, rows.find((x) => x.id === first.id)!.answerLine)
 })
@@ -140,7 +140,7 @@ test('each reference says the part it plays, and leaving out an exception reads 
 test('a policy waiting on an unanswered reference says the meaning is unresolved, and one waiting on an object says it is missing', () => {
   const tenant = tenantNameOf(base.snapshot)
   const missingWords = app.plan.jsonWaits.split('{tenant}')[1].trim()
-  const decisionWords = app.plan.jsonWaitsDecision.split('{steps}')[1].split('{tenant}')[0].trim()
+  const decisionWords = app.plan.jsonWaitsDecision.split('{tenant}')[0].trim()
   let references = 0
   let objects = 0
   for (const f of [base, withDecisions(base, { [SOURCE]: { answers: Object.fromEntries(pending.map((p) => [p.id, OMIT()])), at } })]) {

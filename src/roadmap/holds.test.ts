@@ -387,13 +387,12 @@ test('Step 4 correction 3: every held row carries a concrete reason from the hol
     }
   }
   assert.ok(checked > 50, `held rows checked: ${checked}`)
-  // A source group nobody has answered names the step where it is answered, not
-  // the step the row is sequenced after (correction batch 1: it used to name a
-  // wait no step could end).
+  // A source group nobody has mapped names the mapping it waits on, not the step
+  // the row is sequenced after (correction batch 1: it used to name a wait no
+  // step could end; S4: the answer is a Plan setting, not a step).
   const token = stepOf(demos[1], 's-goal-token-protection')
-  const answers = stepOf(demos[1], 's-prereq-source-references')
-  assert.equal(token.blockedReason, BLOCKED_REASON.after(answers.plainTitle))
-  assert.equal(rowReason(token), BLOCKED_REASON.after(answers.plainTitle))
+  assert.equal(token.blockedReason, BLOCKED_REASON.sourceMapping)
+  assert.equal(rowReason(token), BLOCKED_REASON.sourceMapping)
 })
 
 // ---- final correction 4: a hold chain ----

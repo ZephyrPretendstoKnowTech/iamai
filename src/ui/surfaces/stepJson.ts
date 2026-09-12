@@ -63,10 +63,10 @@ export function waitingLine(step: Step, tenant: string): string {
   const objects = missingObjects(step)
   const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind).map((m) => m.title))]
   const lines: string[] = []
-  const decided = titles('referenceUnresolved')
   const made = titles('objectMissing')
-  // A reference whose meaning nobody has settled is not an object the tenant lacks.
-  if (decided.length > 0) lines.push(fillText(app.plan.jsonWaitsDecision, { steps: list(decided), tenant }))
+  // A reference whose meaning nobody has settled is not an object the tenant lacks:
+  // it is mapped in Plan settings (S4), and named in words, never by the author's id.
+  if (objects.some((m) => m.wait === 'referenceUnresolved')) lines.push(fillText(app.plan.jsonWaitsDecision, { tenant }))
   if (made.length > 0) lines.push(fillText(app.plan.jsonWaits, { steps: list(made), tenant }))
   if (objects.some((m) => m.wait === 'sourceUnreadable')) lines.push(fillText(app.plan.jsonWaitsUnreadable, { tenant }))
   return lines.join(' ')

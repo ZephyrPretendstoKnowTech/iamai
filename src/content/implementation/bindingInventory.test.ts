@@ -18,7 +18,7 @@ import { bindingLabel, implementationPackageFor, incompleteFieldsOf, memberBindi
 import { NO_RUNTIME, bindText, bound, projectSafely } from './project.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
-import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from '../../roadmap/sourceMappings.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 const NAMES = ['demo', 'demo-week2', 'small'] as const
@@ -36,7 +36,7 @@ const bindingsOf = (step: Step, ctx: StepVarContext) => packageBindings(step, ct
 
 test('the target’s excluded accounts bind as the resolved target holds them: a list, an empty list, null, or nothing while its users wait', () => {
   const SESSION = 's-goal-all-users-no-persistence'
-  const source = PREREQ_STEP_ID.sourceReferences
+  const source = BASELINE_MAPPINGS_KEY
   const base = fixture('demo')
   const baseRun = runFixture(base)
   const ctxOf = (f: typeof base, r: typeof baseRun): StepVarContext => ({ snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups })
@@ -45,7 +45,7 @@ test('the target’s excluded accounts bind as the resolved target holds them: a
   assert.ok(touches(incompleteFieldsOf(waiting, operationsOf(waiting)[0] ?? null), 'conditions.users') || (waiting.action.missing ?? []).length > 0, 'the premise: its users wait on an answer')
   assert.equal(Object.hasOwn(bindingsOf(waiting, ctxOf(base, baseRun)), 'policy.target.excludeUsers'), false, 'bound while the users wait')
   // Answered: the pinned target excludes nobody by account, and that is a value.
-  const pending = baseRun.steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const pending = sourceMappingsOf(baseRun.steps)
   const f = { ...base, mapping: applyStepDecisions(base.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
   const r = runFixture(f)
   const step = r.steps.find((s) => s.id === SESSION)!

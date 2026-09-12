@@ -38,9 +38,13 @@ export type StepObservation = {
   complete?: boolean
   /** Named milestones reached short of complete (§9.1: 'minimum-satisfied', 'hardening-complete'). */
   milestones?: readonly Milestone[]
-  /** Abnormal blockers the scan found on this step itself (missing license, unresolved required fact…). */
-  blockers?: readonly { kind: ObservedBlockerKind; id: string }[]
+  /** Abnormal blockers the scan found on this step itself (missing license, unresolved required fact…).
+   *  A `sourceMapping` one states the part the reference plays in the policy (§18.1). */
+  blockers?: readonly { kind: ObservedBlockerKind; id: string; role?: SourceRole }[]
 }
+
+/** The part an unmapped source reference plays in the policy it holds: an exception, a target, or both. */
+export type SourceRole = 'include' | 'exclude' | 'both'
 
 export type ConditionState = 'applicable' | 'not-applicable' | 'unresolved'
 export type PrerequisiteState = 'resolved' | 'actionable' | 'blocked'
@@ -73,6 +77,8 @@ export type Blocker = {
   abnormal: boolean
   /** Healthy step prerequisites: §14 rule 2 ordinal of the prerequisite's own substatus. */
   ordinal: number
+  /** `sourceMapping` only: include | exclude | both, as the observed blocker stated it. */
+  role?: SourceRole
 }
 
 export type LaneResult = {
@@ -312,7 +318,7 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   // 3. Abnormal blockers on the next action (§15), the step's own observed blockers included.
   const unresolved = unresolvedOn(ctx, id, nextAction)
   const abnormal = [
-    ...(obs.blockers ?? []).map((b) => blocker(b.kind, b.id, null, true)),
+    ...(obs.blockers ?? []).map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
     ...unresolved.filter((b) => b.abnormal),
   ].sort(byTaxonomy)
   if (abnormal.length) {

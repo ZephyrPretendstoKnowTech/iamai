@@ -116,7 +116,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.blocked.unsettled',
   // The campaign email while the plan dates nothing (stepExport.ts commsFor): the
   // review page's example plan dates its enforcement, so it renders the dated body.
-  '.steps[17].comms.bodyUndated',
+  '.steps[16].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
   '.pages.plan.blocked.noOperation',
   // The Plan usability pass (2026-09-11): words the Plan, its settings and its
@@ -179,52 +179,38 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.steps[5].whatToDo.steps[3]',
   '.steps[6].who.none',
   '.steps[10].who.match',
-  '.steps[17].who.groups.noMethod',
+  '.steps[16].who.groups.noMethod',
   // The campaign's readiness groups (Step 7): the example lists nobody needing setup with a method and nobody unknown.
-  '.steps[17].who.groups.needsSetup',
-  '.steps[17].who.groups.readinessUnknown',
-  '.steps[17].who.groups.holdouts',
-  '.steps[17].who.adminsNote',
-  '.steps[18].who.evidence[1]',
+  '.steps[16].who.groups.needsSetup',
+  '.steps[16].who.groups.readinessUnknown',
+  '.steps[16].who.groups.holdouts',
+  '.steps[16].who.adminsNote',
+  '.steps[17].who.evidence[1]',
   // Directory-role holders who use the same account for mail or Teams (E6), on the
   // three admin policies (15, 23, 33); the examples list none. The lockout lists
   // (E8) render through their count lines, so those are no longer suppressed.
-  '.steps[19].who.evidence[3]',
-  '.steps[27].who.evidence[2]',
-  '.steps[37].who.evidence[2]',
-  '.steps[20].who.evidence[0]',
+  '.steps[18].who.evidence[3]',
+  '.steps[26].who.evidence[2]',
+  '.steps[36].who.evidence[2]',
+  '.steps[19].who.evidence[0]',
   // Azure sign-ins by people with no directory role (step-audit item 16); the example lists none.
+  '.steps[19].who.evidence[1]',
   '.steps[20].who.evidence[1]',
-  '.steps[21].who.evidence[1]',
+  '.steps[21].who.evidence[0]',
   '.steps[22].who.evidence[0]',
-  '.steps[23].who.evidence[0]',
   // The countries block's usage line and its partner line (E9): the example lists nobody outside and no partner.
-  '.steps[26].who.evidence[0]',
-  '.steps[26].who.evidence[1]',
+  '.steps[25].who.evidence[0]',
+  '.steps[25].who.evidence[1]',
   // Eligible admins with no passkey or key yet (step-audit item 33); the example lists none.
+  '.steps[36].who.evidence[0]',
   '.steps[37].who.evidence[0]',
-  '.steps[38].who.evidence[0]',
-  '.steps[39].who.evidence[1]',
-  '.steps[40].who.evidence[0]',
+  '.steps[38].who.evidence[1]',
+  '.steps[39].who.evidence[0]',
+  '.steps[40].who.evidence[1]',
   '.steps[41].who.evidence[1]',
-  '.steps[42].who.evidence[1]',
   // The service-accounts block's none line (E9); the example has service accounts.
-  '.steps[44].who.none',
-  '.pages.plan.blocked.sourceReferences',
-  '.steps[13].decision.text',
-  '.steps[13].decision.references.options[0]',
-  '.steps[13].decision.references.options[1]',
-  // The source-references rows' words, read by stepVars.ts sourceReferenceRowsOf by role (correction batch 1.1).
-  '.steps[13].decision.references.answered',
-  '.steps[13].decision.references.clear',
-  '.steps[13].decision.references.omitBoth',
-  '.steps[13].decision.references.omitExclude',
-  '.steps[13].decision.references.omitInclude',
-  '.steps[13].decision.references.roleBoth',
-  '.steps[13].decision.references.roleExclude',
-  '.steps[13].decision.references.roleInclude',
-  '.steps[13].decision.references.sourceId',
-  '.steps[13].decision.references.unanswered',
+  '.steps[43].who.none',
+  '.pages.plan.blocked.sourceMapping',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52
@@ -238,7 +224,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // step's facts from a stored answer (stepPortal.ts, stepVars.ts), and the
 // footer's shared device line is the Not licensed group's (derive/notLicensed.ts):
 // read by the product, never by the review page.
-const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
+const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

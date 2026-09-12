@@ -22,15 +22,15 @@ import type { StepVarContext } from './stepVars.ts'
 import { floorRows, planPhases, scheduledSpan, undatedRows } from './planRows.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
-import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from '../../roadmap/sourceMappings.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 
 type Run = { f: Fixture; r: ReturnType<typeof runFixture> }
 
 /** The demo with the baseline's references answered "none needed here": the plan the decision releases. */
 function answered(f: Fixture): Fixture {
-  const source = PREREQ_STEP_ID.sourceReferences
-  const pending = runFixture(f).steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const source = BASELINE_MAPPINGS_KEY
+  const pending = sourceMappingsOf(runFixture(f).steps)
   return { ...f, mapping: applyStepDecisions(f.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: f.snapshot.asOf } }) }
 }
 

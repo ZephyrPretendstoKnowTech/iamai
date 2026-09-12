@@ -9,7 +9,7 @@ import { CHANGED_FIELDS_BINDING, mismatchBindingOf } from './protocol.ts'
 import { UNRESOLVED, present, projectImplementation, projectSafely } from './project.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
 import { referenceOptions } from '../../roadmap/answers.ts'
-import { PREREQ_STEP_ID } from '../../roadmap/stepIds.ts'
+import { BASELINE_MAPPINGS_KEY, sourceMappingsOf } from '../../roadmap/sourceMappings.ts'
 import { nextSafeAction } from '../../roadmap/nextSafeAction.ts'
 import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { FixtureName } from '../../roadmap/fixtures/index.ts'
@@ -84,8 +84,8 @@ test('a real enforced policy missing its exclusions projects an executable corre
   // canonical exclusions, with the baseline's unsettled source references answered
   // so the users the correction writes are settled.
   const base = fixture('demo')
-  const source = PREREQ_STEP_ID.sourceReferences
-  const pending = runFixture(base).steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const source = BASELINE_MAPPINGS_KEY
+  const pending = sourceMappingsOf(runFixture(base).steps)
   const f = { ...base, mapping: applyStepDecisions(base.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: base.snapshot.asOf } }) }
   const r = runFixture(f)
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups }
@@ -127,8 +127,8 @@ test('an enforced policy that excludes one extra person, with emergency access s
   // is in place and the legacy-authentication block is enforced and correct. Then
   // someone excludes one ordinary person from it by hand.
   const raw = fixture('demo-week2')
-  const source = PREREQ_STEP_ID.sourceReferences
-  const pending = runFixture(raw).steps.find((s) => s.id === source)?.action.sourceReferences ?? []
+  const source = BASELINE_MAPPINGS_KEY
+  const pending = sourceMappingsOf(runFixture(raw).steps)
   const base = { ...raw, mapping: applyStepDecisions(raw.mapping, { [source]: { answers: Object.fromEntries(pending.map((p) => [p.id, referenceOptions()[0]])), at: raw.snapshot.asOf } }) }
   const before = runFixture(base).steps.find((s) => s.id === 's-goal-block-legacy-auth')!
   assert.equal(before.state.satisfied, true, 'the premise: the policy is in place before the change')

@@ -94,6 +94,8 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
         case 'missing-object': {
           // A source group nothing explains binds before an object the tenant can make: no step clears it.
           if (missing.some((m) => m.unreadable)) return BLOCKED_REASON.unsettled
+          // A reference awaiting its Baseline mapping (Plan settings) holds the policy; no step ends it either.
+          if (missing.some((m) => m.decision)) return BLOCKED_REASON.sourceMapping
           return missing.map((m) => after(m.stepId)).find((r): r is string => r !== null) ?? blockedReasonFor(step, stepById)
         }
         case 'escape-hatch-unverified':
