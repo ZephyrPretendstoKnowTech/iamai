@@ -104,10 +104,9 @@ test('a real enforced policy missing its exclusions projects an executable corre
   assert.equal(executable.preview, undefined, 'the correction is a planning preview, not an artifact')
   assert.deepEqual(executable.degraded ?? [], [])
   const json = executable.channels.find((x) => x.channel === 'json')!
-  // The package authors its correction as the PATCH body alone, with no request
-  // metadata of its own (an authoring gap reported beside this batch): the body is
-  // what Copy copies, and the policy it corrects is the tenant's, by id.
-  assert.deepEqual(json.requests, [], 'a request the package does not declare was invented')
+  // The JSON channel is a request or nothing (S6): the PATCH the package declares,
+  // bound to the tenant's own policy by id, never a request IAMAI invented.
+  assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${op.policyId}` }], 'the request the package declares, sent to the policy it corrects')
   assert.equal(bindings['policy.current.id'], op.policyId, 'the correction does not name the tenant’s own policy')
   const body = JSON.parse(json.text) as Record<string, unknown>
   assert.deepEqual(Object.keys(body), ['conditions'], 'a field no change asks for was submitted')

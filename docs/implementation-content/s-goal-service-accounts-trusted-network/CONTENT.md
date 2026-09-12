@@ -65,7 +65,7 @@ Leave the policy in Report-only. Verify exact scope and compare service-account 
 Immediately before enforcement, re-verify the stable policy, user-based identity types, approved trusted location IDs, and workflow/source-location validation. Then change only Enable policy from Report-only to On. Read back and rescan IAMAI.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
 {
   "displayName": {{json:policy.target.displayName}},
   "state": "enabledForReportingButNotEnforced",
@@ -103,7 +103,7 @@ Immediately before enforcement, re-verify the stable policy, user-based identity
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.conditions","channel":"json","states":["partial"],"format":"json-template","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.correct.conditions","channel":"json","states":["partial"],"format":"json-template","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {
   "conditions": {
     "users": {
@@ -132,19 +132,19 @@ Immediately before enforcement, re-verify the stable policy, user-based identity
 }
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"grantControls":{"operator":"OR","builtInControls":["block"],"customAuthenticationFactors":[],"termsOfUse":[]}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.session","channel":"json","states":["partial"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.correct.session","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"sessionControls":null}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.report-only","channel":"json","states":["partial"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.correct.report-only","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"state":"enabledForReportingButNotEnforced"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
 

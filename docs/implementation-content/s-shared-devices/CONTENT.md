@@ -49,23 +49,23 @@ Review sign-in and Report-only results for each shared-device account from its n
 Open the exact dedicated policy by stable ID, re-confirm the trusted-network location still represents the device egress, change **Enable policy** from Report-only to **On**, save, test a real shared device, and rescan IAMAI.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
 {"displayName":"{{policy.target.displayName}}","state":"enabledForReportingButNotEnforced","conditions":{"users":{"includeUsers":{{json:policy.target.includeUsers}},"excludeGroups":{{json:policy.target.excludeGroups}}},"applications":{"includeApplications":["All"]},"clientAppTypes":["all"],"locations":{"includeLocations":["All"],"excludeLocations":["{{policy.target.trustedLocationId}}"]}},"grantControls":{"operator":"OR","builtInControls":["block"]},"sessionControls":null}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.conditions","channel":"json","states":["partial"],"format":"json-template","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.correct.conditions","channel":"json","states":["partial"],"format":"json-template","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"conditions":{"users":{"includeUsers":{{json:policy.target.includeUsers}},"excludeGroups":{{json:policy.target.excludeGroups}}},"applications":{"includeApplications":["All"]},"clientAppTypes":["all"],"locations":{"includeLocations":["All"],"excludeLocations":["{{policy.target.trustedLocationId}}"]}}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.correct.grant","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"grantControls":{"operator":"OR","builtInControls":["block"]},"sessionControls":null}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.report-only","channel":"json","states":["partial"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.report-only","channel":"json","states":["partial"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"state":"enabledForReportingButNotEnforced"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
 
