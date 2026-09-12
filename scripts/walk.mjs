@@ -227,8 +227,35 @@ const settle = async () => {
  * navigation, because the press is page state and a navigation drops it.
  */
 const revealCompleted = async () => {
-  await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show completed/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
+  await evaluate(`(() => { for (const re of [/Show completed/, /Show deferred/]) { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => re.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() } })()`)
   await sleep(200)
+}
+/**
+ * The board draws one lane at a time (S3, ui/surfaces/planBoard.ts): Ready, Up
+ * Next and On Hold are tabs, and the Completed and Deferred groups the toggles
+ * reveal are drawn under whichever tab is showing. A check that reads every row
+ * reads the three tabs in turn (`readRows`), keeps each row's tab and its index
+ * inside that tab, and shows the row's tab again before it opens it.
+ */
+const LANES = ['Ready', 'Up Next', 'On Hold']
+const showLane = async (name) => {
+  await evaluate(`(() => { const t = [...document.querySelectorAll('main.page .plan-controls [role=tab]')].find((x) => ((x.textContent || '').replace((x.querySelector('.tab-badge') || {}).textContent || '', '').trim()) === ${JSON.stringify(name)}); if (t && t.getAttribute('aria-selected') !== 'true') t.click() })()`)
+  await sleep(150)
+}
+// One row as the checks read it, flattened in Node: a regex in an evaluate() template loses its backslashes, so the day-0 reading is finished here.
+const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), status: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), reason: ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: e.closest('#plan-group-complete') !== null, aside: e.closest('#plan-group-complete, #plan-group-deferred') !== null, wave0: e.dataset.wave === '0' }))`
+const readRows = async () => {
+  const out = []
+  for (const lane of LANES) {
+    await showLane(lane)
+    for (const r of await evaluate(ROW_READ)) {
+      // The Completed and Deferred groups repeat under every tab: read them once.
+      if (r.aside && lane !== LANES[0]) continue
+      out.push({ ...r, lane, dayZero: r.wave0 || /^when .+ reaches \d+%/.test(r.reason) })
+    }
+  }
+  await showLane(LANES[0])
+  return out
 }
 const mainText = () => evaluate(`(document.querySelector('main.page') || document.body).innerText`)
 const shot = async (path) => {
@@ -439,6 +466,10 @@ async function walkFixture(fx) {
   let rowStatuses = []
   let rowWhens = []
   let rowReasons = []
+  // Each row's tab, its index inside that tab, and whether it is day-0 work (readRows).
+  let rowLane = []
+  let rowLocal = []
+  let rowDayZero = []
   let rowTitlesOpen = []
   let rowReasonsOpen = []
   let rowWhensOpen = []
@@ -1078,19 +1109,25 @@ async function walkFixture(fx) {
       // so press it before the rows are read: these lists are what the checks
       // below ask "is this step on the Plan at all".
       await revealCompleted()
-      let n = await evaluate(`document.querySelectorAll('main.page .plan-row').length`)
-      rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
-      rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
-      rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
-      rowReasons = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)
+      // Every row of the three tabs, in tab order (readRows): the checks below
+      // index these arrays, and open a row by its tab and its index inside it.
+      let rows = await readRows()
+      let n = rows.length
+      rowTitles = rows.map((r) => r.title)
+      rowStatuses = rows.map((r) => r.status)
+      rowWhens = rows.map((r) => r.when)
+      rowReasons = rows.map((r) => r.reason)
+      rowLane = rows.map((r) => r.lane)
+      rowLocal = rows.map((r) => r.k)
+      rowDayZero = rows.map((r) => r.dayZero)
       // The rows as first seen, with every decision still open (the loop re-reads the rows after a decision moves a step).
       rowTitlesOpen = [...rowTitles]
       rowReasonsOpen = [...rowReasons]
       rowWhensOpen = [...rowWhens]
-      let inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
+      let inFooter = rows.map((r) => r.footer)
       // Finished rows are not opened one by one, for the same reason the footer's
       // never were: the loop below walks the work that is still to do.
-      let inComplete = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-complete') !== null)`)
+      let inComplete = rows.map((r) => r.complete)
       // Checks over the work artifacts only the printed plan carries now — the
       // emails and the manager's sentence — run once every row has been opened.
       const emailChecks = []
@@ -1104,14 +1141,15 @@ async function walkFixture(fx) {
         await sleep(300)
         await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
         await ensureWeek2('plan')
-        // The press does not survive the navigation above.
+        // The press does not survive the navigation above, and nor does the tab.
         await revealCompleted()
-        const rowThere = await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${i}`)
+        await showLane(rowLane[i])
+        const rowThere = await waitFor(`document.querySelectorAll('main.page .plan-row').length > ${rowLocal[i]}`)
         if (!rowThere) {
           add('P0', `${slabel}: the row is not on the Plan`)
           continue
         }
-        await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${i}]; r.scrollIntoView({ block: 'center' }); r.click() })()`)
+        await evaluate(`(() => { const r = document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; r.scrollIntoView({ block: 'center' }); r.click() })()`)
         const opened = await waitFor(`document.querySelector('main.page .step-body') !== null`, 4000)
         if (!opened) {
           add('P0', `${slabel}: the row does not open`)
@@ -1183,7 +1221,7 @@ async function walkFixture(fx) {
           if (rowWhens[i] === 'held until the records clear' && !RE.gateWindowClosed.test(bodyText)) add('P0', `${slabel}: the row is held until the records clear and the step's Done when does not say the window has closed`)
         }
         // One population per step: the row's who-line count is the lead's count.
-        const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
+        const rowWho = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}].querySelector('.who') || {}).textContent || '' : '')`)
         const bodyLines = bodyText.split('\n').map((x) => x.trim()).filter(Boolean)
         const leadAt = bodyLines.indexOf('Who this touches')
         const rowCount = countOf(rowWho, { names: true })
@@ -1218,7 +1256,8 @@ async function walkFixture(fx) {
           // that policy is in place is read from the row the Plan draws for it:
           // the campaign's email said so too, but it moved into More with the
           // names (task 011) and a tenant whose email is not whole carries none.
-          const mfaWord = await evaluate(`(() => { const r = [...document.querySelectorAll('main.page .plan-row')].find((x) => ((x.querySelector('.step-title') || {}).textContent || '').trim() === 'Require MFA for Everyone'); return r ? ((r.querySelector('.status') || {}).textContent || '').trim() : '' })()`)
+          // Read off the rows of every tab (readRows), because the policy's row may sit in another lane than the campaign's.
+          const mfaWord = rowStatuses[rowTitles.indexOf('Require MFA for Everyone')] ?? ''
           // The campaign's groups are MFA Readiness's states (Step 7).
           campaignGroups = {
             label: slabel,
@@ -1337,7 +1376,9 @@ async function walkFixture(fx) {
           // Nor does a create the plan makes in report-only while a readiness
           // threshold gates its enforcement: its day is the creation, and its reason
           // line names the threshold (roadmap/stepSchedule.ts, owner 2026-09-11).
-          const inDayZero = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-wave-0') !== null || /^when .+ reaches \\d+%/.test(((e.querySelector('.plan-row-reason') || {}).textContent || '').trim()))`)
+          // Day-0 work is read off the row's own phase data (`data-wave`, readRows: e.dataset.wave === '0'),
+          // because the lanes replaced the phase groups (S3) and the phase stays a secondary projection.
+          const inDayZero = rowDayZero
           const enforcementDated = (i) => DAY_ONLY.test(rowWhens[i] || '') && !inDayZero[i]
           const planDated = rowWhens.some((_, i) => enforcementDated(i))
           const campaignDated = (mfaRowAt >= 0 && enforcementDated(mfaRowAt)) || (campaignGroups?.mfaInPlace && planDated)
@@ -1372,7 +1413,7 @@ async function walkFixture(fx) {
             // method it accepts, so they are never more than the admins the step
             // says are not yet Ready (Step 7: two answers, one never exceeding the other).
             const m = bodyText.match(/^(\d+) admins? (?:is|are) not yet Ready for phishing-resistant MFA/m)
-            const who = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${i}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${i}].querySelector('.who') || {}).textContent || '' : '')`)
+            const who = await evaluate(`((document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}] || {}).querySelector ? (document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}].querySelector('.who') || {}).textContent || '' : '')`)
             const suffix = who.match(/· (\d+) would be stopped$/)
             if (m && suffix && Number(suffix[1]) > Number(m[1])) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step says only ${m[1]} admins are not yet Ready`)
             else if (!m && suffix) add('P0', `${slabel}: the row says ${suffix[1]} would be stopped and the step names no admin who is not Ready`)
@@ -1509,11 +1550,15 @@ async function walkFixture(fx) {
           // rows below it moved up one. Re-read them and take this index again.
           await sleep(300)
           await revealCompleted()
-          rowTitles = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
-          rowStatuses = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.status') || {}).textContent || '').trim())`)
-          rowWhens = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.when') || {}).textContent || '').trim())`)
-          inFooter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('.plan-footer') !== null)`)
-          inComplete = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => e.closest('#plan-group-complete') !== null)`)
+          rows = await readRows()
+          rowTitles = rows.map((r) => r.title)
+          rowStatuses = rows.map((r) => r.status)
+          rowWhens = rows.map((r) => r.when)
+          rowLane = rows.map((r) => r.lane)
+          rowLocal = rows.map((r) => r.k)
+          rowDayZero = rows.map((r) => r.dayZero)
+          inFooter = rows.map((r) => r.footer)
+          inComplete = rows.map((r) => r.complete)
           n = rowTitles.length
           i -= 1
         }
@@ -1549,8 +1594,9 @@ async function walkFixture(fx) {
       await revealCompleted()
       await sleep(200)
       // The rows as they stand after every step was opened (and, on week two, after the device decision was made on its step).
-      rowTitlesAfter = await evaluate(`[...document.querySelectorAll('main.page .plan-row .step-title')].map((e) => (e.textContent || '').trim())`)
-      rowReasonsAfter = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].map((e) => ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)
+      const rowsAfter = await readRows()
+      rowTitlesAfter = rowsAfter.map((r) => r.title)
+      rowReasonsAfter = rowsAfter.map((r) => r.reason)
       const fc = contractById['plan.footer']
       const fd = await evaluate(extractIn(`document.querySelector('main.page .plan-footer')`, ''))
       if (fd) {
