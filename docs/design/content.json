@@ -3481,6 +3481,7 @@
         "multi": true,
         "question": {
           "label": "Partner or MSP access",
+          "tileValue": "Confirm whether partners access your tenant",
           "text": "{spSignIns} service-provider sign-ins since {from} from {partners} partner tenants. Should this policy prompt them too?",
           "options": [
             "Prompt them like any guest",

@@ -24,6 +24,8 @@ const packageOf = (stepId: string): Pkg => (registry as unknown as { packages: R
 /** The blocks one channel draws, joined as the projection joins them (project.ts). */
 const channel = (stepId: string, ids: string[]): string => ids.map((id) => packageOf(stepId).blocks[id].text).join('\n\n')
 const HANDOFF = readFileSync('src/ui/surfaces/MfaHandoff.tsx', 'utf8')
+const PACKAGE_SRC = readFileSync('src/ui/surfaces/stepPackage.ts', 'utf8')
+const GUESTS = 's-goal-guests-mfa'
 const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
 const MFA_ALL = 's-goal-mfa-all-users'
 
@@ -87,4 +89,41 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   assert.match(ai, /^This is the foundational MFA policy: every user must present a second factor \(MFA\) at sign-in\. It's the single most impactful control in the baseline\.$/m)
   assert.match(ai, /^The policy is already enforced on your tenant\. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt\.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow\.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally\.$/m)
   assert.match(ai, /^After this step, the MFA Registration Campaign step ensures every person has registered a phishing-resistant method\. Until that's done, the 33% threshold tile tracks progress\.$/m)
+})
+
+test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names both tiers with numbered corrections for each', () => {
+  const guests = bodiesOf(fixture('mid')).get(GUESTS)
+  assert.ok(guests, 'the mid plan has the guests step')
+  const tile = tilesOf(guests).find((t) => t.key === 'unsaved:Partner or MSP access')
+  assert.ok(tile, 'the unsaved partner question has no tile')
+  assert.equal(tile.value, 'Confirm whether partners access your tenant')
+  // The label is the stored answer's key, so it stays (BLOCKED.md).
+  assert.equal(tile.label, 'Partner or MSP access')
+  // The members' own names bind from the scan row the pair already reads.
+  assert.match(PACKAGE_SRC, /out\[`\$\{prefix\}\.current\.displayName`\] = row\.displayName/)
+  for (const role of ['strong', 'mixed']) assert.ok(packageOf(GUESTS).meta.optionalBindings?.includes(`policies.guests.${role}.current.displayName`), `${role}: the member name is not a declared binding`)
+  const entra = packageOf(GUESTS).blocks['entra.correct-pair'].text
+  assert.match(entra, /^This step manages two Conditional Access policies that work together:$/m)
+  assert.match(entra, /^\*\*Policy 1: \{\{policies\.guests\.strong\.current\.displayName\}\} \(strong tier\)\*\*\nFor trusted partners — requires the authentication strength "Modern MFA \+ TAP\."$/m)
+  assert.match(entra, /^\*\*Policy 2: \{\{policies\.guests\.mixed\.current\.displayName\}\} \(mixed tier\)\*\*\nFor all other guests — requires standard MFA \(any second factor\)\.$/m)
+  assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Policies.'],
+        ['Open the strong-tier policy (find it by ID in Plan settings).'],
+        ['Users → Exclude → Groups: add the exclusions group.'],
+        ['Verify: the Grant requires the authentication strength "Modern MFA + TAP."'],
+        ['Save.'],
+        ['Open the mixed-tier policy (find it by ID in Plan settings).'],
+        ['Users → Exclude → Groups: add the exclusions group.'],
+        ['Verify: the Grant requires "Require multifactor authentication."'],
+        ['Save.'],
+        ['Rescan in IAMAI.'],
+      ],
+    },
+  ])
+  assert.match(entra, /^Do not merge these two policies into one\. They serve different guest populations with different MFA requirements\.$/m)
+  assert.doesNotMatch(entra, /tenant-resolved users objects|two-member split/)
+  // AI Info is unchanged (BLOCKED.md), and still the channel that binds the pair's mismatches.
+  assert.match(packageOf(GUESTS).blocks['ai.correct'].text, /\{\{policies\.guests\.semanticMismatches\}\}/)
 })

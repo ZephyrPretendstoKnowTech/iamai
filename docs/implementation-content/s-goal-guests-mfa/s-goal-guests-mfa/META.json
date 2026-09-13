@@ -71,6 +71,8 @@
   "optionalBindings": [
     "tenant.displayName",
     "guests.affected.count",
+    "policies.guests.strong.current.displayName",
+    "policies.guests.mixed.current.displayName",
     "guests.partnerTierSummary",
     "guests.serviceProviderDecision",
     "policyPair.current.states",

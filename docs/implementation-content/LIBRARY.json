@@ -619,7 +619,7 @@
       ],
       "correctionModules": 1,
       "requiredBindings": 8,
-      "optionalBindings": 9,
+      "optionalBindings": 11,
       "verifiedSourceCount": 8,
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
@@ -4347,6 +4347,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policies.guests.mixed.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.guests.mixed.current.id",
       "requiredBy": [
         "s-goal-guests-mfa"
@@ -4388,6 +4400,18 @@
         "s-goal-guests-mfa"
       ],
       "optionalBy": [],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policies.guests.strong.current.displayName",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
       "packages": [
         "s-goal-guests-mfa"
       ],
@@ -6117,14 +6141,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 961,
-    "uniqueBindings": 266,
+    "uniqueBindings": 268,
     "bindingsRequiredByAtLeastOneProjection": 95,
-    "bindingsOptionalInAtLeastOnePackage": 175,
+    "bindingsOptionalInAtLeastOnePackage": 177,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 221,
+    "bindingDefinitionsPendingHolisticReview": 223,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 221,
+    "knownIAMAIInputUnreviewed": 223,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

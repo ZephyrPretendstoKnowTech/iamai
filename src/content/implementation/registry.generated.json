@@ -6485,6 +6485,8 @@
         "optionalBindings": [
           "tenant.displayName",
           "guests.affected.count",
+          "policies.guests.strong.current.displayName",
+          "policies.guests.mixed.current.displayName",
           "guests.partnerTierSummary",
           "guests.serviceProviderDecision",
           "policyPair.current.states",
@@ -6720,7 +6722,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact resolved pair by stable tenant IDs: strong **{{policies.guests.strong.current.id}}**, mixed **{{policies.guests.mixed.current.id}}**. Correct only the member(s) IAMAI identifies as mismatched, using their complete tenant-resolved users objects. Preserve the two-member split and their different grants; do not merge them.\n"
+          "text": "This step manages two Conditional Access policies that work together:\n\n**Policy 1: {{policies.guests.strong.current.displayName}} (strong tier)**\nFor trusted partners — requires the authentication strength \"Modern MFA + TAP.\"\n\n**Policy 2: {{policies.guests.mixed.current.displayName}} (mixed tier)**\nFor all other guests — requires standard MFA (any second factor).\n\nCorrections:\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the strong-tier policy (find it by ID in Plan settings).\n3. Users → Exclude → Groups: add the exclusions group.\n4. Verify: the Grant requires the authentication strength \"Modern MFA + TAP.\"\n5. Save.\n6. Open the mixed-tier policy (find it by ID in Plan settings).\n7. Users → Exclude → Groups: add the exclusions group.\n8. Verify: the Grant requires \"Require multifactor authentication.\"\n9. Save.\n10. Rescan in IAMAI.\n\nDo not merge these two policies into one. They serve different guest populations with different MFA requirements.\n"
         },
         "entra.partner-trust": {
           "meta": {

@@ -525,6 +525,8 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
       out[`${prefix}.current.id`] = op.policyId
       const row = rows.find((r) => r.id === op.policyId) ?? null
       if (typeof row?.state === 'string') out[`${prefix}.current.state`] = row.state
+      // The member's own name in the tenant, which the pair's Entra correction names it by (content review S3).
+      if (typeof row?.displayName === 'string') out[`${prefix}.current.displayName`] = row.displayName
       const changed = changedFieldsOf(op.body as Record<string, unknown>, row)
       if (changed.length > 0) out[`${prefix}.current.changedFields`] = changed
     }
