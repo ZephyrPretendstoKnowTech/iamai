@@ -184,11 +184,11 @@ test('an uploaded baseline that maps its own policy to the same goal carries no 
   assert.equal(ch.contract, true, 'the Step Contract withheld an implementation the authority offers')
   assert.equal(ch.tabs, true, 'the JSON, PowerShell and Download tabs are withheld')
   assert.notEqual(step.state.lifecycle, null, 'the step lost its rollout stage')
-  assert.doesNotMatch(contract.whatToDo.text, /reviewed baseline|baseline defines/i, 'the next action is the resolve-the-conflict one')
+  assert.doesNotMatch(contract.whatToDo.text, /baseline author|baseline defines/i, 'the next action is the resolve-the-conflict one')
 
   // And no artifact tells anybody to go and resolve a contradiction.
   const rendered = [...stepLines(step, ctx), JSON.stringify(stepExportView(step, ctx)), stepContext(step, (s) => stepExportView(s, ctx))].join('\n')
-  assert.equal(/reviewed baseline/i.test(rendered), false, 'an artifact asks for a reviewed baseline the upload never contradicted')
+  assert.equal(/baseline author/i.test(rendered), false, 'an artifact asks for a corrected baseline the upload never contradicted')
   assert.equal(rendered.includes(SOURCE), false, 'the pinned source policy id reached an uploaded baseline’s artifacts')
 })
 

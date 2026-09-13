@@ -292,7 +292,7 @@ test('contract 9: a baseline conflict renders with no implementation and nothing
     assert.ok(c.whatToDo.text.length > 0, 'and it still says what happens next')
     // Nothing in the tenant clears it, so the step asks the operator for nothing.
     assert.equal(c.fix.length, 0, `${name}/${step.id}: a baseline conflict asked the operator to fix something`)
-    assert.match(c.doneWhen[0], /reviewed baseline/, `Done when reads "${c.doneWhen[0]}"`)
+    assert.match(c.doneWhen[0], /baseline author/, `Done when reads "${c.doneWhen[0]}"`)
   }
 })
 

@@ -314,9 +314,9 @@ test('a tenant policy that looks like the exported side does not make the goal I
   // And the completion is the source's, not the tenant's. "Already satisfied:
   // <tenant> has this, and the step is to keep it that way." is the exact
   // sentence a matching artifact used to produce here.
-  assert.deepEqual(contract.doneWhen, ['A reviewed baseline version settles which of its two definitions of this policy is meant.'])
+  assert.deepEqual(contract.doneWhen, ["The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition."])
   assert.equal(contract.whatToDo.kind, 'resolve')
-  assert.match(contract.whatToDo.text, /reviewed baseline/i)
+  assert.match(contract.whatToDo.text, /baseline author/i)
   assert.deepEqual(contract.found, [], 'the step reported the tenant policy as coverage of the goal')
 })
 
@@ -474,9 +474,9 @@ test('screen, export and prompt all carry the conflict and none carries an imple
   // way out of the conflict was on screen and in no file that left the browser.
   assert.deepEqual(view.doneWhen, contract.doneWhen, "the export's completion is not the screen's")
   assert.ok(!/report-only|sign-in failures|%/i.test(view.doneWhen.join(' ')), `a rollout finish was written for a policy nobody can write: ${view.doneWhen.join(' | ')}`)
-  assert.match(contract.doneWhen.join(' '), /reviewed baseline/i, 'the screen drops what would end the conflict')
-  assert.match(view.whatToDo.join('\n'), /reviewed baseline/i, 'the exports drop what would end the conflict')
-  assert.match(context, /reviewed baseline/i, 'the prompt pack drops what would end the conflict')
+  assert.match(contract.doneWhen.join(' '), /baseline author/i, 'the screen drops what would end the conflict')
+  assert.match(view.whatToDo.join('\n'), /baseline author/i, 'the exports drop what would end the conflict')
+  assert.match(context, /baseline author/i, 'the prompt pack drops what would end the conflict')
   // And no artifact tells anybody the change is coming.
   assert.equal(/Announce|we will change|goes live/i.test(context), false, 'an artifact announces a change IAMAI will not define')
 })
@@ -547,8 +547,8 @@ test('a goal handed to another source is planned normally, all the way to the sc
   // The step is behind this tenant's own MFA readiness number, which is a
   // reason of the tenant's and reads as one; nothing on it asks anybody to wait
   // for a reviewed baseline.
-  assert.doesNotMatch(contract.whatToDo.text, /reviewed baseline|baseline defines/i, 'the next action is the resolve-the-conflict one')
-  assert.doesNotMatch(contract.doneWhen.join(' '), /reviewed baseline/i, 'the completion is the resolve-the-conflict one')
+  assert.doesNotMatch(contract.whatToDo.text, /baseline author|baseline defines/i, 'the next action is the resolve-the-conflict one')
+  assert.doesNotMatch(contract.doneWhen.join(' '), /baseline author/i, 'the completion is the resolve-the-conflict one')
 })
 
 test('the contradicted source blocks whatever goal carries it, and takes nothing else with it', () => {
@@ -633,7 +633,7 @@ test('screen, export and prompt all carry the conflict on whichever goal the map
   assert.ok(view.whatToDo.length > 0, 'the artifacts carry an empty What to do for a step nobody can implement')
   for (const [where, text] of [['screen', screen], ['export', view.whatToDo.join(NEWLINE)], ['prompt', context]] as const) {
     assert.match(text, /baseline/i, `${where} does not name the baseline`)
-    assert.match(text, /reviewed baseline/i, `${where} drops what would end the conflict`)
+    assert.match(text, /baseline author/i, `${where} drops what would end the conflict`)
   }
   for (const [where, text] of [['export', view.whatToDo.join(NEWLINE)], ['prompt', context]] as const) {
     assert.match(text, /Nothing is wrong in your tenant/i, `${where} reads as a tenant failure`)
@@ -653,7 +653,7 @@ test('screen, export and prompt all carry the conflict on whichever goal the map
   // The goal the pinned map blocks is planned here, and says none of it.
   const other = r.steps.find((x) => x.goalId === GOAL) as Step
   assert.equal(baselineConflictWords(other), null, 'the goal id carried the explanation with it')
-  assert.doesNotMatch(stepExportView(other, ctx).whatToDo.join(NEWLINE), /reviewed baseline/i, 'the artifacts hold the conflict against a source that has none')
+  assert.doesNotMatch(stepExportView(other, ctx).whatToDo.join(NEWLINE), /baseline author/i, 'the artifacts hold the conflict against a source that has none')
 })
 
 // ---- 11: a reviewed version that settles it is planned, all the way through ----
@@ -693,6 +693,6 @@ test('a revised source keeping the same id is implemented like any other policy'
   assert.equal(contract.implementation.offered, true, 'the implementation was withdrawn from a settled source')
   assert.notEqual(contract.state.conditionLabel, 'Baseline conflict')
   const view = stepExportView(s, ctx)
-  assert.doesNotMatch(view.whatToDo.join(NEWLINE), /reviewed baseline|Both cannot be true/i, 'the artifacts still ask for a reviewed baseline')
+  assert.doesNotMatch(view.whatToDo.join(NEWLINE), /baseline author|one locks admins out/i, 'the artifacts still ask for a corrected baseline')
   assert.ok(view.whatToDo.length > 0, 'the artifacts carry no instructions for a policy that can be written')
 })

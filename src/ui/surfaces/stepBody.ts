@@ -301,7 +301,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // holds the step is a Readiness tile already.
   // A package the semantic re-pin review set aside (stepPackage.ts packageReviewFor):
   // the step draws the baseline's own channels, and says why, before anything else.
-  const review = packageReviewFor(step)
+  // A step the baseline defines two ways draws no channels at all, so it says
+  // nothing about where they come from (content review S4).
+  const review = conflictWords === null ? packageReviewFor(step) : null
   const notes = review ? [review.status === 'held' ? W.review.held : W.review.reviewNeeded] : []
   // Every step draws its Implementation region, a decision, a question and a check
   // included (content review D2, which replaces the owner's 2026-09-11 rule that a

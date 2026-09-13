@@ -92,7 +92,7 @@ test('P0-6: the baseline-conflict step says there is not enough information, and
   assert.ok(conflict, 'the demo has a baseline-conflict step')
   assert.ok(conflict.artifacts.length === 5 && conflict.artifacts.every((a) => a.unavailable === true), 'the conflict step offers a channel with content')
   assert.equal(conflict.empty.title, 'Not enough information to provide implementation guidance.')
-  assert.equal(conflict.empty.text, 'The baseline defines this policy two ways; resolve the conflict before implementation is available.')
+  assert.equal(conflict.empty.text, 'The baseline defines this policy two ways. Until the baseline author publishes a corrected version, no implementation steps are available.')
 })
 
 test('P0-2: a tile is one line until opened; its detail is hidden; the strip does not match heights', () => {
