@@ -561,7 +561,7 @@ const SEVERITY: Record<string, number> = { Blocked: 0, 'Review required': 1, Unk
  * up to four across, wrapping). A package tile that states the same fact as a
  * runtime tile (`gateKey`) gives way to it. A gate not yet satisfied — a
  * confirmation the next transition is waiting on first, then the most pressing —
- * is an unresolved tile, before the hardening, which stays last; a gate already
+ * is an unresolved tile, after the runtime's own; a gate already
  * satisfied is evidence. Nothing is dropped to fit.
  */
 export function mergeReadiness(runtime: ContractReadiness, pkg: PackageReadiness | null): ContractReadiness {
@@ -573,7 +573,5 @@ export function mergeReadiness(runtime: ContractReadiness, pkg: PackageReadiness
     .sort((a, b) => pressing(a) - pressing(b))
     .map((t) => ({ key: t.id, label: t.gate, tone: RESULT_TONE[t.result] ?? 'info', value: t.result, note: t.line, ...(t.confirm ? { confirm: t.confirm } : {}) }))
   const open = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait' || (t.confirm !== undefined && !t.confirm.satisfied)
-  const hardening = runtime.tiles.filter((t) => t.key === 'resilience')
-  const rest = runtime.tiles.filter((t) => t.key !== 'resilience')
-  return { ...runtime, tiles: [...rest, ...packaged.filter(open), ...hardening], satisfied: [...runtime.satisfied, ...packaged.filter((t) => !open(t))] }
+  return { ...runtime, tiles: [...runtime.tiles, ...packaged.filter(open)], satisfied: [...runtime.satisfied, ...packaged.filter((t) => !open(t))] }
 }

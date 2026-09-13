@@ -15,7 +15,7 @@ import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, stageClass } from './stepContract.ts'
-import type { ContractHardening } from './stepContract.ts'
+import type { ContractEmergencySlot, ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 
 /**
@@ -603,35 +603,37 @@ export function WhatIamaiFound({ found }: { found: ContractFound[] }) {
 }
 
 /**
- * Emergency-access hardening (owner, 2026-09-11): the recommendations beyond the
- * minimum, grouped by the account each is about, as the evidence behind the
- * Resilience tile — secondary, and never a block. Once minimum emergency access
- * is available the operator may defer them — the rollout continues and they
- * move to Cleanup, never out of view — and may undo that. The tile's own note
- * is the lead; nothing here says the state twice.
+ * An emergency account slot's detail (B10 P0-7, S-BG-1): its minimum safety
+ * blockers while any remain, then its hardening recommendations — secondary, and
+ * never a block. Once minimum emergency access is available the operator may
+ * defer the hardening — the rollout continues and it moves to Cleanup, never out
+ * of view — and may undo that. The deferral is set-wide, so it is handed to one
+ * slot (`hardening` is null on the others). The tile's own note is the lead;
+ * nothing here says the state twice.
  */
-export function HardeningBody({ hardening, onDefer, onUndo }: { hardening: ContractHardening | null; onDefer: (() => void) | null; onUndo: (() => void) | null }) {
-  if (!hardening) return null
+export function EmergencySlotBody({ slot, hardening, onDefer, onUndo }: { slot: ContractEmergencySlot; hardening: ContractHardening | null; onDefer: (() => void) | null; onUndo: (() => void) | null }) {
   const H = CONTRACT.hardening
+  const lines = slot.state === 'minimum' ? { title: H.minimumHeading, items: slot.minimum } : slot.state === 'hardening' ? { title: H.heading, items: slot.hardening } : null
+  if (lines === null) return null
   return (
     <div className="hardening">
-      {hardening.groups.map((g) => (
-        <div key={g.key} className="hardening-group">
-          <h5>{g.title}</h5>
+      {lines.items.length > 0 && (
+        <div className="hardening-group">
+          <h5>{lines.title}</h5>
           <ul className="sections">
-            {g.items.map((item, i) => (
+            {lines.items.map((item, i) => (
               <li key={i}>{item}</li>
             ))}
           </ul>
         </div>
-      ))}
-      {hardening.unchecked > 0 && <p className="reason">{fillText(H.unchecked, { n: hardening.unchecked })}</p>}
-      {!hardening.deferredAt && hardening.canDefer && onDefer && (
+      )}
+      {hardening && slot.state === 'hardening' && hardening.unchecked > 0 && <p className="reason">{fillText(H.unchecked, { n: hardening.unchecked })}</p>}
+      {hardening && !hardening.deferredAt && hardening.canDefer && onDefer && (
         <p className="actions">
           <Button variant="secondary" onClick={onDefer}>{H.defer}</Button>
         </p>
       )}
-      {hardening.deferredAt && onUndo && (
+      {hardening?.deferredAt && onUndo && (
         <p className="actions">
           <Button variant="secondary" onClick={onUndo}>{H.undo}</Button>
         </p>

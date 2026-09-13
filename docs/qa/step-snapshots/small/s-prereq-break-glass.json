@@ -14,8 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Resilience",
-      "state": "Hardening open"
+      "label": "Break-glass 1",
+      "state": "Minimum met · hardening open"
+    },
+    {
+      "label": "Break-glass 2",
+      "state": "Minimum met · hardening open"
     }
   ],
   "channels": [

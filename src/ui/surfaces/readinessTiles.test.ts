@@ -90,7 +90,7 @@ test('with nothing unresolved the region is its compact success line and the sat
   const { step, c, blockers } = opened('demo-week2', EMERGENCY)
   const r = readinessOf(step, c, blockers)
   assert.deepEqual(r.tiles, [])
-  assert.deepEqual(r.satisfied.map((t) => `${t.key}:${t.tone}`), ['emergency:good', 'resilience:good', 'coverage:good'])
+  assert.deepEqual(r.satisfied.map((t) => `${t.key}:${t.tone}`), ['slot:1:good', 'slot:2:good', 'coverage:good'])
   assert.equal(r.bar.main, CONTRACT.lifecycle['in-place'], 'a completed step’s bar is not the tenant fact (A1b)')
   const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
   assert.match(section, /readiness\.tiles\.length > 0 \? \(\s*strip\(readiness\.tiles, 'unresolved'\)\s*\) : \(\s*<p className="readiness-clear">/, 'nothing unresolved does not collapse to the success line')
@@ -101,18 +101,19 @@ test('with nothing unresolved the region is its compact success line and the sat
   assert.match(CSS, /\.step \.readiness-clear \{/, 'the success line has no treatment')
 })
 
-test('Fix before continuing, the hardening section and the Needs attention pointer are gone from the step; the hardening is the Resilience tile’s evidence, last and nonblocking', () => {
+test('Fix before continuing, the hardening section and the Needs attention pointer are gone from the step; each account slot carries its own minimum blockers or hardening', () => {
   for (const gone of ['<FixBeforeContinuing', '<HardeningRecommendations', 'fixHeading', 'W.preview.checks']) assert.equal(CONTENT_STEP.includes(gone), false, `ContentStep still draws ${gone}`)
   for (const gone of ['export function FixBeforeContinuing', 'export function HardeningRecommendations', 'CONTRACT.fixHeading']) assert.equal(SECTIONS.includes(gone), false, `StepSections still exports ${gone}`)
-  assert.match(CONTENT_STEP, /extra=\{\(t\) =>\s*t\.key === 'resilience' && contract\.hardening \? \(\s*<HardeningBody/, 'the hardening is not the Resilience tile’s evidence')
+  assert.match(CONTENT_STEP, /extra=\{\(t\) => \{\s*const slot = contract\.emergencySlots\.find\(\(s\) => s\.key === t\.key\)/, 'an account slot’s lines are not its tile’s evidence')
   // The content file no longer points at a container that does not exist (the export's section heading keeps the key).
   assert.equal((CONTENT.match(/Fix before continuing/g) ?? []).length, 1)
   const { step, c, blockers } = opened('demo', EMERGENCY)
   const r = readinessOf(step, c, blockers)
-  assert.equal(r.tiles.at(-1)?.key, 'resilience', 'the hardening tile is not last')
-  assert.equal(r.tiles.at(-1)?.note, CONTRACT.hardening.leadBlocked, 'the hardening tile does not carry its lead')
-  assert.ok(r.tiles.some((t) => t.key.startsWith('check:')), 'the failing minimum check is not its own tile')
-  assert.equal(r.tiles[0].key, 'emergency', 'the way back in is not the first tile')
+  // The account slots lead (P0-7): the failing minimum is its slot's line, the hardening lead is the hardening slot's note, and no check tile stands beside them.
+  assert.deepEqual(r.tiles.slice(0, 2).map((t) => t.key), ['slot:1', 'slot:2'], 'the account slots are not the first tiles')
+  assert.equal(r.tiles.find((t) => t.value === CONTRACT.hardening.tiles.hardeningOpen)?.note, CONTRACT.hardening.leadBlocked, 'the hardening slot does not carry its lead')
+  assert.equal(r.tiles.some((t) => t.key.startsWith('check:')), false, 'a failing check is drawn beside its account slot')
+  assert.ok(c.emergencySlots.some((s) => s.state === 'minimum' && s.minimum.length > 0), 'the failing minimum check is no slot’s line')
   assert.equal(c.doneWhen.some((l) => /Fix before continuing/.test(l)), false)
 })
 
@@ -135,21 +136,21 @@ test('the Emergency Access step is Why → Readiness → account selection → I
   assert.equal('withheld' in CONTRACT.implementation, false)
 })
 
-test('the package’s gates merge without a cap: unresolved before the hardening, satisfied as evidence', () => {
+test('the package’s gates merge without a cap: unresolved after the runtime’s own tiles, satisfied as evidence', () => {
   const { step, c } = opened('demo', EMERGENCY)
   const runtime = readinessOf(step, c)
   const merged = mergeReadiness(runtime, {
     tiles: [
       { id: 'pkg.open', gate: 'Safe to prove', result: 'Unknown', line: 'x', gateKey: null, confirm: null },
       { id: 'pkg.done', gate: 'Safe to continue', result: 'Ready', line: 'y', gateKey: null, confirm: null },
-      { id: 'pkg.same', gate: 'Emergency access', result: 'Blocked', line: 'z', gateKey: 'emergency', confirm: null },
+      { id: 'pkg.same', gate: 'Emergency access', result: 'Blocked', line: 'z', gateKey: 'slot:1', confirm: null },
     ],
     conclusion: null,
     whyItMatters: null,
     unknowns: [],
     references: [],
   })
-  assert.deepEqual(merged.tiles.map((t) => t.key), [...runtime.tiles.filter((t) => t.key !== 'resilience').map((t) => t.key), 'pkg.open', 'resilience'])
+  assert.deepEqual(merged.tiles.map((t) => t.key), [...runtime.tiles.map((t) => t.key), 'pkg.open'])
   assert.deepEqual(merged.satisfied.map((t) => t.key), [...runtime.satisfied.map((t) => t.key), 'pkg.done'])
 })
 

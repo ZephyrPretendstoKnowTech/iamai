@@ -358,8 +358,9 @@ test('resilience hardening holds until fixed or deferred; a deferral releases th
   const c = stepContract(dbg, ctx)
   const rd = readinessOf(dbg, c)
   const tiles = [...rd.tiles, ...rd.satisfied].map((t) => `${t.label}: ${t.value}`)
-  assert.ok(tiles.includes('Emergency access: Available') && tiles.includes('Resilience: Deferred to Cleanup'), tiles.join(' | '))
-  assert.equal(rd.tiles.at(-1)?.key, 'resilience', 'the hardening is not the last, secondary tile')
+  // Each account slot says its hardening is deferred (P0-7); no Resilience tile stands apart.
+  for (const id of f.mapping.breakGlassUserIds) assert.ok(tiles.includes(`${ctx.nameOf(id)}: ${CONTRACT.hardening.tiles.deferred}`), tiles.join(' | '))
+  assert.equal(rd.tiles.some((t) => t.key === 'resilience' || t.key === 'emergency'), false)
   assert.equal(c.doneWhen.length, 1)
   assert.doesNotMatch(c.doneWhen[0], /Already satisfied/, 'a deferral is read as full resilience')
   assert.equal(c.hardening?.deferredAt, at)
