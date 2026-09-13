@@ -215,3 +215,20 @@ test('D2: every step draws every implementation channel; one without content say
   assert.match(src, /const copyable = preview === null && active !== null && active\.unavailable !== true/, 'a channel with no content can be copied')
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
 })
+
+test('D4: an emergency account slot with its minimum met reads ✓, whatever hardening is still open', () => {
+  let met = 0
+  for (const name of ['demo', 'small', 'mid'] as const) {
+    for (const [id, b] of bodiesOf(fixture(name))) {
+      for (const slot of b.contract.emergencySlots.filter((s) => s.state === 'hardening')) {
+        const tile = [...b.readiness.tiles, ...b.readiness.satisfied].find((t) => t.key === slot.key)
+        assert.equal(tile?.tone, 'good', `${name}/${id}: ${slot.label} has its minimum met and still reads !`)
+        assert.equal(b.readiness.tiles.some((t) => t.key === slot.key), false, `${name}/${id}: ${slot.label} is listed as blocking`)
+        met += 1
+      }
+    }
+  }
+  assert.ok(met > 0, 'no fixture has an account with its minimum met and hardening open: the premise is untested')
+  // ✓ is the good tone's mark (R4).
+  assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /good: '✓'/)
+})
