@@ -19,7 +19,7 @@
     },
     {
       "label": "Device code sign-in",
-      "state": "Confirm"
+      "state": "Confirm no legitimate use"
     },
     {
       "label": "Baseline mapping",

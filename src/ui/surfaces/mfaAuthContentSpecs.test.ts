@@ -191,3 +191,37 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
   assert.match(ai, /^Attackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device\. Blocking the flow stops this attack entirely\.$/m)
   assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency\.$/m)
 })
+
+test('s-goal-block-device-code: the device code tile says what to confirm, the dropdown keeps its stored answers, and Entra is one numbered procedure naming the policy', () => {
+  const DEVICE = 's-goal-block-device-code'
+  const body = bodiesOf(fixture('mid')).get(DEVICE)
+  assert.ok(body, 'the mid plan has the device code step')
+  const tile = tilesOf(body).find((t) => t.key === 'unsaved:Device code sign-in')
+  assert.ok(tile, 'the unsaved device code decision has no tile')
+  assert.equal(tile.value, 'Confirm no legitimate use')
+  // The note stays the step's own question: the spec's exceptions note contradicts the step (BLOCKED.md).
+  assert.equal(tile.note, 'Does anyone use device code sign-in for CLI tools, IoT devices, or display-limited devices?')
+  // The options are the stored answers, so they stay None and Yes (BLOCKED.md).
+  const steps = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as { id: string; decision?: { options?: string[] } }[]
+  assert.deepEqual(steps.find((s) => s.id === 'block-device-code')?.decision?.options, ['None', 'Yes'])
+  assert.ok(packageOf(DEVICE).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
+  // The two blocks a conditions correction draws.
+  const entra = channel(DEVICE, ['entra.correct-conditions', 'entra.correct-verify'])
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Policies.'],
+        ['Open the policy named {{policy.current.displayName}} (or search by its ID in Plan settings).'],
+        ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Verify all other settings match the baseline: Target resources = All resources, Conditions = Client apps: Authentication flows: Device code, Grant = Block access.'],
+      ],
+    },
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+  ])
+  assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
+  // PowerShell, JSON and AI Info are unchanged (BLOCKED.md).
+  assert.match(packageOf(DEVICE).blocks['powershell.run'].text, /^param\(/)
+  assert.doesNotMatch(packageOf(DEVICE).blocks['json.correct-conditions'].text, /\/\//)
+  assert.match(packageOf(DEVICE).blocks['ai.correct'].text, /\{\{policy\.current\.semanticMismatches\}\}/)
+})
