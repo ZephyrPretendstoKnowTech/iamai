@@ -14,7 +14,7 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · Ready",
+      "label": "Prerequisite · In progress",
       "state": "Decide How Devices Are Managed"
     },
     {
@@ -22,7 +22,7 @@
       "state": "when 1 MFA grant on this policy exist (now 0)"
     },
     {
-      "label": "Prerequisite · Up Next",
+      "label": "Prerequisite · Waiting",
       "state": "Create or Correct Exclusions Group"
     },
     {

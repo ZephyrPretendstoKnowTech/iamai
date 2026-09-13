@@ -18,11 +18,11 @@
       "state": "Not established"
     },
     {
-      "label": "Prerequisite · Ready",
+      "label": "Prerequisite · In progress",
       "state": "Create or Correct Allowed Countries Location"
     },
     {
-      "label": "Prerequisite · Ready",
+      "label": "Prerequisite · In progress",
       "state": "Create or Correct Emergency Access Accounts"
     }
   ],

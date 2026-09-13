@@ -18,7 +18,7 @@
       "state": "Confirm"
     },
     {
-      "label": "Prerequisite · Ready",
+      "label": "Prerequisite · In progress",
       "state": "Set Up Passkeys to Match the Baseline"
     }
   ],
