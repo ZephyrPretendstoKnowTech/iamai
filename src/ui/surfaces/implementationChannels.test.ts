@@ -194,8 +194,9 @@ test('Microsoft Learn · Troubleshooting sit under Implementation, left-aligned,
   const rule = (selector: string): string => css.slice(css.indexOf(`${selector} {`), css.indexOf('}', css.indexOf(`${selector} {`)))
   assert.match(rule('.step .impl-support'), /justify-content: flex-start;/, 'the support line is not left-aligned')
   assert.match(rule('.step .impl-support-source'), /margin-left: auto;/)
-  // One Learn link per step: in Why only where no Implementation region is drawn.
-  assert.match(CONTENT_STEP, /\{learnUrl && !showImplementation && \(/)
+  // The Learn link also ends Why on every step, Implementation region or not (RUN-CONTEXT-B decision 14).
+  assert.match(CONTENT_STEP, /\{learnUrl && \(\s*<a href=\{learnUrl\}/)
+  assert.doesNotMatch(CONTENT_STEP, /learnUrl && !showImplementation/)
 })
 
 // ------------------------------------------------------------ 6. expanded viewer

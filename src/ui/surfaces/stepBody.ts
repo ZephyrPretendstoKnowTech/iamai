@@ -308,9 +308,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // package the re-pin review set aside keeps its date beside why it is set aside.
   const sourcePkg = pkg ?? (review ? reviewedPackageFor(step) : null)
   const sourceLine = sourcePkg ? packageSourceLine(sourcePkg, W) : null
-  // The step's Microsoft Learn link (its content entry's `learn.url`): under
-  // Implementation, beside Troubleshooting, where the region is drawn (S6), and
-  // in Why on a step that draws no Implementation — one link per step.
+  // The step's Microsoft Learn link (its content entry's `learn.url`): at the end
+  // of Why on every step (RUN-CONTEXT-B decision 14), and under Implementation,
+  // beside Troubleshooting, where the region is drawn (S6).
   const learnUrl: string | null = typeof learn.url === 'string' && learn.url !== '' ? learn.url : null
   return {
     cs,
