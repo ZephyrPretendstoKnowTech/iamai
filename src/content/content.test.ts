@@ -229,8 +229,9 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // shared.deviation and shared.devicePlan are words the engine writes into a
 // step's facts from a stored answer (stepPortal.ts, stepVars.ts), and the
 // footer's shared device line is the Not licensed group's (derive/notLicensed.ts):
-// read by the product, never by the review page.
-const isAppOnly = (p: string): boolean => p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
+// read by the product, never by the review page. steps[].doneEnd is a held
+// policy's own end state, read by stepContract.ts in place of the shared one (B8).
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.doneEnd$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices'
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

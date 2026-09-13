@@ -103,7 +103,7 @@ export const ACCEPTANCE = [
   { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.steps', must: 'Admins: a passkey or a hardware security key; either is phishing-resistant.', mustNot: 'a hardware security key as well' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Authentication methods → Registration campaign → Enabled, Target: All users, snooze limit 3' },
-  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every admin is Ready for phishing-resistant MFA.', mustNot: 'a passkey and a security key' },
+  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.', mustNot: 'a passkey and a security key' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'a security key, and a text message or call, which is why the campaign removes phone numbers', mustNot: 'requires one the moment a sign-in looks wrong' },
   { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'because the admin and risk policies require one, and a passkey cannot be phished' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', must: 'Limit How Long Sessions Last', mustNot: 'End Browser Sessions When the Browser Closes' },
