@@ -86,3 +86,10 @@ test('R6: the action column heads its first input with the input label, bold', (
   const css = readFileSync('src/ui/app.css', 'utf8')
   assert.match(css, /\.step-action-column \.action-heading \{[^}]*font-weight: var\(--weight-strong\);/, 'the heading is not bold')
 })
+
+test('R7: the action column’s surface and hairline run to the bottom of the step body', () => {
+  const css = readFileSync('src/ui/app.css', 'utf8')
+  // The body's grid aligns its items to the start; the column overrides that and spans both rows.
+  assert.match(css, /\.step-body\.has-rail > \.step-action-column \{[^}]*grid-row: 1 \/ span 2;[^}]*align-self: stretch;/, 'the action column stops after its last control')
+  assert.match(css, /\.step-action-column \{[^}]*border-left: 1px solid var\(--line\);/, 'the column lost its hairline')
+})

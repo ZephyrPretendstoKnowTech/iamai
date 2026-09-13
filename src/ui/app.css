@@ -2165,9 +2165,12 @@ footer.app a {
   grid-column: 1;
   grid-row: 1;
 }
+/* The action column runs the whole height of the body (content review R7): its
+   surface and its hairline reach the bottom of the left column, not just Save. */
 .step-body.has-rail > .step-action-column {
   grid-column: 2;
   grid-row: 1 / span 2;
+  align-self: stretch;
 }
 .step-body.has-rail > .step-main-rest {
   grid-column: 1;
