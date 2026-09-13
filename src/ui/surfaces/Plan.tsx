@@ -257,6 +257,20 @@ export function Plan({ scan: lastScan, baseline, account }: {
       </BoardGroupView>
     )
   }
+  // A date in a tile (content review U-P1): the day on one line and the year under
+  // it, never broken mid-date. The text stays the whole date ("Sep 21, 2026") for
+  // a screen reader and for anything that reads the tile.
+  const tileValue = (value: string | number) => {
+    const m = typeof value === 'string' ? /^(.+), (\d{4})$/.exec(value) : null
+    if (m === null) return value
+    return (
+      <>
+        <span className="tile-day">{m[1]}</span>
+        <span className="tile-year-comma">, </span>
+        <span className="tile-year">{m[2]}</span>
+      </>
+    )
+  }
   const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string }[] = [
     { key: 'steps', label: PP.progress.steps, value: stepFacts(c.steps, cleanupPhase, answers).steps },
     { key: 'completed', label: PP.progress.completed, value: counts.complete },
@@ -277,7 +291,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
             <div key={t.key} className="plan-progress-tile" title={t.tip}>
               <dt>{t.label}</dt>
               <dd>
-                {t.value}
+                {tileValue(t.value)}
                 {t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}
                 {t.sub?.map((line) => (
                   <small key={line}>{line}</small>

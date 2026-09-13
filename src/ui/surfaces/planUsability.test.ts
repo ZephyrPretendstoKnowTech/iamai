@@ -205,7 +205,7 @@ test('the Plan header is four progress tiles and a how-to link, not a generated 
   assert.match(plan, /c\.schedule\.derivation\.criticalPath, \.\.\.c\.schedule\.derivation\.relaxed/)
   assert.match(plan, /<div key=\{t\.key\} className="plan-progress-tile" title=\{t\.tip\}>/)
   // The tip's button sits in the value cell beside the date, never in the label cell the smoke and the walk read the tile's name from.
-  assert.match(plan, /<dt>\{t\.label\}<\/dt>\s*<dd>\s*\{t\.value\}\s*\{t\.tip && <InfoTip title=\{app\.plan\.constraintTip\} text=\{t\.tip\} \/>\}/)
+  assert.match(plan, /<dt>\{t\.label\}<\/dt>\s*<dd>\s*\{tileValue\(t\.value\)\}\s*\{t\.tip && <InfoTip title=\{app\.plan\.constraintTip\} text=\{t\.tip\} \/>\}/)
   assert.equal(plan.includes('<InfoTip title={app.plan.constraintTip} text={lengthTip} />'), false, 'the length tip still stands beside the tiles instead of on the Projected finish tile')
   assert.deepEqual([content.pages.plan.progress.atPace, content.pages.plan.progress.committed], ['at pace', 'committed {date}'])
   // The printed cover's line reads the same pair (derive/planHeader.ts headerLine1).
