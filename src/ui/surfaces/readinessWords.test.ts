@@ -129,13 +129,13 @@ test('P1-6: a policy waiting on an exclusions group the scan found asks to confi
   const legacy = bodiesOf(noExclusionsAnswer(fixture('mid'))).get(LEGACY)!
   const group = legacy.readiness.tiles.filter((t) => t.key.endsWith(`:${EXCLUSIONS}`))
   assert.equal(group.length, 1, group.map((t) => t.key).join(', '))
-  assert.equal(group[0].note, `Confirm the exclusions group on Create or Correct Exclusions Group first: IAMAI found a group that qualifies, and only your Save makes it the one this policy excludes.`)
+  assert.equal(group[0].note, `Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.`)
   // Where the group is confirmed, nothing says so.
-  for (const b of bodiesOf(fixture('mid')).values()) for (const t of allTiles(b)) assert.doesNotMatch(t.note ?? '', /Confirm the exclusions group/)
+  for (const b of bodiesOf(fixture('mid')).values()) for (const t of allTiles(b)) assert.doesNotMatch(t.note ?? '', /IAMAI found a matching group/)
 })
 
 test('P1-6 (B11): the readiness bar and the Implementation reason ask to confirm the group too; no line calls it a missing object', () => {
-  const confirm = 'Confirm the exclusions group on Create or Correct Exclusions Group first: IAMAI found a group that qualifies, and only your Save makes it the one this policy excludes.'
+  const confirm = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
   const bodies = bodiesOf(noExclusionsAnswer(fixture('mid')))
   for (const id of [LEGACY, 's-goal-admins-phishing-resistant', 's-goal-guests-mfa']) {
     const b = bodies.get(id)!
@@ -146,7 +146,7 @@ test('P1-6 (B11): the readiness bar and the Implementation reason ask to confirm
     for (const line of lines) assert.doesNotMatch(line, /does not have yet/, `${id}: ${line}`)
   }
   // Where the group is confirmed, the action never asks for it.
-  for (const [id, b] of bodiesOf(fixture('mid'))) assert.doesNotMatch(b.contract.whatToDo.text, /Confirm the exclusions group/, id)
+  for (const [id, b] of bodiesOf(fixture('mid'))) assert.doesNotMatch(b.contract.whatToDo.text, /IAMAI found a matching group/, id)
 })
 
 test('P1-6 (B12 re-audit): the confirmation covers every object the exclusions group step makes; a genuinely missing object still reads as one', () => {
@@ -158,7 +158,7 @@ test('P1-6 (B12 re-audit): the confirmation covers every object the exclusions g
     { token: '{authStrength}', stepId: 's-prereq-auth-strength' },
   ] } } as unknown as Step
   const line = waitingLine(step, 'Contoso', true)
-  assert.match(line, /^Confirm the exclusions group on Create or Correct Exclusions Group first: /)
+  assert.match(line, /^Complete the Exclusions Group step first\. IAMAI found a matching group, but needs your confirmation before this policy can reference it\. /)
   assert.match(line, /Create the Baseline's Authentication Strength first: this policy names an object Contoso does not have yet\.$/)
   assert.doesNotMatch(line, /Exclusions Group and /)
   // Answered, the group is an object like any other.

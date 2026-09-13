@@ -107,6 +107,8 @@ type ContractWords = {
   foundReadinessEnforced: string
   /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
   readinessScope: Record<string, string>
+  /** The threshold tile's collapsed value, by its measure's family: the percentage and what it measures (content review S3). */
+  readinessValue: Record<string, string>
   foundInPlace: string
   foundInPlaceNamed: string
   foundInPlaceTogether: string
@@ -1151,8 +1153,22 @@ const R = (): ContractWords['readiness'] => CONTRACT.readiness
  */
 export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string {
   if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) return fillText(CONTRACT.foundReadiness, { ...gate })
-  const family = Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure) ?? 'mfa'
+  const family = familyOf(gate) ?? 'mfa'
   return fillText(CONTRACT.foundReadinessEnforced, { value: gate.value, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })
+}
+
+/** The family a readiness gate measures (copy/reasons.ts READINESS_MEASURE). */
+const familyOf = (gate: NonNullable<Step['action']['readinessGate']>): string | undefined => Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure)
+
+/**
+ * The threshold tile's collapsed value (content review S3): the percentage with
+ * what it measures, where the family names it. A value never measured, or a
+ * family with no words, stays as it is.
+ */
+export function readinessValueOf(gate: NonNullable<Step['action']['readinessGate']>): string {
+  const family = familyOf(gate)
+  const template = family === undefined ? undefined : CONTRACT.readinessValue[family]
+  return template !== undefined && gate.value.endsWith('%') ? fillText(template, { value: gate.value }) : gate.value
 }
 
 /** The tile that says what the step's own state turns on, where the state turns on something. */
@@ -1168,7 +1184,7 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: gate.value, note: readinessSentence(step, gate) }
+  if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate) }
   if (c.milestone.kind === 'observe') return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: null }
   return null
 }

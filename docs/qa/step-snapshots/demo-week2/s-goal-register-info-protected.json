@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "23%"
+      "state": "23% MFA-ready"
     }
   ],
   "channels": [

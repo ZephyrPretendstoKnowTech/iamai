@@ -7799,6 +7799,7 @@
         "optionalBindings": [
           "tenant.displayName",
           "people.affected.count",
+          "policy.current.displayName",
           "policy.current.state",
           "evidence.mfaReadiness",
           "evidence.reportOnly",
@@ -8056,7 +8057,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact resolved Conditional Access policy by stable tenant ID **{{policy.current.id}}**. Apply only the mismatch modules IAMAI selected; do not create a replacement policy.\n"
+          "text": "This policy already exists and is enforced. The correction adds the exclusions group and aligns the conditions with the baseline.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -8068,7 +8069,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Replace only the policy assignments/conditions with the complete IAMAI-resolved canonical target. Preserve the same policy ID. This includes All users, canonical exclusions, All resources with Microsoft Intune Enrollment excluded, all client apps, and no extra risk/location/platform/device/flow/action/context conditions.\n"
+          "text": "3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).\n5. Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).\n6. Grant: Grant access → Require multifactor authentication.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -8116,7 +8117,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save, re-open the same policy by stable ID, verify only the corrected fields plus lifecycle state, and rescan IAMAI. If other mismatches remain, leave them for their selected modules.\n"
+          "text": "7. Save. Do not change the policy state (leave it On).\n8. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -8263,7 +8264,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nThe resolved policy {{policy.current.id}} has these semantic mismatches: {{policy.current.semanticMismatches}}. Explain only the smallest corrections required to reach the pinned MFA-for-everyone target; do not add exclusions or change the baseline grant.\n"
+          "text": "This is the foundational MFA policy: every user must present a second factor (MFA) at sign-in. It's the single most impactful control in the baseline.\n\nThe policy is already enforced on your tenant. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally.\n\nAfter this step, the MFA Registration Campaign step ensures every person has registered a phishing-resistant method. Until that's done, the 33% threshold tile tracks progress.\n"
         },
         "ai.observe": {
           "meta": {
