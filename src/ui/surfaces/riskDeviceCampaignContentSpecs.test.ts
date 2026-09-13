@@ -145,3 +145,40 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   assert.equal(words.why, 'Company data on a device you manage can be protected, updated and wiped; on any other device, outside the office, it cannot.')
   assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.')
 })
+
+test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that explains the target and the missing grant, AI Info reads for a tech, and Done when names the outcome', () => {
+  const INTUNE = 's-goal-intune-enrollment-reauth'
+  assert.deepEqual(authoredParts(packageOf(INTUNE).blocks['entra.create'].text), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Policies → New policy.'],
+        ['Name: {{policy.target.displayName}}.'],
+        ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
+        ['Target resources → Select resources → Microsoft Intune Enrollment (not "All resources" — this policy targets only the enrollment flow).'],
+        ['Conditions: leave all blank. Client apps: All.'],
+        ['Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.'],
+        ['Session → Sign-in frequency: Every time.'],
+        ['Enable policy: Report-only.'],
+        ['Create. Rescan in IAMAI.'],
+      ],
+    },
+  ])
+  const AI = [
+    'This policy ensures that every time someone enrolls a device in Intune, they sign in fresh — no cached session, no token reuse. This prevents an attacker who has stolen a session token from enrolling their own device as "trusted."',
+    "This is a session-only policy: it doesn't require MFA (the MFA-for-everyone policy already handles that). It only requires that the sign-in happens at that moment, not from a stored session.",
+    'It targets Microsoft Intune Enrollment specifically, not all resources. This means it only fires during the enrollment flow — not during normal sign-ins, Teams calls, or email.',
+    'The exclusions group ensures emergency access accounts are not affected.',
+  ].join('\n\n')
+  assert.equal(packageOf(INTUNE).blocks['ai.create'].text, AI + '\n')
+  // On the demo nothing is deployed yet: both channels draw the create state with the demo's names.
+  const b = bodyOf('demo', INTUNE)
+  const entra = drawn(b, 'portal')
+  assert.match(entra, /^2\. Name: Core - Session - Fresh sign-in for Intune enrollment\.$/m)
+  assert.doesNotMatch(entra, /canonical|retained baseline member|read back|\{\{/)
+  assert.equal(drawn(b, 'ai'), AI)
+  const words = stepWords('intune-enrollment-reauth')
+  assert.equal(words.doneEnd, 'The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.')
+  assert.equal(words.why, 'Enrollment makes a device trusted; it should never ride on a session someone else could be holding, so it asks for a fresh sign-in every time.')
+  // The shared readiness sentence stays (BLOCKED.md).
+  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+})
