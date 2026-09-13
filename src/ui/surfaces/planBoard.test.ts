@@ -68,7 +68,6 @@ function itemsFor(name: FixtureName): BoardItem[] {
   const readings = laneReadings(r.steps)
   const byId = new Map(r.steps.map((s) => [s.id, s]))
   const titleOf = (id: string): string | null => byId.get(id)?.plainTitle ?? null
-  const nextId = r.steps.filter((s) => readings.get(s.id)?.lane === 'Ready').sort((a, b) => readings.get(a.id)!.order - readings.get(b.id)!.order)[0]?.id ?? null
   return r.steps.filter((s) => readings.has(s.id)).map((s) => {
     const reading = readings.get(s.id)!
     return {
@@ -78,7 +77,6 @@ function itemsFor(name: FixtureName): BoardItem[] {
       laneLabel: laneLabelOf(reading, titleOf),
       hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
       workType: workTypeOf(s.id, (contentStepFor(s) as { kind?: string } | undefined)?.kind ?? null),
-      isNext: s.id === nextId,
       order: reading.order,
     }
   })
@@ -257,7 +255,6 @@ test('the board decides no lane: it reads planLanes.ts and re-derives nothing', 
   assert.match(plan, /lane: reading\.lane,/, 'a row carries a lane the engine did not read')
   assert.match(plan, /const laneView = laneViewOf\(reading, titleOf\)/, 'the board no longer reads the one lane view')
   assert.equal(plan.includes('planStateOf('), false, 'the Plan reads the legacy presentation state beside the lane (A1b)')
-  assert.match(plan, /nextLabel=\{isNext \? PP\.next : null\}/, 'the pill and the marker no longer read the same boolean')
   assert.equal(plan.includes('phaseRows('), false, 'the Plan still groups by phase')
   assert.equal(plan.includes('undatedRows('), false, 'the Plan still draws the undated group')
 })
@@ -328,16 +325,22 @@ test('every policy step is Conditional Access work, and the campaign is authenti
   }
 })
 
-// -------------------------------------------------- the next marker
+// -------------------------------------------------- no next pill
 
-test('the next marker is the first Ready step in the engine’s order, and exactly one row carries it', () => {
+test('no plan row carries a "next" pill: the Ready tab’s order already says which step is next (RUN-CONTEXT-B decision 10)', () => {
+  const sources = {
+    'StepSections.tsx': readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'),
+    'Plan.tsx': readFileSync('src/ui/surfaces/Plan.tsx', 'utf8'),
+    'planBoard.ts': readFileSync('src/ui/surfaces/planBoard.ts', 'utf8'),
+  }
+  for (const [where, src] of Object.entries(sources)) {
+    for (const marker of ['next-mark', 'nextLabel', 'isNext']) assert.equal(src.includes(marker), false, `${where} still carries ${marker}`)
+  }
+  assert.equal(readFileSync('src/ui/app.css', 'utf8').includes('.next-mark'), false, 'a style for the removed pill remains')
   for (const name of FIXTURES) {
     const items = itemsFor(name)
-    const marked = items.filter((i) => i.isNext)
-    assert.equal(marked.length, 1, `${name}: ${marked.length} rows marked next`)
-    const ready = items.filter((i) => i.lane === 'Ready').sort((a, b) => a.order - b.order)
-    assert.equal(marked[0]!.id, ready[0]!.id, `${name}: the marker is not the first Ready row`)
-    assert.ok(ready.length > 1, `${name}: only one Ready row, so the marker proves little`)
+    assert.ok(items.some((i) => i.lane === 'Ready'), `${name}: no Ready row, so this proves little`)
+    for (const item of items) assert.equal('isNext' in item, false, `${name}/${item.id}: a board row still marks next`)
   }
 })
 

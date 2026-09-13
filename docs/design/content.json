@@ -568,7 +568,6 @@
       "line1CannotFinish": "{steps} steps · {inPlace} in place · cannot finish until {blocker}",
       "lengthTip": "The plan is {weeks} because {constraint}.",
       "lengthTipEstimate": "Once nothing is held, the plan is about {weeks} because {constraint}.",
-      "next": "next",
       "now": "now",
       "readyOn": "ready {date}",
       "readyNow": "ready now",

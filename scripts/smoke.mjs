@@ -530,12 +530,9 @@ try {
   // from the board rather than from a constant.
   check('Plan: the focus controls are pressable toggles with live counts', (await evaluate(`[...document.querySelectorAll('main.page .plan-controls .focus')].map((b) => (b.textContent || '').replace((b.querySelector('.count') || {}).textContent || '', '').trim() + '=' + ((b.querySelector('.count') || {}).textContent || '') + '/' + b.getAttribute('aria-pressed')).join(' | ')`)).match(/^Show completed=\d+\/false \| Show deferred=\d+\/false$/) !== null)
   check('Plan: Work type is a filter beside the toggles, never a lane', (await evaluate(`(() => { const s = document.querySelector('main.page .plan-controls .work-type select'); return s ? [...s.options].map((o) => o.textContent.trim()).join('|') : '' })()`)) === 'All work|Conditional Access|MFA & Authentication|Tenant setup|Resolution & decisions')
-  // Correction A: the next marker is one row — the first Ready row in the
-  // engine's order — and not every step the engine calls ready.
+  // RUN-CONTEXT-B decision 10: no row carries a "next" pill; the Ready tab's order says which step is next.
   const nextPills = Number(await evaluate(`document.querySelectorAll('main.page .plan-row .next-mark').length`))
-  check('Plan: one row is marked next, and it is in the Ready lane', nextPills === 1, `next pills=${nextPills}`)
-  const readyRows = Number(await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => /^Ready( · |$)/.test(((r.querySelector('.lane') || {}).textContent || '').trim())).length`))
-  check('Plan: ready work outnumbers the next step, so the marker is not a synonym for ready', readyRows > nextPills, `Ready rows=${readyRows} next=${nextPills}`)
+  check('Plan: no row carries a next pill', nextPills === 0, `next pills=${nextPills}`)
   // Correction B: the board's timing column. The generic `now` every
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.

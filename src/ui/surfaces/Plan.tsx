@@ -49,7 +49,6 @@ import { scan as runScan } from '../actions.ts'
 
 type PlanPage = {
   h1: string
-  next: string
   now: string
   settingsLink: string
   settings: { h3: string; start: string; planStarts: string; firstDeployment: string; firstDeploymentNote: string; workdays: string; workdaysWeek: string; workdaysWith: string; freeze: string; freezeFrom: string; freezeTo: string; freezeNote: string; freezeNeedsTo: string; freezeOrder: string; timezone: string; signature: string; close: string }
@@ -182,9 +181,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const rowSteps = c.steps.filter((s) => readings.has(s.id))
   // A prerequisite tile's label is the prerequisite's own lane (decision 12).
   const prerequisiteLabel = prerequisiteLabelFor(readings)
-  // The Plan's next marker: the first Ready step in the engine's own order (§13),
-  // and the row that draws the "next" pill. A Cleanup row is never the marker.
-  const nextId = rowSteps.filter((s) => readings.get(s.id)!.lane === 'Ready').sort((a, b) => readings.get(a.id)!.order - readings.get(b.id)!.order)[0]?.id ?? null
 
   // ---- one canonical row set ----
   // Built once, in the engine's order, with the lane the engine read for each
@@ -194,7 +190,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const renderById = new Map<string, () => ReactNode>()
   for (const step of rowSteps) {
     const reading = readings.get(step.id)!
-    const isNext = step.id === nextId
     // The one state reading (planBoard.ts laneViewOf, A1b decision 1): the row's
     // label and tone, and the opened step's badge, bar and rail.
     const laneView = laneViewOf(reading, titleOf)
@@ -205,7 +200,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
       laneLabel: laneView.label,
       hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
       workType: workTypeOf(step.id, (contentStepFor(step) as { kind?: string } | undefined)?.kind ?? null),
-      isNext,
       order: reading.order,
     })
     // The board's reading of the timing column (planBoard.ts `boardWhenOf`): the
@@ -214,7 +208,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
     const when = boardWhenOf(step, waveStart)
-    renderById.set(step.id, () => <Row key={step.id} step={step} isNext={isNext} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
+    renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
   if (cleanupPhase) {
@@ -229,7 +223,6 @@ export function Plan({ scan: lastScan, baseline, account }: {
         laneLabel: laneView.label,
         hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null,
         workType: 'setup',
-        isNext: false,
         order: reading.order,
       })
       renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
@@ -524,9 +517,8 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
 
 const NO_CONFIRMATIONS: Readonly<Record<string, OwnerConfirmation>> = {}
 
-function Row({ step, isNext, lane, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
+function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, waveStart, open, onToggle, schedule, tenantName, nameOf, signature, onSkip, onUnskip, onDoesntApply, onTick, computed, snapshot, mapping, operatorId, dates, groups, directory, decision, onDecide, confirmations, onConfirm, onUnconfirm, onScan }: {
   step: Step
-  isNext: boolean
   /** The row's one state reading (planBoard.ts laneViewOf): the row's label and tone, and the opened step's badge, bar and rail. */
   lane: LaneView
   /** The engine's unresolved prerequisites of the row's next action (planBoard.ts readinessBlockersOf): the opened step's Readiness tiles. */
@@ -584,7 +576,6 @@ function Row({ step, isNext, lane, blockers, prerequisiteLabel, onOpenMappings, 
         title={contentTitle(step)}
         who={rowWho(step, nameOf)}
         when={when}
-        nextLabel={isNext ? PP.next : null}
         open={open}
         onToggle={onToggle}
       />

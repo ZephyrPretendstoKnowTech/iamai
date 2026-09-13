@@ -505,7 +505,7 @@ test('the one Plan row says it is a control and whether the step under it is ope
   assert.match(row, /<span className="when">\{when\}<\/span>/)
   assert.match(row, /<span className=\{`lane lane-\$\{tone\}`\}>\{lane\}<\/span>/)
   assert.match(row, /\{chip && <Status tone=\{tone\}>\{chip\}<\/Status>\}/)
-  assert.match(row, /<span className="next-mark" aria-label=\{nextLabel\}>/)
+  assert.equal(row.includes('next-mark'), false, 'the row draws a next pill again (RUN-CONTEXT-B decision 10)')
 })
 
 test('an info tip opens on a tap as well as a hover, and its text is announced', () => {

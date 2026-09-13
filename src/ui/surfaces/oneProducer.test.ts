@@ -67,7 +67,7 @@ function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<str
   for (const [id, reading] of readings) {
     const view = laneViewOf(reading, titleOf)
     views.set(id, view)
-    items.push({ id, title: titleOf(id) ?? id, lane: reading.lane, laneLabel: view.label, hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null, workType: 'ca', isNext: false, order: reading.order })
+    items.push({ id, title: titleOf(id) ?? id, lane: reading.lane, laneLabel: view.label, hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null, workType: 'ca', order: reading.order })
   }
   return { readings, views, items, titleOf }
 }
