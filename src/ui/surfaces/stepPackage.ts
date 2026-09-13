@@ -148,6 +148,39 @@ export function correctionFieldsOf(step: Step, snapshot: TenantSnapshot | null):
   return [...out].sort()
 }
 
+/** The one field a correction may change and still lock nobody out (U19): the groups a policy excludes. */
+const SAFE_CORRECTION_FIELD = 'conditions.users.excludeGroups'
+
+const excludedGroupsOf = (policy: Record<string, unknown>): string[] => {
+  const groups = (policy as { conditions?: { users?: { excludeGroups?: unknown } } }).conditions?.users?.excludeGroups
+  return Array.isArray(groups) ? groups.map((g) => String(g).toLowerCase()) : []
+}
+
+/**
+ * Whether the correction a step owes cannot lock anyone out (U19): every
+ * operation updates a policy this scan read, and the only field any of them
+ * changes is the excluded groups, which it adds to and never takes from. Any
+ * other change — a grant, a session control, a narrower scope, a group taken out
+ * — is not safe, and waits for whatever holds the step.
+ */
+export function safeCorrectionOf(step: Step, snapshot: TenantSnapshot | null): boolean {
+  const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  let owed = false
+  for (const op of plannedOperationsOf(step)) {
+    if (op.mode !== 'update' || typeof op.policyId !== 'string') return false
+    const current = rows.find((r) => r.id === op.policyId)
+    if (current === undefined) return false
+    const body = op.body as Record<string, unknown>
+    const fields = changedFieldsOf(body, current)
+    if (fields.length === 0) continue
+    if (fields.some((f) => f !== SAFE_CORRECTION_FIELD)) return false
+    const kept = new Set(excludedGroupsOf(body))
+    if (excludedGroupsOf(current).some((id) => !kept.has(id))) return false
+    owed = true
+  }
+  return owed
+}
+
 /** A multi-policy set with a member to create beside a member the tenant already has. */
 const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o) => o.mode === 'create') && ops.some((o) => o.mode === 'update')
 
@@ -158,7 +191,9 @@ const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o
  *   1. set aside: no package state;
  *   2. a source that contradicts itself: sourceConflict;
  *   3. a question waiting on a person: needsDecision;
- *   4. an implementation Foundation A will not hand over: blocked;
+ *   4. a correction that locks nobody out — an excluded group added — partial,
+ *      even where Foundation A will not hand the whole policy over (U19);
+ *   4a. an implementation Foundation A will not hand over: blocked;
  *   5. a correction owed — an update that changes material fields of the tenant's
  *      policy — partial, whatever the lifecycle and whatever holds the step: a
  *      report-only or an enforced policy that is not what the plan asked for is
@@ -179,6 +214,10 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   if (s.setAside) return null
   if (s.condition === 'baseline-conflict') return 'sourceConflict'
   if (s.condition === 'needs-decision') return 'needsDecision'
+  // A correction that cannot lock anyone out is owed whatever else stops the
+  // policy being written (U19): an enforced block policy missing the exclusions
+  // group is made safer by adding it, and hiding that hid the safest change.
+  if (!s.satisfied && safeCorrectionOf(step, snapshot)) return 'partial'
   // Foundation A first: a policy that cannot be written projects nothing
   // (roadmap/operations.ts policyResult).
   if (policyResult(step).kind === 'unavailable') return 'blocked'

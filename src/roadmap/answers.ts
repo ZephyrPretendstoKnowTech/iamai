@@ -180,6 +180,29 @@ export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>
   return out
 }
 
+/**
+ * The conditional inputs (U28): questions whose answer changes the plan and that
+ * the scan can only suggest — the mail-sending devices, partner access, people who
+ * travel. Each sits on its step and persists as questionAnswers[stepId:label];
+ * evidence may pre-fill one, and only a Save records it, "None" included.
+ */
+const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind }[] = [
+  { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
+  { stepId: QUESTION_STEP.partner, kind: 'question' },
+  { stepId: QUESTION_STEP.travel, kind: 'question' },
+]
+
+/** The labels of the conditional inputs on a step nobody has saved; a question its content does not ask is not one. */
+export function unsavedInputsOf(stepId: string, mapping: Pick<MappingState, 'questionAnswers'>): string[] {
+  const out: string[] = []
+  for (const input of CONDITIONAL_INPUTS) {
+    if (input.stepId !== stepId) continue
+    const label = questionLabels(stepId)[input.kind]
+    if (label !== null && typeof mapping.questionAnswers?.[answerKey(stepId, label)] !== 'string') out.push(label)
+  }
+  return out
+}
+
 // ---- The device decision (E2) ----
 
 /** How phones and computers are managed, from the device step's answers, in the order its content options are written. */

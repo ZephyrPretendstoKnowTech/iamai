@@ -1,11 +1,11 @@
 {
-  "lane": "Completed",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Observing",
   "reason": "Satisfied by Core - Block - Legacy authentication — no change needed",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Ready · Observing",
+  "bar": "Continue observation",
+  "rail": "Ready · Observing",
   "headings": [
     "Why",
     "Readiness",
@@ -13,7 +13,12 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Prerequisite · Ready",
+      "state": "Create or Correct Service Accounts Group"
+    }
+  ],
   "channels": [],
   "when": "—"
 }

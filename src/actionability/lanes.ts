@@ -21,7 +21,7 @@
 import type { Action, DependencyData, Edge, Milestone, StepIndexEntry } from './parseDependencyDoc.ts'
 
 export type Lane = 'Ready' | 'Up Next' | 'On Hold' | 'Completed' | 'Deferred'
-export type Substatus = 'Create' | 'Correct' | 'Needs decision' | 'Observing' | 'Ready to enforce'
+export type Substatus = 'Create' | 'Correct' | 'Decision' | 'Observing' | 'Ready to enforce'
 
 /** The action ladder a step walks (§4 next-action determination). */
 export type StepKind = 'policy' | 'object' | 'decision'
@@ -76,6 +76,9 @@ export type StepObservation = {
   gates?: readonly EvidenceGate[]
   /** Step edges the graph does not carry; one the graph already has on the same action is read once. */
   waitsOn?: readonly ObservedEdge[]
+  /** Conditional inputs on this step nobody has saved, by label (U28): the step is short of Completed,
+   *  and each is an open gate on its enforcement, until a Save records it. */
+  unsaved?: readonly string[]
 }
 
 /** The part an unmapped source reference plays in the policy it holds: an exception, a target, or both. */
@@ -148,7 +151,7 @@ const BLOCKER_ORDER: readonly BlockerKind[] = [
 
 /** §14 rule 2: nearest blocker closest to completion. */
 const SUBSTATUS_ORDINAL: Readonly<Record<Substatus, number>> = {
-  'Ready to enforce': 0, Observing: 1, Correct: 2, Create: 3, 'Needs decision': 4,
+  'Ready to enforce': 0, Observing: 1, Correct: 2, Create: 3, Decision: 4,
 }
 const UP_NEXT_ORDINAL = 5
 
@@ -227,7 +230,9 @@ function edgesOf(ctx: Ctx, id: string): readonly Edge[] {
 
 /** Every evidence gate on the step's enforcement: the observed ones, then the graph's evidence edges. */
 function gatesOf(ctx: Ctx, id: string): EvidenceGate[] {
-  const out: EvidenceGate[] = [...(observation(ctx, id).gates ?? [])]
+  const obs = observation(ctx, id)
+  const out: EvidenceGate[] = [...(obs.gates ?? [])]
+  for (const input of obs.unsaved ?? []) out.push({ id: `input:${input}`, satisfied: false, minDays: null, reason: input })
   for (const e of ctx.graph.gates.get(id) ?? []) {
     if (!isEvidenceEdge(e) || !applicable(ctx, e)) continue
     out.push({ id: e.prerequisite, satisfied: prerequisiteState(ctx, e.prerequisite) === 'resolved', minDays: null, reason: null })
@@ -235,10 +240,14 @@ function gatesOf(ctx: Ctx, id: string): EvidenceGate[] {
   return out
 }
 
-/** §2 / §8.2: terminal outcome reached this scan. */
+/** §2 / §8.2: terminal outcome reached this scan. A conditional input nobody saved keeps any step short of it (U28). */
 function isComplete(ctx: Ctx, id: string): boolean {
   const obs = observation(ctx, id)
+  if ((obs.unsaved ?? []).length > 0) return false
   if (obs.complete) return true
+  // An enforced policy as pinned has nothing left to do (RUN-CONTEXT-B decision 6):
+  // its evidence was earned before it was turned on, and no gate reopens it.
+  if (kindOf(ctx, id) === 'policy' && obs.exists === true && obs.enforced === true && obs.drift !== true) return true
   // A question step whose condition resolved not-applicable has nothing left to do (§8.2).
   for (const c of ctx.graph.data.conditions) {
     if (c.ownedBy === id && ctx.tenant.conditions?.[c.name] === 'not-applicable' && !obs.exists) return true
@@ -318,7 +327,7 @@ function unresolvedOn(ctx: Ctx, id: string, action: Action): Blocker[] {
       const state = prerequisiteState(ctx, e.prerequisite)
       // An actionable decision is healthy queue work (§4 decision rule); everything else unresolved holds.
       const healthy = e.prerequisiteKind === 'decision' && state === 'actionable'
-      out.push(blocker(nonStepKind(e, state), e.prerequisite, e, !healthy, SUBSTATUS_ORDINAL['Needs decision']))
+      out.push(blocker(nonStepKind(e, state), e.prerequisite, e, !healthy, SUBSTATUS_ORDINAL.Decision))
       continue
     }
     const pre = derive(ctx, e.prerequisite)
@@ -408,6 +417,14 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
       .map((b) => ({ ...blocker(b.kind, b.id, null, true), ...(b.role ? { role: b.role } : {}) })),
     ...unresolved.filter((b) => b.abnormal),
   ].sort(byTaxonomy)
+  // An enforced policy that drifted is corrected next (RUN-CONTEXT-B decision 6): it is
+  // already On, and a baseline reference nobody has mapped yet does not hold bringing
+  // the rest of it back to the target. Every other abnormal blocker — a contradictory
+  // baseline, a tenant fact the scan could not read, a missing object — still holds it.
+  if (kind === 'policy' && started && obs.enforced === true && nextAction === 'correct'
+    && abnormal.every((b) => b.kind === 'sourceMapping')) {
+    return result('Ready', { substatus: 'Correct', nextAction, started, blockers: unresolved.filter((b) => !b.abnormal).sort(nearest), gates, layers })
+  }
   if (abnormal.length) {
     const healthy = unresolved.filter((b) => !b.abnormal).sort(nearest)
     return result('On Hold', { nextAction, started, reason: abnormal[0]!, blockers: [...abnormal, ...healthy], gates, layers })
@@ -427,7 +444,7 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   }
   // 6. Not started, next safe action executable now.
   if (healthy.length === 0) {
-    return result('Ready', { substatus: kind === 'decision' ? 'Needs decision' : 'Create', nextAction, started, gates, layers })
+    return result('Ready', { substatus: kind === 'decision' ? 'Decision' : 'Create', nextAction, started, gates, layers })
   }
   // 7. Not started, chain healthy: queued behind its nearest unresolved prerequisite.
   return result('Up Next', { nextAction, started, reason: healthy[0]!, blockers: healthy, gates, layers })

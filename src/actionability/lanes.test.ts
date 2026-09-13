@@ -109,9 +109,9 @@ test('6. condition not applicable → owning step Completed, its edge satisfied 
   assert.ok(!legacy.blockers.some((b) => b.id === 's-question-mail-devices'))
 })
 
-test('7. actionable owner decision → Needs decision; dependent Up Next after it', () => {
+test('7. actionable owner decision → Decision; dependent Up Next after it', () => {
   const s = state({ 's-prereq-device-plan': {}, 's-goal-require-managed-device': ABSENT })
-  assert.equal(read(lane('s-prereq-device-plan', s)), 'Ready · Needs decision')
+  assert.equal(read(lane('s-prereq-device-plan', s)), 'Ready · Decision')
   assert.equal(read(lane('s-goal-require-managed-device', s)), 'Up Next · step:s-prereq-device-plan')
 })
 
@@ -319,7 +319,7 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
     's-prereq-trusted-location': ABSENT,               // Create (ordinal 3)
     's-shared-devices': ABSENT,                        // 1 layer behind trusted-location, unlocks 2
     's-goal-service-accounts-trusted-network': ABSENT, // 1 layer behind trusted-location, unlocks 0
-    's-prereq-device-plan': {},                        // Needs decision (ordinal 4)
+    's-prereq-device-plan': {},                        // Decision (ordinal 4)
     's-goal-token-protection': ABSENT,                 // 2 layers (exclusion-group, break-glass)
     's-goal-require-managed-device': ABSENT,           // 4 layers (device-plan, trusted-location, exclusion-group, break-glass)
   }, { conditions: { 'shared-devices-exist': 'unresolved' } })

@@ -75,7 +75,7 @@ function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<str
 const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
 const FACTS = new Set([CONTRACT.lifecycle['report-only'], CONTRACT.lifecycle.enforced])
 /** The bar's content key for each Ready substatus, as stepContract.ts keys it. */
-const BAR_KEY: Record<string, string> = { Create: 'create', Correct: 'correct', 'Needs decision': 'needsDecision', Observing: 'observing', 'Ready to enforce': 'readyToEnforce' }
+const BAR_KEY: Record<string, string> = { Create: 'create', Correct: 'correct', Decision: 'needsDecision', Observing: 'observing', 'Ready to enforce': 'readyToEnforce' }
 
 test('the row, the badge, the bar and the rail derive from one lane reading on every step of every demo plan', () => {
   let checked = 0

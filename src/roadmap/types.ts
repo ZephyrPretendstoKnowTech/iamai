@@ -461,6 +461,8 @@ export type Step = {
   scheduled?: import('./stepSchedule.ts').StepSchedule
   /** The plain-language title; `title` stays the technical name (§3.1). */
   plainTitle: string
+  /** The conditional inputs on this step nobody has saved, by label (roadmap/answers.ts unsavedInputsOf, U28); absent where none. */
+  unsavedInputs?: string[]
   /** Three sentences for a manager: the risk closed, the cost to people, what happens if not done (§3.3). */
   forManager: string
   /** Microsoft recommended, not in this baseline (target-state §13, floor.ts): rendered from Microsoft's template because the active baseline lacks the goal. */

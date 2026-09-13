@@ -57,12 +57,12 @@ test('conflict → the sourceConflict blocker: On Hold', () => {
   assert.equal(label(readingOf(step)), 'On Hold · sourceConflict:sourceConflict:test')
 })
 
-test('decision → the decision kind: Ready · Needs decision, never a hold', () => {
+test('decision → the decision kind: Ready · Decision, never a hold', () => {
   const step = cleanPolicy()
   step.state = { ...step.state, condition: 'needs-decision' }
   assert.equal(holdOf(step)?.kind, 'decision')
   assert.equal(observe(step).kind, 'decision')
-  assert.equal(label(readingOf(step)), 'Ready · Needs decision')
+  assert.equal(label(readingOf(step)), 'Ready · Decision')
 })
 
 test('review → drift: Ready · Correct', () => {
