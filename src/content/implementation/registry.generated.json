@@ -1362,6 +1362,7 @@
           "tenant.displayName",
           "admins.affected.count",
           "admins.notReady",
+          "policy.current.displayName",
           "policy.current.state",
           "evidence.reportOnly",
           "dependencies.blockers",
@@ -1624,7 +1625,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact resolved admin policy by stable tenant ID **{{policy.current.id}}**. Apply only selected mismatch modules.\n"
+          "text": "This policy already exists and is enforced. The correction adds the exclusions group and aligns the admin roles with the baseline.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -1636,7 +1637,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Replace only the policy assignments/conditions with the complete IAMAI-resolved target: exact pinned built-in directory roles, canonical exclusions, All resources, all client apps, and no extra conditions.\n"
+          "text": "3. Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).\n4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n5. Target resources: All resources.\n6. Grant → Grant access → Require authentication strength: Modern MFA + TAP (the strength you created in the Authentication Strength step).\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -1684,7 +1685,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save and re-read the same policy by stable ID. Verify only the selected corrections plus lifecycle, then rescan IAMAI.\n"
+          "text": "7. Save. Do not change the policy state.\n8. Rescan in IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -1831,7 +1832,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nThe resolved admin policy {{policy.current.id}} has these mismatches: {{policy.current.semanticMismatches}}. Explain only the smallest corrections needed to restore the pinned role scope/custom strength with no extra session controls.\n"
+          "text": "This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in.\n\nUnlike the \"MFA for Everyone\" policy which accepts any MFA method (including phone call), this policy uses the authentication strength \"Modern MFA + TAP\" which only accepts phishing-resistant methods and Temporary Access Pass.\n\nThe 0% threshold means none of your admins currently have a qualifying method registered. The MFA Registration Campaign step handles getting them registered. This policy enforces the requirement; the campaign helps people meet it.\n\nThe correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.\n"
         },
         "ai.observe": {
           "meta": {

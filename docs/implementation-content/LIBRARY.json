@@ -275,7 +275,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 7,
+      "optionalBindings": 8,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -4719,6 +4719,7 @@
       "binding": "policy.current.displayName",
       "requiredBy": [],
       "optionalBy": [
+        "s-goal-admins-phishing-resistant",
         "s-goal-device-registration-mfa",
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
@@ -4727,6 +4728,7 @@
         "s-shared-devices"
       ],
       "packages": [
+        "s-goal-admins-phishing-resistant",
         "s-goal-device-registration-mfa",
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
