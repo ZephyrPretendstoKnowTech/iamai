@@ -41,7 +41,7 @@ import type { Step } from '../../roadmap/types.ts'
 import type { Lifecycle } from '../../roadmap/lifecycle.ts'
 import type { Lane, Substatus } from '../../actionability/lanes.ts'
 import type { LaneView } from './stepContract.ts'
-import { BOARD } from './planBoard.ts'
+import { BOARD, WHEN } from './planBoard.ts'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 
@@ -804,12 +804,12 @@ test('the five canonical states are one frame whose content the state changes', 
     ['observe:neutral', 'review:warn', 'inPlace:good', 'conflict:danger'],
   )
 
-  // The Next milestone rail: the date where there is one, the lane label where there is not (A1b).
+  // The Next milestone rail: the date where there is one, the placeholder where there is not (content review R1).
   assert.equal(railOf(S['not-deployed'].c).metric, absoluteDate('2026-09-22T00:00:00.000Z'))
   assert.equal(railOf(S['report-only'].c).metric, absoluteDate('2026-09-17T00:00:00.000Z'))
-  assert.equal(railOf(S['review-required'].c).metric, 'Ready · Correct')
-  assert.equal(railOf(S['in-place'].c).metric, 'Completed')
-  assert.equal(railOf(S['baseline-conflict'].c).metric, `On Hold · ${BOARD.blockers.sourceConflict}`)
+  assert.equal(railOf(S['review-required'].c).metric, WHEN.none)
+  assert.equal(railOf(S['in-place'].c).metric, WHEN.none)
+  assert.equal(railOf(S['baseline-conflict'].c).metric, WHEN.none)
 })
 
 test('the opened step mutates nothing: its only actions are the exception, the scan, the decision and copying', () => {

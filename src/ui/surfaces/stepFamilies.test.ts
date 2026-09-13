@@ -196,7 +196,7 @@ test('every family draws the one milestone at the head of its action column, and
     assert.equal(r.sub, '', `${a.fixture}/${a.step.id}: the contract composed a sub-line`)
     // A date only where Foundation B holds one; never one it does not.
     // A day the schedule places (roadmap/stepSchedule.ts) is not invented: the row reads the same day.
-    const scheduled = a.contract.schedule !== null && a.contract.schedule.transition !== 'decide' ? a.contract.schedule.at : null
+    const scheduled = a.contract.schedule !== null ? a.contract.schedule.at : null
     if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
   assert.equal(CONTENT_STEP.split('<StepActionColumn rail={rail}>').length - 1, 1, 'the action column is gated, or drawn twice')

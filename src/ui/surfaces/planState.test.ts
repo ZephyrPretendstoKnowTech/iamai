@@ -94,9 +94,8 @@ test('a dated row’s rail is the day the plan schedules, and its When column re
       if (!label || !reading || !/\d{4}$/.test(label) || step.scheduled?.at == null) continue
       const lane = laneViewOf(reading, titleOf)
       const rail = railOf(stepContract(step, ctx, undefined, lane))
-      // A decision keeps the lane's word on the rail (owner, 2026-09-11); every other dated row's rail is its day.
-      if (step.scheduled.transition === 'decide') assert.equal(rail.metric, lane.label, `${run.f.name}/${step.id}`)
-      else assert.equal(rail.metric, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
+      // Every dated row's rail is its day, a decision's included (content review R1).
+      assert.equal(rail.metric, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
       assert.equal(label, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row's day is not the scheduled day`)
       checked += 1
     }
@@ -104,7 +103,7 @@ test('a dated row’s rail is the day the plan schedules, and its When column re
   assert.ok(checked > 40, `dated rows checked: ${checked}`)
 })
 
-test('an undated row reads the placeholder and its rail reads the lane label: the reason lives in the lane', () => {
+test('an undated row reads the placeholder and so does its rail: the reason lives in the lane', () => {
   let checked = 0
   for (const run of everyRun()) {
     const { when, readings } = boardOf(run)
@@ -116,7 +115,7 @@ test('an undated row reads the placeholder and its rail reads the lane label: th
       const lane = laneViewOf(reading, titleOf)
       const c = stepContract(step, ctx, undefined, lane)
       if (c.milestone.at !== null) continue
-      assert.equal(railOf(c).metric, lane.label, `${run.f.name}/${step.id}: the row reads the placeholder and the rail says "${railOf(c).metric}"`)
+      assert.equal(railOf(c).metric, WHEN.none, `${run.f.name}/${step.id}: the row reads the placeholder and the rail says "${railOf(c).metric}"`)
       checked += 1
     }
   }
@@ -154,7 +153,7 @@ test('deferred hardening is delivered work: Completed on every surface, never Al
   const readiness = readinessOf(bg, c)
   assert.equal(readiness.bar.key, 'completed')
   assert.equal(readiness.bar.main, CONTRACT.lifecycle['in-place'])
-  assert.equal(railOf(c).metric, lane.label)
+  assert.equal(railOf(c).metric, WHEN.none)
   const slots = [...readiness.tiles, ...readiness.satisfied].filter((t) => t.key.startsWith('slot:'))
   assert.ok(slots.some((t) => t.value === CONTRACT.hardening.tiles.deferred), 'no account slot says the hardening is deferred to Cleanup')
   assert.deepEqual(c.doneWhen, [CONTRACT.hardening.doneDeferred], 'Done when claims full resilience')
