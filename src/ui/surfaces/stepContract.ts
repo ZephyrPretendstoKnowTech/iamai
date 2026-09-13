@@ -33,7 +33,7 @@ import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policy
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, engine, stepById } from '../../content/content.ts'
+import { app, engine, pages, stepById } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -1406,28 +1406,31 @@ const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Create: 'create', C
 
 /**
  * The milestone the action column leads with (U2): the day the plan schedules
- * where it holds one, and otherwise the lane's own label (A1b decision 1), over
- * the step's own words for what the milestone is for — its package's
- * `milestone.actionText` — or no words at all (U3). Nothing here composes the
- * sub-line: a generated one repeated the lane, named a prerequisite the lane
- * label already names, or said nothing ("Make the decision"), and none is
- * better than wrong.
+ * where it holds one, and otherwise the placeholder the When column reads
+ * (content review R1) — the lane is already the badge's and the row's, and in
+ * a date field it read as a date with words in it. Under it, the step's own
+ * words for what the milestone is for — its package's `milestone.actionText` —
+ * or no words at all (U3). Nothing here composes the sub-line: a generated one
+ * repeated the lane, named a prerequisite the lane label already names, or said
+ * nothing ("Make the decision"), and none is better than wrong.
  */
 export function railOf(c: StepContract, actionText: string | null = null): { metric: string; sub: string } {
   const m = c.milestone
   const l = c.state.lane
   const sub = actionText ?? ''
   // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
-  // result the row's When and its phase read. A decision keeps the lane's word
-  // (owner, 2026-09-11): it is the operator's to make.
+  // result the row's When and its phase read.
   const s = c.schedule ?? null
-  if (s !== null && s.transition !== 'decide' && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: absoluteDate(s.at), sub }
+  if (s !== null && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: absoluteDate(s.at), sub }
   if (m.at !== null) return { metric: absoluteDate(m.at), sub }
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
-  // the day its row's When reads — never the lane's word beside a dated row.
+  // the day its row's When reads.
   if (s === null && c.scheduledOn && l?.lane === 'Ready' && (l.substatus === 'Create' || l.substatus === null)) return { metric: absoluteDate(c.scheduledOn), sub }
-  return { metric: l?.label ?? m.label, sub }
+  return { metric: NO_DATE, sub }
 }
+
+/** The undated milestone: the When column's placeholder (pages.plan.when.none). */
+const NO_DATE = (pages.plan as unknown as { when: { none: string } }).when.none
 
 export type ImplementationEmpty = { key: string; tone: 'neutral' | 'good' | 'warn' | 'danger'; title: string; text: string }
 

@@ -327,11 +327,11 @@ test('a state with no dated line gets no caption, and none is invented', () => {
   assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
 })
 
-test('the rail’s metric is the date where there is one, and the lane label where there is not', () => {
+test('the rail’s metric is the date where there is one, and the placeholder where there is not', () => {
   // The caption says what happens next; the rail's headline says when, or — with
-  // no date — the lane label the row says (A1b), never the caption again.
+  // no date — the placeholder (content review R1), never the caption or the lane again.
   const gated = { milestone: { at: null, gatedBy: 'after: something', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
-  assert.equal(railOf(gated).metric, UP_NEXT.label, 'an undated queued step’s rail is not its lane label')
+  assert.equal(railOf(gated).metric, '—', 'an undated queued step’s rail is not the placeholder')
   assert.equal((nextCaption(gated) ?? '').includes(railOf(gated).metric), false, 'the rail headline repeats the caption')
   const dated = { milestone: { at: '2026-09-17T00:00:00.000Z', gatedBy: null, label: 'Leave it in report-only until Sep 17.' }, state: { condition: 'healthy', setAside: false }, whatToDo: { kind: 'observe', text: 'x' } } as unknown as StepContract
   assert.equal(railOf(dated).metric, absoluteDate('2026-09-17T00:00:00.000Z'), 'a dated milestone does not lead with its date')

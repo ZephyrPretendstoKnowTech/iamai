@@ -124,10 +124,10 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
           assert.equal(bar.main, lane.label, where)
           break
       }
-      // The rail: a day the plan schedules, or the lane label; never another word.
+      // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
       const rail = railOf(c)
-      assert.ok(DAY.test(rail.metric) || rail.metric === lane.label, `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
-      if (c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, lane.label, `${where}: an undated step's rail is not its lane label`)
+      assert.ok(DAY.test(rail.metric) || rail.metric === WHEN.none, `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
+      if (c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, WHEN.none, `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
       const when = boardWhenOf(step, waveStartOf(step))
       assert.ok(when === WHEN.none || DAY.test(when), `${where}: When reads "${when}"`)
@@ -226,7 +226,7 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.equal(lane.label, BOARD.lanes.deferred)
   assert.equal(badgeLabel(c), BOARD.lanes.deferred)
   assert.equal(readinessOf(deferred, c).bar.main, BOARD.lanes.deferred)
-  assert.equal(railOf(c).metric, BOARD.lanes.deferred)
+  assert.equal(railOf(c).metric, WHEN.none)
   assert.equal(boardWhenOf(deferred, waveStartOf(deferred)), WHEN.none)
   // A step the person said does not apply is not a row; opened on its own it reads Doesn't apply.
   const na = { ...r.steps.find((s) => s.id !== target.id && s.status !== 'done')!, doesntApply: { reason: 'Not here', at: f.snapshot.asOf } } as unknown as Step
@@ -241,6 +241,6 @@ test('a deferred step and a step that does not apply read the decided words on e
   assert.equal(cl.label, `${BOARD.lanes.onHold} · ${BOARD.blockers.sourceConflict}`)
   assert.equal(badgeLabel(cc), cl.label)
   assert.equal(readinessOf(conflict, cc).bar.main, BOARD.blockers.sourceConflict)
-  assert.equal(railOf(cc).metric, cl.label)
+  assert.equal(railOf(cc).metric, WHEN.none)
   for (const text of [cl.label, badgeLabel(cc), readinessOf(conflict, cc).bar.main, railOf(cc).metric, boardWhenOf(conflict, waveStartOf(conflict))]) assert.doesNotMatch(text, /Deferred/, `a baseline conflict reads Deferred: "${text}"`)
 })

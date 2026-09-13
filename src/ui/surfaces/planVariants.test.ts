@@ -43,7 +43,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { laneReadings } from './planLanes.ts'
-import { BOARD, doesntApplyView, laneViewOf } from './planBoard.ts'
+import { BOARD, WHEN, doesntApplyView, laneViewOf } from './planBoard.ts'
 import {
   allCuratedFixtures,
   allFixtures,
@@ -640,7 +640,7 @@ test('§5b a preserved goal draws the pack’s In-place variant: no change neede
   const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy' && (v.step.unsavedInputs ?? []).length === 0)
   assert.ok(preserved.length > 0, 'no preserved goal in the sweep')
   for (const v of preserved) {
-    assert.equal(railOf(v.c).metric, BOARD.lanes.completed, `${v.where}: a preserved goal’s rail does not say Completed (A1b: the lane label)`)
+    assert.equal(railOf(v.c).metric, WHEN.none, `${v.where}: a preserved goal’s rail is not the placeholder (content review R1)`)
     assert.ok(v.c.track.every((t) => t.reached), `${v.where}: a preserved goal is drawn mid-rollout`)
     assert.equal(v.c.implementation.offered, false, `${v.where}: a preserved goal offers an implementation`)
   }
