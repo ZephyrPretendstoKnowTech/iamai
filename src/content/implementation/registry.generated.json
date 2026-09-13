@@ -13577,7 +13577,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users** and add only IAMAI-resolved canonical exclusions.\n3. Target resources: **All resources**.\n4. Conditions > Sign-in risk: **High** only.\n5. Grant: **Grant access > Require authentication strength > {{authStrength.target.displayName}}**.\n6. Session: **Sign-in frequency > Every time**.\n7. Enable policy: **Report-only**.\n8. Create and rescan IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: check High only (not Medium).\n6. Grant → Grant access → Require authentication strength → select \"{{authStrength.target.displayName}}\" (the strength you created in the Authentication Strength step).\n7. Session → Sign-in frequency: Every time.\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -13860,7 +13860,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview IAMAI's proposed High-risk sign-in Conditional Access policy for {{tenant.displayName}}. The retained target is High only, All resources, the tenant-resolved authentication strength {{authStrength.target.displayName}}, Every-time sign-in frequency, canonical exclusions, and Report-only lifecycle. Check for contradiction with the separate Medium-risk policy; do not merge risk levels, weaken the grant to plain MFA, or redesign the baseline.\n"
+          "text": "This policy responds to high-risk sign-ins detected by Microsoft Entra ID Protection. High risk means Microsoft is fairly confident the sign-in is compromised — for example, credentials confirmed in a breach database, or traffic from a known attack infrastructure.\n\nUnlike the medium-risk policy (which requires standard MFA), this one requires the authentication strength \"{{authStrength.target.displayName}}\" — only phishing-resistant methods. The reasoning: if the risk is high, a phished code or push approval might be exactly how the attacker got in.\n\nThe \"Every time\" sign-in frequency forces re-authentication on every high-risk sign-in, even if the user has a valid session. This ensures the attacker can't ride an existing session.\n\nThe exclusions group ensures emergency access accounts are not blocked during a high-risk event.\n"
         },
         "ai.correct": {
           "meta": {
