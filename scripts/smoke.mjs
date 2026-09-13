@@ -502,7 +502,11 @@ try {
   // The class moved with the group: a phase used to be a raised panel called
   // `.phase` and is now one group among the board's, drawn by the same component
   // whichever lens is showing (src/ui/surfaces/planBoard.ts).
-  check('Plan: groups render as sections with a next mark', (await evaluate(`document.querySelectorAll('main.page .plan-group').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3 && /next/.test(pt))
+  // There is no next mark on a row any more (B2): a row states its lane and its
+  // substatus and nothing else, and which work comes next is the lane tabs' own
+  // answer — both are checked below, so nothing is lost by not looking for a pill
+  // the board no longer draws.
+  check('Plan: groups render as sections with rows', (await evaluate(`document.querySelectorAll('main.page .plan-group').length`)) >= 1 && (await evaluate(`document.querySelectorAll('main.page .plan-row').length`)) >= 3)
   check('Plan: the four zones are named over the rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-column-head')].slice(0, 1).flatMap((h) => [...h.children].map((c) => (c.textContent || '').trim())).join('|')`)) === 'State|Step|Impact|When')
   // The board draws one lane at a time (S3, src/ui/surfaces/planBoard.ts): Ready is
   // the default tab, and the three are one tab set. A check that reads every row

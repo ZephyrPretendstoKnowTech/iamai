@@ -280,6 +280,28 @@ const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const clickText = (selector, re, root = 'main.page') =>
   evaluate(`(() => { const r = document.querySelector(${JSON.stringify(root)}) ?? document; const el = [...r.querySelectorAll(${JSON.stringify(selector)})].find(x => ${re}.test((x.textContent || '').trim())); if (el) { el.scrollIntoView({ block: 'center' }); el.click() } return !!el })()`)
 
+/**
+ * Choose a decision's answer by the words it offers. A decision whose options are
+ * all one-line labels draws as a dropdown (archetype rule A1, S-DD-1 —
+ * ContentStep.tsx `Options` with `select`); the option is picked in whichever of
+ * the step's selects carries it, through the native setter React's value tracker
+ * reads, so the change event is the one a person's choice raises. False when no
+ * select on the step offers those words.
+ */
+const chooseOption = (label, root = 'main.page .step-body') =>
+  evaluate(`(() => {
+    const r = document.querySelector(${JSON.stringify(root)}); if (!r) return false
+    for (const s of r.querySelectorAll('select.decision-select')) {
+      const o = [...s.options].find((x) => (x.textContent || '').trim() === ${JSON.stringify(label)})
+      if (!o) continue
+      s.scrollIntoView({ block: 'center' })
+      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, o.value)
+      s.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    }
+    return false
+  })()`)
+
 // ---- the in-page extractor (the inventory's classification, trimmed to the contract diff) ----
 const extractIn = (rootExpr, excludeSel = '') => `(() => {
   const root = ${rootExpr}
@@ -1172,7 +1194,18 @@ async function walkFixture(fx) {
         // disclosure (S5, the approved Plan design); innerText leaves a closed
         // one out, so every disclosure in the step is opened before it is read.
         await evaluate(`document.querySelectorAll('main.page .step-body details').forEach((d) => { d.open = true })`)
+        // A tile's own note is not a `details` any more: it is compact until asked
+        // (RUN-CONTEXT-B decision 3, U6 — StepSections.tsx `Tile`), a `.tile-summary`
+        // button over a hidden `.tile-detail`. The validation findings a step states
+        // about its subject live there, so every tile is asked before the step is read.
+        await evaluate(`document.querySelectorAll('main.page .step-body .readiness-tile .tile-summary[aria-expanded="false"]').forEach((b) => { b.click() })`)
+        await sleep(120)
         let bodyText = await evaluate(`(document.querySelector('main.page .step-body') || {}).innerText || ''`)
+        // The step's implementation channels, each read as its tab is turned below.
+        // It is filled after the checks are written and read when they run (the
+        // printed plan's pass, below the row loop), so a check about a channel's
+        // words reads it there rather than here.
+        let implText = ''
         // What IAMAI found and who the step touches are the evidence behind the
         // step's Readiness, and open from it (the approved Plan design, Sep 10,
         // 2026): read them the way a person does, and hold them to the same checks.
@@ -1182,6 +1215,11 @@ async function walkFixture(fx) {
           await evaluate(`(() => { const d = document.querySelector('main.page .step dialog[open]'); if (d) d.querySelector('.dialog-head button').click() })()`)
           await sleep(150)
         }
+        // Left as the step offers it. The tiles were opened to read what they
+        // hold; the contract below measures the step a person is shown, and a
+        // tile a person has not asked yet shows one line.
+        await evaluate(`document.querySelectorAll('main.page .step-body .readiness-tile .tile-summary[aria-expanded="true"]').forEach((b) => { b.click() })`)
+        await sleep(120)
         // Foundation A: a policy step offers no implementation at all — no portal
         // instructions, no JSON, no PowerShell, no download — while it names an
         // object this tenant does not have yet, or when it has nothing to create
@@ -1214,6 +1252,22 @@ async function walkFixture(fx) {
         // This is the step's own What IAMAI found row, which renders on exactly
         // the steps that carry the gate (stepContract.ts foundOf).
         const enforcementHeld = /enforcement waits for \d{1,3}%/.test(bodyText)
+        // The general form of both facts above, and the one the product states
+        // itself: a held row. The two sentences read for `cannotWriteYet` are the
+        // translator's waiting lines, and a step whose Implementation region is
+        // drawn by its implementation-content package prints none of them — the
+        // package owns those words (ContentStep.tsx data-implementation). What
+        // every held step does carry is its lane: "On Hold · <reason>" on the row
+        // and on the step's next milestone (planLanes.ts, A1c). A held policy is
+        // not being watched towards a day it may be turned on, so it has no
+        // tracking and no gates to state (derive/readyWhen.ts returns null).
+        const heldOnRow = /^On Hold\b/.test(rowLabels[i] || '')
+        // Whether the step could settle who its policy reaches. Both forms of the
+        // answer are the step's own sentence (content `plan.step.whoUnknown` /
+        // `whoUnknownDecision`), stated under Affected people where a person reads
+        // it. A reach nothing settled is not a zero, so nothing counted against it
+        // may be reported as one.
+        const reachEstablished = !/IAMAI cannot establish (?:exactly )?who this reaches/.test(bodyText)
         // A policy in report-only says where it stands against its two gates, on
         // the row and in the step: the date column reads ready <date> · ready now
         // · held until the records clear, and Done when carries both gates with
@@ -1227,7 +1281,7 @@ async function walkFixture(fx) {
         // The chip is the tenant fact (decision 2); the lane label is the state (A1c),
         // and the When column is a day or the placeholder (A1b): the gates' own
         // words live on the step's Done when and on the reason line.
-        if (rowChips[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld) {
+        if (rowChips[i] === 'Report-only' && !cannotWriteYet && !enforcementHeld && !heldOnRow) {
           if (!LANE_LABEL_RE.test(rowLabels[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowLabels[i]}" as its state; a row's state is its lane label`)
           if (!ROW_WHEN_RE.test(rowWhens[i] || '')) add('P0', `${slabel}: a Report-only row reads "${rowWhens[i]}" in its date column; it reads a day or the placeholder`)
           if (!RE.gateTime.test(bodyText)) add('P0', `${slabel}: the Done when of a Report-only step lacks the time gate with its date`)
@@ -1340,8 +1394,12 @@ async function walkFixture(fx) {
             if (/Phones leave the compliant-device policy/.test(bodyText)) add('P0', `${slabel}: the phones answer's effect line shows before any answer`)
             if (week2) {
               // Decide here: phones protected by their apps, computers hybrid-joined.
-              const a = await clickText('label', /^Protect company apps only$/, 'main.page .step-body')
-              const b = await clickText('label', /^Hybrid join is sufficient$/, 'main.page .step-body')
+              // A decision whose options are all one-line labels draws as a dropdown
+              // rather than radios (archetype rule A1, S-DD-1 — ContentStep.tsx
+              // `Options` with `select`), so the answer is chosen in the select that
+              // offers it, not clicked as a label.
+              const a = await chooseOption('Protect company apps only')
+              const b = await chooseOption('Hybrid join is sufficient')
               const c = a && b ? await clickText('button', /^Save$/, 'main.page .step-body .decision') : false
               if (!a || !b || !c) add('P0', `${slabel}: the device decision cannot be made on the step (phones option ${a}, computers option ${b}, Save ${c})`)
               // Saved, the step is Completed and joins the board's Completed group;
@@ -1413,7 +1471,10 @@ async function walkFixture(fx) {
               const passkeyVersion = /You already confirm sign-ins/.test(emailText)
               if (campaignDated && !passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
               if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
-              if (!/passkey or a hardware security key/.test(bodyText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
+              // The line is the campaign's AI Info block now that the step's
+              // Implementation region is drawn by its implementation-content
+              // package, so it is read from the channels rather than the body.
+              if (!/passkey or a hardware security key/.test(bodyText + implText)) add('P0', `${slabel}: the campaign asks admins for a key as well as a passkey; either is enough`)
               // Where the Plan's row reads Require MFA for Everyone In place (the demo
               // in week two), the email is the passkey version. On day one that policy
               // does not exclude the chosen exclusions group, so it is partly in place
@@ -1459,13 +1520,22 @@ async function walkFixture(fx) {
             if (!cannotWriteYet && !/Conditions → Locations → Include: Any location; Exclude: \S/.test(bodyText)) add('P0', `${slabel}: the portal lines do not exclude the trusted network`)
             if (/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(bodyText)) add('P0', `${slabel}: an object id on the step`)
           }
-          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title) && !cannotWriteYet) {
+          if (/^Block (Device Code Sign-in|Authentication Transfer)$/.test(title) && !cannotWriteYet && reachEstablished) {
             // Work the plan cannot write proves nothing at all, least of all a
             // zero (roadmap/timing.ts nobodyAffected): the records counted here
             // were counted against the policy this step would run, and while
             // there is no policy to run there is no count to report. So the
             // clause is asked for only where the step can write. The manager's
             // sentence is the printed plan's (emailChecks).
+            //
+            // The same rule for the other half of that answer, and the one the
+            // demo's day one turns on: a policy whose reach this scan could not
+            // settle might touch anyone, so no zero is claimed for it either
+            // (timing.ts nobodyAffected, `e.unknown.length > 0`). On the shipped
+            // demo the device-code block lacks the chosen exclusions group until
+            // week two carves it out (Step 3 correction, roadmap/engineItems.test.ts),
+            // and the step says so where a person reads it: Affected people is
+            // Not established, under the sentence read for `reachEstablished`.
             emailChecks.push({ title, slabel, run: (_email, more) => {
               if (!/Nobody here used it since /.test(more)) add('P0', `${slabel}: nobody on the demo used this, and the manager line does not say so`)
             } })
@@ -1554,6 +1624,17 @@ async function walkFixture(fx) {
             await sleep(120)
             const td = await evaluate(extractIn(`document.querySelector('main.page .step-body')`, sc?.reach?.exclude ?? ''))
             if (td) for (const f of FORBID_EVERY) if (td.proseText.includes(f)) add('P0', `${slabel}: forbidden-everywhere string "${f}" in a What-to-do tab`)
+            // The Implementation region draws one channel at a time (S6,
+            // ContentStep.tsx): only the chosen tab's artifact is in the document,
+            // so a channel's own words are never in `bodyText`. They are collected
+            // here, as the tabs are already being turned, for the checks that are
+            // about what a channel says (the AI Info block, an Entra procedure).
+            implText += '\n' + (await evaluate(`[...document.querySelectorAll('main.page .step-body .implementation-section .impl-preview')].map((e) => e.innerText || '').join('\\n')`))
+          }
+          // Left where it was found: the first channel is the one the step offers.
+          if (tabs > 0) {
+            await evaluate(`(() => { const x = document.querySelectorAll('main.page .step-body [role=tab]')[0]; if (x) x.click() })()`)
+            await sleep(120)
           }
         }
         // C2: every opened step and Cleanup row carries a Learn link beside its Why.
