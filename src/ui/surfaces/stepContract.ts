@@ -1450,14 +1450,19 @@ export type ImplementationEmpty = { key: string; tone: 'neutral' | 'good' | 'war
  * channel, by the reason it offers none. A goal already delivered, a step whose
  * source contradicts itself, a review, a decision and a blocker each say so;
  * none of them is ever offered an artifact in its place.
+ *
+ * "No implementation needed" is only true of a goal delivered with nothing open
+ * (content review R9): a correction still to make or a Readiness tile still
+ * unresolved — `openTiles`, the opened step's unresolved tiles — waits on
+ * Readiness instead.
  */
-export function implementationEmptyOf(c: StepContract): ImplementationEmpty {
+export function implementationEmptyOf(c: StepContract, openTiles = 0): ImplementationEmpty {
   const E = CONTRACT.implementation.empty
   const box = (key: string, tone: ImplementationEmpty['tone']): ImplementationEmpty => ({ key, tone, title: E[key][0], text: E[key][1] })
   const s = c.state
   if (s.condition === 'baseline-conflict') return box('conflict', 'danger')
   if (s.setAside) return box('setAside', 'neutral')
-  if (s.satisfied) return box('inPlace', 'good')
+  if (s.satisfied) return openTiles > 0 || c.fix.length > 0 ? box('blocked', 'warn') : box('inPlace', 'good')
   if (s.condition === 'review-required') return box('review', 'warn')
   if (s.condition === 'needs-decision') return box('decision', 'warn')
   if (!c.implementation.offered && c.implementation.reason !== null) return box('unavailable', 'warn')
