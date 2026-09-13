@@ -140,21 +140,24 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
   assert.ok(complete > 0 && placeholder > 0 && dated > 0, `complete ${complete}, placeholder ${placeholder}, dated ${dated}`)
 })
 
-test('every row reads an Impact value: people, No user impact, Configuration only, or Not established — never blank, never zero for unknown', () => {
+test('every row reads an Impact value: people, No user impact, the package’s fallback label or —, or Not established — never blank, never zero for unknown, never Configuration only (U13)', () => {
   const seen = new Set<string>()
   for (const { name, r } of RUNS) {
     for (const s of r.steps as Step[]) {
       const impact = rowWho(s)
       assert.notEqual(impact.trim(), '', `${name}/${s.id}: a blank Impact`)
+      assert.equal(impact.includes('Configuration only'), false, `${name}/${s.id}: "${impact}"`)
       const pop = reached(s)
       if (pop === null) {
         assert.equal(impact, 'Not established', `${name}/${s.id}`)
         seen.add('unknown')
       } else if ((pop.activeIds ?? pop.ids).length === 0) {
-        assert.match(impact, effectsOf(s) === null ? /^Configuration only/ : /^No user impact/, `${name}/${s.id}`)
+        // The fallback chain: no people → the package's impact.fallbackLabel → the placeholder.
+        const expected = effectsOf(s) === null ? (implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? '—') : 'No user impact'
+        assert.equal(impact.split(' · ')[0], expected, `${name}/${s.id}: "${impact}"`)
         seen.add(effectsOf(s) === null ? 'configuration' : 'none')
       } else {
-        assert.doesNotMatch(impact, /^(No user impact|Configuration only|Not established)/, `${name}/${s.id}`)
+        assert.doesNotMatch(impact, /^(No user impact|—|Not established)/, `${name}/${s.id}`)
         seen.add('known')
       }
     }

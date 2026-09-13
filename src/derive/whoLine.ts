@@ -11,10 +11,11 @@ import { pages } from '../content/content.ts'
 /**
  * The Impact words that are not a count (owner, 2026-09-11): a reach nobody
  * settled is Not established, never zero; a policy that reaches nobody has No
- * user impact; a step that changes configuration and names no people is
- * Configuration only.
+ * user impact; a step that changes configuration and names no people reads
+ * what it touches — its package's `impact.fallbackLabel` — or `none`, the
+ * placeholder (U13, ui/surfaces/rowWho.ts).
  */
-export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; configurationOnly: string } }).impact
+export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; none: string } }).impact
 
 // A row counts people and never names them (RUN-CONTEXT-B decision 11): one
 // person reads "1 person", and the names are on the step. The gap on a row is
@@ -39,8 +40,8 @@ export function shortGap(gap: string): string {
 
 /**
  * The row's who-line: the count of the people the step reaches, never their
- * names. An empty reach reads `none`: No user impact for a policy, Configuration
- * only for a step that names no people.
+ * names. An empty reach reads `none`: No user impact for a policy, what the
+ * step touches for a step that names no people (rowWho.ts).
  */
 export function whoLine(pop: StepPopulation, gap: string | null = null, none: string = IMPACT.noUserImpact): string {
   gap = gap ? gap.replace(/\*/g, '') : gap

@@ -36,6 +36,7 @@ import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 import { planDates, stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { rowWho } from './rowWho.ts'
+import { implementationPackageFor } from './stepPackage.ts'
 
 type Plan = { label: string; f: Fixture; r: ReturnType<typeof runFixture>; ctx: (s: Step) => StepVarContext }
 
@@ -113,7 +114,9 @@ test('Step 5: the Impact column says who a step reaches, never the state, and no
         assert.equal(impact, 'Not established', `${where}: "${impact}" stands in for a reach nobody settled`)
         unknown += 1
       } else {
-        assert.match(impact, /^(No user impact|Configuration only|\d+ (person|people))( · .+)?$/, `${where}: "${impact}"`)
+        const head = impact.split(' · ')[0]
+        const fallback = implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? null
+        assert.ok(/^\d+ (person|people)$/.test(head) || ['No user impact', '—', fallback].includes(head), `${where}: "${impact}"`)
       }
     }
   }

@@ -398,12 +398,12 @@ function diffContract(label, c, d) {
   for (const s of d.longSentences) add('P1', `${label}: sentence over ${RULES.sentenceMaxWords} words: "${s.slice(0, 90)}…"`)
 }
 
-/** The people a row or a lead counts: a leading number; a row may also read No user impact or Configuration only (0); null otherwise (Not established is no count, and a row never names people). */
+/** The people a row or a lead counts: a leading number; a row may also read No user impact (0); null otherwise (Not established is no count, a step's fallback label or — is no count, and a row never names people). */
 function countOf(text, { row = false } = {}) {
   const t = (text || '').trim()
   const m = /^(\d+)\b/.exec(t)
   if (m) return Number(m[1])
-  if (row && /^(no user impact|configuration only)/i.test(t)) return 0
+  if (row && /^no user impact/i.test(t)) return 0
   return null
 }
 

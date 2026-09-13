@@ -19,6 +19,15 @@ const compile = (meta: Partial<PackageMeta>, content: string): CompiledPackage =
 const errorsOf = (meta: Partial<PackageMeta>, content: string): string[] => validatePackage(compile(meta, content))
 const has = (errors: string[], re: RegExp): void => assert.ok(errors.some((e) => re.test(e)), `expected ${re} in:\n${errors.join('\n')}`)
 
+test('META impact.fallbackLabel (U13): a non-empty string validates, anything else is refused', () => {
+  const impactErrors = (impact: unknown): string[] => errorsOf({ impact } as Partial<PackageMeta>, '').filter((e) => /impact\./.test(e))
+  assert.deepEqual(impactErrors({ fallbackLabel: 'Authentication methods' }), [])
+  assert.deepEqual(impactErrors({}), [])
+  has(impactErrors({ fallbackLabel: '' }), /impact\.fallbackLabel: a non-empty string/)
+  has(impactErrors({ fallbackLabel: 3 }), /impact\.fallbackLabel: a non-empty string/)
+  has(impactErrors(null), /impact\.fallbackLabel: a non-empty string/)
+})
+
 const COMPOSE_CONTENT =
   block({ id: 'e.open', channel: 'entra', states: ['partial'], format: 'markdown' }, 'Open the policy.') +
   block({ id: 'e.grant', channel: 'entra', states: ['partial'], format: 'markdown' }, 'Correct the grant.') +
