@@ -109,7 +109,9 @@ test('every family goes through one frame: there is no second step shell', () =>
   // rightly has a render of its own.
   const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Implementation({'))
   assert.ok(body.length > 500, 'the step body could not be read')
-  assert.equal(body.split('return (').length - 1, 1, 'the step has more than one render path')
+  // A callback handed to a region (the emergency slot body) returns its own
+  // markup inside the one tree; only a return at the step's own level is a path.
+  assert.equal(body.match(/^ {2,4}(?:if \(.*\) )?return \(/gm)?.length ?? 0, 1, 'the step has more than one render path')
 })
 
 test('the family is a reading, not a switch: nothing selects a layout from it', () => {
@@ -263,7 +265,7 @@ test('the step gates the display and never the artifact', () => {
   // JSON and the commands are still built by the modules that built them.
   assert.match(CONTENT_STEP, /const deployNow = implementationIsCurrent\(step\)/, 'the step decides for itself when to deploy')
   assert.match(CONTENT_STEP, /const channels = deployNow \? channelsFor\(/, 'the gate is not applied to the channel list')
-  assert.match(CONTENT_STEP, /: channels\.map\(\(ch\) => \(\{ id: ch,/, 'the implementation region is not built from the gated channel list')
+  assert.match(CONTENT_STEP, /: channels\.map\(\(ch\): Artifact => \(\{ id: ch,/,'the implementation region is not built from the gated channel list')
   assert.match(CONTENT_STEP, /<Implementation\n\s*artifacts=\{artifacts\}/, 'the implementation region is not handed the artifacts')
   // Nothing writes to the capability.
   assert.equal(CONTENT_STEP.includes('implementation.offered ='), false, 'the step mutates Foundation A’s answer')

@@ -66,7 +66,8 @@ test('P0-3: Copy is drawn on a planning preview, not offered, with the values st
   assert.match(CONTENT_STEP, /title=\{copyReason\}/)
   assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
   assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2)
-  assert.match(CSS, /\.step \.icon-btn\[aria-disabled="true"\] \{[^}]*opacity: 0\.4;[^}]*cursor: not-allowed;/)
+  // Muted by colour, as every disabled control is (design 2 allows no opacity on a control's glyph).
+  assert.match(CSS, /\.step \.icon-btn\[aria-disabled="true"\],\n\.step \.icon-btn\[aria-disabled="true"\]:hover \{[^}]*color: var\(--quiet-text\);[^}]*cursor: not-allowed;/)
 })
 
 test('P0-4: PowerShell and JSON render on Conditional Access policy steps only', () => {

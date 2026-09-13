@@ -577,7 +577,9 @@ test('Readiness is the pack’s tiles over its bar, from facts the contract alre
   assert.match(pack, /<dialog aria-labelledby="readiness-dialog-title" id="readiness-dialog">/, 'the pack’s readiness dialog is gone')
   // A1 §16.1 widens the strip to four across, wrapping (S5); the pack's three is its sample's count.
   assert.match(rule('.step .readiness-strip'), /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/, 'production’s strip is not four tracks')
-  assert.match(rule('.step .readiness-tile'), /min-height: 104px;/)
+  // RUN-CONTEXT-B decision 3: a tile is one line (mark · label · value · chevron) and tiles never match heights.
+  assert.doesNotMatch(rule('.step .readiness-tile'), /min-height/)
+  assert.match(rule('.step .tile-summary'), /min-height: 46px;/)
   assert.match(rule('.step .readiness-bar'), /justify-content: space-between;/)
   // The component presents; it does not count, and a mark never carries a state on its own.
   const section = code(SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box')))
@@ -592,7 +594,9 @@ test('Readiness is the pack’s tiles over its bar, from facts the contract alre
   for (const name of ['demo', 'demo-week2', 'messy', 'hostile'] as const) {
     for (const { step: s, c } of contractsOf(name)) {
       const r = readinessOf(s, c)
-      assert.equal(r.tiles.length, c.fix.length + r.tiles.filter((t) => !c.fix.some((f) => f.key === t.key)).length, `${name}/${s.id}: a fix without its tile`)
+      // Emergency access lists its checks under fix for the exports; its slot tiles carry them on the step (B10 P0-7).
+      const drawn = c.emergencySlots.length > 0 ? c.fix.filter((f) => !f.key.startsWith('check:')) : c.fix
+      assert.equal(r.tiles.length, drawn.length + r.tiles.filter((t) => !drawn.some((f) => f.key === t.key)).length, `${name}/${s.id}: a fix without its tile`)
       for (const t of [...r.tiles, ...r.satisfied]) assert.ok(t.label.trim() !== '' && t.value.trim() !== '', `${name}/${s.id}: an empty tile`)
       assert.ok(r.satisfied.every((t) => t.tone === 'good' || t.tone === 'info'), `${name}/${s.id}: an unresolved tile among the satisfied`)
       assert.ok(bars.has(r.bar.main), `${name}/${s.id}: the bar’s headline is not the content file’s`)
@@ -725,6 +729,7 @@ function stateOf(o: {
     members: [],
     multiPolicy: false,
     existing: null,
+    exclusionsReach: null,
     implementation: o.offered ? { offered: true, operations: 1 } : { offered: false, reason: o.reason ?? null, hold: o.hold ?? null, because: o.reason ? 'Because.' : null },
   } as unknown as StepContract
   return { step: s, c }
@@ -745,7 +750,8 @@ test('the five canonical states are one frame whose content the state changes', 
     assert.equal(CONTENT_STEP.split(needle).length - 1, n, `${needle} appears ${CONTENT_STEP.split(needle).length - 1} times`)
   }
   const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Implementation('))
-  assert.equal(body.split('return (').length - 1, 1, 'the step has more than one render path')
+  // A callback handed to a region returns its own markup inside the one tree; only a return at the step's own level is a path.
+  assert.equal(body.match(/^ {2,4}(?:if \(.*\) )?return \(/gm)?.length ?? 0, 1, 'the step has more than one render path')
   for (const [file, src] of [['ContentStep.tsx', CONTENT_STEP], ['StepSections.tsx', SECTIONS]] as const) {
     assert.equal(/standingOf|stepFamily|title\.(includes|match)/.test(code(src)), false, `${file} selects presentation from the step’s standing, family or title`)
   }

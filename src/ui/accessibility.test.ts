@@ -420,7 +420,7 @@ test("the Plan step's implementation channels are one tab set over one panel, an
   assert.match(contentStep, /<div className="impl-preview" \{\.\.\.onePanelProps\(base, tab\)\}>/)
   // Copy and Expand are real buttons with names, not glyphs a screen reader
   // cannot announce.
-  assert.match(contentStep, /<button type="button" className="icon-btn" aria-label=\{W\.copy\}/)
+  assert.match(contentStep, /<button\s+type="button"\s+className="icon-btn"\s+aria-label=\{W\.copy\}/)
   assert.match(contentStep, /<button type="button" className="icon-btn" aria-label=\{W\.expand\}/)
   // Availability is read from ONE authority: the machine channels exist only
   // where Foundation A offers an implementation, through the contract.

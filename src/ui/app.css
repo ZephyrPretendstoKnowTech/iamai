@@ -2671,8 +2671,9 @@ footer.app a {
   color: var(--primary-text);
 }
 /* Copy on a planning preview: drawn, not offered, with its reason on hover (U18). */
-.step .icon-btn[aria-disabled="true"] {
-  opacity: 0.4;
+.step .icon-btn[aria-disabled="true"],
+.step .icon-btn[aria-disabled="true"]:hover {
+  color: var(--quiet-text);
   cursor: not-allowed;
 }
 .step .impl-preview .preview-text {
