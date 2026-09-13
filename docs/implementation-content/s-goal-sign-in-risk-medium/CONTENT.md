@@ -1,13 +1,13 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.
-1. Name: {{policy.target.displayName}}.
-2. Users: Include **All users** and add only IAMAI-resolved canonical exclusions.
-3. Target resources: **All resources**.
-4. Conditions > Sign-in risk: **Medium** only.
-5. Grant: **Grant access > Require multifactor authentication**.
-6. Do not add session controls for this retained baseline member.
-7. Enable policy: **Report-only**.
-8. Create and rescan IAMAI.
+1. Go to Entra admin center → Conditional Access → Policies → New policy.
+2. Name: {{policy.target.displayName}}.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
+4. Target resources: All resources.
+5. Conditions → Sign-in risk: check Medium only.
+6. Grant → Grant access → Require multifactor authentication.
+7. Session: leave empty (no session controls).
+8. Enable policy: Report-only.
+9. Create. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -112,9 +112,11 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+This policy requires MFA when Microsoft detects a medium-risk sign-in — for example, a sign-in from an unfamiliar location, a new device, or credentials found in a leaked database.
 
-Review IAMAI's proposed Medium-risk sign-in Conditional Access policy for {{tenant.displayName}}. The retained target is Medium only, All resources, built-in MFA, canonical exclusions, no session controls, and Report-only lifecycle. Check for contradiction with the separate High-risk policy; do not merge risk levels or redesign the baseline.
+It starts in Report-only so you can observe which sign-ins would be challenged without blocking anyone. After the observation window, IAMAI will prompt you to enforce it.
+
+The exclusions group is excluded so emergency access accounts are never blocked by this policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}

@@ -14356,7 +14356,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users** and add only IAMAI-resolved canonical exclusions.\n3. Target resources: **All resources**.\n4. Conditions > Sign-in risk: **Medium** only.\n5. Grant: **Grant access > Require multifactor authentication**.\n6. Do not add session controls for this retained baseline member.\n7. Enable policy: **Report-only**.\n8. Create and rescan IAMAI.\n"
+          "text": "1. Go to Entra admin center → Conditional Access → Policies → New policy.\n2. Name: {{policy.target.displayName}}.\n3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources.\n5. Conditions → Sign-in risk: check Medium only.\n6. Grant → Grant access → Require multifactor authentication.\n7. Session: leave empty (no session controls).\n8. Enable policy: Report-only.\n9. Create. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -14631,7 +14631,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview IAMAI's proposed Medium-risk sign-in Conditional Access policy for {{tenant.displayName}}. The retained target is Medium only, All resources, built-in MFA, canonical exclusions, no session controls, and Report-only lifecycle. Check for contradiction with the separate High-risk policy; do not merge risk levels or redesign the baseline.\n"
+          "text": "This policy requires MFA when Microsoft detects a medium-risk sign-in — for example, a sign-in from an unfamiliar location, a new device, or credentials found in a leaked database.\n\nIt starts in Report-only so you can observe which sign-ins would be challenged without blocking anyone. After the observation window, IAMAI will prompt you to enforce it.\n\nThe exclusions group is excluded so emergency access accounts are never blocked by this policy.\n"
         },
         "ai.correct": {
           "meta": {
