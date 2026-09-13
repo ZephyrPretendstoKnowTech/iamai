@@ -9,7 +9,7 @@
 // blocker evaluation, no lifecycle arithmetic. Those questions were answered
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
@@ -17,6 +17,7 @@ import type { ContractFound, ContractMember, ContractReadiness, ContractStage, I
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
 import type { ContractEmergencySlot, ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
+import { autoOpenTiles } from './tileExpansion.ts'
 
 /**
  * One row of the Plan: the lane, the tenant fact, the title, who it touches and when.
@@ -270,15 +271,35 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
   children?: ReactNode
 }) {
   const W = CONTRACT.readiness
+  // The blocking tiles open with the step (content review D5). Their explanations
+  // are measured before paint, every one drawn open; where together they run past
+  // the cap, only the first stays open and a line says how many wait closed.
+  const sectionRef = useRef<HTMLElement>(null)
+  const blocking = readiness.tiles.filter((t) => MARK[t.tone] === '!').map((t) => t.key)
+  const sig = blocking.join('\n')
+  const [auto, setAuto] = useState<{ sig: string; keys: readonly string[]; closed: number } | null>(null)
+  const autoKeys = auto !== null && auto.sig === sig ? auto.keys : blocking
+  useLayoutEffect(() => {
+    const section = sectionRef.current
+    if (!section || printing) return
+    const details = new Map([...section.querySelectorAll<HTMLElement>('.readiness-strip.unresolved > li')].map((li) => [li.dataset.tileKey ?? '', li.querySelector<HTMLElement>('.tile-detail')]))
+    const measured = blocking.flatMap((key) => {
+      const d = details.get(key)
+      return d ? [{ key, height: d.getBoundingClientRect().height }] : []
+    })
+    const keys = autoOpenTiles(measured)
+    setAuto({ sig, keys, closed: measured.length - keys.length })
+  }, [sig, printing])
   const strip = (tiles: ReadinessTile[], cls: string) => (
     <ul className={`readiness-strip ${cls} tiles-${tiles.length < TRACKS ? tiles.length : TRACKS}`}>
       {tiles.map((t) => (
-        <Tile key={t.key} tile={t} open={printing} extra={extra ? extra(t) : null} onConfirm={onConfirm} onOpenMappings={onOpenMappings} />
+        <Tile key={t.key} tile={t} open={printing} autoOpen={cls === 'unresolved' && autoKeys.includes(t.key)} extra={extra ? extra(t) : null} onConfirm={onConfirm} onOpenMappings={onOpenMappings} />
       ))}
     </ul>
   )
+  const closedBlocking = !printing && auto !== null && auto.sig === sig ? auto.closed : 0
   return (
-    <section className="step-section readiness-section">
+    <section ref={sectionRef} className="step-section readiness-section">
       <h4>{W.heading}</h4>
       {readiness.tiles.length > 0 ? (
         strip(readiness.tiles, 'unresolved')
@@ -291,6 +312,7 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
           <span>{W.tiles.clearNote}</span>
         </p>
       )}
+      {closedBlocking > 0 && <p className="readiness-more">{fillText(W.tiles.moreBlocking, { n: closedBlocking })}</p>}
       {readiness.satisfied.length > 0 && (
         <details className="readiness-satisfied" open={printing || undefined}>
           <summary>{fillText(W.tiles.satisfied, { n: readiness.satisfied.length })}</summary>
@@ -318,22 +340,26 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
  * line — mark, label, value and a chevron — that opens the tile's explanation,
  * its evidence and the link to where it is resolved (A1 §16.1). A tile with
  * nothing to disclose draws no control. Whether it is open is the tile's own
- * state, so it resets when the step closes; printing stands every tile open.
+ * state, so it resets when the step closes; a blocking tile opens with the step
+ * until it is pressed (content review D5); printing stands every tile open.
  * `extra` is evidence a tile carries beyond its sentence — the hardening's own
  * recommendations — handed in by the step, never read here.
  */
-function Tile({ tile: t, open, extra, onConfirm, onOpenMappings }: {
+function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMappings }: {
   tile: ReadinessTile
   open: boolean
+  /** A blocking tile the step opens with (content review D5), until the tile is pressed. */
+  autoOpen?: boolean
   extra: ReactNode
   onConfirm: ((tileKey: string) => void) | null
   onOpenMappings: (() => void) | null
 }) {
-  const [expanded, setExpanded] = useState(false)
+  // The tile's own toggle once pressed; until then, whether the step opened it (D5).
+  const [expanded, setExpanded] = useState<boolean | null>(null)
   const detailId = useId()
   const link = t.link === undefined ? null : 'href' in t.link ? <a href={t.link.href}>{t.link.label}</a> : onOpenMappings ? <button type="button" className="inline-link" onClick={onOpenMappings}>{t.link.label}</button> : null
   const more = t.note !== null || link !== null || extra !== null
-  const shown = open || expanded
+  const shown = open || (expanded ?? autoOpen)
   const line = (
     <>
       {MARK[t.tone] && (
@@ -347,9 +373,9 @@ function Tile({ tile: t, open, extra, onConfirm, onOpenMappings }: {
     </>
   )
   return (
-    <li className={`readiness-tile readiness-tile-${t.tone}`}>
+    <li className={`readiness-tile readiness-tile-${t.tone}`} data-tile-key={t.key}>
       {more ? (
-        <button type="button" className="tile-summary" aria-expanded={shown} aria-controls={detailId} title={`${t.label} · ${t.value}`} onClick={() => setExpanded(!expanded)}>
+        <button type="button" className="tile-summary" aria-expanded={shown} aria-controls={detailId} title={`${t.label} · ${t.value}`} onClick={() => setExpanded(!shown)}>
           {line}
         </button>
       ) : (
