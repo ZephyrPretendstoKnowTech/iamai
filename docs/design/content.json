@@ -3039,7 +3039,7 @@
       "kind": "campaign",
       "title": "Create and Enforce the MFA Registration Campaign",
       "changeLine": null,
-      "why": "Enforcement should change nothing for anyone; that is only true once every active person holds a phishing-resistant method that has been seen to work.",
+      "why": "Enforcement should change nothing for anyone. That's only true once every person has registered a phishing-resistant method and used it to sign in at least once.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
       },
@@ -3061,7 +3061,10 @@
       },
       "decision": {
         "label": "People who need special care",
-        "help": "Admins, anyone with no method, and anyone with text or call only. These get the in-person instructions.",
+        "help": "Identify anyone who needs hands-on help registering.",
+        "text": "Admins, anyone with no sign-in method, and anyone who only has text or phone call. These people need in-person walkthrough to set up their passkey.",
+        "tileLabel": "Special care",
+        "tileValue": "Confirm who needs hands-on help",
         "pickerSource": "specialCare",
         "pickerRow": "{name} · {state}",
         "save": "Save",

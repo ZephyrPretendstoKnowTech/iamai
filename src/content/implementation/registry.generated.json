@@ -23709,7 +23709,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open the **Entra admin center → Security → Authentication methods → Registration campaign**.\n2. Enable the campaign: set State to **Enabled**.\n3. Target: **All users**.\n4. Authentication method: **Passkey (Microsoft Authenticator)**.\n5. Enforcement: **remind on sign-in**, so each person is asked at sign-in until they have set it up.\n6. **Save**.\n"
+          "text": "1. Go to Entra admin center → Security → Authentication methods → Registration campaign.\n2. State: Enabled.\n3. Target: All users.\n4. Authentication method: Passkey (Microsoft Authenticator).\n5. Number of days allowed to snooze: 14 (or your organization's preference).\n6. Save.\n\nEach user will see a prompt at their next sign-in asking them to register a passkey. They can snooze it, but it returns until they complete registration.\n"
         },
         "ai.walkthrough": {
           "meta": {
@@ -23721,7 +23721,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nIn person, for the people who need special care:\n\n1. Book ten minutes with each person who needs special care.\n2. Open https://aka.ms/mfasetup with them signed in.\n3. Person-by-person setup steps are on [MFA Readiness →](#/readiness); work its Needs setup and Needs proof lists there.\n4. No method: issue a Temporary Access Pass first.\n5. Text or call only: register the passkey, then remove the phone number as a sign-in method.\n6. Admins: a passkey or a hardware security key.\n7. Have each sign in once more; the record shows it on the next scan.\n"
+          "text": "After enabling the campaign, help each special-care person register in person:\n\n1. Book 10 minutes with each person listed under \"People who need special care.\"\n2. Open aka.ms/mfasetup with them signed in.\n3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a one-time code to sign in and register.\n4. If they only have text or phone call: register the passkey first, then remove the phone number from their authentication methods so it's no longer a sign-in option.\n5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.\n6. Have each person sign in one more time after registration. IAMAI checks for the sign-in record on the next scan.\n\nTrack progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.\n\n[MFA Readiness →](#/readiness)\n"
         },
         "entra.configure": {
           "meta": {

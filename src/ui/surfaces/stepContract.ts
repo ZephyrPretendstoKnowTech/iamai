@@ -1387,7 +1387,7 @@ function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
 
 /** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
 function unsavedTiles(step: Step): ReadinessTile[] {
-  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; tileValue?: unknown; question?: { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
+  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; tileLabel?: unknown; tileValue?: unknown; question?: { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
   const ask = (label: string): string | null => {
     const text = d?.question?.label === label ? d.question.text : d?.label === label ? (d.text ?? d.help) : null
     return typeof text === 'string' && whole(text, {}) ? text : null
@@ -1397,7 +1397,10 @@ function unsavedTiles(step: Step): ReadinessTile[] {
     const value = d?.question?.label === label ? d.question.tileValue : d?.label === label ? d.tileValue : null
     return typeof value === 'string' ? value : R().tiles.unsaved
   }
-  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label, tone: 'warn', value: valueOf(label), note: ask(label) }))
+  // A shorter tile label where the input's own is too long for a tile (content review S5). The
+  // input's label stays its answer's key and the key of the tile.
+  const labelOf = (label: string): string => (d?.label === label && typeof d.tileLabel === 'string' ? d.tileLabel : label)
+  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label: labelOf(label), tone: 'warn', value: valueOf(label), note: ask(label) }))
 }
 
 /** The exclusions group's reach over the tenant's policies (B10 P0-11, S-EG-1): what the group already covers, and that each policy step owns the rest. */
