@@ -173,7 +173,7 @@ test('013.B: where the Plan offers no implementation, no artifact carries one', 
       // state an end of, and otherwise the policy's end state — what clears the
       // hold is Fix before continuing's (owner, 2026-09-11); never the rollout's gates.
       assert.equal(v.doneWhen.length, 1, `${where}: ${v.doneWhen.join(' | ')}`)
-      if (!NO_POLICY_REASONS.has(reason)) assert.match(v.doneWhen[0], /^The policy is enforced in /, `${where}: ${v.doneWhen.join(' | ')}`)
+      if (!NO_POLICY_REASONS.has(reason)) assert.match(v.doneWhen[0], /^The policy is enforced\b/, `${where}: ${v.doneWhen.join(' | ')}`)
       assert.equal(/report-only|sign-in failures|%/i.test(v.doneWhen.join(' ')), false, `${where}: a rollout completion — ${v.doneWhen.join(' | ')}`)
     }
   }

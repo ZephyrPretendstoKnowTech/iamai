@@ -90,3 +90,21 @@ test('s-goal-admin-portals-protected: the conflict says there is nothing to do, 
   assert.deepEqual(body.notes, [], 'the conflict step still carries the review note')
   assert.deepEqual(body.contract.doneWhen, ["The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition."])
 })
+
+test('s-goal-token-protection: Why says what token protection is, AI Info explains the attack and the Windows limit, and Done when names the target', () => {
+  const TOKEN = 's-goal-token-protection'
+  const words = stepWords('token-protection')
+  assert.equal(words.why, "Token protection binds a session token to the device it was issued on. If someone steals the token and tries to use it on a different machine, it's rejected.")
+  assert.equal(words.doneEnd, "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.")
+  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  const ai = packageOf(TOKEN).blocks['ai.correct'].text
+  assert.match(ai, /^Token protection binds each sign-in token to the device it was created on\. If an attacker steals the token \(from memory, from a browser export, or from disk\) and tries to replay it on their own machine, Entra rejects it because the device doesn't match\.$/m)
+  assert.match(ai, /^This is one of the strongest protections against token theft, which is the attack that bypasses MFA entirely — the attacker doesn't need the user's password or second factor, just a copy of the session token\.$/m)
+  assert.match(ai, /^Current limitation: token protection only works on Windows devices running supported apps\. Non-Windows devices \(Mac, iOS, Android\) and some web apps don't support it yet\. This doesn't mean those devices are unprotected — other policies \(MFA, device compliance\) still apply\. It means the token binding doesn't fire there\.$/m)
+  assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts are not affected\.$/m)
+  assert.doesNotMatch(ai, /semantic mismatch|canonical|Stable policy ID/)
+  // Entra is unchanged: the target's Browser client apps contradict the pinned
+  // baseline, and the package composes Entra per mismatch (BLOCKED.md).
+  assert.match(packageOf(TOKEN).blocks['entra.create'].text, /select only \*\*Mobile apps and desktop clients\*\*\. Leave Browser unselected\./)
+  assert.match(packageOf(TOKEN).blocks['entra.correct.lifecycle.report-only'].text, /Report-only/)
+})

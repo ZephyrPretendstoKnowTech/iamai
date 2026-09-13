@@ -390,27 +390,13 @@ Return the smallest safe Create action and call out the beta API limitation with
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+Token protection binds each sign-in token to the device it was created on. If an attacker steals the token (from memory, from a browser export, or from disk) and tries to replay it on their own machine, Entra rejects it because the device doesn't match.
 
-ROLE
-Help correct the existing IAMAI-resolved Token Protection policy. Do not recreate it.
+This is one of the strongest protections against token theft, which is the attack that bypasses MFA entirely — the attacker doesn't need the user's password or second factor, just a copy of the session token.
 
-CURRENT STATE
-Policy: {{policy.current.displayName}}
-Stable policy ID: {{policy.current.id}}
-IAMAI semantic mismatches: {{policy.current.semanticMismatches}}
+Current limitation: token protection only works on Windows devices running supported apps. Non-Windows devices (Mac, iOS, Android) and some web apps don't support it yet. This doesn't mean those devices are unprotected — other policies (MFA, device compliance) still apply. It means the token binding doesn't fire there.
 
-TARGET STATE
-Retain the pinned five-resource Windows native-client policy, canonical exclusions, retained CloudPC filter, no grant, Token Protection session control, and Report-only while correcting.
-
-IMPLEMENTATION OPTIONS
-Correct only the supplied semantic mismatch modules. Multiple condition mismatches can share the canonical conditions PATCH boundary; deduplicate that mutation.
-
-DO NOT CHANGE
-Do not broaden resources, users, clients, exceptions, or platform scope beyond the retained baseline. Use the stable policy ID for updates.
-
-YOUR ROLE
-Explain only the actual mismatches and the smallest safe correction for the same policy.
+The correction on this step adds the exclusions group so emergency access accounts are not affected.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

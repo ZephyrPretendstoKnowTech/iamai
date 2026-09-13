@@ -4614,7 +4614,7 @@
       "kind": "policy",
       "title": "Require Token Protection on Windows",
       "changeLine": null,
-      "why": "A stolen token copied to another machine is useless once it is bound to the original device.",
+      "why": "Token protection binds a session token to the device it was issued on. If someone steals the token and tries to use it on a different machine, it's rejected.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection"
       },
@@ -4628,7 +4628,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration.",
+      "doneEnd": "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
