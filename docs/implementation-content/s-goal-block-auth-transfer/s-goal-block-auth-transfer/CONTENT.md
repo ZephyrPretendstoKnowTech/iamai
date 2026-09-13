@@ -9,7 +9,12 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. If it is **On**, move that same policy to **Report-only** before changing any access-affecting assignment or condition. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.
+This policy already exists and is enforced. The correction adds the exclusions group.
+
+1. Go to Entra admin center → Conditional Access → Policies.
+2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
+3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
+4. Verify: Target resources = All resources, Conditions = Client apps: Authentication flows: Authentication transfer, Grant = Block access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -25,7 +30,8 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Display na
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.
+5. Save. Do not change the policy state (leave it On).
+6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -140,9 +146,11 @@ Review the proposed **Block Authentication Transfer** implementation for {{tenan
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+This policy blocks authentication transfer — the flow where a QR code or link moves an authenticated session from one device to another without re-authenticating.
 
-Policy {{policy.current.id}} has these mismatches for **Block Authentication Transfer**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.
+Attackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device. Blocking the flow stops this attack entirely.
+
+The correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

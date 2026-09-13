@@ -361,7 +361,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -4720,6 +4720,7 @@
       "requiredBy": [],
       "optionalBy": [
         "s-goal-admins-phishing-resistant",
+        "s-goal-block-auth-transfer",
         "s-goal-device-registration-mfa",
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
@@ -4729,6 +4730,7 @@
       ],
       "packages": [
         "s-goal-admins-phishing-resistant",
+        "s-goal-block-auth-transfer",
         "s-goal-device-registration-mfa",
         "s-goal-mfa-all-users",
         "s-goal-token-protection",
