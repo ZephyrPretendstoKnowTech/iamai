@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
-import { CONTRACT, FOOTER, badgeLabel, nextCaption, stageClass } from './stepContract.ts'
+import { CONTRACT, FOOTER, badgeLabel, nextCaption, readinessLeadOf, stageClass } from './stepContract.ts'
 import type { ContractEmergencySlot, ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 
@@ -650,9 +650,11 @@ export function EmergencySlotBody({ slot, hardening, onDefer, onUndo }: { slot: 
   )
 }
 
-/** The one next operator action. Every step has one, so this never renders nothing. */
+/** The one next operator action under the Readiness bar, or nothing where it is filler (content review R2). */
 export function WhatToDoLead({ contract }: { contract: StepContract }) {
-  return <p className={`do-lead do-${contract.whatToDo.kind}`}>{contract.whatToDo.text}</p>
+  const text = readinessLeadOf(contract)
+  if (text === null) return null
+  return <p className={`do-lead do-${contract.whatToDo.kind}`}>{text}</p>
 }
 
 /**

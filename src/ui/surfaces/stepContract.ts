@@ -1432,6 +1432,17 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
 /** The undated milestone: the When column's placeholder (pages.plan.when.none). */
 const NO_DATE = (pages.plan as unknown as { when: { none: string } }).when.none
 
+/**
+ * The readiness bar's sub-line (content review R2): the contract's one action,
+ * or nothing where that action is filler the milestone already stopped saying
+ * (U3) — words that name no object, no decision and no prerequisite.
+ */
+export function readinessLeadOf(c: Pick<StepContract, 'whatToDo'>): string | null {
+  const text = c.whatToDo.text.trim()
+  return FILLER.has(text.replace(/[.:]$/, '')) ? null : text
+}
+const FILLER: ReadonlySet<string> = new Set(['Make the object this step names', 'Make the decision', 'Resolve prerequisites', 'For each person'])
+
 export type ImplementationEmpty = { key: string; tone: 'neutral' | 'good' | 'warn' | 'danger'; title: string; text: string }
 
 /**
