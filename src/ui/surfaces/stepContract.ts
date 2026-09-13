@@ -53,6 +53,10 @@ import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import type { BlockerKind, Lane, Substatus } from '../../actionability/lanes.ts'
 import { returnToStep } from '../shell/routes.ts'
+import dependencyData from '../../actionability/dependency-data.json' with { type: 'json' }
+import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
+import { buildGraph } from '../../actionability/lanes.ts'
+import { exclusionsGroupChoice } from '../../mapping/safetyChoice.ts'
 
 /**
  * The one state reading of a step (A1b, RUN-CONTEXT-A decision 1): the lane
@@ -125,6 +129,7 @@ type ContractWords = {
   doneSetAside: string
   setAsideAction: string
   fixStep: string
+  fixConfirmExclusions: string
   /** A policy naming a reference of the baseline's nobody has mapped yet: the fix is the mapping, in Plan settings (S4). */
   fixMapping: string
   fixReview: string
@@ -387,6 +392,10 @@ export type StepContract = {
   hardening: ContractHardening | null
   /** The emergency-access step's account slots, two or one per confirmed account (B10 P0-7, S-BG-1); empty on every other step. */
   emergencySlots: ContractEmergencySlot[]
+  /** What a Decision tile explains (B10 P1-1, S-EG-2): the group IAMAI found to confirm, or the step's own ask. */
+  decisionNote: string
+  /** The exclusions group step's reach over the tenant's policies (B10 P0-11): how many exclude the chosen group, of how many; null elsewhere, or with no group chosen. */
+  exclusionsReach: { excludedFrom: number; policyCount: number } | null
 }
 
 /**
@@ -591,7 +600,7 @@ function thresholdBinding(step: Step): string | null {
  * failing checks, and the blockers that name work. A check that passes is not in
  * `step.checks.items` and so never reaches here.
  */
-function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>): ContractFix[] {
+function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false): ContractFix[] {
   // Nothing in the tenant clears a baseline that contradicts itself, so the step
   // asks for nothing: a prerequisite listed under Fix here would read as work
   // that would make the policy writable, and none of it would.
@@ -617,6 +626,9 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // that passed — a passed check is not in the list at all.
   const failing = (Array.isArray(ex.failingChecks) ? ex.failingChecks : []) as [string, Record<string, unknown>][]
   failing.forEach(([key, vals], i) => {
+    // Whether each policy excludes the group is that policy step's correction (B10
+    // P0-11, S-EG-1): the exclusions group step does not send the admin to edit them.
+    if (step.id === GATE_STEP.exclusionGroup && key === RULE_TO_FIX['xg.usedConsistently']) return
     const t = templates?.[key]
     if (t) out.push({ key: `check:${i}:${key}`, text: fillText(t, { ...ex, ...vals }) })
   })
@@ -625,7 +637,11 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // them a step could name a missing object in its action and list a different
   // prerequisite under Fix.
   for (const m of step.action.missing ?? []) {
-    if (m.stepId && stepById[m.stepId]) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixStep, { step: stepById[m.stepId].title }) })
+    // The exclusions group a scan found but nobody has confirmed is not a missing
+    // object (B10 P1-6, U27): the policy waits on the person's confirmation, and
+    // says so. Only a Save makes a detected group the plan's (Foundation C).
+    if (m.stepId && stepById[m.stepId] && m.token === '{exclusionsGroup}' && exclusionsUnconfirmed) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixConfirmExclusions, { step: stepById[m.stepId].title }) })
+    else if (m.stepId && stepById[m.stepId]) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixStep, { step: stepById[m.stepId].title }) })
     // A reference awaiting its Baseline mapping (Plan settings, S4): no step makes it; the fix names the mapping, never the author's id.
     else if (m.decision) out.push({ key: 'mapping', text: CONTRACT.fixMapping })
   }
@@ -803,7 +819,10 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     ...bare,
     line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: absoluteDate(m.at) }),
   }
-  const fix = fixOf(step, cs, ex)
+  // A policy waiting on the exclusions group while the scan found one nobody has confirmed (B10 P1-6).
+  const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
+  const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
+  const fix = fixOf(step, cs, ex, choice !== null && choice.actionableId === null && choice.candidates.length > 0)
   const members = membersOf(step)
   const found = foundOf(step, tenant, milestone.line)
   const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
@@ -845,7 +864,21 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
     emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),
+    decisionNote: decisionNoteOf(step, cs, ex),
+    exclusionsReach: step.id === GATE_STEP.exclusionGroup && typeof ex.excludedFrom === 'number' && typeof ex.policyCount === 'number' ? { excludedFrom: ex.excludedFrom, policyCount: ex.policyCount } : null,
   }
+}
+
+/**
+ * What a Decision tile explains (B10 P1-1, S-EG-2): where IAMAI found the one
+ * group the question asks for, that group to confirm; otherwise the step's own
+ * ask — its decision's help, whole — or the engine's decide sentence.
+ */
+function decisionNoteOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>): string {
+  const found = Array.isArray(ex.suggestedGroup) && ex.suggestedGroup.length === 1 ? String(ex.suggestedGroup[0]) : null
+  if (step.id === GATE_STEP.exclusionGroup && found !== null) return fillText(R().tiles.decisionFound, { group: found })
+  const help = (cs?.decision as { help?: unknown } | null | undefined)?.help
+  return typeof help === 'string' && whole(help, ex) ? fillText(help, ex) : MILESTONE.decide
 }
 
 /** The fix keys of the checks about the whole set of emergency accounts (validation/report.ts SET_LEVEL). */
@@ -1120,7 +1153,8 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   if (s.condition === 'baseline-conflict') return { key: 'baseline', label: t.baseline, tone: 'warn', value: t.conflictValue, note: MILESTONE.conflict }
   if (s.setAside) return null
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
-  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: CONTRACT.condition['needs-decision'], note: MILESTONE.decide }
+  // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
+  if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
   if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? null }
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
@@ -1258,13 +1292,13 @@ function implementationTile(c: StepContract): ReadinessTile | null {
  * unresolved list on its own because it is no longer in `fix` or `blockers`.
  */
 export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
-  const facts = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c), implementationTile(c)].filter((x): x is ReadinessTile => x !== null)
+  const facts = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), exclusionsReachTile(c), peopleTile(c), implementationTile(c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
   // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
-  const fixes = directFixes(fixTiles(c, prerequisiteLabel), blockers).filter((t) => !(step.emergency && t.key.startsWith('check:')))
+  const fixes = fixTiles(c, prerequisiteLabel).filter((t) => !(step.emergency && t.key.startsWith('check:')))
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
   const lead = facts.filter(unresolved)
-  const tiles = [...lead, ...fixes, ...engineTiles(c, blockers, present, prerequisiteLabel)]
+  const tiles = directOnly([...lead, ...unsavedTiles(step), ...fixes, ...engineTiles(c, blockers, present, prerequisiteLabel)])
   const satisfied = facts.filter((t) => !unresolved(t))
   return { tiles, satisfied, bar: barOf(c) }
 }
@@ -1272,20 +1306,67 @@ export function readinessOf(step: Step, c: StepContract, blockers: readonly Prer
 /** The emergency-access gate step and the exclusions-group step (roadmap/blockerSteps.ts), by their subject. */
 const GATE_STEP: Readonly<Record<string, string>> = Object.fromEntries(GATING_SUBJECTS.map((s) => [s, blockerStepId(s)]))
 
+/** The dependency graph the lane engine reads (src/actionability/dependency-data.json). */
+const GRAPH = buildGraph(dependencyData as DependencyData)
+
+/** Every step that waits on `id`, directly or through another step (the walk actionability/sorting.ts unlockCounts makes). */
+function dependentsOf(id: string): ReadonlySet<string> {
+  const seen = new Set<string>()
+  const queue = [id]
+  while (queue.length > 0) {
+    for (const e of GRAPH.dependents.get(queue.shift()!) ?? []) {
+      if (seen.has(e.step)) continue
+      seen.add(e.step)
+      queue.push(e.step)
+    }
+  }
+  return seen
+}
+
+/** The step a prerequisite tile names: a fix's `step:` / `missing:`, or the engine's `engine:step:` / `engine:suspendedPrerequisite:`. */
+function tileStepOf(t: ReadinessTile): string | null {
+  const m = /^(?:step|missing|engine:step|engine:suspendedPrerequisite):(.+)$/.exec(t.key)
+  return m ? m[1] : null
+}
+
 /**
- * Readiness tiles name direct prerequisites only (decision 12, R-READY
- * "Transitive vs direct"): the roadmap's emergency gate on a deny-capable policy
- * is an ancestor through the exclusions group, so where the exclusions-group
- * step is already a tile of this step — a fix, or the engine's own direct edge —
- * the gate's tile is not drawn beside it.
+ * Readiness tiles name direct prerequisites only (U7, decision 12, R-READY
+ * "Transitive vs direct"): a prerequisite step that another prerequisite tile of
+ * this step already waits on, through the dependency graph, is that tile's to
+ * finish first, and is not drawn beside it. Two steps that wait on each other
+ * (the reciprocal cutover pair) are neither's ancestor, and both stay. A step
+ * named twice (a fix for the object it makes and the edge on it) is one tile:
+ * the first, which says why.
  */
-function directFixes(fixes: ReadinessTile[], blockers: readonly PrerequisiteBlocker[]): ReadinessTile[] {
-  const exclusions = GATE_STEP.exclusionGroup
-  const gate = GATE_STEP.breakGlass
-  if (!exclusions || !gate) return fixes
-  const namesExclusions = fixes.some((t) => t.key === `step:${exclusions}` || t.key === `missing:${exclusions}`) || blockers.some((b) => (b.kind === 'step' || b.kind === 'suspendedPrerequisite') && b.id === exclusions)
-  if (!namesExclusions) return fixes
-  return fixes.filter((t) => t.key !== `step:${gate}` && t.key !== `missing:${gate}`)
+function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
+  const named = [...new Set(tiles.map(tileStepOf).filter((id): id is string => id !== null))]
+  const ancestors = new Set(named.filter((a) => named.some((b) => b !== a && dependentsOf(a).has(b) && !dependentsOf(b).has(a))))
+  const drawn = new Set<string>()
+  return tiles.filter((t) => {
+    const id = tileStepOf(t)
+    if (id === null) return true
+    if (ancestors.has(id) || drawn.has(id)) return false
+    drawn.add(id)
+    return true
+  })
+}
+
+/** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
+function unsavedTiles(step: Step): ReadinessTile[] {
+  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; question?: { label?: unknown; text?: unknown } } | null } | undefined)?.decision
+  const ask = (label: string): string | null => {
+    const text = d?.question?.label === label ? d.question.text : d?.label === label ? (d.text ?? d.help) : null
+    return typeof text === 'string' && whole(text, {}) ? text : null
+  }
+  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label, tone: 'warn', value: R().tiles.unsaved, note: ask(label) }))
+}
+
+/** The exclusions group's reach over the tenant's policies (B10 P0-11, S-EG-1): what the group already covers, and that each policy step owns the rest. */
+function exclusionsReachTile(c: StepContract): ReadinessTile | null {
+  const r = c.exclusionsReach
+  if (r === null || c.state.setAside) return null
+  const t = R().tiles
+  return { key: 'exclusions-reach', label: t.exclusionsReach, tone: 'info', value: fillText(t.exclusionsReachValue, { n: r.excludedFrom, total: r.policyCount }), note: t.exclusionsReachNote }
 }
 
 /**

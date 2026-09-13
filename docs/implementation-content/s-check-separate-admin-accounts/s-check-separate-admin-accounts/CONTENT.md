@@ -7,6 +7,12 @@ For each person who holds a directory role and uses that same account for mail o
 5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.
 @@IAMAI-END
 
+@@IAMAI-BEGIN {"id":"ai.separate","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
+**Contains tenant context. Review before sharing with an external AI service.**
+
+Review the plan to separate admin work from everyday accounts. For each person who holds a directory role and uses the same account for mail or Teams: a second, cloud-only, unlicensed admin account; a passkey or security key registered on it before its first use; the directory role moved to it, where a role held through Privileged Identity Management stays eligible and never becomes permanent; the role removed from the everyday account only after the admin account has signed in and the role works; mail, Teams and files kept on the everyday account. Point out anything in this sequence that could lock an administrator out.
+@@IAMAI-END
+
 @@IAMAI-BEGIN {"id":"entra.create-and-stage","channel":"entra","states":["actionRequired"],"format":"markdown","kind":"template"}
 For each affected person in {{admin.peopleToSeparate}}:
 1. Create one dedicated **cloud-only** admin account using the tenant's existing naming convention {{admin.namingConvention}}. Keep it unlicensed unless a separate administrative workload genuinely requires a license.

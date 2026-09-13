@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Mail-sending devices",
+      "state": "Confirm"
+    },
+    {
       "label": "Prerequisite · Up Next",
       "state": "Turn Off Security Defaults"
     }

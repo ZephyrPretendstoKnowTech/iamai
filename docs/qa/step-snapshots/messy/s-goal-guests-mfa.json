@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "Partner or MSP access",
+      "state": "Confirm"
+    },
+    {
       "label": "Prerequisite · Up Next",
       "state": "Turn Off Security Defaults"
     }

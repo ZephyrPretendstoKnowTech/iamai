@@ -49,7 +49,9 @@
       ],
       "json": [],
       "powershell": [],
-      "aiInfo": [],
+      "aiInfo": [
+        "ai.separate"
+      ],
       "email": []
     },
     "actionRequired": {
