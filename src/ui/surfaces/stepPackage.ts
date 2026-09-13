@@ -243,7 +243,8 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // RUNTIME_REACH), and the package authors one `missingOrPartial` projection.
   // A check with work outstanding is missing the same way (B8, S-SA-1): what it
   // checks for is not there yet, and its package's own instructions are the work.
-  if (step.kind === 'prerequisite' || step.kind === 'check') return 'missing'
+  // The registration campaign is missing until it is set up (B10 P0-9, S-MC-1).
+  if (step.kind === 'prerequisite' || step.kind === 'check' || step.kind === 'verify') return 'missing'
   return 'blocked'
 }
 
@@ -275,7 +276,8 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
     if (s.lifecycle === 'report-only') return 'reportOnly'
     return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
   }
-  return step.kind === 'prerequisite' ? 'missing' : null
+  // The campaign's setup is planned work too, previewed while it waits (B10 P0-9).
+  return step.kind === 'prerequisite' || step.kind === 'verify' ? 'missing' : null
 }
 
 /** What an unresolved value is called in a planning preview: the content's name for the binding, else its own key in words. */

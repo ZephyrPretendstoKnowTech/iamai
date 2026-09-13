@@ -23485,6 +23485,17 @@
           "dependencies.blockers"
         ],
         "projection": {
+          "missing": {
+            "entra": [
+              "entra.campaign"
+            ],
+            "json": [],
+            "powershell": [],
+            "aiInfo": [
+              "ai.walkthrough"
+            ],
+            "email": []
+          },
           "setupRequired": {
             "entra": [
               "entra.configure"
@@ -23600,6 +23611,30 @@
         }
       },
       "blocks": {
+        "entra.campaign": {
+          "meta": {
+            "id": "entra.campaign",
+            "channel": "entra",
+            "states": [
+              "missing"
+            ],
+            "format": "markdown",
+            "kind": "template"
+          },
+          "text": "1. Open the **Entra admin center → Security → Authentication methods → Registration campaign**.\n2. Enable the campaign: set State to **Enabled**.\n3. Target: **All users**.\n4. Authentication method: **Passkey (Microsoft Authenticator)**.\n5. Enforcement: **remind on sign-in**, so each person is asked at sign-in until they have set it up.\n6. **Save**.\n"
+        },
+        "ai.walkthrough": {
+          "meta": {
+            "id": "ai.walkthrough",
+            "channel": "aiInfo",
+            "states": [
+              "missing"
+            ],
+            "format": "markdown",
+            "kind": "template"
+          },
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nIn person, for the people who need special care:\n\n1. Book ten minutes with each person who needs special care.\n2. Open https://aka.ms/mfasetup with them signed in.\n3. Person-by-person setup steps are on [MFA Readiness →](#/readiness); work its Needs setup and Needs proof lists there.\n4. No method: issue a Temporary Access Pass first.\n5. Text or call only: register the passkey, then remove the phone number as a sign-in method.\n6. Admins: a passkey or a hardware security key.\n7. Have each sign in once more; the record shows it on the next scan.\n"
+        },
         "entra.configure": {
           "meta": {
             "id": "entra.configure",

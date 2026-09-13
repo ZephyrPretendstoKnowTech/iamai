@@ -1,3 +1,26 @@
+@@IAMAI-BEGIN {"id":"entra.campaign","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
+1. Open the **Entra admin center → Security → Authentication methods → Registration campaign**.
+2. Enable the campaign: set State to **Enabled**.
+3. Target: **All users**.
+4. Authentication method: **Passkey (Microsoft Authenticator)**.
+5. Enforcement: **remind on sign-in**, so each person is asked at sign-in until they have set it up.
+6. **Save**.
+@@IAMAI-END
+
+@@IAMAI-BEGIN {"id":"ai.walkthrough","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
+**Contains tenant context. Review before sharing with an external AI service.**
+
+In person, for the people who need special care:
+
+1. Book ten minutes with each person who needs special care.
+2. Open https://aka.ms/mfasetup with them signed in.
+3. Person-by-person setup steps are on [MFA Readiness →](#/readiness); work its Needs setup and Needs proof lists there.
+4. No method: issue a Temporary Access Pass first.
+5. Text or call only: register the passkey, then remove the phone number as a sign-in method.
+6. Admins: a passkey or a hardware security key.
+7. Have each sign in once more; the record shows it on the next scan.
+@@IAMAI-END
+
 @@IAMAI-BEGIN {"id":"entra.configure","channel":"entra","states":["setupRequired"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.
 2. Set State to **Enabled** (not Microsoft managed, because IAMAI is preserving an explicit Authenticator-targeted campaign).

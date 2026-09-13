@@ -53,11 +53,16 @@ test('U20/U21 engine: an enforced policy as pinned is Completed, a drifted one i
   assert.equal(read({ [LEGACY]: { exists: true } }), 'Ready · Observing')
 })
 
-test('U28 engine: an unsaved conditional input keeps a policy short of Completed and of Ready to enforce', () => {
+test('U28 / P0-12 engine: an unsaved conditional input keeps a policy short of Completed and of Ready to enforce, and reads Decision, not Observing', () => {
   const unsaved = ['Mail-sending devices']
   assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: true } }), 'Ready · Ready to enforce', 'the premise: nothing else stands in the way')
-  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: true, unsaved } }), 'Ready · Observing')
-  assert.equal(read({ [LEGACY]: { ...ENFORCED, complete: true, unsaved } }), 'Ready · Observing', 'delivered by the scan, and still not Completed')
+  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: true, unsaved } }), 'Ready · Decision', 'only the answer is left: it is a decision')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, complete: true, unsaved } }), 'Ready · Decision', 'an enforced, undrifted policy with an unsaved input is neither Completed nor Observing')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, unsaved } }), 'Ready · Decision')
+  // Queued work beside it (the service-accounts group the mail devices join) does not make an enforced policy observe.
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, unsaved }, 's-prereq-service-accounts-group': { exists: false } }), 'Ready · Decision')
+  // A report-only policy still gathering evidence keeps observing: the evidence gate is open too.
+  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: false, gates: [{ id: 'evidence:soak', satisfied: false, minDays: 14, reason: null }], unsaved } }), 'Ready · Observing')
 })
 
 const demo = fixture('demo')

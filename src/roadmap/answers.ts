@@ -194,20 +194,29 @@ export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>
  * questionAnswers[stepId:label]; evidence may pre-fill one, and only a Save
  * records it, "None" included.
  */
-const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind }[] = [
+/** The registration campaign, whose special-care list a person confirms (S-MC-2). */
+export const SPECIAL_CARE_STEP_ID = 's-verify-mfa'
+
+type InputRecord = Pick<MappingState, 'questionAnswers' | 'specialCareConfirmed'>
+
+const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind; saved?: (mapping: InputRecord) => boolean }[] = [
   { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
   { stepId: QUESTION_STEP.deviceCode, kind: 'decision' },
   { stepId: QUESTION_STEP.partner, kind: 'question' },
   { stepId: QUESTION_STEP.travel, kind: 'question' },
+  // The campaign's special-care people (B10 P0-10, S-MC-2, A6): saved once a
+  // person's Save confirms the list, an empty one included.
+  { stepId: SPECIAL_CARE_STEP_ID, kind: 'decision', saved: (mapping) => Array.isArray(mapping.specialCareConfirmed) },
 ]
 
 /** The labels of the conditional inputs on a step nobody has saved; a question its content does not ask is not one. */
-export function unsavedInputsOf(stepId: string, mapping: Pick<MappingState, 'questionAnswers'>): string[] {
+export function unsavedInputsOf(stepId: string, mapping: InputRecord): string[] {
   const out: string[] = []
   for (const input of CONDITIONAL_INPUTS) {
     if (input.stepId !== stepId) continue
     const label = questionLabels(stepId)[input.kind]
-    if (label !== null && typeof mapping.questionAnswers?.[answerKey(stepId, label)] !== 'string') out.push(label)
+    const saved = input.saved ? input.saved(mapping) : typeof mapping.questionAnswers?.[answerKey(stepId, label ?? '')] === 'string'
+    if (label !== null && !saved) out.push(label)
   }
   return out
 }

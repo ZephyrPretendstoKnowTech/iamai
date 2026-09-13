@@ -438,6 +438,16 @@ function deriveUncached(ctx: Ctx, id: string): LaneResult {
   if (started) {
     if (nextAction === 'correct') return result('Ready', { substatus: 'Correct', nextAction, started, blockers: healthy, gates, layers })
     const open = gates.filter((g) => !g.satisfied)
+    // A conditional input nobody saved (U28) waits on a person's answer, not on
+    // evidence (B10 P0-12, RUN-CONTEXT-B decisions 6 and 17). A policy already On
+    // reads Decision whatever else is queued: Observing is a report-only policy's.
+    // A step that is not a policy, or a report-only policy whose only open gates
+    // are those inputs, reads Decision once nothing else is queued before it.
+    const unsaved = obs.unsaved ?? []
+    const onlyInputs = kind !== 'policy' || open.every((g) => g.id.startsWith('input:'))
+    if (unsaved.length > 0 && (obs.enforced === true || (healthy.length === 0 && onlyInputs))) {
+      return result('Ready', { substatus: 'Decision', nextAction, started, reason: open[0] ? evidenceBlocker(open[0]) : null, blockers: healthy, gates, layers })
+    }
     if (nextAction === 'enforce' && healthy.length === 0 && open.length === 0) {
       return result('Ready', { substatus: 'Ready to enforce', nextAction, started, gates, layers })
     }

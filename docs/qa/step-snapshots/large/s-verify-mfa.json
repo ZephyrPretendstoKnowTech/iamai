@@ -9,6 +9,7 @@
   "headings": [
     "Why",
     "Readiness",
+    "Implementation",
     "Done when"
   ],
   "tiles": [
@@ -17,6 +18,9 @@
       "state": "Set Up Passkeys to Match the Baseline"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
   "when": "Aug 31, 2026"
 }

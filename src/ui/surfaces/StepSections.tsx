@@ -369,17 +369,25 @@ function Tile({ tile: t, open, extra, onConfirm, onOpenMappings }: {
   )
 }
 
-/** `**bold**` and `` `code` `` inside one line of authored text. Nothing else is interpreted, and no HTML ever is. */
+/** An in-app link in authored text: `[words](#/route)`, never an external address (S-MC-3). */
+const APP_LINK = /^\[([^\]]+)\]\((#\/[^)\s]*)\)$/
+
+/** `**bold**`, `` `code` `` and an in-app `[link](#/route)` inside one line of authored text. Nothing else is interpreted, and no HTML ever is. */
 function inlineText(line: string): ReactNode[] {
-  return line.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+  return line.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(#\/[^)\s]*\))/g).map((part, i) => {
+    const link = APP_LINK.exec(part)
+    return part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
       <strong key={i}>{part.slice(2, -2)}</strong>
     ) : part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
       <code key={i}>{part.slice(1, -1)}</code>
+    ) : link ? (
+      <a key={i} className="inline-link" href={link[2]}>
+        {link[1]}
+      </a>
     ) : (
       part
-    ),
-  )
+    )
+  })
 }
 
 /**

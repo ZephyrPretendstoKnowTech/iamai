@@ -62,8 +62,8 @@ test('every row lands in exactly one lane, delivered work is Completed and skipp
       }
       assert.ok(v, `${f.name}/${s.id}: no lane`)
       assert.ok(LANE_ORDER.includes(v.lane), `${f.name}/${s.id}: ${v.lane}`)
-      // Delivered work with a conditional input nobody saved is watched until the Save, never Completed (U28).
-      if (s.status === 'done') assert.deepEqual([v.lane, v.substatus], (s.unsavedInputs ?? []).length > 0 ? ['Ready', 'Observing'] : ['Completed', null], `${f.name}/${s.id}: delivered work is ${v.lane}`)
+      // Delivered work with a conditional input nobody saved waits on that decision until the Save, never Completed and never Observing (U28, B10 P0-12).
+      if (s.status === 'done') assert.deepEqual([v.lane, v.substatus], (s.unsavedInputs ?? []).length > 0 ? ['Ready', 'Decision'] : ['Completed', null], `${f.name}/${s.id}: delivered work is ${v.lane}`)
       if (s.status === 'skipped') assert.equal(v.lane, 'Deferred', `${f.name}/${s.id}: skipped work is ${v.lane}`)
       if (v.lane === 'Completed') assert.equal(s.status, 'done', `${f.name}/${s.id}: Completed holds a step the plan has not finished`)
       if (v.lane === 'Ready') assert.notEqual(v.substatus, null, `${f.name}/${s.id}: Ready without a substatus`)
