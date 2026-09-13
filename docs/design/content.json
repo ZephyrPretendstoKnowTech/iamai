@@ -4212,7 +4212,7 @@
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group and the shared-device exception applied.",
+      "doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "At least 95% of sign-ins in the report-only days came from a compliant or hybrid-joined device."
