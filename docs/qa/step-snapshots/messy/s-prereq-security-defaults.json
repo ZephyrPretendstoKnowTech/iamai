@@ -13,11 +13,11 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · Ready",
+      "label": "Prerequisite · In progress",
       "state": "Block Legacy Authentication"
     },
     {
-      "label": "Prerequisite · Ready",
+      "label": "Prerequisite · In progress",
       "state": "Require Phishing-Resistant MFA for Admins"
     }
   ],

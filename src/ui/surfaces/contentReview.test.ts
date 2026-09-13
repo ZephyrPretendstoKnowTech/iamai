@@ -3,11 +3,17 @@
 // asserting what the opened step now shows.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { railOf, readinessLeadOf } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
-import { WHEN } from './planBoard.ts'
+import { WHEN, prerequisiteLabelFor } from './planBoard.ts'
 import { absoluteDate } from '../../copy/dates.ts'
+import { SNAPSHOT_DIR } from '../../testing/stepSnapshots.ts'
+
+/** Every step snapshot the fixtures write (docs/qa/step-snapshots): what each opened step draws. */
+const snapshots = (): { where: string; s: { tiles: { label: string; state: string }[] } }[] =>
+  (readdirSync(SNAPSHOT_DIR, { recursive: true }) as string[]).filter((f) => f.endsWith('.json')).map((f) => ({ where: f, s: JSON.parse(readFileSync(join(SNAPSHOT_DIR, f), 'utf8')) }))
 
 test('R1: an undated milestone reads "—", never the lane substatus', () => {
   const lanes = [
@@ -34,4 +40,23 @@ test('R2: the readiness bar draws no filler sub-text', () => {
   const src = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
   const fn = src.slice(src.indexOf('export function WhatToDoLead'), src.indexOf('export function DoneWhen'))
   assert.match(fn, /readinessLeadOf\(contract\)[\s\S]*if \(text === null\) return null/, 'the bar lead does not read the filler rule')
+})
+
+test('R3: a prerequisite tile reads In progress, Completed or Waiting, never Ready', () => {
+  const readings = new Map((['Ready', 'Up Next', 'On Hold', 'Completed'] as const).map((lane) => [lane, { lane }])) as unknown as Parameters<typeof prerequisiteLabelFor>[0]
+  const label = prerequisiteLabelFor(readings)
+  assert.equal(label('Ready'), 'Prerequisite · In progress')
+  assert.equal(label('Completed'), 'Prerequisite · Completed')
+  assert.equal(label('Up Next'), 'Prerequisite · Waiting')
+  assert.equal(label('On Hold'), 'Prerequisite · Waiting')
+  assert.equal(label('unknown'), null)
+  // Every opened step on every fixture draws the new words.
+  let prerequisites = 0
+  for (const { where, s } of snapshots()) {
+    for (const t of s.tiles.filter((t) => t.label.startsWith('Prerequisite · '))) {
+      assert.match(t.label, /^Prerequisite · (In progress|Completed|Waiting|Deferred)$/, `${where}: a prerequisite tile reads "${t.label}"`)
+      prerequisites += 1
+    }
+  }
+  assert.ok(prerequisites > 0, 'no fixture draws a prerequisite tile: the premise is untested')
 })
