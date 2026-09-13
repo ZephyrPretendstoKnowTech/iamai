@@ -17,6 +17,8 @@ import { channelTabsOf, stepBodyOf } from './stepBody.ts'
 import type { StepBody } from './stepBody.ts'
 import { CONTRACT, readinessOf } from './stepContract.ts'
 import type { PrerequisiteBlocker } from './stepContract.ts'
+import { waitingLine } from './stepJson.ts'
+import type { Step } from '../../roadmap/types.ts'
 
 const CONTRACT_SRC = readFileSync(new URL('./stepContract.ts', import.meta.url), 'utf8')
 const T = CONTRACT.readiness.tiles
@@ -144,4 +146,20 @@ test('P1-6 (B11): the readiness bar and the Implementation reason ask to confirm
   }
   // Where the group is confirmed, the action never asks for it.
   for (const [id, b] of bodiesOf(fixture('mid'))) assert.doesNotMatch(b.contract.whatToDo.text, /Confirm the exclusions group/, id)
+})
+
+test('P1-6 (B12 re-audit): the confirmation covers every object the exclusions group step makes; a genuinely missing object still reads as one', () => {
+  // The real tenant's Require MFA to Register a Device: two objects the
+  // exclusions group step makes, and an authentication strength nobody has made.
+  const step = { action: { missing: [
+    { token: '{exclusionsGroup}', stepId: EXCLUSIONS },
+    { token: '{exclusionsGroupSecond}', stepId: EXCLUSIONS },
+    { token: '{authStrength}', stepId: 's-prereq-auth-strength' },
+  ] } } as unknown as Step
+  const line = waitingLine(step, 'Contoso', true)
+  assert.match(line, /^Confirm the exclusions group on Create or Correct Exclusions Group first: /)
+  assert.match(line, /Create the Baseline's Authentication Strength first: this policy names an object Contoso does not have yet\.$/)
+  assert.doesNotMatch(line, /Exclusions Group and /)
+  // Answered, the group is an object like any other.
+  assert.match(waitingLine(step, 'Contoso', false), /^Create or Correct Exclusions Group and Create the Baseline's Authentication Strength first: /)
 })

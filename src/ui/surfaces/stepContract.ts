@@ -638,11 +638,13 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
   // `action.missing`). They are what the operator goes and does, and without
   // them a step could name a missing object in its action and list a different
   // prerequisite under Fix.
+  const groupSteps = new Set((step.action.missing ?? []).filter((m) => m.token === '{exclusionsGroup}' && m.stepId).map((m) => m.stepId))
   for (const m of step.action.missing ?? []) {
     // The exclusions group a scan found but nobody has confirmed is not a missing
     // object (B10 P1-6, U27): the policy waits on the person's confirmation, and
-    // says so. Only a Save makes a detected group the plan's (Foundation C).
-    if (m.stepId && stepById[m.stepId] && m.token === '{exclusionsGroup}' && exclusionsUnconfirmed) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixConfirmExclusions, { step: stepById[m.stepId].title }) })
+    // says so. Only a Save makes a detected group the plan's (Foundation C). The
+    // confirmation covers every object that step makes (stepJson.ts waitingLine).
+    if (m.stepId && stepById[m.stepId] && exclusionsUnconfirmed && groupSteps.has(m.stepId)) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixConfirmExclusions, { step: stepById[m.stepId].title }) })
     else if (m.stepId && stepById[m.stepId]) out.push({ key: `missing:${m.stepId}`, text: fillText(CONTRACT.fixStep, { step: stepById[m.stepId].title }) })
     // A reference awaiting its Baseline mapping (Plan settings, S4): no step makes it; the fix names the mapping, never the author's id.
     else if (m.decision) out.push({ key: 'mapping', text: CONTRACT.fixMapping })
