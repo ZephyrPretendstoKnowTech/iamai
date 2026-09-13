@@ -63,8 +63,10 @@ export function waitingLine(step: Step, tenant: string, exclusionsUnconfirmed = 
   const objects = missingObjects(step)
   // The exclusions group a scan found but nobody has confirmed is not an object the
   // tenant lacks (B10 P1-6, U27): the line asks for the confirmation, as the
-  // step's Fix does (stepContract.ts fixOf).
-  const confirm = (m: (typeof objects)[number]): boolean => exclusionsUnconfirmed && m.wait === 'objectMissing' && m.token === '{exclusionsGroup}'
+  // step's Fix does (stepContract.ts fixOf). The confirmation is that step's whole
+  // answer, so it covers every object the same step makes, by step, not by token.
+  const groupSteps = new Set(objects.filter((m) => m.token === '{exclusionsGroup}' && m.stepId).map((m) => m.stepId))
+  const confirm = (m: (typeof objects)[number]): boolean => exclusionsUnconfirmed && m.wait === 'objectMissing' && m.stepId !== null && groupSteps.has(m.stepId)
   const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind && !confirm(m)).map((m) => m.title))]
   const lines: string[] = []
   const made = titles('objectMissing')
