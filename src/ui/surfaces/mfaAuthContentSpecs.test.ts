@@ -166,3 +166,28 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.match(ai, /^The 0% threshold means none of your admins currently have a qualifying method registered\. The MFA Registration Campaign step handles getting them registered\. This policy enforces the requirement; the campaign helps people meet it\.$/m)
   assert.match(ai, /^The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles\.$/m)
 })
+
+test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra is one numbered procedure naming the policy, and AI Info explains the attack', () => {
+  const AUTH = 's-goal-block-auth-transfer'
+  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.ok(packageOf(AUTH).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
+  // The two blocks a conditions correction draws.
+  const entra = channel(AUTH, ['entra.correct-conditions', 'entra.correct-verify'])
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Policies.'],
+        ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).'],
+        ['Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Verify: Target resources = All resources, Conditions = Client apps: Authentication flows: Authentication transfer, Grant = Block access.'],
+      ],
+    },
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+  ])
+  assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
+  const ai = packageOf(AUTH).blocks['ai.correct'].text
+  assert.match(ai, /^This policy blocks authentication transfer — the flow where a QR code or link moves an authenticated session from one device to another without re-authenticating\.$/m)
+  assert.match(ai, /^Attackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device\. Blocking the flow stops this attack entirely\.$/m)
+  assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency\.$/m)
+})
