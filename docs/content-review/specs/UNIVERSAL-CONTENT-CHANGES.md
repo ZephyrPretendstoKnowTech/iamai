@@ -249,14 +249,48 @@ This is a product bug, not a content change. Track as a separate fix.
 
 ---
 
-## Items needing Lachlan's decision
+## Resolved decisions (apply these)
 
-1. **Shared-device conditional input:** The Managed Device step's Done-when mentions "shared-device exception" but no question for shared devices exists in the action column. Does it live on a different step ("Give Shared Devices Their Own Policy"), or is it missing?
+### D1. Shared-device conditional input
 
-2. **Email channel content:** Several On Hold steps have an Email channel. The content couldn't be read due to the sensitive key filter. Verify the notification templates are reasonable.
+The Managed Device step's Done When mentions "shared-device exception" but no question exists in the action column. **Decision: remove the shared-device mention from Done When.** The reference is orphaned. If a shared-device step is needed later it will be added as its own step.
 
-3. **Rename Policies — Defer button:** The step has no "Defer this step" button. Should cleanup steps be deferrable?
+---
 
-4. **Emergency Access tile icon when minimum is met:** Your feedback was that "!" is wrong when the minimum is met. The target icon should be ✓ for minimum-met even when hardening is open, since hardening is advisory. Confirm this is correct — or should it stay "!" because hardening items exist?
+### D2. Implementation channels must never be hidden
 
-5. **Emergency Access minimum-not-met auto-expand:** You want the tile to auto-expand when the minimum isn't met so blockers are immediately visible. Confirm: should ALL tiles with "!" auto-expand, or just the Emergency Access minimum tile?
+**Where:** The renderer that decides whether to show Implementation tabs (Entra, PowerShell, JSON, AI Info, Email).
+
+**Current:** Some steps hide implementation channels due to a sensitive key filter or because the engine considers the tenant to "already deliver" the goal.
+
+**Target:** Implementation channels render on every step, always, with zero exceptions. If a channel has content, show it. If a channel's content cannot be loaded, show the channel tab with an error message ("Content could not be loaded — report this at feedback@getiamai.com"). The engine must never suppress an implementation channel for any reason. A run or build that hides implementation content is a failure.
+
+---
+
+### D3. Cleanup steps get a Defer button
+
+**Where:** The step footer renderer — the condition that decides whether "Defer this step" appears.
+
+**Current:** Cleanup steps (like Rename Policies) have no Defer button.
+
+**Target:** Add "Defer this step" to every cleanup step. When deferred, the step moves to a low-priority lane. It's still visible, still actionable, but not blocking progress.
+
+---
+
+### D4. Emergency Access tile icon — ✓ when minimum is met
+
+**Where:** The tile icon selector for Emergency Access.
+
+**Current:** The icon stays "!" even when minimum safety checks pass (2 accounts, correct roles, correct group) because hardening recommendations (monitoring, drill) are still open.
+
+**Target:** When the minimum checks pass, the icon is ✓ regardless of open hardening items. Hardening is advisory. The ✓ tells the tech "you're safe, these are improvements." The "!" means "this is blocking, fix it now." Minimum-met-with-open-hardening is not blocking.
+
+---
+
+### D5. Auto-expand blocking tiles only — with height awareness
+
+**Where:** The tile expand/collapse logic.
+
+**Current:** All tiles start collapsed.
+
+**Target:** Tiles with "!" (blocking state) auto-expand on step open. Tiles with "✓" or neutral stay collapsed. Before auto-expanding, check the tile's expanded content height. If expanding all blocking tiles on a step would produce a combined height over a reasonable threshold (e.g. 400px), expand only the first blocking tile and leave the rest collapsed with a visual indicator that more blocking items exist. This prevents a step with 4 blocking tiles from rendering as a 5-mile scroll.
