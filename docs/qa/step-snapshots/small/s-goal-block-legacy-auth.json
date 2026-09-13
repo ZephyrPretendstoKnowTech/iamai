@@ -12,7 +12,12 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Mail-sending devices",
+      "state": "Confirm"
+    }
+  ],
   "channels": [],
   "when": "—"
 }

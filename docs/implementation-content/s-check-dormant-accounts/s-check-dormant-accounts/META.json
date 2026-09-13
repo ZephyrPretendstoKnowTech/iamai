@@ -58,6 +58,17 @@
     "tenant.displayName"
   ],
   "projection": {
+    "missing": {
+      "entra": [
+        "entra.dormant"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.dormant"
+      ],
+      "email": []
+    },
     "needsDecision": {
       "entra": [],
       "json": [],

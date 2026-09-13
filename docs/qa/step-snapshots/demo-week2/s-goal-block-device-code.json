@@ -12,7 +12,12 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Device code sign-in",
+      "state": "Confirm"
+    }
+  ],
   "channels": [],
   "when": "—"
 }

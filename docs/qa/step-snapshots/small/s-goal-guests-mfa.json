@@ -12,7 +12,12 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "Partner or MSP access",
+      "state": "Confirm"
+    }
+  ],
   "channels": [],
   "when": "—"
 }

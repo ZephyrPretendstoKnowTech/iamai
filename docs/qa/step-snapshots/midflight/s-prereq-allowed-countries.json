@@ -12,7 +12,12 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [],
+  "tiles": [
+    {
+      "label": "People who travel or work abroad",
+      "state": "Confirm"
+    }
+  ],
   "channels": [
     "Entra",
     "AI Info"

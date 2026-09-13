@@ -18,6 +18,10 @@
       "state": "Not established"
     },
     {
+      "label": "Mail-sending devices",
+      "state": "Confirm"
+    },
+    {
       "label": "Baseline mapping",
       "state": "Baseline references an unmapped group"
     },

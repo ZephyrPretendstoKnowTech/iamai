@@ -22,6 +22,10 @@
       "state": "Not established"
     },
     {
+      "label": "Partner or MSP access",
+      "state": "Confirm"
+    },
+    {
       "label": "Prerequisite · Ready",
       "state": "Create or Correct Emergency Access Accounts"
     },

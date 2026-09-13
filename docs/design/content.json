@@ -1311,6 +1311,7 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
+          "fixConfirmExclusions": "Confirm the exclusions group on {step} first: IAMAI found a group that qualifies, and only your Save makes it the one this policy excludes.",
           "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
@@ -1388,7 +1389,13 @@
               "openStep": "Open {step}",
               "openMappings": "Open Baseline mappings",
               "implementation": "Implementation",
-              "unavailable": "Unavailable"
+              "unavailable": "Unavailable",
+              "decisionValue": "Decision",
+              "decisionFound": "IAMAI found {group}. Confirm this is the right group.",
+              "unsaved": "Confirm",
+              "exclusionsReach": "Policies",
+              "exclusionsReachValue": "{n} of {total} policies exclude the group",
+              "exclusionsReachNote": "Each policy step adds the group where it is missing, and a policy the plan creates includes it when it is created."
             },
             "bar": {
               "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",

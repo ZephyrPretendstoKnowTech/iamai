@@ -1,3 +1,16 @@
+@@IAMAI-BEGIN {"id":"entra.dormant","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
+For each account IAMAI lists, one of three outcomes:
+1. Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.
+2. Or confirm it is in use and have the owner sign in once; it leaves this list on the next scan.
+3. Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else.
+@@IAMAI-END
+
+@@IAMAI-BEGIN {"id":"ai.dormant","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
+**Contains tenant context. Review before sharing with an external AI service.**
+
+Review the dormant accounts IAMAI lists: enabled accounts with no sign-in for 90 days, or none on record. For each, help decide between disabling it, confirming it is in use and having the owner sign in once, or blocking sign-in for a shared mailbox or a resource that should never sign in. Do not delete accounts, remove licences or change mailboxes, and do not treat a missing sign-in date as proof that nobody uses the account.
+@@IAMAI-END
+
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["disableConfirmed"],"format":"markdown","kind":"template"}
 Disable only the explicitly approved dormant account.
 

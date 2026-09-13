@@ -14,6 +14,10 @@
   ],
   "tiles": [
     {
+      "label": "People who need special care",
+      "state": "Confirm"
+    },
+    {
       "label": "Prerequisite · Ready",
       "state": "Set Up Passkeys to Match the Baseline"
     }

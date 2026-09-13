@@ -23,6 +23,17 @@
           "tenant.displayName"
         ],
         "projection": {
+          "missing": {
+            "entra": [
+              "entra.dormant"
+            ],
+            "json": [],
+            "powershell": [],
+            "aiInfo": [
+              "ai.dormant"
+            ],
+            "email": []
+          },
           "needsDecision": {
             "entra": [],
             "json": [],
@@ -113,6 +124,30 @@
         }
       },
       "blocks": {
+        "entra.dormant": {
+          "meta": {
+            "id": "entra.dormant",
+            "channel": "entra",
+            "states": [
+              "missing"
+            ],
+            "format": "markdown",
+            "kind": "template"
+          },
+          "text": "For each account IAMAI lists, one of three outcomes:\n1. Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.\n2. Or confirm it is in use and have the owner sign in once; it leaves this list on the next scan.\n3. Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else.\n"
+        },
+        "ai.dormant": {
+          "meta": {
+            "id": "ai.dormant",
+            "channel": "aiInfo",
+            "states": [
+              "missing"
+            ],
+            "format": "markdown",
+            "kind": "template"
+          },
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview the dormant accounts IAMAI lists: enabled accounts with no sign-in for 90 days, or none on record. For each, help decide between disabling it, confirming it is in use and having the owner sign in once, or blocking sign-in for a shared mailbox or a resource that should never sign in. Do not delete accounts, remove licences or change mailboxes, and do not treat a missing sign-in date as proof that nobody uses the account.\n"
+        },
         "entra.disable": {
           "meta": {
             "id": "entra.disable",
@@ -296,7 +331,9 @@
             ],
             "json": [],
             "powershell": [],
-            "aiInfo": [],
+            "aiInfo": [
+              "ai.separate"
+            ],
             "email": []
           },
           "actionRequired": {
@@ -416,6 +453,18 @@
             "kind": "template"
           },
           "text": "For each person who holds a directory role and uses that same account for mail or Teams:\n1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.\n2. Register a passkey or security key on the admin account before its first use: sign in as it at https://aka.ms/mysecurityinfo. The admin policies require one.\n3. Move the directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.\n4. Sign in to an admin portal with the admin account and confirm the role works, then remove the role from the everyday account.\n5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.\n"
+        },
+        "ai.separate": {
+          "meta": {
+            "id": "ai.separate",
+            "channel": "aiInfo",
+            "states": [
+              "missing"
+            ],
+            "format": "markdown",
+            "kind": "template"
+          },
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview the plan to separate admin work from everyday accounts. For each person who holds a directory role and uses the same account for mail or Teams: a second, cloud-only, unlicensed admin account; a passkey or security key registered on it before its first use; the directory role moved to it, where a role held through Privileged Identity Management stays eligible and never becomes permanent; the role removed from the everyday account only after the admin account has signed in and the role works; mail, Teams and files kept on the everyday account. Point out anything in this sequence that could lock an administrator out.\n"
         },
         "entra.create-and-stage": {
           "meta": {
