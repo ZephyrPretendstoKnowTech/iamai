@@ -22,6 +22,7 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { fillText } from '../../content/render.ts'
+import { AUTO_OPEN_CAP_PX, autoOpenTiles } from './tileExpansion.ts'
 import type { StepBody } from './stepBody.ts'
 
 /** Every step's body on a fixture, as the Plan composes it (readinessWords.test.ts, stepSnapshots.ts). */
@@ -231,4 +232,21 @@ test('D4: an emergency account slot with its minimum met reads ✓, whatever har
   assert.ok(met > 0, 'no fixture has an account with its minimum met and hardening open: the premise is untested')
   // ✓ is the good tone's mark (R4).
   assert.match(readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8'), /good: '✓'/)
+})
+
+test('D5: blocking tiles open with the step; past the height cap only the first does, and a line says the rest wait', () => {
+  assert.equal(AUTO_OPEN_CAP_PX, 400)
+  const tiles = [{ key: 'a', height: 120 }, { key: 'b', height: 150 }, { key: 'c', height: 90 }]
+  assert.deepEqual(autoOpenTiles(tiles), ['a', 'b', 'c'], 'blocking tiles within the cap do not all open')
+  assert.deepEqual(autoOpenTiles([...tiles, { key: 'd', height: 200 }]), ['a'], 'blocking tiles past the cap all open')
+  assert.deepEqual(autoOpenTiles([]), [])
+  const src = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
+  const section = src.slice(src.indexOf('export function ReadinessSection('), src.indexOf('/** An in-app link'))
+  // Only tiles marked ! are candidates; ✓ and informational tiles stay collapsed.
+  assert.match(section, /const blocking = readiness\.tiles\.filter\(\(t\) => MARK\[t\.tone\] === '!'\)/)
+  assert.match(section, /autoOpen=\{cls === 'unresolved' && autoKeys\.includes\(t\.key\)\}/, 'a satisfied tile can open with the step')
+  assert.match(section, /useLayoutEffect\(\(\) => \{[\s\S]*getBoundingClientRect\(\)\.height[\s\S]*autoOpenTiles\(measured\)/, 'the explanations are not measured before paint')
+  assert.match(section, /\{closedBlocking > 0 && <p className="readiness-more">\{fillText\(W\.tiles\.moreBlocking, \{ n: closedBlocking \}\)\}<\/p>\}/, 'nothing says more blocking tiles wait closed')
+  assert.match(section, /const shown = open \|\| \(expanded \?\? autoOpen\)/, 'a pressed tile does not keep its own state')
+  assert.equal((CONTRACT.readiness.tiles as Record<string, string>).moreBlocking, 'Blocking items still closed: {n}')
 })

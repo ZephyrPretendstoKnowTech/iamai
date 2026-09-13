@@ -97,10 +97,10 @@ test('P0-6: the baseline-conflict step says there is not enough information, and
 
 test('P0-2: a tile is one line until opened; its detail is hidden; the strip does not match heights', () => {
   const tile = SECTIONS.slice(SECTIONS.indexOf('function Tile('), SECTIONS.indexOf('/** `**bold**`'))
-  assert.match(tile, /const \[expanded, setExpanded\] = useState\(false\)/, 'the open state is not the tile’s own (it must reset when the step closes)')
+  assert.match(tile, /const \[expanded, setExpanded\] = useState<boolean \| null>\(null\)/, 'the open state is not the tile’s own (it must reset when the step closes)')
   assert.match(tile, /<button type="button" className="tile-summary" aria-expanded=\{shown\} aria-controls=\{detailId\}/)
   assert.match(tile, /<div id=\{detailId\} className="tile-detail" hidden=\{!shown\}>/)
-  assert.match(tile, /const shown = open \|\| expanded/, 'printing does not stand every tile open')
+  assert.match(tile, /const shown = open \|\| \(expanded \?\? autoOpen\)/, 'printing does not stand every tile open')
   assert.doesNotMatch(tile, /<details|<summary/, 'a tile still draws a details disclosure')
   assert.match(CSS, /\.step \.readiness-strip \{[^}]*align-items: start;/)
   assert.match(CSS, /\.step \.tile-summary strong \{[^}]*white-space: nowrap;/)

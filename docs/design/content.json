@@ -1384,6 +1384,7 @@
               "mapping": "Baseline mapping",
               "clear": "Clear",
               "clearNote": "No blockers. Ready to proceed.",
+              "moreBlocking": "Blocking items still closed: {n}",
               "satisfied": "{n} satisfied",
               "detail": "Why",
               "openStep": "Open {step}",

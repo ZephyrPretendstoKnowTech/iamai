@@ -2556,6 +2556,12 @@ footer.app a {
 .step .readiness-tile .readiness-confirm {
   margin: 0 12px 10px;
 }
+/* How many blocking tiles wait closed, where opening them all would run long (content review D5). */
+.step .readiness-more {
+  margin: 6px 0 0;
+  font-size: var(--t-1);
+  color: var(--secondary-text);
+}
 .step .readiness-status {
   display: grid;
   place-items: center;
