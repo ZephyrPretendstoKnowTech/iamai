@@ -122,7 +122,7 @@ test('a rollout is the people the policy names, even where the goal is filed und
   assert.equal(step.population.active, 0, 'the goal population holds nobody active')
   const view = stepPopulation(step)
   assert.ok(view !== null && view.active > 0, 'the surfaces count the people the policy names')
-  assert.notEqual(rowWho(step, (id) => r.input.names!.label(id)), 'No user impact', 'and the row does not report a rollout of nobody')
+  assert.notEqual(rowWho(step), 'No user impact', 'and the row does not report a rollout of nobody')
 })
 
 test('the same policy under a different goal population rolls out to the same people and says the same thing', () => {
@@ -763,7 +763,7 @@ test('nothing but the operation decides what an open policy tells people or offe
     // every perturbation, this one included.
     const wordsOf = (step: Step): string => {
       const ex = stepVars(step, ctx) as Record<string, unknown>
-      return JSON.stringify([stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), stepLines(step, ctx), rowWho(step, (id) => (ctx as { nameOf: (x: string) => string }).nameOf(id)), ex.active ?? null, ex.n ?? null, ex.admins ?? null, ex.guests ?? null, ex.strengthName ?? null, ex.wanted ?? null, ex.wantedLong ?? null, step.comms])
+      return JSON.stringify([stepPortalLines(step, portalNamesFor(ctx, ex, step.title)), stepLines(step, ctx), rowWho(step), ex.active ?? null, ex.n ?? null, ex.admins ?? null, ex.guests ?? null, ex.strengthName ?? null, ex.wanted ?? null, ex.wantedLong ?? null, step.comms])
     }
     // One family value is enough to catch a family read here; the sweep above
     // walks all eight against every consequence. The words are the expensive

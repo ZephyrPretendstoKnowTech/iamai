@@ -225,7 +225,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
         workType: 'setup',
         order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} nameOf={nameOf} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
     }
   }
 
@@ -478,14 +478,13 @@ function BoardGroupView({ group, closed, onToggle, children }: { group: BoardGro
 }
 
 /** A Cleanup row (§5): the content title, its lane, who it touches, its day (or the day it was marked done); opens in place. */
-function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
+function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes, onNote, tenant, undated, lane }: {
   phase: CleanupPhase
   row: CleanupPhase['rows'][number]
   /** The row's one state reading (planBoard.ts laneViewOf): the row and the opened head say its label. */
   lane: LaneView
   /** The emergency-access attestations, the second fact that can complete the alerting row (roadmap/cleanupDone.ts). */
   answers: { signInMonitoring: boolean | null } | null
-  nameOf: (id: string) => string
   open: boolean
   onToggle: () => void
   onScan?: (returnTo: string) => void
@@ -504,7 +503,7 @@ function CleanupRow({ phase, row, answers, nameOf, open, onToggle, onScan, onDon
   // reads for the row's lane; the row and its opened head say that lane (A1b).
   const status = { word: lane.label, tone: lane.tone }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
-  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, nameOf, null, IMPACT.configurationOnly)
+  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, IMPACT.configurationOnly)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
@@ -574,7 +573,7 @@ function Row({ step, lane, blockers, prerequisiteLabel, onOpenMappings, when, wa
         chip={factOf(step)}
         wave={step.scheduled?.wave ?? null}
         title={contentTitle(step)}
-        who={rowWho(step, nameOf)}
+        who={rowWho(step)}
         when={when}
         open={open}
         onToggle={onToggle}

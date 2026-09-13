@@ -1,11 +1,11 @@
 // The who-line and the population line, from one denominator (prompt 48.1 Part
 // 1, target-state §8.1). Every row and every step renders active people: the
-// count, or the names when three or fewer, or `nobody affected` when the
-// evidence shows nobody. The full in-scope enabled count appears once, as a
-// `covers N enabled` suffix on the step's population line, never as the
-// headline. Pure, so the agreement test reads exactly what the page renders.
+// count, never a name, or the word for a reach of nobody. The full in-scope
+// enabled count appears once, as a `covers N enabled` suffix on the step's
+// population line, never as the headline. Pure, so the agreement test reads
+// exactly what the page renders.
 import type { StepPopulation } from '../roadmap/types.ts'
-import { count, list } from '../copy/statements.ts'
+import { count } from '../copy/statements.ts'
 import { pages } from '../content/content.ts'
 
 /**
@@ -16,11 +16,9 @@ import { pages } from '../content/content.ts'
  */
 export const IMPACT = (pages.plan as { impact: { notEstablished: string; noUserImpact: string; configurationOnly: string } }).impact
 
-// A row names people only when they fit; otherwise the count, with the names on
-// the step (prompt 50 item 4). The gap on a row is one shortened clause; the
-// full sentence is on the step.
-const NAMED_AT_MOST = 2
-const NAME_CHARS = 28
+// A row counts people and never names them (RUN-CONTEXT-B decision 11): one
+// person reads "1 person", and the names are on the step. The gap on a row is
+// one shortened clause; the full sentence is on the step.
 const GAP_CHARS = 40
 
 /** The people a step's row and step name: its active in-scope set (the dormant step names its own accounts). */
@@ -40,15 +38,14 @@ export function shortGap(gap: string): string {
 }
 
 /**
- * The row's who-line: names only when ≤2 and they fit in 28 characters, else the
- * count. An empty reach reads `none`: No user impact for a policy, Configuration
+ * The row's who-line: the count of the people the step reaches, never their
+ * names. An empty reach reads `none`: No user impact for a policy, Configuration
  * only for a step that names no people.
  */
-export function whoLine(pop: StepPopulation, nameOf: (id: string) => string, gap: string | null = null, none: string = IMPACT.noUserImpact): string {
+export function whoLine(pop: StepPopulation, gap: string | null = null, none: string = IMPACT.noUserImpact): string {
   gap = gap ? gap.replace(/\*/g, '') : gap
-  const ids = affectedIds(pop)
-  const names = list(ids.map(nameOf))
-  const head = ids.length === 0 ? none : ids.length <= NAMED_AT_MOST && names.length <= NAME_CHARS ? names : count(ids.length, 'person', 'people')
+  const n = affectedIds(pop).length
+  const head = n === 0 ? none : count(n, 'person', 'people')
   return gap ? `${head} · ${shortGap(gap)}` : head
 }
 

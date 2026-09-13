@@ -13,6 +13,7 @@ import { dateSpan } from '../../copy/dates.ts'
 import { BOARD, WHEN, boardWhenOf, laneViewFor } from './planBoard.ts'
 import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 import { rowWho } from './rowWho.ts'
+import { whoLine } from '../../derive/whoLine.ts'
 import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { holdWaitsOn } from '../../roadmap/stateReason.ts'
@@ -142,9 +143,8 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
 test('every row reads an Impact value: people, No user impact, Configuration only, or Not established — never blank, never zero for unknown', () => {
   const seen = new Set<string>()
   for (const { name, r } of RUNS) {
-    const nameOf = (id: string): string => r.input.names!.label(id)
     for (const s of r.steps as Step[]) {
-      const impact = rowWho(s, nameOf)
+      const impact = rowWho(s)
       assert.notEqual(impact.trim(), '', `${name}/${s.id}: a blank Impact`)
       const pop = reached(s)
       if (pop === null) {
@@ -161,6 +161,24 @@ test('every row reads an Impact value: people, No user impact, Configuration onl
   }
   for (const k of ['unknown', 'configuration', 'known']) assert.ok(seen.has(k), `no fixture row shows the ${k} impact case`)
   assert.equal(readFileSync('src/derive/whoLine.ts', 'utf8').includes("'nobody affected'"), false, 'the awkward "nobody affected" is still a row word')
+})
+
+test('no row’s Impact names a person: it counts, and one person reads "1 person" (U12, RUN-CONTEXT-B decision 11)', () => {
+  let checked = 0
+  for (const { name, r } of RUNS) {
+    const f = fixture(name)
+    const names = f.snapshot.users.flatMap((u) => [u.displayName, r.input.names!.label(u.id)]).filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    assert.ok(names.length > 0, `${name}: no user names to check against`)
+    for (const s of r.steps as Step[]) {
+      const impact = rowWho(s)
+      for (const n of names) assert.equal(impact.includes(n), false, `${name}/${s.id}: "${impact}" names ${n}`)
+      checked += 1
+    }
+  }
+  assert.ok(checked > 0)
+  const one = { total: 1, active: 1, admins: 0, guests: 0, ids: ['u1'], activeIds: ['u1'], inScope: 1 }
+  assert.equal(whoLine(one), '1 person')
+  assert.equal(whoLine({ ...one, total: 2, active: 2, ids: ['u1', 'u2'], activeIds: ['u1', 'u2'], inScope: 2 }), '2 people')
 })
 
 // ------------------------------------------------------------ header

@@ -105,16 +105,15 @@ test('Step 5: a held step still handing over its report-only create says to crea
 test('Step 5: the Impact column says who a step reaches, never the state, and nothing where the reach is unknown', () => {
   let unknown = 0
   for (const p of plans()) {
-    const nameOf = (id: string) => p.r.input.names!.label(id)
     for (const s of p.r.steps) {
       const where = `${p.label}/${s.id}`
-      const impact = rowWho(s, nameOf)
+      const impact = rowWho(s)
       assert.ok(!impact.includes(REPORT_ONLY_GAP), `${where}: "${impact}" restates the state`)
       if (reached(s) === null) {
         assert.equal(impact, 'Not established', `${where}: "${impact}" stands in for a reach nobody settled`)
         unknown += 1
       } else {
-        assert.match(impact, /^(No user impact|Configuration only|\d+ (person|people)|[^·]+)( · .+)?$/, `${where}: "${impact}"`)
+        assert.match(impact, /^(No user impact|Configuration only|\d+ (person|people))( · .+)?$/, `${where}: "${impact}"`)
       }
     }
   }
