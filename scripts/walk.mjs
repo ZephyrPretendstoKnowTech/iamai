@@ -1302,7 +1302,7 @@ async function walkFixture(fx) {
             if (!week2 && /on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
           }
           if (/^Require MFA for Guests$/.test(title) || /Countries Not Allowed/.test(title)) {
-            if (week2 && !cannotWriteYet && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the policy's What to do`)
+            if (week2 && !cannotWriteYet && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the opened policy step`)
             if (week2 && !cannotWriteYet && !/the baseline's version/.test(bodyText)) add('P0', `${slabel}: the service-provider exclusion is not shown beside the baseline's version`)
             if (!week2 && /the baseline's version/.test(bodyText)) add('P0', `${slabel}: a deviation from the baseline shows before any answer`)
           }

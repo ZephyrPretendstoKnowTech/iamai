@@ -73,6 +73,13 @@ export type PackageMeta = {
    */
   impact?: { fallbackLabel?: string }
   /**
+   * The words under the opened step's milestone date (U3): `actionText`, the one
+   * specific thing the step's next milestone is for ("Create and verify two
+   * emergency accounts"). Read by ui/surfaces/stepBody.ts; absent, the date
+   * stands alone and nothing is generated in its place.
+   */
+  milestone?: { actionText?: string }
+  /**
    * `members`: each baseline policy a multi-policy package names, by its role in
    * the package's bindings (`policies.<family>.<role>.…`) and the pinned
    * baseline's stable id for it — null where the pin surfaces none, and then
@@ -580,6 +587,14 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
     const label = i !== null && typeof i === 'object' ? i.fallbackLabel : undefined
     const ok = i !== null && typeof i === 'object' && (label === undefined || (typeof label === 'string' && label.trim() !== ''))
     if (!ok) add({ kind: 'prerequisite', index: -1 }, 'impact.fallbackLabel: a non-empty string')
+  }
+
+  // ---- milestone sub-text (U3) ----
+  if (meta.milestone !== undefined) {
+    const m = meta.milestone as { actionText?: unknown } | null
+    const text = m !== null && typeof m === 'object' ? m.actionText : undefined
+    const ok = m !== null && typeof m === 'object' && (text === undefined || (typeof text === 'string' && text.trim() !== ''))
+    if (!ok) add({ kind: 'prerequisite', index: -1 }, 'milestone.actionText: a non-empty string')
   }
 
   // ---- projections ----

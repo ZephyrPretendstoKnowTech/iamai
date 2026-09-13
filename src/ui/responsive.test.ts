@@ -100,8 +100,13 @@ test('no surface is normalised onto another surface\'s breakpoint', () => {
   for (const w of APP_WIDTHS) {
     assert.ok(breakpoints(APP).includes(w), `src/ui/app.css declares no @media (max-width: ${w}px)`)
   }
-  // The retired MFA Readiness pack's two widths are gone with it.
-  for (const w of [900, 620]) assert.ok(!breakpoints(APP).includes(w), `src/ui/app.css still turns at the retired readiness pack's ${w}px`)
+  // The retired MFA Readiness pack's 620 is gone with it. 900 is the opened
+  // step's own (U2, RUN-CONTEXT-B decision 2): its body stacks there, and nothing
+  // else in the sheet turns at it.
+  assert.ok(!breakpoints(APP).includes(620), `src/ui/app.css still turns at the retired readiness pack's 620px`)
+  assert.equal(APP.split('@media (max-width: 900px)').length - 1, 1, 'more than one block turns at 900px')
+  const selectors = [...mediaBody(APP, 900).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{/g)].flatMap((m) => m[1].split(',').map((s) => s.trim()))
+  assert.ok(selectors.length > 0 && selectors.every((s) => s.startsWith('.step-body.has-rail') || s === '.step-action-column'), `something besides the opened step's body turns at 900px: ${selectors.join(' | ')}`)
 })
 
 // ------------------------------------------------------------------- Home
@@ -154,18 +159,21 @@ test('Connect never hides a step action to make the phone layout fit', () => {
 
 // ------------------------------------------------------------------- Plan
 
-test('Plan collapses the roadmap row and the opened body at the pack\'s 940', () => {
+test('Plan collapses the roadmap row at the pack\'s 940 and stacks the opened body at 900', () => {
   const at940 = mediaBody(APP, 940)
   // Four zones become two: the state's column narrows and who/when drop under
   // the title and left-align. Nothing is dropped.
   assert.match(at940, /\.plan-row\s*\{[^}]*grid-template-columns:\s*110px/, 'the roadmap row keeps its four-zone grid')
   assert.match(at940, /text-align:\s*left/, 'the row metadata does not re-align')
-  assert.match(at940, /\.step-body\.has-rail\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/, 'the opened body stays two columns')
-  // The rail moves BELOW the main column and takes a separator above it. It is
-  // one element in one place in the DOM, so reading order does not change.
-  assert.match(at940, /\.step-side\s*\{[^}]*border-left:\s*0/, 'the rail keeps its left border below the main column')
-  assert.match(at940, /\.step-side\s*\{[^}]*border-top:\s*1px/, 'the rail below the main column has no separator')
-  assert.doesNotMatch(at940, /\.step-side\s*\{[^}]*display:\s*none/, 'the right rail disappears instead of moving')
+  assert.doesNotMatch(at940, /\.step-body\.has-rail\s*\{/, 'the opened body stacks at 940 rather than 900 (U2)')
+  // The body stacks at 900 (U2): the action column moves BELOW Readiness and
+  // takes a separator above it. It is one element in one place in the DOM,
+  // between Readiness and Implementation, so reading order does not change (U5).
+  const at900 = mediaBody(APP, 900)
+  assert.match(at900, /\.step-body\.has-rail\s*\{[^}]*grid-template-columns:\s*1fr/, 'the opened body stays two columns')
+  assert.match(at900, /\.step-action-column\s*\{[^}]*border-left:\s*0/, 'the action column keeps its left border when stacked')
+  assert.match(at900, /\.step-action-column\s*\{[^}]*border-top:\s*1px/, 'the stacked action column has no separator')
+  assert.doesNotMatch(at900, /\.step-action-column\s*\{[^}]*display:\s*none/, 'the action column disappears instead of moving')
 })
 
 test('Plan tightens the widest surface\'s gutter at the pack\'s 650, shell and page together', () => {
@@ -272,7 +280,7 @@ test('no narrow rule hides a control, a blocker or a state word', () => {
   // The layout may compress. The truth may not. These are the roles that carry
   // an action the operator takes or a fact the plan asserts, and none of them
   // may be answered with `display: none` at any width.
-  const CANNOT_VANISH = ['.btn', '.blocking', '.callout', '.status', '.decision', '.tenant-object', '.stage-label', '.cell-key', '.step-side', '.connect-step-actions', '.row-action', '.proof-lines', '.methods-main', '.progress-strip']
+  const CANNOT_VANISH = ['.btn', '.blocking', '.callout', '.status', '.decision', '.tenant-object', '.stage-label', '.cell-key', '.step-action-column', '.connect-step-actions', '.row-action', '.proof-lines', '.methods-main', '.progress-strip']
   for (const w of APP_WIDTHS) {
     const body = mediaBodies(APP, w)
     for (const role of CANNOT_VANISH) {

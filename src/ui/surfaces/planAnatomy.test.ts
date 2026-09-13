@@ -317,7 +317,7 @@ test('the lifecycle track draws the four stages and reads them off Foundation B'
     assert.ok(pack.includes(`<span>${label}</span>`), `the pack no longer labels the ${label} stage`)
   }
   assert.match(rule('.step .track'), /grid-template-columns: repeat\(4, 1fr\);/, 'production does not draw four stages')
-  const track = SECTIONS.slice(SECTIONS.indexOf('export function LifecycleTrack('), SECTIONS.indexOf('export function StepRail('))
+  const track = SECTIONS.slice(SECTIONS.indexOf('export function LifecycleTrack('), SECTIONS.indexOf('export function StepActionColumn('))
   // The labels are the contract's own lifecycle words, not four literals here.
   assert.match(track, /\{s\.label\}/, 'a stage label is written into the component instead of coming from the contract')
   for (const label of ['Not deployed', 'Report-only', 'Ready to enforce', 'Enforced']) {
@@ -387,22 +387,25 @@ test('each lifecycle is drawn as itself, and no step is painted mid-rollout that
   assert.deepEqual(held, cls('report-only'), 'a condition repainted the lifecycle bar')
 })
 
-test('the frame has a main column and the step’s own rail, and the rail survives the collapse', () => {
+test('the frame has a main column and the step’s own action column, and the column survives the stack', () => {
   const pack = read(PACK)
   assert.match(pack, /\.step-body\{display:grid;grid-template-columns:minmax\(0,1fr\) 290px\}/, 'the pack no longer draws a main column and a rail')
   assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.step-body\{grid-template-columns:1fr\}/, 'the pack no longer collapses the body to one column')
   assert.match(pack, /@media\(max-width:940px\)\{[\s\S]*\.step-side\{border-left:0;border-top:1px solid var\(--line\)\}/, 'the pack no longer moves the rail below the main column')
-  assert.match(rule('.step-body.has-rail'), /grid-template-columns: minmax\(0, 1fr\) 290px;/, 'the desktop body is not main + rail')
-  assert.match(rule('.step-side'), /border-left: 1px solid var\(--line\);/, 'the rail is not divided from the main column')
-  const narrow = atWidth(940)
-  assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/, 'the body does not collapse to one column')
-  assert.match(narrow, /\.step-side \{[\s\S]*border-top: 1px solid var\(--line\);/, 'the rail does not move below the main column')
-  assert.equal(/\.step-side \{[^}]*display:\s*none/.test(narrow), false, 'the rail is hidden rather than moved')
-  // One rail, in one place in the DOM, on every step: the Next milestone is a
-  // fact every step has, so the rail is never gated and never duplicated.
-  assert.equal(CONTENT_STEP.split('<StepRail').length - 1, 1, 'the step draws more than one rail')
-  assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
-  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
+  // Production departs from the pack (U2, RUN-CONTEXT-B decision 2): `1fr 260px`,
+  // the column holding the milestone and the step's controls, stacking at 900.
+  assert.match(rule('.step-body.has-rail'), /grid-template-columns: 1fr 260px;/, 'the desktop body is not main + action column')
+  assert.match(rule('.step-action-column'), /border-left: 1px solid var\(--line\);/, 'the action column is not divided from the main column')
+  assert.equal(/\.step-body\.has-rail \{/.test(atWidth(940)), false, 'the body stacks at the pack’s 940 rather than 900')
+  const narrow = atWidth(900)
+  assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*grid-template-columns: 1fr;/, 'the body does not stack to one column')
+  assert.match(narrow, /\.step-action-column \{[\s\S]*border-top: 1px solid var\(--line\);/, 'the action column does not move below Readiness')
+  assert.equal(/\.step-action-column \{[^}]*display:\s*none/.test(narrow), false, 'the action column is hidden rather than moved')
+  // One action column, in one place in the DOM, on every step: the milestone is a
+  // fact every step has, so the column is never gated and never duplicated.
+  assert.equal(CONTENT_STEP.split('<StepActionColumn').length - 1, 1, 'the step draws more than one action column')
+  assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the action column')
+  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{rail\}>/, 'the action column is gated')
 })
 
 test('the Plan’s topbar sticks, through the one shell the product already has', () => {
@@ -479,11 +482,11 @@ test('no generated attribution or tagline came in with the design work', () => {
 
 // ------------------------------------ the approved step anatomy (owner update, Sep 10, 2026)
 
-/** The opened step's main column, which is all of the markup the anatomy orders. */
+/** The opened step's body — the main column's lead, the action column, the rest (U2, U5) — which is all of the markup the anatomy orders. */
 const MAIN = ((): string => {
-  const from = CONTENT_STEP.indexOf('<div className="step-main">')
+  const from = CONTENT_STEP.indexOf('<div className="step-main step-main-lead">')
   assert.ok(from >= 0, 'ContentStep still draws the main column')
-  return CONTENT_STEP.slice(from, CONTENT_STEP.indexOf('<StepRail contract', from))
+  return CONTENT_STEP.slice(from, CONTENT_STEP.indexOf('<StepFooter', from))
 })()
 
 /** Every step of a fixture with its contract: the plan as a person actually reads it. */
@@ -535,6 +538,8 @@ test('every approved variant draws the same regions, and production runs them in
 
   // Production: the same order, read off the markup. The anchors are what each
   // region is, not what it says, so a wording change does not reorder the step.
+  // Production departs from the pack at What to do (U1, RUN-CONTEXT-B decision 1):
+  // no step draws it, and the action column stands where it stood (U2, U5).
   const at = (needle: string): number => {
     const i = MAIN.indexOf(needle)
     assert.ok(i >= 0, `the opened step no longer renders ${needle}`)
@@ -544,7 +549,7 @@ test('every approved variant draws the same regions, and production runs them in
     ['why', at('<h4>{HEAD.why}</h4>')],
     ['readiness', at('<ReadinessSection')],
     ['conflict attention', at('{conflictWords && (')],
-    ['what to do', at('{showWhatToDo && (')],
+    ['action column', at('<StepActionColumn rail={rail}>')],
     ['implementation', at('<Implementation\n')],
     ['done when', at('<DoneWhen heading={HEAD.doneWhen}')],
   ] as const
@@ -641,24 +646,26 @@ test('Done when is prose on every step, and the footer carries the rollout excep
   assert.match(atWidth(650), /\.step-footer \{\n\s*flex-direction: column;/, 'the footer does not stack on a phone')
 })
 
-test('the rail is the Next milestone only, from the same contract', () => {
+test('the action column is led by the Next milestone, from the same contract', () => {
   const pack = read(PACK)
   for (const id of VARIANTS) {
     const v = variant(pack, id)
     assert.match(v, /<aside class="step-side"><div class="side-block"><div class="side-label">Next milestone<\/div>/, `${id}: the pack’s rail is not the Next milestone`)
     assert.equal(v.split('class="side-block"').length - 1, 1, `${id}: the pack’s rail holds more than one block`)
   }
-  const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepRail('), SECTIONS.indexOf('export function StepFooter(')))
-  // The contract, whose lane view is the rail's word where it has no day (A1b), and nothing else.
-  assert.match(railSrc, /export function StepRail\(\{ contract \}: \{ contract: StepContract \}\)/, 'the rail takes something other than the contract')
-  assert.match(railSrc, /railOf\(contract\)/, 'the rail does not read the contract’s one projection')
+  // Production departs from the pack (U2): the column the pack keeps for the
+  // milestone also holds the controls the step takes in IAMAI, under it.
+  const railSrc = code(SECTIONS.slice(SECTIONS.indexOf('export function StepActionColumn('), SECTIONS.indexOf('export function StepFooter(')))
+  // The contract's one projection, handed in, and the step's controls as children: nothing computed here.
+  assert.match(railSrc, /export function StepActionColumn\(\{ rail, children = null \}: \{ rail: \{ metric: string; sub: string \}; children\?: ReactNode \}\)/, 'the action column takes something other than the milestone and its controls')
+  assert.match(read('src/ui/surfaces/stepBody.ts'), /const rail = railOf\(contract, /, 'the action column does not read the contract’s one projection')
   for (const forbidden of ['step.', 'snapshot', 'mapping', 'implementation', 'side-list', 'reduce(', 'Math.', 'Date.']) {
-    assert.equal(railSrc.includes(forbidden), false, `the rail ${forbidden}: it is the Next milestone and nothing else`)
+    assert.equal(railSrc.includes(forbidden), false, `the action column ${forbidden}: it renders the milestone and its children and nothing else`)
   }
   for (const name of ['demo', 'demo-week2', 'hostile'] as const) {
     for (const { step: s, c } of contractsOf(name)) {
       const r = railOf(c)
-      assert.ok(r.metric.trim() !== '' && r.sub.trim() !== '', `${name}/${s.id}: an empty rail`)
+      assert.ok(r.metric.trim() !== '' && r.sub === '', `${name}/${s.id}: an empty milestone, or a generated sub-line (U3)`)
       if (c.milestone.at !== null) assert.equal(r.metric, absoluteDate(c.milestone.at), `${name}/${s.id}: the rail’s date is not the milestone’s`)
     }
   }
@@ -732,9 +739,9 @@ const STATES = {
 } as const
 
 test('the five canonical states are one frame whose content the state changes', () => {
-  // One frame: one article, head, body, rail and footer, one render path, and
-  // nothing in the frame chooses a component from where a step stands.
-  for (const [needle, n] of [['<article className="step', 1], ['<StepHead', 1], ['<ReadinessSection', 1], ['<Implementation\n', 1], ['<StepRail', 1], ['<StepFooter', 1]] as const) {
+  // One frame: one article, head, body, action column and footer, one render
+  // path, and nothing in the frame chooses a component from where a step stands.
+  for (const [needle, n] of [['<article className="step', 1], ['<StepHead', 1], ['<ReadinessSection', 1], ['<Implementation\n', 1], ['<StepActionColumn', 1], ['<StepFooter', 1]] as const) {
     assert.equal(CONTENT_STEP.split(needle).length - 1, n, `${needle} appears ${CONTENT_STEP.split(needle).length - 1} times`)
   }
   const body = CONTENT_STEP.slice(CONTENT_STEP.indexOf('export function ContentStep'), CONTENT_STEP.indexOf('function Implementation('))
@@ -817,7 +824,7 @@ test('the opened step mutates nothing: its only actions are the exception, the s
 
 test('the demo opens the same step body, with the same grammar', () => {
   const bodies = ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx', 'src/ui/surfaces/Plan.tsx', 'src/ui/surfaces/PrintPlan.tsx']
-    .map((f) => (read(f).includes('className="step-main"') ? f : null))
+    .map((f) => (/className="step-main[" ]/.test(read(f)) ? f : null))
     .filter(Boolean)
   assert.deepEqual(bodies, ['src/ui/surfaces/ContentStep.tsx', 'src/ui/surfaces/CleanupStep.tsx'], 'a third step body draws its own main column')
   for (const body of bodies) assert.match(read(body!), /from '\.\/StepSections\.tsx'/, `${body} draws its sections itself`)

@@ -28,6 +28,15 @@ test('META impact.fallbackLabel (U13): a non-empty string validates, anything el
   has(impactErrors(null), /impact\.fallbackLabel: a non-empty string/)
 })
 
+test('META milestone.actionText (U3): a non-empty string validates, anything else is refused', () => {
+  const milestoneErrors = (milestone: unknown): string[] => errorsOf({ milestone } as Partial<PackageMeta>, '').filter((e) => /milestone\./.test(e))
+  assert.deepEqual(milestoneErrors({ actionText: 'Create and verify two emergency accounts' }), [])
+  assert.deepEqual(milestoneErrors({}), [])
+  has(milestoneErrors({ actionText: ' ' }), /milestone\.actionText: a non-empty string/)
+  has(milestoneErrors({ actionText: 3 }), /milestone\.actionText: a non-empty string/)
+  has(milestoneErrors(null), /milestone\.actionText: a non-empty string/)
+})
+
 const COMPOSE_CONTENT =
   block({ id: 'e.open', channel: 'entra', states: ['partial'], format: 'markdown' }, 'Open the policy.') +
   block({ id: 'e.grant', channel: 'entra', states: ['partial'], format: 'markdown' }, 'Correct the grant.') +

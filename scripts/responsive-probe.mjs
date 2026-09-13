@@ -112,7 +112,7 @@ const SURFACES = {
       { key: 'rowMeta', c: '.row-meta', p: 'main.page .plan-row .who' },
       { key: 'rowDate', c: '.row-date', p: 'main.page .plan-row .when' },
       { key: 'stepBody', c: '.step-body', p: '.step-body.has-rail' },
-      { key: 'stepSide', c: '.step-side', p: '.step-side' },
+      { key: 'stepSide', c: '.step-side', p: '.step-action-column' },
       { key: 'findings', c: '.findings', p: '.step .findings' },
       { key: 'headTop', c: '.step-head-top', p: '.step-head-top' },
       { key: 'h1', c: '.hero h1', p: '.surface.plan h1' },

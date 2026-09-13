@@ -4,9 +4,9 @@
 // The anatomy is the approved Plan design's
 // (docs/design/approved/anatomy/plan-step-v1.html, owner update Sep 10, 2026):
 // the head with its lifecycle track, then Why, Readiness — the one place a
-// prerequisite is shown, A1 §16.1 — What to do where the step has instructions
-// of its own, Implementation and Done when, beside a rail that is the Next
-// milestone only, over a footer
+// prerequisite is shown, A1 §16.1 — Implementation and Done when, beside an
+// action column that holds the milestone and the controls the step takes in
+// IAMAI (U2; no step draws What to do, U1), over a footer
 // that carries the rollout exception and the scan. Every step draws those
 // regions with the same components; its state changes what they say, never which
 // component draws them. Every sentence is a string in content.json filled with
@@ -51,7 +51,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, HardeningBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepDialog, StepFooter, StepHead, StepRail, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, HardeningBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
@@ -178,7 +178,7 @@ export function ContentStep({
   // sections this step draws and the words under Implementation when it draws
   // none. Everything below renders it; nothing below asks again.
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit })
-  const { cs, ex, laneView, contract, title, d, w, instructions, before, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, createIfNeeded, creates, ownSteps, showWhatToDo, eyebrow, artifacts, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
+  const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const copied1500 = (id: string) => (ok: boolean): void => {
     if (!ok) return
     setCopied(id)
@@ -196,9 +196,9 @@ export function ContentStep({
   const copyArtifact = (id: string, text: string): void => {
     void exportClipboard(text, unredactedFrom('implementation-artifact')).then(copied1500(id))
   }
-  // The one next action (stepContract.ts actionOf), drawn once: under the
-  // Readiness bar where the step has no instructions of its own, and at the head
-  // of What to do where it does, because there it leads the list it introduces.
+  // The one next action (stepContract.ts actionOf), under the Readiness bar where
+  // the step has no instructions of its own. Where it led instructions it was
+  // What to do's first line, and it left with What to do (U1).
   const actionLead = <WhatToDoLead contract={contract} />
   // The check a person is confirming, from the Readiness tile that states it.
   const confirmTile: ReadinessTile | null = confirmKey ? (allTiles.find((t) => t.key === confirmKey) ?? null) : null
@@ -235,7 +235,7 @@ export function ContentStep({
     // The opened step, as the approved Plan design draws it
     // (docs/design/approved/anatomy/plan-step-v1.html `.step`): one frame attached
     // under the roadmap row that opened it, with the head above and the main
-    // column and its Next milestone rail below.
+    // column and its action column below.
     <article className="step panel panel-key">
       <StepHead eyebrow={eyebrow} title={title} sub={<>
             {/* The one supporting line the step already carried under its
@@ -247,8 +247,11 @@ export function ContentStep({
         <StepState contract={contract} />
         <PolicyMembers members={contract.members} />
       </StepHead>
+      {/* Two columns (U2): Why and Readiness, then Implementation and Done when,
+          on the left; the action column on the right. The left column is two
+          elements because the action column sits between them in the DOM (U5). */}
       <div className="step-body has-rail">
-        <div className="step-main">
+        <div className="step-main step-main-lead">
           {/* The contract's Why: the step's own sentence where the content file
               has one, and the engine's where it does not. */}
           <section className="step-section">
@@ -273,7 +276,7 @@ export function ContentStep({
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
           <ReadinessSection
             readiness={readiness}
-            lead={showWhatToDo ? null : actionLead}
+            lead={instructed ? null : actionLead}
             onWhy={hasEvidence && !printing ? () => setDialog('readiness') : null}
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
             onOpenMappings={!printing && onOpenMappings ? onOpenMappings : null}
@@ -306,27 +309,17 @@ export function ContentStep({
             </section>
           )}
 
-          {showWhatToDo && (
-            <section className="step-section">
-              <h4>{HEAD.whatToDo}</h4>
-              {actionLead}
-              {/* The decision comes before the instructions, and on a step that
-                  needs one it *is* the action: IAMAI cannot choose, so nothing is
-                  offered to submit until a person has (Foundation C). */}
-              {decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
-              {/* The create instructions. `needsCreate` is a proof that nothing
-                  qualifies; `createIfNeeded` is the same instructions offered to
-                  an operator who knows they need one (mapping/safetyChoice.ts). */}
-              {createIfNeeded && <p className="reason"><T s={w.createIfNeeded} ex={ex} /></p>}
-              {creates && <ol className="sections">{(w.create as unknown[]).map((l, i) => <li key={i}><T s={l} ex={ex} /></li>)}</ol>}
-              {ownSteps && (
-                <div className="instruction">
-                  <ol className="sections">{[...before.map((l) => <>{l}</>), ...instructions.steps.map((l) => <T s={l} ex={ex} />)].map((node, i) => <li key={i}>{node}</li>)}</ol>
-                </div>
-              )}
-            </section>
-          )}
+        </div>
 
+        {/* The action column (U2): the milestone, and under it the controls this
+            step takes in IAMAI. On a step that needs a decision the decision is
+            the action: IAMAI cannot choose, so nothing is offered to submit until
+            a person has (Foundation C). */}
+        <StepActionColumn rail={rail}>
+          {decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
+        </StepActionColumn>
+
+        <div className="step-main step-main-rest">
           {showImplementation && (
             <Implementation
               artifacts={artifacts}
@@ -390,10 +383,6 @@ export function ContentStep({
             </>
           )}
         </div>
-        {/* The rail belongs to this step: beside the main column at full width
-            and under it once the body collapses to one column. It is the Next
-            milestone and nothing else. */}
-        <StepRail contract={contract} />
       </div>
       <StepFooter controls={exceptions.length > 0 ? exceptions : null} onScan={printing ? null : (onScan ?? null)} />
       {!printing && (
@@ -509,8 +498,8 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   artifacts: Artifact[]
   /** Who draws the region: the step's implementation-content package, or the translator's own channels (stepPackage.ts packageDrawsImplementation). */
   drawnBy: 'package' | 'translator'
-  /** A planning preview's note (stepPackage.ts planningPreview): the artifacts are the planned work and are not offered to copy. */
-  preview: { label: string; lines: string[] } | null
+  /** A planning preview's note (stepPackage.ts planningPreview): the artifacts are not offered to copy. No banner draws it (U4). */
+  preview: { lines: string[] } | null
   /** Why the package's own guidance is set aside (a re-pin review), where it is. */
   notes: string[]
   title: string
@@ -553,14 +542,6 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
   const copyable = preview === null && active !== null
-  const planning = preview && (
-    <div className="impl-planning">
-      <strong>{preview.label}</strong>
-      {preview.lines.map((line, i) => (
-        <span key={i}>{line}</span>
-      ))}
-    </div>
-  )
   return (
     <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
       <h4>{W.heading}</h4>
@@ -578,7 +559,6 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
         </>
       ) : (
         <>
-          {planning}
           {notes.length > 0 && (
             <div className="impl-planning" data-review="true">
               {notes.map((line, i) => (
@@ -623,7 +603,6 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
                 <Callout kind="warning">{W.aiWarning}</Callout>
               </div>
             )}
-            {planning}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
             <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
           </StepDialog>

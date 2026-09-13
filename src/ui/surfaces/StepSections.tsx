@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import { Button, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
-import { CONTRACT, FOOTER, badgeLabel, nextCaption, railOf, stageClass } from './stepContract.ts'
+import { CONTRACT, FOOTER, badgeLabel, nextCaption, stageClass } from './stepContract.ts'
 import type { ContractHardening } from './stepContract.ts'
 import { fillText } from '../../content/render.ts'
 
@@ -190,23 +190,24 @@ export function LifecycleTrack({ track }: { track: ContractStage[] }) {
 }
 
 /**
- * The opened step's right rail (`.step-side` in the pack). In the approved
- * design it is one block, the Next milestone
- * (docs/design/approved/anatomy/plan-step-v1.html: "The right rail is Next
- * milestone only"). The metric is the day the plan schedules where it holds one
- * and the lane's own label where it does not, over the milestone's own words
- * (stepContract.ts `railOf`). Every step has a next milestone, so every step has
- * the rail, and nothing else is put in it.
+ * The opened step's action column (U2): what the person does here, in IAMAI.
+ * The milestone leads it — the day the plan schedules where it holds one and the
+ * lane's own label where it does not, over the package's own words for it or
+ * none (stepContract.ts `railOf`, U3) — and under it the controls the step takes:
+ * a picker, a decision, a question, and their Save. Every step has a milestone,
+ * so every step has the column, inputs or not. It sits between Readiness and
+ * Implementation in the DOM (U5), so a screen reader meets it where a narrow
+ * screen stacks it; the grid draws it on the right.
  */
-export function StepRail({ contract }: { contract: StepContract }) {
-  const r = railOf(contract)
+export function StepActionColumn({ rail, children = null }: { rail: { metric: string; sub: string }; children?: ReactNode }) {
   return (
-    <aside className="step-side surface-inset">
+    <aside className="step-action-column surface-inset">
       <div className="side-block">
         <div className="key-label">{CONTRACT.railMilestone}</div>
-        <p className="metric">{r.metric}</p>
-        <p className="metric-sub">{r.sub}</p>
+        <p className="metric">{rail.metric}</p>
+        {rail.sub !== '' && <p className="metric-sub">{rail.sub}</p>}
       </div>
+      {children}
     </aside>
   )
 }

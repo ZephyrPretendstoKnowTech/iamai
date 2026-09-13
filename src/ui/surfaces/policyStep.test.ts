@@ -79,7 +79,7 @@ test('one renderer draws all six policy states: there is no component per state'
   assert.equal(CONTENT_STEP.split('<article className="step').length - 1, 1, 'the step frame is drawn more than once')
   assert.equal(CONTENT_STEP.split('<StepHead').length - 1, 1, 'more than one head')
   assert.equal(CONTENT_STEP.split('<StepFooter').length - 1, 1, 'more than one footer')
-  assert.equal(CONTENT_STEP.split('<StepRail').length - 1, 1, 'more than one rail')
+  assert.equal(CONTENT_STEP.split('<StepActionColumn').length - 1, 1, 'more than one action column')
   // And no branch anywhere in the step names a lifecycle stage to decide what to
   // draw: the frame renders the contract, and the contract carries the stage.
   for (const named of ["=== 'report-only'", "=== 'ready-to-enforce'", "=== 'not-deployed'", "=== 'enforced'"]) {
@@ -228,24 +228,24 @@ test('the footer carries the rollout exception and the scan, and nothing it cann
 test('the header is full width and the two-column split begins below it', () => {
   // The head is a sibling of the body, not a row inside it: the lifecycle track
   // spans the whole frame rather than being squeezed into the main column beside
-  // a 290px rail.
+  // the 260px action column.
   const frame = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<article className="step'), CONTENT_STEP.indexOf('</article>'))
   assert.ok(frame.indexOf('<StepHead') < frame.indexOf('<div className="step-body has-rail">'), 'the head is not above the body')
   assert.ok(frame.indexOf('</StepHead>') < frame.indexOf('<div className="step-body has-rail">'), 'the head is inside the body')
   assert.equal(/step-body[\s\S]{0,400}<StepHead/.test(frame), false, 'the head was drawn inside the split')
   // The footer is the frame's, under both columns.
-  assert.ok(frame.indexOf('<StepFooter') > frame.indexOf('<StepRail contract'), 'the footer is inside the body')
+  assert.ok(frame.indexOf('<StepFooter') > frame.indexOf('</StepActionColumn>'), 'the footer is inside the body')
 })
 
-test('every step has the Next milestone rail beside its main column', () => {
-  // The approved rail is Next milestone only, and every step has a next
-  // milestone, so the rail is never optional and never empty.
-  assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the rail')
-  assert.match(CONTENT_STEP, /<StepRail contract=\{contract\} \/>/, 'the rail is gated')
+test('every step has the action column beside its main column (U2)', () => {
+  // The action column is led by the milestone, and every step has one, so the
+  // column is never optional and never empty.
+  assert.match(CONTENT_STEP, /<div className="step-body has-rail">/, 'the body does not lay out the action column')
+  assert.match(CONTENT_STEP, /<StepActionColumn rail=\{rail\}>/, 'the action column is gated')
   const one = CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? ''
   const two = CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? ''
-  assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no rail leaves an empty column')
-  assert.match(two, /grid-template-columns: minmax\(0, 1fr\) 290px;/, 'the rail is not 290px')
+  assert.match(one, /grid-template-columns: minmax\(0, 1fr\);/, 'a step with no action column leaves an empty column')
+  assert.match(two, /grid-template-columns: 1fr 260px;/, 'the action column is not 260px')
 })
 
 test('the footer is the frame’s own band, not the last line of the main column', () => {
@@ -282,18 +282,19 @@ test('the track is the header’s, never the main column’s and never the rail�
   const head = SECTIONS.slice(SECTIONS.indexOf('export function StepHead'), SECTIONS.indexOf('export function LifecycleTrack'))
   assert.match(head, /<LifecycleTrack track=\{track\} \/>/, 'the head no longer draws the track')
   assert.match(head, /<header className="step-head">/, 'the track is not inside the full-width header')
-  // Not in the body, not in the rail: the frame renders the head, then the split.
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('<StepRail contract'))
-  assert.equal(main.includes('LifecycleTrack'), false, 'the track moved into the main column')
-  const rail = SECTIONS.slice(SECTIONS.indexOf('export function StepRail'), SECTIONS.indexOf('export function PolicyMembers'))
-  assert.equal(rail.includes('LifecycleTrack'), false, 'the track moved into the rail')
-  // The split still begins below the header, and the rail is still optional.
-  assert.match(CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(0, 1fr\) 290px;/)
+  // Not in the body, not in the action column: the frame renders the head, then the split.
+  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-body has-rail">'), CONTENT_STEP.indexOf('<StepFooter'))
+  assert.equal(main.includes('LifecycleTrack'), false, 'the track moved into the body')
+  const column = SECTIONS.slice(SECTIONS.indexOf('export function StepActionColumn'), SECTIONS.indexOf('export function PolicyMembers'))
+  assert.equal(column.includes('LifecycleTrack'), false, 'the track moved into the action column')
+  // The split still begins below the header, and the action column is still optional.
+  assert.match(CSS.match(/\.step-body\.has-rail \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: 1fr 260px;/)
   assert.match(CSS.match(/\.step-body \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(0, 1fr\);/)
-  // And it collapses with the rest of the frame at both approved breakpoints.
-  for (const w of [940, 650]) assert.ok(CSS.includes(`@media (max-width: ${w}px)`), `the ${w} breakpoint is gone`)
-  const narrow = CSS.slice(CSS.indexOf('@media (max-width: 940px)'), CSS.indexOf('@media (max-width: 650px)'))
-  assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\);/, 'the body no longer collapses at 940')
+  // And it stacks below 900px (U2), with the frame's approved breakpoints still there.
+  for (const w of [940, 900, 650]) assert.ok(CSS.includes(`@media (max-width: ${w}px)`), `the ${w} breakpoint is gone`)
+  const from = CSS.indexOf('@media (max-width: 900px)')
+  const narrow = CSS.slice(from, CSS.indexOf('\n}\n', from))
+  assert.match(narrow, /\.step-body\.has-rail \{[\s\S]*?grid-template-columns: 1fr;/, 'the body no longer stacks at 900')
 })
 
 // ------------------------------------------------------------ the Next caption
@@ -303,12 +304,12 @@ test('the Next caption is the dated milestone where there is one', () => {
   assert.equal(nextCaption(dated), 'Next: leave it in report-only until Sep 17, 2026.')
 })
 
-test('an undated blocked policy carries no caption: the rail names the move and Fix before continuing the blocker', () => {
+test('an undated blocked policy carries no caption, and its milestone composes no sub-line', () => {
   // Owner, 2026-09-11: one blocker, one place. The gate stays the row's reason
   // and Fix before continuing's; the caption restating it is gone.
   const gated = { milestone: { line: null, at: null, gatedBy: 'after: Create or Correct Emergency Access Accounts', kind: 'resolve', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
   assert.equal(nextCaption(gated), null)
-  assert.equal(railOf(gated).sub, CONTRACT.rail.resolveSub, 'the rail restates the blocker instead of naming the move')
+  assert.equal(railOf(gated).sub, '', 'the milestone writes a sub-line the package does not author (U3)')
 })
 
 test('a state with no dated line gets no caption, and none is invented', () => {
@@ -334,7 +335,7 @@ test('the rail’s metric is the date where there is one, and the lane label whe
   assert.equal((nextCaption(gated) ?? '').includes(railOf(gated).metric), false, 'the rail headline repeats the caption')
   const dated = { milestone: { at: '2026-09-17T00:00:00.000Z', gatedBy: null, label: 'Leave it in report-only until Sep 17.' }, state: { condition: 'healthy', setAside: false }, whatToDo: { kind: 'observe', text: 'x' } } as unknown as StepContract
   assert.equal(railOf(dated).metric, absoluteDate('2026-09-17T00:00:00.000Z'), 'a dated milestone does not lead with its date')
-  assert.equal(railOf(dated).sub, 'Leave it in report-only until Sep 17.')
+  assert.equal(railOf(dated).sub, '', 'a dated milestone writes a sub-line the package does not author (U3)')
   const src = readFileSync('src/ui/surfaces/stepContract.ts', 'utf8')
   const rail = src.slice(src.indexOf('export function railOf'), src.indexOf('export type ImplementationEmpty'))
   for (const forbidden of ['Date.', 'new Date', 'step.', 'implementation']) assert.equal(rail.includes(forbidden), false, `the rail computes ${forbidden}`)

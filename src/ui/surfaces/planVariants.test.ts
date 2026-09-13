@@ -592,8 +592,9 @@ test('§4b what IAMAI found is what this scan observed, never a padded card', ()
 // -------------------------------------------------------------------- §5 rail
 
 test('§5 the rail and Readiness say only what the contract holds, on every variant', () => {
-  // The approved rail is the Next milestone only, and every step has one.
-  every('rail', (v) => railOf(v.c).metric.trim().length > 0 && railOf(v.c).sub.trim().length > 0, 'a step draws an empty Next milestone rail')
+  // Every step has a milestone to lead its action column, and the contract
+  // composes no words under it: those are the package's alone (U3).
+  every('rail', (v) => railOf(v.c).metric.trim().length > 0 && railOf(v.c).sub === '', 'a step draws an empty milestone, or a generated sub-line')
   // Readiness is one tile per unresolved prerequisite and the satisfied evidence
   // apart, each a label over a value, and a bar with a headline: never padded.
   every(
@@ -635,7 +636,8 @@ test('§5b a preserved goal draws the pack’s In-place variant: no change neede
   assert.ok(v4.includes('implementation-empty good'), 'the pack’s In-place variant now offers an implementation')
   assert.equal(v4.split('<div class="stage done"></div>').length - 1, 4, 'the pack no longer draws the In-place lifecycle as reached')
   // Production: every preserved goal nothing holds says the same, from the contract.
-  const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy')
+  // A conditional input nobody saved keeps a delivered goal short of Completed (U28, B1).
+  const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy' && (v.step.unsavedInputs ?? []).length === 0)
   assert.ok(preserved.length > 0, 'no preserved goal in the sweep')
   for (const v of preserved) {
     assert.equal(railOf(v.c).metric, BOARD.lanes.completed, `${v.where}: a preserved goal’s rail does not say Completed (A1b: the lane label)`)
@@ -660,7 +662,7 @@ test('§6 the Plan has one row, two bodies, and no step-specific presentation fo
   for (const [name, src] of [['the step', step], ['a Cleanup row', cleanup]] as const) {
     assert.match(src, /<article className="step panel panel-key">/, `${name} no longer draws the approved frame`)
     assert.match(src, /<StepHead/, `${name} no longer draws the approved head`)
-    assert.match(src, /<div className="step-main">/, `${name} no longer draws the approved main column`)
+    assert.match(src, /<div className="step-main[" ]/, `${name} no longer draws the approved main column`)
   }
   // And nothing downstream of the contract branches on WHICH step it is. A step
   // id or a goal id in the presentation is the bespoke fork this pack retired.

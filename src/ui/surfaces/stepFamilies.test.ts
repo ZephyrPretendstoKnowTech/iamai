@@ -90,9 +90,9 @@ const of = (family: StepFamily): Audited[] => audited().filter((a) => a.family =
 // ------------------------------------------------------------- one frame
 
 test('every family goes through one frame: there is no second step shell', () => {
-  // One article, one head, one body, one footer, one rail — in the file that
-  // draws every step there is.
-  for (const [what, n] of [['<article className="step', 1], ['<StepHead', 1], ['<StepFooter', 1], ['<StepRail', 1], ['className="step-body has-rail"', 1]] as const) {
+  // One article, one head, one body, one footer, one action column — in the file
+  // that draws every step there is.
+  for (const [what, n] of [['<article className="step', 1], ['<StepHead', 1], ['<StepFooter', 1], ['<StepActionColumn', 1], ['className="step-body has-rail"', 1]] as const) {
     assert.equal(CONTENT_STEP.split(what).length - 1, n, `${what} appears ${CONTENT_STEP.split(what).length - 1} times, not ${n}`)
   }
   // And no branch mounts a whole alternative structure for a family. A module
@@ -186,16 +186,18 @@ test('every step in the corpus offers a channel count the capability rule can dr
 
 // ------------------------------------------------------------ the rail is real
 
-test('every family draws the one Next milestone rail, and it is never empty', () => {
+test('every family draws the one milestone at the head of its action column, and it is never empty', () => {
   for (const a of audited()) {
     const r = railOf(a.contract)
-    assert.ok(r.metric.trim().length > 0 && r.sub.trim().length > 0, `${a.fixture}/${a.step.id}: a rail with nothing in it`)
+    // The sub-line is the package's words or nothing (U3); the milestone itself is always there.
+    assert.ok(r.metric.trim().length > 0, `${a.fixture}/${a.step.id}: a milestone with nothing in it`)
+    assert.equal(r.sub, '', `${a.fixture}/${a.step.id}: the contract composed a sub-line`)
     // A date only where Foundation B holds one; never one it does not.
     // A day the schedule places (roadmap/stepSchedule.ts) is not invented: the row reads the same day.
     const scheduled = a.contract.schedule !== null && a.contract.schedule.transition !== 'decide' ? a.contract.schedule.at : null
     if (a.contract.milestone.at === null && scheduled === null) assert.equal(/\d{4}/.test(r.metric), false, `${a.fixture}/${a.step.id}: the rail invents a date`)
   }
-  assert.equal(CONTENT_STEP.split('<StepRail contract={contract} />').length - 1, 1, 'the rail is gated, or drawn twice')
+  assert.equal(CONTENT_STEP.split('<StepActionColumn rail={rail}>').length - 1, 1, 'the action column is gated, or drawn twice')
 })
 
 // ------------------------------------ implementation is not always the action
@@ -357,9 +359,9 @@ test('a source conflict states the ambiguity and invents no deployment', () => {
     assert.equal(a.contract.implementation.offered, false, `${a.fixture}/${a.step.id}: an artifact for an ambiguous source`)
     assert.ok(a.contract.whatToDo.text.length > 0, `${a.fixture}/${a.step.id}: no resolution action`)
   }
-  // The notice is the approved danger attention under Readiness, above What to
-  // do and Implementation, and never behind a disclosure.
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('{printing && ('))
+  // The notice is the approved danger attention under Readiness, above
+  // Implementation, and never behind a disclosure.
+  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main step-main-lead">'), CONTENT_STEP.indexOf('{printing && ('))
   const at = main.indexOf('conflictWords && (')
   assert.ok(at > main.indexOf('<ReadinessSection'), 'the conflict notice is above Readiness')
   assert.ok(at < main.indexOf('<Implementation'), 'the conflict notice sank below Implementation')

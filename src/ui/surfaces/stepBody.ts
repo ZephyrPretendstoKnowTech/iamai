@@ -24,7 +24,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
-import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, readinessOf, stepContract } from './stepContract.ts'
+import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { laneViewFor } from './planBoard.ts'
 import { HEAD } from './stepHeadings.ts'
@@ -229,15 +229,21 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // lists a prerequisite a second time.
   const readiness = mergeReadiness(readinessOf(step, contract, blockers, prerequisiteLabel ?? undefined), pkgReadiness)
   const allTiles = [...readiness.tiles, ...readiness.satisfied]
-  // What to do, where the step has instructions of its own. On a step whose
-  // action IS the implementation the approved design draws no What to do: the
-  // action is the Readiness bar's line and the instructions are the channels.
+  // The step's own instructions — its decision, its create lines, its own steps —
+  // were What to do, and no step draws What to do (U1, RUN-CONTEXT-B decision 1).
+  // The decision's controls are the action column's (U2); the prose stays in the
+  // content for the per-step pass to move into Implementation. The one next
+  // action stays under the Readiness bar on a step whose action it was, and
+  // leaves with What to do where it led instructions.
   const decides = Boolean(d) && (typeof d.applies !== 'string' || truthy(ex[d.applies]))
   const createIfNeeded = truthy(ex.createIfNeeded) && typeof w.createIfNeeded === 'string'
   const creates = (truthy(ex.needsCreate) || truthy(ex.createIfNeeded)) && Array.isArray(w.create)
   const implementing = packaged ? preview === null && (projection?.channels.length ?? 0) > 0 : Boolean(portal) && channels.length > 0
   const ownSteps = !implementing && (hasSteps || before.length > 0)
-  const showWhatToDo = decides || createIfNeeded || creates || ownSteps
+  const instructed = decides || createIfNeeded || creates || ownSteps
+  // The milestone the action column leads with, over the package's own words for
+  // it or none (stepContract.ts railOf, U3).
+  const rail = railOf(contract, pkg?.meta.milestone?.actionText ?? null)
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
@@ -256,11 +262,11 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
     : channels.map((ch) => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   const W = CONTRACT.implementation
-  // What a preview says beside the planned work: that it is a preview, the values
-  // still to resolve, and where the checks to confirm are. Never the blocker again.
+  // Why a preview's work cannot be copied: the values still to resolve, never the
+  // blocker again. No Planned work banner draws it over the channels (U4); it is
+  // the disabled Copy's reason (U18, B5).
   const previewNote = preview
     ? {
-        label: W.preview.label,
         lines: [
           // Nothing to fix and nothing holding it: what stands between the step and
           // Copy is values IAMAI cannot fill, not prerequisites (correction batch 1).
@@ -336,7 +342,8 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     createIfNeeded,
     creates,
     ownSteps,
-    showWhatToDo,
+    instructed,
+    rail,
     eyebrow,
     artifacts,
     previewNote,
@@ -354,15 +361,14 @@ export type StepBody = ReturnType<typeof stepBodyOf>
  * The section headings the opened step draws, in the order the component draws
  * them (ContentStep.tsx, the canonical order planAnatomy.test.ts asserts): Why
  * and Readiness always; the conflict attention where the source contradicts
- * itself; What to do where the step has instructions of its own; Implementation
- * where the step offers or owes one; Done when where the contract has lines.
+ * itself; Implementation where the step offers or owes one; Done when where the
+ * contract has lines. No step draws What to do (U1).
  */
 export function headingsOf(b: StepBody): string[] {
   return [
     HEAD.why,
     CONTRACT.readiness.heading,
     ...(b.conflictWords ? [CONTRACT.attentionConflict] : []),
-    ...(b.showWhatToDo ? [HEAD.whatToDo] : []),
     ...(b.showImplementation ? [CONTRACT.implementation.heading] : []),
     ...(b.contract.doneWhen.length > 0 ? [HEAD.doneWhen] : []),
   ]

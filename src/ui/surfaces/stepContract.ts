@@ -151,7 +151,7 @@ type ContractWords = {
     sourceChecked: string
     /** The Microsoft Learn link under Implementation, label exactly "Microsoft Learn" (S6). */
     learn: string
-    preview: { label: string; text: string; textValues: string; values: string; checks: string; value: string }
+    preview: { text: string; textValues: string; values: string; checks: string; value: string }
     review: { reviewNeeded: string; held: string }
     values: Record<string, string>
     troubleshooting: string
@@ -160,8 +160,6 @@ type ContractWords = {
   }
   troubleshooting: { eyebrow: string; close: string; seeing: string; cause: string; check: string; fix: string; doNot: string; then: string; sources: string }
   confirm: { control: string; confirmedControl: string; eyebrow: string; body: string; confirm: string; remove: string; cancel: string; confirmedOn: string }
-  /** The rail's sub-lines where the metric is the lane label (A1b): the move a held step names, the decision a deciding one does. */
-  rail: Record<'resolveSub' | 'decideSub', string>
   /** The rail's sub-line under a day the plan schedules, by the transition it is for (roadmap/stepSchedule.ts). */
   railTransition: Record<'createReportOnly' | 'change' | 'enforce', string>
   rollout: Record<string, string>
@@ -1279,29 +1277,24 @@ function barOf(c: StepContract): ContractReadiness['bar'] {
 const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Create: 'create', Correct: 'correct', Decision: 'needsDecision', Observing: 'observing', 'Ready to enforce': 'readyToEnforce' }
 
 /**
- * The Next milestone rail: the day the plan schedules with what that day is for,
- * a dated milestone with its own words, and otherwise the lane's own label over
- * the milestone's words (A1b decision 1) — never a word the row does not say.
+ * The milestone the action column leads with (U2): the day the plan schedules
+ * where it holds one, and otherwise the lane's own label (A1b decision 1), over
+ * the step's own words for what the milestone is for — its package's
+ * `milestone.actionText` — or no words at all (U3). Nothing here composes the
+ * sub-line: a generated one repeated the lane, named a prerequisite the lane
+ * label already names, or said nothing ("Make the decision"), and none is
+ * better than wrong.
  */
-export function railOf(c: StepContract): { metric: string; sub: string } {
+export function railOf(c: StepContract, actionText: string | null = null): { metric: string; sub: string } {
   const m = c.milestone
-  const w = CONTRACT.rail
   const l = c.state.lane
-  // A day the plan schedules (roadmap/stepSchedule.ts) is the rail's metric, with
-  // what that day is for — the same result the row's When and its phase read.
-  // A decision keeps the lane's word (owner, 2026-09-11): it is the operator's to make.
+  const sub = actionText ?? ''
+  // A day the plan schedules (roadmap/stepSchedule.ts) is the metric — the same
+  // result the row's When and its phase read. A decision keeps the lane's word
+  // (owner, 2026-09-11): it is the operator's to make.
   const s = c.schedule ?? null
-  if (s !== null && s.transition !== 'decide' && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) {
-    const T = CONTRACT.railTransition
-    const words = s.transition === 'createReportOnly' || s.transition === 'change' || s.transition === 'enforce' ? T[s.transition] : m.label
-    return { metric: absoluteDate(s.at), sub: words }
-  }
-  if (m.at !== null) return { metric: absoluteDate(m.at), sub: m.gatedBy ?? m.label }
-  // One concise next milestone (owner, 2026-09-11): a held step's rail names the
-  // move — resolve its prerequisites, make its decision — and never restates the
-  // blocker the row and Readiness already carry.
-  const deciding = l?.lane === 'Ready' && l.substatus === 'Decision'
-  const sub = deciding ? w.decideSub : m.kind === 'resolve' && (l?.lane === 'Up Next' || l?.lane === 'On Hold') ? w.resolveSub : (m.gatedBy ?? m.label)
+  if (s !== null && s.transition !== 'decide' && (s.class === 'scheduled' || s.class === 'observing') && s.at !== null) return { metric: absoluteDate(s.at), sub }
+  if (m.at !== null) return { metric: absoluteDate(m.at), sub }
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads — never the lane's word beside a dated row.
   if (s === null && c.scheduledOn && l?.lane === 'Ready' && (l.substatus === 'Create' || l.substatus === null)) return { metric: absoluteDate(c.scheduledOn), sub }
