@@ -3698,7 +3698,7 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
+      "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
         "No successful legacy sign-in in the records during the report-only days."

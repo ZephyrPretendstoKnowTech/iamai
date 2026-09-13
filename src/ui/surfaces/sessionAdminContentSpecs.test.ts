@@ -108,3 +108,29 @@ test('s-goal-token-protection: Why says what token protection is, AI Info explai
   assert.match(packageOf(TOKEN).blocks['entra.create'].text, /select only \*\*Mobile apps and desktop clients\*\*\. Leave Browser unselected\./)
   assert.match(packageOf(TOKEN).blocks['entra.correct.lifecycle.report-only'].text, /Report-only/)
 })
+
+test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for a tech, and Done when drops the product name', () => {
+  const LEGACY = 's-goal-block-legacy-auth'
+  // The two blocks a conditions correction draws.
+  const entra = channel(LEGACY, ['entra.correct-conditions', 'entra.correct-verify'])
+  assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.'],
+        ['If the policy is currently On (Enforced), switch it to Report-only before making changes.'],
+        ['Under Conditions → Client apps, confirm only "Exchange ActiveSync clients" and "Other clients" are checked.'],
+        ['Under Users → Include, confirm "All users" is selected.'],
+        ['Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.'],
+        ['Under Grant, confirm "Block access" is selected.'],
+      ],
+    },
+    { kind: 'list', ordered: true, start: 7, items: [['Leave the policy in Report-only.'], ['Click Save, then rescan in IAMAI.']] },
+  ])
+  assert.doesNotMatch(entra, /stable tenant ID|resolved policy|canonical|conditions object/)
+  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.\n")
+  const words = stepWords('block-legacy-auth')
+  assert.equal(words.doneEnd, 'The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.')
+  // The shared readiness sentence and the stored answers stay (BLOCKED.md).
+  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  assert.deepEqual(words.decision?.options, ['None', 'Yes: add: {devices}; the service-accounts group carries them'])
+})
