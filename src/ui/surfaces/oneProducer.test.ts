@@ -21,6 +21,7 @@ import type { LaneReading } from './planLanes.ts'
 import { CONTRACT, badgeLabel, factOf, implementationEmptyOf, nextCaption, railOf, readinessOf, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { stepBodyOf } from './stepBody.ts'
 
 type Run = { name: string; f: Fixture; r: ReturnType<typeof runFixture>; steps: Step[] }
 
@@ -139,7 +140,7 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
 })
 
 /** Every word the Plan and an opened step render for a step: the row, the head, Readiness, the rail, What to do, Done when, the Implementation box. */
-function wordsOf(step: Step, c: StepContract, lane: LaneView, reading: LaneReading, readings: Map<string, LaneReading>, titleOf: (id: string) => string | null): [string, string][] {
+function wordsOf(step: Step, c: StepContract, lane: LaneView, reading: LaneReading, readings: Map<string, LaneReading>, titleOf: (id: string) => string | null, ctx: StepVarContext): [string, string][] {
   const out: [string, string][] = []
   const add = (surface: string, text: string | null | undefined): void => {
     if (typeof text === 'string' && text !== '') out.push([surface, text])
@@ -150,7 +151,9 @@ function wordsOf(step: Step, c: StepContract, lane: LaneView, reading: LaneReadi
   add('reason', boardReasonOf(step))
   add('badge', badgeLabel(c))
   add('caption', nextCaption(c))
-  const r = readinessOf(step, c, readinessBlockersOf(reading, titleOf), prerequisiteLabelFor(readings))
+  // The tiles as the opened step draws them: the runtime's with the package's
+  // gates merged in (stepPackage.ts mergeReadiness), whose values are words too (B11 P1-7).
+  const r = stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }).readiness
   add('bar', r.bar.main)
   for (const t of [...r.tiles, ...r.satisfied]) {
     add(`tile ${t.key} label`, t.label)
@@ -199,7 +202,7 @@ test('no retired word renders on the Plan or on an opened step: Blocked, Held, N
       if (!reading) continue
       const lane = views.get(step.id)!
       const c = stepContract(step, ctx, undefined, lane)
-      for (const [surface, text] of wordsOf(step, c, lane, reading, readings, titleOf)) {
+      for (const [surface, text] of wordsOf(step, c, lane, reading, readings, titleOf, ctx)) {
         notForbidden(text, `${run.name}/${step.id}: ${surface} reads "${text}"`)
       }
       checked += 1

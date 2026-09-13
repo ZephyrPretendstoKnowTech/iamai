@@ -573,7 +573,7 @@ export function mergeReadiness(runtime: ContractReadiness, pkg: PackageReadiness
   const pressing = (t: (typeof offered)[number]): number => (t.confirm && !t.confirm.satisfied ? -1 : (SEVERITY[t.result] ?? 5))
   const packaged: ReadinessTile[] = [...offered]
     .sort((a, b) => pressing(a) - pressing(b))
-    .map((t) => ({ key: t.id, label: t.gate, tone: RESULT_TONE[t.result] ?? 'info', value: t.result, note: t.line, ...(t.confirm ? { confirm: t.confirm } : {}) }))
+    .map((t) => ({ key: t.id, label: t.gate, tone: RESULT_TONE[t.result] ?? 'info', value: CONTRACT.readiness.results[t.result] ?? t.result, note: t.line, ...(t.confirm ? { confirm: t.confirm } : {}) }))
   const open = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait' || (t.confirm !== undefined && !t.confirm.satisfied)
   return { ...runtime, tiles: [...runtime.tiles, ...packaged.filter(open)], satisfied: [...runtime.satisfied, ...packaged.filter((t) => !open(t))] }
 }

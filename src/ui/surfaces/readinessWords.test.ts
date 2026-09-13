@@ -130,3 +130,18 @@ test('P1-6: a policy waiting on an exclusions group the scan found asks to confi
   // Where the group is confirmed, nothing says so.
   for (const b of bodiesOf(fixture('mid')).values()) for (const t of allTiles(b)) assert.doesNotMatch(t.note ?? '', /Confirm the exclusions group/)
 })
+
+test('P1-6 (B11): the readiness bar and the Implementation reason ask to confirm the group too; no line calls it a missing object', () => {
+  const confirm = 'Confirm the exclusions group on Create or Correct Exclusions Group first: IAMAI found a group that qualifies, and only your Save makes it the one this policy excludes.'
+  const bodies = bodiesOf(noExclusionsAnswer(fixture('mid')))
+  for (const id of [LEGACY, 's-goal-admins-phishing-resistant', 's-goal-guests-mfa']) {
+    const b = bodies.get(id)!
+    // The bar's sub-line is the contract's one action (stepContract.ts readinessOf).
+    assert.equal(b.contract.whatToDo.text, confirm, `${id}: the bar's sub-line`)
+    assert.equal(b.contract.implementation.offered ? null : b.contract.implementation.because, confirm, `${id}: the Implementation reason`)
+    const lines = [b.contract.whatToDo.text, ...b.contract.fix.map((f) => f.text), ...b.contract.doneWhen, ...allTiles(b).map((t) => t.note ?? '')]
+    for (const line of lines) assert.doesNotMatch(line, /does not have yet/, `${id}: ${line}`)
+  }
+  // Where the group is confirmed, the action never asks for it.
+  for (const [id, b] of bodiesOf(fixture('mid'))) assert.doesNotMatch(b.contract.whatToDo.text, /Confirm the exclusions group/, id)
+})

@@ -59,14 +59,19 @@ export function waitKindOf(m: { unreadable?: true; decision?: true }): WaitKind 
  * printing the author's own identifier, which is meaningless here and belongs to
  * somebody else's tenant (roadmap/resolvePolicy.ts `unsettled`).
  */
-export function waitingLine(step: Step, tenant: string): string {
+export function waitingLine(step: Step, tenant: string, exclusionsUnconfirmed = false): string {
   const objects = missingObjects(step)
-  const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind).map((m) => m.title))]
+  // The exclusions group a scan found but nobody has confirmed is not an object the
+  // tenant lacks (B10 P1-6, U27): the line asks for the confirmation, as the
+  // step's Fix does (stepContract.ts fixOf).
+  const confirm = (m: (typeof objects)[number]): boolean => exclusionsUnconfirmed && m.wait === 'objectMissing' && m.token === '{exclusionsGroup}'
+  const titles = (kind: WaitKind): string[] => [...new Set(objects.filter((m) => m.wait === kind && !confirm(m)).map((m) => m.title))]
   const lines: string[] = []
   const made = titles('objectMissing')
   // A reference whose meaning nobody has settled is not an object the tenant lacks:
   // it is mapped in Plan settings (S4), and named in words, never by the author's id.
   if (objects.some((m) => m.wait === 'referenceUnresolved')) lines.push(fillText(app.plan.jsonWaitsDecision, { tenant }))
+  for (const title of new Set(objects.filter(confirm).map((m) => m.title))) lines.push(fillText((app.plan as unknown as { stepContract: { fixConfirmExclusions: string } }).stepContract.fixConfirmExclusions, { step: title }))
   if (made.length > 0) lines.push(fillText(app.plan.jsonWaits, { steps: list(made), tenant }))
   if (objects.some((m) => m.wait === 'sourceUnreadable')) lines.push(fillText(app.plan.jsonWaitsUnreadable, { tenant }))
   return lines.join(' ')

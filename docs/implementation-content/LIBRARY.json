@@ -617,7 +617,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 0,
+      "correctionModules": 1,
       "requiredBindings": 8,
       "optionalBindings": 9,
       "verifiedSourceCount": 8,
@@ -626,7 +626,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 10,
+      "strictValidationErrors": 9,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"

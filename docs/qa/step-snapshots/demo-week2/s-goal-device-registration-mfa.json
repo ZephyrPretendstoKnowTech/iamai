@@ -27,7 +27,7 @@
     },
     {
       "label": "Exclusions",
-      "state": "Blocked"
+      "state": "Not met"
     },
     {
       "label": "Enrollment workflows",
