@@ -91,7 +91,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 12,
+      "contentBlocks": 14,
       "outputs": {
         "entra": true,
         "json": false,
@@ -102,6 +102,7 @@
         "troubleshooting": true
       },
       "statesSupported": [
+        "missing",
         "needsDecision",
         "disableConfirmed",
         "keepConfirmed",
@@ -130,7 +131,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 14,
+      "contentBlocks": 15,
       "outputs": {
         "entra": true,
         "json": false,
@@ -1879,7 +1880,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 16,
+      "contentBlocks": 18,
       "outputs": {
         "entra": true,
         "json": true,
@@ -1890,6 +1891,7 @@
         "troubleshooting": true
       },
       "statesSupported": [
+        "missing",
         "setupRequired",
         "campaignRunning",
         "holdoutReview",
@@ -6112,7 +6114,7 @@
     "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 956,
+    "contentBlocks": 961,
     "uniqueBindings": 266,
     "bindingsRequiredByAtLeastOneProjection": 95,
     "bindingsOptionalInAtLeastOnePackage": 175,

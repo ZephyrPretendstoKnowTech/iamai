@@ -239,8 +239,9 @@ test('a check that passes is not on the step; a check that fails is, in its own 
       assert.deepEqual(contract.fix.filter((f) => f.key.startsWith('check:')), [], `${fixture}/${step.id}: a step whose checks all pass lists one under Fix before continuing`)
     } else {
       failing += 1
-      // Under Fix before continuing, or — for emergency-access hardening — under Hardening recommendations (owner, 2026-09-11).
-      assert.ok(contract.fix.length > 0 || (contract.hardening?.groups.length ?? 0) > 0, `${fixture}/${step.id}: ${checks.failing} checks fail and nothing is under Fix before continuing or Hardening recommendations`)
+      // Under Fix before continuing, or — for emergency-access hardening — under Hardening recommendations (owner, 2026-09-11),
+      // or — for the exclusions group's usage check — on its reach tile, because each policy step owns its correction (B10 P0-11).
+      assert.ok(contract.fix.length > 0 || (contract.hardening?.groups.length ?? 0) > 0 || contract.exclusionsReach !== null,`${fixture}/${step.id}: ${checks.failing} checks fail and nothing is under Fix before continuing or Hardening recommendations`)
     }
   }
   assert.ok(passing > 0 && failing > 0, `the fixtures no longer cover both (passing ${passing}, failing ${failing})`)

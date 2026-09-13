@@ -347,10 +347,10 @@ test('the viewer draws every package channel through the one Implementation regi
   // The region says who drew it, so a check of the translator's portal lines reads only the steps the translator drew.
   assert.match(step, /<section className="step-section implementation-section" data-implementation=\{drawnBy\} data-preview=\{preview \? 'true' : undefined\}>/)
   assert.match(step, /drawnBy=\{packaged \? 'package' : 'translator'\}/)
-  assert.match(step, /onClick=\{\(\) => copy\('implementation', active\?\.text\(\) \?\? ''\)\}/)
+  assert.match(step, /if \(copyable\) copy\('implementation', active\?\.text\(\) \?\? ''\)/)
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
-  assert.match(step, /const artifacts: Artifact\[\] = packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
+  assert.match(step, /const artifacts: Artifact\[\] = \(\n\s*packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
   // The projection, the readiness and the troubleshooting never throw through the step.
   for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
   for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)
