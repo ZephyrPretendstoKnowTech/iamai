@@ -54,8 +54,27 @@ function row(template: string, values: Record<string, unknown>): string {
     .join(SEP)
 }
 
-function vars(key: string, rows: string[], ids: string[], ticked: string[]): PickerVars {
-  return { pickerKey: key, [key]: rows, [`${key}Ids`]: ids, [`${key}Ticked`]: ticked }
+function vars(key: string, rows: string[], ids: string[], ticked: string[], matched: string[] = []): PickerVars {
+  return { pickerKey: key, [key]: rows, [`${key}Ids`]: ids, [`${key}Ticked`]: ticked, ...(matched.length > 0 ? { [`${key}Matched`]: matched } : {}) }
+}
+
+/**
+ * The chips a picker opens with (U24): the saved decision; else the plan's
+ * current value (`<key>Ticked`); where that is nothing, the scan's one
+ * unambiguous match (`<key>Matched`) — pre-filled and never written: only Save
+ * writes a decision, so the step goes on waiting on it; else the picker's own
+ * default. `matched` names the pre-filled ids, so the chip can say IAMAI put
+ * it there.
+ */
+export function initialPicked(ex: Readonly<Record<string, unknown>>, key: string | null, saved: Pick<StepDecision, 'picked'> | null, ids: readonly string[], single: boolean): { picked: string[]; matched: string[] } {
+  if (saved?.picked) return { picked: saved.picked, matched: [] }
+  const ticked = key ? ex[`${key}Ticked`] : undefined
+  const matched = key ? ex[`${key}Matched`] : undefined
+  if (Array.isArray(ticked)) {
+    if (ticked.length === 0 && Array.isArray(matched) && matched.length === 1) return { picked: [String(matched[0])], matched: [String(matched[0])] }
+    return { picked: ticked as string[], matched: [] }
+  }
+  return { picked: single ? ids.slice(0, 1) : [...ids], matched: [] }
 }
 
 /**
@@ -135,7 +154,13 @@ export function pickerVars(stepId: string, template: string, ctx: PickerContext)
       const g = ctx.groups?.get(id)
       return row(template, { name: g?.displayName ?? nameOf(id), memberCount: g?.memberCount, excludedFrom: excludedFrom(id), policyCount: policies.length })
     })
-    return vars('groups', rows, ids, ids.filter((id) => isStored(id) === 1))
+    // The one group the detection puts forward, where nobody has answered, opens in
+    // the picker as a chip (U24). It is not ticked and not written: Save is the
+    // operator's answer, and until then the step waits on it. Two that qualify are
+    // a question (`ambiguous`), and nothing opens.
+    const suggested = stored === null ? choice.suggested : null
+    const matched = suggested === null ? [] : ids.filter((id) => lc(id) === lc(suggested.id))
+    return vars('groups', rows, ids, ids.filter((id) => isStored(id) === 1), matched)
   }
 
   // Allowed countries: every country the sign-in records or a usage location

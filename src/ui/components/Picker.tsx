@@ -94,6 +94,7 @@ export function Picker({
           {selected.map((s) => (
             <span key={s.id} className="chip-select">
               <span className="chip-name">{s.name}</span>
+              {s.badge && <span className="chip-badge">{s.badge}</span>}
               <button type="button" className="chip-remove" aria-label={`${T.remove} ${s.name}`} title={T.remove} onClick={() => remove(s.id)}>
                 <Icon name="close" size={12} />
               </button>
