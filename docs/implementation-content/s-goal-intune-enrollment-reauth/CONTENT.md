@@ -2,14 +2,15 @@
 Microsoft Entra admin center → Enterprise applications. Confirm **Microsoft Intune Enrollment** exists for application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`. If it is absent, create the service principal using the supported Microsoft Graph/Application Administrator path in this package, then rescan IAMAI before creating the CA policy. Do not substitute the Microsoft Intune admin-center app.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Microsoft Entra admin center → Entra ID → Conditional Access → Policies → New policy.
-2. Name: **{{policy.target.displayName}}**.
-3. Users → Include: **All users**. Exclude the IAMAI-resolved canonical exclusions: **{{policy.target.excludeGroups}}**.
-4. Target resources → Resources → Select resources → **Microsoft Intune Enrollment**.
-5. Leave unrelated Conditions unconfigured. Client apps remains All.
-6. Do not add a Grant control for this retained baseline member.
-7. Session → Sign-in frequency → **Every time**.
-8. Enable policy → **Report-only**. Create, read back, and rescan IAMAI.
+1. Go to Entra admin center → Conditional Access → Policies → New policy.
+2. Name: {{policy.target.displayName}}.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group.
+4. Target resources → Select resources → Microsoft Intune Enrollment (not "All resources" — this policy targets only the enrollment flow).
+5. Conditions: leave all blank. Client apps: All.
+6. Grant: do not add a grant control. This policy only sets a session control, not an MFA requirement.
+7. Session → Sign-in frequency: Every time.
+8. Enable policy: Report-only.
+9. Create. Rescan in IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Open the exact IAMAI-resolved tenant Conditional Access policy by stable identity. Display name is context only; do not use it as update identity.
@@ -127,27 +128,13 @@ SAFETY
 Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+This policy ensures that every time someone enrolls a device in Intune, they sign in fresh — no cached session, no token reuse. This prevents an attacker who has stolen a session token from enrolling their own device as "trusted."
 
-ROLE
-Help implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Create only the canonical session policy in Report-only.
+This is a session-only policy: it doesn't require MFA (the MFA-for-everyone policy already handles that). It only requires that the sign-in happens at that moment, not from a stored session.
 
-AUTHORITY
-IAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.
+It targets Microsoft Intune Enrollment specifically, not all resources. This means it only fires during the enrollment flow — not during normal sign-ins, Teams calls, or email.
 
-TENANT CONTEXT
-- Tenant: {{tenant.displayName}} [omit if unavailable]
-- Policy: {{policy.target.displayName}} [omit if unavailable]
-- Current policy state: {{policy.current.state}} [omit if unavailable]
-- Enrollment evidence: {{evidence.intuneEnrollments}} [omit if unavailable]
-- Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]
-- Blockers: {{dependencies.blockers}} [omit if unavailable]
-
-TARGET
-All users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.
-
-SAFETY
-Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
+The exclusions group ensures emergency access accounts are not affected.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**

@@ -4953,6 +4953,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
