@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { railOf, readinessLeadOf } from './stepContract.ts'
+import { CONTRACT, railOf, readinessLeadOf } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import { WHEN, prerequisiteLabelFor } from './planBoard.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -66,4 +66,13 @@ test('R4: tile marks follow one rule — ! blocking, ✓ satisfied, none informa
   // Waiting and in-progress prerequisites are blocking: the same ! as a tile that needs attention.
   assert.match(src, /const MARK: Record<ReadinessTone, string \| null> = \{ good: '✓', warn: '!', wait: '!', info: null \}/)
   assert.equal(src.includes("'…'"), false, 'a tile still draws the … mark')
+})
+
+test('R5: a step with nothing unresolved reads "✓ Clear — No blockers. Ready to proceed."', () => {
+  const tiles = CONTRACT.readiness.tiles as Record<string, string>
+  assert.equal(tiles.clear, 'Clear')
+  assert.equal(tiles.clearNote, 'No blockers. Ready to proceed.')
+  const src = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
+  assert.match(src, /<strong>\{W\.tiles\.clear\}<\/strong>\s*<span>\{W\.tiles\.clearNote\}<\/span>/, 'the clear line does not read the content key')
+  assert.equal(readFileSync('docs/design/content.json', 'utf8').includes('Nothing outstanding changes the next action'), false, 'the engineer-speak is still in content')
 })
