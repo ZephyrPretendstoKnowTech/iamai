@@ -294,9 +294,9 @@ test('one blocker, one place: no caption, a concise rail, Prerequisites in Readi
   assert.match(railOf(scheduled).metric, /\d{4}$/, 'scheduled preparation work reads no day on its rail')
 })
 
-test('Decide How Devices Are Managed: Needs decision until answered, one structure per part, US spelling, and saved answers still count', () => {
+test('Decide How Devices Are Managed: Decision until answered, one structure per part, US spelling, and saved answers still count', () => {
   const { c, lane } = opened('demo', 's-prereq-device-plan')
-  assert.equal(lane.label, `${BOARD.lanes.ready} · Needs decision`, 'an unanswered decision is not Ready · Needs decision')
+  assert.equal(lane.label, `${BOARD.lanes.ready} · Decision`, 'an unanswered decision is not Ready · Decision')
   assert.deepEqual(railOf(c), { metric: lane.label, sub: CONTRACT.rail.decideSub })
   assert.equal(c.fix.length, 0, 'the decision is listed as something to fix')
   const d = (stepById['s-prereq-device-plan'] as unknown as { decision: { text: string; options: string[]; question: { text: string; options: string[] }; strict: { heading: string; text: string; help: string } } }).decision

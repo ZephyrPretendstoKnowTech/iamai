@@ -1,11 +1,11 @@
 {
-  "lane": "On Hold",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Correct",
   "reason": "Baseline references an unmapped group",
   "fact": "Enforced",
-  "badge": "On Hold · Baseline references an unmapped group",
-  "bar": "Baseline references an unmapped group",
-  "rail": "On Hold · Baseline references an unmapped group",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
+  "rail": "Ready · Correct",
   "headings": [
     "Why",
     "Readiness",

@@ -35,7 +35,7 @@ import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { list } from '../../copy/statements.ts'
-import { BLOCKED_REASON } from '../../copy/reasons.ts'
+import { BLOCKED_REASON, READINESS_MEASURE } from '../../copy/reasons.ts'
 import type { StatusTone } from '../components/index.ts'
 import { isHeld } from '../../roadmap/holds.ts'
 import { badgeOf, planStateOf } from './planState.ts'
@@ -96,6 +96,10 @@ type ContractWords = {
   /** The words the Plan's one presentation state adds (planState.ts). */
   stateWords: Record<'needsCorrection' | 'minimumInPlace' | 'hardeningDeferred', string>
   foundReadiness: string
+  /** The threshold on an enforced policy: the fact, never a wait (U22). */
+  foundReadinessEnforced: string
+  /** Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE). */
+  readinessScope: Record<string, string>
   foundInPlace: string
   foundInPlaceNamed: string
   foundInPlaceTogether: string
@@ -471,7 +475,7 @@ const found = (key: string, text: string): ContractFound => ({ key, label: CONTR
 function foundOf(step: Step, tenant: string, said: string | null): ContractFound[] {
   const out: ContractFound[] = []
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', fillText(CONTRACT.foundReadiness, { ...gate })))
+  if (gate && step.status !== 'done' && step.status !== 'skipped') out.push(found('readiness', readinessSentence(step, gate)))
   // A goal the tenant already delivers, and *which* policy delivers it. The
   // line used to say only that the tenant "already has a policy doing this",
   // which is the one fact an operator cannot act on: to check that IAMAI
@@ -1057,6 +1061,17 @@ export type ContractReadiness = {
 
 const R = (): ContractWords['readiness'] => CONTRACT.readiness
 
+/**
+ * The readiness threshold's sentence (U22): gate language while the policy is not
+ * on, and the fact alone once it is enforced — enforcement is no longer waiting
+ * for the number. A value never measured keeps the gate's own words.
+ */
+export function readinessSentence(step: Step, gate: NonNullable<Step['action']['readinessGate']>): string {
+  if (step.state.lifecycle !== 'enforced' || !gate.value.endsWith('%')) return fillText(CONTRACT.foundReadiness, { ...gate })
+  const family = Object.keys(READINESS_MEASURE).find((k) => READINESS_MEASURE[k] === gate.measure) ?? 'mfa'
+  return fillText(CONTRACT.foundReadinessEnforced, { value: gate.value, scope: CONTRACT.readinessScope[family] ?? CONTRACT.readinessScope.mfa })
+}
+
 /** The tile that says what the step's own state turns on, where the state turns on something. */
 function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   const s = c.state
@@ -1069,7 +1084,7 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
-  if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: gate.value, note: fillText(CONTRACT.foundReadiness, { ...gate }) }
+  if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: gate.value, note: readinessSentence(step, gate) }
   if (c.milestone.kind === 'observe') return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: null }
   return null
 }
@@ -1261,7 +1276,7 @@ function barOf(c: StepContract): ContractReadiness['bar'] {
 }
 
 /** The bar's content key for each Ready substatus (pages.app.plan.stepContract.readiness.bar). */
-const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Create: 'create', Correct: 'correct', 'Needs decision': 'needsDecision', Observing: 'observing', 'Ready to enforce': 'readyToEnforce' }
+const SUBSTATUS_KEY: Readonly<Record<Substatus, string>> = { Create: 'create', Correct: 'correct', Decision: 'needsDecision', Observing: 'observing', 'Ready to enforce': 'readyToEnforce' }
 
 /**
  * The Next milestone rail: the day the plan schedules with what that day is for,
@@ -1285,7 +1300,7 @@ export function railOf(c: StepContract): { metric: string; sub: string } {
   // One concise next milestone (owner, 2026-09-11): a held step's rail names the
   // move — resolve its prerequisites, make its decision — and never restates the
   // blocker the row and Readiness already carry.
-  const deciding = l?.lane === 'Ready' && l.substatus === 'Needs decision'
+  const deciding = l?.lane === 'Ready' && l.substatus === 'Decision'
   const sub = deciding ? w.decideSub : m.kind === 'resolve' && (l?.lane === 'Up Next' || l?.lane === 'On Hold') ? w.resolveSub : (m.gatedBy ?? m.label)
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads — never the lane's word beside a dated row.

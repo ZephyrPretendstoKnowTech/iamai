@@ -36,6 +36,7 @@ import type { LaneRow } from '../../actionability/sorting.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import { isHeld } from '../../roadmap/holds.ts'
+import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { QUESTION_STEP, answerOf } from '../../roadmap/answers.ts'
@@ -115,9 +116,13 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // corrects in something other than its state. An adjust step whose only
   // operation turns a report-only policy on is not drifted: it is being watched.
   const corrects = (step.action.resolution?.policies ?? []).some((o) => o.mode === 'update' && !submitsEnforcementOnly(o))
+  // An enforced policy the tracker reads as short of the plan (roadmap/tracking.ts
+  // driftOutcomeOf) has drifted whatever its operations say: an enforced policy
+  // that is not what the plan asked for is corrected, never complete (U20, U21).
+  const enforcedShort = policy && lifecycle === 'enforced' && driftOutcomeOf(step) !== null
   // Accounts that exist and fail a minimum check are started work drifted from
   // the target: the next action corrects them, it does not create them.
-  const drift = !done && (step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects) || (emergency !== null && exists && emergency.minimum > 0))
+  const drift = !done && (enforcedShort || step.state.condition === 'review-required' || (step.kind === 'adjust' && exists && corrects) || (emergency !== null && exists && emergency.minimum > 0))
   const kind = step.state.condition === 'needs-decision' ? 'decision' : policy ? 'policy' : (GRAPH.kinds.get(step.id) ?? 'object')
   const action = nextActionOf(kind, { exists, drift })
   // The plan's own waits (the legacy `prerequisite` hold), each in the engine's terms: a
@@ -186,6 +191,8 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
     blockers,
     gates,
     waitsOn,
+    // A conditional input nobody saved (U28); a step that does not apply here asks nothing.
+    ...(step.doesntApply == null && (step.unsavedInputs ?? []).length > 0 ? { unsaved: step.unsavedInputs } : {}),
   }
 }
 
@@ -290,7 +297,7 @@ function fallbackOf(s: PlanState): Pick<LaneReading, 'lane' | 'substatus'> {
     case 'conflict':
       return { lane: s.held ? 'On Hold' : 'Up Next', substatus: null }
     case 'decision':
-      return { lane: 'Ready', substatus: 'Needs decision' }
+      return { lane: 'Ready', substatus: 'Decision' }
     case 'attention':
       return { lane: 'Ready', substatus: 'Correct' }
     case 'reportOnly':

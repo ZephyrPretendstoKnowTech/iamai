@@ -84,7 +84,7 @@ import { staticViolations } from './staticRules.ts'
 import { cleanupPhaseFor } from './cleanupPhase.ts'
 import type { CleanupRecord } from './cleanupDone.ts'
 import { isFloorGoal } from './floor.ts'
-import { answeredCarveOuts, devicePlanOf, deviceScopeOf } from './answers.ts'
+import { answeredCarveOuts, devicePlanOf, deviceScopeOf, unsavedInputsOf } from './answers.ts'
 import { DEVICE_GOALS, applyDeviations, deviceStepDoesntApply } from './deviations.ts'
 
 /** The baseline's block of the service accounts outside the trusted network (E9): step 6 gains it as Restrict Service Accounts to the Trusted Network. */
@@ -2279,6 +2279,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // communications alike (walk-51 item 1). Set before the state reasons so a
   // "waits on <step>" line names the same title the plan shows.
   for (const s of steps) s.plainTitle = contentTitle(s)
+  // A conditional input nobody saved (U28): the step names it, and the lane
+  // engine keeps the step short of Completed and Ready to enforce until a Save.
+  for (const s of steps) {
+    const unsaved = unsavedInputsOf(s.id, mapping)
+    if (unsaved.length > 0) s.unsavedInputs = unsaved
+  }
   annotateStateReasons(steps)
   // Static rules on the tenant's own policy JSON (prompt 48 item 5): the ones a
   // plan cannot fix by itself surface as Housekeeping.

@@ -1,0 +1,156 @@
+// B1: the engine's states for policies already On, the Decision substatus, the
+// threshold sentence and the conditional-input gate (RUN-CONTEXT-B decisions 6, 7,
+// 8, 9, 17; U11, U19, U20, U21, U22, U28). The engine over the real graph first,
+// then the demo's own plans as the Plan reads them.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import data from '../../actionability/dependency-data.json' with { type: 'json' }
+import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
+import { buildGraph, deriveLane } from '../../actionability/lanes.ts'
+import type { ConditionState, PrerequisiteState, StepObservation, TenantState } from '../../actionability/lanes.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { applyStepDecisions } from '../../roadmap/decisions.ts'
+import { QUESTION_STEP, answerKey, questionLabels, unsavedInputsOf } from '../../roadmap/answers.ts'
+import { driftOutcomeOf } from '../../roadmap/tracking.ts'
+import { policyResult } from '../../roadmap/operations.ts'
+import type { Step } from '../../roadmap/types.ts'
+import type { TenantSnapshot } from '../../graph/collect/types.ts'
+import { stepSnapshotsOf } from '../../testing/stepSnapshots.ts'
+import { laneReadings } from './planLanes.ts'
+import { readinessOf, stepContract } from './stepContract.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { correctionFieldsOf, packageStateOf, plannedOperationsOf, safeCorrectionOf } from './stepPackage.ts'
+
+const graph = buildGraph(data as DependencyData)
+const LEGACY = 's-goal-block-legacy-auth'
+
+/** Every other step complete, every condition not applicable, every non-step prerequisite resolved: the reading depends on the one step. */
+function tenant(steps: Record<string, StepObservation>): TenantState {
+  const all: Record<string, StepObservation> = {}
+  for (const s of data.steps) all[s.id] = { complete: true }
+  const conditions: Record<string, ConditionState> = {}
+  for (const c of data.conditions) conditions[c.name] = 'not-applicable'
+  const prerequisites: Record<string, PrerequisiteState> = {}
+  for (const e of data.edges) if (e.prerequisiteKind !== 'step') prerequisites[e.prerequisite] = 'resolved'
+  return { steps: { ...all, ...steps }, conditions, prerequisites }
+}
+const read = (steps: Record<string, StepObservation>, id = LEGACY): string => {
+  const r = deriveLane(id, graph, tenant(steps))
+  return [r.lane, r.substatus].filter(Boolean).join(' · ')
+}
+
+const ENFORCED: StepObservation = { exists: true, evidenceSatisfied: true, enforced: true }
+
+test('U20/U21 engine: an enforced policy as pinned is Completed, a drifted one is Ready · Correct, and report-only still observes', () => {
+  assert.equal(read({ [LEGACY]: ENFORCED }), 'Completed')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, gates: [{ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null }] } }), 'Completed', 'a threshold on a policy already On is informational, never a gate')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true } }), 'Ready · Correct')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceMapping', id: 'sourceMapping:62d67e66' }] } }), 'Ready · Correct', 'an unmapped reference does not hold correcting a policy that is On')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceConflict', id: 'sourceConflict:test' }] } }), 'On Hold', 'a contradictory baseline still holds it')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'fact', id: 'fact:group' }] } }), 'On Hold', 'a tenant fact the scan could not read still holds it')
+  assert.equal(read({ [LEGACY]: { exists: true } }), 'Ready · Observing')
+})
+
+test('U28 engine: an unsaved conditional input keeps a policy short of Completed and of Ready to enforce', () => {
+  const unsaved = ['Mail-sending devices']
+  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: true } }), 'Ready · Ready to enforce', 'the premise: nothing else stands in the way')
+  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: true, unsaved } }), 'Ready · Observing')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, complete: true, unsaved } }), 'Ready · Observing', 'delivered by the scan, and still not Completed')
+})
+
+const demo = fixture('demo')
+const demoRun = runFixture(demo, {}, null, demo.snapshot.asOf)
+const week2 = fixture('demo-week2')
+const answered: Fixture = { ...week2, mapping: applyStepDecisions(week2.mapping, week2.decisions) }
+
+const ctxOf = (f: Fixture, run: ReturnType<typeof runFixture>, snapshot: TenantSnapshot): StepVarContext =>
+  ({ snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, reportOnlyAt: null })
+const stepOf = (run: ReturnType<typeof runFixture>, id: string): Step => {
+  const s = run.steps.find((x) => x.id === id)
+  assert.ok(s, `${id} is not on the plan`)
+  return s
+}
+
+test('U21: on the demo Initial scan every enforced policy that drifted reads Ready · Correct', () => {
+  const readings = laneReadings(demoRun.steps)
+  const drifted = demoRun.steps.filter((s) => s.state.lifecycle === 'enforced' && s.status !== 'done')
+  assert.deepEqual(drifted.map((s) => s.id).sort(), ['s-goal-block-device-code', LEGACY, 's-goal-mfa-all-users'], 'the premise')
+  for (const s of drifted) {
+    assert.notEqual(driftOutcomeOf(s), null, `${s.id}: the tracker reads no drift`)
+    const r = readings.get(s.id)
+    assert.equal([r?.lane, r?.substatus].join(' · '), 'Ready · Correct', s.id)
+  }
+})
+
+test('U20: on the demo Follow-up scan with its saved answers every enforced policy with no drift reads Completed; report-only still observes', () => {
+  const run = runFixture(answered, {}, null, answered.snapshot.asOf)
+  const readings = laneReadings(run.steps)
+  const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
+  assert.ok(enforced.length >= 5, 'the premise: week two enforces the first policies')
+  for (const s of enforced) {
+    assert.equal(driftOutcomeOf(s), null, `${s.id}: the premise, no drift`)
+    assert.equal(readings.get(s.id)?.lane, 'Completed', s.id)
+  }
+  const intune = readings.get('s-goal-intune-enrollment-reauth')
+  assert.equal([intune?.lane, intune?.substatus].join(' · '), 'Ready · Observing')
+})
+
+test('U28: a step whose conditional input nobody saved does not read Completed even when the scan delivers it; a Save clears it', () => {
+  const run = runFixture(week2, {}, null, week2.snapshot.asOf)
+  const legacy = stepOf(run, QUESTION_STEP.mailDevices)
+  const label = questionLabels(legacy.id).decision
+  assert.ok(label)
+  assert.deepEqual([legacy.status, legacy.state.lifecycle], ['done', 'enforced'], 'the premise: everything else is met')
+  assert.deepEqual(legacy.unsavedInputs, [label])
+  const r = laneReadings(run.steps).get(legacy.id)
+  assert.notEqual(r?.lane, 'Completed')
+  assert.notEqual(r?.substatus, 'Ready to enforce')
+  // The answer that changes nothing, saved, is still an answer.
+  assert.deepEqual(unsavedInputsOf(legacy.id, { questionAnswers: { [answerKey(legacy.id, label)]: 'No' } }), [])
+  assert.equal(stepOf(runFixture(answered, {}, null, answered.snapshot.asOf), legacy.id).unsavedInputs, undefined)
+})
+
+test('U19: an enforced block policy missing the exclusions group is Partial even where Foundation A will not write the whole policy; a group taken out is not', () => {
+  const step = stepOf(demoRun, LEGACY)
+  assert.equal(step.state.lifecycle, 'enforced')
+  assert.equal(policyResult(step).kind, 'unavailable', 'the premise: the whole policy cannot be written')
+  const op = plannedOperationsOf(step)[0]
+  const rows = (demo.snapshot.config.caPolicies?.rows ?? []) as Record<string, unknown>[]
+  const missing = rows.map((r) => {
+    if (r.id !== op.policyId) return r
+    const conditions = r.conditions as { users: Record<string, unknown> } & Record<string, unknown>
+    return { ...r, conditions: { ...conditions, users: { ...conditions.users, excludeGroups: [] } } }
+  })
+  const snapshot = { ...demo.snapshot, config: { ...demo.snapshot.config, caPolicies: { ...demo.snapshot.config.caPolicies!, rows: missing } } } as TenantSnapshot
+  assert.deepEqual(correctionFieldsOf(step, snapshot), ['conditions.users.excludeGroups'])
+  assert.equal(safeCorrectionOf(step, snapshot), true)
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, snapshot)), snapshot), 'partial')
+  // As the demo stands the update swaps the tenant's own excluded group out: that can lock someone out, so it stays planned work.
+  assert.equal(safeCorrectionOf(step, demo.snapshot), false)
+  assert.equal(packageStateOf(step, stepContract(step, ctxOf(demo, demoRun, demo.snapshot)), demo.snapshot), 'blocked')
+})
+
+test('U22: the threshold tile states the fact on an enforced policy and the gate on one not yet enforced', () => {
+  const note = (step: Step): string | null => {
+    const r = readinessOf(step, stepContract(step, ctxOf(demo, demoRun, demo.snapshot)))
+    return [...r.tiles, ...r.satisfied].find((t) => t.key === 'gate')?.note ?? null
+  }
+  const mfa = stepOf(demoRun, 's-goal-mfa-all-users')
+  assert.equal(mfa.state.lifecycle, 'enforced')
+  assert.equal(note(mfa), `${mfa.action.readinessGate!.value} of people in scope have a qualifying method.`)
+  const admins = stepOf(demoRun, 's-goal-admins-phishing-resistant')
+  const gate = admins.action.readinessGate!
+  assert.equal(admins.state.lifecycle, 'report-only')
+  assert.equal(note(admins), `admin readiness is ${gate.value} today; enforcement waits for ${gate.threshold}.`)
+  const on = { ...admins, state: { ...admins.state, lifecycle: 'enforced' } } as Step
+  assert.equal(note(on), `${gate.value} of admins have a qualifying method.`)
+})
+
+test('U11: the demo Devices step reads Ready · Decision; the bar keeps its sentence', () => {
+  const s = stepSnapshotsOf('demo')['s-prereq-device-plan']
+  assert.equal(s.substatus, 'Decision')
+  assert.equal(s.badge, 'Ready · Decision')
+  assert.equal(s.bar, 'Needs a decision')
+})

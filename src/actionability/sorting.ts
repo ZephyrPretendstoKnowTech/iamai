@@ -41,8 +41,8 @@ export function unlockCounts(graph: Graph, options: UnlockOptions = {}): UnlockC
 
 export type LaneRow = { id: string; result: LaneResult }
 
-const ACTIONABLE: readonly Substatus[] = ['Create', 'Correct', 'Needs decision', 'Ready to enforce']
-const UNLOCKING: readonly Substatus[] = ['Needs decision', 'Create', 'Correct']
+const ACTIONABLE: readonly Substatus[] = ['Create', 'Correct', 'Decision', 'Ready to enforce']
+const UNLOCKING: readonly Substatus[] = ['Decision', 'Create', 'Correct']
 
 function iamaiOrder(graph: Graph, id: string): number | null { return graph.steps.get(id)?.iamaiOrder ?? null }
 

@@ -600,7 +600,7 @@
         "$comment": "The Ready lane's substatus words (A1b, decision 11), keyed by the engine's own literal (planBoard.ts SUBSTATUS_WORD).",
         "create": "Create",
         "correct": "Correct",
-        "needsDecision": "Needs decision",
+        "needsDecision": "Decision",
         "observing": "Observing",
         "readyToEnforce": "Ready to enforce"
       },
@@ -1281,6 +1281,14 @@
             "hardeningDeferred": "Hardening deferred"
           },
           "foundReadiness": "{measure} is {value} today; enforcement waits for {threshold}.",
+          "foundReadinessEnforced": "{value} of {scope} have a qualifying method.",
+          "readinessScope": {
+            "$comment": "Who a readiness measure counts, by its family (copy/reasons.ts READINESS_MEASURE), in the enforced policy's informational threshold sentence (U22).",
+            "mfa": "people in scope",
+            "guest": "guests in scope",
+            "admin": "admins",
+            "device": "people in scope"
+          },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",

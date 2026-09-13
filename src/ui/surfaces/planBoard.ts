@@ -47,7 +47,7 @@ const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' 
 export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
   Create: LANE_WORDS.substatus.create,
   Correct: LANE_WORDS.substatus.correct,
-  'Needs decision': LANE_WORDS.substatus.needsDecision,
+  Decision: LANE_WORDS.substatus.needsDecision,
   Observing: LANE_WORDS.substatus.observing,
   'Ready to enforce': LANE_WORDS.substatus.readyToEnforce,
 }

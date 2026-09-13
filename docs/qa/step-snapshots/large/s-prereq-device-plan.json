@@ -1,11 +1,11 @@
 {
   "lane": "Ready",
-  "substatus": "Needs decision",
+  "substatus": "Decision",
   "reason": "until phones and computers are decided",
   "fact": null,
-  "badge": "Ready · Needs decision",
+  "badge": "Ready · Decision",
   "bar": "Needs a decision",
-  "rail": "Ready · Needs decision",
+  "rail": "Ready · Decision",
   "headings": [
     "Why",
     "Readiness",
