@@ -109,7 +109,7 @@ test('Use Separate Accounts for Admin Work draws its per-person checklist as one
   const b = stepBodyOf(step, ctx)
   assert.ok(headingsOf(b).includes(CONTRACT.implementation.heading), headingsOf(b).join(' · '))
   // Entra carries the checklist; AI Info describes it (B10 P1-4).
-  assert.deepEqual(b.artifacts.map((a) => a.id), ['portal', 'ai'])
+  assert.deepEqual(b.artifacts.filter((a) => !a.unavailable).map((a) => a.id), ['portal', 'ai'])
   const text = b.artifacts[0].text()
   for (const line of ['cloud-only account', 'Roles and administrators', 'https://aka.ms/mysecurityinfo', 'Keep mail, Teams and files on the everyday account']) assert.ok(text.includes(line), `missing: ${line}`)
 })

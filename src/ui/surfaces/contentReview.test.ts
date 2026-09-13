@@ -21,6 +21,7 @@ import { laneReadings } from './planLanes.ts'
 import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepBodyOf } from './stepBody.ts'
+import { fillText } from '../../content/render.ts'
 import type { StepBody } from './stepBody.ts'
 
 /** Every step's body on a fixture, as the Plan composes it (readinessWords.test.ts, stepSnapshots.ts). */
@@ -191,4 +192,26 @@ test('D1: the Managed Device Done when names no shared-device exception', () => 
     }
   }
   assert.ok(lines > 0)
+})
+
+test('D2: every step draws every implementation channel; one without content says so and offers nothing to copy', () => {
+  const unavailable = fillText(CONTRACT.implementation.channelUnavailable, { address: 'feedback@getiamai.com' })
+  assert.equal(unavailable, 'Content could not be loaded — report this at feedback@getiamai.com')
+  let steps = 0
+  let missing = 0
+  for (const name of ['demo', 'mid'] as const) {
+    for (const [id, b] of bodiesOf(fixture(name))) {
+      assert.equal(b.showImplementation, true, `${name}/${id}: the Implementation region is hidden`)
+      assert.deepEqual(b.artifacts.map((a) => a.id), ['portal', 'ps', 'json', 'ai', 'email'], `${name}/${id}: a channel is suppressed`)
+      for (const a of b.artifacts.filter((x) => x.unavailable)) {
+        assert.equal(a.text(), unavailable, `${name}/${id}: ${a.id} without content says something else`)
+        missing += 1
+      }
+      steps += 1
+    }
+  }
+  assert.ok(steps > 20 && missing > 0, `steps ${steps}, channels without content ${missing}`)
+  const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  assert.match(src, /const copyable = preview === null && active !== null && active\.unavailable !== true/, 'a channel with no content can be copied')
+  assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
 })

@@ -43,7 +43,8 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
   return out
 }
 
-const tabs = (b: StepBody | undefined): string[] => (b ? channelTabsOf(b.artifacts).map((t) => String(t.label)) : [])
+/** The channels with content. Every channel is a tab (content review D2); one without content says so. */
+const tabs = (b: StepBody | undefined): string[] => (b ? channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)) : [])
 const named = (name: FixtureName) => bodiesOf(fixture(name))
 
 test('P0-1: an enforced policy held by the unanswered exclusions question draws its correction as a planning preview', () => {
@@ -70,7 +71,7 @@ test('P0-3: Copy is drawn on a planning preview, not offered, with the values st
   assert.ok(group?.previewNote, 'the exclusions group is a planning preview')
   assert.ok(group.previewNote.lines.some((l) => /^Values still to resolve: /.test(l)), group.previewNote.lines.join(' | '))
   // One control, inline and in the viewer: always drawn, disabled on a preview, titled with the preview's lines.
-  assert.match(CONTENT_STEP, /const copyReason = copyable \? W\.copy : \(preview\?\.lines\.join\(' '\) \?\? W\.copy\)/)
+  assert.match(CONTENT_STEP, /const copyReason = copyable \? W\.copy : active\?\.unavailable \? active\.text\(\) : \(preview\?\.lines\.join\(' '\) \?\? W\.copy\)/)
   assert.match(CONTENT_STEP, /title=\{copyReason\}/)
   assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
   assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2)
@@ -89,7 +90,7 @@ test('P0-4: PowerShell and JSON render on Conditional Access policy steps only',
 test('P0-6: the baseline-conflict step says there is not enough information, and offers no channel', () => {
   const conflict = [...named('demo').values()].find((b) => b.contract.state.condition === 'baseline-conflict')
   assert.ok(conflict, 'the demo has a baseline-conflict step')
-  assert.deepEqual(conflict.artifacts, [])
+  assert.ok(conflict.artifacts.length === 5 && conflict.artifacts.every((a) => a.unavailable === true), 'the conflict step offers a channel with content')
   assert.equal(conflict.empty.title, 'Not enough information to provide implementation guidance.')
   assert.equal(conflict.empty.text, 'The baseline defines this policy two ways; resolve the conflict before implementation is available.')
 })

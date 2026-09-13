@@ -49,8 +49,9 @@ test('the Admin Portal source conflict shows its review, its source date, the co
   // The page draws the review note and the source line even where there is nothing to implement.
   // The opened step's body spans the component and stepBody.ts (A3): the decisions read there.
   const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8') + readFileSync('src/ui/surfaces/stepBody.ts', 'utf8')
-  const empty = src.slice(src.indexOf('<ImplementationEmptyBox empty={empty} />'), src.indexOf(') : (', src.indexOf('<ImplementationEmptyBox empty={empty} />')))
-  assert.match(empty, /notes\.map/, 'the review note is drawn only beside artifacts')
+  // Every channel is a tab (content review D2), so the review note stands over the tabs whether or not any has content.
+  assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
+  assert.match(src, /data-empty=\{empty\.key\}>[\s\S]*?\{notes\.length > 0 && \(\n\s*<div className="impl-planning" data-review="true">/, 'the review note is drawn only beside artifacts')
   assert.match(src, /reviewedPackageFor\(step\)/, 'a set-aside package lost its source line')
 })
 

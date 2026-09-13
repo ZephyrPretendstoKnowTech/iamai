@@ -23,6 +23,12 @@
       "state": "Not established"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
   "when": "—"
 }

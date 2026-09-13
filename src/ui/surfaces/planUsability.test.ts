@@ -268,12 +268,12 @@ test('a blocked policy with authored implementation shows its planning preview w
   assert.equal(planningPreview(pkg, done.step, done.c, done.f.snapshot, mb, mrt, run), null, 'an executable step was shown as a preview')
 })
 
-test('a decision or check with nothing to implement by design draws no Implementation region; a policy step keeps one', () => {
+test('every step draws its Implementation region, a decision and a check included (content review D2)', () => {
   const { f, step, c } = opened('demo', 's-prereq-device-plan')
   assert.equal(plannedPackageStateOf(step, c, f.snapshot), null)
   assert.equal(c.policy, false, 'a decision step is read as a policy')
   assert.equal(opened('demo', 's-goal-device-registration-mfa').c.policy, true)
-  assert.match(CONTENT_STEP, /const showImplementation = artifacts\.length > 0 \|\| contract\.policy/)
+  assert.match(CONTENT_STEP, /const showImplementation = true/)
   assert.match(CONTENT_STEP, /\{showImplementation && \(\n\s*<Implementation/)
 })
 

@@ -27,6 +27,12 @@
       "state": "Create or Correct Exclusions Group"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
   "when": "—"
 }
