@@ -398,19 +398,13 @@ function diffContract(label, c, d) {
   for (const s of d.longSentences) add('P1', `${label}: sentence over ${RULES.sentenceMaxWords} words: "${s.slice(0, 90)}…"`)
 }
 
-/** The people a row or a lead counts: a leading number; a row may also read No user impact or Configuration only (0) or two short names; null otherwise (Not established is no count). */
-function countOf(text, { names = false } = {}) {
+/** The people a row or a lead counts: a leading number; a row may also read No user impact or Configuration only (0); null otherwise (Not established is no count, and a row never names people). */
+function countOf(text, { row = false } = {}) {
   const t = (text || '').trim()
   const m = /^(\d+)\b/.exec(t)
   if (m) return Number(m[1])
-  if (!names) return null
-  if (/^(no user impact|configuration only)/i.test(t)) return 0
-  if (/^not established/i.test(t)) return null
-  // A row names people only when two or fewer fit in 28 characters; a sentence is not a name list.
-  const head = t.split(' · ')[0]
-  if (!head || /[:.]$/.test(head) || head.length > 28) return null
-  const parts = head.split(/, | and /)
-  return parts.length <= 2 ? parts.length : null
+  if (row && /^(no user impact|configuration only)/i.test(t)) return 0
+  return null
 }
 
 /** The invariants over one capture's text. */
@@ -1247,7 +1241,7 @@ async function walkFixture(fx) {
         const rowWho = await evaluate(`((() => { const r = ${byTitle} || document.querySelectorAll('main.page .plan-row')[${rowLocal[i]}]; return r ? ((r.querySelector('.who') || {}).textContent || '') : '' })())`)
         const bodyLines = bodyText.split('\n').map((x) => x.trim()).filter(Boolean)
         const leadAt = bodyLines.indexOf('Who this touches')
-        const rowCount = countOf(rowWho, { names: true })
+        const rowCount = countOf(rowWho, { row: true })
         const leadCount = leadAt >= 0 ? countOf(bodyLines[leadAt + 1] || '') : null
         if (rowCount !== null && leadCount !== null && rowCount !== leadCount) add('P0', `${slabel}: the row says ${rowCount} and the step's lead says ${leadCount} (one population per step)`)
         // The opened step's title is its header's, and the header is beside the

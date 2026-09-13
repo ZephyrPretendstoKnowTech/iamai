@@ -10,7 +10,7 @@ import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 
-export function rowWho(step: Step, nameOf: (id: string) => string): string {
+export function rowWho(step: Step): string {
   // Who the row names is who the step's own policies name (derive/population.ts
   // reached), never the population the goal handed it. The gap beside it is the
   // goal's coverage and stays the goal's: "3 people · covers 1 of 4 active".
@@ -26,6 +26,6 @@ export function rowWho(step: Step, nameOf: (id: string) => string): string {
   const gap = step.gapShort ?? step.gap ?? null
   // An empty reach is a fact: a policy that reaches nobody has no user impact; a
   // step with no policy of its own changes configuration.
-  const head = whoLine(pop, nameOf, gap === REPORT_ONLY_GAP ? null : gap, effectsOf(step) === null ? IMPACT.configurationOnly : IMPACT.noUserImpact)
+  const head = whoLine(pop, gap === REPORT_ONLY_GAP ? null : gap, effectsOf(step) === null ? IMPACT.configurationOnly : IMPACT.noUserImpact)
   return step.lockout ? `${head} · ${fillText(app.plan.lockoutSuffix, { n: step.lockout })}` : head
 }

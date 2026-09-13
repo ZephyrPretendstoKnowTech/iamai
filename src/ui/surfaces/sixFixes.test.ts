@@ -154,19 +154,18 @@ test("(6) a strength policy's row carries its lockout count in the who-column wh
   const notReady = r.viability.filter((v) => admins.has(v.userId) && !bg.has(v.userId) && v.activity === 'active' && v.readiness.state !== 'ready').map((v) => v.userId)
   assert.ok(typeof s.lockout === 'number' && s.lockout > 0, 'the premise: the policy would stop somebody')
   assert.ok(s.lockout <= notReady.length, `${s.lockout} stopped and ${notReady.length} not Ready`)
-  const nameOf = (id: string): string => r.input.names!.label(id)
-  const who = rowWho(s, nameOf)
+  const who = rowWho(s)
   // The who-line, its gap clause when the row has one, then the lockout count. A
   // gap that only restates the state ("report-only, not enforced") is not impact:
   // the row's status word already says it (rowWho.ts).
   const gap = s.gapShort ?? s.gap ?? null
-  assert.equal(who, `${whoLine(s.population, nameOf, gap === REPORT_ONLY_GAP ? null : gap)} · ${s.lockout} would be stopped`)
+  assert.equal(who, `${whoLine(s.population, gap === REPORT_ONLY_GAP ? null : gap)} · ${s.lockout} would be stopped`)
   assert.ok(!who.includes(REPORT_ONLY_GAP), 'the Impact column restates the state')
   assert.match(who, new RegExp(`^${s.population.active} people · .*${s.lockout} would be stopped$`))
   // Zero: no suffix. The block policies carry none.
   const block = r.steps.find((x) => x.goalId === 'block-legacy-auth')!
   assert.equal(block.lockout, undefined)
-  assert.ok(!/without a passkey/.test(rowWho(block, (id) => r.input.names!.label(id))))
+  assert.ok(!/without a passkey/.test(rowWho(block)))
   const none = { ...s, lockout: 0 }
-  assert.ok(!/without a passkey/.test(rowWho(none, (id) => r.input.names!.label(id))))
+  assert.ok(!/without a passkey/.test(rowWho(none)))
 })

@@ -38,8 +38,9 @@ test('GetIAMAI: the strip, the campaign lead, its who column and Today\'s active
   assert.deepEqual(numbers, { strip: 2, lead: 2, who: 2, today: 2 }, JSON.stringify(numbers))
   assert.ok(lead.startsWith('2 active people'), lead)
   assert.equal(today.facts.active + footerParts(today.facts).reduce((n, p) => n + Number(p.text.match(/^(\d+)/)?.[1]), 0), today.facts.accounts, 'the footer names everyone the 2 active people leave out')
-  const whoText = rowWho(campaign, nameOf)
-  for (const id of who) assert.ok(whoText.includes(nameOf(id)) || /2 people/.test(whoText), `${whoText} covers ${nameOf(id)}`)
+  const whoText = rowWho(campaign)
+  assert.match(whoText, /^2 people( · |$)/, 'the who column counts the two people')
+  for (const id of who) assert.equal(whoText.includes(nameOf(id)), false, `${whoText} names ${nameOf(id)}; a row counts people and never names them`)
   // The signed-in account is a person like any other: on every screen when the directory says it is active, on none otherwise.
   const row = today.rows.find((x) => x.user.id === f.operatorId)!
   assert.ok(row && row.kind === 'person', 'the operator has a row')

@@ -12,7 +12,6 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { fillText } from '../content/render.ts'
 
 test('the row and the step body read the same population, for every step on every fixture', () => {
-  const nameOf = (id: string): string => id
   for (const f of allFixtures()) {
     for (const s of runFixture(f).steps) {
       // One source for both: the people the step is about (reached) — its own
@@ -26,7 +25,7 @@ test('the row and the step body read the same population, for every step on ever
       assert.ok(pop !== null)
       assert.equal(pop.active, affectedIds(of).length, `${f.name} ${s.id}: active count`)
       assert.ok(pop.enabledCovered >= pop.active, `${f.name} ${s.id}: enabledCovered is at least active`)
-      const who = whoLine(of, nameOf)
+      const who = whoLine(of)
       const m = who.match(/^(\d+) (?:person|people)/)
       if (m) assert.equal(Number(m[1]), pop.active, `${f.name} ${s.id}: the row who-line count is the population's active count`)
       const line = populationLine(of)
@@ -54,9 +53,10 @@ test('on the demo and GetIAMAI, every row count equals its step lead count, and 
         assert.equal(ex.n, undefined, `${name} ${s.id}: an unsettled scope names no count`)
         continue
       }
-      const row = whoLine(of, nameOf)
-      const m = row.match(/^(\d+) (?:person|people|accounts?)/)
-      const rowCount = m ? Number(m[1]) : /^(No user impact|Configuration only)/.test(row) ? 0 : row.split(' · ')[0].split(/, | and /).length
+      const row = whoLine(of)
+      const m = row.match(/^(\d+) (?:person|people)/)
+      assert.ok(m !== null || row === 'No user impact', `${name} ${s.id}: the row counts people and never names them (${row})`)
+      const rowCount = m ? Number(m[1]) : 0
       assert.equal(rowCount, view.active, `${name} ${s.id}: the row's count is the population's (${row})`)
       assert.equal(ex.n, view.active, `${name} ${s.id}: the lead's {n}`)
       assert.equal(ex.active, view.active, `${name} ${s.id}: the lead's {active}`)
