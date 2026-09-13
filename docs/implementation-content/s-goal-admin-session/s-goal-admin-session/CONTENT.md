@@ -8,7 +8,12 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+This policy already exists and is enforced. The correction adds the exclusions group.
+
+1. Go to Entra admin center → Conditional Access → Policies.
+2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
+3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
+4. Verify the session controls match the baseline: Sign-in frequency enabled, set to the baseline's interval. Persistent browser session: set to Never persistent.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -24,7 +29,8 @@ Rename the same stable policy to **{{policy.target.displayName}}** only when nam
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.
+5. Save. Do not change the policy state (leave it On).
+6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -115,9 +121,13 @@ Review the proposed **Shorten Admin Sessions** implementation for {{tenant.displ
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+This policy shortens how long an admin's session stays valid. After the sign-in frequency interval, the admin is prompted to re-authenticate.
 
-Policy {{policy.current.id}} has these mismatches for **Shorten Admin Sessions**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.
+This protects against token theft: even if an attacker steals an admin's session token, it expires quickly. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have.
+
+The correction on this step adds the exclusions group so emergency access accounts are not affected by the session limit.
+
+The persistent browser session control ensures admin sessions are not remembered across browser closures.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

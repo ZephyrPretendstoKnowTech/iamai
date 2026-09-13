@@ -66,6 +66,7 @@
   ],
   "optionalBindings": [
     "tenant.displayName",
+    "policy.current.displayName",
     "policy.current.state",
     "evidence.reportOnly",
     "evidence.adminSessions",

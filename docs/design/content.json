@@ -4007,7 +4007,7 @@
       "kind": "policy",
       "title": "Shorten Admin Sessions",
       "changeLine": null,
-      "why": "A stolen admin session is worth as long as it lasts; {wanted} is long enough to work and short enough to limit the damage.",
+      "why": "A stolen admin session stays useful as long as it lasts. A short session limits the damage: an attacker who steals the token has minutes, not hours.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
