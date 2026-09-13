@@ -202,14 +202,22 @@ export function trackableSteps(steps: Step[]): Step[] {
   return steps.filter((s) => s.status !== 'skipped')
 }
 
+/**
+ * Finished: done, with no conditional input nobody has saved. A delivered policy
+ * whose mail-device or partner question was never answered is watched until the
+ * Save (U28, RUN-CONTEXT-B decision 17): the Plan's Completed lane does not hold
+ * it (actionability/lanes.ts isComplete), so no count of finished steps may.
+ */
+const finished = (s: Step): boolean => s.status === 'done' && (s.unsavedInputs ?? []).length === 0
+
 /** Steps that are finished, over the trackable set. */
 export function doneSteps(steps: Step[]): Step[] {
-  return trackableSteps(steps).filter((s) => s.status === 'done')
+  return trackableSteps(steps).filter(finished)
 }
 
-/** Steps still to do: trackable, not done. The set "Do this next" draws from. */
+/** Steps still to do: trackable, not finished. The set "Do this next" draws from. */
 export function outstandingSteps(steps: Step[]): Step[] {
-  return trackableSteps(steps).filter((s) => s.status !== 'done')
+  return trackableSteps(steps).filter((s) => !finished(s))
 }
 
 /**

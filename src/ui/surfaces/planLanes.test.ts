@@ -62,7 +62,8 @@ test('every row lands in exactly one lane, delivered work is Completed and skipp
       }
       assert.ok(v, `${f.name}/${s.id}: no lane`)
       assert.ok(LANE_ORDER.includes(v.lane), `${f.name}/${s.id}: ${v.lane}`)
-      if (s.status === 'done') assert.equal(v.lane, 'Completed', `${f.name}/${s.id}: delivered work is ${v.lane}`)
+      // Delivered work with a conditional input nobody saved is watched until the Save, never Completed (U28).
+      if (s.status === 'done') assert.deepEqual([v.lane, v.substatus], (s.unsavedInputs ?? []).length > 0 ? ['Ready', 'Observing'] : ['Completed', null], `${f.name}/${s.id}: delivered work is ${v.lane}`)
       if (s.status === 'skipped') assert.equal(v.lane, 'Deferred', `${f.name}/${s.id}: skipped work is ${v.lane}`)
       if (v.lane === 'Completed') assert.equal(s.status, 'done', `${f.name}/${s.id}: Completed holds a step the plan has not finished`)
       if (v.lane === 'Ready') assert.notEqual(v.substatus, null, `${f.name}/${s.id}: Ready without a substatus`)
@@ -119,6 +120,15 @@ test('a step the plan cannot act on is never Ready: pending mappings, conflicts 
       const reason = s.kind === 'create' || s.kind === 'adjust' ? unavailableReason(s) : null
       const pending = (s.action.missing ?? []).some((m) => m.decision || m.unreadable)
       if (pending || s.state.condition === 'baseline-conflict' || reason === 'unmatched-pair' || reason === 'no-operation') {
+        // Except an enforced policy held only by a reference nobody has mapped: it is
+        // corrected next, Ready · Correct (B1, RUN-CONTEXT-B decision 6). A conflict or
+        // an unmatched pair still holds it.
+        const enforcedCorrect = pending && s.state.lifecycle === 'enforced' && s.state.condition !== 'baseline-conflict' && reason !== 'unmatched-pair'
+        if (enforcedCorrect && v.lane === 'Ready') {
+          assert.equal(v.substatus, 'Correct', `${f.name}/${s.id}: an enforced policy the mapping names reads Ready · ${v.substatus}`)
+          checked += 1
+          continue
+        }
         assert.equal(v.lane, 'On Hold', `${f.name}/${s.id}: ${v.lane} while nothing can be done on it`)
         checked += 1
       }

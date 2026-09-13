@@ -120,6 +120,13 @@ test('S4: each policy naming an unmapped reference is On Hold with the reason, a
         assert.ok(step.status !== 'done', `${name}/${id} is open work, not a policy already in place`)
         const reading = readings.get(id)
         assert.ok(reading, `${name}/${id} has a lane`)
+        // An enforced policy that drifted is corrected next; a reference nobody has
+        // mapped does not hold bringing the rest of it back (B1, RUN-CONTEXT-B decision 6).
+        if (step.state.lifecycle === 'enforced' && reading.lane === 'Ready') {
+          assert.equal(reading.substatus, 'Correct', `${name}/${id}: an enforced policy the mapping names reads Ready · ${reading.substatus}`)
+          checked += 1
+          continue
+        }
         assert.equal(reading.lane, 'On Hold', `${name}/${id}: ${reading.lane}`)
         // A baseline that contradicts itself binds first (§15 order); every other policy is held by the mapping.
         const conflict = step.state.condition === 'baseline-conflict'
@@ -208,6 +215,12 @@ test('S4: the mapping round-trips — mapped, left out, and taken back — throu
   for (const id of a.stepIds ?? []) {
     const step = stepOf(r2.steps, id)
     if (step.state.condition === 'baseline-conflict') continue
+    // An enforced policy is corrected next rather than held (B1, RUN-CONTEXT-B decision 6); its mapping is pending again all the same.
+    if (step.state.lifecycle === 'enforced' && readings2.get(id)?.lane === 'Ready') {
+      assert.equal(readings2.get(id)?.substatus, 'Correct', `${id}: an enforced policy the mapping names again`)
+      assert.ok(unresolvedSourceMappings(r2.steps).some((x) => (x.stepIds ?? []).includes(id)), `${id}: the mapping is not pending again`)
+      continue
+    }
     assert.equal(readings2.get(id)?.lane, 'On Hold', `${id} is not held again`)
     assert.equal(readings2.get(id)?.reason?.kind, 'sourceMapping', `${id}: held, but not by the mapping`)
   }
