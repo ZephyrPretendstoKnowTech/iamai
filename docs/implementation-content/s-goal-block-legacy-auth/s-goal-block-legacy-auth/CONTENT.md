@@ -9,7 +9,12 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. If it is **On**, move that same policy to **Report-only** before changing any access-affecting assignment or condition. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.
+1. In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.
+2. If the policy is currently On (Enforced), switch it to Report-only before making changes.
+3. Under Conditions → Client apps, confirm only "Exchange ActiveSync clients" and "Other clients" are checked.
+4. Under Users → Include, confirm "All users" is selected.
+5. Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.
+6. Under Grant, confirm "Block access" is selected.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -25,7 +30,8 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Display na
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.
+7. Leave the policy in Report-only.
+8. Click Save, then rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -140,9 +146,7 @@ Review the proposed **Block Legacy Authentication** implementation for {{tenant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
-
-Policy {{policy.current.id}} has these mismatches for **Block Legacy Authentication**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.
+This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -3977,7 +3977,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. If it is **On**, move that same policy to **Report-only** before changing any access-affecting assignment or condition. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.\n"
+          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.\n2. If the policy is currently On (Enforced), switch it to Report-only before making changes.\n3. Under Conditions → Client apps, confirm only \"Exchange ActiveSync clients\" and \"Other clients\" are checked.\n4. Under Users → Include, confirm \"All users\" is selected.\n5. Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.\n6. Under Grant, confirm \"Block access\" is selected.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -4025,7 +4025,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.\n"
+          "text": "7. Leave the policy in Report-only.\n8. Click Save, then rescan in IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -4172,7 +4172,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Legacy Authentication**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.\n"
+          "text": "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.\n"
         },
         "ai.observe": {
           "meta": {
