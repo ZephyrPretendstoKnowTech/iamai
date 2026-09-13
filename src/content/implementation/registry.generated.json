@@ -6511,6 +6511,38 @@
               "ai.create"
             ]
           },
+          "partial": {
+            "mode": "composeByMismatch",
+            "mismatchBinding": "policies.guests.semanticMismatches",
+            "aiInfo": [
+              "ai.correct"
+            ],
+            "mismatches": {
+              "pair.canonical": {
+                "facts": [
+                  "conditions",
+                  "grantControls",
+                  "sessionControls"
+                ],
+                "entra": [
+                  {
+                    "block": "entra.correct-pair"
+                  }
+                ],
+                "json": [
+                  {
+                    "block": "json.target-pair"
+                  }
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectPair"
+                  }
+                ]
+              }
+            }
+          },
           "partnerTrustRequired": {
             "entra": [
               "entra.partner-trust"

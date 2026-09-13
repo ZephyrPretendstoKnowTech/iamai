@@ -1406,6 +1406,14 @@
               "readyToEnforce": "Ready to enforce",
               "none": "Nothing left to do"
             },
+            "results": {
+              "$comment": "A package readiness gate's result as its tile value (stepPackage.ts mergeReadiness). The protocol's words (protocol.ts READINESS_RESULTS) stay the package's; the page says these, so the retired Blocked never renders (B11 P1-7).",
+              "Ready": "Ready",
+              "Review required": "Review required",
+              "Unknown": "Unknown",
+              "Blocked": "Not met",
+              "Not applicable": "Not applicable"
+            },
             "package": {
               "conclusion": "Current conclusion",
               "whyItMatters": "Why it matters",

@@ -53,6 +53,14 @@ test('P0-1: an enforced policy held by the unanswered exclusions question draws 
   assert.equal(legacy.contract.state.lifecycle, 'enforced', 'the premise: the policy is enforced')
   assert.deepEqual(tabs(legacy), ['Entra', 'PowerShell', 'JSON', 'AI Info'])
   assert.ok(legacy.previewNote, 'the held correction is offered as if it could run')
+  // The guests pair too (B11 P0-1): its Partial is composed from the changed
+  // fields, so the registry keeps it. JSON stays withheld: the pair's JSON block
+  // names no request (BLOCKED S8).
+  const guests = bodies.get('s-goal-guests-mfa')
+  assert.ok(guests, 'guests MFA is on the mid plan')
+  assert.equal(guests.contract.state.lifecycle, 'enforced', 'the premise: the pair is enforced')
+  assert.deepEqual(tabs(guests), ['Entra', 'PowerShell', 'AI Info'])
+  assert.ok(guests.previewNote, 'the held pair correction is offered as a planning preview')
   // No empty box, and no content anywhere says "Nothing to submit yet" (decision 5).
   assert.equal(CONTENT.includes('Nothing to submit'), false)
 })

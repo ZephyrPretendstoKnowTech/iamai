@@ -143,6 +143,8 @@ type ContractWords = {
     close: string
     tiles: Record<string, string>
     bar: Record<string, string>
+    /** A package gate's result (protocol.ts READINESS_RESULTS) as the word its tile shows. */
+    results: Record<string, string>
     package: { conclusion: string; whyItMatters: string; unknown: string; references: string }
   }
   implementation: {
@@ -422,10 +424,10 @@ function stageOf(step: Step): string {
 }
 
 /** The reason line an unavailable policy already shows, filled: Foundation A's answer in the operator's words. */
-function reasonLine(step: Step, reason: UnavailableReason, tenant: string): string {
+function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclusionsUnconfirmed = false): string {
   switch (reason) {
     case 'missing-object':
-      return waitingLine(step, tenant)
+      return waitingLine(step, tenant, exclusionsUnconfirmed)
     case 'unmatched-pair':
       return fillText(app.plan.pairUnmatched, { tenant })
     case 'no-operation':
@@ -694,9 +696,9 @@ function fixOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<s
  * enforce anything — then a goal already delivered, then a decision, and only
  * then the lifecycle's own next move.
  */
-function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>): ContractAction {
+function actionOf(step: Step, reason: UnavailableReason | null, milestone: ContractMilestone, tenant: string, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, exclusionsUnconfirmed = false): ContractAction {
   if (step.state.setAside) return { kind: 'restore', text: CONTRACT.setAsideAction }
-  if (reason !== null) return { kind: 'resolve', text: reasonLine(step, reason, tenant) }
+  if (reason !== null) return { kind: 'resolve', text: reasonLine(step, reason, tenant, exclusionsUnconfirmed) }
   if (isPreserved(step)) return { kind: 'preserve', text: app.plan.inPlaceKeep }
   if (step.state.satisfied) return { kind: 'preserve', text: milestone.label }
   if (step.state.condition === 'needs-decision') return { kind: 'decide', text: milestone.label }
@@ -804,7 +806,13 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
   const m = nextMilestone(step)
   const reason = unavailableReason(step)
   const bare: ContractMilestone = { kind: m.kind, label: m.label, at: m.at, gatedBy: m.gatedBy, line: null }
-  const whatToDo = actionOf(step, reason, bare, tenant, cs, ex)
+  // A policy waiting on the exclusions group while the scan found one nobody has
+  // confirmed (B10 P1-6): the action, the bar, the tiles and Fix all ask for the
+  // confirmation, never for a missing object.
+  const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
+  const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
+  const exclusionsUnconfirmed = choice !== null && choice.actionableId === null && choice.candidates.length > 0
+  const whatToDo = actionOf(step, reason, bare, tenant, cs, ex, exclusionsUnconfirmed)
   // A date only where Foundation B has one; nothing here manufactures one, and a
   // label that already carries its date is not given it twice.
   // The Next line says the one thing What to do cannot: when. So it renders only
@@ -819,10 +827,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     ...bare,
     line: m.at === null || whatToDo.text === sentence ? null : carriesDate ? fillText(CONTRACT.next, { label: sentence }) : fillText(CONTRACT.nextOn, { label: sentence, date: absoluteDate(m.at) }),
   }
-  // A policy waiting on the exclusions group while the scan found one nobody has confirmed (B10 P1-6).
-  const waitsOnGroup = (step.action.missing ?? []).some((x) => x.token === '{exclusionsGroup}')
-  const choice = waitsOnGroup ? exclusionsGroupChoice({ snapshot: ctx.snapshot, mapping: ctx.mapping, groups: ctx.groups, directory: ctx.directory }) : null
-  const fix = fixOf(step, cs, ex, choice !== null && choice.actionableId === null && choice.candidates.length > 0)
+  const fix = fixOf(step, cs, ex, exclusionsUnconfirmed)
   const members = membersOf(step)
   const found = foundOf(step, tenant, milestone.line)
   const why = typeof cs?.why === 'string' ? fillText(cs.why, ex) : step.why
@@ -858,7 +863,7 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     existing: existingOf(step),
     implementation: implementationOffered(step)
       ? { offered: true, operations: operationsOf(step).length }
-      : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant) },
+      : { offered: false, reason, hold: policyHold(step), because: reason === null ? null : reasonLine(step, reason, tenant, exclusionsUnconfirmed) },
     scheduledOn: ctx.scheduledOn ?? null,
     schedule: step.scheduled ? scheduleOf(step) : null,
     policy: step.kind === 'create' || step.kind === 'adjust',
