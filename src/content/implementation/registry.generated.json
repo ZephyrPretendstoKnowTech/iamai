@@ -290,6 +290,15 @@
           "dependencies.blockers"
         ],
         "projection": {
+          "missing": {
+            "entra": [
+              "entra.separate"
+            ],
+            "json": [],
+            "powershell": [],
+            "aiInfo": [],
+            "email": []
+          },
           "actionRequired": {
             "entra": [
               "entra.create-and-stage"
@@ -376,6 +385,19 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-privileged-accounts",
+            "authority": "Microsoft Learn",
+            "title": "Securing privileged access accounts",
+            "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-accounts",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
+        "milestone": {
+          "actionText": "Verify admin accounts are separated"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "People who perform directory administration should use a dedicated admin account for privileged work and keep everyday mail/Teams/files on their standard account.",
@@ -383,6 +405,18 @@
         }
       },
       "blocks": {
+        "entra.separate": {
+          "meta": {
+            "id": "entra.separate",
+            "channel": "entra",
+            "states": [
+              "missing"
+            ],
+            "format": "markdown",
+            "kind": "template"
+          },
+          "text": "For each person who holds a directory role and uses that same account for mail or Teams:\n1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.\n2. Register a passkey or security key on the admin account before its first use: sign in as it at https://aka.ms/mysecurityinfo. The admin policies require one.\n3. Move the directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.\n4. Sign in to an admin portal with the admin account and confirm the role works, then remove the role from the everyday account.\n5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.\n"
+        },
         "entra.create-and-stage": {
           "meta": {
             "id": "entra.create-and-stage",
@@ -601,6 +635,16 @@
             "troubleshooting.conflict"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-admin-portals-resource",
+            "authority": "Microsoft Learn",
+            "title": "Targeting Resources in Conditional Access Policies",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -875,6 +919,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-session-howto",
+            "authority": "Microsoft Learn",
+            "title": "Configure adaptive session lifetime policies",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -1459,6 +1513,16 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-admin-phish",
+            "authority": "Microsoft Learn",
+            "title": "Require phishing-resistant multifactor authentication for Microsoft Entra administrator roles",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -2632,6 +2696,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-block-auth-flows",
+            "authority": "Microsoft Learn",
+            "title": "Block authentication flows with Conditional Access policy",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -3208,6 +3282,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-block-auth-flows",
+            "authority": "Microsoft Learn",
+            "title": "Block authentication flows with Conditional Access policy",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -3784,6 +3868,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-block-legacy",
+            "authority": "Microsoft Learn",
+            "title": "Block legacy authentication with Conditional Access",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-legacy-authentication",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -4360,6 +4454,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-block-unsupported-platforms",
+            "authority": "Microsoft Learn",
+            "title": "Block unsupported platforms with Conditional Access",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -5942,6 +6046,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-block-location",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access - Block access by location",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-by-location",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -6456,6 +6570,16 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-b2b-mfa",
+            "authority": "Microsoft Learn",
+            "title": "Tutorial: Multifactor authentication for B2B",
+            "url": "https://learn.microsoft.com/en-us/entra/external-id/b2b-tutorial-require-mfa",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -7792,6 +7916,16 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-mfa-all",
+            "authority": "Microsoft Learn",
+            "title": "Require MFA for all users with Conditional Access",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -10045,6 +10179,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-security-info",
+            "authority": "Microsoft Learn",
+            "title": "Control security information registration with Conditional Access",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "memberStableId": null,
@@ -10630,6 +10774,16 @@
           "readiness": [],
           "troubleshooting": []
         },
+        "verifiedSources": [
+          {
+            "id": "ms-device-compliance-ca",
+            "authority": "Microsoft Learn",
+            "title": "How to Require Device Compliance with Conditional Access",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "reviewedMembers": {
@@ -18772,6 +18926,19 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-network",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access Policy: Using Network Signals",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
+        "impact": {
+          "fallbackLabel": "Country restrictions"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -19107,6 +19274,19 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-strength-custom",
+            "authority": "Microsoft Learn",
+            "title": "Create and Manage Custom Conditional Access Authentication Strengths",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strength-advanced-options",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
+        "impact": {
+          "fallbackLabel": "Authentication strength"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin.",
@@ -19433,6 +19613,19 @@
           "troubleshooting": [
             "troubleshooting.model"
           ]
+        },
+        "verifiedSources": [
+          {
+            "id": "ms-emergency",
+            "authority": "Microsoft Learn",
+            "title": "Manage emergency access admin accounts",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
+        "milestone": {
+          "actionText": "Create and verify two emergency accounts"
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
@@ -19786,6 +19979,12 @@
             "troubleshooting.model"
           ]
         },
+        "impact": {
+          "fallbackLabel": "Device policies"
+        },
+        "milestone": {
+          "actionText": "Decide phones and computers"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "Owner chooses how phone and computer access should be managed; downstream device policies consume that saved decision.",
@@ -19997,6 +20196,16 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-emergency",
+            "authority": "Microsoft Learn",
+            "title": "Manage emergency access admin accounts",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
@@ -20392,6 +20601,9 @@
             "userFacing": true
           }
         ],
+        "impact": {
+          "fallbackLabel": "Passkey settings"
+        },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "Enable the passkey, Microsoft Authenticator, and Temporary Access Pass capabilities needed for the IAMAI baseline without invalidating already-approved security keys.",
@@ -21575,6 +21787,19 @@
           "troubleshooting": [
             "troubleshooting.model"
           ]
+        },
+        "verifiedSources": [
+          {
+            "id": "ms-network",
+            "authority": "Microsoft Learn",
+            "title": "Conditional Access Policy: Using Network Signals",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
+        "impact": {
+          "fallbackLabel": "Trusted network"
         },
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
@@ -23351,6 +23576,16 @@
             "troubleshooting.model"
           ]
         },
+        "verifiedSources": [
+          {
+            "id": "ms-registration-campaign",
+            "authority": "Microsoft Learn",
+            "title": "Run a Registration Campaign to Set Up a Passkey or Microsoft Authenticator",
+            "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign",
+            "checkedOn": "2026-09-12",
+            "userFacing": true
+          }
+        ],
         "baselineAuthority": {
           "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
           "productContract": "Use IAMAI readiness evidence and an Authenticator-targeted registration campaign to reduce MFA enrollment risk before enforcement; admins still receive passkey/security-key remediation separately.",

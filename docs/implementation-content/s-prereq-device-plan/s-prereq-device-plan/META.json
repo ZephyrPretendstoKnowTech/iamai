@@ -108,6 +108,12 @@
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-device-plan",
   "title": "Decide How Devices Are Managed",
+  "impact": {
+    "fallbackLabel": "Device policies"
+  },
+  "milestone": {
+    "actionText": "Decide phones and computers"
+  },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-prereq-device-plan/",
   "sourceFiles": [

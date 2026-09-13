@@ -241,7 +241,9 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // The passkey settings with the method on and a field that differs are missing
   // too: an object step reaches `missing` only (content/implementation/states.ts
   // RUNTIME_REACH), and the package authors one `missingOrPartial` projection.
-  if (step.kind === 'prerequisite') return 'missing'
+  // A check with work outstanding is missing the same way (B8, S-SA-1): what it
+  // checks for is not there yet, and its package's own instructions are the work.
+  if (step.kind === 'prerequisite' || step.kind === 'check') return 'missing'
   return 'blocked'
 }
 

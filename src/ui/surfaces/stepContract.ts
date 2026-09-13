@@ -730,7 +730,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
     // 2026-09-11): what clears the hold is already Fix before continuing's, and
     // Done when is the completion, not a second copy of the blocker.
     if (NO_POLICY_REASONS.has(reason) || (step.kind !== 'create' && step.kind !== 'adjust')) return [doneForReason(step, reason, tenant)]
-    return [fillText(CONTRACT.doneHeldEnd, { tenant })]
+    // The end state is the step's own sentence where its content entry states one
+    // (steps[].doneEnd, B8), else the shared one.
+    return [fillText(typeof cs?.doneEnd === 'string' ? cs.doneEnd : CONTRACT.doneHeldEnd, { tenant })]
   }
   // A step held for review finishes on its own gates *and* on the change being
   // accounted for; the review comes first because until it clears, the gates

@@ -19,9 +19,9 @@ export type StepClass = 'policy' | 'object' | 'other'
 /**
  * The states packageStateOf can return for each kind of step: a policy step
  * (create, adjust) reaches every lifecycle and a correction; a step that makes an
- * object reaches `missing`; any other step — a check, a question, a campaign —
- * reaches only the no-action states. No step reaches `notLicensed`: the runtime
- * never enters it.
+ * object, or a check with work outstanding (B8), reaches `missing`; any other
+ * step — a question, a campaign — reaches only the no-action states. No step
+ * reaches `notLicensed`: the runtime never enters it.
  */
 export const RUNTIME_REACH: Readonly<Record<StepClass, readonly PackageState[]>> = {
   policy: ['missing', 'partial', 'reportOnly', 'readyToEnforce', 'inPlace', 'blocked', 'needsDecision', 'sourceConflict'],
@@ -32,7 +32,7 @@ export const RUNTIME_REACH: Readonly<Record<StepClass, readonly PackageState[]>>
 /** A content step's kind (docs/design/content.json `steps[].kind`) as the class of runtime step it renders. */
 export function stepClassOf(contentKind: string | null | undefined): StepClass {
   if (contentKind === 'policy') return 'policy'
-  if (contentKind === 'object' || contentKind === 'blocker') return 'object'
+  if (contentKind === 'object' || contentKind === 'blocker' || contentKind === 'check') return 'object'
   return 'other'
 }
 

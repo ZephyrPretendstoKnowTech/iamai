@@ -2,6 +2,9 @@
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-trusted-location",
   "title": "Define the Trusted Network",
+  "impact": {
+    "fallbackLabel": "Trusted network"
+  },
   "baseline": "jon-hope-pinned",
   "relationship": "prerequisite",
   "packagePath": "docs/implementation-content/s-prereq-trusted-location/",
@@ -227,6 +230,16 @@
     {
       "id": "ms-ip-update",
       "url": "https://learn.microsoft.com/en-us/graph/api/ipnamedlocation-update?view=graph-rest-1.0"
+    }
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-network",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access Policy: Using Network Signals",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-assignment-network",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
     }
   ],
   "validation": {

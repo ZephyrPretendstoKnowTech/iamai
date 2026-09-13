@@ -33,6 +33,8 @@ export type ContentStep = {
   whatToDo?: Record<string, unknown> | null
   dates?: string | null
   doneWhen?: string[] | null
+  /** A held policy's end state in this step's own words (stepContract.ts doneWhenOf), else the shared one. */
+  doneEnd?: string | null
   ifWrong?: string | null
   lockedOut?: { label: string; steps: string[] } | null
   comms?: Record<string, unknown> | null

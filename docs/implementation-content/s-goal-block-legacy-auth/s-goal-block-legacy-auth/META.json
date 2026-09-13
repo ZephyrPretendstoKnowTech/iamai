@@ -311,6 +311,16 @@
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-conditions"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-block-legacy",
+      "authority": "Microsoft Learn",
+      "title": "Block legacy authentication with Conditional Access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-legacy-authentication",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "implementationCaveats": [],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-block-legacy-auth",

@@ -184,6 +184,9 @@
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-passkey-settings",
   "title": "Set Up Passkeys to Match the Baseline",
+  "impact": {
+    "fallbackLabel": "Passkey settings"
+  },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-prereq-passkey-settings/",
   "sourceFiles": [

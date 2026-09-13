@@ -196,9 +196,22 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/authenticationstrengthpolicy-usage?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-strength-custom",
+      "authority": "Microsoft Learn",
+      "title": "Create and Manage Custom Conditional Access Authentication Strengths",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-strength-advanced-options",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-auth-strength",
   "title": "Create the Baseline's Authentication Strength",
+  "impact": {
+    "fallbackLabel": "Authentication strength"
+  },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-prereq-auth-strength/",
   "sourceFiles": [

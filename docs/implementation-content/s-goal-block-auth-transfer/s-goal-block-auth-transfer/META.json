@@ -317,6 +317,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessconditionset?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-block-auth-flows",
+      "authority": "Microsoft Learn",
+      "title": "Block authentication flows with Conditional Access policy",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-authentication-flows",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "implementationCaveats": [
     {
       "id": "authentication-transfer-preview",

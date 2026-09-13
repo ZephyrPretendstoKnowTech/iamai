@@ -280,6 +280,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-block-unsupported-platforms",
+      "authority": "Microsoft Learn",
+      "title": "Block unsupported platforms with Conditional Access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-unknown-unsupported",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-block-unsupported-platforms",
   "title": "Block Unsupported Device Platforms",

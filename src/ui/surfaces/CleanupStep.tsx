@@ -16,6 +16,7 @@ import { Button } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import { DoneWhen, StepHead, StepSection } from './StepSections.tsx'
 import { HEAD } from './stepHeadings.ts'
+import { CONTRACT } from './stepContract.ts'
 import { cleanupEntry, cleanupVars, cleanupWhen } from './cleanupExport.ts'
 import type { NotAssessedNotes } from './cleanupExport.ts'
 
@@ -75,7 +76,10 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
           )}
         </p>
       </StepSection>
-      <StepSection heading={HEAD.whatToDo}>
+      {/* The row's own instructions are its Implementation (U1; S-RN-2, S-RB-3):
+          no step draws What to do, and the not-assessed notes below stay in this
+          one column under it rather than in an action column. */}
+      <StepSection heading={CONTRACT.implementation.heading}>
         <ol className="sections">{entry.whatToDo.filter(whole).map((l, i) => <li key={i}>{fillText(l, ex)}</li>)}</ol>
       </StepSection>
       {onNote && policies.length > 0 && (

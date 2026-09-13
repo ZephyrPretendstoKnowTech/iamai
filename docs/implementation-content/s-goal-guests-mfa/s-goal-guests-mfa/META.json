@@ -297,6 +297,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-b2b-mfa",
+      "authority": "Microsoft Learn",
+      "title": "Tutorial: Multifactor authentication for B2B",
+      "url": "https://learn.microsoft.com/en-us/entra/external-id/b2b-tutorial-require-mfa",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-guests-mfa",
   "title": "Require MFA for Guests",

@@ -189,6 +189,16 @@
       "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/howto-registration-mfa-sspr-combined"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-registration-campaign",
+      "authority": "Microsoft Learn",
+      "title": "Run a Registration Campaign to Set Up a Passkey or Microsoft Authenticator",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-mfa-registration-campaign",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-verify-mfa",
   "title": "Create and Enforce the MFA Registration Campaign",
