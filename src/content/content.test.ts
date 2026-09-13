@@ -147,7 +147,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.settings.workdaysWith',
   '.steps[12].decision.strict.heading',
   '.steps[12].decision.strict.text',
-  '.steps[12].decision.text',
   '.pages.plan.blocked.emergency',
   '.pages.connect.plan.sample.weeksEstimate',
   // And the same column for a policy whose observation window closed on records

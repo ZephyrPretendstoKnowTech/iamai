@@ -437,7 +437,10 @@ export function renderStep(st: Record<string, any>, title?: string): string {
     // The line over a pre-filled match (content review S2; ContentStep.tsx matchedNote).
     if (d.matchedNote) parts.push(p(d.matchedNote, ex, 'dhelp'))
     if (d.help) parts.push(p(d.help, ex, 'dhelp'))
-    // What its Readiness tile asks to confirm while unsaved (content review S3; stepContract.ts unsavedTiles).
+    // Who the input is for, between its label and its controls (content review S5; ContentStep.tsx).
+    if (d.text) parts.push(p(d.text, ex, 'dhelp'))
+    // Its Readiness tile's label and what it asks to confirm while unsaved (content review S3, S5; stepContract.ts unsavedTiles).
+    if (d.tileLabel) parts.push(p(d.tileLabel, ex, 'dhelp'))
     if (d.tileValue) parts.push(p(d.tileValue, ex, 'dhelp'))
     if (d.location) {
       const L = d.location

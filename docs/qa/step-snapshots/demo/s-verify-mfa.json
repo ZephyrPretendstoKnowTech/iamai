@@ -14,8 +14,8 @@
   ],
   "tiles": [
     {
-      "label": "People who need special care",
-      "state": "Confirm"
+      "label": "Special care",
+      "state": "Confirm who needs hands-on help"
     },
     {
       "label": "Prerequisite · In progress",

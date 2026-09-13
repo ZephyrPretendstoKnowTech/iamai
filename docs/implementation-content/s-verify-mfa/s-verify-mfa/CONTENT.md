@@ -1,24 +1,27 @@
 @@IAMAI-BEGIN {"id":"entra.campaign","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Open the **Entra admin center → Security → Authentication methods → Registration campaign**.
-2. Enable the campaign: set State to **Enabled**.
-3. Target: **All users**.
-4. Authentication method: **Passkey (Microsoft Authenticator)**.
-5. Enforcement: **remind on sign-in**, so each person is asked at sign-in until they have set it up.
-6. **Save**.
+1. Go to Entra admin center → Security → Authentication methods → Registration campaign.
+2. State: Enabled.
+3. Target: All users.
+4. Authentication method: Passkey (Microsoft Authenticator).
+5. Number of days allowed to snooze: 14 (or your organization's preference).
+6. Save.
+
+Each user will see a prompt at their next sign-in asking them to register a passkey. They can snooze it, but it returns until they complete registration.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.walkthrough","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+After enabling the campaign, help each special-care person register in person:
 
-In person, for the people who need special care:
+1. Book 10 minutes with each person listed under "People who need special care."
+2. Open aka.ms/mfasetup with them signed in.
+3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a one-time code to sign in and register.
+4. If they only have text or phone call: register the passkey first, then remove the phone number from their authentication methods so it's no longer a sign-in option.
+5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.
+6. Have each person sign in one more time after registration. IAMAI checks for the sign-in record on the next scan.
 
-1. Book ten minutes with each person who needs special care.
-2. Open https://aka.ms/mfasetup with them signed in.
-3. Person-by-person setup steps are on [MFA Readiness →](#/readiness); work its Needs setup and Needs proof lists there.
-4. No method: issue a Temporary Access Pass first.
-5. Text or call only: register the passkey, then remove the phone number as a sign-in method.
-6. Admins: a passkey or a hardware security key.
-7. Have each sign in once more; the record shows it on the next scan.
+Track progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.
+
+[MFA Readiness →](#/readiness)
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure","channel":"entra","states":["setupRequired"],"format":"markdown","kind":"template"}

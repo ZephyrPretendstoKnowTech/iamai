@@ -94,7 +94,7 @@ test('P1-2: an unsaved conditional input is its own Readiness tile, asking for c
   const legacy = bodiesOf(fixture('demo')).get(LEGACY)!
   assert.deepEqual(legacy.contract ? (legacy.readiness.tiles.find((t) => t.key === 'unsaved:Mail-sending devices') ?? null)?.value : null, T.unsaved)
   const campaign = bodiesOf(fixture('demo')).get('s-verify-mfa')!
-  assert.ok(campaign.readiness.tiles.some((t) => t.key === 'unsaved:People who need special care' && t.value === 'Confirm'))
+  assert.ok(campaign.readiness.tiles.some((t) => t.key === 'unsaved:People who need special care' && t.value === 'Confirm who needs hands-on help'))
 })
 
 test('P1-3: a prerequisite another prerequisite tile already waits on is not drawn beside it, by the dependency graph', () => {

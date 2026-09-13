@@ -182,3 +182,51 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   // The shared readiness sentence stays (BLOCKED.md).
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
 })
+
+test('s-verify-mfa: Why is two sentences, the special-care tile is short, the input says who belongs in it, Entra adds the snooze, and AI Info is the in-person walkthrough', () => {
+  const CAMPAIGN = 's-verify-mfa'
+  const words = stepWords(CAMPAIGN)
+  assert.equal(words.why, "Enforcement should change nothing for anyone. That's only true once every person has registered a phishing-resistant method and used it to sign in at least once.")
+  // The input keeps its label, which is its answer's key; the help under the milestone is short, and who qualifies sits between the label and the chips.
+  const WHO = 'Admins, anyone with no sign-in method, and anyone who only has text or phone call. These people need in-person walkthrough to set up their passkey.'
+  assert.equal(words.decision?.label, 'People who need special care')
+  assert.equal(words.decision?.help, 'Identify anyone who needs hands-on help registering.')
+  assert.equal(words.decision?.text, WHO)
+  const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  const heading = step.indexOf('<h5 className="dlabel action-heading"')
+  const text = step.indexOf("{typeof d.text === 'string' && <p className=\"reason\">")
+  const picker = step.indexOf('{hasPicker && <Picker')
+  assert.ok(heading > 0 && heading < text && text < picker, 'the input text is not drawn between its label and its chips')
+  const b = bodyOf('demo', CAMPAIGN)
+  assert.deepEqual(b.readiness.tiles.find((t) => t.key === 'unsaved:People who need special care'), { key: 'unsaved:People who need special care', label: 'Special care', tone: 'warn', value: 'Confirm who needs hands-on help', note: WHO })
+  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (In progress|Waiting)$/)
+  assert.deepEqual(authoredParts(drawn(b, 'portal')), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Security → Authentication methods → Registration campaign.'],
+        ['State: Enabled.'],
+        ['Target: All users.'],
+        ['Authentication method: Passkey (Microsoft Authenticator).'],
+        ["Number of days allowed to snooze: 14 (or your organization's preference)."],
+        ['Save.'],
+      ],
+    },
+    { kind: 'break' },
+    { kind: 'line', text: 'Each user will see a prompt at their next sign-in asking them to register a passkey. They can snooze it, but it returns until they complete registration.' },
+  ])
+  assert.equal(drawn(b, 'ai'), [
+    'After enabling the campaign, help each special-care person register in person:',
+    [
+      '1. Book 10 minutes with each person listed under "People who need special care."',
+      '2. Open aka.ms/mfasetup with them signed in.',
+      '3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a one-time code to sign in and register.',
+      "4. If they only have text or phone call: register the passkey first, then remove the phone number from their authentication methods so it's no longer a sign-in option.",
+      '5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.',
+      '6. Have each person sign in one more time after registration. IAMAI checks for the sign-in record on the next scan.',
+    ].join('\n'),
+    'Track progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.',
+    '[MFA Readiness →](#/readiness)',
+  ].join('\n\n'))
+  // Done when is unchanged.
+  assert.ok(b.contract.doneWhen.includes('Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.'))
+})
