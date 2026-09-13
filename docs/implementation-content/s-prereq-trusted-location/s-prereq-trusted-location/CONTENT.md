@@ -1,10 +1,11 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Go to **Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location**.
-2. Name it **{{location.target.displayName}}**.
-3. Add exactly the owner/network-confirmed public IPv4 and IPv6 CIDRs supplied by IAMAI.
-4. Select **Mark as trusted location**.
-5. Create it.
-6. Rescan IAMAI before downstream policies consume the location ID.
+1. Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.
+2. Name: {{location.target.displayName}} (or a name that describes your location).
+3. Add your office's public IP address(es). These are the IPs your internet traffic comes from — your ISP assigns them. If you're not sure, search "what is my IP" from a computer in the office.
+4. If you have a VPN, add its exit IP addresses too.
+5. Check "Mark as trusted location."
+6. Create.
+7. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -88,9 +89,13 @@ The owner has stated there is no office/VPN network that should be treated as tr
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+A trusted location tells Entra "sign-ins from these IP addresses are coming from our office." Several policies in the baseline use this: some relax their requirements inside the trusted network (like the managed-device policy, which only requires a managed device outside the office).
 
-Review creation of {{location.target.displayName}} from the confirmed public CIDRs only. It must be an IP named location with `isTrusted=true`; require a rescan for the new stable ID.
+If you have one office, add its public IP address. If you have multiple offices or a VPN, add all of them. The location should cover every IP address your people normally sign in from at work.
+
+Don't add home IP addresses — those change and aren't controlled by the organization. The point of a trusted location is that the network itself is something you manage.
+
+If nobody works from an office (fully remote, no VPN), you can mark this step as "Doesn't apply here."
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
