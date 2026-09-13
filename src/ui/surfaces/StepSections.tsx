@@ -9,9 +9,9 @@
 // blocker evaluation, no lifecycle arithmetic. Those questions were answered
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, Status } from '../components/index.ts'
+import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT, FOOTER, badgeLabel, nextCaption, stageClass } from './stepContract.ts'
@@ -310,11 +310,13 @@ export function ReadinessSection({ readiness, lead, onWhy = null, onConfirm = nu
 }
 
 /**
- * One readiness tile: its label and mark, its state in a word or a sentence,
- * and behind a disclosure its explanation, its evidence and the link to where
- * it is resolved (A1 §16.1). A tile with nothing to disclose draws no
- * disclosure. `extra` is evidence a tile carries beyond its sentence — the
- * hardening's own recommendations — handed in by the step, never read here.
+ * One readiness tile, compact until asked (RUN-CONTEXT-B decision 3, U6): one
+ * line — mark, label, value and a chevron — that opens the tile's explanation,
+ * its evidence and the link to where it is resolved (A1 §16.1). A tile with
+ * nothing to disclose draws no control. Whether it is open is the tile's own
+ * state, so it resets when the step closes; printing stands every tile open.
+ * `extra` is evidence a tile carries beyond its sentence — the hardening's own
+ * recommendations — handed in by the step, never read here.
  */
 function Tile({ tile: t, open, extra, onConfirm, onOpenMappings }: {
   tile: ReadinessTile
@@ -323,27 +325,40 @@ function Tile({ tile: t, open, extra, onConfirm, onOpenMappings }: {
   onConfirm: ((tileKey: string) => void) | null
   onOpenMappings: (() => void) | null
 }) {
-  const W = CONTRACT.readiness
+  const [expanded, setExpanded] = useState(false)
+  const detailId = useId()
   const link = t.link === undefined ? null : 'href' in t.link ? <a href={t.link.href}>{t.link.label}</a> : onOpenMappings ? <button type="button" className="inline-link" onClick={onOpenMappings}>{t.link.label}</button> : null
   const more = t.note !== null || link !== null || extra !== null
+  const shown = open || expanded
+  const line = (
+    <>
+      {MARK[t.tone] && (
+        <span className={`readiness-status readiness-status-${t.tone}`} aria-hidden="true">
+          {MARK[t.tone]}
+        </span>
+      )}
+      <span className="key-label">{t.label}</span>
+      <strong>{t.value}</strong>
+      {more && <Icon name="chevron" size={14} className="tile-chevron" />}
+    </>
+  )
   return (
     <li className={`readiness-tile readiness-tile-${t.tone}`}>
-      <span className="readiness-tile-head">
-        <span className="key-label">{t.label}</span>
-        {MARK[t.tone] && (
-          <span className={`readiness-status readiness-status-${t.tone}`} aria-hidden="true">
-            {MARK[t.tone]}
-          </span>
-        )}
-      </span>
-      <strong>{t.value}</strong>
+      {more ? (
+        <button type="button" className="tile-summary" aria-expanded={shown} aria-controls={detailId} title={`${t.label} · ${t.value}`} onClick={() => setExpanded(!expanded)}>
+          {line}
+        </button>
+      ) : (
+        <div className="tile-summary" title={`${t.label} · ${t.value}`}>
+          {line}
+        </div>
+      )}
       {more && (
-        <details className="readiness-more" open={open || undefined}>
-          <summary>{W.tiles.detail}</summary>
+        <div id={detailId} className="tile-detail" hidden={!shown}>
           {t.note && <p>{t.note}</p>}
           {extra}
           {link && <p className="readiness-link">{link}</p>}
-        </details>
+        </div>
       )}
       {t.confirm && onConfirm && (
         <button type="button" className="inline-link readiness-confirm" onClick={() => onConfirm(t.key)}>
@@ -432,7 +447,7 @@ export function ImplementationEmptyBox({ empty }: { empty: ImplementationEmpty }
  * focus returns to the control that opened it. A click on the backdrop closes it
  * too. Its content is mounted only while it is open.
  */
-export function StepDialog({ open, onClose, eyebrow, title, sub = null, closeLabel, wide = false, children }: {
+export function StepDialog({ open, onClose, eyebrow, title, sub = null, closeLabel, wide = false, toolbar = null, children }: {
   open: boolean
   onClose: () => void
   eyebrow: string
@@ -440,6 +455,8 @@ export function StepDialog({ open, onClose, eyebrow, title, sub = null, closeLab
   sub?: ReactNode
   closeLabel: string
   wide?: boolean
+  /** Controls the head carries beside its close control — the viewer's channel tabs and Copy — so they stay in view while the content scrolls (U16). */
+  toolbar?: ReactNode
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -484,9 +501,13 @@ export function StepDialog({ open, onClose, eyebrow, title, sub = null, closeLab
               <h3 id={titleId}>{title}</h3>
               {sub && <p>{sub}</p>}
             </div>
-            <Button variant="secondary" onClick={onClose}>
-              {closeLabel}
-            </Button>
+            {/* Icon-only, named for a screen reader and on hover (U17). */}
+            <div className="dialog-head-actions">
+              {toolbar}
+              <button type="button" className="icon-btn" aria-label={closeLabel} title={closeLabel} onClick={onClose}>
+                <Icon name="close" size={14} />
+              </button>
+            </div>
           </header>
           <div className="dialog-content">{children}</div>
         </div>

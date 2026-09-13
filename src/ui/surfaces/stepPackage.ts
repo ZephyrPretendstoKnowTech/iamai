@@ -266,6 +266,11 @@ export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: Ten
   if (s.setAside || s.satisfied || s.condition === 'baseline-conflict') return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
+    // An enforced policy the plan has not finished is planned as its correction,
+    // even where a hold emptied the update so no changed field can be read yet
+    // (B10 P0-1: the unconfirmed exclusions group left every enforced policy on
+    // the real tenant with "Nothing to submit yet").
+    if (s.lifecycle === 'enforced') return 'partial'
     if (s.lifecycle === 'ready-to-enforce') return 'readyToEnforce'
     if (s.lifecycle === 'report-only') return 'reportOnly'
     return s.lifecycle === 'not-deployed' || s.lifecycle === null ? 'missing' : null
@@ -429,7 +434,12 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)
   put('policy.current.state', step.tracking?.state)
-  const changed = correctionFieldsOf(step, ctx.snapshot)
+  // An enforced policy whose update a hold emptied while it waits on the exclusions
+  // group is still owed that group's exclusion: the one field its correction will
+  // change (B10 P0-1), so the planning preview selects the correction's module.
+  const read = correctionFieldsOf(step, ctx.snapshot)
+  const waitsOnGroup = step.state.lifecycle === 'enforced' && (step.action.missing ?? []).some((m) => m.token === '{exclusionsGroup}')
+  const changed = read.length === 0 && waitsOnGroup ? [SAFE_CORRECTION_FIELD] : read
   put(CHANGED_FIELDS_BINDING, changed.length > 0 ? changed : undefined)
   // The tenant objects the plan holds. A value that is a list where the package
   // names one object (the trusted network, the emergency account) binds only
