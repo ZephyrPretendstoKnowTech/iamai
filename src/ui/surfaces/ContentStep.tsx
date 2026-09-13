@@ -832,7 +832,8 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
         {/* Each label is an element the controls under it can name (task 017):
             the picker takes it as its group label, the radios as their
             radiogroup's, so a decision is heard as a question with answers. */}
-        <div className="dlabel" id={`${base}-decision`}>{d.label}</div>
+        {/* The action column's heading (content review R6): the input's own label, bold, over the first input. */}
+        <h5 className="dlabel action-heading" id={`${base}-decision`}>{d.label}</h5>
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {hasPicker && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}

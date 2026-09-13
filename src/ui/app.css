@@ -2227,6 +2227,12 @@ footer.app a {
   width: 100%;
   max-width: 100%;
 }
+/* The heading over the column's first input (content review R6): its label, bold. */
+.step-action-column .action-heading {
+  margin: 0 0 6px;
+  color: var(--primary-text);
+  font-weight: var(--weight-strong);
+}
 .side-block {
   padding-bottom: 16px;
   margin-bottom: 16px;
