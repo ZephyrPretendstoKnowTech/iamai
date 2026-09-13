@@ -291,6 +291,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-admin-phish",
+      "authority": "Microsoft Learn",
+      "title": "Require phishing-resistant multifactor authentication for Microsoft Entra administrator roles",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-admin-phish-resistant-mfa",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-admins-phishing-resistant",
   "title": "Require Phishing-Resistant MFA for Admins",

@@ -1,3 +1,12 @@
+@@IAMAI-BEGIN {"id":"entra.separate","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
+For each person who holds a directory role and uses that same account for mail or Teams:
+1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.
+2. Register a passkey or security key on the admin account before its first use: sign in as it at https://aka.ms/mysecurityinfo. The admin policies require one.
+3. Move the directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.
+4. Sign in to an admin portal with the admin account and confirm the role works, then remove the role from the everyday account.
+5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.
+@@IAMAI-END
+
 @@IAMAI-BEGIN {"id":"entra.create-and-stage","channel":"entra","states":["actionRequired"],"format":"markdown","kind":"template"}
 For each affected person in {{admin.peopleToSeparate}}:
 1. Create one dedicated **cloud-only** admin account using the tenant's existing naming convention {{admin.namingConvention}}. Keep it unlicensed unless a separate administrative workload genuinely requires a license.

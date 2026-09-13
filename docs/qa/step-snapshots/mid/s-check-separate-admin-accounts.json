@@ -9,9 +9,12 @@
   "headings": [
     "Why",
     "Readiness",
+    "Implementation",
     "Done when"
   ],
   "tiles": [],
-  "channels": [],
+  "channels": [
+    "Entra"
+  ],
   "when": "Aug 31, 2026"
 }

@@ -248,6 +248,16 @@
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-emergency",
+      "authority": "Microsoft Learn",
+      "title": "Manage emergency access admin accounts",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "validation": {
     "liveTenantExecution": false,
     "powerShellAst": "not-run-in-authoring-environment-no-pwsh",

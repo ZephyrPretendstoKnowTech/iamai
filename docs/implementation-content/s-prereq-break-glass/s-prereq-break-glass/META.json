@@ -2,6 +2,9 @@
   "schemaVersion": "2.5-compact",
   "stepId": "s-prereq-break-glass",
   "title": "Create or Correct Emergency Access Accounts",
+  "milestone": {
+    "actionText": "Create and verify two emergency accounts"
+  },
   "baseline": "jon-hope-pinned",
   "relationship": "prerequisite",
   "packagePath": "docs/implementation-content/s-prereq-break-glass/",
@@ -243,6 +246,16 @@
     {
       "id": "ms-ca-users",
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-users-groups"
+    }
+  ],
+  "verifiedSources": [
+    {
+      "id": "ms-emergency",
+      "authority": "Microsoft Learn",
+      "title": "Manage emergency access admin accounts",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
     }
   ],
   "validation": {

@@ -287,6 +287,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccessgrantcontrols?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-mfa-all",
+      "authority": "Microsoft Learn",
+      "title": "Require MFA for all users with Conditional Access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-mfa-strength",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-mfa-all-users",
   "title": "Require MFA for Everyone",

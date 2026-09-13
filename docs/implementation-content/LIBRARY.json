@@ -130,7 +130,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 13,
+      "contentBlocks": 14,
       "outputs": {
         "entra": true,
         "json": false,
@@ -141,6 +141,7 @@
         "troubleshooting": true
       },
       "statesSupported": [
+        "missing",
         "actionRequired",
         "credentialProofRequired",
         "roleCutoverRequired",
@@ -6111,7 +6112,7 @@
     "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 955,
+    "contentBlocks": 956,
     "uniqueBindings": 266,
     "bindingsRequiredByAtLeastOneProjection": 95,
     "bindingsOptionalInAtLeastOnePackage": 175,

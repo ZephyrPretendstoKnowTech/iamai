@@ -43,6 +43,15 @@
     "dependencies.blockers"
   ],
   "projection": {
+    "missing": {
+      "entra": [
+        "entra.separate"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
     "actionRequired": {
       "entra": [
         "entra.create-and-stage"
@@ -160,9 +169,22 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/rbacapplication-post-roleassignments?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-privileged-accounts",
+      "authority": "Microsoft Learn",
+      "title": "Securing privileged access accounts",
+      "url": "https://learn.microsoft.com/en-us/security/privileged-access-workstations/privileged-access-accounts",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-check-separate-admin-accounts",
   "title": "Use Separate Accounts for Admin Work",
+  "milestone": {
+    "actionText": "Verify admin accounts are separated"
+  },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-check-separate-admin-accounts/",
   "sourceFiles": [

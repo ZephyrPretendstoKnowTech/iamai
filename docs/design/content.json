@@ -2042,6 +2042,7 @@
       },
       "dates": null,
       "doneWhen": [
+        "The exclusions group is confirmed, has the emergency access accounts as its only members, and IAMAI has recorded its ID for every policy in the plan.",
         "All {total} checks pass on the next scan."
       ],
       "ifWrong": null,
@@ -3046,7 +3047,7 @@
       "dates": null,
       "doneWhen": [
         "Readiness reaches 90% of active people Ready for phishing-resistant MFA, or {enrollBy} has passed and every holdout is reviewed.",
-        "Every admin is Ready for phishing-resistant MFA."
+        "Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users."
       ],
       "ifWrong": null,
       "comms": {
@@ -3157,6 +3158,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -3249,6 +3251,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} with the baseline's authentication strength and the exclusions group, and every admin holds a qualifying phishing-resistant method.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Every admin completed a phishing-resistant sign-in during the report-only days."
@@ -3450,6 +3453,7 @@
         }
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and partner accounts addressed.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Every guest who signed in during the report-only days completed MFA at least once."
@@ -3655,6 +3659,7 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
         "No successful legacy sign-in in the records during the report-only days."
@@ -3742,6 +3747,7 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and any device code sign-in workflows accounted for.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -3812,6 +3818,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -3881,6 +3888,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from countries not in the allowed list, with the exclusions group applied and partner and travel exceptions addressed.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Every blocked sign-in in the report-only days was reviewed and none was legitimate work."
@@ -3976,6 +3984,7 @@
       },
       "decision": null,
       "dates": "{datesChange}",
+      "doneEnd": "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.",
       "doneWhen": [
         "{changeDoneWhen}",
         "Re-authentication prompts arrived at the set frequency and nobody lost unsaved work to them."
@@ -4187,6 +4196,7 @@
         ]
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group and the shared-device exception applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "At least 95% of sign-ins in the report-only days came from a compliant or hybrid-joined device."
@@ -4282,6 +4292,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from unsupported device platforms, with the exclusions group applied and the baseline mapping resolved.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -4512,6 +4523,7 @@
         ]
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant}, requiring MFA to register a device, with the exclusions group applied and pilot validation complete.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -4576,6 +4588,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -4720,6 +4733,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} with its pair, both carrying the baseline's session control values (sign-in frequency and persistent browser session), with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Re-authentication prompts arrived at the set frequency and nobody lost unsaved work to them."
@@ -4819,6 +4833,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant}, not in report-only, with its authentication context assigned, and the Privileged Identity Management role settings require that context on activation.",
       "doneWhen": [
         "{policyDoneWhen}",
         "A test activation prompted for MFA."
@@ -4975,6 +4990,7 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} at the high-risk threshold, with the baseline's authentication strength as the grant control and the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Every risky sign-in in the report-only days was reviewed."
@@ -5061,6 +5077,7 @@
         ]
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target, and the password-change remediation is confirmed to work for hybrid users if any exist.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Every user rated at risk in the report-only days was reviewed."
@@ -5130,6 +5147,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],
@@ -5201,6 +5219,7 @@
         ]
       },
       "dates": "{datesNew}",
+      "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold, with password change as the remediation and the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}"
       ],

@@ -279,6 +279,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/countrynamedlocation?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-block-location",
+      "authority": "Microsoft Learn",
+      "title": "Conditional Access - Block access by location",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-block-by-location",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-geo-restriction",
   "title": "Block Sign-ins From Countries Not Allowed",

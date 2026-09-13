@@ -284,6 +284,16 @@
       "url": "https://learn.microsoft.com/en-us/graph/api/resources/conditionalaccesssessioncontrols?view=graph-rest-1.0"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-session-howto",
+      "authority": "Microsoft Learn",
+      "title": "Configure adaptive session lifetime policies",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/howto-conditional-access-session-lifetime",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "schemaVersion": "2.5-compact",
   "stepId": "s-goal-admin-session",
   "title": "Shorten Admin Sessions",

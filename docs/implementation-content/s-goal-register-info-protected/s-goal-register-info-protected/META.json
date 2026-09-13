@@ -315,6 +315,16 @@
       "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps"
     }
   ],
+  "verifiedSources": [
+    {
+      "id": "ms-security-info",
+      "authority": "Microsoft Learn",
+      "title": "Control security information registration with Conditional Access",
+      "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-security-info-registration",
+      "checkedOn": "2026-09-12",
+      "userFacing": true
+    }
+  ],
   "implementationCaveats": [
     {
       "id": "registration-source-member-identity",
