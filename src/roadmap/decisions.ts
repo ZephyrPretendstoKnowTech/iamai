@@ -155,6 +155,10 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     const labels = questionLabels(stepId)
     if (typeof d.option === 'string') next.questionAnswers![labels.decision ? answerKey(stepId, labels.decision) : stepId] = d.option
     for (const [label, a] of Object.entries(d.answers ?? {})) if (typeof a === 'string') next.questionAnswers![answerKey(stepId, label)] = a
+    // A strict toggle is on only while a Save carries it: a decision saved without
+    // it — unticked, or hidden because the option it follows was not chosen
+    // (B10 P0-8, S-DD-1) — clears the stored answer.
+    if (labels.strict && typeof d.answers?.[labels.strict] !== 'string') delete next.questionAnswers![answerKey(stepId, labels.strict)]
     if (stepId === DECISION_STEPS.sourceReferences) {
       // The Baseline mappings (Plan settings): the baseline's own references only
       // a person can answer, one answer per source id. This tenant's object becomes that reference's confirmed record,

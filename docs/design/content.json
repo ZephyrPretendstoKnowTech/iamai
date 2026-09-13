@@ -1080,7 +1080,8 @@
         "suggestions": "Suggestions",
         "results": "{n} results",
         "done": "Done",
-        "matched": "Matched by IAMAI"
+        "matched": "Matched by IAMAI",
+        "choose": "Choose…"
       },
       "shell": {
         "lightTheme": "Light theme",
@@ -2810,7 +2811,8 @@
           "heading": "Unmanaged phones",
           "text": "Should phones that aren't enrolled be blocked?",
           "help": "Blocking keeps a phone that isn't enrolled away from company data once the device policy is enforced.",
-          "option": "Block phones that are not enrolled"
+          "option": "Block phones that are not enrolled",
+          "when": "Enroll phones in Intune"
         },
         "save": "Save"
       },
