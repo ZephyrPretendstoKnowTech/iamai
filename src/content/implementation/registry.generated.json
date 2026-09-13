@@ -19393,7 +19393,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Authentication methods > Authentication strengths**.\n2. Select **New authentication strength**.\n3. Name it **{{strength.target.displayName}}**.\n4. Select exactly: Windows Hello for Business; Passkeys (FIDO2); Certificate-based authentication (multifactor); Temporary Access Pass (one-time); Temporary Access Pass (multi-use).\n5. Review and Create.\n6. Read the created object back and rescan IAMAI.\n"
+          "text": "1. Go to Entra admin center → Authentication methods → Authentication strengths.\n2. Click + New authentication strength.\n3. Name: {{strength.target.displayName}}.\n4. Select exactly these five methods:\n   — Windows Hello for Business\n   — Passkeys (FIDO2)\n   — Certificate-based authentication (multifactor)\n   — Temporary Access Pass (one-time use)\n   — Temporary Access Pass (multi-use)\n5. Do not select any other methods.\n6. Review and Create.\n7. Rescan in IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -19504,7 +19504,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview the proposed authentication strength for {{tenant.displayName}}. Confirm it contains exactly the pinned five allowed combinations and does not reuse a source-tenant custom strength ID.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nAn authentication strength is a named set of methods that a Conditional Access policy can require. Instead of just \"require MFA\" (which accepts any second factor including phone call), this strength says \"require one of these five specific methods.\"\n\nThe five methods are all phishing-resistant or temporary:\n— Windows Hello for Business: biometric or PIN bound to the device\n— Passkeys (FIDO2): a hardware key or Authenticator passkey\n— Certificate-based authentication: a smart card or certificate\n— Temporary Access Pass: a one-time code for bootstrapping (so a user with no method can sign in once to register)\n\nPhone call, SMS, and the Authenticator push notification are deliberately excluded. They're not phishing-resistant.\n\nMultiple policies in the plan will reference this strength by name. Create it once; they all share it.\n"
         },
         "ai.correct": {
           "meta": {

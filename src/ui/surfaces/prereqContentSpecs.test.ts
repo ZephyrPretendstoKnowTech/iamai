@@ -121,3 +121,31 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
   assert.match(ai, /^Temporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with\.$/m)
   assert.match(ai, /^After saving these settings, the MFA Registration Campaign step guides each person through registering their passkey\.$/m)
 })
+
+test('s-prereq-auth-strength: Why explains a strength, the action says what to do, Entra lists the five methods inside step 4, AI Info explains them, and Done when says methods', () => {
+  const cs = stepOf('s-prereq-auth-strength')
+  assert.equal(cs.why, 'Several policies in the baseline require a specific set of authentication methods (called an "authentication strength"). This step creates that strength so those policies can reference it.')
+  // The line the action column draws under the milestone date (stepExport.ts decisionLine: the help while the decision is open).
+  assert.equal(cs.decision?.help, 'Create or select the authentication strength.')
+  assert.deepEqual(cs.doneWhen, ['An authentication strength named "{strengthName}" exists with exactly the five methods listed above, or an existing strength with the same methods is selected and confirmed.'])
+  const b = blocksOf('s-prereq-auth-strength')
+  assert.deepEqual(authoredParts(b['entra.create'].text), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Authentication methods → Authentication strengths.'],
+        ['Click + New authentication strength.'],
+        ['Name: {{strength.target.displayName}}.'],
+        ['Select exactly these five methods:', '— Windows Hello for Business', '— Passkeys (FIDO2)', '— Certificate-based authentication (multifactor)', '— Temporary Access Pass (one-time use)', '— Temporary Access Pass (multi-use)'],
+        ['Do not select any other methods.'],
+        ['Review and Create.'],
+        ['Rescan in IAMAI.'],
+      ],
+    },
+  ])
+  const ai = b['ai.create'].text
+  assert.match(ai, /^An authentication strength is a named set of methods that a Conditional Access policy can require\. Instead of just "require MFA" \(which accepts any second factor including phone call\), this strength says "require one of these five specific methods\."$/m)
+  assert.match(ai, /^The five methods are all phishing-resistant or temporary:\n— Windows Hello for Business: biometric or PIN bound to the device\n— Passkeys \(FIDO2\): a hardware key or Authenticator passkey\n— Certificate-based authentication: a smart card or certificate\n— Temporary Access Pass: a one-time code for bootstrapping \(so a user with no method can sign in once to register\)$/m)
+  assert.match(ai, /^Phone call, SMS, and the Authenticator push notification are deliberately excluded\. They're not phishing-resistant\.$/m)
+  assert.match(ai, /^Multiple policies in the plan will reference this strength by name\. Create it once; they all share it\.$/m)
+  assert.doesNotMatch(ai, /pinned five|source-tenant|\{\{/)
+})

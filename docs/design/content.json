@@ -2683,7 +2683,7 @@
       "kind": "object",
       "title": "Create the Baseline's Authentication Strength",
       "changeLine": null,
-      "why": "The baseline's admin, guest, risk and role-activation policies all point at one custom authentication strength; the policy cannot be created until the strength exists.",
+      "why": "Several policies in the baseline require a specific set of authentication methods (called an \"authentication strength\"). This step creates that strength so those policies can reference it.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
       },
@@ -2694,7 +2694,7 @@
       },
       "decision": {
         "label": "Authentication strength",
-        "help": "The strength whose combinations match the baseline's.",
+        "help": "Create or select the authentication strength.",
         "pickerSource": "strengths",
         "pickerRow": "{name} · {combinations}",
         "save": "Save"
@@ -2710,7 +2710,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "A strength named {strengthName} exists with exactly those five combinations, or an existing strength with the same combinations is selected above."
+        "An authentication strength named \"{strengthName}\" exists with exactly the five methods listed above, or an existing strength with the same methods is selected and confirmed."
       ],
       "ifWrong": "Delete the strength; no policy references it yet.",
       "comms": null,

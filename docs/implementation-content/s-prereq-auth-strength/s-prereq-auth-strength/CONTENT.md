@@ -1,10 +1,16 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Open **Entra ID > Authentication methods > Authentication strengths**.
-2. Select **New authentication strength**.
-3. Name it **{{strength.target.displayName}}**.
-4. Select exactly: Windows Hello for Business; Passkeys (FIDO2); Certificate-based authentication (multifactor); Temporary Access Pass (one-time); Temporary Access Pass (multi-use).
-5. Review and Create.
-6. Read the created object back and rescan IAMAI.
+1. Go to Entra admin center → Authentication methods → Authentication strengths.
+2. Click + New authentication strength.
+3. Name: {{strength.target.displayName}}.
+4. Select exactly these five methods:
+   — Windows Hello for Business
+   — Passkeys (FIDO2)
+   — Certificate-based authentication (multifactor)
+   — Temporary Access Pass (one-time use)
+   — Temporary Access Pass (multi-use)
+5. Do not select any other methods.
+6. Review and Create.
+7. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -68,7 +74,17 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed authentication strength for {{tenant.displayName}}. Confirm it contains exactly the pinned five allowed combinations and does not reuse a source-tenant custom strength ID.
+An authentication strength is a named set of methods that a Conditional Access policy can require. Instead of just "require MFA" (which accepts any second factor including phone call), this strength says "require one of these five specific methods."
+
+The five methods are all phishing-resistant or temporary:
+— Windows Hello for Business: biometric or PIN bound to the device
+— Passkeys (FIDO2): a hardware key or Authenticator passkey
+— Certificate-based authentication: a smart card or certificate
+— Temporary Access Pass: a one-time code for bootstrapping (so a user with no method can sign in once to register)
+
+Phone call, SMS, and the Authenticator push notification are deliberately excluded. They're not phishing-resistant.
+
+Multiple policies in the plan will reference this strength by name. Create it once; they all share it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
