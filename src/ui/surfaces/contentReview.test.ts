@@ -76,3 +76,13 @@ test('R5: a step with nothing unresolved reads "✓ Clear — No blockers. Ready
   assert.match(src, /<strong>\{W\.tiles\.clear\}<\/strong>\s*<span>\{W\.tiles\.clearNote\}<\/span>/, 'the clear line does not read the content key')
   assert.equal(readFileSync('docs/design/content.json', 'utf8').includes('Nothing outstanding changes the next action'), false, 'the engineer-speak is still in content')
 })
+
+test('R6: the action column heads its first input with the input label, bold', () => {
+  const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
+  const decision = step.slice(step.indexOf('function SingleDecision'), step.indexOf('export function Options'))
+  assert.match(decision, /<h5 className="dlabel action-heading" id=\{`\$\{base\}-decision`\}>\{d\.label\}<\/h5>/, 'no heading over the decision')
+  const heading = decision.indexOf('<h5 className="dlabel action-heading"')
+  assert.ok(heading < decision.indexOf('<Picker ') && heading < decision.indexOf('<Options '), 'the heading is not above the first input')
+  const css = readFileSync('src/ui/app.css', 'utf8')
+  assert.match(css, /\.step-action-column \.action-heading \{[^}]*font-weight: var\(--weight-strong\);/, 'the heading is not bold')
+})

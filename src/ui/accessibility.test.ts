@@ -447,7 +447,7 @@ test('the picker is one coherent combobox: the input keeps focus and names the o
 
 test('a decision names the question its options answer', () => {
   assert.match(contentStep, /role=\{radios \? 'radiogroup' : 'group'\} aria-labelledby=\{labelledBy\}/)
-  assert.match(contentStep, /<div className="dlabel" id=\{`\$\{base\}-decision`\}>/)
+  assert.match(contentStep, /<h5 className="dlabel action-heading" id=\{`\$\{base\}-decision`\}>/)
   assert.match(contentStep, /<div className="dlabel" id=\{`\$\{base\}-question`\}>/)
   assert.match(picker, /role="group" aria-labelledby=\{labelledBy\}/)
 })
