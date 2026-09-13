@@ -434,6 +434,8 @@ export function renderStep(st: Record<string, any>, title?: string): string {
   if (d) {
     parts.push('<div class="decision">')
     parts.push(`<div class="dlabel">${esc(d.label)}</div>`)
+    // The line over a pre-filled match (content review S2; ContentStep.tsx matchedNote).
+    if (d.matchedNote) parts.push(p(d.matchedNote, ex, 'dhelp'))
     if (d.help) parts.push(p(d.help, ex, 'dhelp'))
     if (d.location) {
       const L = d.location

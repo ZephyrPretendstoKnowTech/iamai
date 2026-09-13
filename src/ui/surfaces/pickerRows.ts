@@ -54,6 +54,16 @@ function row(template: string, values: Record<string, unknown>): string {
     .join(SEP)
 }
 
+/**
+ * The line over a pre-filled match (content review S2): the decision's
+ * `matchedNote` naming the one chip IAMAI put there, while it is still that
+ * chip; null once the operator changes it, or where the decision has no note.
+ */
+export function matchedNoteOf(note: unknown, chips: readonly { name: string; badge?: string }[], matchedBadge: string): string | null {
+  const match = chips.length === 1 && chips[0].badge === matchedBadge ? chips[0] : null
+  return typeof note === 'string' && match !== null ? fillText(note, { group: match.name }) : null
+}
+
 function vars(key: string, rows: string[], ids: string[], ticked: string[], matched: string[] = []): PickerVars {
   return { pickerKey: key, [key]: rows, [`${key}Ids`]: ids, [`${key}Ticked`]: ticked, ...(matched.length > 0 ? { [`${key}Matched`]: matched } : {}) }
 }

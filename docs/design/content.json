@@ -1080,7 +1080,7 @@
         "suggestions": "Suggestions",
         "results": "{n} results",
         "done": "Done",
-        "matched": "Matched by IAMAI",
+        "matched": "✓ Matched by IAMAI",
         "choose": "Choose…"
       },
       "shell": {
@@ -2014,7 +2014,7 @@
       "kind": "blocker",
       "title": "Create or Correct Exclusions Group",
       "changeLine": null,
-      "why": "One group, excluded from every policy in the plan, is the single auditable way back in when a policy goes wrong in {tenant}.",
+      "why": "One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members can always sign in.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations"
       },
@@ -2032,6 +2032,7 @@
       },
       "decision": {
         "label": "Exclusions group",
+        "matchedNote": "IAMAI found \"{group}\" in your tenant. Confirm this is the group every policy should exclude, then Save.",
         "help": "The one group every policy excludes. IAMAI recognised {exclusionsGroup} from the exclusions already in place.",
         "pickerSource": "groups",
         "pickerRow": "{name} · {memberCount} members · excluded from {excludedFrom} of {policyCount} policies",
@@ -2114,7 +2115,10 @@
         ],
         "from": "Aug 1"
       },
-      "partner": "Done together with Create or Correct Emergency Access Accounts: the accounts chosen there are this group's only members."
+      "partner": "Done together with Create or Correct Emergency Access Accounts: the accounts chosen there are this group's only members.",
+      "partnerStep": {
+        "id": "s-prereq-break-glass"
+      }
     },
     {
       "id": "s-check-dormant-accounts",
