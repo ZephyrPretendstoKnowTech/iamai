@@ -10,6 +10,10 @@ import type { StepContract } from './stepContract.ts'
 import { WHEN, prerequisiteLabelFor } from './planBoard.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { SNAPSHOT_DIR } from '../../testing/stepSnapshots.ts'
+import dependencyData from '../../actionability/dependency-data.json' with { type: 'json' }
+import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
+import { buildGraph, deriveLane } from '../../actionability/lanes.ts'
+import type { ConditionState, PrerequisiteState, StepObservation, TenantState } from '../../actionability/lanes.ts'
 
 /** Every step snapshot the fixtures write (docs/qa/step-snapshots): what each opened step draws. */
 const snapshots = (): { where: string; s: { tiles: { label: string; state: string }[] } }[] =>
@@ -92,4 +96,24 @@ test('R7: the action column’s surface and hairline run to the bottom of the st
   // The body's grid aligns its items to the start; the column overrides that and spans both rows.
   assert.match(css, /\.step-body\.has-rail > \.step-action-column \{[^}]*grid-row: 1 \/ span 2;[^}]*align-self: stretch;/, 'the action column stops after its last control')
   assert.match(css, /\.step-action-column \{[^}]*border-left: 1px solid var\(--line\);/, 'the column lost its hairline')
+})
+
+test('R8: an enforced policy that drifted reads Ready · Correct, whatever conditional input is unanswered', () => {
+  const data = dependencyData as DependencyData
+  const graph = buildGraph(data)
+  // A healthy tenant around the step: everything else complete, every condition settled, every prerequisite resolved.
+  const tenant = (id: string, obs: StepObservation): TenantState => {
+    const steps: Record<string, StepObservation> = Object.fromEntries(data.steps.map((s) => [s.id, { complete: true }]))
+    const conditions: Record<string, ConditionState> = Object.fromEntries(data.conditions.map((c) => [c.name, 'not-applicable']))
+    const prerequisites: Record<string, PrerequisiteState> = Object.fromEntries(data.edges.filter((e) => e.prerequisiteKind !== 'step').map((e) => [e.prerequisite, 'resolved']))
+    return { steps: { ...steps, [id]: obs }, conditions, prerequisites }
+  }
+  const enforced: StepObservation = { exists: true, enforced: true, evidenceSatisfied: true }
+  for (const [id, input] of [['s-goal-block-legacy-auth', 'Mail-sending devices'], ['s-goal-block-device-code', 'Device code sign-in'], ['s-goal-guests-mfa', 'Partner or MSP access']]) {
+    const drifted = deriveLane(id, graph, tenant(id, { ...enforced, drift: true, unsaved: [input] }), { deferred: [] })
+    assert.deepEqual([drifted.lane, drifted.substatus], ['Ready', 'Correct'], `${id}: an unanswered ${input} overrides the correction`)
+    // The input still gates completion, and with nothing to correct it is the next thing.
+    const asPinned = deriveLane(id, graph, tenant(id, { ...enforced, unsaved: [input] }), { deferred: [] })
+    assert.deepEqual([asPinned.lane, asPinned.substatus], ['Ready', 'Decision'], `${id}: the unanswered input no longer holds completion`)
+  }
 })
