@@ -468,6 +468,8 @@ export function renderStep(st: Record<string, any>, title?: string): string {
       const q = d.question
       parts.push(
         `<div class="dlabel q">${esc(q.label)}</div>` +
+          // What its Readiness tile asks to confirm while unsaved (content review S3; stepContract.ts unsavedTiles).
+          (q.tileValue ? p(q.tileValue, ex, 'dhelp') : '') +
           p(q.text, ex, 'dhelp') +
           '<div class="picker">' +
           (q.options as string[]).map((o) => `<label><input type="radio" disabled> ${fill(o, ex)}</label>`).join('') +

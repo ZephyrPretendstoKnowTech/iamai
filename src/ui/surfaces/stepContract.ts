@@ -1387,12 +1387,17 @@ function directOnly(tiles: ReadinessTile[]): ReadinessTile[] {
 
 /** One tile per conditional input nobody has saved (B10 P1-2, U28): what completion waits on a person to confirm, with the question it asks. */
 function unsavedTiles(step: Step): ReadinessTile[] {
-  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; question?: { label?: unknown; text?: unknown } } | null } | undefined)?.decision
+  const d = (contentStepFor(step) as { decision?: { label?: unknown; text?: unknown; help?: unknown; tileValue?: unknown; question?: { label?: unknown; text?: unknown; tileValue?: unknown } } | null } | undefined)?.decision
   const ask = (label: string): string | null => {
     const text = d?.question?.label === label ? d.question.text : d?.label === label ? (d.text ?? d.help) : null
     return typeof text === 'string' && whole(text, {}) ? text : null
   }
-  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label, tone: 'warn', value: R().tiles.unsaved, note: ask(label) }))
+  // What the tile asks to confirm, where the input names it (content review S3); otherwise the shared word.
+  const valueOf = (label: string): string => {
+    const value = d?.question?.label === label ? d.question.tileValue : d?.label === label ? d.tileValue : null
+    return typeof value === 'string' ? value : R().tiles.unsaved
+  }
+  return (step.unsavedInputs ?? []).map((label): ReadinessTile => ({ key: `unsaved:${label}`, label, tone: 'warn', value: valueOf(label), note: ask(label) }))
 }
 
 /** The exclusions group's reach over the tenant's policies (B10 P0-11, S-EG-1): what the group already covers, and that each policy step owns the rest. */

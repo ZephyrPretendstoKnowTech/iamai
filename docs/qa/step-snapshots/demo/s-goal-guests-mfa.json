@@ -23,7 +23,7 @@
     },
     {
       "label": "Partner or MSP access",
-      "state": "Confirm"
+      "state": "Confirm whether partners access your tenant"
     },
     {
       "label": "Prerequisite · In progress",
