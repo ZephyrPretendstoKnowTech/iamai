@@ -744,6 +744,8 @@ export function buildFixture(spec: Spec): Fixture {
     const guests = questionLabels(stepIdForGoal('guests-mfa'))
     if (guests.question) decisions[stepIdForGoal('guests-mfa')] = { picked: [], answers: { [guests.question]: "Exclude service providers (they use their own tenant's MFA)" }, at: NOW }
     if (printerId !== null) decisions[stepIdForGoal('block-legacy-auth')] = { option: `Yes: add: ${printerId}; the service-accounts group carries them`, at: NOW }
+    // Nobody uses device code sign-in (B7): the enforced block's conditional input is saved.
+    decisions[stepIdForGoal('block-device-code')] = { option: 'None', at: NOW }
     // The emergency accounts signed in ten days before the scan (E3): on day one
     // the emergency-access step asks who and why; by week two the technician
     // recorded that sign-in as the drill on the Cleanup row, so the step is In

@@ -1,11 +1,11 @@
 {
-  "lane": "Completed",
-  "substatus": null,
+  "lane": "Ready",
+  "substatus": "Observing",
   "reason": "Satisfied by Core - Block - Device code flow — no change needed",
   "fact": "Enforced",
-  "badge": "Completed",
-  "bar": "Enforced",
-  "rail": "Completed",
+  "badge": "Ready · Observing",
+  "bar": "Continue observation",
+  "rail": "Ready · Observing",
   "headings": [
     "Why",
     "Readiness",

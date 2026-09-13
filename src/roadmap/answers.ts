@@ -142,11 +142,12 @@ export function effectLine(effect: unknown, answer: { index: number } | null): s
 
 // ---- The questions whose answers change the plan ----
 
-/** The step each question sits on: the travellers question (the countries step), the partner question (the guests policy), the mail-sending devices (the legacy block), the device decision (its own step). */
+/** The step each question sits on: the travellers question (the countries step), the partner question (the guests policy), the mail-sending devices (the legacy block), device code sign-in (the device code block), the device decision (its own step). */
 export const QUESTION_STEP = {
   travel: PREREQ_STEP_ID.allowedCountries,
   partner: stepIdForGoal('guests-mfa'),
   mailDevices: stepIdForGoal('block-legacy-auth'),
+  deviceCode: stepIdForGoal('block-device-code'),
   devices: PREREQ_STEP_ID.devicePlan,
 } as const
 
@@ -167,6 +168,12 @@ export function mailDevicesOf(mapping: Pick<MappingState, 'questionAnswers'>): s
   return answerOf(mapping, QUESTION_STEP.mailDevices, 'decision')?.picked ?? []
 }
 
+/** The plan's device code decision (decisions.deviceCodeWorkflows): true where someone uses device code sign-in, false on None, null until a Save. */
+export function deviceCodeWorkflowsOf(mapping: Pick<MappingState, 'questionAnswers'>): boolean | null {
+  const a = answerOf(mapping, QUESTION_STEP.deviceCode, 'decision')
+  return a === null ? null : a.index > 0
+}
+
 /** The steps an answered question adds to the plan (their words are content steps). */
 export const CARVE_OUT_STEP_ID = { travel: 's-question-travel', partner: 's-question-partner', mailDevices: 's-question-mail-devices' } as const
 
@@ -182,12 +189,14 @@ export function answeredCarveOuts(mapping: Pick<MappingState, 'questionAnswers'>
 
 /**
  * The conditional inputs (U28): questions whose answer changes the plan and that
- * the scan can only suggest — the mail-sending devices, partner access, people who
- * travel. Each sits on its step and persists as questionAnswers[stepId:label];
- * evidence may pre-fill one, and only a Save records it, "None" included.
+ * the scan can only suggest — the mail-sending devices, device code sign-in,
+ * partner access, people who travel. Each sits on its step and persists as
+ * questionAnswers[stepId:label]; evidence may pre-fill one, and only a Save
+ * records it, "None" included.
  */
 const CONDITIONAL_INPUTS: readonly { stepId: string; kind: AnswerKind }[] = [
   { stepId: QUESTION_STEP.mailDevices, kind: 'decision' },
+  { stepId: QUESTION_STEP.deviceCode, kind: 'decision' },
   { stepId: QUESTION_STEP.partner, kind: 'question' },
   { stepId: QUESTION_STEP.travel, kind: 'question' },
 ]

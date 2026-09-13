@@ -57,12 +57,22 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
     snapshot.capabilities.intune.enabled,
     snapshot.capabilities.intune.enabled ? 'Intune licence present' : 'no Intune licence',
   )
+  // The workload goal restricts the directory-sync account to its address: where
+  // nobody holds the Directory Synchronization Accounts role there is no sync
+  // account to restrict, and the goal does not apply — never a licence row (B7).
+  const syncAccount = Object.values(snapshot.roles?.active ?? {}).some((roles) => roles.some((r) => r.toLowerCase() === DIR_SYNC_ROLE))
+  const workloadLicensed = snapshot.capabilities.workloadIdPremium.enabled
   auto(
     'workload',
-    snapshot.capabilities.workloadIdPremium.enabled,
-    snapshot.capabilities.workloadIdPremium.enabled
-      ? 'Workload Identities Premium present'
-      : 'no Workload Identities Premium licence',
+    syncAccount && workloadLicensed,
+    !syncAccount
+      ? 'no directory synchronization account'
+      : workloadLicensed
+        ? 'Workload Identities Premium present'
+        : 'no Workload Identities Premium licence',
   )
   return out
 }
+
+/** Directory Synchronization Accounts (data/role-templates.json). */
+export const DIR_SYNC_ROLE = 'd29b2b05-8046-44ba-8758-1e26182fcf32'

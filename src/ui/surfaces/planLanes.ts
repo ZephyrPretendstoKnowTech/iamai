@@ -39,7 +39,7 @@ import { isHeld } from '../../roadmap/holds.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { submitsEnforcementOnly, unavailableReason } from '../../roadmap/operations.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
-import { QUESTION_STEP, answerOf } from '../../roadmap/answers.ts'
+import { QUESTION_STEP, answerOf, deviceCodeWorkflowsOf } from '../../roadmap/answers.ts'
 import { observationWindowDays, readyBasis, readyWhen } from '../../derive/readyWhen.ts'
 import { planStateOf } from './planState.ts'
 import type { PlanState } from './planState.ts'
@@ -199,12 +199,15 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
 const PREREQUISITE_RANK: Readonly<Record<PrerequisiteState, number>> = { blocked: 0, actionable: 1, resolved: 2 }
 
 /** One non-step prerequisite as the step it gates reads it. */
-function prerequisiteOf(e: Edge, step: Step): PrerequisiteState {
+function prerequisiteOf(e: Edge, step: Step, conds: Readonly<Record<string, ConditionState>>): PrerequisiteState {
   switch (e.prerequisiteKind) {
     case 'sourceConflict':
     case 'baselineSafetyConflict':
       return step.state.condition === 'baseline-conflict' ? 'blocked' : 'resolved'
     case 'decision':
+      // A decision behind a condition the person's answer made applicable (device
+      // code sign-in in use) is theirs to act on until the answer changes.
+      if (e.condition !== null && conds[e.condition] === 'applicable') return 'actionable'
       return step.state.condition === 'needs-decision' ? 'actionable' : 'resolved'
     case 'sourceMapping':
       // The graph puts one mapping on every policy create; the scan knows which
@@ -218,13 +221,13 @@ function prerequisiteOf(e: Edge, step: Step): PrerequisiteState {
 }
 
 /** The graph's non-step prerequisites, each read off every step it gates; the most conservative reading wins. */
-function prerequisites(byId: ReadonlyMap<string, Step>): Record<string, PrerequisiteState> {
+function prerequisites(byId: ReadonlyMap<string, Step>, conds: Readonly<Record<string, ConditionState>>): Record<string, PrerequisiteState> {
   const out: Record<string, PrerequisiteState> = {}
   for (const e of GRAPH.data.edges) {
     if (e.prerequisiteKind === 'step') continue
     const step = byId.get(e.step)
     if (!step) continue
-    const state = prerequisiteOf(e, step)
+    const state = prerequisiteOf(e, step, conds)
     const held = out[e.prerequisite]
     if (held === undefined || PREREQUISITE_RANK[state] < PREREQUISITE_RANK[held]) out[e.prerequisite] = state
   }
@@ -247,6 +250,11 @@ function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, St
     case 'campaign-targets-passkey': return 'applicable'
     case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
     case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
+    // Owned by the policy it gates, so the owner being on the plan says nothing: the saved answer does.
+    case 'device-code-workflows-exist': {
+      const inUse = answers ? deviceCodeWorkflowsOf(answers) : null
+      return inUse === null ? 'unresolved' : inUse ? 'applicable' : 'not-applicable'
+    }
     default: break
   }
   if (owner !== undefined) return 'applicable'
@@ -280,8 +288,9 @@ export function tenantStateOf(steps: readonly Step[], rows: readonly LaneRowInpu
   for (const s of GRAPH.data.steps) observed[s.id] = { complete: true }
   for (const s of steps) if (GRAPH.steps.has(s.id)) observed[s.id] = observe(s, byId)
   for (const r of rows) if (GRAPH.steps.has(r.id)) observed[r.id] = { exists: false, complete: r.complete }
+  const conds = conditions(byId, answers)
   return [
-    { steps: observed, conditions: conditions(byId, answers), prerequisites: prerequisites(byId) },
+    { steps: observed, conditions: conds, prerequisites: prerequisites(byId, conds) },
     { deferred: steps.filter((s) => s.status === 'skipped').map((s) => s.id) },
   ]
 }

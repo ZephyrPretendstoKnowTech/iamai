@@ -38,22 +38,22 @@
     "signInRiskLevels": [
       "high"
     ],
-    "finalAuthenticationStrengthSemantic": "tenant-resolved baseline strength; available source evidence names Modern MFA + TAP but source-tenant IDs are not portable",
+    "grant": "tenant-resolved baseline authentication strength; available source evidence names Modern MFA + TAP but source-tenant IDs are not portable",
+    "grantOperator": "OR",
     "signInFrequency": "everyTime",
-    "firstEnforcementDecision": "Required saved owner/product decision with two supported values: baselineStrength or plainMfa. No selected value was found in the supplied/retrieved authority, so no default is assumed."
+    "authoringCorrection": "B7: the channels mirror the Medium-risk package at the High threshold, keeping this member's own authentication-strength grant and Every-time session. The earlier plain-MFA first-enforcement variant waited on a saved decision the runtime never supplies (selectByBinding), so no channel projected; a decision never weakens a grant, so the package carries the baseline strength only."
   },
   "requiredBindings": [
     "policy.target.displayName",
     "policy.target.excludeGroups",
     "policy.current.id",
     "policy.current.semanticMismatches",
-    "decision.signInRisk.firstEnforcementMode",
+    "authStrength.target.id",
     "authStrength.target.displayName"
   ],
   "optionalBindings": [
     "tenant.displayName",
     "policy.current.state",
-    "authStrength.target.id",
     "authStrength.target.allowedCombinations",
     "people.affected.count",
     "people.pushOnly.count",
@@ -61,81 +61,36 @@
     "evidence.mfaReadiness",
     "dependencies.blockers"
   ],
-  "bindingEnums": {
-    "decision.signInRisk.firstEnforcementMode": [
-      "baselineStrength",
-      "plainMfa"
-    ]
-  },
   "projection": {
-    "needsDecision": {
-      "reason": "No saved first-enforcement selection is present in available authority.",
-      "entra": [],
-      "json": [],
-      "powershell": [],
+    "missing": {
+      "requires": [
+        "policy.target.displayName",
+        "policy.target.excludeGroups",
+        "authStrength.target.id",
+        "authStrength.target.displayName"
+      ],
+      "entra": [
+        "entra.create"
+      ],
+      "json": [
+        "json.create"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Create"
+        }
+      ],
       "aiInfo": [
-        "ai.decision"
+        "ai.create"
       ],
       "email": []
-    },
-    "missing": {
-      "mode": "selectByBinding",
-      "selector": "decision.signInRisk.firstEnforcementMode",
-      "variants": {
-        "baselineStrength": {
-          "requires": [
-            "policy.target.displayName",
-            "policy.target.excludeGroups",
-            "authStrength.target.id",
-            "authStrength.target.displayName"
-          ],
-          "entra": [
-            "entra.create.baseline-strength"
-          ],
-          "json": [
-            "json.create.baseline-strength"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Create"
-            }
-          ],
-          "aiInfo": [
-            "ai.create.baseline-strength"
-          ],
-          "email": []
-        },
-        "plainMfa": {
-          "requires": [
-            "policy.target.displayName",
-            "policy.target.excludeGroups"
-          ],
-          "entra": [
-            "entra.create.plain-mfa"
-          ],
-          "json": [
-            "json.create.plain-mfa"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Create"
-            }
-          ],
-          "aiInfo": [
-            "ai.create.plain-mfa"
-          ],
-          "email": []
-        }
-      }
     },
     "partial": {
       "mode": "composeByMismatch",
       "requires": [
         "policy.current.id",
-        "policy.current.semanticMismatches",
-        "decision.signInRisk.firstEnforcementMode"
+        "policy.current.semanticMismatches"
       ],
       "sharedBefore": {
         "entra": [
@@ -235,50 +190,27 @@
             }
           ]
         },
-        "grant.first-enforcement": {
+        "grant.authentication-strength": {
           "facts": [
             "grantControls"
           ],
-          "mode": "selectByBinding",
-          "selector": "decision.signInRisk.firstEnforcementMode",
-          "variants": {
-            "baselineStrength": {
-              "requires": [
-                "policy.current.id",
-                "authStrength.target.id",
-                "authStrength.target.displayName"
-              ],
-              "entra": [
-                "entra.correct.grant.baseline-strength"
-              ],
-              "json": [
-                "json.correct.grant.baseline-strength"
-              ],
-              "powershell": [
-                {
-                  "block": "powershell.run",
-                  "mode": "CorrectGrant"
-                }
-              ]
-            },
-            "plainMfa": {
-              "requires": [
-                "policy.current.id"
-              ],
-              "entra": [
-                "entra.correct.grant.plain-mfa"
-              ],
-              "json": [
-                "json.correct.grant.plain-mfa"
-              ],
-              "powershell": [
-                {
-                  "block": "powershell.run",
-                  "mode": "CorrectGrant"
-                }
-              ]
+          "requires": [
+            "policy.current.id",
+            "authStrength.target.id",
+            "authStrength.target.displayName"
+          ],
+          "entra": [
+            "entra.correct.grant"
+          ],
+          "json": [
+            "json.correct.grant"
+          ],
+          "powershell": [
+            {
+              "block": "powershell.run",
+              "mode": "CorrectGrant"
             }
-          }
+          ]
         },
         "session.every-time": {
           "facts": [
@@ -338,8 +270,7 @@
     "reportOnly": {
       "requires": [
         "policy.current.id",
-        "policy.target.excludeGroups",
-        "decision.signInRisk.firstEnforcementMode"
+        "policy.target.excludeGroups"
       ],
       "entra": [
         "entra.observe"
@@ -357,60 +288,30 @@
       "email": []
     },
     "readyToEnforce": {
-      "mode": "selectByBinding",
-      "selector": "decision.signInRisk.firstEnforcementMode",
-      "variants": {
-        "baselineStrength": {
-          "requires": [
-            "policy.current.id",
-            "policy.target.excludeGroups",
-            "authStrength.target.id",
-            "authStrength.target.displayName"
-          ],
-          "entra": [
-            "entra.enforce.baseline-strength"
-          ],
-          "json": [
-            "json.enforce"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Enforce"
-            }
-          ],
-          "aiInfo": [
-            "ai.enforce.baseline-strength"
-          ],
-          "email": [
-            "email.users.baseline-strength"
-          ]
-        },
-        "plainMfa": {
-          "requires": [
-            "policy.current.id",
-            "policy.target.excludeGroups"
-          ],
-          "entra": [
-            "entra.enforce.plain-mfa"
-          ],
-          "json": [
-            "json.enforce"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Enforce"
-            }
-          ],
-          "aiInfo": [
-            "ai.enforce.plain-mfa"
-          ],
-          "email": [
-            "email.users.plain-mfa"
-          ]
+      "requires": [
+        "policy.current.id",
+        "policy.target.excludeGroups",
+        "authStrength.target.id",
+        "authStrength.target.displayName"
+      ],
+      "entra": [
+        "entra.enforce"
+      ],
+      "json": [
+        "json.enforce"
+      ],
+      "powershell": [
+        {
+          "block": "powershell.run",
+          "mode": "Enforce"
         }
-      }
+      ],
+      "aiInfo": [
+        "ai.enforce"
+      ],
+      "email": [
+        "email.users.pre-enforcement"
+      ]
     },
     "inPlace": {
       "entra": [],
@@ -420,6 +321,13 @@
       "email": []
     },
     "blocked": {
+      "entra": [],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [],
+      "email": []
+    },
+    "needsDecision": {
       "entra": [],
       "json": [],
       "powershell": [],
@@ -458,8 +366,7 @@
     "communicationTrigger": "before-enforcement",
     "purpose": "pre-change-notice",
     "blocks": [
-      "email.users.baseline-strength",
-      "email.users.plain-mfa"
+      "email.users.pre-enforcement"
     ]
   },
   "verifiedSources": [
@@ -536,14 +443,7 @@
       "checkedOn": "2026-09-10"
     }
   ],
-  "authoringIssues": [
-    {
-      "id": "sign-in-risk-first-enforcement-choice-unavailable",
-      "severity": "state-gating",
-      "status": "open-until-existing-saved-decision-is-supplied-to-renderer",
-      "detail": "Available project authority defines both valid first-enforcement choices but does not reveal which one the owner selected. Package therefore supports both deterministically and emits no actionable implementation in needsDecision. Do not guess."
-    }
-  ],
+  "authoringIssues": [],
   "mechanicalValidation": {
     "status": "PASS_WITH_LIMITATION",
     "jsonParse": "pass-after-sample-binding",

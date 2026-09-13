@@ -249,6 +249,8 @@ function isComplete(ctx: Ctx, id: string): boolean {
   // its evidence was earned before it was turned on, and no gate reopens it.
   if (kindOf(ctx, id) === 'policy' && obs.exists === true && obs.enforced === true && obs.drift !== true) return true
   // A question step whose condition resolved not-applicable has nothing left to do (§8.2).
+  // A policy that owns a condition (device code sign-in in use) still has its own work.
+  if (kindOf(ctx, id) === 'policy') return false
   for (const c of ctx.graph.data.conditions) {
     if (c.ownedBy === id && ctx.tenant.conditions?.[c.name] === 'not-applicable' && !obs.exists) return true
   }

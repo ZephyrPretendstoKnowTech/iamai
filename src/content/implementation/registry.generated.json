@@ -12911,13 +12911,12 @@
           "policy.target.excludeGroups",
           "policy.current.id",
           "policy.current.semanticMismatches",
-          "decision.signInRisk.firstEnforcementMode",
+          "authStrength.target.id",
           "authStrength.target.displayName"
         ],
         "optionalBindings": [
           "tenant.displayName",
           "policy.current.state",
-          "authStrength.target.id",
           "authStrength.target.allowedCombinations",
           "people.affected.count",
           "people.pushOnly.count",
@@ -12926,13 +12925,27 @@
           "dependencies.blockers"
         ],
         "projection": {
-          "needsDecision": {
-            "reason": "No saved first-enforcement selection is present in available authority.",
-            "entra": [],
-            "json": [],
-            "powershell": [],
+          "missing": {
+            "requires": [
+              "policy.target.displayName",
+              "policy.target.excludeGroups",
+              "authStrength.target.id",
+              "authStrength.target.displayName"
+            ],
+            "entra": [
+              "entra.create"
+            ],
+            "json": [
+              "json.create"
+            ],
+            "powershell": [
+              {
+                "block": "powershell.run",
+                "mode": "Create"
+              }
+            ],
             "aiInfo": [
-              "ai.decision"
+              "ai.create"
             ],
             "email": []
           },
@@ -12940,8 +12953,7 @@
             "mode": "composeByMismatch",
             "requires": [
               "policy.current.id",
-              "policy.current.semanticMismatches",
-              "decision.signInRisk.firstEnforcementMode"
+              "policy.current.semanticMismatches"
             ],
             "sharedBefore": {
               "entra": [
@@ -13041,6 +13053,28 @@
                   }
                 ]
               },
+              "grant.authentication-strength": {
+                "facts": [
+                  "grantControls"
+                ],
+                "requires": [
+                  "policy.current.id",
+                  "authStrength.target.id",
+                  "authStrength.target.displayName"
+                ],
+                "entra": [
+                  "entra.correct.grant"
+                ],
+                "json": [
+                  "json.correct.grant"
+                ],
+                "powershell": [
+                  {
+                    "block": "powershell.run",
+                    "mode": "CorrectGrant"
+                  }
+                ]
+              },
               "session.every-time": {
                 "facts": [
                   "sessionControls"
@@ -13099,8 +13133,7 @@
           "reportOnly": {
             "requires": [
               "policy.current.id",
-              "policy.target.excludeGroups",
-              "decision.signInRisk.firstEnforcementMode"
+              "policy.target.excludeGroups"
             ],
             "entra": [
               "entra.observe"
@@ -13117,6 +13150,26 @@
             ],
             "email": []
           },
+          "readyToEnforce": {
+            "requires": [
+              "policy.current.id",
+              "policy.target.excludeGroups",
+              "authStrength.target.id",
+              "authStrength.target.displayName"
+            ],
+            "entra": [
+              "entra.enforce"
+            ],
+            "json": [
+              "json.enforce"
+            ],
+            "aiInfo": [
+              "ai.enforce"
+            ],
+            "email": [
+              "email.users.pre-enforcement"
+            ]
+          },
           "inPlace": {
             "entra": [],
             "json": [],
@@ -13125,6 +13178,13 @@
             "email": []
           },
           "blocked": {
+            "entra": [],
+            "json": [],
+            "powershell": [],
+            "aiInfo": [],
+            "email": []
+          },
+          "needsDecision": {
             "entra": [],
             "json": [],
             "powershell": [],
@@ -13246,9 +13306,10 @@
           "signInRiskLevels": [
             "high"
           ],
-          "finalAuthenticationStrengthSemantic": "tenant-resolved baseline strength; available source evidence names Modern MFA + TAP but source-tenant IDs are not portable",
+          "grant": "tenant-resolved baseline authentication strength; available source evidence names Modern MFA + TAP but source-tenant IDs are not portable",
+          "grantOperator": "OR",
           "signInFrequency": "everyTime",
-          "firstEnforcementDecision": "Required saved owner/product decision with two supported values: baselineStrength or plainMfa. No selected value was found in the supplied/retrieved authority, so no default is assumed."
+          "authoringCorrection": "B7: the channels mirror the Medium-risk package at the High threshold, keeping this member's own authentication-strength grant and Every-time session. The earlier plain-MFA first-enforcement variant waited on a saved decision the runtime never supplies (selectByBinding), so no channel projected; a decision never weakens a grant, so the package carries the baseline strength only."
         },
         "email": {
           "recommendation": "recommended",
@@ -13259,27 +13320,14 @@
           "communicationTrigger": "before-enforcement",
           "purpose": "pre-change-notice",
           "blocks": [
-            "email.users.baseline-strength",
-            "email.users.plain-mfa"
+            "email.users.pre-enforcement"
           ]
         }
       },
       "blocks": {
-        "ai.decision": {
+        "entra.create": {
           "meta": {
-            "id": "ai.decision",
-            "channel": "aiInfo",
-            "states": [
-              "needsDecision"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nIAMAI has two already-defined First-enforcement options for **Challenge High-Risk Sign-ins**: `baselineStrength` and `plainMfa`. The saved owner selection is not present in the supplied authority. Do not choose one, generate mutation JSON, or recommend a default. Explain what evidence would differ between the two options and wait for the existing saved decision to be supplied to the renderer.\n"
-        },
-        "entra.create.baseline-strength": {
-          "meta": {
-            "id": "entra.create.baseline-strength",
+            "id": "entra.create",
             "channel": "entra",
             "states": [
               "missing"
@@ -13287,19 +13335,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: **{{policy.target.displayName}}**.\n3. Users → Include All users; Exclude IAMAI canonical exclusions: **{{policy.target.excludeGroups}}**.\n4. Target resources → All resources.\n5. Conditions → Sign-in risk → High.\n6. Grant → Grant access → Require authentication strength → **{{authStrength.target.displayName}}**.\n7. Session → Sign-in frequency → Every time.\n8. Enable policy → Report-only. Create, read back, and rescan IAMAI.\n"
-        },
-        "entra.create.plain-mfa": {
-          "meta": {
-            "id": "entra.create.plain-mfa",
-            "channel": "entra",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n2. Name: **{{policy.target.displayName}}**.\n3. Users → Include All users; Exclude IAMAI canonical exclusions: **{{policy.target.excludeGroups}}**.\n4. Target resources → All resources.\n5. Conditions → Sign-in risk → High.\n6. Grant → Grant access → Require multifactor authentication.\n7. Session → Sign-in frequency → Every time.\n8. Enable policy → Report-only. This is the saved initial rollout rung, not the final baseline strength. Create, read back, and rescan IAMAI.\n"
+          "text": "In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.\n1. Name: {{policy.target.displayName}}.\n2. Users: Include **All users** and add only IAMAI-resolved canonical exclusions.\n3. Target resources: **All resources**.\n4. Conditions > Sign-in risk: **High** only.\n5. Grant: **Grant access > Require authentication strength > {{authStrength.target.displayName}}**.\n6. Session: **Sign-in frequency > Every time**.\n7. Enable policy: **Report-only**.\n8. Create and rescan IAMAI.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -13311,7 +13347,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact IAMAI-resolved Conditional Access policy by stable tenant ID. Do not locate an update target solely by display name.\n"
+          "text": "Open the exact existing policy identified by IAMAI stable ID {{policy.current.id}}. Do not select the update target by display name alone.\n"
         },
         "entra.correct.users": {
           "meta": {
@@ -13323,7 +13359,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Users to All users with exactly the IAMAI-resolved canonical exclusions. Preserve the selected grant, High-risk condition, and Every-time session if already canonical.\n"
+          "text": "Users: Include **All users** and restore only IAMAI-resolved canonical exclusions.\n"
         },
         "entra.correct.target": {
           "meta": {
@@ -13335,7 +13371,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Target resources to All resources. Preserve the High-risk condition and selected grant if already canonical.\n"
+          "text": "Target resources: set **All resources** and remove noncanonical app exclusions.\n"
         },
         "entra.correct.risk": {
           "meta": {
@@ -13347,7 +13383,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Conditions → Sign-in risk → High only for this step. Do not add Medium here; IAMAI authors Medium risk separately.\n"
+          "text": "Conditions > Sign-in risk: set **High** only. Remove Medium/Low from this member; Medium remains a separate IAMAI step.\n"
         },
         "entra.correct.conditions": {
           "meta": {
@@ -13359,11 +13395,11 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Remove IAMAI-classified noncanonical user-risk, service-principal-risk, location, platform, device/filter, authentication-flow, or user-action conditions. Keep client apps All.\n"
+          "text": "Remove noncanonical user-risk, location, platform, device/filter, authentication-flow, or workload-risk conditions. Keep client apps All.\n"
         },
-        "entra.correct.grant.baseline-strength": {
+        "entra.correct.grant": {
           "meta": {
-            "id": "entra.correct.grant.baseline-strength",
+            "id": "entra.correct.grant",
             "channel": "entra",
             "states": [
               "partial"
@@ -13371,19 +13407,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Grant → Require authentication strength → **{{authStrength.target.displayName}}**. Remove conflicting MFA/built-in grants from this policy. This module applies only when saved First-enforcement mode is `baselineStrength`.\n"
-        },
-        "entra.correct.grant.plain-mfa": {
-          "meta": {
-            "id": "entra.correct.grant.plain-mfa",
-            "channel": "entra",
-            "states": [
-              "partial"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "Grant → Require multifactor authentication for the initial rollout. Remove a stronger/different grant only because the saved First-enforcement mode is `plainMfa`; do not treat this as the final baseline destination.\n"
+          "text": "Grant: **Require authentication strength > {{authStrength.target.displayName}}** only, with operator OR. Remove built-in MFA or other grants from this retained member; do not weaken it to plain MFA.\n"
         },
         "entra.correct.session": {
           "meta": {
@@ -13395,7 +13419,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Session → Sign-in frequency → Every time. Remove noncanonical session controls detected for this step.\n"
+          "text": "Session: set **Sign-in frequency > Every time**. Remove other noncanonical session controls from this retained High-risk member.\n"
         },
         "entra.correct.lifecycle": {
           "meta": {
@@ -13407,7 +13431,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Enable policy to Report-only while configuration/readiness is being validated.\n"
+          "text": "Set **Enable policy = Report-only** while correcting it unless IAMAI is explicitly projecting the later Enforce action.\n"
         },
         "entra.correct.save-verify": {
           "meta": {
@@ -13419,7 +13443,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save only the selected correction modules, read back the same stable policy, and rescan IAMAI. The grant must match the saved First-enforcement mode.\n"
+          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -13431,11 +13455,11 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Leave the selected canonical policy in Report-only. Review ID Protection risky sign-ins and the affected population's ability to satisfy the selected grant. Do not infer safety from zero recent risky events. When evidence/readiness changes, rescan IAMAI.\n"
+          "text": "Leave the policy in Report-only. Verify the retained High-only/authentication-strength/Every-time shape, review High-risk sign-ins and whether affected users can satisfy the strength, and confirm the separate Medium-risk policy has not been absorbed or duplicated. Do not infer safety from zero recent risky events.\n"
         },
-        "entra.enforce.baseline-strength": {
+        "entra.enforce": {
           "meta": {
-            "id": "entra.enforce.baseline-strength",
+            "id": "entra.enforce",
             "channel": "entra",
             "states": [
               "readyToEnforce"
@@ -13443,23 +13467,11 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Confirm the same stable policy is canonical and Report-only.\n2. Confirm affected users can satisfy **{{authStrength.target.displayName}}** using the exact allowed combinations IAMAI resolved.\n3. Change Enable policy to On and save.\n4. Review resulting risky-sign-in behavior when legitimate evidence exists; do not manufacture a risky event.\n5. Rescan IAMAI. If impact is unsafe, return this policy to Report-only.\n"
+          "text": "Immediately before enforcement, re-read the stable policy and confirm High-only risk, All resources, canonical exclusions, the **{{authStrength.target.displayName}}** grant, Every-time sign-in frequency, and acceptable readiness. Change only **Enable policy** from Report-only to **On**, read back the state, and monitor legitimate sign-ins that cannot satisfy the strength. Roll back the same stable policy to Report-only if needed.\n"
         },
-        "entra.enforce.plain-mfa": {
+        "json.create": {
           "meta": {
-            "id": "entra.enforce.plain-mfa",
-            "channel": "entra",
-            "states": [
-              "readyToEnforce"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "1. Confirm the same stable policy is canonical and Report-only and the saved First-enforcement mode is `plainMfa`.\n2. Confirm affected users are MFA-registered.\n3. Change Enable policy to On and save.\n4. Review resulting risky-sign-in behavior when legitimate evidence exists.\n5. Rescan IAMAI. The retained baseline strength is still the later destination; do not raise it until IAMAI/owner readiness says to do so.\n"
-        },
-        "json.create.baseline-strength": {
-          "meta": {
-            "id": "json.create.baseline-strength",
+            "id": "json.create",
             "channel": "json",
             "states": [
               "missing"
@@ -13469,21 +13481,7 @@
             "method": "POST",
             "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
           },
-          "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{\"users\":{\"includeUsers\":[\"All\"],\"excludeUsers\":[],\"includeGroups\":[],\"excludeGroups\":{{json:policy.target.excludeGroups}},\"includeRoles\":[],\"excludeRoles\":[]},\"applications\":{\"includeApplications\":[\"All\"],\"excludeApplications\":[],\"includeUserActions\":[],\"includeAuthenticationContextClassReferences\":[]},\"clientAppTypes\":[\"all\"],\"signInRiskLevels\":[\"high\"],\"userRiskLevels\":[],\"servicePrincipalRiskLevels\":[]},\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[],\"customAuthenticationFactors\":[],\"termsOfUse\":[],\"authenticationStrength\":{\"id\":{{json:authStrength.target.id}}}},\"sessionControls\":{\"signInFrequency\":{\"isEnabled\":true,\"frequencyInterval\":\"everyTime\",\"authenticationType\":\"primaryAndSecondaryAuthentication\"}}}\n"
-        },
-        "json.create.plain-mfa": {
-          "meta": {
-            "id": "json.create.plain-mfa",
-            "channel": "json",
-            "states": [
-              "missing"
-            ],
-            "format": "json-template",
-            "kind": "deployableAfterBinding",
-            "method": "POST",
-            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"
-          },
-          "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{\"users\":{\"includeUsers\":[\"All\"],\"excludeUsers\":[],\"includeGroups\":[],\"excludeGroups\":{{json:policy.target.excludeGroups}},\"includeRoles\":[],\"excludeRoles\":[]},\"applications\":{\"includeApplications\":[\"All\"],\"excludeApplications\":[],\"includeUserActions\":[],\"includeAuthenticationContextClassReferences\":[]},\"clientAppTypes\":[\"all\"],\"signInRiskLevels\":[\"high\"],\"userRiskLevels\":[],\"servicePrincipalRiskLevels\":[]},\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"mfa\"],\"customAuthenticationFactors\":[],\"termsOfUse\":[]},\"sessionControls\":{\"signInFrequency\":{\"isEnabled\":true,\"frequencyInterval\":\"everyTime\",\"authenticationType\":\"primaryAndSecondaryAuthentication\"}}}\n"
+          "text": "{\"displayName\":{{json:policy.target.displayName}},\"state\":\"enabledForReportingButNotEnforced\",\"conditions\":{\"users\":{\"includeUsers\":[\"All\"],\"excludeGroups\":{{json:policy.target.excludeGroups}}},\"applications\":{\"includeApplications\":[\"All\"],\"excludeApplications\":[]},\"clientAppTypes\":[\"all\"],\"signInRiskLevels\":[\"high\"]},\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[],\"customAuthenticationFactors\":[],\"termsOfUse\":[],\"authenticationStrength\":{\"id\":{{json:authStrength.target.id}}}},\"sessionControls\":{\"signInFrequency\":{\"isEnabled\":true,\"frequencyInterval\":\"everyTime\",\"authenticationType\":\"primaryAndSecondaryAuthentication\"}}}\n"
         },
         "json.correct.conditions": {
           "meta": {
@@ -13497,11 +13495,11 @@
             "method": "PATCH",
             "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
-          "text": "{\"conditions\":{\"users\":{\"includeUsers\":[\"All\"],\"excludeUsers\":[],\"includeGroups\":[],\"excludeGroups\":{{json:policy.target.excludeGroups}},\"includeRoles\":[],\"excludeRoles\":[]},\"applications\":{\"includeApplications\":[\"All\"],\"excludeApplications\":[],\"includeUserActions\":[],\"includeAuthenticationContextClassReferences\":[]},\"clientAppTypes\":[\"all\"],\"signInRiskLevels\":[\"high\"],\"userRiskLevels\":[],\"servicePrincipalRiskLevels\":[]}}\n"
+          "text": "{\"conditions\":{\"users\":{\"includeUsers\":[\"All\"],\"excludeUsers\":[],\"includeGroups\":[],\"excludeGroups\":{{json:policy.target.excludeGroups}},\"includeRoles\":[],\"excludeRoles\":[]},\"applications\":{\"includeApplications\":[\"All\"],\"excludeApplications\":[],\"includeUserActions\":[],\"includeAuthenticationContextClassReferences\":[]},\"clientAppTypes\":[\"all\"],\"signInRiskLevels\":[\"high\"],\"userRiskLevels\":[],\"servicePrincipalRiskLevels\":[],\"locations\":null,\"platforms\":null,\"devices\":null,\"authenticationFlows\":null,\"insiderRiskLevels\":null}}\n"
         },
-        "json.correct.grant.baseline-strength": {
+        "json.correct.grant": {
           "meta": {
-            "id": "json.correct.grant.baseline-strength",
+            "id": "json.correct.grant",
             "channel": "json",
             "states": [
               "partial"
@@ -13512,20 +13510,6 @@
             "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
           },
           "text": "{\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[],\"customAuthenticationFactors\":[],\"termsOfUse\":[],\"authenticationStrength\":{\"id\":{{json:authStrength.target.id}}}}}\n"
-        },
-        "json.correct.grant.plain-mfa": {
-          "meta": {
-            "id": "json.correct.grant.plain-mfa",
-            "channel": "json",
-            "states": [
-              "partial"
-            ],
-            "format": "json",
-            "kind": "deployableAfterBinding",
-            "method": "PATCH",
-            "endpoint": "https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policy.current.id}"
-          },
-          "text": "{\"grantControls\":{\"operator\":\"OR\",\"builtInControls\":[\"mfa\"],\"customAuthenticationFactors\":[],\"termsOfUse\":[],\"authenticationStrength\":null}}\n"
         },
         "json.correct.session": {
           "meta": {
@@ -13584,17 +13568,6 @@
             "invocation": {
               "modeParameter": "Mode",
               "parameters": {
-                "FirstEnforcementMode": {
-                  "binding": "decision.signInRisk.firstEnforcementMode",
-                  "modes": [
-                    "Create",
-                    "CorrectConditions",
-                    "CorrectGrant",
-                    "CorrectSession",
-                    "ReportOnly",
-                    "Verify"
-                  ]
-                },
                 "PolicyDisplayName": {
                   "binding": "policy.target.displayName",
                   "modes": [
@@ -13623,7 +13596,6 @@
                   "binding": "authStrength.target.id",
                   "modes": [
                     "Create",
-                    "CorrectConditions",
                     "CorrectGrant",
                     "Verify"
                   ]
@@ -13634,11 +13606,11 @@
               }
             }
           },
-          "text": "# IAMAI compact implementation script — Challenge High-Risk Sign-ins\n[CmdletBinding()]\nparam(\n [Parameter(Mandatory)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,\n [Parameter(Mandatory)][ValidateSet('baselineStrength','plainMfa')][string]$FirstEnforcementMode,\n [string]$PolicyDisplayName,\n [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')][string]$PolicyId,\n [string[]]$ExcludeGroupIds=@(),\n [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')][string]$AuthenticationStrengthId,\n [switch]$ReadinessApproved\n)\nSet-StrictMode -Version Latest\n$ErrorActionPreference='Stop'\n$Base='https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'\n$Guid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'\nfunction Connect-CA([bool]$Write){Import-Module Microsoft.Graph.Authentication -ErrorAction Stop;$s=@('Policy.Read.All');if($Write){$s+='Policy.ReadWrite.ConditionalAccess'};$c=Get-MgContext;$m=if($c){@($s|?{$_ -notin @($c.Scopes)})}else{$s};if(-not$c-or$m.Count){Connect-MgGraph -Scopes $s -NoWelcome}}\nfunction Assert-Inputs{if(@($ExcludeGroupIds|?{$_ -notmatch $Guid}).Count){throw 'Invalid exclusion ID.'};if($FirstEnforcementMode-eq'baselineStrength' -and $AuthenticationStrengthId -notmatch $Guid){throw 'baselineStrength mode requires the IAMAI-resolved tenant authentication-strength ID.'}}\nfunction Get-Policy{if($PolicyId -notmatch $Guid){throw 'Stable IAMAI policy ID required.'};$p=Invoke-MgGraphRequest -Method GET -Uri \"$Base/$PolicyId\";if($p.id-ne$PolicyId){throw 'Stable-ID readback failed.'};$p}\nfunction Same-Set([string[]]$A,[string[]]$B){(@($A|Sort-Object)-join '|') -eq (@($B|Sort-Object)-join '|')}\nfunction Conditions{Assert-Inputs;@{users=@{includeUsers=@('All');excludeUsers=@();includeGroups=@();excludeGroups=@($ExcludeGroupIds);includeRoles=@();excludeRoles=@()};applications=@{includeApplications=@('All');excludeApplications=@();includeUserActions=@();includeAuthenticationContextClassReferences=@()};clientAppTypes=@('all');signInRiskLevels=@('high');userRiskLevels=@();servicePrincipalRiskLevels=@();locations=$null;platforms=$null;devices=$null;authenticationFlows=$null;insiderRiskLevels=$null}}\nfunction Grant{Assert-Inputs;if($FirstEnforcementMode-eq'baselineStrength'){@{operator='OR';builtInControls=@();customAuthenticationFactors=@();termsOfUse=@();authenticationStrength=@{id=$AuthenticationStrengthId}}}else{@{operator='OR';builtInControls=@('mfa');customAuthenticationFactors=@();termsOfUse=@();authenticationStrength=$null}}}\nfunction Session{@{signInFrequency=@{isEnabled=$true;frequencyInterval='everyTime';authenticationType='primaryAndSecondaryAuthentication'};persistentBrowser=$null;applicationEnforcedRestrictions=$null;cloudAppSecurity=$null;disableResilienceDefaults=$null}}\nfunction Patch([hashtable]$Body){[void](Get-Policy);Invoke-MgGraphRequest -Method PATCH -Uri \"$Base/$PolicyId\" -Body($Body|ConvertTo-Json -Depth 20)-ContentType 'application/json'|Out-Null}\nfunction Assert-Canonical($p){Assert-Inputs;if(@($p.conditions.users.includeUsers).Count-ne1-or$p.conditions.users.includeUsers[0]-ne'All'){throw 'includeUsers mismatch'};if(-not (Same-Set @($p.conditions.users.excludeGroups) @($ExcludeGroupIds))){throw 'excludeGroups mismatch'};if(@($p.conditions.applications.includeApplications).Count-ne1-or$p.conditions.applications.includeApplications[0]-ne'All'){throw 'All-resources target mismatch'};if(@($p.conditions.signInRiskLevels).Count-ne1-or$p.conditions.signInRiskLevels[0]-ne'high'){throw 'Sign-in risk must be High only'};$s=$p.sessionControls.signInFrequency;if(-not$s.isEnabled-or$s.frequencyInterval-ne'everyTime'-or$s.authenticationType-ne'primaryAndSecondaryAuthentication'){throw 'Every-time session mismatch'};$g=$p.grantControls;if($FirstEnforcementMode-eq'baselineStrength'){if($g.operator-ne'OR'-or@($g.builtInControls).Count-ne0-or$g.authenticationStrength.id-ne$AuthenticationStrengthId){throw 'Baseline-strength grant mismatch'}}else{if($g.operator-ne'OR'-or@($g.builtInControls).Count-ne1-or$g.builtInControls[0]-ne'mfa'-or$null-ne$g.authenticationStrength){throw 'Plain-MFA grant mismatch'}}}\nswitch($Mode){\n 'Create'{Connect-CA $true;Assert-Inputs;if([string]::IsNullOrWhiteSpace($PolicyDisplayName)){throw 'PolicyDisplayName required.'};$e=$PolicyDisplayName.Replace(\"'\",\"''\");$f=[uri]::EscapeDataString(\"displayName eq '$e'\");if(@((Invoke-MgGraphRequest -Method GET -Uri \"$Base?`$filter=$f\").value).Count){throw 'Exact display-name collision. Rescan IAMAI; do not create a duplicate.'};$b=@{displayName=$PolicyDisplayName;state='enabledForReportingButNotEnforced';conditions=(Conditions);grantControls=(Grant);sessionControls=(Session)};$r=Invoke-MgGraphRequest -Method POST -Uri $Base -Body($b|ConvertTo-Json -Depth 20)-ContentType 'application/json';Write-Host \"Created $($r.id) in Report-only using FirstEnforcementMode=$FirstEnforcementMode. Rescan IAMAI.\"}\n 'CorrectConditions'{Connect-CA $true;Patch @{conditions=(Conditions)}}\n 'CorrectGrant'{Connect-CA $true;Patch @{grantControls=(Grant)}}\n 'CorrectSession'{Connect-CA $true;Patch @{sessionControls=(Session)}}\n 'ReportOnly'{Connect-CA $true;Patch @{state='enabledForReportingButNotEnforced'}}\n 'Verify'{Connect-CA $false;$p=Get-Policy;Assert-Canonical $p;Write-Host \"Canonical selected rollout shape verified; lifecycle=$($p.state).\"}\n 'Enforce'{if(-not$ReadinessApproved){throw 'Enforce requires ReadinessApproved.'};Connect-CA $true;$p=Get-Policy;Assert-Canonical $p;if($p.state-ne'enabledForReportingButNotEnforced'){throw 'Policy must be canonical and Report-only immediately before enforcement.'};Patch @{state='enabled'};$a=Get-Policy;Assert-Canonical $a;if($a.state-ne'enabled'){throw 'Enablement readback failed.'};Write-Host \"High-risk sign-in policy enabled with FirstEnforcementMode=$FirstEnforcementMode. Review legitimate risk evidence and rescan IAMAI.\"}\n}\n"
+          "text": "# IAMAI compact implementation script — Challenge High-Risk Sign-ins\n[CmdletBinding()]\nparam(\n [Parameter(Mandatory)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,\n [string]$PolicyDisplayName,\n [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')][string]$PolicyId,\n [string[]]$ExcludeGroupIds=@(),\n [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')][string]$AuthenticationStrengthId,\n [switch]$ReadinessApproved\n)\nSet-StrictMode -Version Latest\n$ErrorActionPreference='Stop'\n$Base='https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'\n$Guid='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'\nfunction Connect-CA([bool]$Write){Import-Module Microsoft.Graph.Authentication -ErrorAction Stop;$s=@('Policy.Read.All');if($Write){$s+='Policy.ReadWrite.ConditionalAccess'};$c=Get-MgContext;$m=if($c){@($s|Where-Object{$_ -notin @($c.Scopes)})}else{$s};if((-not $c)-or$m.Count){Connect-MgGraph -Scopes $s -NoWelcome}}\nfunction Assert-Inputs{if(@($ExcludeGroupIds|Where-Object{$_ -notmatch $Guid}).Count){throw 'Invalid exclusion ID.'}}\nfunction Assert-Strength{if($AuthenticationStrengthId -notmatch $Guid){throw 'The IAMAI-resolved tenant authentication-strength ID is required.'}}\nfunction Get-Policy{if($PolicyId -notmatch $Guid){throw 'Stable IAMAI policy ID required.'};$p=Invoke-MgGraphRequest -Method GET -Uri \"$Base/$PolicyId\";if($p.id-ne$PolicyId){throw 'Stable-ID readback failed.'};$p}\nfunction Same-Set([string[]]$A,[string[]]$B){(@($A|Sort-Object)-join '|') -eq (@($B|Sort-Object)-join '|')}\nfunction Conditions{Assert-Inputs;@{users=@{includeUsers=@('All');excludeUsers=@();includeGroups=@();excludeGroups=@($ExcludeGroupIds);includeRoles=@();excludeRoles=@()};applications=@{includeApplications=@('All');excludeApplications=@();includeUserActions=@();includeAuthenticationContextClassReferences=@()};clientAppTypes=@('all');signInRiskLevels=@('high');userRiskLevels=@();servicePrincipalRiskLevels=@();locations=$null;platforms=$null;devices=$null;authenticationFlows=$null;insiderRiskLevels=$null}}\nfunction Grant{Assert-Strength;@{operator='OR';builtInControls=@();customAuthenticationFactors=@();termsOfUse=@();authenticationStrength=@{id=$AuthenticationStrengthId}}}\nfunction Session{@{signInFrequency=@{isEnabled=$true;frequencyInterval='everyTime';authenticationType='primaryAndSecondaryAuthentication'};persistentBrowser=$null;applicationEnforcedRestrictions=$null;cloudAppSecurity=$null;disableResilienceDefaults=$null}}\nfunction Patch([hashtable]$Body){[void](Get-Policy);Invoke-MgGraphRequest -Method PATCH -Uri \"$Base/$PolicyId\" -Body($Body|ConvertTo-Json -Depth 20)-ContentType 'application/json'|Out-Null}\nfunction Assert-Canonical($p){Assert-Inputs;Assert-Strength;if(@($p.conditions.users.includeUsers).Count-ne1-or$p.conditions.users.includeUsers[0]-ne'All'){throw 'includeUsers mismatch'};if(-not(Same-Set @($p.conditions.users.excludeGroups) @($ExcludeGroupIds))){throw 'excludeGroups mismatch'};if(@($p.conditions.applications.includeApplications).Count-ne1-or$p.conditions.applications.includeApplications[0]-ne'All'-or@($p.conditions.applications.excludeApplications).Count){throw 'All-resources target mismatch'};if(@($p.conditions.signInRiskLevels).Count-ne1-or$p.conditions.signInRiskLevels[0]-ne'high'){throw 'Sign-in risk must be High only'};if(@($p.conditions.userRiskLevels).Count){throw 'User risk must be empty'};$g=$p.grantControls;if($g.operator-ne'OR'-or@($g.builtInControls).Count-ne0-or$null-eq$g.authenticationStrength-or$g.authenticationStrength.id-ne$AuthenticationStrengthId){throw 'Authentication-strength grant mismatch'};$f=$p.sessionControls.signInFrequency;if($null-eq$f-or-not$f.isEnabled-or$f.frequencyInterval-ne'everyTime'-or$f.authenticationType-ne'primaryAndSecondaryAuthentication'){throw 'Every-time session mismatch'}}\nswitch($Mode){\n 'Create'{Connect-CA $true;Assert-Inputs;Assert-Strength;if([string]::IsNullOrWhiteSpace($PolicyDisplayName)){throw 'PolicyDisplayName required.'};$e=$PolicyDisplayName.Replace(\"'\",\"''\");$f=[uri]::EscapeDataString(\"displayName eq '$e'\");if(@((Invoke-MgGraphRequest -Method GET -Uri \"${Base}?`$filter=$f\").value).Count){throw 'Exact display-name collision. Rescan IAMAI; do not create a duplicate.'};$b=@{displayName=$PolicyDisplayName;state='enabledForReportingButNotEnforced';conditions=(Conditions);grantControls=(Grant);sessionControls=(Session)};$r=Invoke-MgGraphRequest -Method POST -Uri $Base -Body($b|ConvertTo-Json -Depth 20)-ContentType 'application/json';Write-Host \"Created $($r.id) in Report-only. Rescan IAMAI.\"}\n 'CorrectConditions'{Connect-CA $true;Patch @{conditions=(Conditions)}}\n 'CorrectGrant'{Connect-CA $true;Patch @{grantControls=(Grant)}}\n 'CorrectSession'{Connect-CA $true;Patch @{sessionControls=(Session)}}\n 'ReportOnly'{Connect-CA $true;Patch @{state='enabledForReportingButNotEnforced'}}\n 'Verify'{Connect-CA $false;$p=Get-Policy;Assert-Canonical $p;Write-Host \"Canonical high-risk shape verified; lifecycle=$($p.state).\"}\n 'Enforce'{if(-not$ReadinessApproved){throw 'Enforce requires ReadinessApproved.'};Connect-CA $true;$p=Get-Policy;Assert-Canonical $p;if($p.state-ne'enabledForReportingButNotEnforced'){throw 'Policy must be canonical and Report-only immediately before enforcement.'};Patch @{state='enabled'};$a=Get-Policy;Assert-Canonical $a;if($a.state-ne'enabled'){throw 'Enablement readback failed.'};Write-Host 'High-risk sign-in policy enabled. Review legitimate risk evidence and rescan IAMAI.'}\n}\n"
         },
-        "ai.create.baseline-strength": {
+        "ai.create": {
           "meta": {
-            "id": "ai.create.baseline-strength",
+            "id": "ai.create",
             "channel": "aiInfo",
             "states": [
               "missing"
@@ -13646,19 +13618,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Challenge High-Risk Sign-ins**. Create the High-risk policy in Report-only using the saved `baselineStrength` first-enforcement mode and the exact IAMAI-resolved authentication strength.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Current lifecycle: {{policy.current.state}} [omit if unavailable]\n- Risk evidence: {{evidence.riskySignIns}} [omit if unavailable]\n- MFA readiness: {{evidence.mfaReadiness}} [omit if unavailable]\n- Baseline strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Push-only count: {{people.pushOnly.count}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nCANONICAL COMMON SHAPE\nAll users + canonical exclusions; All resources; sign-in risk High only; client apps All; Sign-in frequency Every time; Report-only before On.\n\nDO NOT\nDo not broaden to Medium here. Do not guess the First-enforcement mode. Do not claim a risky sign-in occurred when evidence is absent.\n"
-        },
-        "ai.create.plain-mfa": {
-          "meta": {
-            "id": "ai.create.plain-mfa",
-            "channel": "aiInfo",
-            "states": [
-              "missing"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Challenge High-Risk Sign-ins**. Create the High-risk policy in Report-only using the saved `plainMfa` first-enforcement mode. Treat plain MFA as temporary rollout state, not the final baseline destination.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Current lifecycle: {{policy.current.state}} [omit if unavailable]\n- Risk evidence: {{evidence.riskySignIns}} [omit if unavailable]\n- MFA readiness: {{evidence.mfaReadiness}} [omit if unavailable]\n- Baseline strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Push-only count: {{people.pushOnly.count}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nCANONICAL COMMON SHAPE\nAll users + canonical exclusions; All resources; sign-in risk High only; client apps All; Sign-in frequency Every time; Report-only before On.\n\nDO NOT\nDo not broaden to Medium here. Do not guess the First-enforcement mode. Do not claim a risky sign-in occurred when evidence is absent.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview IAMAI's proposed High-risk sign-in Conditional Access policy for {{tenant.displayName}}. The retained target is High only, All resources, the tenant-resolved authentication strength {{authStrength.target.displayName}}, Every-time sign-in frequency, canonical exclusions, and Report-only lifecycle. Check for contradiction with the separate Medium-risk policy; do not merge risk levels, weaken the grant to plain MFA, or redesign the baseline.\n"
         },
         "ai.correct": {
           "meta": {
@@ -13670,7 +13630,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Challenge High-Risk Sign-ins**. Correct only IAMAI-classified mismatches, and make the grant agree with the saved First-enforcement mode.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Current lifecycle: {{policy.current.state}} [omit if unavailable]\n- Risk evidence: {{evidence.riskySignIns}} [omit if unavailable]\n- MFA readiness: {{evidence.mfaReadiness}} [omit if unavailable]\n- Baseline strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Push-only count: {{people.pushOnly.count}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nCANONICAL COMMON SHAPE\nAll users + canonical exclusions; All resources; sign-in risk High only; client apps All; Sign-in frequency Every time; Report-only before On.\n\nDO NOT\nDo not broaden to Medium here. Do not guess the First-enforcement mode. Do not claim a risky sign-in occurred when evidence is absent.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the High-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, High-only threshold, the authentication-strength grant, and Every-time sign-in frequency. Do not weaken the grant to plain MFA.\n"
         },
         "ai.observe": {
           "meta": {
@@ -13682,11 +13642,11 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Challenge High-Risk Sign-ins**. Review the selected canonical policy and current risk/readiness evidence without inventing risk events or safety.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Current lifecycle: {{policy.current.state}} [omit if unavailable]\n- Risk evidence: {{evidence.riskySignIns}} [omit if unavailable]\n- MFA readiness: {{evidence.mfaReadiness}} [omit if unavailable]\n- Baseline strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Push-only count: {{people.pushOnly.count}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nCANONICAL COMMON SHAPE\nAll users + canonical exclusions; All resources; sign-in risk High only; client apps All; Sign-in frequency Every time; Report-only before On.\n\nDO NOT\nDo not broaden to Medium here. Do not guess the First-enforcement mode. Do not claim a risky sign-in occurred when evidence is absent.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nAssess readiness for the retained High-risk policy using only IAMAI-provided evidence: risky sign-ins {{evidence.riskySignIns}} and MFA readiness {{evidence.mfaReadiness}}. Confirm affected users can satisfy the baseline authentication strength and that the High and Medium policies complement rather than overlap. Unknown remains Unknown.\n"
         },
-        "ai.enforce.baseline-strength": {
+        "ai.enforce": {
           "meta": {
-            "id": "ai.enforce.baseline-strength",
+            "id": "ai.enforce",
             "channel": "aiInfo",
             "states": [
               "readyToEnforce"
@@ -13694,23 +13654,11 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Challenge High-Risk Sign-ins**. Enable the canonical policy only when the exact baseline-strength method readiness is acceptable.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Current lifecycle: {{policy.current.state}} [omit if unavailable]\n- Risk evidence: {{evidence.riskySignIns}} [omit if unavailable]\n- MFA readiness: {{evidence.mfaReadiness}} [omit if unavailable]\n- Baseline strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Push-only count: {{people.pushOnly.count}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nCANONICAL COMMON SHAPE\nAll users + canonical exclusions; All resources; sign-in risk High only; client apps All; Sign-in frequency Every time; Report-only before On.\n\nDO NOT\nDo not broaden to Medium here. Do not guess the First-enforcement mode. Do not claim a risky sign-in occurred when evidence is absent.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPerform a final pre-enforcement review for Challenge High-Risk Sign-ins. Confirm the exact stable policy is canonical and Report-only, risk is High only, the grant is the {{authStrength.target.displayName}} authentication strength, sign-in frequency is Every time, exclusions are canonical, and the Medium-risk policy remains separate. The only mutation should be lifecycle to On.\n"
         },
-        "ai.enforce.plain-mfa": {
+        "email.users.pre-enforcement": {
           "meta": {
-            "id": "ai.enforce.plain-mfa",
-            "channel": "aiInfo",
-            "states": [
-              "readyToEnforce"
-            ],
-            "format": "markdown",
-            "kind": "template"
-          },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Challenge High-Risk Sign-ins**. Enable the canonical policy using the saved plain-MFA initial rollout mode; do not automatically raise to the baseline strength.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Current lifecycle: {{policy.current.state}} [omit if unavailable]\n- Risk evidence: {{evidence.riskySignIns}} [omit if unavailable]\n- MFA readiness: {{evidence.mfaReadiness}} [omit if unavailable]\n- Baseline strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Push-only count: {{people.pushOnly.count}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nCANONICAL COMMON SHAPE\nAll users + canonical exclusions; All resources; sign-in risk High only; client apps All; Sign-in frequency Every time; Report-only before On.\n\nDO NOT\nDo not broaden to Medium here. Do not guess the First-enforcement mode. Do not claim a risky sign-in occurred when evidence is absent.\n"
-        },
-        "email.users.baseline-strength": {
-          "meta": {
-            "id": "email.users.baseline-strength",
+            "id": "email.users.pre-enforcement",
             "channel": "email",
             "states": [
               "readyToEnforce"
@@ -13723,27 +13671,11 @@
           },
           "text": "Subject: Strong verification for high-risk sign-ins\n\nHi,\n\nWe are enabling additional protection for sign-ins Microsoft identifies as high risk. Most sign-ins are unaffected. If a sign-in is rated high risk, you will be asked to verify again using **{{authStrength.target.displayName}}** before access continues.\n\nIf you cannot complete the required verification or believe the sign-in was yours, contact IT/help desk rather than repeatedly approving prompts.\n\nThanks,\nIT\n"
         },
-        "email.users.plain-mfa": {
-          "meta": {
-            "id": "email.users.plain-mfa",
-            "channel": "email",
-            "states": [
-              "readyToEnforce"
-            ],
-            "format": "markdown",
-            "kind": "template",
-            "audience": "users-help-desk-client-contact",
-            "communicationTrigger": "before-enforcement",
-            "purpose": "pre-change-notice"
-          },
-          "text": "Subject: Extra verification for high-risk sign-ins\n\nHi,\n\nWe are enabling additional protection for sign-ins Microsoft identifies as high risk. Most sign-ins are unaffected. If a sign-in is rated high risk, you will be asked to complete multifactor authentication again before access continues.\n\nIf you did not initiate the sign-in, deny the request and contact IT. If you cannot complete the verification for a legitimate sign-in, contact the help desk.\n\nThanks,\nIT\n"
-        },
         "readiness.model": {
           "meta": {
             "id": "readiness.model",
             "channel": "readiness",
             "states": [
-              "needsDecision",
               "missing",
               "partial",
               "reportOnly",
@@ -13752,14 +13684,13 @@
             "format": "json-template",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"IAMAI keeps the saved rollout decision separate from the final baseline destination. It can verify policy shape before enforcement, but risk occurrence and successful self-remediation depend on future sign-in events and the user's actual authentication methods.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"IAMAI keeps the saved rollout decision separate from the final baseline destination. It can verify policy shape before enforcement, but risk occurrence and successful self-remediation depend on future sign-in events and the user's actual authentication methods.\"\n    }\n  }\n}\n"
+          "text": "{\n  \"tiles\": [],\n  \"whyIamaiSaysThis\": \"IAMAI preserves the pinned baseline's High-only policy, with its authentication-strength grant and Every-time sign-in frequency, separate from the Medium-risk rung. It can verify policy shape before enforcement, but risk occurrence and successful self-remediation depend on future sign-in events and the user's actual authentication methods.\",\n  \"whyIamAISaysThis\": {\n    \"sections\": {\n      \"whyItMatters\": \"IAMAI preserves the pinned baseline's High-only policy, with its authentication-strength grant and Every-time sign-in frequency, separate from the Medium-risk rung. It can verify policy shape before enforcement, but risk occurrence and successful self-remediation depend on future sign-in events and the user's actual authentication methods.\"\n    }\n  }\n}\n"
         },
         "troubleshooting.model": {
           "meta": {
             "id": "troubleshooting.model",
             "channel": "troubleshooting",
             "states": [
-              "needsDecision",
               "missing",
               "partial",
               "reportOnly",
@@ -13769,7 +13700,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"decision-missing\",\n      \"states\": [\n        \"needsDecision\"\n      ],\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Retrieve the existing saved choice: baselineStrength or plainMfa.\"\n      ],\n      \"fix\": [\n        \"Supply the saved decision to the renderer; do not choose a default during implementation.\"\n      ],\n      \"then\": [\n        \"Render the matching variant only.\"\n      ],\n      \"sources\": [],\n      \"title\": \"IAMAI cannot emit create/correct/enforce artifacts because the First-enforcement choice is unavailable\"\n    },\n    {\n      \"id\": \"user-cannot-satisfy-strength\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare the user's registered/allowed methods with the exact allowed combinations of the resolved strength.\"\n      ],\n      \"fix\": [\n        \"Complete the approved registration/recovery path or return the policy to Report-only while readiness is corrected.\"\n      ],\n      \"doNot\": [\n        \"Do not silently weaken the grant unless the saved owner decision is plainMfa.\"\n      ],\n      \"then\": [\n        \"Retest only after method readiness changes.\"\n      ],\n      \"sources\": [\n        \"ms-auth-strength\",\n        \"ms-risk-policy\"\n      ],\n      \"title\": \"A legitimate high-risk sign-in cannot satisfy the required baseline authentication strength\"\n    },\n    {\n      \"id\": \"mfa-not-registered\",\n      \"states\": [\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Confirm the affected user has a method satisfying the selected initial grant.\"\n      ],\n      \"fix\": [\n        \"Register/restore an approved method before relying on self-remediation.\"\n      ],\n      \"then\": [\n        \"Review the risk event again.\"\n      ],\n      \"sources\": [\n        \"ms-risk-policy\"\n      ],\n      \"title\": \"A user cannot self-remediate a risky sign-in because MFA is not registered\"\n    },\n    {\n      \"id\": \"travel-or-vpn-risk\",\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"classification\": \"fieldObservation\",\n      \"check\": [\n        \"Inspect Risky sign-ins details, location, device, app, and detection context.\"\n      ],\n      \"fix\": [\n        \"If verified legitimate, follow the approved risk-review process; do not globally weaken the policy from one event.\"\n      ],\n      \"then\": [\n        \"Confirm/dismiss the risk using the organization's approved process.\"\n      ],\n      \"sources\": [\n        \"ms-risk-reports\"\n      ],\n      \"title\": \"A legitimate traveler/VPN user receives high-risk verification\"\n    },\n    {\n      \"id\": \"wrong-risk-scope\",\n      \"states\": [\n        \"partial\"\n      ],\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read signInRiskLevels on the exact stable policy.\"\n      ],\n      \"fix\": [\n        \"Correct this step to High only; IAMAI authors Medium risk separately.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-ca-condition-v1\"\n      ],\n      \"title\": \"This step also targets Medium sign-in risk\"\n    },\n    {\n      \"id\": \"legacy-risk-policy\",\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Confirm the control is a Conditional Access policy.\"\n      ],\n      \"fix\": [\n        \"Use Conditional Access; Microsoft retires legacy risk policies on October 1, 2026.\"\n      ],\n      \"then\": [\n        \"Validate the CA policy in Report-only.\"\n      ],\n      \"sources\": [\n        \"ms-risk-concept\"\n      ],\n      \"title\": \"Implementation is being attempted in legacy ID Protection risk policies instead of Conditional Access\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"readyToEnforce\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and a supported Conditional Access/Security Administrator role.\"\n      ],\n      \"fix\": [\n        \"Reconnect with the least required permission/role.\"\n      ],\n      \"then\": [\n        \"Retry the same bounded operation.\"\n      ],\n      \"sources\": [\n        \"ms-ca-create-v1\"\n      ],\n      \"title\": \"Graph/PowerShell returns 403 when creating or updating the policy\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"user-cannot-satisfy-strength\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Compare the user's registered/allowed methods with the exact allowed combinations of the resolved strength.\"\n      ],\n      \"fix\": [\n        \"Complete the approved registration/recovery path or return the policy to Report-only while readiness is corrected.\"\n      ],\n      \"doNot\": [\n        \"Do not weaken the grant to plain MFA.\"\n      ],\n      \"then\": [\n        \"Retest only after method readiness changes.\"\n      ],\n      \"sources\": [\n        \"ms-auth-strength\",\n        \"ms-risk-policy\"\n      ],\n      \"title\": \"A legitimate high-risk sign-in cannot satisfy the required baseline authentication strength\"\n    },\n    {\n      \"id\": \"mfa-not-registered\",\n      \"states\": [\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Confirm the affected user has a method satisfying the baseline authentication strength.\"\n      ],\n      \"fix\": [\n        \"Register/restore an approved method before relying on self-remediation.\"\n      ],\n      \"then\": [\n        \"Review the risk event again.\"\n      ],\n      \"sources\": [\n        \"ms-risk-policy\"\n      ],\n      \"title\": \"A user cannot self-remediate a risky sign-in because no qualifying method is registered\"\n    },\n    {\n      \"id\": \"travel-or-vpn-risk\",\n      \"states\": [\n        \"inPlace\"\n      ],\n      \"classification\": \"fieldObservation\",\n      \"check\": [\n        \"Inspect Risky sign-ins details, location, device, app, and detection context.\"\n      ],\n      \"fix\": [\n        \"If verified legitimate, follow the approved risk-review process; do not globally weaken the policy from one event.\"\n      ],\n      \"then\": [\n        \"Confirm/dismiss the risk using the organization's approved process.\"\n      ],\n      \"sources\": [\n        \"ms-risk-reports\"\n      ],\n      \"title\": \"A legitimate traveler/VPN user receives high-risk verification\"\n    },\n    {\n      \"id\": \"wrong-risk-scope\",\n      \"states\": [\n        \"partial\"\n      ],\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read signInRiskLevels on the exact stable policy.\"\n      ],\n      \"fix\": [\n        \"Correct this step to High only; IAMAI authors Medium risk separately.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-ca-condition-v1\"\n      ],\n      \"title\": \"This step also targets Medium sign-in risk\"\n    },\n    {\n      \"id\": \"legacy-risk-policy\",\n      \"states\": [\n        \"missing\",\n        \"partial\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Confirm the control is a Conditional Access policy.\"\n      ],\n      \"fix\": [\n        \"Use Conditional Access; Microsoft retires legacy risk policies on October 1, 2026.\"\n      ],\n      \"then\": [\n        \"Validate the CA policy in Report-only.\"\n      ],\n      \"sources\": [\n        \"ms-risk-concept\"\n      ],\n      \"title\": \"Implementation is being attempted in legacy ID Protection risk policies instead of Conditional Access\"\n    },\n    {\n      \"id\": \"graph-403\",\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"readyToEnforce\"\n      ],\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and a supported Conditional Access/Security Administrator role.\"\n      ],\n      \"fix\": [\n        \"Reconnect with the least required permission/role.\"\n      ],\n      \"then\": [\n        \"Retry the same bounded operation.\"\n      ],\n      \"sources\": [\n        \"ms-ca-create-v1\"\n      ],\n      \"title\": \"Graph/PowerShell returns 403 when creating or updating the policy\"\n    }\n  ]\n}\n"
         }
       }
     },
