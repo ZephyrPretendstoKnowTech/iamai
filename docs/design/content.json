@@ -3777,6 +3777,7 @@
       },
       "decision": {
         "label": "Device code sign-in",
+        "tileValue": "Confirm no legitimate use",
         "help": "Does anyone use device code sign-in for CLI tools, IoT devices, or display-limited devices?",
         "options": [
           "None",

@@ -3129,6 +3129,7 @@
         "optionalBindings": [
           "tenant.displayName",
           "people.affected.count",
+          "policy.current.displayName",
           "policy.current.state",
           "evidence.reportOnly",
           "dependencies.blockers",
@@ -3388,7 +3389,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. If it is **On**, move that same policy to **Report-only** before changing any access-affecting assignment or condition. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.\n"
+          "text": "This policy already exists and is enforced. The correction adds the exclusions group.\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the policy named {{policy.current.displayName}} (or search by its ID in Plan settings).\n3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.\n4. Verify all other settings match the baseline: Target resources = All resources, Conditions = Client apps: Authentication flows: Device code, Grant = Block access.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -3436,7 +3437,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.\n"
+          "text": "5. Save. Do not change the policy state (leave it On).\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
