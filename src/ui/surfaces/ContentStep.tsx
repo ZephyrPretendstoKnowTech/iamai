@@ -309,9 +309,11 @@ export function ContentStep({
             <section className="step-section">
               <Callout kind="danger">
                 <h4>{CONTRACT.attentionConflict}</h4>
-                <p>
-                  <T s={conflictWords} ex={ex} />
-                </p>
+                {conflictWords.split('\n\n').map((paragraph, i) => (
+                  <p key={i}>
+                    <T s={paragraph} ex={ex} />
+                  </p>
+                ))}
               </Callout>
             </section>
           )}

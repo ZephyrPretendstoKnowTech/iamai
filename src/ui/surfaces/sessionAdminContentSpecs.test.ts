@@ -5,6 +5,15 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { laneReadings } from './planLanes.ts'
+import { laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
+import { planDates } from './stepVars.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { stepBodyOf } from './stepBody.ts'
+import type { StepBody } from './stepBody.ts'
 import { CONTRACT } from './stepContract.ts'
 import { authoredParts } from './authoredText.ts'
 
@@ -16,6 +25,22 @@ const channel = (stepId: string, ids: string[]): string => ids.map((id) => packa
 type ContentStepWords = { id: string; why: string; doneEnd?: string; doneWhen?: string[]; decision?: { help?: string; options?: string[] } }
 const stepWords = (id: string): ContentStepWords => (JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as ContentStepWords[]).find((s) => s.id === id)!
 const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+
+/** Every step's body on a fixture, as the Plan composes it (contentReview.test.ts). */
+function bodiesOf(f: Fixture): Map<string, StepBody> {
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const readings = laneReadings(r.steps, [])
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+  const out = new Map<string, StepBody>()
+  for (const step of r.steps) {
+    const reading = readings.get(step.id)
+    const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+  }
+  return out
+}
 
 test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered procedure naming the policy, and AI Info explains the session limit', () => {
   const SESSION = 's-goal-admin-session'
@@ -44,4 +69,24 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
   assert.match(ai, /^The persistent browser session control ensures admin sessions are not remembered across browser closures\.$/m)
   // Done when is unchanged.
   assert.equal(stepWords('admin-session').doneEnd, "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.")
+})
+
+test('s-goal-admin-portals-protected: the conflict says there is nothing to do, explains itself in two paragraphs, names the baseline author, and drops the review note', () => {
+  const PORTALS = 's-goal-admin-portals-protected'
+  const body = bodiesOf(fixture('demo')).get(PORTALS)
+  assert.ok(body, 'the demo plan has the admin portals step')
+  assert.equal(body.contract.state.condition, 'baseline-conflict')
+  // The readiness bar's sub-line.
+  assert.equal(body.contract.whatToDo.text, 'This step is on hold until the baseline author resolves a contradiction. There is nothing for you to do.')
+  // The danger callout: what the contradiction is, then why IAMAI won't act and what happens next.
+  assert.deepEqual(body.conflictWords?.split('\n\n'), [
+    "The baseline says this policy should block non-admins from admin portals. But the policy it actually defines targets All users and excludes no administrator — by role, account, or group. If IAMAI followed the policy definition literally, it would lock every administrator out of the admin portals. If it followed the documentation, it would need exclusions the policy doesn't have.",
+    "IAMAI won't write instructions for either interpretation because one locks admins out and the other is incomplete. Nothing is wrong in your tenant. This step waits for the baseline author to publish a corrected version. The rest of the plan is unaffected.",
+  ])
+  assert.match(readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8'), /conflictWords\.split\('\\n\\n'\)\.map\(\(paragraph, i\) => \(\n\s*<p key=\{i\}>/, 'the callout does not draw one paragraph per paragraph')
+  // Implementation: two lines, and no note about the guidance's review history.
+  assert.equal(body.empty.title, 'Not enough information to provide implementation guidance.')
+  assert.equal(body.empty.text, 'The baseline defines this policy two ways. Until the baseline author publishes a corrected version, no implementation steps are available.')
+  assert.deepEqual(body.notes, [], 'the conflict step still carries the review note')
+  assert.deepEqual(body.contract.doneWhen, ["The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition."])
 })

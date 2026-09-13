@@ -739,7 +739,7 @@ test('an unmatched pair and a contradictory baseline carry a next action and no 
   const plain = policySteps('demo-week2')
   const conflicted = plain.rows.find((x) => x.step.goalId === 'admin-portals-protected')
   assert.ok(conflicted)
-  cases.push({ label: 'baseline conflict', step: conflicted.step, ctx: plain.ctx, says: /Both cannot be true/ })
+  cases.push({ label: 'baseline conflict', step: conflicted.step, ctx: plain.ctx, says: /one locks admins out and the other is incomplete/ })
   for (const c of cases) {
     assert.equal(implementationOffered(c.step), false, `${c.label}: no implementation`)
     assert.equal(jsonOffered(c.step), false, `${c.label}: no JSON, PowerShell or download`)

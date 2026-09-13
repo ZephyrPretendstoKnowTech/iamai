@@ -534,7 +534,7 @@ test('a contradictory baseline renders and exports one resolution action and not
   // is an instruction for writing the policy.
   assert.equal(view.whatToDo.length, 2, `the action and the contradiction: ${view.whatToDo.join(' | ')}`)
   assert.equal(view.whatToDo[0], stepContract(step, ctx).whatToDo.text, "the artifact leads with something other than the screen's action")
-  assert.match(view.whatToDo[1], /Both cannot be true/)
+  assert.match(view.whatToDo[1], /one locks admins out and the other is incomplete/)
 })
 
 

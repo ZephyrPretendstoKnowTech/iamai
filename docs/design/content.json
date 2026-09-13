@@ -247,7 +247,7 @@
       "milestone": {
         "$comment": "The single next thing on a step (roadmap/lifecycle.ts nextMilestone). One whole sentence each, because the Step Contract renders it as the step's What to do where nothing overrules the lifecycle (src/ui/surfaces/stepContract.ts); the state word and the date live beside it.",
         "setAside": "This step is deferred.",
-        "conflict": "Wait for a reviewed baseline that settles the contradiction; there is nothing to submit.",
+        "conflict": "This step is on hold until the baseline author resolves a contradiction. There is nothing for you to do.",
         "decide": "Answer the question this step is waiting on.",
         "resolve": "Clear what this step is waiting on.",
         "prepareHeld": "Create the policy in report-only now; turning it on waits for {measure} to reach {threshold}.",
@@ -268,7 +268,7 @@
       },
       "baselineConflict": {
         "$comment": "Shown on a step whose baseline source policy a review found self-contradictory (roadmap/baselineConflict.ts): one entry per reviewed source, named by that record, so the words follow the source policy and not a goal.",
-        "adminPortalNonAdminScope": "The baseline's documentation says this policy is for people without an admin role. The policy it exports targets All users and excludes no administrator, by role, by account or by group. Both cannot be true, so IAMAI writes no instructions for this one: it would either lock every administrator out of the admin portals or claim a protection the policy does not carry. Nothing is wrong in your tenant, and nothing here needs your attention — this step waits for a reviewed baseline that settles the contradiction. The rest of the plan is unaffected."
+        "adminPortalNonAdminScope": "The baseline says this policy should block non-admins from admin portals. But the policy it actually defines targets All users and excludes no administrator — by role, account, or group. If IAMAI followed the policy definition literally, it would lock every administrator out of the admin portals. If it followed the documentation, it would need exclusions the policy doesn't have.\n\nIAMAI won't write instructions for either interpretation because one locks admins out and the other is incomplete. Nothing is wrong in your tenant. This step waits for the baseline author to publish a corrected version. The rest of the plan is unaffected."
       },
       "observation": {
         "$comment": "What this scan saw against what the last one saw (roadmap/observation.ts). First seen by IAMAI is never written as a transition time.",
@@ -1301,7 +1301,7 @@
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
           "doneSatisfied": "Already satisfied: {tenant} has this, and the step is to keep it that way.",
           "doneBlocked": "Everything Readiness lists is cleared.",
-          "doneConflict": "A reviewed baseline version settles which of its two definitions of this policy is meant.",
+          "doneConflict": "The baseline author publishes a version that resolves the contradiction between the policy's documentation and its definition.",
           "doneDecision": "The question on this step is answered and saved.",
           "doneReadiness": "{measure} reaches {threshold}.",
           "doneMissing": "Every object this policy names exists in {tenant}.",
@@ -1465,7 +1465,7 @@
               ],
               "conflict": [
                 "Not enough information to provide implementation guidance.",
-                "The baseline defines this policy two ways; resolve the conflict before implementation is available."
+                "The baseline defines this policy two ways. Until the baseline author publishes a corrected version, no implementation steps are available."
               ],
               "setAside": [
                 "Step deferred",
