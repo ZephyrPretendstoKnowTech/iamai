@@ -22,6 +22,9 @@
 //
 // Pure: no DOM, no network.
 import type { Step } from '../../roadmap/types.ts'
+import { RULE_TO_FIX } from '../../validation/checkFixes.ts'
+import type { StepCheckItem } from '../../validation/checkFixes.ts'
+import { SET_LEVEL } from '../../validation/report.ts'
 import { dimensionWords } from '../../roadmap/observation.ts'
 import type { Condition, Lifecycle, Milestone } from '../../roadmap/lifecycle.ts'
 import { heldForReview, nextMilestone } from '../../roadmap/lifecycle.ts'
@@ -163,7 +166,7 @@ type ContractWords = {
   /** The rail's sub-line under a day the plan schedules, by the transition it is for (roadmap/stepSchedule.ts). */
   railTransition: Record<'createReportOnly' | 'change' | 'enforce', string>
   rollout: Record<string, string>
-  hardening: { heading: string; leadBlocked: string; leadDefer: string; deferredOn: string; defer: string; undo: string; everyAccount: string; unchecked: string; doneDeferred: string; tiles: Record<string, string> }
+  hardening: { heading: string; leadBlocked: string; leadDefer: string; deferredOn: string; defer: string; undo: string; everyAccount: string; unchecked: string; doneDeferred: string; minimumHeading: string; tiles: Record<string, string> }
 }
 
 /**
@@ -382,9 +385,18 @@ export type StepContract = {
   policy: boolean
   /** Emergency-access hardening outstanding on this step, apart from what holds the rollout; null elsewhere. */
   hardening: ContractHardening | null
-  /** Each confirmed emergency account's own standing, one line per account in confirmed order; empty on every other step. */
-  emergencyAccounts: string[]
+  /** The emergency-access step's account slots, two or one per confirmed account (B10 P0-7, S-BG-1); empty on every other step. */
+  emergencySlots: ContractEmergencySlot[]
 }
+
+/**
+ * One emergency account slot (S-BG-1): the account selected for it, or none, and
+ * that account's own standing — its minimum safety blockers while any remain,
+ * then its hardening recommendations — each line in the step's own fix words. A
+ * finding about the set of accounts (validation/report.ts SET_LEVEL) is every
+ * selected slot's; the account count is the empty slot itself.
+ */
+export type ContractEmergencySlot = { key: string; label: string; accountId: string | null; state: 'notSelected' | 'unchecked' | 'minimum' | 'hardening' | 'clear'; minimum: string[]; hardening: string[] }
 
 const MEMBER_LABELS = 'ABCDEFGH'
 
@@ -832,20 +844,49 @@ export function stepContract(step: Step, ctx: StepVarContext, vars?: Record<stri
     schedule: step.scheduled ? scheduleOf(step) : null,
     policy: step.kind === 'create' || step.kind === 'adjust',
     hardening: hardeningOf(step, cs, ex),
-    emergencyAccounts: emergencyAccountLines(step, ctx.nameOf),
+    emergencySlots: emergencySlotsOf(step, cs, ex, ctx.nameOf),
   }
 }
 
+/** The fix keys of the checks about the whole set of emergency accounts (validation/report.ts SET_LEVEL). */
+const SET_LEVEL_FIXES: ReadonlySet<string> = new Set([...SET_LEVEL].map((id) => RULE_TO_FIX[id]).filter((f): f is string => typeof f === 'string'))
+
+/** The account count's fixes: an empty slot states them, so no selected slot lists them. */
+const COUNT_FIXES: ReadonlySet<string> = new Set([RULE_TO_FIX['bg.count'], `${RULE_TO_FIX['bg.count']}-none`])
+
 /**
- * Each confirmed emergency account's own standing (validation/emergencyTiers.ts
- * emergencyAccountStanding): its minimum safety, its own hardening, or that no
- * check about it ran. A finding about the set of accounts is no account's line.
+ * The emergency-access step's account slots (S-BG-1): at least two, one per
+ * confirmed account in confirmed order (validation/emergencyTiers.ts
+ * emergencyAccountStanding), each with its own checks' lines and the set's.
  */
-function emergencyAccountLines(step: Step, nameOf: (id: string) => string): string[] {
+function emergencySlotsOf(step: Step, cs: Record<string, unknown> | undefined, ex: Record<string, unknown>, nameOf: (id: string) => string): ContractEmergencySlot[] {
+  const e = step.emergency
+  if (!e) return []
   const t = CONTRACT.hardening.tiles
-  return (step.emergency?.accounts ?? []).map((a) => {
-    const words = !a.assessed ? t.accountUnchecked : a.minimum > 0 ? t.accountMinimum : a.hardening > 0 ? t.accountHardening : t.accountMeets
-    return fillText(words, { name: nameOf(a.id) })
+  const templates = ((cs?.whatToDo ?? null) as Record<string, unknown> | null)?.checkFixes as Record<string, string> | undefined
+  const items = (step.checks?.items ?? []).filter((it) => it.subject === 'breakGlass' && !COUNT_FIXES.has(it.fix))
+  const set = items.filter((it) => SET_LEVEL_FIXES.has(it.fix))
+  const lineOf = (it: StepCheckItem, name: string): string | null => {
+    const tpl = templates?.[it.fix]
+    const values = { ...ex, ...it.values, name }
+    if (!tpl || !whole(tpl, values)) return null
+    const line = fillText(tpl, values)
+    // Under the account's own tile the line does not open with its name again.
+    const own = line.startsWith(`${name}: `) ? line.slice(name.length + 2) : line
+    return own.charAt(0).toUpperCase() + own.slice(1)
+  }
+  return Array.from({ length: Math.max(2, e.accounts.length) }, (_, i): ContractEmergencySlot => {
+    const key = `slot:${i + 1}`
+    const unnamed = fillText(t.slot, { n: i + 1 })
+    const a = e.accounts[i]
+    if (!a) return { key, label: unnamed, accountId: null, state: 'notSelected', minimum: [], hardening: [] }
+    const name = nameOf(a.id) || unnamed
+    const mine = [...items.filter((it) => it.target === a.id && !SET_LEVEL_FIXES.has(it.fix)), ...set]
+    const lines = (tier: 'minimum' | 'hardening'): string[] => mine.filter((it) => (it.tier ?? 'minimum') === tier).map((it) => lineOf(it, name)).filter((l): l is string => l !== null)
+    const minimum = lines('minimum')
+    const hardening = lines('hardening')
+    const state = !a.assessed ? 'unchecked' : a.minimum > 0 || minimum.length > 0 ? 'minimum' : a.hardening > 0 || hardening.length > 0 ? 'hardening' : 'clear'
+    return { key, label: name, accountId: a.id, state, minimum, hardening }
   })
 }
 
@@ -1106,29 +1147,26 @@ function exclusionsTile(step: Step, c: StepContract): ReadinessTile | null {
 }
 
 /**
- * The emergency-access step's two facts, first (owner, 2026-09-11): whether a
- * usable way back in exists, and how resilient it is — Meets recommendations,
- * Needs attention, or Deferred to Cleanup, never a claim of full resilience while
- * hardening is outstanding.
+ * The emergency-access step's account slots, first (B10 P0-7, S-BG-1): one tile
+ * per slot, labelled by its account — Not selected; its minimum blockers; its
+ * minimum met with hardening open (or deferred to Cleanup), never a claim of full
+ * resilience while hardening is outstanding; or clear. The lines are the slot's
+ * detail (ContentStep's `extra`); the hardening's own lead is the note.
  */
 function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
   const e = step.emergency
   if (!e || c.state.setAside) return []
   const t = CONTRACT.hardening.tiles
-  // With more than one account, each account's own standing: one account's
-  // minimum failure is not every account's, and one account's pass is not another's.
-  const perAccount = c.emergencyAccounts.length > 1 ? c.emergencyAccounts.join(' · ') : null
-  const access: ReadinessTile = e.minimum === 0 ? { key: 'emergency', label: t.access, tone: 'good', value: t.available, note: perAccount } : { key: 'emergency', label: t.access, tone: 'warn', value: t.unavailable, note: perAccount }
-  // The hardening's own lead (owner, 2026-09-11) is the tile's explanation: what
-  // deferring means, or that it was deferred, and when. Nonblocking, and never a
-  // claim of full resilience while it is outstanding.
   const H = CONTRACT.hardening
   const lead = c.hardening === null ? null : c.hardening.deferredAt ? fillText(H.deferredOn, { date: absoluteDate(c.hardening.deferredAt) }) : c.hardening.canDefer ? H.leadDefer : H.leadBlocked
-  const resilience: ReadinessTile =
-    e.hardening === 0
-      ? { key: 'resilience', label: t.resilience, tone: 'good', value: t.meets, note: null }
-      : { key: 'resilience', label: t.resilience, tone: 'warn', value: e.deferredAt ? t.deferred : t.needsAttention, note: lead }
-  return [access, resilience]
+  return c.emergencySlots.map((s): ReadinessTile => {
+    const tile = { key: s.key, label: s.label }
+    if (s.state === 'notSelected') return { ...tile, tone: 'warn', value: t.notSelected, note: t.notSelectedNote }
+    if (s.state === 'unchecked') return { ...tile, tone: 'warn', value: t.unchecked, note: null }
+    if (s.state === 'minimum') return { ...tile, tone: 'warn', value: t.minimumOpen, note: null }
+    if (s.state === 'hardening') return { ...tile, tone: 'warn', value: e.deferredAt ? t.deferred : t.hardeningOpen, note: lead }
+    return { ...tile, tone: 'good', value: t.meets, note: null }
+  })
 }
 
 /** Who the policy reaches: the contract's one population line, or its one line saying the reach is not established. */
@@ -1222,11 +1260,11 @@ function implementationTile(c: StepContract): ReadinessTile | null {
 export function readinessOf(step: Step, c: StepContract, blockers: readonly PrerequisiteBlocker[] = [], prerequisiteLabel: (id: string) => string | null = () => null): ContractReadiness {
   const facts = [...emergencyTiles(step, c), stateTile(step, c), exclusionsTile(step, c), peopleTile(c), implementationTile(c)].filter((x): x is ReadinessTile => x !== null)
   const unresolved = (t: ReadinessTile): boolean => t.tone === 'warn' || t.tone === 'wait'
-  const fixes = directFixes(fixTiles(c, prerequisiteLabel), blockers)
+  // The emergency step's failing checks are its account slots' lines (P0-7): no check tile beside them.
+  const fixes = directFixes(fixTiles(c, prerequisiteLabel), blockers).filter((t) => !(step.emergency && t.key.startsWith('check:')))
   const present = new Set<string>([...facts.map((t) => t.key), ...fixes.map((t) => t.key)])
-  const lead = facts.filter((t) => unresolved(t) && t.key !== 'resilience')
-  const hardening = facts.filter((t) => unresolved(t) && t.key === 'resilience')
-  const tiles = [...lead, ...fixes, ...engineTiles(c, blockers, present, prerequisiteLabel), ...hardening]
+  const lead = facts.filter(unresolved)
+  const tiles = [...lead, ...fixes, ...engineTiles(c, blockers, present, prerequisiteLabel)]
   const satisfied = facts.filter((t) => !unresolved(t))
   return { tiles, satisfied, bar: barOf(c) }
 }

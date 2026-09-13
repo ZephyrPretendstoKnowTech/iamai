@@ -1342,18 +1342,17 @@
             "everyAccount": "All emergency accounts",
             "unchecked": "{n} more could not be checked on this scan.",
             "doneDeferred": "Minimum emergency access is in place; the deferred hardening stays in Cleanup until it passes.",
+            "minimumHeading": "Minimum safety",
             "tiles": {
-              "access": "Emergency access",
-              "available": "Available",
-              "unavailable": "Not available",
-              "resilience": "Resilience",
+              "$comment": "One Readiness tile per emergency account slot (B10 P0-7, S-BG-1): labelled by the selected account's name, or Account 1 / Account 2 while nobody is selected for it.",
+              "slot": "Account {n}",
+              "notSelected": "Not selected",
+              "notSelectedNote": "Choose an emergency access account in the action column, then save.",
+              "unchecked": "Not checked on this scan",
+              "minimumOpen": "Minimum not met",
+              "hardeningOpen": "Minimum met · hardening open",
               "meets": "Meets recommendations",
-              "needsAttention": "Hardening open",
-              "deferred": "Deferred to Cleanup",
-              "accountMinimum": "{name}: minimum safety not met",
-              "accountHardening": "{name}: minimum met, hardening open",
-              "accountMeets": "{name}: meets recommendations",
-              "accountUnchecked": "{name}: not checked on this scan"
+              "deferred": "Deferred to Cleanup"
             }
           },
           "readiness": {

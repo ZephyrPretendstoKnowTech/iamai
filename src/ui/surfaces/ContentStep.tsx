@@ -51,7 +51,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, HardeningBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, EmergencySlotBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
@@ -268,10 +268,10 @@ export function ContentStep({
           </section>
 
           {/* Readiness: the one prerequisite surface. Every unresolved
-              prerequisite of the next action is a tile — the state's own, the
-              emergency boundary, each fix, each engine blocker, and last the
-              hardening, secondary and never a block, with its recommendations
-              and its deferral as the Resilience tile's own evidence — over the
+              prerequisite of the next action is a tile — the emergency account
+              slots, each with its own minimum blockers or hardening and the
+              deferral under the first slot with hardening open, the state's own,
+              the emergency boundary, each fix, each engine blocker — over the
               bar that says where the step stands with its one action under it,
               and — where this step's enforcement waits on the people it reaches —
               who they are, handed to MFA Readiness (derive/stepMfaReadiness.ts). */}
@@ -282,15 +282,19 @@ export function ContentStep({
             onConfirm={!printing && onConfirm ? (key) => { setConfirmKey(key); setDialog('confirm') } : null}
             onOpenMappings={!printing && onOpenMappings ? onOpenMappings : null}
             printing={printing}
-            extra={(t) =>
-              t.key === 'resilience' && contract.hardening ? (
-                <HardeningBody
-                  hardening={contract.hardening}
-                  onDefer={!printing && onConfirm ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
+            extra={(t) => {
+              const slot = contract.emergencySlots.find((s) => s.key === t.key)
+              if (!slot || (slot.state !== 'minimum' && slot.state !== 'hardening')) return null
+              const deferralSlot = contract.emergencySlots.find((s) => s.state === 'hardening')?.key === slot.key
+              return (
+                <EmergencySlotBody
+                  slot={slot}
+                  hardening={deferralSlot ? contract.hardening : null}
+                  onDefer={!printing && onConfirm && contract.hardening ? () => onConfirm({ [HARDENING_DEFERRAL_ID]: { basis: contract.hardening!.basis } }) : null}
                   onUndo={!printing && onUnconfirm ? () => onUnconfirm([HARDENING_DEFERRAL_ID]) : null}
                 />
-              ) : null
-            }
+              )
+            }}
           >
             <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
           </ReadinessSection>

@@ -14,12 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Emergency access",
-      "state": "Not available"
+      "label": "Break-glass 1",
+      "state": "Minimum not met"
     },
     {
-      "label": "Resilience",
-      "state": "Hardening open"
+      "label": "Break-glass 2",
+      "state": "Minimum not met"
     }
   ],
   "channels": [

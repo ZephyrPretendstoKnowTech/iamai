@@ -14,16 +14,12 @@
   ],
   "tiles": [
     {
-      "label": "Emergency access",
-      "state": "Not available"
+      "label": "Break-glass 1",
+      "state": "Minimum met · hardening open"
     },
     {
-      "label": "Check",
-      "state": "Break-glass 2 is inside Core - Grant - MFA for all users: add the exclusions group to each policy's Users → Exclude → Groups in Create or Correct Exclusions Group. Do not exclude the account itself."
-    },
-    {
-      "label": "Resilience",
-      "state": "Hardening open"
+      "label": "Break-glass 2",
+      "state": "Minimum not met"
     }
   ],
   "channels": [

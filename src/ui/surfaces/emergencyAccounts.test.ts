@@ -61,10 +61,9 @@ test('two confirmed accounts, one hardened and one not: each account carries its
   const d = run(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: step.emergency!.basis } })
   assert.equal(d.step.status, 'done')
   assert.equal(waitingOnEmergency(d.r), 0, 'deferred hardening still blocked the rollout')
-  // Readiness names each account's own standing: available, so it is satisfied evidence.
-  const access = readinessOf(step, c).satisfied.find((t) => t.key === 'emergency')!
-  assert.equal(access.value, T.available)
-  assert.equal(access.note, [fillText(T.accountMeets, { name: ctx.nameOf(a) }), fillText(T.accountHardening, { name: ctx.nameOf(b) })].join(' · '))
+  // Readiness draws one slot per account (P0-7): the hardened one clear, the other with its hardening open.
+  const rd = readinessOf(step, c)
+  assert.deepEqual([...rd.tiles, ...rd.satisfied].filter((t) => t.key.startsWith('slot:')).map((t) => `${t.label}: ${t.value}`).sort(), [`${ctx.nameOf(a)}: ${T.meets}`, `${ctx.nameOf(b)}: ${T.hardeningOpen}`].sort())
   // The package binds the whole set, and the one account whose own checks are outstanding.
   const bindings = packageBindings(step, ctx, c)
   assert.equal(bindings['emergency.target.userId'], b)
@@ -87,9 +86,22 @@ test('a minimum safety failure on one account holds the rollout, stays that acco
   const d = run(f, { hardeningDeferral: { at: '2026-09-11T10:00:00.000Z', basis: step.emergency!.basis } })
   assert.notEqual(d.step.status, 'done')
   assert.ok(waitingOnEmergency(d.r) > 0, 'a deferral released a missing way back in')
-  const access = readinessOf(step, c).tiles.find((t) => t.key === 'emergency')!
-  assert.equal(access.value, T.unavailable)
-  assert.equal(access.note, [fillText(T.accountMeets, { name: ctx.nameOf(a) }), fillText(T.accountMinimum, { name: ctx.nameOf(b) })].join(' · '))
+  // Only the failing account's slot is unresolved, and its minimum blockers are its own lines, without its name again.
+  const slots = readinessOf(step, c).tiles.filter((t) => t.key.startsWith('slot:'))
+  assert.deepEqual(slots.map((t) => `${t.label}: ${t.value}`), [`${ctx.nameOf(b)}: ${T.minimumOpen}`])
+  const bSlot = c.emergencySlots.find((s) => s.accountId === b)!
+  assert.ok(bSlot.minimum.length > 0 && bSlot.minimum.every((l) => !l.startsWith(`${ctx.nameOf(b)}: `)), JSON.stringify(bSlot))
+})
+
+test('P0-7: with no account selected, Readiness is two Not selected slots, Account 1 and Account 2, and no check tile beside them', () => {
+  const { f } = tenant((t) => {
+    t.mapping.breakGlassUserIds = []
+  })
+  const { step, c } = run(f)
+  assert.ok(step.emergency, 'the premise: the emergency step carries its standing with nobody selected')
+  const r = readinessOf(step, c)
+  assert.deepEqual(r.tiles.filter((t) => t.key.startsWith('slot:')).map((t) => `${t.label}: ${t.value}`), [`${fillText(T.slot, { n: 1 })}: ${T.notSelected}`, `${fillText(T.slot, { n: 2 })}: ${T.notSelected}`])
+  assert.equal(r.tiles.some((t) => t.key.startsWith('check:') || t.key === 'emergency' || t.key === 'resilience'), false, r.tiles.map((t) => t.key).join(', '))
 })
 
 test('a finding about the set is no account’s, two accounts owing work bind no single account, and the package still names the whole set', () => {
