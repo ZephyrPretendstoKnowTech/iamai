@@ -9,11 +9,17 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact resolved Conditional Access policy by stable tenant ID **{{policy.current.id}}**. Apply only the mismatch modules IAMAI selected; do not create a replacement policy.
+This policy already exists and is enforced. The correction adds the exclusions group and aligns the conditions with the baseline.
+
+1. Go to Entra admin center → Conditional Access → Policies.
+2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Replace only the policy assignments/conditions with the complete IAMAI-resolved canonical target. Preserve the same policy ID. This includes All users, canonical exclusions, All resources with Microsoft Intune Enrollment excluded, all client apps, and no extra risk/location/platform/device/flow/action/context conditions.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
+4. Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).
+5. Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).
+6. Grant: Grant access → Require multifactor authentication.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -29,7 +35,8 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Do not use
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save, re-open the same policy by stable ID, verify only the corrected fields plus lifecycle state, and rescan IAMAI. If other mismatches remain, leave them for their selected modules.
+7. Save. Do not change the policy state (leave it On).
+8. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -136,9 +143,14 @@ Review the proposed MFA-for-everyone target for {{tenant.displayName}}. Confirm 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+This is the foundational MFA policy: every user must present a second factor (MFA) at sign-in. It's the single most impactful control in the baseline.
 
-The resolved policy {{policy.current.id}} has these semantic mismatches: {{policy.current.semanticMismatches}}. Explain only the smallest corrections required to reach the pinned MFA-for-everyone target; do not add exclusions or change the baseline grant.
+The policy is already enforced on your tenant. The correction aligns its configuration with the baseline:
+— The exclusions group is added so emergency access accounts are exempt.
+— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow.
+— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally.
+
+After this step, the MFA Registration Campaign step ensures every person has registered a phishing-resistant method. Until that's done, the 33% threshold tile tracks progress.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -24,12 +24,23 @@ import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { LadderMapping } from '../../derive/ladder.ts'
 import { readinessView, scoredPeople } from '../../derive/mfaReadiness.ts'
 import { stepMfaHold } from '../../derive/stepMfaReadiness.ts'
+import type { MfaHoldFamily } from '../../derive/stepMfaReadiness.ts'
 import { app } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { readinessStepHref } from '../shell/routes.ts'
 import { actionOf, methodsCell, readinessWord, roleWord } from './readinessCells.ts'
 
 const P = app.plan
+
+/**
+ * The words for an unknown reach, by the hold's family (content review S3): the
+ * line, the link, and anything the line says after the link.
+ */
+const UNKNOWN = {
+  hold: P.mfaReadinessHoldUnknown as unknown as Record<MfaHoldFamily, string>,
+  link: P.mfaReadinessLinkUnknown as unknown as Record<MfaHoldFamily, string>,
+  after: (P as unknown as { mfaReadinessAfterUnknown: Partial<Record<MfaHoldFamily, string>> }).mfaReadinessAfterUnknown,
+}
 
 /**
  * How many people the Plan previews before handing off.
@@ -99,10 +110,11 @@ export function MfaHandoff({ step, snapshot, mapping }: { step: Step; snapshot: 
         </ul>
       )}
       <p className="line mfa-handoff">
-        {n === null ? P.mfaReadinessHoldUnknown : fillText(P.mfaReadinessHold, { n })}{' '}
+        {n === null ? UNKNOWN.hold[hold.family] : fillText(P.mfaReadinessHold, { n })}{' '}
         <a className="no-print" href={readinessStepHref(step.id)}>
-          {n === null ? P.mfaReadinessLinkUnknown : P.mfaReadinessLink}
+          {n === null ? UNKNOWN.link[hold.family] : P.mfaReadinessLink}
         </a>
+        {n === null && UNKNOWN.after[hold.family] ? ` ${UNKNOWN.after[hold.family]}` : null}
       </p>
     </div>
   )

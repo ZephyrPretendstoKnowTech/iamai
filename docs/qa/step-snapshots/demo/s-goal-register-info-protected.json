@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "13%"
+      "state": "13% MFA-ready"
     },
     {
       "label": "Prerequisite · In progress",

@@ -705,7 +705,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 4,
-      "optionalBindings": 7,
+      "optionalBindings": 8,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -4696,6 +4696,7 @@
       "requiredBy": [],
       "optionalBy": [
         "s-goal-device-registration-mfa",
+        "s-goal-mfa-all-users",
         "s-goal-token-protection",
         "s-goal-workload-identity-block",
         "s-prereq-exclusion-group",
@@ -4703,6 +4704,7 @@
       ],
       "packages": [
         "s-goal-device-registration-mfa",
+        "s-goal-mfa-all-users",
         "s-goal-token-protection",
         "s-goal-workload-identity-block",
         "s-prereq-exclusion-group",

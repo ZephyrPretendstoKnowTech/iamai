@@ -1291,6 +1291,10 @@
             "admin": "admins",
             "device": "people in scope"
           },
+          "readinessValue": {
+            "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
+            "mfa": "{value} MFA-ready"
+          },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
           "foundInPlaceTogether": "Already delivered by {policies} together — none of them covers the whole goal on its own — so there is nothing to create.",
@@ -1311,7 +1315,7 @@
           "doneDeploy": "The policy exists in {tenant} in report-only.",
           "setAsideAction": "Put this step back if you want it on the plan again.",
           "fixStep": "Finish {step} first.",
-          "fixConfirmExclusions": "Confirm the exclusions group on {step} first: IAMAI found a group that qualifies, and only your Save makes it the one this policy excludes.",
+          "fixConfirmExclusions": "Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.",
           "fixMapping": "Map the baseline's reference under Plan settings, Baseline mappings, or leave it out there.",
           "fixReview": "{name} is no longer the policy IAMAI was watching: find out what changed on it, and why, before it goes any further.",
           "doneReview": "What changed on the policy is accounted for, and a later scan finds it is still the policy IAMAI is watching.",
@@ -1655,9 +1659,21 @@
           "doneHeldEnd": "The policy is enforced in {tenant}."
         },
         "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",
-        "mfaReadinessHoldUnknown": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
+        "mfaReadinessHoldUnknown": {
+          "$comment": "Where the scan could not work out who a step's readiness hold reaches (MfaHandoff.tsx), by the hold's family: the line before the link, the link, and any words after it (content review S3).",
+          "mfa": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
+          "guest": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
+          "admin": "This scan could not work out who cannot meet this step's sign-in requirement yet."
+        },
         "mfaReadinessLink": "See them in MFA Readiness →",
-        "mfaReadinessLinkUnknown": "Open MFA Readiness →"
+        "mfaReadinessLinkUnknown": {
+          "mfa": "Check MFA Readiness →",
+          "guest": "Open MFA Readiness →",
+          "admin": "Open MFA Readiness →"
+        },
+        "mfaReadinessAfterUnknown": {
+          "mfa": "for per-person detail."
+        }
       },
       "readiness": {
         "lineNoRecords": "no sign-in records",

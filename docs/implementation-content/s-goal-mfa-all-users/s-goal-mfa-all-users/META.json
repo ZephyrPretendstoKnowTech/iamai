@@ -56,6 +56,7 @@
   "optionalBindings": [
     "tenant.displayName",
     "people.affected.count",
+    "policy.current.displayName",
     "policy.current.state",
     "evidence.mfaReadiness",
     "evidence.reportOnly",
