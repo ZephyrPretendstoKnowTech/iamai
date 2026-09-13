@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "29%"
+      "state": "29% of devices compliant"
     },
     {
       "label": "Prerequisite · In progress",

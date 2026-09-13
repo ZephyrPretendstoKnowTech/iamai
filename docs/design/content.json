@@ -1294,7 +1294,8 @@
           "readinessValue": {
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
             "mfa": "{value} MFA-ready",
-            "admin": "{value} of admins phishing-resistant"
+            "admin": "{value} of admins phishing-resistant",
+            "device": "{value} of devices compliant"
           },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",

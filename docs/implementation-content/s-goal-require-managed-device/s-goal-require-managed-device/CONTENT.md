@@ -3,12 +3,15 @@ Before changing/enforcing CA, verify the actual Intune prerequisite: **Endpoint 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Open **Entra ID > Conditional Access > Policies > New policy**.
-2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the canonical grant and session controls exactly as described in STEP.md.
-5. Set **Enable policy: Report-only** and create it.
-6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
+1. Go to Entra admin center → Conditional Access → Policies → New policy.
+2. Name: {{policy.target.displayName}}.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group.
+4. Target resources: All resources.
+5. Conditions → Locations: Exclude → trusted locations (the network you defined in the Trusted Network step).
+6. Grant → Grant access → Require device to be marked as compliant OR Require hybrid Azure AD joined device.
+7. Session: leave empty.
+8. Enable policy: Report-only.
+9. Create. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
