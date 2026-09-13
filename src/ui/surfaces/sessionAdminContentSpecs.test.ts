@@ -134,3 +134,32 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   assert.deepEqual(words.decision?.options, ['None', 'Yes: add: {devices}; the service-accounts group carries them'])
 })
+
+test('s-prereq-trusted-location: the milestone says what to add, Entra is plain steps with the name bound, AI Info explains the location, and Done when names the object', () => {
+  const TRUSTED = 's-prereq-trusted-location'
+  const content = readFileSync('docs/design/content.json', 'utf8')
+  const words = stepWords(TRUSTED)
+  assert.equal(words.decision?.help, 'Add your office and VPN IP addresses.')
+  assert.deepEqual(words.doneWhen, ['A trusted named location exists in Entra whose IP ranges cover the sign-in sources seen since {from}.'])
+  assert.ok(content.includes('"clearNote": "No blockers. Ready to proceed."'), 'the Clear readiness line is not the plain one')
+  const entra = packageOf(TRUSTED).blocks['entra.create'].text
+  assert.deepEqual(authoredParts(entra), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.'],
+        ['Name: {{location.target.displayName}} (or a name that describes your location).'],
+        ['Add your office\'s public IP address(es). These are the IPs your internet traffic comes from — your ISP assigns them. If you\'re not sure, search "what is my IP" from a computer in the office.'],
+        ['If you have a VPN, add its exit IP addresses too.'],
+        ['Check "Mark as trusted location."'],
+        ['Create.'],
+        ['Rescan in IAMAI.'],
+      ],
+    },
+  ])
+  assert.doesNotMatch(entra, /CIDR|supplied by IAMAI|downstream policies/)
+  const ai = packageOf(TRUSTED).blocks['ai.create'].text
+  assert.match(ai, /^A trusted location tells Entra "sign-ins from these IP addresses are coming from our office\." Several policies in the baseline use this: some relax their requirements inside the trusted network \(like the managed-device policy, which only requires a managed device outside the office\)\.$/m)
+  assert.match(ai, /^If you have one office, add its public IP address\. If you have multiple offices or a VPN, add all of them\. The location should cover every IP address your people normally sign in from at work\.$/m)
+  assert.match(ai, /^Don't add home IP addresses — those change and aren't controlled by the organization\. The point of a trusted location is that the network itself is something you manage\.$/m)
+  assert.match(ai, /^If nobody works from an office \(fully remote, no VPN\), you can mark this step as "Doesn't apply here\."$/m)
+})

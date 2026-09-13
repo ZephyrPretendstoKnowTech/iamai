@@ -2313,7 +2313,7 @@
       },
       "decision": {
         "label": "Trusted network",
-        "help": "Your offices and VPN exits. Remove anything nobody signs in from that location.",
+        "help": "Add your office and VPN IP addresses.",
         "pickerRow": "{name} · {ranges} · {matches} sign-ins matched",
         "save": "Save"
       },
@@ -2334,7 +2334,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "A trusted location exists whose ranges match sign-ins since {from}."
+        "A trusted named location exists in Entra whose IP ranges cover the sign-in sources seen since {from}."
       ],
       "ifWrong": null,
       "comms": null,
