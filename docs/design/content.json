@@ -2614,7 +2614,7 @@
       "kind": "object",
       "title": "Set Up Passkeys to Match the Baseline",
       "changeLine": null,
-      "why": "A passkey registered under the wrong settings is refused later by the strength the baseline requires, and has to be rebuilt.",
+      "why": "This step configures which passkey providers your tenant accepts. If these settings are wrong, people register passkeys that won't work with the baseline's MFA policies, and they'll have to re-register.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
@@ -2636,8 +2636,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Passkey (FIDO2) is enabled for all users with attestation enforced and an allow-list holding the two Authenticator identifiers and every registered key.",
-        "Microsoft Authenticator and Temporary Access Pass are enabled for all users."
+        "Passkey (FIDO2), Microsoft Authenticator, and Temporary Access Pass are all enabled for all users. The passkey allow-list includes the Authenticator iOS and Android AAGUIDs, and attestation is enforced."
       ],
       "ifWrong": null,
       "comms": null,

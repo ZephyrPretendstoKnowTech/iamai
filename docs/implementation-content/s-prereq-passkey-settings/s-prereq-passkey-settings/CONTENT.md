@@ -3,19 +3,28 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure-fido2","channel":"entra","states":["missingOrPartial"],"format":"markdown","kind":"template"}
-1. Go to **Entra ID > Security > Authentication methods > Policies > Passkey (FIDO2)**.
-2. If profiles are not enabled, proceed only when `passkey.profileOptInApproved` is true.
-3. Apply IAMAI's resolved FIDO2/passkey target exactly: {{passkey.target.profileSummary}}.
-4. Confirm every required existing/approved AAGUID remains present: {{passkey.target.allowedAaguids}}.
-5. Save. Do not add synced passkeys unless they are part of the resolved target.
+1. Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).
+2. Set Enable to Yes. Target: All users.
+3. Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow.
+4. Add the Microsoft Authenticator AAGUIDs:
+   — iOS: 90a3ccdf-635c-4729-a248-9b709135078f
+   — Android: de1e552d-db1d-4423-a619-566b625cdc84
+5. Enable Enforce attestation.
+6. Save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure-authenticator","channel":"entra","states":["missingOrPartial"],"format":"markdown","kind":"template"}
-Open **Microsoft Authenticator** in Authentication methods and apply IAMAI's resolved target configuration. Preserve its exact include/exclude targets; this step does not infer them.
+Then configure the supporting methods:
+
+7. Open Microsoft Authenticator in the same Authentication methods list.
+8. Set Enable to Yes. Target: All users.
+9. Save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure-tap","channel":"entra","states":["missingOrPartial"],"format":"markdown","kind":"template"}
-Open **Temporary Access Pass** in Authentication methods and apply IAMAI's resolved target configuration, including target population, lifetime bounds/default, and one-time behavior.
+10. Open Temporary Access Pass in the same list.
+11. Set Enable to Yes. Target: All users. Set a lifetime and one-time-use policy that fits your organization.
+12. Save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
@@ -60,7 +69,13 @@ Explain the irreversible passkey-profile opt-in to the owner using current tenan
 @@IAMAI-BEGIN {"id":"ai.apply","channel":"aiInfo","states":["missingOrPartial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Compare the current tenant configuration with the resolved passkey/Auth/TAP target. Verify the AAGUID list preserves approved registered hardware: {{passkey.current.registeredAaguids}}.
+Passkey (FIDO2) is the phishing-resistant sign-in method this baseline targets. These settings control which passkey providers are accepted tenant-wide.
+
+The two AAGUIDs above are the Microsoft Authenticator app on iOS and Android. Enforcing attestation and restricting to these AAGUIDs means only Authenticator passkeys are accepted — not third-party security keys or browser-based passkeys.
+
+Temporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with.
+
+After saving these settings, the MFA Registration Campaign step guides each person through registering their passkey.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}

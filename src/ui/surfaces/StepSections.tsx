@@ -9,8 +9,9 @@
 // blocker evaluation, no lifecycle arithmetic. Those questions were answered
 // below the UI, and asking them again in a component is how two answers to one
 // question got onto one screen.
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { authoredParts } from './authoredText.ts'
 import { Button, Icon, Status } from '../components/index.ts'
 import type { StatusTone } from '../components/index.ts'
 import type { ContractFound, ContractMember, ContractReadiness, ContractStage, ImplementationEmpty, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
@@ -427,46 +428,32 @@ function inlineText(line: string): ReactNode[] {
  * an authored line break survives. Copy copies the bound Markdown itself.
  */
 export function AuthoredText({ text }: { text: string }) {
-  const out: ReactNode[] = []
-  let list: { ordered: boolean; items: string[] } | null = null
-  const flush = (): void => {
-    const current = list
-    if (!current) return
-    const items = current.items.map((it, i) => <li key={i}>{inlineText(it)}</li>)
-    out.push(current.ordered ? <ol key={out.length}>{items}</ol> : <ul key={out.length}>{items}</ul>)
-    list = null
-  }
-  for (const raw of text.replace(/\s+$/, '').split('\n')) {
-    const line = raw.replace(/\s+$/, '')
-    const ordered = /^\d+\.\s+(.*)$/.exec(line)
-    const bullet = /^-\s+(.*)$/.exec(line)
-    if (ordered || bullet) {
-      const isOrdered = ordered !== null
-      if (list === null || list.ordered !== isOrdered) {
-        flush()
-        list = { ordered: isOrdered, items: [] }
-      }
-      list.items.push((ordered ?? bullet)![1])
-      continue
-    }
-    flush()
-    if (line === '') {
-      out.push(<span key={out.length} className="authored-break" aria-hidden="true" />)
-      continue
-    }
-    const heading = /^#{1,6}\s+(.*)$/.exec(line)
-    out.push(
-      heading ? (
-        <p key={out.length} className="authored-heading">
-          <strong>{inlineText(heading[1])}</strong>
-        </p>
-      ) : (
-        <p key={out.length}>{inlineText(line)}</p>
-      ),
-    )
-  }
-  flush()
-  return <>{out}</>
+  return (
+    <>
+      {authoredParts(text).map((part, k) => {
+        if (part.kind === 'break') return <span key={k} className="authored-break" aria-hidden="true" />
+        if (part.kind === 'heading') {
+          return (
+            <p key={k} className="authored-heading">
+              <strong>{inlineText(part.text)}</strong>
+            </p>
+          )
+        }
+        if (part.kind === 'line') return <p key={k}>{inlineText(part.text)}</p>
+        const items = part.items.map((lines, i) => (
+          <li key={i}>
+            {lines.map((l, j) => (
+              <Fragment key={j}>
+                {j > 0 && <br />}
+                {inlineText(l)}
+              </Fragment>
+            ))}
+          </li>
+        ))
+        return part.ordered ? <ol key={k} start={part.start === 1 ? undefined : part.start}>{items}</ol> : <ul key={k}>{items}</ul>
+      })}
+    </>
+  )
 }
 
 /** The truthful no-action box, at the weight of its reason (the approved `.implementation-empty`). */
