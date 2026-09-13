@@ -1876,7 +1876,7 @@
       "kind": "blocker",
       "title": "Create or Correct Emergency Access Accounts",
       "changeLine": null,
-      "why": "Emergency access accounts are how you keep access to {tenant} if a change goes wrong.",
+      "why": "Emergency access accounts are how you keep access to your tenant if a Conditional Access change locks everyone out.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },

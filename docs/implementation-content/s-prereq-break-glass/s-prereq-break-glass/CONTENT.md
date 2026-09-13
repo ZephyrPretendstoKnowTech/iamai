@@ -6,9 +6,9 @@ Use the owner-confirmed emergency account identities only.
 3. Confirm the account is enabled and dedicated to emergency recovery rather than normal daily work.
 4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.
 5. Register the organization-approved emergency phishing-resistant method. Microsoft currently recommends Passkey (FIDO2); CBA is also supported where PKI already exists. Do not bind the account to an employee-personal device.
-6. Put the account in the single IAMAI-resolved emergency/exclusions group.
+6. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step.
 7. Repeat for every owner-confirmed emergency account; maintain at least two.
-8. Store credentials/keys outside IAMAI in the approved secure custody process.
+8. Store credentials and recovery keys in your organization's secure custody process (e.g. a safe or vault). Do not store them in IAMAI.
 9. Confirm monitoring exists for emergency-account use.
 10. Run the real validation drill before treating the recovery path as proven.
 
