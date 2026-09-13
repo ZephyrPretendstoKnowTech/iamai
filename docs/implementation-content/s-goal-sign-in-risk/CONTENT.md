@@ -1,13 +1,13 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.
-1. Name: {{policy.target.displayName}}.
-2. Users: Include **All users** and add only IAMAI-resolved canonical exclusions.
-3. Target resources: **All resources**.
-4. Conditions > Sign-in risk: **High** only.
-5. Grant: **Grant access > Require authentication strength > {{authStrength.target.displayName}}**.
-6. Session: **Sign-in frequency > Every time**.
-7. Enable policy: **Report-only**.
-8. Create and rescan IAMAI.
+1. Go to Entra admin center → Conditional Access → Policies → New policy.
+2. Name: {{policy.target.displayName}}.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group.
+4. Target resources: All resources.
+5. Conditions → Sign-in risk: check High only (not Medium).
+6. Grant → Grant access → Require authentication strength → select "{{authStrength.target.displayName}}" (the strength you created in the Authentication Strength step).
+7. Session → Sign-in frequency: Every time.
+8. Enable policy: Report-only.
+9. Create. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -115,9 +115,13 @@ switch($Mode){
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-**Contains tenant context. Review before sharing with an external AI service.**
+This policy responds to high-risk sign-ins detected by Microsoft Entra ID Protection. High risk means Microsoft is fairly confident the sign-in is compromised — for example, credentials confirmed in a breach database, or traffic from a known attack infrastructure.
 
-Review IAMAI's proposed High-risk sign-in Conditional Access policy for {{tenant.displayName}}. The retained target is High only, All resources, the tenant-resolved authentication strength {{authStrength.target.displayName}}, Every-time sign-in frequency, canonical exclusions, and Report-only lifecycle. Check for contradiction with the separate Medium-risk policy; do not merge risk levels, weaken the grant to plain MFA, or redesign the baseline.
+Unlike the medium-risk policy (which requires standard MFA), this one requires the authentication strength "{{authStrength.target.displayName}}" — only phishing-resistant methods. The reasoning: if the risk is high, a phished code or push approval might be exactly how the attacker got in.
+
+The "Every time" sign-in frequency forces re-authentication on every high-risk sign-in, even if the user has a valid session. This ensures the attacker can't ride an existing session.
+
+The exclusions group ensures emergency access accounts are not blocked during a high-risk event.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}

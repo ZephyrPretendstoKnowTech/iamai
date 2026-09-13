@@ -75,3 +75,41 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
   assert.equal(words.why, 'Medium risk is where most real attacks land: a new country, a new device, a password that appears on a list.')
   assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.")
 })
+
+test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the strength, and AI Info explains why high risk needs the strength and Every time', () => {
+  const HIGH = 's-goal-sign-in-risk'
+  const STRENGTH = '{{authStrength.target.displayName}}'
+  assert.deepEqual(authoredParts(packageOf(HIGH).blocks['entra.create'].text), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Policies → New policy.'],
+        ['Name: {{policy.target.displayName}}.'],
+        ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
+        ['Target resources: All resources.'],
+        ['Conditions → Sign-in risk: check High only (not Medium).'],
+        [`Grant → Grant access → Require authentication strength → select "${STRENGTH}" (the strength you created in the Authentication Strength step).`],
+        ['Session → Sign-in frequency: Every time.'],
+        ['Enable policy: Report-only.'],
+        ['Create. Rescan in IAMAI.'],
+      ],
+    },
+  ])
+  assert.equal(packageOf(HIGH).blocks['ai.create'].text, [
+    'This policy responds to high-risk sign-ins detected by Microsoft Entra ID Protection. High risk means Microsoft is fairly confident the sign-in is compromised — for example, credentials confirmed in a breach database, or traffic from a known attack infrastructure.',
+    `Unlike the medium-risk policy (which requires standard MFA), this one requires the authentication strength "${STRENGTH}" — only phishing-resistant methods. The reasoning: if the risk is high, a phished code or push approval might be exactly how the attacker got in.`,
+    `The "Every time" sign-in frequency forces re-authentication on every high-risk sign-in, even if the user has a valid session. This ensures the attacker can't ride an existing session.`,
+    'The exclusions group ensures emergency access accounts are not blocked during a high-risk event.',
+  ].join('\n\n') + '\n')
+  // Opened on a P2 tenant with nothing deployed, both channels draw with the tenant's names.
+  const b = bodyOf('huge', HIGH)
+  const entra = drawn(b, 'portal')
+  assert.match(entra, /^2\. Name: Core - Require - Sign-in risk\.$/m)
+  assert.match(entra, /^6\. Grant → Grant access → Require authentication strength → select "[^"{}]+" \(the strength you created in the Authentication Strength step\)\.$/m)
+  assert.doesNotMatch(entra, /canonical|\{\{/)
+  assert.match(drawn(b, 'ai'), /^Unlike the medium-risk policy \(which requires standard MFA\), this one requires the authentication strength "[^"{}]+"/m)
+  // The shared readiness sentence stays (BLOCKED.md); Why and Done when are unchanged.
+  assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
+  const words = stepWords('sign-in-risk')
+  assert.equal(words.why, 'Microsoft sees leaked-credential lists and impossible travel before you do; this lets that signal act.')
+  assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the high-risk threshold, with the baseline's authentication strength as the grant control and the exclusions group applied.")
+})
