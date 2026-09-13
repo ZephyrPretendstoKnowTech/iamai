@@ -253,12 +253,13 @@ export function ContentStep({
       <div className="step-body has-rail">
         <div className="step-main step-main-lead">
           {/* The contract's Why: the step's own sentence where the content file
-              has one, and the engine's where it does not. */}
+              has one, and the engine's where it does not, ending in the step's
+              Microsoft Learn link (RUN-CONTEXT-B decision 14). */}
           <section className="step-section">
             <h4>{HEAD.why}</h4>
             <p>
               {contract.why}{' '}
-              {learnUrl && !showImplementation && (
+              {learnUrl && (
                 <a href={learnUrl} target="_blank" rel="noopener noreferrer">
                   Learn →
                 </a>
