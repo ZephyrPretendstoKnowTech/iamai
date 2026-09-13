@@ -252,7 +252,9 @@ test('a blocked policy with authored implementation shows its planning preview w
   assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹exclusions group›/, 'an unknown value was filled silently')
   // The copy control — inline and in the expanded viewer — is not offered on a preview.
   assert.match(CONTENT_STEP, /const copyable = preview === null && active !== null/)
-  assert.match(CONTENT_STEP, /\{copyable && \(\n\s*<button type="button" className="icon-btn" aria-label=\{W\.copy\}/)
+  // Copy stays drawn on a preview, not offered, with the preview's reason (decision 4, U18).
+  assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
+  assert.match(CONTENT_STEP, /if \(copyable\) copy\('implementation'/)
   // Resolved: the same package, the same state's blocks, executable and no longer a preview.
   const done = opened('small', 's-goal-device-registration-mfa', 'missing')
   const mstate = packageStateOf(done.step, done.c, done.f.snapshot)!

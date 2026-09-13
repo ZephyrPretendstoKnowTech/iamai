@@ -95,7 +95,7 @@ test('with nothing unresolved the region is its compact success line and the sat
   const section = SECTIONS.slice(SECTIONS.indexOf('export function ReadinessSection('), SECTIONS.indexOf('/** The truthful no-action box'))
   assert.match(section, /readiness\.tiles\.length > 0 \? \(\s*strip\(readiness\.tiles, 'unresolved'\)\s*\) : \(\s*<p className="readiness-clear">/, 'nothing unresolved does not collapse to the success line')
   assert.match(section, /<details className="readiness-satisfied" open=\{printing \|\| undefined\}>/, 'the satisfied evidence is not behind its own disclosure')
-  assert.match(section, /<details className="readiness-more" open=\{open \|\| undefined\}>/, 'a tile’s explanation is not behind its disclosure')
+  assert.match(section, /<div id=\{detailId\} className="tile-detail" hidden=\{!shown\}>/, 'a tile’s explanation is not behind its disclosure')
   assert.match(section, /'href' in t\.link \? <a href=\{t\.link\.href\}>/, 'a step tile does not link')
   assert.match(CSS, /\.step \.readiness-strip \{[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/, 'the strip is not four across')
   assert.match(CSS, /\.step \.readiness-clear \{/, 'the success line has no treatment')

@@ -543,6 +543,26 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
   const copyable = preview === null && active !== null
+  // A planning preview is not executable: Copy stays where it is, disabled, and
+  // says why in the preview's own lines (stepBody.ts previewNote), inline and in
+  // the viewer (RUN-CONTEXT-B decision 4, U18). aria-disabled keeps the reason
+  // reachable by hover and by keyboard, which a disabled button is not.
+  const copyReason = copyable ? W.copy : (preview?.lines.join(' ') ?? W.copy)
+  const copyControl = (
+    <button
+      type="button"
+      className="icon-btn"
+      aria-label={W.copy}
+      title={copyReason}
+      aria-description={copyable ? undefined : copyReason}
+      aria-disabled={!copyable}
+      onClick={() => {
+        if (copyable) copy('implementation', active?.text() ?? '')
+      }}
+    >
+      <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
+    </button>
+  )
   return (
     <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
       <h4>{W.heading}</h4>
@@ -575,12 +595,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
           )}
           <div className="impl-preview" {...onePanelProps(base, tab)}>
             <div className="preview-actions no-print">
-              {/* A planning preview is not executable: it is never offered to copy. */}
-              {copyable && (
-                <button type="button" className="icon-btn" aria-label={W.copy} title={W.copy} onClick={() => copy('implementation', active?.text() ?? '')}>
-                  <Icon name={copied === 'implementation' ? 'check' : 'copy'} size={14} />
-                </button>
-              )}
+              {copyControl}
               <button type="button" className="icon-btn" aria-label={W.expand} title={W.expand} onClick={onOpen}>
                 <Icon name="external-link" size={14} />
               </button>
@@ -588,17 +603,23 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
             {body('preview-text')}
           </div>
           {/* The expanded viewer (S6): the same channel the preview shows, the
-              whole artifact at reading size, and a visible Copy where the
-              artifact is copyable — never on a planning preview. */}
-          <StepDialog open={open} onClose={onClose} eyebrow={W.dialogEyebrow} title={title} sub={tabs.find((t) => t.id === tab)?.label ?? null} closeLabel={W.close} wide>
-            <div className="dialog-toolbar">
-              <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
-              {copyable && (
-                <Button variant="secondary" icon={copied === 'implementation' ? 'check' : 'copy'} onClick={() => copy('implementation', active?.text() ?? '')}>
-                  {W.copy}
-                </Button>
-              )}
-            </div>
+              whole artifact at reading size, with the channel tabs and the
+              icon-only Copy in the sticky head beside Minimize (U16, U17). */}
+          <StepDialog
+            open={open}
+            onClose={onClose}
+            eyebrow={W.dialogEyebrow}
+            title={title}
+            sub={tabs.find((t) => t.id === tab)?.label ?? null}
+            closeLabel={W.close}
+            wide
+            toolbar={
+              <>
+                <TabList base={dialogBase} tabs={tabs} active={tab} onSelect={(id) => setChosen(id as Channel)} panelId={() => `${dialogBase}-panel`} className="tabs impl-tabs" />
+                {copyControl}
+              </>
+            }
+          >
             {tab === 'ai' && (
               <div className="ai-warning">
                 <Callout kind="warning">{W.aiWarning}</Callout>

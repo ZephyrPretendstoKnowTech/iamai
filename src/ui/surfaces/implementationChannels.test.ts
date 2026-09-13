@@ -73,10 +73,10 @@ test('Blocked offers nothing executable; its planning text is visible and never 
   const planned = projectPlanned(BY_STATE, 'blocked', {}, NO_RUNTIME, (b) => `‹${b}›`)
   assert.equal(planned.preview, true)
   assert.match(planned.channels.find((c) => c.channel === 'entra')!.text, /Create \*\*‹policy\.target\.displayName›\*\*/, 'the planned work is not visible with its stand-ins')
-  // The page: Copy — inline and in the expanded viewer — only where there is no preview.
+  // The page: Copy — inline and in the expanded viewer — copies only where there is no preview.
   assert.match(CONTENT_STEP, /const copyable = preview === null && active !== null/)
-  assert.equal((CONTENT_STEP.match(/\{copyable && \(/g) ?? []).length, 2, 'the inline Copy and the viewer Copy do not both read the one rule')
-  assert.match(CONTENT_STEP, /className="dialog-toolbar"/, 'the expanded viewer has no toolbar for its Copy')
+  assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2, 'the inline Copy and the viewer Copy do not both read the one rule')
+  assert.match(CONTENT_STEP, /toolbar=\{/, 'the expanded viewer has no toolbar for its Copy')
 })
 
 /** The curated demo tenant with no custom authentication strength of its own: the step that creates the baseline's is on the plan. */

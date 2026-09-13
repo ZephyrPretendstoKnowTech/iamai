@@ -1245,7 +1245,7 @@
           "railExistingKeep": "Nothing to create; keep it as it is.",
           "railExistingTogether": "Together — neither covers the goal on its own.",
           "implementationReady": "Portal steps, JSON and PowerShell",
-          "implementationNone": "Nothing to submit yet",
+          "implementationNone": "No artifact yet",
           "railChannels": {
             "$comment": "The rail's Implementation block as the approved Plan pack draws a side block (task 035; docs/design/approved/plan-step-v1.html `.side-list`): one short item per channel rather than one sentence naming all three. It restates `implementationReady` in the pack's grammar and adds no fact — the channels stand or fall together on Foundation A's one answer (roadmap/operations.ts implementationOffered), so a step that offers none shows `implementationNone` instead and no list at all.",
             "portal": "Entra",
@@ -1426,27 +1426,27 @@
                 "The policy stays in report-only while IAMAI observes it."
               ],
               "review": [
-                "Nothing to submit yet",
+                "Waiting on a review",
                 "Resolve the review item first."
               ],
               "decision": [
-                "Nothing to submit yet",
+                "Waiting on a decision",
                 "Answer the question this step is waiting on first."
               ],
               "blocked": [
-                "Nothing to submit yet",
+                "Waiting on Readiness",
                 "Clear what Readiness lists first."
               ],
               "unavailable": [
-                "Nothing to submit yet",
+                "No artifact for this policy yet",
                 "IAMAI offers no artifact for this policy as it stands."
               ],
               "conflict": [
-                "Nothing to submit yet",
-                "No Entra, PowerShell, JSON or AI artifact is offered while the baseline definition is unresolved."
+                "Not enough information to provide implementation guidance.",
+                "The baseline defines this policy two ways; resolve the conflict before implementation is available."
               ],
               "setAside": [
-                "Nothing to submit",
+                "Step deferred",
                 "This step is deferred."
               ],
               "none": [
@@ -1454,7 +1454,7 @@
                 "This step describes no policy for IAMAI to generate."
               ],
               "bindingMissing": [
-                "Nothing to submit yet",
+                "Values still to resolve",
                 "IAMAI does not yet hold every value this change needs, so no artifact is produced."
               ],
               "confirmationsPending": [
@@ -1462,11 +1462,11 @@
                 "IAMAI cannot read these from Microsoft. Confirm them under Readiness, and the enforcement artifacts appear here."
               ],
               "packageFault": [
-                "Nothing to submit yet",
+                "Implementation content withheld",
                 "This step's implementation content could not be projected safely, so no artifact is offered."
               ],
               "correctionUnknown": [
-                "Nothing to submit yet",
+                "Correction not covered",
                 "IAMAI found a difference on this policy that the step’s corrections do not cover, so no partial correction is offered."
               ]
             },

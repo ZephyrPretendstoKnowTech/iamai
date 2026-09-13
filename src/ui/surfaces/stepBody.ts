@@ -258,9 +258,15 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.
-  const artifacts: Artifact[] = packaged
-    ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
-    : channels.map((ch) => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
+  // PowerShell and JSON are offered on Conditional Access policy steps only
+  // (RUN-CONTEXT-B decision 12, U15): an account, a group or a setting is portal
+  // work, and filtering here keeps the tabs, the viewer and Copy on one list.
+  const machine = cs.kind === 'policy'
+  const artifacts: Artifact[] = (
+    packaged
+      ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
+      : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
+  ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
   const W = CONTRACT.implementation
   // Why a preview's work cannot be copied: the values still to resolve, never the
   // blocker again. No Planned work banner draws it over the channels (U4); it is
