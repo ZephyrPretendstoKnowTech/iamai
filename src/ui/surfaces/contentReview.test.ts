@@ -60,3 +60,10 @@ test('R3: a prerequisite tile reads In progress, Completed or Waiting, never Rea
   }
   assert.ok(prerequisites > 0, 'no fixture draws a prerequisite tile: the premise is untested')
 })
+
+test('R4: tile marks follow one rule — ! blocking, ✓ satisfied, none informational', () => {
+  const src = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
+  // Waiting and in-progress prerequisites are blocking: the same ! as a tile that needs attention.
+  assert.match(src, /const MARK: Record<ReadinessTone, string \| null> = \{ good: '✓', warn: '!', wait: '!', info: null \}/)
+  assert.equal(src.includes("'…'"), false, 'a tile still draws the … mark')
+})
