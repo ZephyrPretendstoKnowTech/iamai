@@ -1098,7 +1098,7 @@ export function eyebrowOf(c: StepContract, contentKind: string | null): string |
 // region's own labels (pages.app.plan.stepContract.readiness / implementation /
 // rail). The state changes what a region says, never which component draws it.
 
-/** A readiness tile's mark: ✓ met, ! needs attention, … still under way, or none where the tile states a count and no verdict. */
+/** A readiness tile's tone. Its mark (StepSections.tsx MARK, content review R4): ✓ met, ! blocking — needs attention or still under way — or none where the tile states a count and no verdict. */
 export type ReadinessTone = 'good' | 'warn' | 'wait' | 'info'
 
 export type ReadinessTile = {

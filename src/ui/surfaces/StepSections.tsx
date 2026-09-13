@@ -237,8 +237,12 @@ export function StepFooter({ controls = null, onScan }: { controls?: ReactNode; 
 /** The strip's track count (A1 §16.1: up to four across, wrapping); fewer tiles take fewer tracks. */
 const TRACKS = 4
 
-/** A tile's mark beside its words: never the state on its own (design lint 5). */
-const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wait: '…', info: null }
+/** A tile's mark beside its words: never the state on its own (design lint 5).
+ * Three marks, one rule each (content review R4): ! blocks or needs attention —
+ * a prerequisite in progress or waiting is still in the way — ✓ is satisfied,
+ * and an informational count carries none.
+ */
+const MARK: Record<ReadinessTone, string | null> = { good: '✓', warn: '!', wait: '!', info: null }
 
 /**
  * The Readiness region (the approved `.readiness-strip` over `.readiness-bar`),
