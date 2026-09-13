@@ -38,7 +38,7 @@ import { app, content } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { filterPickerObjects, pickerUniverse } from './pickerRows.ts'
+import { filterPickerObjects, initialPicked, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -753,9 +753,10 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
     return { id, name, secondary: known?.secondary, why: why || undefined }
   })
   const optionOf = (id: string): PickerOption => nominated.find((n) => n.id === id) ?? byId.get(id) ?? { id, name: ctx.nameOf(id) }
-  const tickedOf = key ? ex[`${key}Ticked`] : undefined
-  const initial: string[] = saved?.picked ?? (Array.isArray(tickedOf) ? (tickedOf as string[]) : single ? ids.slice(0, 1) : ids)
-  const [chips, setChips] = useState<PickerOption[]>(() => initial.map(optionOf))
+  // A match the scan made unambiguously opens as a chip saying so (U24); it is the
+  // plan's decision only once Save writes it, so the step still reads Decision.
+  const initial = initialPicked(ex, key, saved, ids, single)
+  const [chips, setChips] = useState<PickerOption[]>(() => initial.picked.map((id) => (initial.matched.includes(id) ? { ...optionOf(id), badge: app.picker.matched } : optionOf(id))))
   const [query, setQuery] = useState('')
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   const hasPicker = rows.length > 0 || universe.length > 0

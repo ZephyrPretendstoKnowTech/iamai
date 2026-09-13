@@ -1079,7 +1079,8 @@
         "typeToSearch": "Type to search",
         "suggestions": "Suggestions",
         "results": "{n} results",
-        "done": "Done"
+        "done": "Done",
+        "matched": "Matched by IAMAI"
       },
       "shell": {
         "lightTheme": "Light theme",

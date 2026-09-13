@@ -1382,6 +1382,13 @@ footer.app a {
   font-size: var(--t-2);
   line-height: var(--lh-body);
 }
+/* A chip the scan matched and nobody has saved yet (U24): said in words, in the chip's own colour. */
+.chip-badge {
+  font-style: italic;
+}
+.chip-badge::before {
+  content: '· ';
+}
 .chip-remove {
   display: inline-flex;
   align-items: center;
