@@ -18,6 +18,11 @@
       "state": "Create or Correct Emergency Access Accounts"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info"
+  ],
   "when": "Aug 31, 2026"
 }

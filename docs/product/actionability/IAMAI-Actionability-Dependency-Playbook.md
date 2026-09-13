@@ -176,6 +176,7 @@ Every real conditional dependency is an edge with a condition predicate. None is
 | `shared-devices-exist` | `s-shared-devices` | confirmed shared identities/devices |
 | `sd-enabled` | `s-prereq-security-defaults` | Security Defaults currently enabled |
 | `campaign-targets-passkey` | `s-verify-mfa` | the registration campaign targets passkeys rather than Authenticator only |
+| `device-code-workflows-exist` | `s-goal-block-device-code` | someone uses device code sign-in for CLI tools, IoT devices, or display-limited devices |
 
 ### 8.1 Resolution
 - applicable → prerequisite participates as a normal edge;
@@ -321,6 +322,7 @@ Condition names used: `sd-enabled` (Security Defaults currently enabled in the t
 | `s-goal-admin-portals-protected:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-auth-transfer:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-device-code:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
+| `s-goal-block-device-code:enforce` | `decision:device-code-workflows` | decision | `resolved` | `device-code-workflows-exist` | conditional | audit | ok |
 | `s-goal-block-legacy-auth:create` | `s-prereq-exclusion-group` | step | `complete` | — | hard | pinned | ok |
 | `s-goal-block-legacy-auth:enforce` | `s-prereq-service-accounts-group` | step | `complete` | — | hard | package | ok |
 | `s-goal-block-legacy-auth:enforce` | `s-question-mail-devices` | step | `complete` | `mail-devices-incompatible-path` | conditional | v2 | ok |

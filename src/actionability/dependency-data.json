@@ -943,6 +943,18 @@
       "table": "10.2"
     },
     {
+      "step": "s-goal-block-device-code",
+      "action": "enforce",
+      "prerequisite": "decision:device-code-workflows",
+      "prerequisiteKind": "decision",
+      "milestone": "resolved",
+      "condition": "device-code-workflows-exist",
+      "edgeKind": "conditional",
+      "source": "audit",
+      "status": "ok",
+      "table": "10.2"
+    },
+    {
       "step": "s-goal-block-legacy-auth",
       "action": "create",
       "prerequisite": "s-prereq-exclusion-group",
@@ -1621,6 +1633,11 @@
       "name": "campaign-targets-passkey",
       "ownedBy": "s-verify-mfa",
       "meaning": "the registration campaign targets passkeys rather than Authenticator only"
+    },
+    {
+      "name": "device-code-workflows-exist",
+      "ownedBy": "s-goal-block-device-code",
+      "meaning": "someone uses device code sign-in for CLI tools, IoT devices, or display-limited devices"
     }
   ]
 }

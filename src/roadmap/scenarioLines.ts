@@ -168,9 +168,7 @@ export function scenarioContext(args: {
   return { snapshot, evidence, nameOf: args.nameOf, guestMfaTrust, hybridPresent, syncRoleHolder, noMethodActive: args.noMethodActive }
 }
 
-/** Directory Synchronization Accounts (data/role-templates.json). */
-export const DIR_SYNC_ROLE = 'd29b2b05-8046-44ba-8758-1e26182fcf32'
-
+import { DIR_SYNC_ROLE } from '../coverage/applicability.ts'
 import { emptyScenarioEvidence } from '../derive/evidence.ts'
 import { rolloutCohort } from './rings.ts'
 import { effectsOf, familyReading } from './strand.ts'

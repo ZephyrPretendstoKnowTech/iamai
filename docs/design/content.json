@@ -3731,7 +3731,16 @@
         ],
         "none": "No device-code sign-ins since {from}."
       },
-      "decision": null,
+      "decision": {
+        "label": "Device code sign-in",
+        "help": "Does anyone use device code sign-in for CLI tools, IoT devices, or display-limited devices?",
+        "options": [
+          "None",
+          "Yes"
+        ],
+        "effect": "Enforcement waits while device code sign-in is in use; move each workflow off it, then save None.",
+        "save": "Save"
+      },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}"

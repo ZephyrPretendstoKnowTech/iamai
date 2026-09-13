@@ -6,7 +6,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fixture } from '../roadmap/fixtures/index.ts'
+import type { Fixture } from '../roadmap/fixtures/index.ts'
 import { runFixture } from '../roadmap/fixtures/run.ts'
+import { DIR_SYNC_ROLE } from '../coverage/applicability.ts'
 import { PINNED_GOAL_MAP } from '../roadmap/goalMap.ts'
 import { notLicensedNote, notLicensedPrintLine, notLicensedRows, notLicensedSummary } from './notLicensed.ts'
 import { pages, stepById } from '../content/content.ts'
@@ -27,6 +29,24 @@ test('the demo (P1) lists its P2 goals as Not licensed rows, from content', () =
   assert.equal(notLicensedSummary(rows.length), 'Not licensed (6)')
   assert.equal(notLicensedNote(), (pages.plan as { footer: { notLicensedNote: string } }).footer.notLicensedNote)
   assert.equal(notLicensedPrintLine(rows.length), '6 baseline controls need a licence the tenant does not hold; nothing in the plan waits on them.')
+})
+
+test('the workload goal exists only where someone holds the Directory Synchronization Accounts role: never planned or listed without a sync account (B7)', () => {
+  const WORKLOAD = 'workload-identity-block'
+  const licensed = (f: Fixture, enabled: boolean): Fixture => ({ ...f, snapshot: { ...f.snapshot, capabilities: { ...f.snapshot.capabilities, workloadIdPremium: { enabled, seats: enabled ? 25 : 0, consumed: 0 } } } })
+  const read = (f: Fixture) => {
+    const r = runFixture(f, { snapshot: f.snapshot } as never)
+    return { planned: r.steps.some((s) => s.goalId === WORKLOAD), listed: notLicensedRows(r.coverage, PINNED_GOAL_MAP).some((x) => x.goalId === WORKLOAD) }
+  }
+  const holdsSync = (f: Fixture): boolean => Object.values(f.snapshot.roles.active).some((roles) => roles.includes(DIR_SYNC_ROLE))
+  const small = fixture('small')
+  assert.equal(holdsSync(small), false, 'the premise: small has no sync account')
+  assert.deepEqual(read(licensed(small, false)), { planned: false, listed: false })
+  assert.deepEqual(read(licensed(small, true)), { planned: false, listed: false }, 'a licence does not make a step with nothing to restrict')
+  const mid = fixture('mid')
+  assert.equal(holdsSync(mid), true, 'the premise: mid has a sync account')
+  assert.deepEqual(read(licensed(mid, false)), { planned: false, listed: true })
+  assert.deepEqual(read(licensed(mid, true)), { planned: true, listed: false })
 })
 
 test('a goal the baseline does not hold never appears, whatever its licence', () => {

@@ -12,13 +12,13 @@ import { fixture } from '../../roadmap/fixtures/index.ts'
 import type { Fixture } from '../../roadmap/fixtures/index.ts'
 import { runFixture } from '../../roadmap/fixtures/run.ts'
 import { applyStepDecisions } from '../../roadmap/decisions.ts'
-import { QUESTION_STEP, answerKey, questionLabels, unsavedInputsOf } from '../../roadmap/answers.ts'
+import { QUESTION_STEP, answerKey, deviceCodeWorkflowsOf, questionLabels, unsavedInputsOf } from '../../roadmap/answers.ts'
 import { driftOutcomeOf } from '../../roadmap/tracking.ts'
 import { policyResult } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { stepSnapshotsOf } from '../../testing/stepSnapshots.ts'
-import { laneReadings } from './planLanes.ts'
+import { laneReadings, tenantStateOf } from './planLanes.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { correctionFieldsOf, packageStateOf, plannedOperationsOf, safeCorrectionOf } from './stepPackage.ts'
@@ -110,6 +110,32 @@ test('U28: a step whose conditional input nobody saved does not read Completed e
   // The answer that changes nothing, saved, is still an answer.
   assert.deepEqual(unsavedInputsOf(legacy.id, { questionAnswers: { [answerKey(legacy.id, label)]: 'No' } }), [])
   assert.equal(stepOf(runFixture(answered, {}, null, answered.snapshot.asOf), legacy.id).unsavedInputs, undefined)
+})
+
+test('B7 (S-DC-6): Block Device Code Sign-in asks whether anyone uses device code sign-in; unsaved it keeps the step short of Completed, Yes holds enforcement on the decision, None lets it through', () => {
+  const DC = QUESTION_STEP.deviceCode
+  const label = questionLabels(DC).decision
+  assert.equal(label, 'Device code sign-in')
+  assert.deepEqual(unsavedInputsOf(DC, { questionAnswers: {} }), [label])
+  assert.deepEqual(stepOf(demoRun, DC).unsavedInputs, [label], 'the demo Initial scan has not saved it')
+  const answers = (option: string | null) => ({ questionAnswers: option === null ? {} : { [answerKey(DC, label)]: option } })
+  assert.deepEqual([null, 'None', 'Yes'].map((o) => deviceCodeWorkflowsOf(answers(o))), [null, false, true], 'decisions.deviceCodeWorkflows')
+  // The graph condition reads the saved answer, not whether its owning policy is on the plan.
+  const conditionFor = (option: string | null) => tenantStateOf(demoRun.steps, [], answers(option))[0].conditions?.['device-code-workflows-exist']
+  assert.deepEqual([null, 'None', 'Yes'].map(conditionFor), ['unresolved', 'not-applicable', 'applicable'])
+  assert.equal(tenantStateOf(demoRun.steps, [], answers('Yes'))[0].prerequisites?.['decision:device-code-workflows'], 'actionable')
+  // The engine: a report-only block with its evidence in reads Ready to enforce only once nobody uses device code sign-in.
+  const edge = data.edges.find((e) => e.step === DC && e.condition === 'device-code-workflows-exist')
+  assert.deepEqual([edge?.action, edge?.prerequisite, edge?.edgeKind], ['enforce', 'decision:device-code-workflows', 'conditional'])
+  const observing: StepObservation = { exists: true, evidenceSatisfied: true }
+  const lane = (condition: ConditionState, prerequisite: PrerequisiteState, obs: StepObservation = observing): string => {
+    const t = tenant({ [DC]: obs })
+    const r = deriveLane(DC, graph, { ...t, conditions: { ...t.conditions, 'device-code-workflows-exist': condition }, prerequisites: { ...t.prerequisites, 'decision:device-code-workflows': prerequisite } })
+    return [r.lane, r.substatus].filter(Boolean).join(' · ')
+  }
+  assert.equal(lane('not-applicable', 'resolved'), 'Ready · Ready to enforce')
+  assert.notEqual(lane('applicable', 'actionable'), 'Ready · Ready to enforce')
+  assert.notEqual(lane('not-applicable', 'resolved', { exists: false }), 'Completed', 'None on a policy not yet created is not the policy done')
 })
 
 test('U19: an enforced block policy missing the exclusions group is Partial even where Foundation A will not write the whole policy; a group taken out is not', () => {

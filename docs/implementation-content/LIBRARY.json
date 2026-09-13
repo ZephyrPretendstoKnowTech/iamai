@@ -983,7 +983,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 35,
+      "contentBlocks": 26,
       "outputs": {
         "entra": true,
         "json": true,
@@ -994,25 +994,25 @@
         "troubleshooting": true
       },
       "statesSupported": [
-        "needsDecision",
         "missing",
         "partial",
         "reportOnly",
         "readyToEnforce",
         "inPlace",
         "blocked",
+        "needsDecision",
         "sourceConflict",
         "notLicensed"
       ],
       "correctionModules": 7,
       "requiredBindings": 6,
-      "optionalBindings": 9,
+      "optionalBindings": 8,
       "verifiedSourceCount": 9,
       "packageSpecificMicrosoftSources": 9,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 1,
-      "strictValidationErrors": 14,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -2253,11 +2253,10 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
+        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
-      "optionalBy": [
-        "s-goal-sign-in-risk"
-      ],
+      "optionalBy": [],
       "packages": [
         "s-goal-admins-phishing-resistant",
         "s-goal-device-registration-mfa",
@@ -2412,18 +2411,6 @@
       ],
       "packages": [
         "s-goal-geo-restriction"
-      ],
-      "knownIAMAIInput": null,
-      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
-    },
-    {
-      "binding": "decision.signInRisk.firstEnforcementMode",
-      "requiredBy": [
-        "s-goal-sign-in-risk"
-      ],
-      "optionalBy": [],
-      "packages": [
-        "s-goal-sign-in-risk"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -6124,15 +6111,15 @@
     "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 964,
-    "uniqueBindings": 267,
-    "bindingsRequiredByAtLeastOneProjection": 96,
-    "bindingsOptionalInAtLeastOnePackage": 176,
+    "contentBlocks": 955,
+    "uniqueBindings": 266,
+    "bindingsRequiredByAtLeastOneProjection": 95,
+    "bindingsOptionalInAtLeastOnePackage": 175,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 222,
+    "bindingDefinitionsPendingHolisticReview": 221,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 222,
+    "knownIAMAIInputUnreviewed": 221,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
