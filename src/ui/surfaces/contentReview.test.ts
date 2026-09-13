@@ -159,3 +159,19 @@ test('R9: "No implementation needed" appears only on a goal delivered with nothi
   }
   assert.ok(open > 0, 'no satisfied step with an open item on the fixtures: the premise is untested')
 })
+
+test('U-P1: a header tile date reads the day on one line and the year under it, never broken mid-date', () => {
+  // The split the tile makes holds for the formatter the tiles use.
+  const m = /^(.+), (\d{4})$/.exec(absoluteDate('2026-09-21T12:00:00.000Z'))
+  assert.ok(m, 'the date format no longer splits into day and year')
+  assert.match(m[1], /^[A-Z][a-z]{2} \d{1,2}$/, 'the day line is not a month and a day')
+  assert.equal(m[2], '2026')
+  const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
+  for (const key of ['projectedFinish', 'started']) assert.match(plan, new RegExp(`key: '${key}'[^\\n]*absoluteDate\\(`), `the ${key} tile no longer holds a date`)
+  assert.match(plan, /<dd>\s*\{tileValue\(t\.value\)\}/, 'the tile draws its value unsplit')
+  assert.match(plan, /<span className="tile-day">\{m\[1\]\}<\/span>\s*<span className="tile-year-comma">, <\/span>\s*<span className="tile-year">\{m\[2\]\}<\/span>/, 'the tile no longer keeps the whole date as its text')
+  const css = readFileSync('src/ui/app.css', 'utf8')
+  assert.match(css, /\.plan-progress-tile \.tile-day \{\s*white-space: nowrap;/, 'the day can still break')
+  assert.match(css, /\.plan-progress-tile \.tile-year \{\s*display: block;\s*font-size: var\(--t-2\);/, 'the year is not on its own smaller line')
+  assert.match(css, /\.plan-progress-tile \.tile-year-comma \{[^}]*clip-path: inset\(50%\);/, 'the comma is drawn between the lines')
+})
