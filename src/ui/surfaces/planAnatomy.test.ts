@@ -128,23 +128,20 @@ test('the pack draws a four-zone roadmap row, and so does production', () => {
   assert.match(row, /padding: 0 17px;/)
 })
 
-test('the title carries a quiet reason under it rather than a line under the whole row', () => {
+test('the title zone carries the title alone: no reason line under it (RUN-CONTEXT-B decision 10)', () => {
   const pack = read(PACK)
-  // The pack: the title zone is a strong over a quiet span, and the quiet span
-  // shares its colour and size with the metadata and date zones.
-  assert.match(pack, /\.row-title strong\{display:block/, 'the pack no longer stacks the title over its subtitle')
+  // The pack sets one quiet level for the row's secondary zones. It also draws a
+  // subtitle under the title, which decision 10 removed: the lane label already
+  // says why the row is where it is.
   assert.match(pack, /\.row-title span,\.row-meta,\.row-date\{color:var\(--muted\);font-size:12px\}/, 'the pack no longer sets one quiet level for the row')
 
-  // Production: the reason is a child of the title zone, and every zone that
-  // follows the title comes after it. Before task 033 it was a sibling of the
-  // whole row, so a blocked step's cause rendered under the state column.
+  // Production: the title is a zone of its own, and nothing under it restates the lane.
   assert.match(ROW, /<span className="plan-row-title">/, 'the row has no title zone')
   const title = ROW.slice(ROW.indexOf('<span className="plan-row-title">'), ROW.indexOf('<span className="who">'))
   assert.match(title, /className="step-title"/, 'the title left its own zone')
-  assert.match(title, /reason && <span className="plan-row-reason">\{reason\}<\/span>/, 'the reason is not inside the title zone')
-  assert.match(rule('.plan-row-reason'), /display: block;/, 'the reason no longer starts its own line under the title')
-  // One quiet level for the three secondary zones, as the pack sets it.
-  assert.match(rule('.plan-row-reason'), /font-size: var\(--t-1\);/)
+  assert.equal(ROW.includes('plan-row-reason'), false, 'the row draws a reason line under its title')
+  assert.equal(CSS.includes('.plan-row-reason'), false, 'a style for the removed reason line remains')
+  // One quiet level for the secondary zones, as the pack sets it.
   assert.match(rule('.plan-row .who,\n.plan-row .when'), /font-size: var\(--t-1\);/)
   assert.match(rule('.plan-row .who,\n.plan-row .when'), /color: var\(--quiet-text\);/)
 })
@@ -242,8 +239,8 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   // computes no date, and every other surface still calls `rowWhen` directly.
   assert.match(PLAN, /const when = boardWhenOf\(step, waveStart\)/, 'the timing zone no longer reads the one when authority')
   assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
-  // The reason is the board's reading of the one reason authority (planBoard.ts boardReasonOf over rowReason).
-  assert.match(PLAN, /reason=\{boardReasonOf\(step\)\}/, 'the quiet line no longer reads the one reason authority')
+  // The row is handed no reason: its lane label is its reason (RUN-CONTEXT-B decision 10).
+  assert.equal(PLAN.includes('boardReasonOf'), false, 'the row is handed a reason line again')
 })
 
 test('the lane order and grouping are still the engine\'s, not the row\'s', () => {

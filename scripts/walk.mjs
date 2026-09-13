@@ -257,7 +257,7 @@ const showLane = async (name) => {
   await sleep(150)
 }
 // One row as the checks read it, flattened in Node: a regex in an evaluate() template loses its backslashes, so the day-0 reading is finished here.
-const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), label: ((e.querySelector('.lane') || {}).textContent || '').trim(), chip: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), reason: ((e.querySelector('.plan-row-reason') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: e.closest('#plan-group-complete') !== null, aside: e.closest('#plan-group-complete, #plan-group-deferred') !== null, wave0: e.dataset.wave === '0' }))`
+const ROW_READ = `[...document.querySelectorAll('main.page .plan-row')].map((e, k) => ({ k, title: ((e.querySelector('.step-title') || {}).textContent || '').trim(), label: ((e.querySelector('.lane') || {}).textContent || '').trim(), chip: ((e.querySelector('.status') || {}).textContent || '').trim(), when: ((e.querySelector('.when') || {}).textContent || '').trim(), footer: e.closest('.plan-footer') !== null, complete: e.closest('#plan-group-complete') !== null, aside: e.closest('#plan-group-complete, #plan-group-deferred') !== null, wave0: e.dataset.wave === '0' }))`
 const readRows = async () => {
   const out = []
   for (const lane of LANES) {
@@ -265,7 +265,7 @@ const readRows = async () => {
     for (const r of await evaluate(ROW_READ)) {
       // The Completed and Deferred groups repeat under every tab: read them once.
       if (r.aside && lane !== LANES[0]) continue
-      out.push({ ...r, lane, dayZero: r.wave0 || /^when .+ reaches \d+%/.test(r.reason) })
+      out.push({ ...r, lane, dayZero: r.wave0 })
     }
   }
   await showLane(LANES[0])
@@ -480,14 +480,12 @@ async function walkFixture(fx) {
   let rowLabels = []
   let rowChips = []
   let rowWhens = []
-  let rowReasons = []
   // Each row's tab, its index inside that tab, and whether it is day-0 work (readRows).
   let rowLane = []
   let rowLocal = []
   let rowDayZero = []
   let rowTitlesOpen = []
   let rowLabelsOpen = []
-  let rowReasonsOpen = []
   let rowWhensOpen = []
   // The steps whose policy the plan cannot write yet, by title, and the campaign's
   // day-one email: the email names the first policy that needs a passkey, and a
@@ -495,7 +493,7 @@ async function walkFixture(fx) {
   const escapeHeld = new Set()
   let campaignEmail = null
   let rowTitlesAfter = []
-  let rowReasonsAfter = []
+  let rowLabelsAfter = []
   let exclusionBody = null
   let sawExistingCoverage = false
   let planHeaderCounts = null
@@ -1133,14 +1131,12 @@ async function walkFixture(fx) {
       rowLabels = rows.map((r) => r.label)
       rowChips = rows.map((r) => r.chip)
       rowWhens = rows.map((r) => r.when)
-      rowReasons = rows.map((r) => r.reason)
       rowLane = rows.map((r) => r.lane)
       rowLocal = rows.map((r) => r.k)
       rowDayZero = rows.map((r) => r.dayZero)
       // The rows as first seen, with every decision still open (the loop re-reads the rows after a decision moves a step).
       rowTitlesOpen = [...rowTitles]
       rowLabelsOpen = [...rowLabels]
-      rowReasonsOpen = [...rowReasons]
       rowWhensOpen = [...rowWhens]
       let inFooter = rows.map((r) => r.footer)
       // Finished rows are not opened one by one, for the same reason the footer's
@@ -1624,7 +1620,7 @@ async function walkFixture(fx) {
       // The rows as they stand after every step was opened (and, on week two, after the device decision was made on its step).
       const rowsAfter = await readRows()
       rowTitlesAfter = rowsAfter.map((r) => r.title)
-      rowReasonsAfter = rowsAfter.map((r) => r.reason)
+      rowLabelsAfter = rowsAfter.map((r) => r.label)
       const fc = contractById['plan.footer']
       const fd = await evaluate(extractIn(`document.querySelector('main.page .plan-footer')`, ''))
       if (fd) {
@@ -1695,8 +1691,8 @@ async function walkFixture(fx) {
     // on a step moves the rows under it, so the column is read by title, not index.
     const whenByTitle = Object.fromEntries(rowTitles.map((t, k) => [t, rowWhens[k] ?? '']))
     for (const [i, t] of rowTitlesOpen.entries()) {
-      if (/^Block Unsupported Device Platforms$/.test(t) && /device readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${whenByTitle[t] ?? ''}`)) add('P0', `${fx.name}: Block Unsupported Device Platforms is held by device readiness; it is a block, gated on its evidence`)
-      if (/^Shorten Admin Sessions$/.test(t) && /admin readiness/i.test(`${rowReasonsOpen[i] ?? ''} ${whenByTitle[t] ?? ''}`)) add('P0', `${fx.name}: Shorten Admin Sessions is held by admin readiness; a shorter session locks nobody out`)
+      if (/^Block Unsupported Device Platforms$/.test(t) && /device readiness/i.test(`${rowLabelsOpen[i] ?? ''} ${whenByTitle[t] ?? ''}`)) add('P0', `${fx.name}: Block Unsupported Device Platforms is held by device readiness; it is a block, gated on its evidence`)
+      if (/^Shorten Admin Sessions$/.test(t) && /admin readiness/i.test(`${rowLabelsOpen[i] ?? ''} ${whenByTitle[t] ?? ''}`)) add('P0', `${fx.name}: Shorten Admin Sessions is held by admin readiness; a shorter session locks nobody out`)
     }
     if (!rowTitles.some((t) => /^Restrict Service Accounts to the Trusted Network$/.test(t))) add('P0', `${fx.name}: the baseline's service-accounts block is not a row, although the demo has service accounts`)
   }
@@ -1735,18 +1731,11 @@ async function walkFixture(fx) {
     if (reportOnly.length === 0) add('P0', `${fx.name}: no plan row reads Report-only; the demo has a policy in report-only`)
     if (!fx.week2 && reportOnlyWritable.length > 0 && !reportOnlyWritable.some((i) => DAY_RE.test(rowWhens[i] || ''))) add('P0', `${fx.name}: no Report-only row reads a day in its date column on week one`)
     if (fx.week2) {
-      // The reason lines are read once, with every decision still open, so they
-      // are taken by title rather than by index (the rows move under a decision).
-      const reasonByTitle = Object.fromEntries(rowTitlesOpen.map((t, k) => [t, rowReasonsOpen[k] ?? '']))
+      // A row carries no reason line (RUN-CONTEXT-B decision 10), so the evidence
+      // that earned Ready to enforce is the opened step's, not the row's.
       const ready = rowLabels.map((s, i) => (READY_TO_ENFORCE_RE.test(s || '') ? i : -1)).filter((i) => i >= 0)
-      // A policy something holds is never Ready to enforce, however clean its
-      // records (roadmap/holds.ts): the row it would be stays Report-only in its
-      // chip and says what holds it in its lane. The check stands wherever a
-      // writable Report-only row's reason line says its gates have closed.
-      if (ready.length === 0 && reportOnlyWritable.some((i) => /ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || ''))) add('P0', `${fx.name}: no plan row reads Ready · Ready to enforce in week two (the token protection policy's window has closed and its records are clean and complete)`)
       for (const i of ready.filter(writable)) {
         if (!DAY_RE.test(rowWhens[i] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" reads "${rowWhens[i]}" in its date column; it must read the day the enforcement lands`)
-        if (!/ready now: 0 failures in \d+ days/.test(reasonByTitle[rowTitles[i]] || '')) add('P0', `${fx.name}: the Ready to enforce row "${rowTitles[i]}" carries no evidence on its reason line; the row says a change is due and nothing about what earned it`)
       }
     }
     // The admins policy the tenant switched on between the two scans is the
@@ -1773,7 +1762,7 @@ async function walkFixture(fx) {
     if (!rowTitles.some((t) => /Decide How Devices Are Managed/.test(t))) add('P0', `${fx.name}: no Preparation row decides how devices are managed, although phones and unjoined computers sign in and the tenant holds Intune`)
     const reasonsOf = (titles, reasons, re) => titles.map((t, i) => (re.test(t) ? reasons[i] || '' : null)).filter((r) => r !== null)
     const DEVICE_STEPS = [/Require a Managed Device/, /Intune Enrollment/]
-    for (const [i, t] of rowTitlesOpen.entries()) if (/Decide How Devices Are Managed/.test(rowReasonsOpen[i] || '') && !DEVICE_STEPS.some((re) => re.test(t)) && !/App Protection/.test(t)) add('P0', `${fx.name}: "${t}" waits on the device decision; only the device steps do`)
+    for (const [i, t] of rowTitlesOpen.entries()) if (/Decide How Devices Are Managed/.test(rowLabelsOpen[i] || '') && !DEVICE_STEPS.some((re) => re.test(t)) && !/App Protection/.test(t)) add('P0', `${fx.name}: "${t}" waits on the device decision; only the device steps do`)
     if (fx.week2) {
       // The foundations are done on week two, so the wait on the decision is the binding reason a row shows.
       for (const re of DEVICE_STEPS) {
@@ -1784,9 +1773,9 @@ async function walkFixture(fx) {
         // (Up Next · After …) or as its reason. A report-only device policy reads
         // Ready · Observing: its enforcement waits on the decision, which the opened
         // step names as a Prerequisite tile (A4, docs/qa/step-snapshots).
-        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (/^On Hold/.test(rowLabelsOpen[k] || '') || /^Up Next · After Decide How Devices Are Managed$/.test(rowLabelsOpen[k] || '') || /^Ready · Observing$/.test(rowLabelsOpen[k] || '') || /^after: (?!Decide How Devices Are Managed)/.test(rowReasonsOpen[k] || '')))
-        if (!heldOpen && !reasonsOf(rowTitlesOpen, rowReasonsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
-        if (reasonsOf(rowTitlesAfter, rowReasonsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
+        const heldOpen = rowTitlesOpen.some((t, k) => re.test(t) && (/^On Hold/.test(rowLabelsOpen[k] || '') || /^Up Next · After /.test(rowLabelsOpen[k] || '') || /^Ready · Observing$/.test(rowLabelsOpen[k] || '')))
+        if (!heldOpen && !reasonsOf(rowTitlesOpen, rowLabelsOpen, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} does not wait on the device decision while it is open`)
+        if (reasonsOf(rowTitlesAfter, rowLabelsAfter, re).some((r) => /Decide How Devices Are Managed/.test(r))) add('P0', `${fx.name}: ${re.source} still waits on the device decision after it was made`)
       }
     }
     for (const id of CARVE_OUT_IDS) {

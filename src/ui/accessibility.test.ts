@@ -494,16 +494,13 @@ test('the one Plan row says it is a control and whether the step under it is ope
   assert.match(div.attrs, /onClick=\{onToggle\}/)
   assert.match(div.attrs, /e\.key === 'Enter' \|\| e\.key === ' '/)
   assert.match(div.attrs, /e\.preventDefault\(\)/)
-  // Every Step Contract fact the row carried is still on it, in the four zones
-  // the approved pack draws (task 033): the state, the title with its quiet
-  // reason under it, who it touches, when. A zone that disappears takes a fact
-  // with it.
-  const spans = [...row.matchAll(/className="(?:plan-row-status|plan-row-title|step-title|who|plan-row-reason)"/g)]
-  assert.equal(spans.length, 5, 'the row lost or gained a column')
-  // The reason belongs to the title it explains, not to the row as a whole: a
-  // screen reader and a sighted reader both meet it under the step's name.
-  assert.ok(row.indexOf('className="plan-row-title"') < row.indexOf('className="plan-row-reason"'), 'the reason is no longer inside the title zone')
-  assert.ok(row.indexOf('className="plan-row-reason"') < row.indexOf('className="who"'), 'the reason is no longer read before who and when')
+  // Every Step Contract fact the row carries is on it, in four zones (task
+  // 033): the state, the title, who it touches, when. A zone that disappears
+  // takes a fact with it. The lane label is the row's reason, so no reason line
+  // sits under the title (RUN-CONTEXT-B decision 10).
+  const spans = [...row.matchAll(/className="(?:plan-row-status|plan-row-title|step-title|who)"/g)]
+  assert.equal(spans.length, 4, 'the row lost or gained a column')
+  assert.equal(row.includes('plan-row-reason'), false, 'the row draws a reason line under its title again')
   // The state zone is the lane label over the one tenant fact (A1b); When is a day or the placeholder.
   assert.match(row, /<span className="when">\{when\}<\/span>/)
   assert.match(row, /<span className=\{`lane lane-\$\{tone\}`\}>\{lane\}<\/span>/)
