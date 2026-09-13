@@ -3,7 +3,8 @@
 // asserting what the opened step now shows.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { railOf } from './stepContract.ts'
+import { readFileSync } from 'node:fs'
+import { railOf, readinessLeadOf } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
 import { WHEN } from './planBoard.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -22,4 +23,15 @@ test('R1: an undated milestone reads "—", never the lane substatus', () => {
   // A scheduled day is still the metric, a decision's included.
   const decide = { milestone: { at: null, label: 'x', kind: 'decide', gatedBy: null }, state: { lane: lanes[0] }, schedule: { transition: 'decide', class: 'scheduled', at: '2026-09-14T00:00:00.000Z' }, scheduledOn: null } as unknown as StepContract
   assert.equal(railOf(decide).metric, absoluteDate('2026-09-14T00:00:00.000Z'))
+})
+
+test('R2: the readiness bar draws no filler sub-text', () => {
+  const lead = (text: string): string | null => readinessLeadOf({ whatToDo: { kind: 'resolve', text } } as unknown as StepContract)
+  for (const filler of ['Make the object this step names.', 'Make the decision', 'Make the decision.', 'Resolve prerequisites.', 'For each person:']) {
+    assert.equal(lead(filler), null, `the bar still says "${filler}"`)
+  }
+  assert.equal(lead('Fix each failing check. 3 of 34 fail today.'), 'Fix each failing check. 3 of 34 fail today.')
+  const src = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
+  const fn = src.slice(src.indexOf('export function WhatToDoLead'), src.indexOf('export function DoneWhen'))
+  assert.match(fn, /readinessLeadOf\(contract\)[\s\S]*if \(text === null\) return null/, 'the bar lead does not read the filler rule')
 })
