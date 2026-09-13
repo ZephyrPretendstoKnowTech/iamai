@@ -1981,12 +1981,6 @@ footer.app a {
 .plan-row-title {
   min-width: 0;
 }
-.plan-row-reason {
-  display: block;
-  color: var(--quiet-text);
-  font-size: var(--t-1);
-  margin-top: 2px;
-}
 /* Row hierarchy (item 13): the title carries the weight; status, who and date recede. */
 .plan-row .step-title {
   font-weight: 500;

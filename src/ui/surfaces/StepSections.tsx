@@ -29,17 +29,18 @@ import { fillText } from '../../content/render.ts'
  * Task 033 restored the four zones the approved Plan pack draws
  * (`docs/design/approved/anatomy/plan-step-v1.html`, `.roadmap-row`):
  *
- *     state | title over its quiet reason | who | when
+ *     state | title | who | when
  *
  * The state zone is the lane label (A1b decision 1: `Ready · Create`, `Up Next ·
- * After …`, `On Hold · Baseline conflict`), the one producer of the row's state,
- * and under it the one tenant fact the row can add — `Report-only` or
- * `Enforced` — as a chip, or nothing (decision 2). The other zones carry
- * production's facts and nothing else — `contentTitle`, `rowReason`, `rowWho`,
+ * After …`, `On Hold · Baseline conflict`), the one producer of the row's state
+ * and of its reason — no reason line sits under the title (RUN-CONTEXT-B
+ * decision 10) — and under it the one tenant fact the row can add —
+ * `Report-only` or `Enforced` — as a chip, or nothing (decision 2). The other
+ * zones carry production's facts and nothing else — `contentTitle`, `rowWho`,
  * `rowWhen`, each already the one authority for what it says. Nothing here
  * recomputes a state, a date or a count.
  */
-export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when, reason = null, nextLabel = null, open, onToggle }: {
+export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when, nextLabel = null, open, onToggle }: {
   /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
   lane: string
   /** The lane's tone (planBoard.ts LANE_TONE). */
@@ -52,8 +53,6 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
   who: string
   /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. */
   when: string
-  /** The one binding reason, under the row; null where the row has none. */
-  reason?: string | null
   /** "Next" beside the title on the first step that is ready to be worked on. */
   nextLabel?: string | null
   open: boolean
@@ -82,8 +81,7 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
         <span className={`lane lane-${tone}`}>{lane}</span>
         {chip && <Status tone={tone}>{chip}</Status>}
       </span>
-      {/* The pack's `.row-title`: the title, and under it the one quiet line
-          that says why the row is in the state the first zone names. */}
+      {/* The pack's `.row-title`: the title. Why the row is where it is, is the lane label's. */}
       <span className="plan-row-title">
         <span className="step-title">{title}</span>
         {nextLabel && (
@@ -91,7 +89,6 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
             {nextLabel}
           </span>
         )}
-        {reason && <span className="plan-row-reason">{reason}</span>}
       </span>
       <span className="who">{who}</span>
       <span className="when">{when}</span>

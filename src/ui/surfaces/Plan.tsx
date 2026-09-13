@@ -23,7 +23,7 @@ import { stepFacts } from '../../derive/facts.ts'
 import { list } from '../../copy/statements.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { Button, InfoTip, TabList, onePanelProps } from '../components/index.ts'
-import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardReasonOf, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
+import { BOARD, LANES, NO_FOCUS, TYPE_ORDER, WHEN, applyFocus, asideGroupsFor, boardWhenOf, focusActive, focusCounts, groupSummary, groupsFor, holdGroupOf, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf, workTypeOf } from './planBoard.ts'
 import { laneReadings } from './planLanes.ts'
 import type { BoardGroup, BoardItem, Focus, LaneTab, WorkType } from './planBoard.ts'
 import { TAB_OF } from './planBoard.ts'
@@ -575,8 +575,7 @@ function Row({ step, isNext, lane, blockers, prerequisiteLabel, onOpenMappings, 
           on purpose: at a baseline of ~38 policies the collapsed rows are what
           makes the Plan readable, so a row says only enough to decide whether to
           open it — the lane, the tenant fact, the title, who it touches, when.
-          The one binding reason sits under it, already in a pages.plan.blocked
-          shape (the engine fills those); a readiness hold reads in the date column instead. */}
+          The lane label is its reason; no line under the title repeats it (RUN-CONTEXT-B decision 10). */}
       <PlanRow
         lane={lane.label}
         tone={lane.tone}
@@ -585,7 +584,6 @@ function Row({ step, isNext, lane, blockers, prerequisiteLabel, onOpenMappings, 
         title={contentTitle(step)}
         who={rowWho(step, nameOf)}
         when={when}
-        reason={boardReasonOf(step)}
         nextLabel={isNext ? PP.next : null}
         open={open}
         onToggle={onToggle}

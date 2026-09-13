@@ -895,13 +895,10 @@ try {
   check('Demo: the plan header shows progress tiles for steps, completed, projected finish and started', /^Steps=\d+, Completed=\d+, Projected finish=.+, Started=.+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
-  // Item 4: a readiness-held step renders as a Blocked row whose date column
-  // reads the reason in the 46 shape, not a date.
-  // A create the plan still makes while the threshold gates its enforcement reads
-  // its creation day there and the threshold on its reason line (roadmap/stepSchedule.ts).
-  const whenCols = (await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ((r.querySelector('.when') || {}).textContent || '').trim() + ' / ' + ((r.querySelector('.plan-row-reason') || {}).textContent || '').trim())`)).join(' | ')
-  // Any family: the demo's held rows are the MFA ones now that the device and admin session gates are gone (E9).
-  check('Demo: a readiness-held step reads its reason in the date column, or on its reason line beside its creation day', /when [A-Za-z ]*readiness reaches \d+% \(now \d+%\)/.test(whenCols), (whenCols.match(/[^|]*when [A-Za-z ]*readiness reaches[^|]*/) ?? ['none'])[0].trim())
+  // RUN-CONTEXT-B decision 10: a row draws no reason line under its title; the
+  // lane label is its reason, and a readiness threshold is the opened step's tile.
+  const reasonLines = (await acrossLanes(`[document.querySelectorAll('main.page .plan-row .plan-row-reason').length]`)).reduce((n, x) => n + Number(x), 0)
+  check('Demo: no row draws a reason line under its title', reasonLines === 0, `reason lines=${reasonLines}`)
 
   // Two steps: open two plan rows, each shows its step body.
   let demoOpened = 0
