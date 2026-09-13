@@ -113,3 +113,35 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
   assert.equal(words.why, 'Microsoft sees leaked-credential lists and impossible travel before you do; this lets that signal act.')
   assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the high-risk threshold, with the baseline's authentication strength as the grant control and the exclusions group applied.")
 })
+
+test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and the undated milestone reads —', () => {
+  const DEVICE = 's-goal-require-managed-device'
+  assert.equal(CONTRACT.readinessValue.device, '{value} of devices compliant')
+  assert.deepEqual(authoredParts(packageOf(DEVICE).blocks['entra.create'].text), [
+    {
+      kind: 'list', ordered: true, start: 1, items: [
+        ['Go to Entra admin center → Conditional Access → Policies → New policy.'],
+        ['Name: {{policy.target.displayName}}.'],
+        ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
+        ['Target resources: All resources.'],
+        ['Conditions → Locations: Exclude → trusted locations (the network you defined in the Trusted Network step).'],
+        ['Grant → Grant access → Require device to be marked as compliant OR Require hybrid Azure AD joined device.'],
+        ['Session: leave empty.'],
+        ['Enable policy: Report-only.'],
+        ['Create. Rescan in IAMAI.'],
+      ],
+    },
+  ])
+  assert.doesNotMatch(packageOf(DEVICE).blocks['entra.create'].text, /canonical|STEP\.md|IAMAI-resolved/)
+  // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
+  const b = bodyOf('demo', DEVICE)
+  assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '27% of devices compliant')
+  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (In progress|Waiting)$/)
+  assert.equal(b.rail.metric, '—')
+  const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
+  assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
+  // The numbered readiness explanation stays shared (BLOCKED.md); Why and Done when are unchanged.
+  const words = stepWords('require-managed-device')
+  assert.equal(words.why, 'Company data on a device you manage can be protected, updated and wiped; on any other device, outside the office, it cannot.')
+  assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.')
+})
