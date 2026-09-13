@@ -1,4 +1,7 @@
-# run-content-review.ps1 — executes content review segments S0..S5 in fresh Claude Code sessions.
+# run-content-review.ps1 — executes content review segments S0..S7 in fresh Claude Code sessions.
+#
+# S0–S1: Universal renderer fixes and content pattern sweeps (MUST run first)
+# S2–S7: Per-step content specs (30 specs, 5 per segment)
 #
 # BEFORE FIRST RUN: commit this file and all specs to git. See DEPLOY.md.
 #
@@ -7,7 +10,7 @@
 
 param(
   [int]$Start = 0,
-  [int]$End = 5,
+  [int]$End = 7,
   [string]$Primary = "opus",
   [string]$Secondary = "opus",
   [string]$Effort = "high",
@@ -23,9 +26,7 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 Set-Location $Repo
 
 # ── Pre-flight ──────────────────────────────────────────────────────
-# Abort early if the setup is wrong, rather than stashing the world at 3am.
 
-# 1. Runner files must be committed (not untracked) or stash will eat them.
 $runnerStatus = & git -C $Repo status --porcelain -- "$docs/run-content-review.ps1" "$docs/RUN-CONTEXT.md" "$docs/SEGMENTS.md"
 if ($runnerStatus -match '^\?\?') {
   Write-Host "FATAL: Runner files are untracked. Commit them first:"
@@ -33,15 +34,17 @@ if ($runnerStatus -match '^\?\?') {
   exit 1
 }
 
-# 2. Spec files must exist.
 $specCount = (Get-ChildItem (Join-Path $Repo "$docs/specs/content-spec-*.md") -ErrorAction SilentlyContinue).Count
 if ($specCount -lt 30) {
   Write-Host "FATAL: Expected 30 spec files in $docs/specs/, found $specCount."
-  Write-Host "  Place all content-spec-*.md files in $docs/specs/ and commit."
   exit 1
 }
 
-# 3. Working tree should be clean.
+if (-not (Test-Path (Join-Path $Repo "$docs/specs/UNIVERSAL-CONTENT-CHANGES.md"))) {
+  Write-Host "FATAL: UNIVERSAL-CONTENT-CHANGES.md not found in $docs/specs/."
+  exit 1
+}
+
 $dirty = & git -C $Repo status --porcelain
 if ($dirty) {
   Write-Host "WARNING: Working tree is not clean. Proceeding, but stash between segments may pick up unrelated changes."
@@ -80,9 +83,6 @@ function Invoke-Segment([string]$seg, [string]$model, [string]$resumeNote) {
             limited = ($text -match 'rate_limit|usage limit|limit reached|out of usage') }
 }
 
-# CRITICAL FIX: no -u flag. Only stash tracked (modified/deleted) files.
-# Untracked files (logs, new files Claude Code created) are left alone.
-# This prevents the runner from stashing itself.
 function Stash-Leftovers([string]$seg, [string]$why) {
   if (Get-Dirty) {
     & git -C $Repo stash push -m "auto-stash after $seg ($why)" | Out-Null
