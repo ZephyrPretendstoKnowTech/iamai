@@ -1,11 +1,11 @@
 {
   "lane": "Ready",
-  "substatus": "Observing",
+  "substatus": "Decision",
   "reason": "Satisfied by Core - Grant - Guests MFA — no change needed",
   "fact": "Enforced",
-  "badge": "Ready · Observing",
-  "bar": "Continue observation",
-  "rail": "Ready · Observing",
+  "badge": "Ready · Decision",
+  "bar": "Needs a decision",
+  "rail": "Ready · Decision",
   "headings": [
     "Why",
     "Readiness",

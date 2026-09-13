@@ -10,7 +10,7 @@ import { EXCLUSIONS_RECORD_KEY, exclusionsGroupRecord } from '../mapping/safetyC
 import { BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { BASELINE_MAPPINGS_KEY } from './sourceMappings.ts'
 import { blockerStepId } from './blockerSteps.ts'
-import { answerKey, mailDevicesOf, questionLabels, referenceAnswer, travelCountriesOf } from './answers.ts'
+import { SPECIAL_CARE_STEP_ID, answerKey, mailDevicesOf, questionLabels, referenceAnswer, travelCountriesOf } from './answers.ts'
 
 export { answerKey, questionLabels } from './answers.ts'
 
@@ -114,7 +114,7 @@ export const DECISION_STEPS = {
   trustedLocation: PREREQ_STEP_ID.trustedLocation,
   serviceAccounts: PREREQ_STEP_ID.serviceAccountsGroup,
   sharedDevices: 's-shared-devices',
-  campaign: 's-verify-mfa',
+  campaign: SPECIAL_CARE_STEP_ID,
   /** Not a step: the Baseline mappings (Plan settings) persist under this key (sourceMappings.ts). */
   sourceReferences: BASELINE_MAPPINGS_KEY,
 } as const
@@ -218,6 +218,8 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
       answered('serviceAccounts')
     } else if (stepId === DECISION_STEPS.campaign) {
       next.highCareUserIds = picked
+      // Only a person's Save confirms the list; the picker's pre-ticked proposal does not.
+      if (provenance === 'confirmed') next.specialCareConfirmed = picked
     }
   }
   // The answers that add to a picker's list (E1): the travellers' countries

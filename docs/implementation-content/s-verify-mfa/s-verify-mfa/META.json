@@ -53,6 +53,17 @@
     "dependencies.blockers"
   ],
   "projection": {
+    "missing": {
+      "entra": [
+        "entra.campaign"
+      ],
+      "json": [],
+      "powershell": [],
+      "aiInfo": [
+        "ai.walkthrough"
+      ],
+      "email": []
+    },
     "setupRequired": {
       "entra": [
         "entra.configure"

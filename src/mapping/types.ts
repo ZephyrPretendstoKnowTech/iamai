@@ -77,6 +77,13 @@ export type MappingState = {
   /** High-priority care targets: changes still apply; the plan takes extra
    *  caution (verify-before-enforce, white-glove callouts, sequenced last). */
   highCareUserIds: string[]
+  /**
+   * The special-care people a person confirmed on the registration campaign
+   * (B10 P0-10, S-MC-2): written only by that picker's Save. An empty list is
+   * "nobody needs special care", confirmed; null or absent is not yet addressed,
+   * and the campaign stays open.
+   */
+  specialCareConfirmed?: string[] | null
   trustedLocationIds: string[]
   serviceAccountsGroupId: string | null
   /** Accounts confirmed as service accounts (prompt 16 §3); rejected ones
