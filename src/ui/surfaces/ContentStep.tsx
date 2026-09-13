@@ -800,15 +800,22 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // The strict toggle (the device decision's Block phones): off unless ticked;
   // its answer is its one option's words, under its own label.
   // `label` is the answer's key (questionAnswers[step:label]); `heading` is what the page shows over it, where the content names one.
-  const strict = d.strict && typeof d.strict.label === 'string' && typeof d.strict.option === 'string' ? (d.strict as { label: string; option: string; heading?: string; text?: string; help?: string }) : null
+  // `when` is the decision option the toggle follows (S-DD-1): Unmanaged phones is
+  // asked only when phones are enrolled; otherwise it is hidden and a Save clears it.
+  const strict = d.strict && typeof d.strict.label === 'string' && typeof d.strict.option === 'string' ? (d.strict as { label: string; option: string; heading?: string; text?: string; help?: string; when?: string }) : null
   const [strictOn, setStrictOn] = useState<boolean>(strict ? saved?.answers?.[strict.label] === strict.option : false)
+  const strictShown = strict !== null && (typeof strict.when !== 'string' || answerParts(option, options)?.option.text === strict.when)
+  const chooseOption = (next: string | null): void => {
+    setOption(next)
+    if (strict && typeof strict.when === 'string' && answerParts(next, options)?.option.text !== strict.when) setStrictOn(false)
+  }
   const base = useId()
   const save = (): void =>
     onDecide?.({
       ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}),
       ...(option !== null ? { option } : {}),
       ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
-      ...(strict && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
+      ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
     })
   // Each effect line shows once its answer applied (answers.ts effectLine): the
   // applied mapping holds the stored answer, so the line is true when it shows.
@@ -829,17 +836,17 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {hasPicker && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
-        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} options={options} answer={option} onAnswer={setOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />}
+        {options.length > 0 && <Options name={answerKey(stepId, String(d.label))} labelledBy={`${base}-decision`} options={options} answer={option} onAnswer={chooseOption} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />}
         {decisionAnswer !== null && <Line s={decisionLine(d, decisionAnswer)} ex={ex} cls="reason effect" />}
         {question && (
           <>
             <div className="dlabel" id={`${base}-question`}>{question.label}</div>
             <p className="reason"><T s={question.text} ex={ex} /></p>
-            <Options name={answerKey(stepId, question.label)} labelledBy={`${base}-question`} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} />
+            <Options name={answerKey(stepId, question.label)} labelledBy={`${base}-question`} options={question.options} answer={answer} onAnswer={setAnswer} ex={ex} universe={valueUniverse} nameOf={ctx.nameOf} select />
             {questionEffect && whole(questionEffect, ex) && <p className="reason effect"><T s={questionEffect} ex={ex} /></p>}
           </>
         )}
-        {strict && (
+        {strict && strictShown && (
           <>
             <div className="dlabel" id={`${base}-strict`}>{strict.heading ?? strict.label}</div>
             {strict.text && <p className="reason"><T s={strict.text} ex={ex} /></p>}
@@ -865,9 +872,26 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
  * reader reads each option on its own and never the question they answer, and
  * two decisions on one step read as one undifferentiated run of radios.
  */
-/** A decision's options: radios, or a picker where an option takes a value. Shared with Plan settings -> Baseline mappings. */
-export function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf, single = false }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string; single?: boolean }) {
+/**
+ * A decision's options: radios, or a picker where an option takes a value. Shared
+ * with Plan settings -> Baseline mappings. `select` draws options that are all
+ * one-line labels as a dropdown (archetype rule A1, S-DD-1), with nothing chosen
+ * until a person chooses.
+ */
+export function Options({ name, labelledBy, options, answer, onAnswer, ex, universe, nameOf, single = false, select = false }: { name: string; labelledBy: string; options: QuestionOption[]; answer: string | null; onAnswer: (answer: string | null) => void; ex: Ex; universe: PickerObject[]; nameOf: (id: string) => string; single?: boolean; select?: boolean }) {
   const parts = answerParts(answer, options)
+  if (select && options.every((o) => o.needs === null)) {
+    return (
+      <select className="decision-select" name={name} aria-labelledby={labelledBy} value={parts ? String(options.indexOf(parts.option)) : ''} onChange={(e) => onAnswer(e.currentTarget.value === '' ? null : answerText(options[Number(e.currentTarget.value)]))}>
+        <option value="">{app.picker.choose}</option>
+        {options.map((o, i) => (
+          <option key={i} value={String(i)}>
+            {fillText(o.text, ex as Record<string, unknown>)}
+          </option>
+        ))}
+      </select>
+    )
+  }
   const valued = options.find((o) => o.needs !== null) ?? null
   const [chips, setChips] = useState<PickerOption[]>(() => (parts?.option.needs ? parts.picked.map((id) => universe.find((u) => u.id === id) ?? { id, name: nameOf(id) }) : []))
   const [query, setQuery] = useState('')

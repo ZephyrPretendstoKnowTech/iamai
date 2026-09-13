@@ -2222,6 +2222,11 @@ footer.app a {
   padding: 20px 18px;
   border-left: 1px solid var(--line);
 }
+/* A decision's one-line options as a dropdown (S-DD-1), the column's width. */
+.step-action-column .decision-select {
+  width: 100%;
+  max-width: 100%;
+}
 .side-block {
   padding-bottom: 16px;
   margin-bottom: 16px;
