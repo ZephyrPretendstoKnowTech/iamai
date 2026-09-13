@@ -57,8 +57,11 @@ test('one tile per outstanding fix, each linking to its step or to Baseline mapp
   assert.equal(prereq.label, CONTRACT.readiness.tiles.prerequisite)
   assert.ok(prereq.link && 'href' in prereq.link && prereq.link.href === returnToStep(EMERGENCY), 'the step tile does not open its step')
   assert.equal(r.tiles.some((t) => t.key === 'blockers' || /remaining$/.test(t.value)), false, 'a prerequisites count tile is back')
-  // The engine's two pending mappings on this step are the one mapping tile: the same blocker is never shown twice.
-  assert.ok(blockers.filter((b) => b.kind === 'sourceMapping').length >= 1, 'the premise: the engine holds this step on a mapping')
+  // The engine's pending mappings beside the fix's mapping are the one mapping tile: the same blocker is never shown twice.
+  // The demo's enforced policy is no longer held on its mappings (U21, B1), so the engine's two are stated here.
+  const pending = (id: string): PrerequisiteBlocker => ({ kind: 'sourceMapping', id, abnormal: true, label: BOARD.blockers.sourceMapping, title: null })
+  const mapped = readinessOf(step, c, [...blockers, pending('mapping:a'), pending('mapping:b')])
+  assert.equal(mapped.tiles.filter((t) => t.label === CONTRACT.readiness.tiles.mapping).length, 1)
   assert.equal(r.tiles.filter((t) => t.label === CONTRACT.readiness.tiles.mapping).length, 1)
   for (const t of r.tiles) assert.ok(t.tone === 'warn' || t.tone === 'wait', `${t.key}: a satisfied tile among the unresolved`)
 })
@@ -114,7 +117,8 @@ test('Fix before continuing, the hardening section and the Needs attention point
 })
 
 test('the Emergency Access step is Why → Readiness → account selection → Implementation → Done when, and a selected set is never "not held"', () => {
-  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main">'), CONTENT_STEP.indexOf('<StepRail'))
+  // The account selection is the action column's (U2), between Readiness and Implementation in the DOM (U5).
+  const main = CONTENT_STEP.slice(CONTENT_STEP.indexOf('<div className="step-main step-main-lead">'), CONTENT_STEP.indexOf('<StepFooter'))
   const at = (needle: string): number => {
     const i = main.indexOf(needle)
     assert.ok(i >= 0, `the opened step no longer renders ${needle}`)

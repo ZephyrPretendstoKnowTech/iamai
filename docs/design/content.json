@@ -1470,8 +1470,7 @@
               ]
             },
             "preview": {
-              "$comment": "The planning preview (owner, 2026-09-11): a step whose implementation is authored but not yet executable shows the planned work, with no Copy, and says what is unresolved (stepPackage.ts planningPreview).",
-              "label": "Planned work",
+              "$comment": "The planning preview (owner, 2026-09-11): a step whose implementation is authored but not yet executable shows the work with no Copy (stepPackage.ts planningPreview). No Planned work banner is drawn over it (U4); these lines are what B5 puts on the disabled Copy.",
               "text": "This is the work once the prerequisites are resolved. It is not ready to run, so it cannot be copied yet.",
               "textValues": "Nothing blocks this step, but IAMAI cannot fill in every value yet, so this cannot be copied.",
               "values": "Values still to resolve: {values}.",
@@ -1595,11 +1594,6 @@
             "learn": "Microsoft Learn",
             "troubleshooting": "Troubleshooting",
             "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
-          },
-          "rail": {
-            "$comment": "The Next milestone rail's sub-lines where the metric is the lane label rather than a day (A1b; docs/design/approved/anatomy/plan-step-v1.html `.metric-sub`). The metric itself is the schedule's day or the lane's own words (stepContract.ts railOf).",
-            "resolveSub": "Resolve prerequisites",
-            "decideSub": "Make the decision"
           },
           "railTransition": {
             "$comment": "The rail's sub-line under a day the plan schedules (roadmap/stepSchedule.ts transition): what that day is for. Preparation, verification and review read the milestone's own words instead.",

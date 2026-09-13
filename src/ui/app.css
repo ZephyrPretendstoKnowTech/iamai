@@ -2135,20 +2135,50 @@ footer.app a {
   color: var(--primary-text);
   font-weight: 500;
 }
-/* ---- the body: the main column and the step's own right rail ----
-   The pack's `minmax(0, 1fr) 290px`. `has-rail` is set by the step, because a
-   step whose contract has nothing for the rail must not leave a 290px column
-   standing empty beside the main body. */
+/* ---- the body: the main column and the step's action column (U2) ----
+   `1fr 260px`, 2rem apart, each column starting at the top: Why, Readiness,
+   Implementation and Done when on the left, the milestone and the controls the
+   step takes in IAMAI on the right. The left column is two elements — the lead
+   (Why, Readiness) and the rest (Implementation, Done when) — because the action
+   column sits between them in the DOM (U5); the grid puts the lead over the rest
+   and the action column beside both. The gap is between the columns only: the
+   lead's last rule already divides it from the rest. `has-rail` is set by the
+   step; a Cleanup row's body is one column. */
 .step-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
 }
 .step-body.has-rail {
-  grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-columns: 1fr 260px;
+  grid-template-rows: auto 1fr;
+  column-gap: 2rem;
+  align-items: start;
+}
+.step-body.has-rail > .step-main-lead {
+  grid-column: 1;
+  grid-row: 1;
+}
+.step-body.has-rail > .step-action-column {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.step-body.has-rail > .step-main-rest {
+  grid-column: 1;
+  grid-row: 2;
 }
 .step-main {
   min-width: 0;
   padding: 4px 27px 26px;
+}
+.step-main-lead {
+  padding-bottom: 0;
+}
+.step-main-rest {
+  padding-top: 0;
+}
+/* The lead's last section keeps its rule: the rest continues the column under it. */
+.step-main-lead > .step-section:last-child {
+  border-bottom: 1px solid var(--line);
 }
 /* The main column is the measure: Why, Done when and the Implementation copy
    run to the rail, not to the site-wide 72ch prose cap, which stopped them near
@@ -2159,8 +2189,8 @@ footer.app a {
 .step .step-main ol {
   max-width: none;
 }
-/* A planning preview's note, above the planned work it describes (owner,
-   2026-09-11): the work is shown for review and cannot be copied yet. */
+/* Why the package's own guidance is set aside (a re-pin review), above the
+   channels. No Planned work banner uses it (U4). */
 .step .impl-planning {
   display: flex;
   flex-direction: column;
@@ -2177,10 +2207,10 @@ footer.app a {
   color: var(--primary-text);
   font-weight: var(--weight-strong);
 }
-/* The rail belongs to this step: it is inside the frame, on the quieter of the
-   two surfaces task 031 named, divided from the main column by the frame's own
-   hairline. */
-.step-side {
+/* The action column belongs to this step: it is inside the frame, on the
+   quieter of the two surfaces task 031 named, divided from the main column by
+   the frame's own hairline. */
+.step-action-column {
   min-width: 0;
   padding: 20px 18px;
   border-left: 1px solid var(--line);
@@ -2201,7 +2231,7 @@ footer.app a {
   font-weight: var(--weight-strong);
 }
 /* A metric can be a word rather than a date ("No change needed"): it wraps
-   inside the 290px rail rather than widening it. */
+   inside the 260px action column rather than widening it. */
 .side-block .metric {
   overflow-wrap: anywhere;
 }
@@ -3116,7 +3146,7 @@ footer.app a {
   .print-plan .more-grid { display: block; }
   .print-plan .more-card { margin-top: 2mm; }
   .print-plan .findings { grid-template-columns: 1fr; }
-  .print-plan .step-side { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--line); background: none; }
+  .print-plan .step-action-column { padding: 3mm 0 0; border-left: 0; border-top: 1px solid var(--line); background: none; }
   .print-plan .step-footer { display: none; }
   .print-plan .impl-preview { height: auto; overflow: visible; }
   .print-plan .impl-preview .preview-text { padding-right: 13px; }
@@ -4062,14 +4092,6 @@ td .not-person {
   .plan-row .status {
     white-space: normal;
   }
-  /* The pack collapses the opened body at the same width: `.step-body{
-     grid-template-columns:1fr}` and `.step-side{border-left:0;border-top:1px
-     solid var(--line)}`. The rail moves BELOW the main column and keeps every
-     word it had — it is one element in one place in the DOM, so what a screen
-     reader reads and what the page shows stay the same order at both widths. */
-  .step-body.has-rail {
-    grid-template-columns: minmax(0, 1fr);
-  }
   /* `.findings,.more-grid{grid-template-columns:1fr}` at the same width. Both
      grids are told, because neither collapses on its own here: the opened
      step's main column is still around 666px at a 768px viewport, which fits
@@ -4100,7 +4122,23 @@ td .not-person {
     grid-template-columns: 1fr;
     gap: 4px;
   }
-  .step-side {
+}
+/* The opened body stacks below 900px (U2): one column, in DOM order — Why and
+   Readiness, the action column, then Implementation and Done when — so the page
+   shows the order a screen reader reads (U5). The action column keeps every word
+   and control it had and trades its left rule for a top one. */
+@media (max-width: 900px) {
+  .step-body.has-rail {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+  }
+  .step-body.has-rail > .step-main-lead,
+  .step-body.has-rail > .step-action-column,
+  .step-body.has-rail > .step-main-rest {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .step-action-column {
     border-left: 0;
     border-top: 1px solid var(--line);
   }

@@ -24,7 +24,7 @@ import type { Step } from '../roadmap/types.ts'
 import { setDisplayTimeZone } from '../copy/dates.ts'
 import { boardReasonOf, boardWhenOf, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from '../ui/surfaces/planBoard.ts'
 import { laneReadings } from '../ui/surfaces/planLanes.ts'
-import { badgeLabel, factOf, railOf } from '../ui/surfaces/stepContract.ts'
+import { badgeLabel, factOf } from '../ui/surfaces/stepContract.ts'
 import type { LaneView, PrerequisiteBlocker } from '../ui/surfaces/stepContract.ts'
 import { planDates } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
@@ -120,7 +120,7 @@ function snapshotOf(step: Step, ctx: StepVarContext, lane: LaneView, blockers: P
     fact: factOf(step),
     badge: badgeLabel(b.contract),
     bar: b.readiness.bar.main,
-    rail: railOf(b.contract).metric,
+    rail: b.rail.metric,
     headings: headingsOf(b),
     tiles: b.readiness.tiles.map((t) => ({ label: t.label, state: t.value })),
     channels: channelTabsOf(b.artifacts).map((t) => String(t.label)),
