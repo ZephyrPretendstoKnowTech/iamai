@@ -1223,6 +1223,13 @@ function peopleTile(c: StepContract): ReadinessTile | null {
 
 /** A step prerequisite's link: the step it names, opened on the Plan. */
 const stepLink = (id: string, title: string): ReadinessTile['link'] => ({ label: fillText(R().tiles.openStep, { step: title }), href: returnToStep(id) })
+
+/** The step a header note is done together with (`partnerStep.id`), opened on the Plan (content review S2); null where the note names none. */
+export function partnerLinkOf(cs: Record<string, unknown> | undefined): { label: string; href: string } | null {
+  const id = (cs?.partnerStep as { id?: unknown } | undefined)?.id
+  const title = typeof id === 'string' ? (stepById[id] as { title?: unknown } | undefined)?.title : undefined
+  return typeof id === 'string' && typeof title === 'string' ? { label: fillText(R().tiles.openStep, { step: title }), href: returnToStep(id) } : null
+}
 /** The Baseline mappings link (Plan settings), where a reference of the baseline's waits on its mapping. */
 const mappingsLink = (): ReadinessTile['link'] => ({ label: R().tiles.openMappings, mappings: true })
 

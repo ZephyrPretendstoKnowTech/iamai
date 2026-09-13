@@ -1,15 +1,17 @@
 @@IAMAI-BEGIN {"id":"entra.create-group","channel":"entra","states":["groupMissing"],"format":"markdown","kind":"template"}
-Create only the owner-confirmed canonical exclusions group.
+If confirming an existing group (like "Breakglass Exclusion"):
+Click Save above — IAMAI records the group's ID and uses it in every policy.
 
-1. Go to **Entra admin center → Entra ID → Groups → All groups → New group**.
-2. Group type: **Security**.
-3. Membership type: **Assigned**. Do not use Dynamic User or Dynamic Device.
-4. Name: **{{group.target.displayName}}**.
-5. Add only the owner-confirmed emergency access accounts supplied by IAMAI.
-6. Create the group.
-7. Rescan IAMAI before changing Conditional Access policies so the newly created stable group ID becomes tenant truth.
+If creating a new group:
+1. Go to Entra admin center → Groups → All groups → New group.
+2. Group type: Security.
+3. Membership type: Assigned (not Dynamic).
+4. Name: Core - Exclusions (or your preferred name).
+5. Members: add only the emergency access accounts you selected in the Emergency Access step.
+6. Create.
+7. Rescan in IAMAI so it picks up the new group's ID.
 
-Do not create a second similarly named group as a shortcut.
+Important: this group should contain only emergency access accounts. Do not add regular users or service accounts — they would bypass every policy in the plan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open-group","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}

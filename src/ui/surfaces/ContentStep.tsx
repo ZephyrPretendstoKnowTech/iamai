@@ -38,7 +38,7 @@ import { app, content } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
-import { filterPickerObjects, initialPicked, pickerUniverse } from './pickerRows.ts'
+import { filterPickerObjects, initialPicked, matchedNoteOf, pickerUniverse } from './pickerRows.ts'
 import type { PickerObject } from './pickerRows.ts'
 import { answerParts, answerText, optionsOf, questionFor, valueSource } from './stepQuestion.ts'
 import type { QuestionOption } from './stepQuestion.ts'
@@ -48,7 +48,7 @@ import { commsFor, datesLineFor, ifWrongLineFor, managerText, decisionLine } fro
 import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
-import { CONTRACT, implementationEmptyOf, stepContract } from './stepContract.ts'
+import { CONTRACT, implementationEmptyOf, partnerLinkOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
 import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
@@ -230,6 +230,7 @@ export function ContentStep({
           cs.skip ? <Button key="exclude" variant="secondary" className="rollout-exception" onClick={() => setDialog('rollout')}>{RO.control}</Button> : null,
           offersDoesntApply(cs, step) && onDoesntApply ? <Button key="doesnt-apply" variant="secondary" onClick={() => setDialog('doesnt-apply')}>{SHARED.doesntApplyControl}</Button> : null,
         ].filter((x) => x !== null)
+  const partnerLink = partnerLinkOf(cs)
 
   return (
     // The opened step, as the approved Plan design draws it
@@ -242,6 +243,7 @@ export function ContentStep({
                 title: what this change is, and the step it is done with. */}
             <Line s={cs.changeLine} ex={ex} cls="step-sub" />
             <Line s={cs.partner} ex={ex} cls="step-sub partner" />
+            {partnerLink !== null && <p className="step-sub partner"><a className="inline-link" href={partnerLink.href}>{partnerLink.label}</a></p>}
           </>} badge={badgeLabel(contract)} tone={laneView.tone} fact={contract.state.fact} track={contract.track}>
         {/* What happens next: the track caption, above the track it captions. */}
         <StepState contract={contract} />
@@ -779,6 +781,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
   // plan's decision only once Save writes it, so the step still reads Decision.
   const initial = initialPicked(ex, key, saved, ids, single)
   const [chips, setChips] = useState<PickerOption[]>(() => initial.picked.map((id) => (initial.matched.includes(id) ? { ...optionOf(id), badge: app.picker.matched } : optionOf(id))))
+  const matchedNote = matchedNoteOf(d.matchedNote, chips, app.picker.matched)
   const [query, setQuery] = useState('')
   const results = useMemo(() => filterPickerObjects(universe, query), [universe, query])
   const hasPicker = rows.length > 0 || universe.length > 0
@@ -830,6 +833,8 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
             radiogroup's, so a decision is heard as a question with answers. */}
         {/* The action column's heading (content review R6): the input's own label, bold, over the first input. */}
         <h5 className="dlabel action-heading" id={`${base}-decision`}>{d.label}</h5>
+        {/* A pre-filled match says what it is and what Save does (content review S2). */}
+        {matchedNote !== null && <p className="reason">{matchedNote}</p>}
         {/* Each part of a decision reads the same way: its heading, its question, its answers. */}
         {typeof d.text === 'string' && <p className="reason"><T s={d.text} ex={ex} /></p>}
         {hasPicker && <Picker labelledBy={`${base}-decision`} selected={chips} options={results} suggestions={nominated} onChange={setChips} onSearch={setQuery} single={single} />}
