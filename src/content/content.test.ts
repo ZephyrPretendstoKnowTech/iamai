@@ -134,7 +134,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   '.pages.plan.howTo.items[3]',
   '.pages.plan.howTo.items[4]',
   '.pages.plan.howTo.link',
-  '.pages.plan.impact.configurationOnly',
   '.pages.plan.impact.noUserImpact',
   '.pages.plan.impact.notEstablished',
   '.pages.plan.settings.firstDeployment',

@@ -66,6 +66,13 @@ export type PackageMeta = {
    */
   observation?: { minDays?: number | null }
   /**
+   * What the Plan row's Impact column reads where the step reaches no people
+   * (U13): `fallbackLabel`, a short phrase for what the step touches
+   * ("Authentication methods"). Read by ui/surfaces/rowWho.ts after the people
+   * count and before the placeholder.
+   */
+  impact?: { fallbackLabel?: string }
+  /**
    * `members`: each baseline policy a multi-policy package names, by its role in
    * the package's bindings (`policies.<family>.<role>.…`) and the pinned
    * baseline's stable id for it — null where the pin surfaces none, and then
@@ -565,6 +572,14 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
     const days = o !== null && typeof o === 'object' ? o.minDays : undefined
     const ok = o !== null && typeof o === 'object' && (days === undefined || days === null || (typeof days === 'number' && Number.isInteger(days) && days > 0))
     if (!ok) add({ kind: 'prerequisite', index: -1 }, 'observation.minDays: a positive whole number of days, or null for the default')
+  }
+
+  // ---- Impact fallback label (U13) ----
+  if (meta.impact !== undefined) {
+    const i = meta.impact as { fallbackLabel?: unknown } | null
+    const label = i !== null && typeof i === 'object' ? i.fallbackLabel : undefined
+    const ok = i !== null && typeof i === 'object' && (label === undefined || (typeof label === 'string' && label.trim() !== ''))
+    if (!ok) add({ kind: 'prerequisite', index: -1 }, 'impact.fallbackLabel: a non-empty string')
   }
 
   // ---- projections ----

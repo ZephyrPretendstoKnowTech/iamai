@@ -576,10 +576,10 @@
       "satisfiedBy": "Satisfied by {policies} — no change needed",
       "satisfiedTogether": "Satisfied by {policies} together — no change needed",
       "impact": {
-        "$comment": "The Impact column's words that are not a count (derive/whoLine.ts IMPACT). Unknown is never zero.",
+        "$comment": "The Impact column's words that are not a count (derive/whoLine.ts IMPACT). Unknown is never zero. none is the last fallback for a step that reaches no people and whose package authors no impact.fallbackLabel (rowWho.ts).",
         "notEstablished": "Not established",
         "noUserImpact": "No user impact",
-        "configurationOnly": "Configuration only"
+        "none": "—"
       },
       "when": {
         "$comment": "The board's When column (planBoard.ts boardWhen): a date, or the placeholder (A1b). after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",

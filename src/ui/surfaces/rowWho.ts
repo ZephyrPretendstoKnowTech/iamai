@@ -9,6 +9,7 @@ import { IMPACT, whoLine } from '../../derive/whoLine.ts'
 import { reached } from '../../derive/population.ts'
 import { effectsOf } from '../../roadmap/strand.ts'
 import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
+import { implementationPackageFor } from './stepPackage.ts'
 
 export function rowWho(step: Step): string {
   // Who the row names is who the step's own policies name (derive/population.ts
@@ -25,7 +26,9 @@ export function rowWho(step: Step): string {
   // row whose status word is Report-only said the same thing twice.
   const gap = step.gapShort ?? step.gap ?? null
   // An empty reach is a fact: a policy that reaches nobody has no user impact; a
-  // step with no policy of its own changes configuration.
-  const head = whoLine(pop, gap === REPORT_ONLY_GAP ? null : gap, effectsOf(step) === null ? IMPACT.configurationOnly : IMPACT.noUserImpact)
+  // step with no policy of its own says what it touches — its package's
+  // `impact.fallbackLabel` — or the placeholder (U13).
+  const none = effectsOf(step) === null ? (implementationPackageFor(step)?.meta.impact?.fallbackLabel ?? IMPACT.none) : IMPACT.noUserImpact
+  const head = whoLine(pop, gap === REPORT_ONLY_GAP ? null : gap, none)
   return step.lockout ? `${head} · ${fillText(app.plan.lockoutSuffix, { n: step.lockout })}` : head
 }

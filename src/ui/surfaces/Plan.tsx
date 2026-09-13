@@ -503,7 +503,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
   // reads for the row's lane; the row and its opened head say that lane (A1b).
   const status = { word: lane.label, tone: lane.tone }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
-  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, IMPACT.configurationOnly)
+  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, IMPACT.none)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
