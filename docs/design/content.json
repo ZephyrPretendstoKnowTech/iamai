@@ -1383,7 +1383,7 @@
               "review": "Review",
               "mapping": "Baseline mapping",
               "clear": "Clear",
-              "clearNote": "Nothing outstanding changes the next action.",
+              "clearNote": "No blockers. Ready to proceed.",
               "satisfied": "{n} satisfied",
               "detail": "Why",
               "openStep": "Open {step}",
