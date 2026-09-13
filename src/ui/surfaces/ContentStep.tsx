@@ -51,7 +51,7 @@ import { REDACTED, exportClipboard, unredactedFrom } from '../exportGuard.ts'
 import { CONTRACT, implementationEmptyOf, stepContract } from './stepContract.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { HARDENING_DEFERRAL_ID } from '../../validation/emergencyTiers.ts'
-import { AuthoredText, DoneWhen, EmergencySlotBody, ImplementationEmptyBox, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
+import { AuthoredText, DoneWhen, EmergencySlotBody, PolicyMembers, ReadinessSection, StepActionColumn, StepDialog, StepFooter, StepHead, StepSection, StepState, WhatIamaiFound, WhatToDoLead, badgeLabel } from './StepSections.tsx'
 import { MfaHandoff } from './MfaHandoff.tsx'
 import { HEAD } from './stepHeadings.ts'
 import { channelTabsOf, stepBodyOf, truthy } from './stepBody.ts'
@@ -491,8 +491,9 @@ export function ContentStep({
  * The Implementation region (docs/design/approved/anatomy/plan-step-v1.html
  * `.implementation-section`): the channels this step has, as pill tabs over a
  * fixed preview with Copy and Expand on its corner, and the whole artifact in the
- * implementation dialog. A step with no channel shows the one truthful no-action
- * box instead (stepContract.ts implementationEmptyOf) and never an artifact.
+ * implementation dialog. Every channel is a tab (content review D2); one with no
+ * content says so and offers nothing to copy, and where none has content the
+ * truthful reason (stepContract.ts implementationEmptyOf) stands over the tabs.
  *
  * The artifacts are their own modules' — the package's bound blocks
  * (project.ts), or the portal translator's lines, stepPowerShell.ts, stepJson.ts
@@ -520,7 +521,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   copy: (id: string, text: string) => void
   copied: string | null
 }) {
-  const [chosen, setChosen] = useState<Channel>('portal')
+  const [chosen, setChosen] = useState<Channel | null>(null)
   const base = useId()
   const dialogBase = useId()
   const W = CONTRACT.implementation
@@ -528,7 +529,8 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   // The chosen tab is clamped to what is available, so a step that offers only
   // some channels cannot be left showing another's panel — the frame is reused
   // across rows and the state is not.
-  const tab: Channel = ids.includes(chosen) ? chosen : (ids[0] ?? 'portal')
+  // Untouched, the first channel with content leads (D2: every channel is a tab).
+  const tab: Channel = chosen !== null && ids.includes(chosen) ? chosen : (artifacts.find((a) => a.unavailable !== true)?.id ?? ids[0] ?? 'portal')
   const active = artifacts.find((a) => a.id === tab) ?? null
   const tabs = channelTabsOf(artifacts)
   const body = (cls: string) =>
@@ -546,12 +548,12 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
       <pre className={`${cls} mono`}>{active.text()}</pre>
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
-  const copyable = preview === null && active !== null
+  const copyable = preview === null && active !== null && active.unavailable !== true
   // A planning preview is not executable: Copy stays where it is, disabled, and
   // says why in the preview's own lines (stepBody.ts previewNote), inline and in
   // the viewer (RUN-CONTEXT-B decision 4, U18). aria-disabled keeps the reason
   // reachable by hover and by keyboard, which a disabled button is not.
-  const copyReason = copyable ? W.copy : (preview?.lines.join(' ') ?? W.copy)
+  const copyReason = copyable ? W.copy : active?.unavailable ? active.text() : (preview?.lines.join(' ') ?? W.copy)
   const copyControl = (
     <button
       type="button"
@@ -570,19 +572,14 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
   return (
     <section className="step-section implementation-section" data-implementation={drawnBy} data-preview={preview ? 'true' : undefined}>
       <h4>{W.heading}</h4>
-      {artifacts.length === 0 ? (
-        <>
-          <ImplementationEmptyBox empty={empty} />
-          {/* Why the written guidance is set aside, where it is (a re-pin review), even with nothing to implement. */}
-          {notes.length > 0 && (
-            <div className="impl-planning" data-review="true">
-              {notes.map((line, i) => (
-                <span key={i}>{line}</span>
-              ))}
-            </div>
-          )}
-        </>
-      ) : (
+      {/* Every channel is a tab (content review D2). Where none has content, the
+          truthful reason stands over them as a note, never as a box beside a strip. */}
+      {artifacts.every((a) => a.unavailable === true) && (
+        <div className="impl-empty-note" data-empty={empty.key}>
+          <strong>{empty.title}</strong>
+          <span>{empty.text}</span>
+        </div>
+      )}
         <>
           {notes.length > 0 && (
             <div className="impl-planning" data-review="true">
@@ -633,7 +630,6 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
             <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
           </StepDialog>
         </>
-      )}
       {/* The support line (S6): Microsoft Learn · Troubleshooting on the left,
           the package's run note beside them, and the source-checked date on the
           right — or nothing at all where the step has none of them. */}

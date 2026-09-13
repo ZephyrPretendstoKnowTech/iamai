@@ -350,7 +350,9 @@ test('the viewer draws every package channel through the one Implementation regi
   assert.match(step, /if \(copyable\) copy\('implementation', active\?\.text\(\) \?\? ''\)/)
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
-  assert.match(step, /const artifacts: Artifact\[\] = \(\n\s*packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
+  assert.match(step, /const produced: Artifact\[\] = \(\n\s*packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
+  // Every channel is a tab (content review D2): the produced channel where there is one, the unavailable one otherwise.
+  assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.map\(\(t\) => produced\.find\(\(a\) => a\.id === t\.id\) \?\? unavailableArtifact\(t\.id as Channel\)\)/)
   // The projection, the readiness and the troubleshooting never throw through the step.
   for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
   for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)

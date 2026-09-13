@@ -22,6 +22,12 @@
       "state": "Create or Correct Service Accounts Group"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
   "when": "—"
 }

@@ -9,6 +9,7 @@
   "headings": [
     "Why",
     "Readiness",
+    "Implementation",
     "Done when"
   ],
   "tiles": [
@@ -17,6 +18,12 @@
       "state": "Set Up Passkeys to Match the Baseline"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
   "when": "Aug 31, 2026"
 }

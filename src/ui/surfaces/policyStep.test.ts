@@ -181,10 +181,11 @@ test('the implementation control follows the capability: none, one, or a real ta
     assert.equal(CONTENT_STEP.includes(forbidden), false, `the surface asks ${forbidden} instead of reading the contract`)
   }
   assert.match(CONTENT_STEP, /channelsFor\([\s\S]{0,120}contract\.implementation\.offered\)/, 'the channel rule does not read the contract’s one answer')
-  // AI Info joins any channel that exists, so the strip always holds a choice,
-  // and a step with none draws the one no-action box instead of a strip.
+  // AI Info has content beside any channel that does. Every channel is a tab
+  // (content review D2): one without content says so, and where none has content
+  // the no-action reason stands over the tabs as a note.
   assert.match(fn, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info is offered alone, or not beside the channels')
-  assert.match(CONTENT_STEP, /artifacts\.length === 0 \? \(\n\s*(?:<>\n\s*)?<ImplementationEmptyBox/, 'no channel draws an empty strip')
+  assert.match(CONTENT_STEP, /\{artifacts\.every\(\(a\) => a\.unavailable === true\) && \(\n\s*<div className="impl-empty-note" data-empty=\{empty\.key\}>/, 'a step with no content draws no reason over its tabs')
 })
 
 test('the channel order is Entra, PowerShell, JSON, AI Info, then Email, among the channels that exist', () => {

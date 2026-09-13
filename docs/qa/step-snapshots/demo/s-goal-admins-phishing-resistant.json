@@ -33,7 +33,9 @@
   "channels": [
     "Entra",
     "PowerShell",
-    "AI Info"
+    "JSON",
+    "AI Info",
+    "Email"
   ],
   "when": "—"
 }

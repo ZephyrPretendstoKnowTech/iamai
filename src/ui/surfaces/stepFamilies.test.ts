@@ -457,8 +457,8 @@ test('the corpus reaches 0 and 3 channels, and a strip never has one tab', () =>
   const rule = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function channelsFor'), CONTENT_STEP.indexOf('function channelsFor') + 700)
   assert.match(rule, /if \(hasPortal\) out\.push\('portal'\)/)
   assert.match(rule, /if \(machineOffered\) out\.push\('ps', 'json'\)/)
-  // AI Info joins any channel set and never stands alone, so a strip always holds
-  // a choice; a step with no channel draws the no-action box, never an empty strip.
+  // AI Info has content beside any channel that does. Every channel is a tab
+  // (content review D2); where none has content, the no-action reason stands over them.
   assert.match(rule, /if \(out\.length > 0\) out\.push\('ai'\)/, 'AI Info can stand alone or is never offered')
-  assert.match(CONTENT_STEP, /artifacts\.length === 0 \? \(\n\s*(?:<>\n\s*)?<ImplementationEmptyBox/, 'a step with no channel draws an empty strip')
+  assert.match(CONTENT_STEP, /\{artifacts\.every\(\(a\) => a\.unavailable === true\) && \(\n\s*<div className="impl-empty-note" data-empty=\{empty\.key\}>/, 'a step with no content draws no reason over its tabs')
 })

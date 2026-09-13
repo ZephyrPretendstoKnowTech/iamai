@@ -22,6 +22,12 @@
       "state": "Turn Off Security Defaults"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
   "when": "—"
 }

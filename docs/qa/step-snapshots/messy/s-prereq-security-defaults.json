@@ -9,6 +9,7 @@
   "headings": [
     "Why",
     "Readiness",
+    "Implementation",
     "Done when"
   ],
   "tiles": [
@@ -21,6 +22,12 @@
       "state": "Require Phishing-Resistant MFA for Admins"
     }
   ],
-  "channels": [],
+  "channels": [
+    "Entra",
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
+  ],
   "when": "Aug 31, 2026"
 }

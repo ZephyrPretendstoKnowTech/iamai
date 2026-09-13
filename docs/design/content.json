@@ -1431,6 +1431,7 @@
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
             "close": "Minimize",
+            "channelUnavailable": "Content could not be loaded — report this at {address}",
             "empty": {
               "inPlace": [
                 "No implementation needed",

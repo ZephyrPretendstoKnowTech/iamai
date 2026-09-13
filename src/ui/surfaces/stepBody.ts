@@ -25,6 +25,7 @@ import type { StepVarContext } from './stepVars.ts'
 import { portalNamesFor } from './stepPortal.ts'
 import { stepInstructions } from './stepInstructions.ts'
 import { CONTRACT, eyebrowOf, implementationEmptyOf, implementationIsCurrent, railOf, readinessOf, stepContract } from './stepContract.ts'
+import { FEEDBACK_ADDRESS } from '../../feedback.ts'
 import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepContract.ts'
 import { laneViewFor } from './planBoard.ts'
 import { HEAD } from './stepHeadings.ts'
@@ -47,7 +48,7 @@ export type Channel = 'portal' | 'ps' | 'json' | 'ai' | 'email'
  * built for a tab nobody opens), and the one line of support under the preview
  * that says how it is run.
  */
-export type Artifact = { id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null }
+export type Artifact = { id: Channel; form: 'list' | 'code' | 'markdown'; lines: string[]; text: () => string; note: string | null; unavailable?: true }
 
 /** A package's output channels under the viewer's own tab ids. */
 const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = { entra: 'portal', powershell: 'ps', json: 'json', aiInfo: 'ai', email: 'email' }
@@ -108,6 +109,16 @@ export const CHANNEL_TABS: TabItem[] = [
   { id: 'ai', label: CONTRACT.implementation.ai },
   { id: 'email', label: CONTRACT.implementation.email },
 ]
+
+/**
+ * A channel with no content to show (content review D2): its tab still draws,
+ * with the one line that says its content could not be loaded and where to
+ * report it, and nothing to copy. No channel is ever suppressed.
+ */
+function unavailableArtifact(id: Channel): Artifact {
+  const text = fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })
+  return { id, form: 'markdown', lines: [], text: () => text, note: null, unavailable: true }
+}
 
 /** The tabs the Implementation region draws for these artifacts, in the approved order. */
 export function channelTabsOf(artifacts: readonly Artifact[]): TabItem[] {
@@ -262,11 +273,14 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // (RUN-CONTEXT-B decision 12, U15): an account, a group or a setting is portal
   // work, and filtering here keeps the tabs, the viewer and Copy on one list.
   const machine = cs.kind === 'policy'
-  const artifacts: Artifact[] = (
+  const produced: Artifact[] = (
     packaged
       ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
+  // Every channel draws, always (content review D2): a channel with content shows
+  // it, and one without says its content could not be loaded. None is suppressed.
+  const artifacts: Artifact[] = CHANNEL_TABS.map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel))
   const W = CONTRACT.implementation
   // Why a preview's work cannot be copied: the values still to resolve, never the
   // blocker again. No Planned work banner draws it over the channels (U4); it is
@@ -289,11 +303,10 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // the step draws the baseline's own channels, and says why, before anything else.
   const review = packageReviewFor(step)
   const notes = review ? [review.status === 'held' ? W.review.held : W.review.reviewNeeded] : []
-  // A step with nothing to implement by design — a decision, a question, a check —
-  // draws no Implementation region at all: its What to do is the work, and "No
-  // generated implementation" beside it said nothing (owner, 2026-09-11). A policy
-  // step keeps the region, with its planned work or the truthful reason it has none.
-  const showImplementation = artifacts.length > 0 || contract.policy
+  // Every step draws its Implementation region, a decision, a question and a check
+  // included (content review D2, which replaces the owner's 2026-09-11 rule that a
+  // step with nothing to implement by design draws none).
+  const showImplementation = true
   // A held projection says why, by the reason it holds: a check to confirm first,
   // a difference no correction covers, content the runtime could not project, or
   // a value IAMAI does not hold. None of them is ever offered an artifact.

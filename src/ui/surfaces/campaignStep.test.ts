@@ -37,7 +37,9 @@ function campaignBody() {
 
 test('P0-9: the campaign offers Entra (the registration campaign setup) and AI Info (the in-person walkthrough)', () => {
   const b = campaignBody()
-  assert.deepEqual(channelTabsOf(b.artifacts).map((t) => String(t.label)), ['Entra', 'AI Info'])
+  // Every channel is a tab (content review D2); Entra and AI Info are the ones with content.
+  assert.deepEqual(channelTabsOf(b.artifacts).map((t) => String(t.label)), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
+  assert.deepEqual(channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'AI Info'])
   const entra = b.artifacts.find((a) => a.id === 'portal')!.text()
   for (const line of ['Authentication methods → Registration campaign', '**Enabled**', '**All users**', '**Passkey (Microsoft Authenticator)**', 'remind on sign-in', '**Save**']) assert.ok(entra.includes(line), `Entra is missing: ${line}`)
   const ai = b.artifacts.find((a) => a.id === 'ai')!.text()

@@ -20,7 +20,10 @@
   ],
   "channels": [
     "Entra",
-    "AI Info"
+    "PowerShell",
+    "JSON",
+    "AI Info",
+    "Email"
   ],
   "when": "Aug 31, 2026"
 }
