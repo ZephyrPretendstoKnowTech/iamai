@@ -1207,7 +1207,9 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
     if (s.state === 'notSelected') return { ...tile, tone: 'warn', value: t.notSelected, note: t.notSelectedNote }
     if (s.state === 'unchecked') return { ...tile, tone: 'warn', value: t.unchecked, note: null }
     if (s.state === 'minimum') return { ...tile, tone: 'warn', value: t.minimumOpen, note: null }
-    if (s.state === 'hardening') return { ...tile, tone: 'warn', value: e.deferredAt ? t.deferred : t.hardeningOpen, note: lead }
+    // Minimum met is not blocking (content review D4): ✓, with its hardening still
+    // named as open — advisory, never a claim of full resilience.
+    if (s.state === 'hardening') return { ...tile, tone: 'good', value: e.deferredAt ? t.deferred : t.hardeningOpen, note: lead }
     return { ...tile, tone: 'good', value: t.meets, note: null }
   })
 }

@@ -12,16 +12,7 @@
     "Implementation",
     "Done when"
   ],
-  "tiles": [
-    {
-      "label": "Break-glass 1",
-      "state": "Minimum met · hardening open"
-    },
-    {
-      "label": "Break-glass 2",
-      "state": "Minimum met · hardening open"
-    }
-  ],
+  "tiles": [],
   "channels": [
     "Entra",
     "PowerShell",

@@ -109,9 +109,12 @@ test('Fix before continuing, the hardening section and the Needs attention point
   assert.equal((CONTENT.match(/Fix before continuing/g) ?? []).length, 1)
   const { step, c, blockers } = opened('demo', EMERGENCY)
   const r = readinessOf(step, c, blockers)
-  // The account slots lead (P0-7): the failing minimum is its slot's line, the hardening lead is the hardening slot's note, and no check tile stands beside them.
-  assert.deepEqual(r.tiles.slice(0, 2).map((t) => t.key), ['slot:1', 'slot:2'], 'the account slots are not the first tiles')
-  assert.equal(r.tiles.find((t) => t.value === CONTRACT.hardening.tiles.hardeningOpen)?.note, CONTRACT.hardening.leadBlocked, 'the hardening slot does not carry its lead')
+  // The account slots (P0-7): the failing minimum leads as its slot's line; a slot whose minimum is met is ✓ with its
+  // hardening open (content review D4), with the satisfied evidence, carrying the hardening lead; no check tile stands beside them.
+  assert.ok(r.tiles[0]?.key.startsWith('slot:'), 'the failing account slot is not the first tile')
+  const hardening = r.satisfied.find((t) => t.value === CONTRACT.hardening.tiles.hardeningOpen)
+  assert.equal(hardening?.tone, 'good', 'a slot with its minimum met still blocks')
+  assert.equal(hardening?.note, CONTRACT.hardening.leadBlocked, 'the hardening slot does not carry its lead')
   assert.equal(r.tiles.some((t) => t.key.startsWith('check:')), false, 'a failing check is drawn beside its account slot')
   assert.ok(c.emergencySlots.some((s) => s.state === 'minimum' && s.minimum.length > 0), 'the failing minimum check is no slot’s line')
   assert.equal(c.doneWhen.some((l) => /Fix before continuing/.test(l)), false)
