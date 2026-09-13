@@ -5,15 +5,39 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { CONTRACT, railOf, readinessLeadOf } from './stepContract.ts'
+import { CONTRACT, implementationEmptyOf, railOf, readinessLeadOf } from './stepContract.ts'
 import type { StepContract } from './stepContract.ts'
-import { WHEN, prerequisiteLabelFor } from './planBoard.ts'
+import { WHEN, laneViewFor, laneViewOf, prerequisiteLabelFor, readinessBlockersOf, waveStartOf } from './planBoard.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { SNAPSHOT_DIR } from '../../testing/stepSnapshots.ts'
 import dependencyData from '../../actionability/dependency-data.json' with { type: 'json' }
 import type { DependencyData } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph, deriveLane } from '../../actionability/lanes.ts'
 import type { ConditionState, PrerequisiteState, StepObservation, TenantState } from '../../actionability/lanes.ts'
+import { fixture } from '../../roadmap/fixtures/index.ts'
+import type { Fixture } from '../../roadmap/fixtures/index.ts'
+import { runFixture } from '../../roadmap/fixtures/run.ts'
+import { laneReadings } from './planLanes.ts'
+import { planDates } from './stepVars.ts'
+import type { StepVarContext } from './stepVars.ts'
+import { stepBodyOf } from './stepBody.ts'
+import type { StepBody } from './stepBody.ts'
+
+/** Every step's body on a fixture, as the Plan composes it (readinessWords.test.ts, stepSnapshots.ts). */
+function bodiesOf(f: Fixture): Map<string, StepBody> {
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const readings = laneReadings(r.steps, [])
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+  const out = new Map<string, StepBody>()
+  for (const step of r.steps) {
+    const reading = readings.get(step.id)
+    const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+    const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, scheduledOn: waveStartOf(step), groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming }
+    out.set(step.id, stepBodyOf(step, ctx, { lane, blockers: readinessBlockersOf(reading, titleOf), prerequisiteLabel: prerequisiteLabelFor(readings) }))
+  }
+  return out
+}
 
 /** Every step snapshot the fixtures write (docs/qa/step-snapshots): what each opened step draws. */
 const snapshots = (): { where: string; s: { tiles: { label: string; state: string }[] } }[] =>
@@ -116,4 +140,22 @@ test('R8: an enforced policy that drifted reads Ready · Correct, whatever condi
     const asPinned = deriveLane(id, graph, tenant(id, { ...enforced, unsaved: [input] }), { deferred: [] })
     assert.deepEqual([asPinned.lane, asPinned.substatus], ['Ready', 'Decision'], `${id}: the unanswered input no longer holds completion`)
   }
+})
+
+test('R9: "No implementation needed" appears only on a goal delivered with nothing open', () => {
+  const E = CONTRACT.implementation.empty as Record<string, string[]>
+  const satisfied = { state: { satisfied: true, condition: 'healthy', setAside: false }, fix: [], implementation: { offered: false, reason: null, hold: null }, whatToDo: { kind: 'preserve', text: 'x' } } as unknown as StepContract
+  assert.equal(implementationEmptyOf(satisfied).key, 'inPlace')
+  assert.equal(implementationEmptyOf(satisfied, 1).key, 'blocked', 'an unresolved tile still reads No implementation needed')
+  assert.equal(implementationEmptyOf({ ...satisfied, fix: [{ key: 'step:x', text: 'x' }] } as unknown as StepContract).key, 'blocked', 'a pending correction still reads No implementation needed')
+  // Every opened step on the fixtures: Block Legacy Auth with Mail-sending devices unconfirmed among them.
+  let open = 0
+  for (const name of ['small', 'mid', 'large'] as const) {
+    for (const [id, b] of bodiesOf(fixture(name))) {
+      if (b.readiness.tiles.length === 0 && b.contract.fix.length === 0) continue
+      assert.notEqual(b.empty.title, E.inPlace[0], `${name}/${id}: "${E.inPlace[0]}" beside ${b.readiness.tiles.length} open tile(s)`)
+      if (b.contract.state.satisfied) open += 1
+    }
+  }
+  assert.ok(open > 0, 'no satisfied step with an open item on the fixtures: the premise is untested')
 })

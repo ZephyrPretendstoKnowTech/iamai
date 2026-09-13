@@ -301,7 +301,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const heldBox = (key: string): ImplementationEmpty => ({ key, tone: 'warn', title: W.empty[key][0], text: W.empty[key][1] })
   const empty: ImplementationEmpty =
     hold === null
-      ? implementationEmptyOf(contract)
+      ? implementationEmptyOf(contract, readiness.tiles.length)
       : hold.pendingPrerequisites.length > 0
         ? heldBox('confirmationsPending')
         : hold.unknownMismatches.length > 0
