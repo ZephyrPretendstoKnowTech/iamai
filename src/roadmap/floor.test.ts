@@ -229,7 +229,6 @@ test('a baseline holding both recommendations leaves no floor group to draw', ()
     attention: false,
     waiting: false,
     workType: 'ca' as const,
-    isNext: false,
     order: i,
   }))
   assert.deepEqual(groupsFor('ready', items), [], 'an empty floor still produced a group')

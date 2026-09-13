@@ -51,16 +51,15 @@ function boardOf({ f, r }: Run): { items: BoardItem[]; when: Map<string, string>
   const readings = laneReadings(r.steps, cleanup.map((c) => ({ id: c.id, complete: c.complete })))
   const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.plainTitle ?? null
   const steps = r.steps.filter((s) => readings.has(s.id))
-  const nextId = steps.filter((s) => readings.get(s.id)!.lane === 'Ready').sort((a, b) => readings.get(a.id)!.order - readings.get(b.id)!.order)[0]?.id ?? null
   const add = (step: Step): void => {
     const reading = readings.get(step.id)!
-    items.push({ id: step.id, title: step.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null, workType: 'ca', isNext: step.id === nextId, order: reading.order })
+    items.push({ id: step.id, title: step.title, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, hold: reading.lane === 'On Hold' ? holdGroupOf(reading) : null, workType: 'ca', order: reading.order })
     when.set(step.id, boardWhenOf(step, waveStartOf(step)))
   }
   for (const step of steps) add(step)
   for (const c of cleanup) {
     const reading = readings.get(c.id)!
-    items.push({ id: c.id, title: c.row.kind, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, hold: null, workType: 'setup', isNext: false, order: reading.order })
+    items.push({ id: c.id, title: c.row.kind, lane: reading.lane, laneLabel: laneViewOf(reading, titleOf).label, hold: null, workType: 'setup', order: reading.order })
   }
   return { items, when, readings }
 }

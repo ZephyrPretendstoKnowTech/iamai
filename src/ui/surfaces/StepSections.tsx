@@ -40,7 +40,7 @@ import { fillText } from '../../content/render.ts'
  * `rowWhen`, each already the one authority for what it says. Nothing here
  * recomputes a state, a date or a count.
  */
-export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when, nextLabel = null, open, onToggle }: {
+export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when, open, onToggle }: {
   /** `Lane · substatus/reason`: where the actionability engine puts the row (planBoard.ts laneLabelOf). The row's state. */
   lane: string
   /** The lane's tone (planBoard.ts LANE_TONE). */
@@ -53,8 +53,6 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
   who: string
   /** A day, or the placeholder (planBoard.ts boardWhen): never a reason. */
   when: string
-  /** "Next" beside the title on the first step that is ready to be worked on. */
-  nextLabel?: string | null
   open: boolean
   onToggle: () => void
 }) {
@@ -81,14 +79,10 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
         <span className={`lane lane-${tone}`}>{lane}</span>
         {chip && <Status tone={tone}>{chip}</Status>}
       </span>
-      {/* The pack's `.row-title`: the title. Why the row is where it is, is the lane label's. */}
+      {/* The pack's `.row-title`: the title. Why the row is where it is, is the
+          lane label's; which step is next, is the Ready tab's order (decision 10). */}
       <span className="plan-row-title">
         <span className="step-title">{title}</span>
-        {nextLabel && (
-          <span className="next-mark" aria-label={nextLabel}>
-            {nextLabel}
-          </span>
-        )}
       </span>
       <span className="who">{who}</span>
       <span className="when">{when}</span>

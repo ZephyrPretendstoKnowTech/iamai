@@ -1551,17 +1551,6 @@ footer.app a {
 .assumption-editor select {
   width: 100%;
 }
-/* Beside the title it marks, not inside it: the title zone's first line is the
-   step's name, and the marker follows it (task 033, after 664fc3f). */
-.next-mark {
-  font-size: var(--t-2);
-  color: var(--brand-primary);
-  border: 1px solid var(--brand-primary);
-  border-radius: var(--radius);
-  padding: 0 6px;
-  margin-left: 8px;
-  white-space: nowrap;
-}
 /* The Plan's heading, on the approved display ramp (task 036, closing the size
    tasks 033 and 034 both deferred). The pack sets `.hero h1{font:700 42px}`,
    34px at its 940 breakpoint and 30px at its 650 — which are --d-2, --d-6 and

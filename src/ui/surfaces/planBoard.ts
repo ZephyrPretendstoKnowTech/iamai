@@ -358,12 +358,6 @@ export type BoardItem = {
   /** On Hold: the primary blocker's group label (holdGroupOf). Null elsewhere. */
   hold: string | null
   workType: WorkType
-  /**
-   * The Plan's next marker: the one row the board recommends advancing, and the
-   * row that draws the "next" pill. It is the first Ready step in the engine's
-   * own order.
-   */
-  isNext: boolean
   /** Position within its lane (planLanes.ts order), so the board never re-sequences the engine. */
   order: number
 }
