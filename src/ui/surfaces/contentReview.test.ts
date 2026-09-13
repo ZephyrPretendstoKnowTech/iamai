@@ -175,3 +175,20 @@ test('U-P1: a header tile date reads the day on one line and the year under it, 
   assert.match(css, /\.plan-progress-tile \.tile-year \{\s*display: block;\s*font-size: var\(--t-2\);/, 'the year is not on its own smaller line')
   assert.match(css, /\.plan-progress-tile \.tile-year-comma \{[^}]*clip-path: inset\(50%\);/, 'the comma is drawn between the lines')
 })
+
+test('D1: the Managed Device Done when names no shared-device exception', () => {
+  const content = readFileSync('docs/design/content.json', 'utf8')
+  assert.ok(content.includes('"doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied."'), 'the Managed Device end state is not the decided sentence')
+  assert.equal(/shared-device exception/i.test(content), false, 'an orphaned shared-device exception is still in content')
+  // Every opened step's Done when, as the fixtures draw it.
+  let lines = 0
+  for (const name of ['small', 'mid'] as const) {
+    for (const [id, b] of bodiesOf(fixture(name))) {
+      for (const line of b.contract.doneWhen) {
+        assert.equal(/shared-device exception/i.test(line), false, `${name}/${id}: Done when reads "${line}"`)
+        lines += 1
+      }
+    }
+  }
+  assert.ok(lines > 0)
+})
