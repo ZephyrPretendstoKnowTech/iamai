@@ -61,6 +61,7 @@
     "tenant.displayName",
     "admins.affected.count",
     "admins.notReady",
+    "policy.current.displayName",
     "policy.current.state",
     "evidence.reportOnly",
     "dependencies.blockers",

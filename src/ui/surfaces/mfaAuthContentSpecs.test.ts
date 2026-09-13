@@ -127,3 +127,42 @@ test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names 
   // AI Info is unchanged (BLOCKED.md), and still the channel that binds the pair's mismatches.
   assert.match(packageOf(GUESTS).blocks['ai.correct'].text, /\{\{policies\.guests\.semanticMismatches\}\}/)
 })
+
+test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says what it measures, the unknown handoff asks which admins, Entra is one numbered procedure, and AI Info explains the strength', () => {
+  const ADMINS = 's-goal-admins-phishing-resistant'
+  const steps = JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as { id: string; why: string }[]
+  assert.equal(steps.find((s) => s.id === 'admins-phishing-resistant')?.why, "Phone codes and push approvals can be phished — an attacker builds a convincing sign-in page and the admin hands over the code. A passkey can't be used on the wrong site, so phishing doesn't work.")
+  // The threshold tile's collapsed value on the demo admin step.
+  const demo = bodiesOf(fixture('demo')).get(ADMINS)
+  assert.ok(demo, 'the demo plan has the admin step')
+  const gate = tilesOf(demo).find((t) => t.key === 'gate')
+  assert.ok(gate, 'the demo admin step has no threshold tile')
+  assert.match(String(gate.value), /^\d{1,3}% of admins phishing-resistant$/)
+  // Where the scan could not work out which admins are held.
+  const P = app.plan as unknown as Record<string, Record<string, string>>
+  assert.equal(P.mfaReadinessHoldUnknown.admin, "Check which admins don't have a phishing-resistant method yet:")
+  assert.equal(P.mfaReadinessLinkUnknown.admin, 'MFA Readiness →')
+  assert.equal(P.mfaReadinessAfterUnknown.admin, undefined, 'nothing follows the admin link')
+  // Entra: the three blocks a conditions correction draws.
+  assert.ok(packageOf(ADMINS).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
+  const entra = channel(ADMINS, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group and aligns the admin roles with the baseline.' })
+  assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
+    { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
+    {
+      kind: 'list', ordered: true, start: 3, items: [
+        ['Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).'],
+        ['Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
+        ['Target resources: All resources.'],
+        ['Grant → Grant access → Require authentication strength: Modern MFA + TAP (the strength you created in the Authentication Strength step).'],
+      ],
+    },
+    { kind: 'list', ordered: true, start: 7, items: [['Save. Do not change the policy state.'], ['Rescan in IAMAI.']] },
+  ])
+  assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
+  const ai = packageOf(ADMINS).blocks['ai.correct'].text
+  assert.match(ai, /^This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in\.$/m)
+  assert.match(ai, /^Unlike the "MFA for Everyone" policy which accepts any MFA method \(including phone call\), this policy uses the authentication strength "Modern MFA \+ TAP" which only accepts phishing-resistant methods and Temporary Access Pass\.$/m)
+  assert.match(ai, /^The 0% threshold means none of your admins currently have a qualifying method registered\. The MFA Registration Campaign step handles getting them registered\. This policy enforces the requirement; the campaign helps people meet it\.$/m)
+  assert.match(ai, /^The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles\.$/m)
+})

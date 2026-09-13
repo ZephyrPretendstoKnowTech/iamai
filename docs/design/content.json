@@ -1293,7 +1293,8 @@
           },
           "readinessValue": {
             "$comment": "The threshold tile's collapsed value, by its measure's family (copy/reasons.ts READINESS_MEASURE): the percentage and what it measures (content review S3). A family with no entry shows the percentage alone.",
-            "mfa": "{value} MFA-ready"
+            "mfa": "{value} MFA-ready",
+            "admin": "{value} of admins phishing-resistant"
           },
           "foundInPlace": "{tenant} already has a policy doing this, so there is nothing to create.",
           "foundInPlaceNamed": "Already delivered by {policies}, so there is nothing to create.",
@@ -1663,13 +1664,13 @@
           "$comment": "Where the scan could not work out who a step's readiness hold reaches (MfaHandoff.tsx), by the hold's family: the line before the link, the link, and any words after it (content review S3).",
           "mfa": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
           "guest": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
-          "admin": "This scan could not work out who cannot meet this step's sign-in requirement yet."
+          "admin": "Check which admins don't have a phishing-resistant method yet:"
         },
         "mfaReadinessLink": "See them in MFA Readiness →",
         "mfaReadinessLinkUnknown": {
           "mfa": "Check MFA Readiness →",
           "guest": "Open MFA Readiness →",
-          "admin": "Open MFA Readiness →"
+          "admin": "MFA Readiness →"
         },
         "mfaReadinessAfterUnknown": {
           "mfa": "for per-person detail."
@@ -3269,7 +3270,7 @@
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
-      "why": "A code or an approval can be tricked out of an admin by a convincing page; a passkey cannot be used on the wrong site.",
+      "why": "Phone codes and push approvals can be phished — an attacker builds a convincing sign-in page and the admin hands over the code. A passkey can't be used on the wrong site, so phishing doesn't work.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa"
       },

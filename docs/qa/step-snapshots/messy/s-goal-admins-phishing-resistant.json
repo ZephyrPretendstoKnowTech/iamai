@@ -15,7 +15,7 @@
   "tiles": [
     {
       "label": "Threshold",
-      "state": "0%"
+      "state": "0% of admins phishing-resistant"
     },
     {
       "label": "Affected people",
