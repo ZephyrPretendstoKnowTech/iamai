@@ -315,7 +315,7 @@ test('the campaign step hands person-level setup to MFA Readiness and keeps its 
     assert.ok(text.includes('Enforcement should change nothing for anyone'), `${name}: the consequence stands`)
     assert.ok(/\d+ (?:people|person) with /.test(text), `${name}: the people the campaign has to reach, counted`)
     assert.ok(/Require Phishing-Resistant MFA for Admins waits on each/.test(text), `${name}: what waits on it`)
-    assert.ok(text.includes('Every admin is Ready for phishing-resistant MFA.'), `${name}: and the admin completion gate`)
+    assert.ok(text.includes('Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.'), `${name}: and the admin completion gate`)
     // The readiness the plan waits on, where this scan measured one at all.
     if (name !== 'messy') {
       assert.ok(/readiness \d+%/.test(text), `${name}: the readiness the plan waits on`)
