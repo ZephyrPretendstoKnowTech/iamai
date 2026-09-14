@@ -396,7 +396,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: a deployable script with no invocation`)
           continue
         }
-        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied)
+        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied, new Set(Object.keys(standIns)))
         if ('missing' in rendered) {
           miss.push(...rendered.missing)
           continue

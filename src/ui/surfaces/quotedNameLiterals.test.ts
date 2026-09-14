@@ -2,7 +2,11 @@
 // U+201B as well as at U+0027, and a correction's -TargetPolicyJson carries the tenant
 // policy's own name. Doubling only U+0027 left "Finance’s MFA policy" unparseable, and a
 // name ending "’; Remove-MgGroup … #" parsed cleanly with Remove-MgGroup as a command.
-// Every PowerShell single-quote character is now doubled in an invocation literal.
+// Review 8 R8-1: doubling the five characters holds only while the text is read as
+// Unicode. A copied script saved without a BOM is read by Windows PowerShell 5.1 in the
+// ANSI code page, where the UTF-8 bytes of "Ñ" (C3 91), "В" (D0 92) or "€" (E2 82 AC)
+// include single quotes, so "Policy Ñ; Remove-MgGroup … #" broke out again. An invocation
+// line is now ASCII alone: JSON carries \uXXXX, other text [char] terms.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { renderInvocation } from '../../content/implementation/invocation.ts'
@@ -15,21 +19,49 @@ import { stepBodyOf } from './stepBody.ts'
 
 const QUOTES = ["'", '‘', '’', '‚', '‛']
 const COMMAND = 'Remove-MgGroup -GroupId 00000000-0000-0000-0000-000000000000'
+// Characters whose UTF-8 bytes include 0x91, 0x92 or 0x82 (single quotes in Windows-1252).
+const ANSI_QUOTES = ['Ñ', 'Ò', 'Â', 'Б', 'В', '€', '‑', '‒']
+const ASCII = /^[\x20-\x7e]*$/
 
-/** A single-quoted PowerShell string read the way its tokenizer reads one: any two quote characters in a row are one character of the value. */
+/** A single-quoted PowerShell string on an ASCII line, read the way its tokenizer reads one: '' is one quote of the value. */
 function readQuoted(line: string, start: number): { value: string; end: number } {
-  assert.ok(QUOTES.includes(line[start]), `no literal at ${start}: ${line.slice(start, start + 20)}`)
+  assert.equal(line[start], "'", `no literal at ${start}: ${line.slice(start, start + 20)}`)
   let value = ''
   for (let i = start + 1; i < line.length; i++) {
-    if (!QUOTES.includes(line[i])) {
+    if (line[i] !== "'") {
       value += line[i]
       continue
     }
-    if (!QUOTES.includes(line[i + 1])) return { value, end: i }
-    value += line[i + 1]
+    if (line[i + 1] !== "'") return { value, end: i }
+    value += "'"
     i++
   }
   assert.fail(`unterminated literal: ${line.slice(start)}`)
+}
+
+/** A literal as renderInvocation writes one: '…', or ('…' + [char]0xXXXX + …), which evaluates to the concatenation. */
+function readLiteral(line: string, start: number): { value: string; end: number } {
+  if (line[start] === "'") return readQuoted(line, start)
+  assert.equal(line[start], '(', line.slice(start, start + 20))
+  let value = ''
+  let i = start + 1
+  for (;;) {
+    if (line[i] === "'") {
+      const q = readQuoted(line, i)
+      value += q.value
+      i = q.end + 1
+    } else {
+      const m = /^\[char\]0x([0-9A-F]{4})/.exec(line.slice(i))
+      assert.ok(m, `not a term: ${line.slice(i, i + 20)}`)
+      value += String.fromCharCode(parseInt(m[1], 16))
+      i += m[0].length
+    }
+    if (line.startsWith(' + ', i)) i += 3
+    else {
+      assert.equal(line[i], ')', line.slice(i, i + 20))
+      return { value, end: i }
+    }
+  }
 }
 
 const SPEC: InvocationSpec = {
@@ -37,26 +69,46 @@ const SPEC: InvocationSpec = {
   parameters: {
     Name: { binding: 'name', modes: ['Create'] },
     Ids: { binding: 'ids', modes: ['Create'] },
+    TargetJson: { binding: 'target.json', modes: ['Create'] },
   },
 }
-const SCRIPT = 'param([Parameter(Mandatory)][string]$Mode, [string]$Name, [string[]]$Ids)'
+const SCRIPT = 'param([Parameter(Mandatory)][string]$Mode, [string]$Name, [string[]]$Ids, [string]$TargetJson)'
 
-test('each PowerShell single-quote character is doubled in an invocation literal, and nothing else changes', () => {
-  for (const q of QUOTES) {
+test('an invocation line is ASCII alone, and every text, list item and JSON value reads back as the value', () => {
+  for (const q of [...QUOTES, ...ANSI_QUOTES, '\u{1F600}', 'Équipe – “Staff”']) {
     const name = `Finance${q}s MFA${q}; ${COMMAND} #`
-    const r = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name, ids: [`g${q}1`, 'g2'] }, new Set())
+    const target = JSON.stringify({ displayName: name })
+    const r = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name, ids: [`g${q}1`, 'g2'], 'target.json': target }, new Set())
     assert.ok('calls' in r)
-    assert.equal(r.calls[0], `Invoke-IAMAIStep -Mode 'Create' -Name 'Finance${q}${q}s MFA${q}${q}; ${COMMAND} #' -Ids @('g${q}${q}1', 'g2')`, `U+${q.codePointAt(0)!.toString(16)}`)
-    const at = r.calls[0].indexOf("-Name '") + '-Name '.length
-    const read = readQuoted(r.calls[0], at)
-    assert.equal(read.value, name)
-    assert.ok(r.calls[0].slice(read.end + 1).startsWith(" -Ids @('"))
+    const call = r.calls[0]
+    const label = `U+${q.codePointAt(0)!.toString(16)}`
+    // Windows PowerShell 5.1 reads the same ASCII bytes whatever the code page.
+    assert.match(call, ASCII, label)
+    const name1 = readLiteral(call, call.indexOf('-Name ') + '-Name '.length)
+    assert.equal(name1.value, name, label)
+    assert.ok(call.slice(name1.end + 1).startsWith(' -Ids @('), label)
+    const id1 = readLiteral(call, name1.end + 1 + ' -Ids @('.length)
+    assert.equal(id1.value, `g${q}1`, label)
+    assert.ok(call.slice(id1.end + 1).startsWith(", 'g2') -TargetJson '"), label)
+    const json = readLiteral(call, call.indexOf('-TargetJson ') + '-TargetJson '.length)
+    assert.equal(json.end, call.length - 1, label)
+    // The JSON stays one quoted literal; ConvertFrom-Json reads \uXXXX as the character.
+    assert.equal(call[call.indexOf('-TargetJson ') + '-TargetJson '.length], "'", label)
+    assert.deepEqual(JSON.parse(json.value), { displayName: name }, label)
   }
-  // Control: double quotes (U+0022, U+201C–U+201E), $(…), backticks and other letters are left as they are.
-  const other = 'Contoso “Staff” "MFA" „x” $(Get-Date) `n Équipe – ok'
-  const r = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name: other, ids: ['a'] }, new Set())
+  // The exact forms.
+  const r = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name: "Ñ Finance's", ids: ['a'], 'target.json': '{"n":"Ñ\'"}' }, new Set())
   assert.ok('calls' in r)
-  assert.equal(r.calls[0], `Invoke-IAMAIStep -Mode 'Create' -Name '${other}' -Ids @('a')`)
+  assert.equal(r.calls[0], `Invoke-IAMAIStep -Mode 'Create' -Name ('' + [char]0x00D1 + ' Finance''s') -Ids @('a') -TargetJson '{"n":"\\u00d1''"}'`)
+  // Control: ASCII text, double quotes, $(…) and backticks are left as they are, one quoted literal.
+  const other = 'Contoso "MFA" $(Get-Date) `n ok'
+  const plain = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name: other, ids: ['a'], 'target.json': '{}' }, new Set())
+  assert.ok('calls' in plain)
+  assert.equal(plain.calls[0], `Invoke-IAMAIStep -Mode 'Create' -Name '${other}' -Ids @('a') -TargetJson '{}'`)
+  // A preview's stand-in is drawn as it reads.
+  const preview = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name: '‹name›', ids: ['a'], 'target.json': '‹target›' }, new Set(), new Set(['name', 'target.json']))
+  assert.ok('calls' in preview)
+  assert.equal(preview.calls[0], `Invoke-IAMAIStep -Mode 'Create' -Name '‹name›' -Ids @('a') -TargetJson '‹target›'`)
 })
 
 const READY = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null } as never)
@@ -88,18 +140,23 @@ function correctionCall(policyName: string): string {
   return calls[0]
 }
 
-test('a handed-over correction whose tenant policy name holds a typographic quote keeps the whole target in -TargetPolicyJson', () => {
+test('a handed-over correction whose tenant policy name holds a quote, or a letter whose UTF-8 bytes read as one in Windows-1252, keeps the whole target in -TargetPolicyJson', () => {
   const names = [
     'Finance’s MFA policy',
     `Policy B’; ${COMMAND} #`,
     `Policy B‚; ${COMMAND}; ‛`,
     `Policy B‘; ${COMMAND}; ’`,
+    `Policy Ñ; ${COMMAND} #`,
+    `Политика В; ${COMMAND} #`,
+    'Contraseñas y ACCESO Ñ',
+    `Policy €‑‒; ${COMMAND} #`,
     // Controls: an ASCII quote (already doubled before R7-1) and a plain name.
     `Policy B'; ${COMMAND}; '`,
     'Policy B',
   ]
   for (const name of names) {
     const call = correctionCall(name)
+    assert.match(call, ASCII, JSON.stringify(name))
     const at = call.indexOf('-TargetPolicyJson ') + '-TargetPolicyJson '.length
     const { value, end } = readQuoted(call, at)
     const target = JSON.parse(value) as { displayName?: string }
