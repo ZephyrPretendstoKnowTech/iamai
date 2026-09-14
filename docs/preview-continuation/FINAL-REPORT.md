@@ -1,134 +1,156 @@
-# Final report: continuation cycle 5, fresh review
+# Final report: continuation cycle 6, fresh review
 
 **Status: CONTINUE.** Not ready for owner review. This does not authorize publication, merge or deployment. No push, deploy, tenant action, script execution or external write was made.
 
 ## Identity
 | Item | Value |
 |---|---|
-| Reviewed HEAD | `c3b3f4135e011f99582d9f831fa2f0a77a42612c` (branch preview-continuation) |
-| Cycle 5 commits | e0163b0 (cycle 4 ledger and review docs), 8332f82, 311b8a9, c4cb5a6, d6d1e30 (code), f1e121f, 4e4eb8d, 1d30b22, c3b3f41 (docs) |
-| Code state | HEAD's code is d6d1e30; `git diff --stat d6d1e30 HEAD` touches RESULTS.md and BLOCKED.md only. Source/test diff `2997bb3..HEAD`: 10 files, +513/−44; package content: guests CONTENT/META, user-risk-medium and service-accounts CONTENT, shared-devices META, registry, LIBRARY.json, one content.json value label |
+| Reviewed HEAD | `0aabf685d71403aa63dbc1a00ee1ffb069dc2ac4` (branch preview-continuation) |
+| Cycle 6 commits | a6c157a (cycle 5 review docs), 6d96531, 2f8a008, ec7bfed (code), 2a91409, 0aabf68 (docs) |
+| Code state | HEAD's code is ec7bfed: `git diff --stat ec7bfed HEAD` touches RESULTS.md and BLOCKED.md only. Source/test diff `a6c157a..HEAD`: stepPackage.ts, StepSections.tsx, registry.generated.json, 8 test files (1 new), 25 correction packages' CONTENT/META, unmanaged-browser, guests META, shared-devices CONTENT, LIBRARY.json |
 | Dirty tree at review start | none (`git status --porcelain` empty); stash empty |
 | Dirty source/test entries | none |
 | Reviewer edits | this report and REVIEW-STATUS.json only; nothing committed |
-| Logs | `../logs/review5/`, outside the clone |
-| Reviewer copies | `../rv-src-c3b3f41` (plain `git archive` of HEAD, no node_modules; acceptance harness byte-identical by `cmp`). `../rv5-src-e0163b0` (`git archive e0163b02` plus HEAD's seven cycle 5 test files); its `node_modules` is a **directory junction** to the clone's, so remove the junction itself and never follow it |
-| Reviewer probes | `../logs/review5/rv5-n1-ro.template.ts` (with `-head`/`-e0163b0` variants), `rv5-ps-render.ts`, `rv5-ps-render-2.ts`, `rv5-guests-partly.ts`, `rv5-guests-json.ts` (with an `-e0163b0` variant). Reruns: `s5-lone-group-admins.ts`, `r2-hold-export.ts`, `s3-matrix.ts`, `../logs/review1/rv-edge.ts` |
+| Logs | `../logs/review6/`, outside the clone |
+| Reviewer copies | `../rv-src-0aabf68`: plain `git archive HEAD`; the junction attempt failed (`junction.txt`), so it has **no** node_modules link. `../rv6-nv-a6c157a`: `git archive a6c157a2` plus HEAD's 8 changed test files. Its `node_modules` holds **copies** (not links) of idb, react, react-dom, scheduler and @azure, taken from the clone |
+| Reviewer probes | `../logs/review6/rv6-removed-name.ts` (new). Reruns: `../logs/review1/rv-edge.ts` (staffGuestExcl, staffExclOtherApp), `s5-lone-group-admins.ts`, `r2-hold-export.ts` SHAPE=lone/tie/all, `s3-matrix.ts curated all`. Inline registry scans (commands in the sections below) |
 
 ## Checks run by the reviewer (exact code state)
 | Check | Command / state | Result |
 |---|---|---|
 | Typecheck | `npx tsc --noEmit` in the clone at HEAD | exit 0, no output (`tsc.txt`) |
-| Full suite | `npm test` (`node --test --test-isolation=none "src/**/*.test.ts"`, package.json unchanged since adae27d) in the clean clone at HEAD, 11:16–11:19 | exit 0: **2744 tests · 2742 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1). Same totals as the fixer's `c5/full-4.txt` (`full.txt`) |
-| Non-vacuity | HEAD's seven cycle 5 test files run against `../rv5-src-e0163b0` (pre-cycle-5 source) | exit 1: **20 of 36 fail**, exactly the cycle 5 assertions: the correctionProjection pin, the N1 packageState test, the heldCorrectionExport screen test, riskNetworkInvocation 8/8, guestsPairInvocation 4/4, the guestsPairBinding positive case (its two controls pass), sharedDevicesPeopleJson 4/4 (`nonvacuity.txt`) |
-| Build | `npm run build` before the walk | see Walk row (`walk.txt`) |
-| Acceptance | `run-acceptance.mjs ../rv-src-c3b3f41` | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance/results.json`, `results.md`) |
-| Matrix | `s3-matrix.ts curated all` at HEAD | exit 0, **0 diff lines** against the fixer's `c5/matrix-5.txt`. Counts: uncalled-template 0, packageFault 0, executable 236, preview 125; the session-lifetime unmanaged `missing=` is still on 15 rows (`matrix.txt`, `matrix-vs-fixer.diff`) |
-| PowerShell parse | reviewer render (`rv5-ps-render*.ts`) + `Parser::ParseFile`, parse only, nothing executed | **13 files, 0 errors**: user-risk-medium Create/CorrectConditions/CorrectGrant/Verify; service-accounts the same four; guests CreateMissing/CorrectPair/Observe/EnforcePair. Each has exactly one call after the body, and no `{{` survives. Enforce is withheld for both single-policy packages (`ps-render.txt`, `ps-render-2.txt`, `ps-parse.txt`, `ps-parse-2.txt`) |
-| C01 original | `s5-lone-group-admins.ts`; `r2-hold-export.ts` SHAPE=lone/tie/all × REV 0/1 | Lone group-admins: `create-report-only`, no update, tracking null, export "Ready · Create", no admins id. Tie: executable update of "Policy B" in both orders. All: `correct` not executable, action line only (`s5-lone.txt`, `hold-export-*.txt`) |
-| Removed exclusions | `rv-edge.ts` at HEAD | staffExclOtherApp / staffGuestExcl are executable `correct`, and the portal/export line names the removal. The viewer's AI Info does not name it (`rv-edge.txt`) |
-| Walk | `npm run build`, then `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` in the clone. Preload re-read: Node fetch and Chrome resolution reach only localhost | build exit 0 (chunk-size warning only, as before); walk exit 0, 11:20–11:25: **0 P0, 495 P1, 50 P2**, "show-ready on this walk (no P0)"; throttled first load 4.7 s (P1, as before). Report `docs/reports/walk-c3b3f41.md` (gitignored) is identical to the fixer's `walk-d6d1e30.md` below the header after stripping digits, apart from the capture directory name (`walk.txt`, `walk-report-diff.txt`) |
-| Scope | `git diff --stat adae27d HEAD` over package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts, page-contracts | Only walk.mjs and page-contracts.json, both from cycle 1 (disclosed then); cycle 5 touches neither. content.json still carries `mailto:feedback@getiamai.com` (:977–978) |
-| Test edits | `git diff e0163b0 HEAD -- '*.test.ts'` | No `.skip`/`.only`/todo added. One assert line removed: correctionProjection's `'partial'` pin, replaced by `'blocked'` plus a premise and a planned assertion, with an in-place comment. highRiskChannels.test.ts is a comment change only |
+| Full suite | `npm test` in the clean clone at HEAD | exit 0: **2752 tests · 2750 pass · 0 fail · 0 cancelled · 2 skipped**. The skips are the Learn-link external health check (EXTERNAL_HEALTH=1) and the HUGE=1 fixture. Same totals as the fixer's `c6/full-4.txt` (`full.txt`) |
+| Non-vacuity | HEAD's 8 changed test files run in `../rv6-nv-a6c157a` (pre-cycle-6 source) | **18 of 61 fail**: removedExclusionChannels 3 of 4 (its control passes); the pinned Save/AI texts in mfaAuthContentSpecs (4 tests) and sessionAdminContentSpecs (2); pilot's carried-whole test; guests R5-1 "no JSON body with no request"; the authored-package keep-state scan. The new report-only N1 pin (packageState) and the partly deployed pair pin pass there, as expected for pins of behaviour cycle 5 already had. Each has a premise and a control that execute. conditionsInvocation passes (it only filters an absent line). First run: `nonvacuity.txt`, where 5 files did not load for lack of `idb`. Rerun of those 5 with copied packages: `nonvacuity-2.txt` |
+| Test edits | `git diff a6c157a HEAD -- '*.test.ts'` | No `.skip`/`.only`/todo added. Three assert lines were replaced, each by a narrower form: pilot's carried-whole, now with the optional line filtered, plus a premise and a not-drawn check; block-device-code `^param\(`, now anchored to the removal line and then `param(`; block-legacy-auth's exact AI text, extended by the paragraph. All match RESULTS' disclosure |
+| Build | `npm run build` | exit 0, chunk-size warning only (`build.txt`) |
+| Acceptance | `node ../rv-src-0aabf68/docs/preview-continuation/acceptance/run-acceptance.mjs ../rv-src-0aabf68 ../logs/review6/acceptance` (harness byte-identical by `cmp`) | **28 PASS · 0 FAIL · 0 HARNESS_ERROR**, exit 0 (`acceptance.txt`, `acceptance/results.json`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` at HEAD | exit 0. **0 diff lines** against the fixer's `c6/matrix-1.txt` (`matrix-vs-fixer.diff`). executable 236, preview 125, uncalled-template 0, packageFault 0. The session-lifetime unmanaged key is still on 15 rows, and all 20 all-users-no-persistence renders are previews |
+| C01 original | `s5-lone-group-admins.ts`; `r2-hold-export.ts` SHAPE=lone/tie/all | Lone group-admins: `create-report-only` executable, no update, tracking null, export "Ready · Create", `ids=[]`. Tie: executable `correct`. All: `correct` not executable (`blocked`), preview note "not ready to run". Unchanged from review 5 (`s5-lone.txt`, `hold-export-*.txt`) |
+| Removed exclusions | `rv-edge.ts` CASE=staffGuestExcl / staffExclOtherApp | Both removal sentences are drawn ("…removes guest or external users…", "…removes Office 365 Exchange Online…"), 4 occurrences each across Entra, PowerShell, AI Info and export (`rv-edge.txt`) |
+| Removal-line placement | registry scan (`removed-line-placement.txt`) | In all 25 packages the Entra line is in `sharedAfter`; for guests it is in the pair's only module. The AI Info line is top-level, and the script line is in the one `powershell.run` block every mode calls. So the line is drawn with any selected correction module: no module combination loses it |
+| PowerShell parse | reviewer render + `Parser::ParseFile`, parse only, nothing executed | The R6-1 render below: 11 errors (`rv6-removed-name-parse.txt`). Not repeated for the fixer's 156-file unbound/bound set, whose sample name has a quote but no line break |
+| Walk | `npm run build`, then `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` in the clone at HEAD (12:19–12:23). Preload re-read: Node fetch and Chrome resolution reach only localhost | walk exit 0: **0 P0, 495 P1, 50 P2**; throttled first load 4.7 s (P1, as before). Report `docs/reports/walk-0aabf68.md` (gitignored) is identical to the fixer's `walk-ec7bfed.md` below the header after stripping digits, apart from the capture directory name (`walk.txt`, `walk-report-diff.txt`) |
+| Scope | `git diff --stat a6c157a HEAD` over package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts, page-contracts, docs/design/content.json | empty. content.json still carries `mailto:feedback@getiamai.com` (:978) |
 
-## Queue verdicts (review 4 queue)
+## Queue verdicts (review 5 queue)
 
-### 1. N1, held correction handed over on screen: FIXED
-- stepPackage.ts `waitsOnEmergencyAccess` (a step blocker on a `GATING_SUBJECTS` step, or `action.escapeHatch`) now blocks the "correction owed → partial" branch. The U19 add-only branch above it is unchanged, and `plannedPackageStateOf` still plans the correction as `partial`.
-- **Reviewer probe** (`rv5-n1-ro-head.txt` vs `rv5-n1-ro-e0163b0.txt`): a correction that removes an exclusion, gated on break-glass or on the exclusions group, for an enforced or a report-only policy:
-  - e0163b0: `partial` while `nextSafeAction` was `{correct, executable:false, blockedBy:"blocked"}`. The screen contradicted the action.
-  - HEAD: `blocked`, planned `partial`, `nextSafeAction` unchanged.
-  - Ungated controls stay `partial` and executable in both.
-- Matrix: only the two curated demo rows changed (fixer's `matrix-1.diff`; the reviewer's matrix is identical).
-- **Browser:** the fixer's correction of review 4 is right. `src/ui/demoFacts.ts:19` builds the browser demo on `fixture('demo')` (plain), so the walk never drew the curated N1 shape. Review 4's reading of the step-09 capture as an executable hand-over was inaccurate for the browser; the defect was real on the curated fixture and on answered mappings.
-- **Observation (low):** the guard also holds a report-only policy's non-U19 correction. That now agrees with `nextSafeAction`, which already held it at e0163b0, so it is not a new hold on the step. But the in-code comment "every correction but U19's can lock someone out" is not true of a report-only policy. The report-only gated case is not pinned by a test.
+### 1. Removed exclusions in executable channels: FIXED, with a new defect in the binding (R6-1)
+- `removedExclusionNames` (stepPackage.ts:200) uses the same words as stepPortal.ts:299. It is bound as `policy.current.removedExclusions` when the step has exactly one planned operation, and per member in `memberBindings`. `op` is `plannedOperationsOf(step)[0]` (:414), the same single operation, and `removes` is computed from that update's own body (generate.ts:587).
+- Evidence: rv-edge at HEAD, the placement scan, and non-vacuity 3 of 4 (all above). A correction that keeps every exclusion draws no line and no marker (the test's control passes on old and new source).
+- The JSON channel carries no prose, as disclosed; the Entra, AI Info, script, portal and export lines name the removal.
+- **But** the name is bound verbatim into a PowerShell `#` comment. See R6-1.
 
-### 2. Commit hygiene: FIXED
-- e0163b0 committed the cycle 4 ledger and review, and RESULTS records the correction.
-- The review started on a clean tree, as RESULTS' end-of-cycle note says.
+### 2. shared-devices: Create note FIXED; the Enforce reference is kept (agreed, low)
+- s-shared-devices/CONTENT.md:123: "The PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies."
+- `readyToEnforce` still names the withheld Enforce run, as user-risk-medium and service-accounts do. The reason is declared in `withheldModes`. Not a hand-over.
 
-### 3. Uncalled or withheld scripts: FIXED (matrix `uncalled-template` 13 → 0)
-- **user-risk-medium, service-accounts-trusted-network (311b8a9):**
-  - `deployableAfterBinding` with declared invocations; `[string[]]` parameters replace the JSON text and the `'{{binding}}'` defaults; `withheldModes.Enforce` carries its reason.
-  - The reviewer read every mode's body against its bound parameters. user-risk-medium's `AssertCanonical` never reads exclusions, and service-accounts' Verify passes the group and trusted locations its `AssertCanonical` reads.
-  - Create passes no policy id, and no call writes state outside Create (report-only).
-- **Guests pair (c4cb5a6):**
-  - `policies.guests.targets.json` is bound only when every member resolved whole.
-  - `CreateMissing` passes no ids, so the script would create both members. The reviewer checked that this cannot duplicate: a set with one member present reads `partial` (stepPackage.ts:250, `partlyDeployed`), which calls CorrectPair. With the new member's id unbound, the script is withheld (`rv5-guests-partly.txt`: `degraded powershell(policies.guests.strong.current.id)`).
-  - ApplyPartnerTrust is withheld with its reason. EnforcePair has no attestation switch; it re-reads both policies as canonical and report-only before enabling, as the mfa-all-users precedent does.
-- **Observation (not a defect):** with `policy.target.excludeGroups` bound to `[]`, the service-accounts script, Create included, is held as a missing binding (`ps-render.txt`). Plans always carry the exclusions group, and the binding was referenced before cycle 5 too.
+### 3. Guests pair JSON (R5-1): FIXED
+- `json.target-pair` and `json.enforce-pair` are out of the projections. The new test fails on pre-cycle-6 source and passes at HEAD.
+- The matrix moves only the two getiamai guests rows (the JSON degraded entry is gone), identical to the fixer's.
 
-### 4. getiamai guests-mfa single resolution: fixer's reading SUPPORTED
-- fixtures/index.ts:723–725 builds non-demo fixtures on `syntheticBaseline(seed)`, so a single stand-in resolution binds neither pinned member.
-- Matrix rows: getiamai and getiamai+curated `missing · executable · portal:- ps:- json:- ai:+`.
-- The reviewer did not re-read the pinned goal map's member ids.
+### 4. Board Ready vs blocked, 7: REMAINS (not started)
+No lane or nextSafeAction code changed in cycle 6 (the diff is stepPackage bindings and comment, StepSections spacing, content). Not rerun. The fixer's 2f8a008 probe reads `{"steps":107,"boardReadyBlocked":7,"noLaneReadyBlocked":7}`.
 
-### 5. Removed exclusions in the viewer's Entra/AI Info tabs and script/JSON: REMAINS (not started)
-- Evidence: `rv-edge.txt` at HEAD (above).
-- Cycle 5 widened where it matters. user-risk-medium and service-accounts `CorrectConditions`, and guests `CorrectPair`, are now called scripts. Each PATCHes whole `conditions`/`users` objects, so a tenant exclusion the target lacks is removed by a drawn, copyable call that does not name it.
-- The step's portal/export lines still name removals (ebb9633).
+### 5. Package gaps: REMAIN
+- **session-lifetime unmanaged member (medium):** investigated, not fixed.
+  - The reviewer's matrix still shows 15 rows with `policies.session.unmanaged.target.displayName` missing, and every all-users-no-persistence render is a preview.
+  - The fixer's reading is supported by the code read here: `memberBindings` skips a member with no stable id, and the unmanaged member has `memberStableId: null`, so a required binding can never bind.
+  - The proposed next step (make the unmanaged bindings optional, withhold only its runs with a stated reason, keep the pinned browser member executable) fits RUN-CONTEXT ("keep independently valid instructions usable… accurately explain unresolved values"). It is not an owner decision.
+  - The reviewer did not re-read `PINNED_GOAL_MAP` itself.
+- Not started: register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
 
-### 6. shared-devices: JSON FIXED; script note and dangling Enforce reference REMAIN
-- d6d1e30 removes the requestless `json.people-patches` from both projections (non-vacuity 4/4). `entra.people-exclusions` stays.
-- The called PowerShell Create is still silent about the people-policy exclusions, and `readyToEnforce` still names the withheld Enforce run (lint error).
+### 6. N1 follow-ups: comment and pins FIXED; release question open (low)
+- The stepPackage.ts comment now separates the enforced and report-only readings.
+- The report-only pin reads `blocked` under a break-glass wait, with `nextSafeAction` not executable as its premise and an ungated `partial` control.
+- The partly deployed pair withholds only the script, on `policies.guests.strong.current.id`.
+- Whether a report-only policy's correction should be released under the wait (§18.3) is still unchanged. The current hold is the conservative, consistent reading on screen, in the action and in the export, so it is not a material defect.
 
-### 7. Board Ready vs blocked (7): REMAINS
-Not rerun by the reviewer: no lane code changed since the fixer's d6d1e30 run (`export-lane-2.txt`: 7/7; rv-parity identical to cycle 4).
+### 7. Low items: REMAIN
+Unprojected lifecycle/ReportOnly/Location leftovers (shared-devices' `entra.correct.lifecycle`/`json.report-only` included); same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry; guests pair not rendered end to end by a fixture; real-login latency not claimed.
 
-### 8. Package gaps: REMAIN
-- session-lifetime unmanaged displayName and `excludeUsers` (15 matrix rows).
-- register-info-protected `policy.target.mode`.
-- pim-activation-reauth authContext/strength, and the pim grant+session floor test.
-
-### 9. Low items: REMAIN
-Export "before" line under a hold (reassessed by the fixer as prose parity; agreed); unprojected lifecycle/ReportOnly/Location leftovers (the three packages changed this cycle still carry a `ReportOnly` mode); same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry; real-login latency not claimed.
+### New in cycle 6, fixer finding: unmanaged-browser authored staging: FIXED (content only; never drawn)
+- The diff removes the StageA/StageB runs, the `Stage` function, the "Refusing correction while policy is On" guard and the staging prose. It states the effect in Entra and AI Info, and closes the final `foreach` brace.
+- The authored keep-state scan fails on pre-cycle-6 source and passes at HEAD.
+- The package's Partial projection is still withheld in the registry, so none of this reaches a screen.
 
 ## New findings
-- **R5-1 (low-medium, pre-existing): the guests pair JSON is never drawn.**
-  - `json.target-pair` (missing, partial) and `json.enforce-pair` (readyToEnforce) are `template` JSON blocks with no request.
-  - With every pair value bound, the JSON channel is `invalid` ("a JSON body with no request") in those three states, at HEAD and identically at e0163b0 (`rv5-guests-json.txt`, `rv5-guests-json-e0163b0.txt`).
-  - Entra, PowerShell and AI Info are still drawn. stepBody.ts:317–328 shows `packageFault` only when the whole projection is held, so the JSON tab is simply absent.
-  - `json.enforce-pair`'s body `{"state":"enabled","applyTo":"both canonical guest policy IDs…"}` is not a Graph request body.
-  - No fixture reaches this state (queue 4), so the matrix cannot show it. Same class as shared-devices' `json.people-patches`.
-- **R5-2 (low): N1 comment and missing pin for report-only** (queue 1 observation).
+
+### R6-1 (medium, introduced in cycle 6, locally actionable): a tenant name with a line break leaves the script comment and becomes code in a copyable script
+**Before and after.** Cycle 6 is the first time tenant free text is bound inside a PowerShell script body.
+- At a6c157a, 0 registered `powershell` blocks contain a `{{binding}}`. Every value reached scripts through invocation.ts `literal()`, as single-quoted strings, where a line break stays inside the string.
+- At HEAD, 25 blocks do, all `# This change removes {{…removedExclusions}} …`.
+- The guests pair's lines also bind `{{policies.guests.<role>.current.displayName}}`, the tenant policy's own name.
+- The inline registry scan is in the review log.
+
+**Data path.**
+- names.ts `put` stores directory display names as read, with no normalising.
+- `removedExclusionNames` maps ids through `nameOf`.
+- project.ts `bindText` → `formatValue` inserts strings verbatim, with no per-format escaping.
+
+**Reproduction** (`../logs/review6/rv6-removed-name.ts`, output `rv6-removed-name.txt`):
+- Shape: rv-edge's staff policy (curated demo-week2, enforced, `excludeGroups: [exclusions group, X]`). Group X's `displayName` in the fixture's group map is `"Contractors\nRemove-MgGroup -GroupId 00000000-0000-0000-0000-000000000000"`.
+- `label(X)` returns the name with the line break.
+- The operation is `update` with `removes.ids=[X]`, and `previewNote` is null: the correction is handed over, not previewed.
+- The drawn PowerShell artifact reads:
+  ```
+  function Invoke-IAMAIStep {
+  # This change removes Contractors
+  Remove-MgGroup -GroupId 00000000-0000-0000-0000-000000000000 from the policy's exclusions. …
+  param(
+  ```
+- Parse only (`rv6-removed-name-parse.txt`): 11 errors. The function's `ParamBlock` is null, `Remove-MgGroup` is a `CommandAst` in the function body, and the invocation line and closing brace no longer parse.
+- The Entra Save item, AI Info and export line split the same way. That is prose, but the Save item's second half falls out of the numbered list. The export sentence existed before cycle 6 (ebb9633); the script comment did not.
+- `MODE=nameOf` (a `ctx.nameOf` returning the same text) gives the identical render.
+
+**Not verified.** Whether Entra/Graph accepts a line break in a group, application or policy display name. A web search was inconclusive, and no tenant was touched. The product does no normalising either way, and a script the technician runs should not depend on that.
+
+**Next.**
+- Normalise line breaks and other control characters (at least `\r`, `\n`, `\u0085`, `\u2028`, `\u2029`) in values bound into free text. Doing it in `bindText` for every non-JSON format, or at least `powershell` and list-item markdown, covers the guests `current.displayName` too.
+- Leave invocation literals as they are.
+- Pin it:
+  - a removal name and a guests policy name with `\n`, `\r\n` and `\r`: the rendered script keeps one comment line and its `param(` block;
+  - a parse-only check (or an AST-free assertion that no bound line starts outside the comment);
+  - the Save item stays one list item.
+
+### R6-2 (low, observation): the removal line is bound only when a step has exactly one planned operation
+A non-member package whose step plans two operations gets no line (`plannedOperationsOf(step).length === 1`). stepPortal.ts' portal line uses the same single-operation reading, so the channels agree. The guests and session sets bind per member. No registered correction package was found that plans two operations without members (unmanaged-browser's Partial projection is withheld). Record only.
 
 ## Missing tests
-- N1 guard for a report-only policy under an emergency-access wait (behaviour verified by probe, unpinned).
-- Guests pair with one member present: script withheld on the new member's id (probe only).
-- Guests pair rendered end to end from a fixture that resolves both pinned members (fixer disclosed; unit and keyed-step tests only).
-- Removed-exclusion disclosure in the called scripts and viewer tabs (queue 5, not started).
+- Line breaks and control characters in names bound into script, Entra and AI text (R6-1).
+- session-lifetime: a curated render whose browser member is executable and whose unmanaged reason is stated (after the fix).
+- Guests pair rendered end to end from a fixture resolving both pinned members.
+- The 4 report-only Ready-but-blocked watches' action line.
 
 ## Scope and feature preservation
-- **Tabs and channels:** matrix identical to the fixer's. Cycle 5 moved 17 rows against cycle 4 (2 N1, 10 invocation, 5 guests) and 8 shared-devices degraded lists, all classified in RESULTS. No drawn channel was removed except where a value is unbound: getiamai guests PowerShell, as Entra and JSON already were.
-- **Enabled-policy state:** no new correction call writes state. user-risk-medium and service-accounts Correct* PATCH conditions, grant or session only; guests CorrectPair writes name, conditions, grant and session, never state; Create writes report-only.
-- **Safety:** under an emergency-access wait, only U19 add-only corrections stay executable.
-- **Notice and baseline:** the Connect beta notice and `feedback@getiamai.com` link are unchanged; the Jon Hope baseline is untouched.
-- **Tests:** narrow, disclosed pin change; no suppression.
+- **Tabs and channels:** the matrix is identical to the fixer's. Cycle 6 moved exactly the 2 getiamai guests rows (JSON degraded entry gone); no drawn channel was removed.
+- **Enabled-policy state:** no correction call writes state. unmanaged-browser's authored Correct now PATCHes name, conditions, grant and session only (not projected). The keep-state scans pass at HEAD.
+- **Safety:** C01 lone/tie/all unchanged and correct. Removed exclusions are now disclosed beside every executable correction channel except JSON, which carries no prose.
+- **Notice and baseline:** the Connect beta notice and the `feedback@getiamai.com` link are unchanged; baselines are untouched.
+- **Tests:** narrow, disclosed pin changes; no suppression.
 
 ## Genuine owner choices
-None. Every remaining item is routine under RUN-CONTEXT: missing disclosure, missing binding, requestless JSON blocks, a stale comment, missing tests.
+None. R6-1 is a routine bug fix, as are session-lifetime (optional member with a stated reason), the 7 Ready-but-blocked action lines, the package gaps and the report-only release reading. Each is routine under RUN-CONTEXT.
 
 ## Queue for the next fixer (in order)
-1. **Removed exclusions in executable channels (medium, now wider).**
-   - Bind `PolicyOperation.removes` (e.g. `policy.current.removedExclusions`, names) into each correction module's Entra save block and AI Info.
-   - Say it beside the called CorrectConditions/CorrectPair scripts (user-risk-medium, service-accounts, guests pair, and every other `policy.target.json` correction).
-   - Pin it with rv-edge's staffGuestExcl and staffExclOtherApp shapes.
-2. **shared-devices (medium/low).** A Create-path Entra/AI line saying the people-policy exclusions are the separate Entra step; drop the withheld Enforce run from `readyToEnforce` or record the lint error's reason.
-3. **Guests pair JSON (R5-1).** Take the requestless `json.target-pair`/`json.enforce-pair` out of the projections (as d6d1e30 did), or give per-member requests. Pin it with a both-members-bound projection.
-4. **Board Ready vs blocked, 7 (medium).** For the 4 report-only watches, decide whether the action line names what the watch waits on.
-5. **Package gaps.** session-lifetime unmanaged displayName/`excludeUsers`; register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
-6. **N1 follow-ups (low).**
-   - Correct the stepPackage.ts comment for report-only policies, and pin the report-only gated case.
-   - Check whether `nextSafeAction` should release a report-only policy's correction under an emergency wait (§18.3 "exclusions gate enforced CA, never report-only"). If so, change screen and action together.
-   - Pin the partly-deployed guests pair's withheld script.
-7. **Low.** Unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry.
-8. **Verification after changes.** Full suite, typecheck, build, matrix, PowerShell parse of changed scripts, acceptance 28/28, and a walk that completes and writes its report at the committed state.
+1. **R6-1, name normalising in bound text (medium, new).** Normalise line breaks and control characters in free-text bindings, covering the script `#` lines (25 packages, and the guests `current.displayName`) and the Entra/AI list items. Pin it with `\n`, `\r\n` and `\r` names, a parse-only check of the rendered script, and a control that a normal name renders unchanged. Re-parse the 39 script blocks with a line-break sample.
+2. **session-lifetime unmanaged member (medium).**
+   - Make the unmanaged bindings optional, and give its Entra/AI lines `[omit this line when unavailable]`.
+   - Withhold only its script runs, with "no pinned unmanaged-device session policy".
+   - Pin a curated render with an executable browser create that never names the unmanaged member. Check `policy.target.excludeUsers` on that render at the same time.
+3. **Board Ready vs blocked, 7 (medium).** For the 4 report-only watches, the action line names what the watch waits on. The 3 enforced demo holds stay; that is the safe reading.
+4. **Package gaps:** register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
+5. **Report-only correction under an emergency-access wait (low).** Either release it in `nextSafeAction` and `packageStateOf` together, reversing the packageState pin, or record why §18.3 does not apply.
+6. **Low:** unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry.
+7. **Verification after changes:** full suite, typecheck, build, matrix, PowerShell parse of changed scripts (including a line-break sample), acceptance 28/28, and a walk at the committed state.
 
 ## Walk
-- Reviewer walk at HEAD (code = d6d1e30): **0 P0, 495 P1, 50 P2**, the same findings as the fixer's c4cb5a6 and d6d1e30 walks and review 4's 2997bb3 walk.
-- The walk draws the plain demo (`demoFacts.ts:19`), so it does not exercise N1, the guests pair or the new invocations. For those, the evidence is the matrix, the probes and the tests above.
+- Reviewer walk at HEAD (code = ec7bfed): **0 P0, 495 P1, 50 P2**, the same findings as the fixer's ec7bfed walk and the cycle 5 walks. The 3 long-sentence P1s that 2f8a008 added are gone; the plain demo's MFA and device-code planning previews still draw the removal line.
+- The walk draws the plain demo (`demoFacts.ts:19`), so it does not exercise R6-1, the guests pair or rv-edge's shapes. For those, the evidence is the probes, the matrix and the tests above.
 
 ## Working tree after review
-- ` M docs/preview-continuation/FINAL-REPORT.md` and ` M docs/preview-continuation/REVIEW-STATUS.json` (this review, uncommitted as REVIEW.md requires). HEAD is still `c3b3f413…`; stash empty.
-- Gitignored outputs written: `dist/`, `docs/reports/walk-c3b3f41.md`, `walk/c3b3f41/`.
-- Outside the clone: `../logs/review5/`, `../rv-src-c3b3f41/`, `../rv5-src-e0163b0/` (node_modules junction; see Identity).
+- ` M docs/preview-continuation/FINAL-REPORT.md` and ` M docs/preview-continuation/REVIEW-STATUS.json` (this review, uncommitted as REVIEW.md requires). HEAD is still `0aabf685…`; stash empty.
+- Gitignored outputs written: `dist/`, `docs/reports/walk-0aabf68.md`, `walk/0aabf68/`.
+- Outside the clone:
+  - `../logs/review6/`, including the rendered `rv6-removed-name-*.ps1`, parsed only and never executed;
+  - `../rv-src-0aabf68/`, a plain archive with no junction;
+  - `../rv6-nv-a6c157a/`, whose node_modules holds copied packages, not links.
