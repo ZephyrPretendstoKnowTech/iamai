@@ -49,7 +49,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
   assert.ok(packageOf(SESSION).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(SESSION, ['entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction adds the exclusions group.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
@@ -65,7 +65,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
   const ai = packageOf(SESSION).blocks['ai.correct'].text
   assert.match(ai, /^This policy shortens how long an admin's session stays valid\. After the sign-in frequency interval, the admin is prompted to re-authenticate\.$/m)
   assert.match(ai, /^This protects against token theft: even if an attacker steals an admin's session token, it expires quickly\. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have\.$/m)
-  assert.match(ai, /^The correction on this step adds the exclusions group so emergency access accounts are not affected by the session limit\.$/m)
+  assert.match(ai, /^The correction on this step changes only what IAMAI found different from the baseline\. The exclusions group in the target keeps emergency access accounts out of the session limit\.$/m)
   assert.match(ai, /^The persistent browser session control ensures admin sessions are not remembered across browser closures\.$/m)
   // Done when is unchanged.
   assert.equal(stepWords('admin-session').doneEnd, "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.")
