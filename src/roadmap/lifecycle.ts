@@ -34,8 +34,20 @@ import { holdOf } from './holds.ts'
 import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
+import { GATING_SUBJECTS, blockerStepId } from './blockerSteps.ts'
 
 const MILESTONE = engine.milestone
+
+/**
+ * True when every wait the step names is on an emergency-access foundation
+ * (roadmap/blockerSteps.ts GATING_SUBJECTS), the waits that gate a policy's
+ * enforcement and nothing before it. Read at call time: blockerSteps.ts imports
+ * this module.
+ */
+function waitsOnlyOnEmergencyGate(step: Step): boolean {
+  const gate = new Set(GATING_SUBJECTS.map(blockerStepId))
+  return step.blockers.length > 0 && step.blockers.every((b) => b.kind === 'step' && gate.has(b.stepId))
+}
 
 /** The Conditional Access lifecycle. `null` on a step that deploys no policy: a prerequisite is not a stage of one. */
 export type Lifecycle = 'not-deployed' | 'report-only' | 'ready-to-enforce' | 'enforced'
@@ -324,6 +336,18 @@ export function nextMilestone(step: Step): Milestone {
     }
     const label = gate ? fillText(MILESTONE.prepareHeld, { measure: gate.measure, threshold: gate.threshold }) : MILESTONE.prepareHeldOther
     return { kind: 'deploy', label, at: null, gatedBy: step.blockedReason }
+  }
+  // Not held, not deployed, and waiting only on the emergency-access foundations:
+  // those gate turning a policy on, never its report-only creation (A3 B3; §18.3),
+  // and the lanes already read it Ready · Create (ui/surfaces/planLanes.ts observe).
+  // A wait on a step is sequencing, not a hold (Step 4), so the branch above never
+  // saw it, and "Clear what this step is waiting on" sat over the create it hands over.
+  if (hold === null && s.condition === 'blocked' && s.lifecycle === 'not-deployed' && implementationOffered(step) && waitsOnlyOnEmergencyGate(step)) {
+    const scheduled = step.scheduled ? scheduleOf(step) : null
+    if (scheduled?.class === 'scheduled' && scheduled.transition === 'createReportOnly' && scheduled.at !== null) {
+      return { kind: 'deploy', label: fillText(MILESTONE.prepareScheduledGated, { date: absoluteDate(scheduled.at) }), at: scheduled.at, gatedBy: step.blockedReason }
+    }
+    return { kind: 'deploy', label: MILESTONE.prepareGated, at: null, gatedBy: step.blockedReason }
   }
   if (hold !== null) return { kind: 'resolve', label: MILESTONE.resolve, at: null, gatedBy: step.blockedReason }
   if (s.lifecycle === 'ready-to-enforce') return { kind: 'enforce', label: MILESTONE.enforce, at: step.events?.enforce.at ?? null, gatedBy: null }

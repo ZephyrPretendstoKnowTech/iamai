@@ -254,6 +254,8 @@
         "prepareHeldOther": "Create the policy in report-only now; it is not turned on while this step is held.",
         "prepareScheduled": "Create the policy in report-only on {date}; turning it on waits for {measure} to reach {threshold}.",
         "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
+        "prepareGated": "Create the policy in report-only now; it is not turned on until emergency access is sorted.",
+        "prepareScheduledGated": "Create the policy in report-only on {date}; it is not turned on until emergency access is sorted.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
         "correct": "Correct the existing policy with the changes listed. If it is On, they apply to sign-ins as soon as you save.",
