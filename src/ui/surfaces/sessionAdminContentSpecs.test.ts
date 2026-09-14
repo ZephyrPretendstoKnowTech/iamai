@@ -60,7 +60,8 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
       ],
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is.'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 3 (review 2): and says what saving does to a policy that is On — adding the exclusions group exempts its members at once.
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI's canonical target|canonical|stable tenant ID/)
   const ai = packageOf(SESSION).blocks['ai.correct'].text

@@ -30,7 +30,7 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Display na
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Leave **Enable policy** as it is.
+5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
 6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
@@ -143,6 +143,8 @@ This policy blocks authentication transfer — the flow where a QR code or link 
 Attackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device. Blocking the flow stops this attack entirely.
 
 The correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency.
+
+The policy keeps its current state. If it is On, the correction applies as soon as you save: members of the exclusions group can use authentication transfer again. Anyone the corrected policy newly includes is blocked from it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -29,7 +29,7 @@ Rename the same stable policy to **{{policy.target.displayName}}** only when nam
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Leave **Enable policy** as it is.
+5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
 6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
@@ -126,6 +126,8 @@ This protects against token theft: even if an attacker steals an admin's session
 The correction on this step changes only what IAMAI found different from the baseline. The exclusions group in the target keeps emergency access accounts out of the session limit.
 
 The persistent browser session control ensures admin sessions are not remembered across browser closures.
+
+The policy keeps its current state. If it is On, the correction applies as soon as you save: members of the exclusions group leave the session limit. An admin the corrected policy newly includes is asked to sign in again once the interval passes.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

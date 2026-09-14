@@ -30,7 +30,7 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Display na
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Leave **Enable policy** as it is.
+5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
 6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 

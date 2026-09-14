@@ -1072,7 +1072,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -1247,7 +1247,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy shortens how long an admin's session stays valid. After the sign-in frequency interval, the admin is prompted to re-authenticate.\n\nThis protects against token theft: even if an attacker steals an admin's session token, it expires quickly. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have.\n\nThe correction on this step changes only what IAMAI found different from the baseline. The exclusions group in the target keeps emergency access accounts out of the session limit.\n\nThe persistent browser session control ensures admin sessions are not remembered across browser closures.\n"
+          "text": "This policy shortens how long an admin's session stays valid. After the sign-in frequency interval, the admin is prompted to re-authenticate.\n\nThis protects against token theft: even if an attacker steals an admin's session token, it expires quickly. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have.\n\nThe correction on this step changes only what IAMAI found different from the baseline. The exclusions group in the target keeps emergency access accounts out of the session limit.\n\nThe persistent browser session control ensures admin sessions are not remembered across browser closures.\n\nThe policy keeps its current state. If it is On, the correction applies as soon as you save: members of the exclusions group leave the session limit. An admin the corrected policy newly includes is asked to sign in again once the interval passes.\n"
         },
         "ai.observe": {
           "meta": {
@@ -1879,7 +1879,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in.\n\nUnlike the \"MFA for Everyone\" policy which accepts any MFA method (including phone call), this policy uses the baseline's authentication strength \"Modern MFA + TAP\", which accepts phishing-resistant methods and also a Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.\n\nWhether your admins have a qualifying method registered is shown on MFA Readiness, not by this policy. The MFA Registration Campaign step helps them register one. This policy enforces the requirement; the campaign helps people meet it.\n\nThe correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.\n"
+          "text": "This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in.\n\nUnlike the \"MFA for Everyone\" policy which accepts any MFA method (including phone call), this policy uses the baseline's authentication strength \"Modern MFA + TAP\", which accepts phishing-resistant methods and also a Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.\n\nWhether your admins have a qualifying method registered is shown on MFA Readiness, not by this policy. The MFA Registration Campaign step helps them register one. This policy enforces the requirement; the campaign helps people meet it.\n\nThe correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.\n\nThe policy keeps its current state. If it is On, the correction applies as soon as you save. An admin the corrected role list newly includes must use a method this strength accepts at their next sign-in.\n"
         },
         "ai.observe": {
           "meta": {
@@ -2900,7 +2900,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -3075,7 +3075,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This policy blocks authentication transfer — the flow where a QR code or link moves an authenticated session from one device to another without re-authenticating.\n\nAttackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device. Blocking the flow stops this attack entirely.\n\nThe correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency.\n"
+          "text": "This policy blocks authentication transfer — the flow where a QR code or link moves an authenticated session from one device to another without re-authenticating.\n\nAttackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device. Blocking the flow stops this attack entirely.\n\nThe correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency.\n\nThe policy keeps its current state. If it is On, the correction applies as soon as you save: members of the exclusions group can use authentication transfer again. Anyone the corrected policy newly includes is blocked from it.\n"
         },
         "ai.observe": {
           "meta": {
@@ -3504,7 +3504,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
