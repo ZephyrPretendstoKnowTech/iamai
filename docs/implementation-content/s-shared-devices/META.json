@@ -156,27 +156,6 @@
             }
           ]
         },
-        "lifecycle.report-only": {
-          "select": {
-            "equals": [
-              "policy.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "entra": [
-            "entra.correct.lifecycle"
-          ],
-          "json": [
-            "json.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnly"
-            }
-          ]
-        },
         "people-policy-exclusions": {
           "select": {
             "present": "peoplePolicies.resolvedPatches"

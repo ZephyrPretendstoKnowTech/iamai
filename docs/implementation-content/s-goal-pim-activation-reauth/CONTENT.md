@@ -17,7 +17,7 @@ Entra admin center → Entra ID → Conditional Access → Policies → New poli
 Save, read back, and rescan IAMAI. Do not configure PIM role settings yet.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the IAMAI-resolved authentication context or Conditional Access policy identified by the mismatch. For CA corrections, confirm the stable tenant policy ID before saving and keep/return it to Report-only while material mismatches remain.
+Open the IAMAI-resolved authentication context or Conditional Access policy identified by the mismatch. For CA corrections, confirm the stable tenant policy ID before saving and keep its current state.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.context","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Set the resolved authentication context to the intended name/description and Published/available state. Keep its stable context ID unchanged.
@@ -42,6 +42,8 @@ Set the CA policy to Report-only while material corrections are being validated.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save only the selected correction(s), read back by stable ID, and rescan IAMAI. PIM role settings remain unchanged until the CA policy is canonical and On.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Leave the CA policy in Report-only while reviewing its exact context target, strength, exclusions, and Every time session control. Use Conditional Access What If where useful. Do not configure the PIM role authentication-context rule yet: Microsoft's current guidance says the backup MFA mechanism is not triggered when the matching CA policy is Report-only.
@@ -308,6 +310,8 @@ LIMIT
 `Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
 
 Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**

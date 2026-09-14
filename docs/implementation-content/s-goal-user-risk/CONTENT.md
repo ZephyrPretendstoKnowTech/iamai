@@ -53,6 +53,8 @@ Set **Enable policy = Report-only** while correcting the policy unless IAMAI is 
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save the bounded correction, read the policy back by stable ID, and rescan IAMAI. Do not combine unrelated mismatch fixes.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -142,6 +144,8 @@ Review IAMAI's proposed creation of the High user-risk Conditional Access policy
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review only these IAMAI-classified mismatches for the existing High user-risk policy: {{policy.current.semanticMismatches}}. Compare them to the canonical step. Preserve stable policy identity and unrelated settings outside the selected correction boundary. Do not replace riskRemediation with passwordChange/MFA or invent exclusions.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

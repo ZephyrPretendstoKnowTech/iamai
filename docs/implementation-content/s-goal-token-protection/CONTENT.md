@@ -63,6 +63,8 @@ Set **Enable policy** to **Report-only** while correcting or revalidating this p
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected semantic mismatch(es).
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -397,6 +399,8 @@ This is one of the strongest protections against token theft, which is the attac
 Current limitation: token protection only works on Windows devices running supported apps. Non-Windows devices (Mac, iOS, Android) and some web apps don't support it yet. This doesn't mean those devices are unprotected — other policies (MFA, device compliance) still apply. It means the token binding doesn't fire there.
 
 The correction on this step adds the exclusions group so emergency access accounts are not affected.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

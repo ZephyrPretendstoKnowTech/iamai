@@ -39,6 +39,8 @@ For each person-interactive policy IAMAI identifies, open that exact policy by s
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save, re-open the same stable object(s), verify the intended scope, then rescan IAMAI.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -120,6 +122,8 @@ Review the dedicated shared-device policy for {{tenant.displayName}}. Confirm it
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review only these detected semantic mismatches: {{policy.current.semanticMismatches}}. Preserve stable IDs and existing canonical exclusions.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

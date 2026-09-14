@@ -35,6 +35,8 @@ Set Enable policy to Report-only while corrections are being validated.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save only the selected corrections, read back the same stable policy, then rescan IAMAI. Do not apply correction modules for fields IAMAI already classifies as canonical.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Leave the canonical policy in Report-only. Review that the intended user-driven enrollment paths actually target Microsoft Intune Enrollment and note any userless/self-deploying paths separately. Report-only can show policy applicability, but it cannot prove a fresh reauthentication prompt occurred. Rescan when evidence changes.
@@ -158,6 +160,8 @@ All users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a
 
 SAFETY
 Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**

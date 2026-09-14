@@ -5189,31 +5189,6 @@
                     ]
                   }
                 ]
-              },
-              "lifecycle.report-only": {
-                "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "entra": [
-                  "entra.correct.lifecycle.report-only"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "Correct",
-                    "corrections": [
-                      "ReportOnly"
-                    ]
-                  }
-                ]
               }
             },
             "sharedAfter": {
@@ -5732,7 +5707,7 @@
             "kind": "template",
             "moduleRole": "sharedAfter"
           },
-          "text": "# Save and verify\n\nKeep the policy **Report-only** while corrections are being made. Save, then rescan IAMAI.\n\nDone when IAMAI reads the same policy ID and the selected semantic mismatch(es) are cleared.\n"
+          "text": "# Save and verify\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save. Save, then rescan IAMAI.\n\nDone when IAMAI reads the same policy ID and the selected semantic mismatch(es) are cleared.\n"
         },
         "entra.observe": {
           "meta": {
@@ -5924,7 +5899,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "ROLE\nHelp correct only the semantic mismatch(es) IAMAI supplied for this exact policy. Do not reconfigure fields IAMAI already says are correct.\n\nGOAL\nMove the existing resolved policy to the canonical Report-only target without creating a duplicate.\n\nAUTHORITY\n- IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.\n- The baseline IAMAI plans from owns the destination for this step.\n- The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.\n- Current Microsoft documentation owns current portal/API behavior.\n\nTENANT CONTEXT\n- Current policy ID: {{policy.current.id}}\n- Current policy name: {{policy.current.displayName}} [omit when unavailable]\n- Current state: {{policy.current.state}} [omit when unavailable]\n- IAMAI mismatches: {{policy.current.semanticMismatches}}\n- Canonical exclusions: {{policy.target.excludeGroups}}\n\nTARGET STATE\nAll users; canonical exclusions; only `urn:user:registerdevice`; no noncanonical conditions; the resolved authentication strength {{authStrength.target.displayName}}; Report-only until enforcement readiness is proven.\n\nIMPLEMENTATION OPTIONS\nUse only the correction module(s) mapped by IAMAI to the supplied semantic mismatches. Condition-related Graph/PowerShell corrections intentionally reconstruct the full canonical conditions object; grant and lifecycle corrections use separate PATCH boundaries.\n\nDO NOT CHANGE\nUse `policy.current.id` as update identity. Do not create another policy, broaden exclusions, add unsupported device/location/client conditions, or substitute a weaker authentication strength.\n\nVERIFICATION\nRead the same policy ID back, verify the corrected semantic field(s), and rescan IAMAI.\n\nROLLBACK / SAFE RECOVERY\nIf a correction creates unexpected risk, return the same policy to Report-only before further changes.\n\nMICROSOFT REFERENCES\n- Update conditionalAccessPolicy: https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0\n- Conditional Access target resources: https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps\n\nYOUR ROLE\nExplain only the supplied mismatch(es), the safe correction, verification, and any blocker. Do not infer additional defects from raw tenant data.\n"
+          "text": "ROLE\nHelp correct only the semantic mismatch(es) IAMAI supplied for this exact policy. Do not reconfigure fields IAMAI already says are correct.\n\nGOAL\nCorrect the existing resolved policy to the canonical target without creating a duplicate, keeping its current state.\n\nAUTHORITY\n- IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.\n- The baseline IAMAI plans from owns the destination for this step.\n- The authentication strength this policy requires, as IAMAI resolved it for this tenant, is {{authStrength.target.displayName}} (`{{authStrength.target.id}}`). Do not substitute a different or weaker strength.\n- Current Microsoft documentation owns current portal/API behavior.\n\nTENANT CONTEXT\n- Current policy ID: {{policy.current.id}}\n- Current policy name: {{policy.current.displayName}} [omit when unavailable]\n- Current state: {{policy.current.state}} [omit when unavailable]\n- IAMAI mismatches: {{policy.current.semanticMismatches}}\n- Canonical exclusions: {{policy.target.excludeGroups}}\n\nTARGET STATE\nAll users; canonical exclusions; only `urn:user:registerdevice`; no noncanonical conditions; the resolved authentication strength {{authStrength.target.displayName}}; the policy's current state kept (a Report-only policy stays Report-only until enforcement readiness is proven).\n\nIMPLEMENTATION OPTIONS\nUse only the correction module(s) mapped by IAMAI to the supplied semantic mismatches. Condition-related Graph/PowerShell corrections intentionally reconstruct the full canonical conditions object; grant corrections use a separate PATCH boundary.\n\nDO NOT CHANGE\nUse `policy.current.id` as update identity. Do not create another policy, broaden exclusions, add unsupported device/location/client conditions, or substitute a weaker authentication strength.\n\nVERIFICATION\nRead the same policy ID back, verify the corrected semantic field(s), and rescan IAMAI.\n\nROLLBACK / SAFE RECOVERY\nIf a correction creates unexpected risk, return the same policy to Report-only before further changes.\n\nMICROSOFT REFERENCES\n- Update conditionalAccessPolicy: https://learn.microsoft.com/en-us/graph/api/conditionalaccesspolicy-update?view=graph-rest-1.0\n- Conditional Access target resources: https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-cloud-apps\n\nYOUR ROLE\nExplain only the supplied mismatch(es), the safe correction, verification, and any blocker. Do not infer additional defects from raw tenant data.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -7308,30 +7283,6 @@
                     "mode": "CorrectSession"
                   }
                 ]
-              },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
-                  }
-                ]
               }
             },
             "sharedAfter": {
@@ -7650,7 +7601,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save only the selected corrections, read back the same stable policy, then rescan IAMAI. Do not apply correction modules for fields IAMAI already classifies as canonical.\n"
+          "text": "Save only the selected corrections, read back the same stable policy, then rescan IAMAI. Do not apply correction modules for fields IAMAI already classifies as canonical.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -7856,7 +7807,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Correct only IAMAI-classified mismatches on the existing policy.\n\nAUTHORITY\nIAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Policy: {{policy.target.displayName}} [omit if unavailable]\n- Current policy state: {{policy.current.state}} [omit if unavailable]\n- Enrollment evidence: {{evidence.intuneEnrollments}} [omit if unavailable]\n- Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nAll users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.\n\nSAFETY\nUse stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Correct only IAMAI-classified mismatches on the existing policy.\n\nAUTHORITY\nIAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Policy: {{policy.target.displayName}} [omit if unavailable]\n- Current policy state: {{policy.current.state}} [omit if unavailable]\n- Enrollment evidence: {{evidence.intuneEnrollments}} [omit if unavailable]\n- Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nAll users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.\n\nSAFETY\nUse stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -9415,30 +9366,6 @@
                     "mode": "CorrectConditions"
                   }
                 ]
-              },
-              "policy.lifecycle": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.policy.report-only"
-                ],
-                "json": [
-                  "json.policy.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
-                  }
-                ]
               }
             },
             "sharedAfter": {
@@ -9752,7 +9679,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the IAMAI-resolved authentication context or Conditional Access policy identified by the mismatch. For CA corrections, confirm the stable tenant policy ID before saving and keep/return it to Report-only while material mismatches remain.\n"
+          "text": "Open the IAMAI-resolved authentication context or Conditional Access policy identified by the mismatch. For CA corrections, confirm the stable tenant policy ID before saving and keep its current state.\n"
         },
         "entra.correct.context": {
           "meta": {
@@ -9848,7 +9775,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save only the selected correction(s), read back by stable ID, and rescan IAMAI. PIM role settings remain unchanged until the CA policy is canonical and On.\n"
+          "text": "Save only the selected correction(s), read back by stable ID, and rescan IAMAI. PIM role settings remain unchanged until the CA policy is canonical and On.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -10121,7 +10048,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Require MFA at Every Role Activation**. Correct only IAMAI-classified context/CA mismatches.\n\nAUTHORITY\nThe retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}\n- Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nSAFETY ORDER\nAuthentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.\n\nLIMIT\n`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.\n\nReturn conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Require MFA at Every Role Activation**. Correct only IAMAI-classified context/CA mismatches.\n\nAUTHORITY\nThe retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Authentication context: {{authContext.target.displayName}} / {{authContext.target.id}}\n- Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]\n- Blockers: {{dependencies.blockers}} [omit if unavailable]\n\nSAFETY ORDER\nAuthentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.\n\nLIMIT\n`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.\n\nReturn conclusions, checks, assumptions, evidence, and the smallest safe next action.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -11686,30 +11613,6 @@
                     "mode": "CorrectSession"
                   }
                 ]
-              },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
-                  }
-                ]
               }
             },
             "sharedAfter": {
@@ -12050,7 +11953,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate.\n"
+          "text": "Save the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -12209,7 +12112,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity, canonical group identity, and approved trusted location IDs. Do not broaden network trust or convert service-principal handling into a user policy.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity, canonical group identity, and approved trusted location IDs. Do not broaden network trust or convert service-principal handling into a user policy.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -12440,31 +12343,6 @@
                   }
                 ]
               },
-              "browser.lifecycle": {
-                "member": "browser",
-                "select": {
-                  "equals": [
-                    "policies.session.browser.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policies.session.browser.current.id"
-                ],
-                "entra": [
-                  "entra.correct.browser.lifecycle"
-                ],
-                "json": [
-                  "json.browser.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnlyBrowser"
-                  }
-                ]
-              },
               "unmanaged.missing": {
                 "member": "unmanaged",
                 "select": {
@@ -12553,31 +12431,6 @@
                   {
                     "block": "powershell.run",
                     "mode": "CorrectUnmanagedGrant"
-                  }
-                ]
-              },
-              "unmanaged.lifecycle": {
-                "member": "unmanaged",
-                "select": {
-                  "equals": [
-                    "policies.session.unmanaged.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policies.session.unmanaged.current.id"
-                ],
-                "entra": [
-                  "entra.correct.unmanaged.lifecycle"
-                ],
-                "json": [
-                  "json.unmanaged.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnlyUnmanaged"
                   }
                 ]
               }
@@ -12852,7 +12705,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open only the component policy IAMAI identified. Confirm the stable policy identity shown by IAMAI before saving. Keep or return a materially incorrect policy to **Report-only** while correcting it.\n"
+          "text": "Open only the component policy IAMAI identified. Confirm the stable policy identity shown by IAMAI before saving.\n"
         },
         "entra.correct.browser.missing": {
           "meta": {
@@ -12984,7 +12837,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save only the selected correction(s), read the affected policy back, and rescan IAMAI. Do not enable either component until the two-policy set is canonical and readiness passes.\n"
+          "text": "Save only the selected correction(s), read the affected policy back, and rescan IAMAI. Do not enable either component until the two-policy set is canonical and readiness passes.\n\nKeep each policy's current state: if it is On, its correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -13281,7 +13134,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Correct only IAMAI-classified mismatches on the affected component policies.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Correct only IAMAI-classified mismatches on the affected component policies.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n\nEach policy keeps its current state. If it is On, its correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -13553,30 +13406,6 @@
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
-                  }
-                ]
-              },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
                   }
                 ]
               }
@@ -13904,7 +13733,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.\n"
+          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -14091,7 +13920,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the High-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, High-only threshold, the authentication-strength grant, and Every-time sign-in frequency. Do not weaken the grant to plain MFA.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the High-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, High-only threshold, the authentication-strength grant, and Every-time sign-in frequency. Do not weaken the grant to plain MFA.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -14350,30 +14179,6 @@
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
-                  }
-                ]
-              },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
                   }
                 ]
               }
@@ -14683,7 +14488,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.\n"
+          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -14862,7 +14667,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the Medium-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, Medium-only threshold, built-in MFA grant, and no-session target. Do not add Every-time reauthentication merely because current Microsoft generic guidance recommends it.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the Medium-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, Medium-only threshold, built-in MFA grant, and no-session target. Do not add Every-time reauthentication merely because current Microsoft generic guidance recommends it.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -15184,31 +14989,6 @@
                     "mode": "Correct",
                     "corrections": [
                       "Session"
-                    ]
-                  }
-                ]
-              },
-              "lifecycle.report-only": {
-                "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "entra": [
-                  "entra.correct.lifecycle.report-only"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "Correct",
-                    "corrections": [
-                      "ReportOnly"
                     ]
                   }
                 ]
@@ -15595,7 +15375,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected semantic mismatch(es).\n"
+          "text": "Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected semantic mismatch(es).\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -15779,7 +15559,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Token protection binds each sign-in token to the device it was created on. If an attacker steals the token (from memory, from a browser export, or from disk) and tries to replay it on their own machine, Entra rejects it because the device doesn't match.\n\nThis is one of the strongest protections against token theft, which is the attack that bypasses MFA entirely — the attacker doesn't need the user's password or second factor, just a copy of the session token.\n\nCurrent limitation: token protection only works on Windows devices running supported apps. Non-Windows devices (Mac, iOS, Android) and some web apps don't support it yet. This doesn't mean those devices are unprotected — other policies (MFA, device compliance) still apply. It means the token binding doesn't fire there.\n\nThe correction on this step adds the exclusions group so emergency access accounts are not affected.\n"
+          "text": "Token protection binds each sign-in token to the device it was created on. If an attacker steals the token (from memory, from a browser export, or from disk) and tries to replay it on their own machine, Entra rejects it because the device doesn't match.\n\nThis is one of the strongest protections against token theft, which is the attack that bypasses MFA entirely — the attacker doesn't need the user's password or second factor, just a copy of the session token.\n\nCurrent limitation: token protection only works on Windows devices running supported apps. Non-Windows devices (Mac, iOS, Android) and some web apps don't support it yet. This doesn't mean those devices are unprotected — other policies (MFA, device compliance) still apply. It means the token binding doesn't fire there.\n\nThe correction on this step adds the exclusions group so emergency access accounts are not affected.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -16580,30 +16360,6 @@
                     "mode": "CorrectSession"
                   }
                 ]
-              },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
-                  }
-                ]
               }
             },
             "sharedAfter": {
@@ -16951,7 +16707,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI. Do not combine unrelated mismatch fixes.\n"
+          "text": "Save the bounded correction, read the policy back by stable ID, and rescan IAMAI. Do not combine unrelated mismatch fixes.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -17152,7 +16908,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the existing High user-risk policy: {{policy.current.semanticMismatches}}. Compare them to the canonical step. Preserve stable policy identity and unrelated settings outside the selected correction boundary. Do not replace riskRemediation with passwordChange/MFA or invent exclusions.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches for the existing High user-risk policy: {{policy.current.semanticMismatches}}. Compare them to the canonical step. Preserve stable policy identity and unrelated settings outside the selected correction boundary. Do not replace riskRemediation with passwordChange/MFA or invent exclusions.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -17426,30 +17182,6 @@
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
-                  }
-                ]
-              },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "requires": [
-                  "policy.current.id"
-                ],
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.correct.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
                   }
                 ]
               }
@@ -17780,7 +17512,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save once after the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate policy.\n"
+          "text": "Save once after the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate policy.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -17952,7 +17684,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity. Current v1.0 authoring uses built-in MFA + passwordChange with AND. Do not invent exclusions, add unrelated conditions, or disable the separate High-risk policy.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity. Current v1.0 authoring uses built-in MFA + passwordChange with AND. Do not invent exclusions, add unrelated conditions, or disable the separate High-risk policy.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -23280,27 +23012,6 @@
                   }
                 ]
               },
-              "lifecycle.report-only": {
-                "select": {
-                  "equals": [
-                    "policy.current.state",
-                    "enabled"
-                  ]
-                },
-                "alongside": true,
-                "entra": [
-                  "entra.correct.lifecycle"
-                ],
-                "json": [
-                  "json.report-only"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "ReportOnly"
-                  }
-                ]
-              },
               "people-policy-exclusions": {
                 "select": {
                   "present": "peoplePolicies.resolvedPatches"
@@ -23505,7 +23216,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Save, re-open the same stable object(s), verify the intended scope, then rescan IAMAI.\n"
+          "text": "Save, re-open the same stable object(s), verify the intended scope, then rescan IAMAI.\n\nKeep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.\n"
         },
         "entra.observe": {
           "meta": {
@@ -23663,7 +23374,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these detected semantic mismatches: {{policy.current.semanticMismatches}}. Preserve stable IDs and existing canonical exclusions.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview only these detected semantic mismatches: {{policy.current.semanticMismatches}}. Preserve stable IDs and existing canonical exclusions.\n\nThe policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {

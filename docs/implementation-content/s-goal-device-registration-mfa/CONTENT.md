@@ -81,7 +81,7 @@ Set **Enable policy** to **Report-only** before applying semantic corrections. D
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template","moduleRole":"sharedAfter"}
 # Save and verify
 
-Keep the policy **Report-only** while corrections are being made. Save, then rescan IAMAI.
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save. Save, then rescan IAMAI.
 
 Done when IAMAI reads the same policy ID and the selected semantic mismatch(es) are cleared.
 @@IAMAI-END
@@ -437,7 +437,7 @@ ROLE
 Help correct only the semantic mismatch(es) IAMAI supplied for this exact policy. Do not reconfigure fields IAMAI already says are correct.
 
 GOAL
-Move the existing resolved policy to the canonical Report-only target without creating a duplicate.
+Correct the existing resolved policy to the canonical target without creating a duplicate, keeping its current state.
 
 AUTHORITY
 - IAMAI tenant/product facts and saved owner decisions own tenant-specific truth.
@@ -453,10 +453,10 @@ TENANT CONTEXT
 - Canonical exclusions: {{policy.target.excludeGroups}}
 
 TARGET STATE
-All users; canonical exclusions; only `urn:user:registerdevice`; no noncanonical conditions; the resolved authentication strength {{authStrength.target.displayName}}; Report-only until enforcement readiness is proven.
+All users; canonical exclusions; only `urn:user:registerdevice`; no noncanonical conditions; the resolved authentication strength {{authStrength.target.displayName}}; the policy's current state kept (a Report-only policy stays Report-only until enforcement readiness is proven).
 
 IMPLEMENTATION OPTIONS
-Use only the correction module(s) mapped by IAMAI to the supplied semantic mismatches. Condition-related Graph/PowerShell corrections intentionally reconstruct the full canonical conditions object; grant and lifecycle corrections use separate PATCH boundaries.
+Use only the correction module(s) mapped by IAMAI to the supplied semantic mismatches. Condition-related Graph/PowerShell corrections intentionally reconstruct the full canonical conditions object; grant corrections use a separate PATCH boundary.
 
 DO NOT CHANGE
 Use `policy.current.id` as update identity. Do not create another policy, broaden exclusions, add unsupported device/location/client conditions, or substitute a weaker authentication strength.
@@ -473,6 +473,8 @@ MICROSOFT REFERENCES
 
 YOUR ROLE
 Explain only the supplied mismatch(es), the safe correction, verification, and any blocker. Do not infer additional defects from raw tenant data.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

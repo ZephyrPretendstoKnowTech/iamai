@@ -219,31 +219,6 @@
             }
           ]
         },
-        "browser.lifecycle": {
-          "member": "browser",
-          "select": {
-            "equals": [
-              "policies.session.browser.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "requires": [
-            "policies.session.browser.current.id"
-          ],
-          "entra": [
-            "entra.correct.browser.lifecycle"
-          ],
-          "json": [
-            "json.browser.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnlyBrowser"
-            }
-          ]
-        },
         "unmanaged.missing": {
           "member": "unmanaged",
           "select": {
@@ -332,31 +307,6 @@
             {
               "block": "powershell.run",
               "mode": "CorrectUnmanagedGrant"
-            }
-          ]
-        },
-        "unmanaged.lifecycle": {
-          "member": "unmanaged",
-          "select": {
-            "equals": [
-              "policies.session.unmanaged.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "requires": [
-            "policies.session.unmanaged.current.id"
-          ],
-          "entra": [
-            "entra.correct.unmanaged.lifecycle"
-          ],
-          "json": [
-            "json.unmanaged.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnlyUnmanaged"
             }
           ]
         }

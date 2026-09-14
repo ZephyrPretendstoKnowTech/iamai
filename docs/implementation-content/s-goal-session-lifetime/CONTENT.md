@@ -26,7 +26,7 @@ Create two separate Conditional Access policies. For each: Entra admin center â†
 Save each once. Rescan IAMAI so each tenant object gets a stable ID.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open only the component policy IAMAI identified. Confirm the stable policy identity shown by IAMAI before saving. Keep or return a materially incorrect policy to **Report-only** while correcting it.
+Open only the component policy IAMAI identified. Confirm the stable policy identity shown by IAMAI before saving.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.missing","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Create only the missing browser component using the Policy A procedure from this package. Do not recreate the unmanaged component.
@@ -60,6 +60,8 @@ Set the unmanaged-device component to Report-only while material corrections are
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save only the selected correction(s), read the affected policy back, and rescan IAMAI. Do not enable either component until the two-policy set is canonical and readiness passes.
+
+Keep each policy's current state: if it is On, its correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Leave both component policies in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins and the unmanaged-device policy is limited by its compliance filter. Confirm shared-device accounts remain excluded. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.
@@ -322,6 +324,8 @@ Policy A: All users; canonical group/shared-device exclusions; All resources; Br
 
 RULES
 Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+
+Each policy keeps its current state. If it is On, its correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
