@@ -34,7 +34,7 @@ Rename the same stable policy to **{{policy.target.displayName}}**; never locate
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-6. Save. Do not change the policy state.
+6. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
 7. Rescan in IAMAI.
 @@IAMAI-END
 

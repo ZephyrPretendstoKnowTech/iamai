@@ -1704,7 +1704,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "6. Save. Do not change the policy state.\n7. Rescan in IAMAI.\n"
+          "text": "6. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.\n7. Rescan in IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -8266,7 +8266,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "6. Save. Do not change the policy state (leave it On).\n7. Rescan in IAMAI to confirm the correction.\n"
+          "text": "6. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.\n7. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -8441,7 +8441,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This is the foundational MFA policy: every user must present a second factor (MFA) at sign-in. It's the single most impactful control in the baseline.\n\nThe policy already exists on your tenant. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally.\n\nAfter this step, the MFA Registration Campaign step helps people register a method. Whether each person has one is shown on MFA Readiness, not by this policy.\n"
+          "text": "This is the foundational MFA policy: every user must present a second factor (MFA) at sign-in. It's the single most impactful control in the baseline.\n\nThe policy already exists on your tenant. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally.\n\nAfter this step, the MFA Registration Campaign step helps people register a method. Whether each person has one is shown on MFA Readiness, not by this policy.\n\nThe correction keeps the policy's current state. If it is On, saving applies it at once: everyone the corrected policy now includes is asked for MFA at their next sign-in.\n"
         },
         "ai.observe": {
           "meta": {

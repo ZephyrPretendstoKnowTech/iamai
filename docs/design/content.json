@@ -256,7 +256,7 @@
         "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
-        "correct": "Correct the existing policy with the changes listed.",
+        "correct": "Correct the existing policy with the changes listed. If it is On, they apply to sign-ins as soon as you save.",
         "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
         "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
         "observe": "Leave it in report-only and watch it.",
