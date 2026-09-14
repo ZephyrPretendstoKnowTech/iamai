@@ -545,6 +545,8 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Acceptance | same harness, `<copy>` = `../acc-src-d6d1e30-c5` (`git archive d6d1e309`, harness identical by `cmp`) | **d6d1e30** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-3.txt`) |
 | Lane / parity | `c2-export-lane.ts`; `../logs/review1/rv-parity.ts` | d6d1e30 | 0; 0 | `{"steps":107,"boardReadyBlocked":7,"noLaneReadyBlocked":7}`; parity 0 diff lines against `c4/rv-parity-3.txt` (`export-lane-2.txt`, `rv-parity-2.txt`) |
 | Full suite | `npm test`, 11:05–11:09 | **d6d1e30** (clean tree) | 0 | **2744 tests · 2742 pass · 0 fail · 0 cancelled · 2 skipped** (same two) (`full-4.txt`) |
+| Build | `npm run build` | **d6d1e30** | 0 | chunk-size warning only (`build-2.txt`) |
+| Walk | same walk command and preload, after that build, 11:10–11:14; report `docs/reports/walk-d6d1e30.md`, captures `walk/d6d1e30/` (gitignored) | **d6d1e30** (final code) | 0 | "Verdict: show-ready on this walk (no P0). **495 P1, 50 P2**." First load 4614 ms throttled (P1, as before). Against the c4cb5a6 walk (`../scratch/c5-walk-compare-2.sh`): report body identical below the header after stripping digits (0 diff lines); normalized stdout 545 lines each, the only differing line being the report's file name (`walk-2.txt`, `walk-norm-diff-2.txt`, `walk-report-diff-2.txt`) |
 
 ### Test edits and scope (this cycle)
 - `git diff e0163b0 HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. One assert line removed: correctionProjection.test.ts' `packageStateOf … 'partial'` (A1a task 6 pin), replaced by `'blocked'` plus two premise/planned assertions, with an in-place comment. highRiskChannels.test.ts: comment only.
