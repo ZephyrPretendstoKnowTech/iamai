@@ -451,6 +451,10 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
   - packageState.test.ts: a removing correction under a gate step blocker, and under the escape hatch, reads `blocked`. Controls: the same correction with nothing holding it is `partial`; an add-only correction under the same wait is `partial`.
   - correctionProjection.test.ts (**pin changed, disclosed**): the A1a task 6 assertion `partial` now reads `blocked`, plus a premise that the step waits on emergency access and that it is still planned. The in-place comment says why.
   - Non-vacuity: the three edited files run against `git archive e0163b0` fail exactly those 3 of 17 tests (`n1-nonvacuity.txt`).
+- **Browser (what the walk does and does not show):**
+  - The legacy-auth and device-code captures (`demo/1280/step-08…`, `step-09…`, text and PNG) are byte-identical between review 4's 2997bb3 walk and the c4cb5a6 walk.
+  - That is expected. The browser demo builds on `fixture('demo')` (src/ui/demoFacts.ts:19), the plain pinned baseline. fixtures/index.ts:791–799 says the curated fixture is "never what the demo gets": the shipped interpretation settles six author groups as unknown, and every policy excluding one is held. On the plain demo both steps were already non-copyable previews (`missing-object`) before and after this fix. The walk's `innerText` capture also records neither Copy's `aria-disabled` nor its tooltip.
+  - So the walk does not exercise N1. Review 4's reading of `step-09` (tabs and a Copy control) as the executable hand-over was inaccurate for the browser; a preview draws the same tabs and a disabled Copy. The defect was real on the curated fixture and on any plan whose baseline mappings are answered. On a real tenant that is after the operator answers them in Plan settings, the shape correctionProjection.test.ts builds from the plain demo, now pinned to `blocked`.
 
 ### Uncalled scripts (review 4 queue 3): user-risk-medium and service-accounts-trusted-network FIXED at 311b8a9; guests-mfa see below
 - **Cause:** both `powershell.run` blocks were `template`s with a mandatory `-Mode` nothing called, and every other parameter defaulted to a `'{{binding}}'` literal. user-risk-medium's create was withheld on `policy.current.id` (a value no create has). `-ExcludeGroupsJson`/`-TrustedLocationsJson` read JSON text while IAMAI holds arrays.
@@ -521,6 +525,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Full suite | `npm test`, 10:55–10:58 | **c4cb5a6** (clean tree) | 0 | **2740 tests · 2738 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-3.txt`) |
 | Build | `npm run build` | **c4cb5a6** | 0 | chunk-size warning only (`build-1.txt`) |
 | Acceptance | same harness, `<copy>` = `../acc-src-c4cb5a6-c5` (`git archive c4cb5a6a`, harness identical by `cmp`) | **c4cb5a6** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-2.txt`) |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after the build row above, 10:58–11:02 (same chain as the full suite); report `docs/reports/walk-c4cb5a6.md`, captures `walk/c4cb5a6/` (gitignored) | **c4cb5a6** | 0 | "Verdict: show-ready on this walk (no P0). **495 P1, 50 P2**." First load 4719 ms throttled (P1, as before). Against review 4's 2997bb3 walk (`../scratch/c5-walk-compare.sh`): report body below the header identical after stripping digits (0 diff lines); normalized stdout 544 → 545 lines, the one added line being "wrote docs\reports\walk-….md", no finding added or removed (`walk-1.txt`, `walk-norm-diff.txt`, `walk-report-diff.txt`) |
 
 ### Test edits and scope (this cycle)
 - `git diff e0163b0 HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. One assert line removed: correctionProjection.test.ts' `packageStateOf … 'partial'` (A1a task 6 pin), replaced by `'blocked'` plus two premise/planned assertions, with an in-place comment. highRiskChannels.test.ts: comment only.
@@ -533,3 +538,10 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 4. Package gaps: session-lifetime, register-info-protected, pim-activation-reauth; the pim grant+session floor test (queue 8).
 5. Low: the export "before" line under a hold; unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry.
 6. The guests pair is not rendered end to end by any fixture (no fixture resolves both pinned members); proven by unit and keyed-step tests only.
+
+**Working tree at the end of cycle 5.**
+- Commits: e0163b0, 8332f82, 311b8a9, c4cb5a6 (code; the verified state), f1e121f and the docs commit carrying this walk row (docs only). Nothing else is uncommitted; stash empty.
+- Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-c4cb5a6.md`, `walk/c4cb5a6/`.
+- Outside the clone: `../logs/c5/` (including `ps/`, the rendered scripts, parsed only); `../scratch/c5-*` and `../scratch/guestsPairInvocation.test.ts` (the draft copied into the clone); archive copies `../c5-src-e0163b0`, `../acc-src-311b8a9-c5`, `../acc-src-c4cb5a6-c5`.
+- `../c5-src-e0163b0/node_modules` is a **directory junction** to the clone's `node_modules`, and that copy also holds this cycle's test files for the non-vacuity runs. Anyone removing it must remove the junction itself and not follow it.
+- No remote, tenant or external write was made, and no generated script was executed.
