@@ -18,11 +18,11 @@
       "state": "Not established"
     },
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Create or Correct Exclusions Group"
     },
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Create or Correct Allowed Countries Location"
     }
   ],

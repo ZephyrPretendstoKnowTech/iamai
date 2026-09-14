@@ -136,7 +136,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
   const b = bodyOf('demo', DEVICE)
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '27% of devices compliant')
-  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (In progress|Waiting)$/)
+  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (To do|Waiting)$/)
   assert.equal(b.rail.metric, '—')
   const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
@@ -199,7 +199,7 @@ test('s-verify-mfa: Why is two sentences, the special-care tile is short, the in
   assert.ok(heading > 0 && heading < text && text < picker, 'the input text is not drawn between its label and its chips')
   const b = bodyOf('demo', CAMPAIGN)
   assert.deepEqual(b.readiness.tiles.find((t) => t.key === 'unsaved:People who need special care'), { key: 'unsaved:People who need special care', label: 'Special care', tone: 'warn', value: 'Confirm who needs hands-on help', note: WHO })
-  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (In progress|Waiting)$/)
+  for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (To do|Waiting)$/)
   assert.deepEqual(authoredParts(drawn(b, 'portal')), [
     {
       kind: 'list', ordered: true, start: 1, items: [
