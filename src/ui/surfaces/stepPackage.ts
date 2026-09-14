@@ -42,8 +42,9 @@ import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
 import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkeySettings.ts'
-import { tenantNameOf } from './stepVars.ts'
+import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -405,10 +406,15 @@ type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGrou
  *   names, the policy it tracks, the fields a correction changes
  *   (`policy.current.changedFields`).
  *
- * Not bound, because IAMAI does not hold them: evidence it never read, a choice
- * nobody made, and a value the package names in prose with no meaning IAMAI can
- * supply (`policy.target.mode`). Those stay unbound, and the package's own
- * contract decides what that means.
+ * - the target's location scope and grant in the words the step's own portal
+ *   lines say them (`policy.target.locationWords`, `policy.target.grantWords`), so
+ *   a package's portal steps name what the resolved target sets, never a mode it
+ *   does not settle (register-info-protected: MFA outside trusted locations is
+ *   neither of that package's two modes).
+ *
+ * Not bound, because IAMAI does not hold them: evidence it never read, and a
+ * choice nobody made. Those stay unbound, and the package's own contract decides
+ * what that means.
  */
 export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract): Bindings {
   const op = plannedOperationsOf(step)[0] ?? null
@@ -464,6 +470,21 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const roots = ['policy.target.conditions', 'policy.target.grantControls', 'policy.target.sessionControls']
   if (whole && typeof out['policy.target.displayName'] === 'string' && roots.every((k) => Object.hasOwn(out, k))) {
     out['policy.target.json'] = JSON.stringify({ displayName: out['policy.target.displayName'], conditions: out['policy.target.conditions'], grantControls: out['policy.target.grantControls'], sessionControls: out['policy.target.sessionControls'] })
+  }
+  // The location scope and grant as the step's portal lines (the screen's, print's
+  // and export's) word them, for a package that declares them: one source, so the
+  // package's portal steps and the export cannot name different controls. A field
+  // still waiting on a reference binds nothing, as above.
+  const declared = implementationPackageFor(step)?.meta
+  const declares = (key: string): boolean => [...(declared?.requiredBindings ?? []), ...((declared as { optionalBindings?: string[] } | undefined)?.optionalBindings ?? [])].includes(key)
+  if (declares('policy.target.locationWords') || declares('policy.target.grantWords')) {
+    const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
+    const wordsAfter = (head: string): string | undefined => {
+      const found = portal.filter((l) => l.startsWith(head)).map((l) => l.slice(head.length))
+      return found.length > 0 ? found.join('; ') : undefined
+    }
+    if (settled('conditions') !== null) put('policy.target.locationWords', wordsAfter('Conditions → Locations → '))
+    if (settled('grantControls') !== null) put('policy.target.grantWords', wordsAfter('Grant → '))
   }
   const strength = settled('grantControls')?.grantControls?.authenticationStrength?.id
   put('authStrength.target.id', typeof strength === 'string' ? strength : undefined)
