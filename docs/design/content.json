@@ -176,7 +176,7 @@
       "critical": {
         "sentence": "The plan is {weeks} weeks because {reason}; everything else fits inside it.",
         "sentenceDone": "Nothing is left to schedule.",
-        "verificationOnly": "MFA registration for {people} people takes {weeks} weeks and nothing is enforced yet",
+        "verificationOnly": "MFA registration for {people} people takes {weeks} weeks and no enforcement is left to schedule",
         "verification": "MFA registration for {people} people takes {weeks} weeks, then {step} rolls through {rings} rings of {soak} days each",
         "chain": "{step} waits for {waitsFor}, then rolls through {rings} rings of {soak} days each",
         "rings": "{step} rolls through {rings} rings of {soak} days each",
