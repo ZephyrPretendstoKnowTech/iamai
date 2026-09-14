@@ -284,7 +284,9 @@ function mapMethod(raw: unknown): AuthMethodSummary {
   const out: AuthMethodSummary = { kind }
   // The qualifying methods keep their id, so a later scan can tell one that disappeared from one that did not (scoring/mfaHistory.ts).
   if ((kind === 'passkey' || kind === 'fido2' || kind === 'windowsHelloForBusiness') && typeof m.id === 'string') out.id = m.id
-  if (typeof m.createdDateTime === 'string') out.createdDateTime = m.createdDateTime
+  // Graph's method resources name the date createdDateTime; the list-methods example shows creationDateTime. Either is the same fact.
+  const created = typeof m.createdDateTime === 'string' ? m.createdDateTime : m.creationDateTime
+  if (typeof created === 'string') out.createdDateTime = created
   if (kind === 'microsoftAuthenticator') {
     if (typeof m.displayName === 'string') out.displayName = m.displayName
     if (typeof m.phoneAppVersion === 'string') out.phoneAppVersion = m.phoneAppVersion
@@ -323,12 +325,14 @@ export async function collectMethodsForUsers(ctx: Ctx, userIds: string[]): Promi
         })),
       },
     })
-    for (const r of body.responses ?? []) {
-      const userId = chunk[Number(r.id)]
+    for (const r of Array.isArray(body.responses) ? body.responses : []) {
+      const userId = chunk[Number(r?.id)]
       if (!userId) continue
       const value = (r.body as { value?: unknown[] } | undefined)?.value
       out[userId] = r.status === 200 && Array.isArray(value) ? value.map(mapMethod) : 'unknown'
     }
+    // A user the batch answered nothing for is unread, never a person with no methods.
+    for (const id of chunk) out[id] ??= 'unknown'
   }
   return out
 }
