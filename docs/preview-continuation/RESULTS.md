@@ -325,3 +325,70 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 5. Low: unprojected lifecycle blocks, ReportOnly modes and workload-identity-block's Location guard; same-name create; passkey profiles; Lane B and P1 worker paths not probed.
 
 **Working tree at the end of cycle 3.** This ledger is committed with the final docs commit below, and nothing else is uncommitted; stash empty. Gitignored outputs written this cycle: `docs/reports/walk-c0e91fe.md`, `walk-1c7fccb.md`, `walk/c0e91fe/`, `walk/1c7fccb/` and `dist/`. Outside the clone: `../logs/c3/`, `../scratch/c3-*`, and archive copies `../acc-src-c0e91fe-c3`, `../acc-src-6ed777e-c3`, `../acc-src-dfb6274-c3`. One command was declined: an acceptance copy step that began with `rm -rf` of a directory outside the clone. It was redone into a new directory with no deletion.
+
+## Cycle 4 (2026-09-14, from 09:21 MDT)
+
+**Start state**
+- HEAD 3ca3fd1. Stash empty.
+- Uncommitted: the cycle 3 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json). Inspected (docs only, the reviewer's queue) and committed first (d62046d). No other unfinished work.
+- Logs: `../logs/c4/`, outside the clone. Scratch, not in the clone: `../scratch/c4-lane-diag.ts`, `../scratch/c4-guests-bind.ts`.
+
+### Commits
+| Commit | Scope |
+|---|---|
+| d62046d | docs: cycle 3 fresh review, committed after inspection |
+| d03337c | Queue 1: an unstarted policy waiting only on emergency access reads "create it in report-only now" (lifecycle.ts nextMilestone), two content strings, emergencyGateCreate.test.ts |
+| ebb9633 | Queue 3: removed tenant exclusions named in the step's portal/export lines (generate.ts `PolicyOperation.removes`, stepPortal.ts), removedExclusions.test.ts. Queue 5: guests-mfa correction saves and AI Info state their effect. Queue 7: orGrantWidening asserts the drawn CorrectGrant call |
+
+### Board/export Ready vs blocked (review 3 queue 1): 38 of 45 FIXED
+- **Reproduced at 3ca3fd1:** `c2-export-lane.ts` → `{"steps":107,"boardReadyBlocked":45}`. `../scratch/c4-lane-diag.ts` classified the 45 (`lane-diag.txt`, `lane-diag-v.txt`):
+  - **38**: `blockedBy=blocked`, condition blocked, lifecycle not-deployed, milestone `resolve`, implementation offered, nothing enforcing on run, `policyResult` implementable. Every one has exactly one blocker, the step wait on `s-prereq-break-glass`. Lane Ready · Create.
+  - 3 (demo block-legacy-auth, block-device-code, mfa-all-users): enforced drifted policies, `missing-object` on an unmapped source reference (`decision: true`); lane Ready · Correct.
+  - 4 report-only (demo-week2 intune-enrollment-reauth, large require-managed-device, messy and midflight admins-phishing-resistant): lane Observing/Correct beside a device-plan or exclusions-group wait, `missing-object` or `escape-hatch-unverified`.
+- **Which reading was wrong (the 38):** the lane is right. docs/product/actionability/BLOCKED.md (A1a task 1): "a legacy step blocker to the emergency gate (break-glass / exclusions group) gates `enforce` on a policy (A3 B3; §18.3: exclusions gate enforced CA, never report-only)"; audit B3 asked to "State that the blocker holds enforcement, not report-only creation". nextMilestone mis-read it: holds.ts treats a wait on an unheld step as sequencing, not a hold (Step 4), so the Step 5 held-create branch (lifecycle.ts:314) never saw these steps and they fell to `condition === 'blocked'` → "Clear what this step is waiting on.", which made `implementationIsCurrent` false and the step hand over nothing. A step *held* on a Setup answer already got "Create the policy in report-only now"; the weaker wait got the stricter action.
+- **Fix (no new readiness rule):** nextMilestone gives a step that is not held, not deployed, implementation offered, and whose every blocker is an emergency-access foundation (`GATING_SUBJECTS`) the deploy milestone "Create the policy in report-only now; it is not turned on until emergency access is sorted." (or "…on {date}; …" where the schedule places the create), gated by the reason the row shows. `implementationIsCurrent` then reads it current through its existing exception. Waits on anything else are unchanged.
+- **After:** lane probe 45 → **7** (`export-lane-1.txt`, at HEAD `export-lane-2.txt`); review parity probe `../logs/review1/rv-parity.ts` 114 → **16** (11 `blocked`, 4 `escape-hatch-unverified`, 1 `readiness-unmet`; `rv-parity-1.txt`, `rv-parity-2.txt`).
+- **Effect (disclosed):** 60 matrix rows move from `blocked · preview` to `missing · executable` with identical drawn channels and issues. Each hands over a report-only create; `nextSafeAction.enforceable` stays false. 17 rows move to `missing · preview` and now list the bindings they lack (`missing=`: session-lifetime names/excludeUsers, pim-activation-reauth authContext/strength). 4 rows changed channels, both from a package gap this state now reaches: getiamai guests-mfa (Entra withheld, see BLOCKED) and mid user-risk-medium (PowerShell withheld on `policy.current.id` instead of drawn as an uncalled template). Matrix totals 3ca3fd1 → ebb9633: executable 174 → 238, preview 187 → 123, uncalled-template 15 → 13, degraded 64 → 68, packageFault 0, empty 0 (`matrix-1.txt`, `matrix-classes-1.txt`, `matrix-2.txt`).
+- **Tests** (`src/ui/surfaces/emergencyGateCreate.test.ts`): over nine fixtures, every such step has report-only operations, a `deploy` milestone with the new sentence, `create-report-only` executable and not enforceable, lane Ready · Create, a contract and export with no "Clear what this step is waiting on". The first run failed on the test's own bound (18 < 20 over three fixtures) and was widened to the nine fixtures the probe reads, not lowered (`gate-test-1.txt`). Controls: an added maker-step wait still resolves and is not executable; a held gate wait keeps `prepareHeldOther`; a deployed policy does not take the branch.
+- **Existing invariant caught a mistake:** foundationB "every step ends in one next thing" failed on the first version's scheduled branch (`gatedBy: null`; `suites-1.txt`). The row still shows the emergency wait, so the milestone now carries it; no test was changed.
+
+### Removed tenant exclusions (review 3 queue 3): FIXED in the step's portal/export lines; Entra/AI package tabs NOT
+- **Cause:** the update sends its `users`/`applications` sections whole (the baseline's), so a tenant `excludeGuestsOrExternalUsers` or excluded application not in the baseline is removed on save. The request is the baseline's; nothing said so.
+- **Fix:** generate.ts records `removes: { guestsOrExternalUsers, ids }` on the update (only sections the patch writes; request body unchanged). stepPortal.ts adds, above "Change only the settings listed above": "This change removes <names> from the policy's exclusions. If the policy is On, it applies to them as soon as you save." These lines are the screen's, print's and export's.
+- **After** (`../logs/review1/rv-edge.ts`, `rv-edge-1.txt`): staffGuestExcl → "This change removes guest or external users from the policy's exclusions…"; staffExclOtherApp and the no-exclusions-group case → "…removes Office 365 Exchange Online…".
+- **Tests** (`src/roadmap/removedExclusions.test.ts`, 3): guest exclusion (body still without it, `removes`, line text, above the untouched line); Exchange Online (body carries Intune Enrollment, `removes.ids == [EXO]`, named not an id); control keeping every exclusion removes nothing and draws no line.
+- **Not changed:** the viewer's Entra and AI Info tabs are package-authored text with no binding for removed exclusions; the `changes` list is unchanged.
+- **Content test (disclosed):** content.test.ts lists `.shared.changeRemoves` and `.shared.changeRemovesGuests` as example-suppressed strings (the review page's example corrects no policy with such an exclusion); the test failed until then (`suites-3.txt`).
+
+### guests-mfa effect statement (review 3 queue 5): FIXED
+- `entra.correct-pair` saves 5 and 9: "Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's authentication strength / MFA as soon as you save." `ai.correct`: "Each policy keeps its current state: if it is On, adding the exclusions group exempts that group's members from the policy as soon as it is saved."
+- Registry regenerated with `node scripts/compile-implementation-content.mjs --registry src/content/implementation/registry.generated.json`: 2 lines changed, the two block texts (`registry-1.txt`).
+- Test: stateKeepingCorrection.test.ts reads the compiled blocks (the pair's script is not called, so no bound projection) and requires `EFFECT` on both saves and AI Info; 89/89 (`statekeep-1.txt`).
+- **Pin changed (disclosed):** mfaAuthContentSpecs.test.ts guests list items 5 and 9 asserted "Save." and now assert the effect lines, with a comment.
+
+### Test gaps (review 3 queue 7): CorrectGrant FIXED; pim-activation-reauth edge NOT DONE
+- orGrantWidening.test.ts now requires exactly the calls `CorrectConditions` and `CorrectGrant`, each ending `-PolicyId '<id>'`, and parses the CorrectGrant call's target grant against the body; 11/11 (`or-test-1.txt`).
+
+### Verification (exact code states)
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | d03337c tree before the gatedBy fix; batch 2 tree; ebb9633 tree less the generate.ts comment restore | 0; 0; 0 | `tsc-1.txt`, `tsc-2.txt`, `tsc-3.txt` |
+| Targeted | planTruth, planLanesHolds, policyStep, packageState, correctionProjection, holds, nextSafeAction | first d03337c draft | 0 | 63/63 (`targeted-1.txt`) |
+| Suites | `node --test --test-isolation=none "src/ui/surfaces/*.test.ts" "src/testing/*.test.ts" "src/content/*.test.ts" "src/roadmap/*.test.ts"` | first draft; **d03337c** | 1; 0 | 1342 · 1338 pass · 2 fail (foundationB gatedBy, new test's bound) · 2 skipped (`suites-1.txt`); 1342 · 1340 pass · 0 fail · 2 skipped (`suites-2.txt`) |
+| Suites | same plus `src/content/implementation/*.test.ts` | batch 2 before the two test updates | 1 | 1544 · 1540 pass · 2 fail (orphan content strings; guests pin) · 2 skipped (`suites-3.txt`) |
+| Full suite | `npm test` | ebb9633 less a comment-only restore in generate.ts | 0 | 2721 · 2719 pass · 0 fail · 0 cancelled · 2 skipped (`full-1.txt`) |
+| Full suite | `npm test` | **ebb9633** (clean tree) | 0 | **2721 tests · 2719 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-2.txt`) |
+| Build | `npm run build` | batch 2 tree before the comment restore; **ebb9633** | 0; see walk row | chunk-size warning only (`build-1.txt`; `build-2.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | batch 2 tree; **ebb9633** | 0; 0 | 490 rows, identical to each other (0 diff lines); against cycle 3's `c3/matrix-2.txt` 81 rows changed, all classified above (`matrix-1.txt`, `matrix-classes-1.txt`, `matrix-2.txt`) |
+| Lane / parity probes | `c2-export-lane.ts`; `../logs/review1/rv-parity.ts` | d03337c; **ebb9633** | 0 | 45 → 7; 114 → 16 (`export-lane-1/2.txt`, `rv-parity-1/2.txt`) |
+| PowerShell parse | not rerun | | | no script body changed in cycle 4 (guests-mfa Entra/AI Markdown only) |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c4/acceptance-ebb9633`, `<copy>` = `../acc-src-ebb9633-c4` (`git archive ebb9633c` into a new directory, harness identical by `cmp`) | **ebb9633** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-1.txt`) |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after `npm run build` (build exit 0), 09:54–09:58; report `docs/reports/walk-ebb9633.md`, captures `walk/ebb9633/` (gitignored) | **ebb9633** | 0 | "show-ready on this walk (no P0)": **0 P0, 495 P1, 50 P2** (review 3ca3fd1: 0/494/50); throttled first load 4.6 s (P1, as before). Against the review's report, finding for finding: none removed, **one added**: mock-operator "Require Token Protection on Windows" `button "Troubleshooting" is not in the plan.step contract's allow list`. That step now hands over its report-only create (queue 1), which draws its existing Troubleshooting control; no contract was changed. Normalized stdout: 544 → 545 lines (`walk-1.txt`, `walk-norm-*.txt`, `walk-norm-diff.txt`) |
+
+### Not done in cycle 4 (actionable; see BLOCKED)
+1. Board/export Ready vs blocked: 7 board-lane steps remain (three classes above).
+2. Uncalled/withheld scripts: guests-mfa 5, service-accounts-trusted-network 8; user-risk-medium's create now withheld on `policy.current.id`.
+3. guests-mfa on getiamai: a single-policy resolution the pair package cannot bind (Entra withheld).
+4. Removed exclusions in the viewer's Entra and AI Info tabs.
+5. shared-devices people-policy exclusions and the dangling readyToEnforce Enforce reference (queue 4).
+6. session-lifetime and register-info-protected bindings; pim-activation-reauth grant+session floor edge.
