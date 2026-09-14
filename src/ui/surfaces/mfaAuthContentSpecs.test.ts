@@ -162,8 +162,10 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(ADMINS).blocks['ai.correct'].text
   assert.match(ai, /^This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in\.$/m)
-  assert.match(ai, /^Unlike the "MFA for Everyone" policy which accepts any MFA method \(including phone call\), this policy uses the authentication strength "Modern MFA \+ TAP" which only accepts phishing-resistant methods and Temporary Access Pass\.$/m)
-  assert.match(ai, /^The 0% threshold means none of your admins currently have a qualifying method registered\. The MFA Registration Campaign step handles getting them registered\. This policy enforces the requirement; the campaign helps people meet it\.$/m)
+  assert.match(ai, /^Unlike the "MFA for Everyone" policy which accepts any MFA method \(including phone call\), this policy uses the baseline's authentication strength "Modern MFA \+ TAP", which accepts phishing-resistant methods and also a Temporary Access Pass\. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass\.$/m)
+  // No fixed claim about the tenant's registrations: nothing binds one (C07).
+  assert.doesNotMatch(ai, /0% threshold|none of your admins/)
+  assert.match(ai, /^Whether your admins have a qualifying method registered is shown on MFA Readiness, not by this policy\. The MFA Registration Campaign step helps them register one\. This policy enforces the requirement; the campaign helps people meet it\.$/m)
   assert.match(ai, /^The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles\.$/m)
 })
 
