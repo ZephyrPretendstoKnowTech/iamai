@@ -1587,6 +1587,7 @@
               "policies.guests.strong.current.id": "guests policy ID",
               "policies.guests.strong.target.displayName": "guests policy name",
               "policies.guests.strong.target.users": "guests",
+              "policies.guests.targets.json": "both guest policy targets",
               "policies.session.browser.current.id": "browser session policy ID",
               "policies.session.browser.target.displayName": "browser session policy name",
               "policies.session.semanticMismatches": "session policy differences",

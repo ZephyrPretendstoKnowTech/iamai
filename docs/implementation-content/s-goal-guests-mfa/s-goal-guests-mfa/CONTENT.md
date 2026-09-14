@@ -56,7 +56,7 @@ Re-open both exact policies, confirm both are canonical and Report-only and any 
 {"state":"enabled","applyTo":"both canonical guest policy IDs in one controlled change window"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPoliciesJson":{"binding":"policies.guests.targets.json","modes":["CreateMissing","CorrectPair","Observe","EnforcePair","Verify"]},"StrongPolicyId":{"binding":"policies.guests.strong.current.id","modes":["CorrectPair","Observe","EnforcePair","Verify"]},"MixedPolicyId":{"binding":"policies.guests.mixed.current.id","modes":["CorrectPair","Observe","EnforcePair","Verify"]}},"withheldModes":{"ApplyPartnerTrust":"ApplyPartnerTrust reads the owner-approved partner trust patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."}}}
 param(
  [Parameter(Mandatory=$true)][ValidateSet('CreateMissing','CorrectPair','ApplyPartnerTrust','Observe','EnforcePair','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPoliciesJson,

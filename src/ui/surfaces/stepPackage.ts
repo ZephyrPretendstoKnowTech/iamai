@@ -534,6 +534,7 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const ops = plannedOperationsOf(step)
   const out: Record<string, unknown> = {}
+  const pair: Record<string, unknown>[] = []
   for (const m of members) {
     if (typeof m.memberStableId !== 'string' || m.memberStableId === '') continue
     const op = ops.find((o) => o.memberKey === memberKeyOf(m.memberStableId, 0))
@@ -542,6 +543,8 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
     const whole = (op.target ?? (op.mode === 'create' ? op.body : null)) as PolicyShape | null
     const name = (op.body as PolicyShape).displayName ?? whole?.displayName
     if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
+    // A member whose target still waits on a reference is not whole (see incompleteFieldsOf).
+    if (whole && typeof name === 'string' && incompleteFieldsOf(step, op).size === 0) pair.push({ role: m.role, displayName: name, conditions: whole.conditions, grantControls: whole.grantControls ?? null, sessionControls: whole.sessionControls ?? null })
     // Users still waiting on a reference are not the target (see packageBindings).
     if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
     // Whether this member is created or corrected, and — for a correction — the
@@ -558,6 +561,11 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
       if (changed.length > 0) out[`${prefix}.current.changedFields`] = changed
     }
   }
+  // Every member's whole target, as a script that takes the set reads it
+  // (`policies.<family>.targets.json`): only when every member resolved whole, so a
+  // set is never handed over with a member missing or partly waiting.
+  const targets = declared.find((b) => /^policies\.[^.]+\.targets\.json$/.test(b))
+  if (targets && pair.length === members.length) out[targets] = JSON.stringify(pair)
   return out
 }
 

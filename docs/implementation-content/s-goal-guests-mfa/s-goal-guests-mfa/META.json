@@ -78,6 +78,7 @@
     "policyPair.current.states",
     "evidence.reportOnly",
     "partnerTrust.resolvedPatches",
+    "policies.guests.targets.json",
     "dependencies.blockers",
     "signature"
   ],

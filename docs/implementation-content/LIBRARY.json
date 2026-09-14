@@ -619,14 +619,14 @@
       ],
       "correctionModules": 1,
       "requiredBindings": 8,
-      "optionalBindings": 11,
+      "optionalBindings": 12,
       "verifiedSourceCount": 8,
       "packageSpecificMicrosoftSources": 8,
       "sharedPrimitivesReused": 0,
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 9,
+      "strictValidationErrors": 10,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
@@ -4455,6 +4455,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "policies.guests.targets.json",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-guests-mfa"
+      ],
+      "packages": [
+        "s-goal-guests-mfa"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policies.session.browser.current.id",
       "requiredBy": [
         "s-goal-session-lifetime"
@@ -6183,14 +6195,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 961,
-    "uniqueBindings": 269,
+    "uniqueBindings": 270,
     "bindingsRequiredByAtLeastOneProjection": 95,
-    "bindingsOptionalInAtLeastOnePackage": 178,
+    "bindingsOptionalInAtLeastOnePackage": 179,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 224,
+    "bindingDefinitionsPendingHolisticReview": 225,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 224,
+    "knownIAMAIInputUnreviewed": 225,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
