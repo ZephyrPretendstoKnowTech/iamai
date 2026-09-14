@@ -179,3 +179,12 @@ Fixed in cycle 8 (RESULTS): review 7 R7-1, PowerShell invocation literals now do
   - `entra.create` step 3 names the `blockOutsideTrusted` mode, and step 4 binds `{{policy.target.mode}}` (required in META). `readiness.model` also names the mode.
   - Next: bind the target's own location and grant words, from the lines stepPortal.ts already produces for this operation (e.g. `policy.target.locationWords`, `policy.target.grantWords` in stepPackage.ts `packageBindings`). Step 3 then reads "Conditions > Locations: {{…locationWords}}" and step 4 "Grant: {{…grantWords}}". Drop `policy.target.mode` from `requiredBindings` and `readiness.model`. Regenerate registry/LIBRARY, and pin the Entra tab against the export's two lines on curated demo-week2, small and mid. Not started in cycle 8 because the session budget could not also cover its full verification.
 - **session-lifetime reportOnly/readyToEnforce, board Ready vs blocked (7), pim gaps, report-only correction under an emergency wait, low leftovers:** unchanged from the cycle 7 entries; not started in cycle 8.
+
+## Cycle 9 reassessment (2026-09-14)
+
+Fixed in cycle 9 (RESULTS): review 8 R8-1. Invocation lines are now ASCII alone: `\uXXXX` in `.json` bindings, `[char]` terms in other text. On a BOM-less file, 5.1 `ParseFile` showed a break-out before the fix and 0 bad parses after it, over the staff correction and all 26 invocation scripts. None of the remaining entries is an owner decision under RUN-CONTEXT. Risk order:
+
+- **register-info-protected step 4 (medium):** not started. The cycle 8 binding plan above stands.
+- **Board/export Ready vs blocked (medium):** 7 lane lines, and 9 exports reading "Ready · Create" above "not ready to run" (review 8). Not started.
+- **session-lifetime reportOnly/readyToEnforce (low-medium), pim gaps, report-only correction under an emergency wait, low leftovers:** unchanged; not started.
+- **R8-1 body bindings: closed, no change needed (RESULTS cycle 9, not-done item 5).** The only tenant text in PowerShell template bodies (`*.current.removedExclusions`, `*.current.displayName`) sits in `#` line comments kept on one line by `oneLine()`. The removed group `Contractors Ñ; Remove-MgGroup … #` parses clean under 5.1 `ParseFile` on a BOM-less file. Template comment non-ASCII (e.g. em dashes) only garbles under an ANSI read (review 8).

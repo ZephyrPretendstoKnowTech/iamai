@@ -886,3 +886,88 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - `git diff 41a760f HEAD -- '*.test.ts'`: two added files (quotedNameLiterals, previewExportNote); no test file modified; no `.skip`, `.only` or todo; no assert line removed.
 - Files changed outside docs: invocation.ts, stepExport.ts and the two tests. No package content, registry or LIBRARY change.
 - Untouched (`git diff --stat 41a760f HEAD` over them is empty): package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts (walk.mjs included), page-contracts and docs/design/content.json. The Connect notice's `mailto:feedback@getiamai.com` is present.
+
+## Cycle 9 (2026-09-14, from 13:30 MDT)
+
+**Start state**
+- HEAD 84cd431. Stash empty.
+- Uncommitted, docs only: the cycle 8 ledger (RESULTS, BLOCKED) and the cycle 8 fresh review (FINAL-REPORT, REVIEW-STATUS). Inspected and committed verbatim (c840800). No other unfinished work.
+- The review left two placeholders unfilled: its Walk row reads `WALK_ROW`, and REVIEW-STATUS's reason reads "walk and typecheck: WALK_TSC". Its walk log `../logs/review8/walk.txt` ends at "walk: walking mock-operator" with no exit line (last written 13:29:56), so review 8 has no completed walk or typecheck evidence. The typecheck and walk below replace them.
+- Logs: `../logs/c9/`. Scratch, not in the clone: `../scratch/c9-ps-invoke.ts` (c8-ps-invoke.ts with the value below), `c9-quote.ts` (c8-quote.ts with R8-1 names; `ROOT=` selects the source tree), `c9-ast.ps1`, `c9-values-check.mjs`, `c9-fix-regex.cjs`.
+- Copies: `../c9-nv-c840800` (`git archive c840800`, code = 84cd431, with the modified test copied in; its `node_modules` is a **directory junction** to the clone's, so remove the junction itself); `../acc-src-0989d8aa-c9` (plain archive for acceptance).
+
+### Commits
+| Commit | Scope |
+|---|---|
+| c840800 | docs: cycle 8 ledger and cycle 8 fresh review, committed after inspection |
+| 0989d8a | Review 8 R8-1: an invocation line is ASCII alone |
+
+### Queue 2 (R8-1, medium-high): FIXED (0989d8a)
+- **Fix** (`invocation.ts` `literal()`): every character above U+007E leaves the single quotes.
+  - A parameter bound to a `.json` binding carries it as a `\uXXXX` escape inside the one quoted JSON literal; ConvertFrom-Json reads the same string. The only JSON-typed invocation bindings in the registry are `policy.target.json` (12 blocks) and `policies.guests.targets.json` (1), both ending `.json`; the choice is made from the declared binding, not from the value.
+  - Other text and list items become a parenthesised concatenation of ASCII quoted runs and `[char]0xXXXX` terms, e.g. `-Name ('' + [char]0x00D1 + ' Finance''s')`. It starts with a string, because `[char] + 'text'` would convert the text to a char.
+  - U+0027 is doubled as before. ASCII-only values render exactly as before.
+  - A preview's stand-ins (`‹…›`) are drawn verbatim (`project.ts` passes the stand-in binding names). A preview is never copied, and guestsPairInvocation pins that text.
+- **Reproduced before the fix, on the pre-fix copy.**
+  - Command: `ROOT=../c9-nv-c840800 node scratch/c9-quote.ts logs/c9/quote-before`, the handed-over staff correction on curated demo-week2. Files are written by Node without a BOM.
+  - Parsed only, with `c9-ast.ps1`: `ParseInput` on UTF-8 text, and `ParseFile`, which 5.1 reads in the ANSI code page (`quote-before-ast-ps51.txt`, `-pwsh.txt`).
+  - Windows PowerShell 5.1.26100 `ParseFile`:
+    - `Policy Ñ; Remove-MgGroup … #` and `Policy €‑‒; Remove-MgGroup … #`: 0 errors, and a second top-level statement, the `Remove-MgGroup` command;
+    - `Contraseñas y ACCESO Ñ`: 1 error;
+    - `Политика В; … #`: no break-out, because the name's `т` (D1 82) adds another 0x82 quote and the quotes pair up;
+    - the ASCII control: clean.
+  - PowerShell 7.6.6, and `ParseInput` on both versions: 0 errors, but every call line with those names is non-ASCII.
+- **After** (`quote-after-*`; `ps-invoke-*`; `values-check.txt`):
+  - The staff correction's 7 cases give 14 parses per version with 0 bad.
+  - All 26 invocation-bearing `powershell.run` blocks were rendered, one call per declared mode (161 calls). Every bound value and list item is `Política Ñ В €‑‒’; Remove-MgGroup … #`. They give 52 parses per version (both parse methods) with 0 bad.
+  - Bad means any of: parse errors, a `Remove-*` command, a top-level statement other than one `Invoke-IAMAIStep` per call line, an argument that cannot be folded from the AST (string constants, `[char]` of an integer constant, `+`, `@()`), or a non-ASCII call line.
+  - The folded values match: in the 26 scripts, 660 of 660 per version equal the value (JSON-decoded for `*Json` parameters); in the correction, 14 of 14 `-TargetPolicyJson` `displayName` values equal the name.
+  - Nothing was executed. The first AST run also counted `Set-*`: its 18 bad per version were `Set-StrictMode` inside nine templates' own function bodies, so the check was narrowed to `Remove-*`, as in cycle 8.
+- **Test** `src/ui/surfaces/quotedNameLiterals.test.ts` (added in cycle 8, **modified** here and disclosed).
+  - **Why.** Its exact expectations pinned the doubled typographic quote (`'Finance’’s…'`), and a control asserted that `Équipe – “Staff”` stays inside one quoted literal. Both are the ANSI-unsafe form R8-1 demonstrates.
+  - **Test 1 now.** For the five quotes, `Ñ Ò Â Б В €`, U+2011, U+2012, an astral character and `Équipe – “Staff”`, the call line is ASCII only. The text value, a list item and the JSON value each read back as the value, and each literal ends where the next argument starts.
+  - **Test 1 pins.** One exact form of each shape. The ASCII control (`"MFA" $(Get-Date)` and a backtick) is unchanged in one quoted literal. A stand-in control is drawn verbatim.
+  - **Test 2.** The handed-over correction also carries `Policy Ñ; … #`, `Политика В; … #`, `Contraseñas y ACCESO Ñ` and `Policy €‑‒; … #`. The call line is ASCII, the JSON `displayName` equals the name, and exactly ` -PolicyId '<id>'` follows.
+  - **Non-vacuity:** 2 of 2 fail in `../c9-nv-c840800`; test 1 first fails on U+2018 (`nonvacuity-1.txt`).
+
+### Verification (exact code states)
+"Raw-regex tree": the fix as first written, with a raw U+007F and U+FFFF in the two regexes. `c9-fix-regex.cjs` rewrote those as `-￿` escapes, and a missing space was added. Same characters, same behaviour; the final tree is 0989d8a.
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | first fix tree (`tsc-1.txt`) | 1 | `corrections.map(literal)` passed the index as `json`; fixed to `map((c) => literal(c))` |
+| Typecheck | same | raw-regex tree (`tsc-2.txt`); **0989d8a** tree (`tsc-3.txt`) | 0; 0 | no output |
+| Targeted | `node --test --test-isolation=none` channelParity, conditions/guestsPair/riskNetwork/sharedDevices Invocation, stateKeepingCorrection, orGrantWidening, boundNameLineBreaks, heldCorrectionExport, previewExportNote, quotedNameLiterals | raw-regex tree (`targeted-1.txt`); **0989d8a** tree (`targeted-2.txt`) | 0; 0 | 142/142; 142/142 |
+| Full suite | `npm test`, 13:34:44–13:38:10 | raw-regex tree | 0 | 2760 tests · 2758 pass · 0 fail · 0 cancelled · 2 skipped (Learn-link external health; HUGE=1) (`full-1.txt`) |
+| Full suite | `npm test`, 13:40:19–13:43:53 | **0989d8a** tree | 0 | **2760 tests · 2758 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-2.txt`) |
+| Build | `npm run build` | raw-regex tree (`build-1.txt`); **0989d8a** tree (`build-2.txt`) | 0; 0 | chunk-size warning only |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c9/acceptance-0989d8aa`, `<copy>` = `git archive 0989d8a` into `../acc-src-0989d8aa-c9`, harness identical by `cmp` | **0989d8a** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-1.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | raw-regex tree | 0 | 0 diff lines against `../logs/c8/matrix-2.txt` (`matrix-1.txt`, `matrix-1.diff`) |
+| C01 | `s5-lone-group-admins.ts`; `SHAPE=lone\|tie\|all r2-hold-export.ts` | raw-regex tree | 0 ×4 | 0 diff lines each against review 8's `s5-lone.txt`, `hold-export-{lone,tie,all}.txt` |
+| PowerShell parse | `c9-ast.ps1` on 5.1.26100 and 7.6.6, `ParseInput` (UTF-8) and `ParseFile` (BOM-less), parse only | pre-fix copy; raw-regex tree | 0 | before: 5.1 `ParseFile` break-out ×2 and 1 error; after: 132 parses, 0 bad; 674 folded values match (above) |
+| Non-vacuity | modified quotedNameLiterals in `../c9-nv-c840800` | 84cd431 source | 1 | 2 of 2 fail (`nonvacuity-1.txt`) |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs`, from 13:41, during the 0989d8a full suite | **0989d8a** (dist from `build-2`) | _running at the ledger checkpoint (13:45)_ | not yet complete: at that time it had walked home (first load throttled 4673 ms), demo, demo-week2 and the mock fixtures through mock-operator (`walk-1.txt`). **Not counted as passing** until this row is updated |
+
+### Not done in cycle 9 (actionable; see BLOCKED)
+1. register-info-protected step 4: the binding plan in BLOCKED (cycle 8 entry) is unchanged. Not started, because its package, registry and LIBRARY changes and their verification did not fit this budget after R8-1.
+2. Board/export Ready vs blocked: 7 lane lines, and 9 exports reading "Ready · Create" above "not ready to run".
+3. session-lifetime reportOnly/readyToEnforce.
+4. pim-activation-reauth authContext/strength and the pim grant+session floor test; the report-only correction under an emergency-access wait; low leftovers.
+5. R8-1 body bindings: **checked, no change needed.**
+   - Tenant text bound into a PowerShell template body, rather than its invocation, is `*.current.removedExclusions` and `*.current.displayName`: 23 + 6 blocks (`ps-body-bindings.txt`).
+   - Every one sits in a `#` line comment (`ps-body-binding-lines.txt`), and `oneLine()` folds C0/C1 controls and U+2028/U+2029 to a space. A quote cannot end a line comment. UTF-8 continuation bytes (0x80–0xBF) never read as CR or LF in Windows-1252.
+   - Evidence: the staff correction with removed group `Contractors Ñ; Remove-MgGroup … #` renders line 2 as `# This change removes Contractors Ñ; Remove-MgGroup … # from …`. 5.1 `ParseFile` on the BOM-less file gives 0 errors and no `Remove-*` command, before and after the fix (`quote-{before,after}-ast-ps51.txt`, `groupEnye`).
+
+**Working tree at the end of cycle 9.**
+- Commits: c840800 (docs), 0989d8a (code, final verified state), and the docs commit carrying this ledger and BLOCKED. Stash empty.
+- Gitignored outputs written: `dist/`, `docs/reports/walk-0989d8a.md`, `walk/0989d8a/`.
+- Outside the clone:
+  - `../logs/c9/`: `quote-before/`, `quote-after/`, `ps-invoke/` rendered scripts, parsed only, never executed;
+  - `../scratch/c9-*`;
+  - `../c9-nv-c840800` (junction node_modules);
+  - `../acc-src-0989d8aa-c9`.
+- No remote, tenant or external write was made, and no generated script was executed.
+
+### Test edits and scope (this cycle)
+- `git diff 84cd431 HEAD -- '*.test.ts'`: one modified file (quotedNameLiterals), for the reason above; no `.skip`, `.only` or todo. The removed exact assertions are replaced by read-back and ASCII assertions over a superset of the shapes.
+- Files changed outside docs: invocation.ts, project.ts (one argument) and that test. No package content, registry or LIBRARY change.
+- Untouched (`git diff --stat 84cd431 HEAD` over them is empty): package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts (walk.mjs included), page-contracts and docs/design/content.json.
