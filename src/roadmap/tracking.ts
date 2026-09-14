@@ -18,6 +18,7 @@
 // history and its own gates, and the step's single lifecycle is derived from all
 // of them conservatively — never taken from whichever member came first.
 import type { CoverageReport, GoalResult } from '../coverage/types.ts'
+import { ownCandidate } from '../coverage/coverage.ts'
 import { list } from '../copy/statements.ts'
 import { holdOf, isHeld } from './holds.ts'
 import type { PolicyAppliedResult, TenantSnapshot } from '../graph/collect/types.ts'
@@ -300,7 +301,23 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
       result?.candidates.find((c) => fits(c) && c.contribution === 'strong') ??
       result?.candidates.find((c) => fits(c) && c.contribution === 'reportOnly') ??
       result?.candidates.find((c) => fits(c) && c.contribution === 'weak')
-    const candidate = find((c) => c.ownScope) ?? find((c) => delivering.has(c.policyId)) ?? null
+    // Among several of its own in one tier, the one generate.ts would correct
+    // (coverage.ts ownCandidate), else the one the classifier found sufficient by
+    // itself; otherwise none, and no scan order decides it (review R1-F2).
+    let tied = false
+    const own = (() => {
+      for (const tier of ['strong', 'reportOnly', 'weak'] as const) {
+        const hit = ownCandidate(result?.candidates ?? [], (c) => c.ownScope && c.contribution === tier)
+        if (hit !== 'ambiguous') {
+          if (hit) return hit
+          continue
+        }
+        tied = true
+        return result?.candidates.find((c) => c.ownScope && c.contribution === tier && c.policyId === result.satisfaction?.sufficientId) ?? null
+      }
+      return null
+    })()
+    const candidate = own ?? (tied ? null : find((c) => delivering.has(c.policyId))) ?? null
     const policy = candidate ? byId.get(candidate.policyId) : undefined
     if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
   }

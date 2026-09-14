@@ -201,6 +201,12 @@ export type Action = {
    */
   unmatchedPair?: boolean
   /**
+   * With `unmatchedPair`: the step is one policy, and the tenant has several the
+   * goal could correct that nothing about them tells apart (coverage.ts
+   * ownCandidate). The same hold, said for one policy rather than a pair.
+   */
+  ambiguousTarget?: boolean
+  /**
    * The emergency access accounts this step's *final* policies do not put out of
    * scope (Foundation A, roadmap/generate.ts emergencyExposureOf). `reached` is
    * an account a final user scope names; `unproven` is one the scope cannot

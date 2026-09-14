@@ -41,6 +41,7 @@ import { memberKeyOf } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
+import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
@@ -1359,6 +1360,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     let namingNote: { name: string; note: string | null } | null = null
     let existing: GoalResult['candidates'][number] | null = null
     let existingRaw: RawPolicy | null = null
+    let ambiguousTarget = false
 
     // A step is done if and only if its goal's verdict is inPlace (target-state
     // §8.2, prompt 46 item 9). Not the status, and never the plan's own idea of
@@ -1460,12 +1462,28 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // the admins step writes its own grant onto the same object), and
       // correcting an all-users policy for an admin goal narrows it to the
       // admins. With no policy of its own the step writes the goal's own policy.
-      existing =
-        (onlyShort ? result.candidates.find((c) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))) : undefined) ??
-        result.candidates.find((c) => c.ownScope && c.contribution === 'weak') ??
-        result.candidates.find((c) => c.ownScope && c.contribution === 'reportOnly') ??
-        result.candidates.find((c) => c.ownScope && c.contribution !== 'disabled') ??
-        null
+      // Within a tier, the pick does not depend on order either (review R1-F2): two
+      // of the goal's own policies nothing tells apart hold the step rather than
+      // hand it the first listed.
+      type Candidate = GoalResult['candidates'][number]
+      const tiers: ((c: Candidate) => boolean)[] = [
+        ...(onlyShort ? [(c: Candidate) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))] : []),
+        (c) => c.ownScope && c.contribution === 'weak',
+        (c) => c.ownScope && c.contribution === 'reportOnly',
+        (c) => c.ownScope && c.contribution !== 'disabled',
+      ]
+      existing = null
+      for (const fits of tiers) {
+        const hit = ownCandidate(result.candidates, fits)
+        if (hit === 'ambiguous') {
+          ambiguousTarget = true
+          break
+        }
+        if (hit) {
+          existing = hit
+          break
+        }
+      }
       const existingId = existing?.policyId ?? null
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       // No baseline policy stands for this goal, so the policy the step changes
@@ -1484,7 +1502,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         sections.delete('sessionControls')
         if (existing.contribution === 'strong') sections.delete('state')
       }
-      if (changing.length < 2) {
+      if (ambiguousTarget && changing.length < 2) {
+        // Several of the goal's own policies nothing tells apart: the step will not
+        // guess which one to rewrite, and it does not create a duplicate beside them.
+        action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true, ambiguousTarget: true }
+      } else if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
         const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
         one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state, policy: existingRaw } : null }

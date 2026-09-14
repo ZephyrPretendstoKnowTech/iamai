@@ -87,8 +87,9 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(MFA_ALL).blocks['ai.correct'].text
   assert.match(ai, /^This is the foundational MFA policy: every user must present a second factor \(MFA\) at sign-in\. It's the single most impactful control in the baseline\.$/m)
-  assert.match(ai, /^The policy is already enforced on your tenant\. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt\.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow\.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally\.$/m)
-  assert.match(ai, /^After this step, the MFA Registration Campaign step ensures every person has registered a phishing-resistant method\. Until that's done, the 33% threshold tile tracks progress\.$/m)
+  assert.match(ai, /^The policy already exists on your tenant\. The correction aligns its configuration with the baseline:\n— The exclusions group is added so emergency access accounts are exempt\.\n— Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow\.\n— Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally\.$/m)
+  assert.match(ai, /^After this step, the MFA Registration Campaign step helps people register a method\. Whether each person has one is shown on MFA Readiness, not by this policy\.$/m)
+  assert.doesNotMatch(ai, /already enforced|\d+% threshold/)
 })
 
 test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names both tiers with numbered corrections for each', () => {

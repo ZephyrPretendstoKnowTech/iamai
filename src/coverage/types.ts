@@ -200,6 +200,10 @@ export type CandidateContribution = {
   ownScope: boolean
   /** The policy's grant and session meet the goal's floor, whatever its state: a report-only policy can already ask for enough. */
   meetsFloor?: boolean
+  /** The policy's assignments reach the goal's whole population class (classify.ts populationReach). */
+  reachesWhole?: boolean
+  /** The policy is assigned to All users, whatever it carves out. */
+  assignedToAll?: boolean
 }
 
 /**

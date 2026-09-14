@@ -481,7 +481,7 @@ function evaluateGoal(
     // for a grant goal — is another goal's policy whatever its assignment.
     const ownScope =
       (impl.expectedWho.kind === 'all' ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null) : !c.who.all) && carriesFloorControl(c, floor)
-    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor })
+    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor, reachesWhole: reachesWhole.has(c.id), assignedToAll: c.who.all })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only
     // that: Microsoft asks no exclusion of a report-only policy, and Foundation A
@@ -678,6 +678,23 @@ function evaluateGoal(
 
   const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users)
   return { ...base, status, statement }
+}
+
+/**
+ * The one candidate `fits` admits, whatever order the scan listed them in (C01,
+ * review R1-F2): the only one, or among several the only one reaching furthest —
+ * the goal's whole population, else an All users assignment. Several nothing
+ * tells apart are `'ambiguous'`: an admins group's policy and a staff group's
+ * policy are both "assigned to a group", and taking the first listed rewrote
+ * the admins policy to All users.
+ */
+export function ownCandidate<T extends CandidateContribution>(candidates: readonly T[], fits: (c: T) => boolean): T | 'ambiguous' | null {
+  const hits = candidates.filter(fits)
+  if (hits.length <= 1) return hits[0] ?? null
+  const reach = (c: T): number => (c.reachesWhole === true ? 2 : c.assignedToAll === true ? 1 : 0)
+  const furthest = Math.max(...hits.map(reach))
+  const top = hits.filter((c) => reach(c) === furthest)
+  return top.length === 1 ? top[0] : 'ambiguous'
 }
 
 /**
