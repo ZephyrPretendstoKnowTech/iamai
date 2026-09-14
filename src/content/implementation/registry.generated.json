@@ -1638,7 +1638,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).\n4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n5. Target resources: All resources.\n6. Grant → Grant access → Require authentication strength: Modern MFA + TAP (the strength you created in the Authentication Strength step).\n"
+          "text": "3. Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).\n4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n5. Target resources: All resources.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -1650,7 +1650,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Set Grant to **Require authentication strength** and select the tenant-local baseline custom strength. Its ID is **{{authStrength.target.id}}**. Remove a non-canonical built-in MFA or different strength only from this policy.\n"
+          "text": "Set Grant to **Require authentication strength** and select the tenant-local baseline custom strength. Its ID is **{{authStrength.target.id}}**. Remove a non-canonical built-in MFA or different strength only from this policy. The baseline's custom strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not, so replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -1686,7 +1686,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "7. Save. Do not change the policy state.\n8. Rescan in IAMAI.\n"
+          "text": "6. Save. Do not change the policy state.\n7. Rescan in IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -8075,7 +8075,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).\n5. Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).\n6. Grant: Grant access → Require multifactor authentication.\n"
+          "text": "3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.\n4. Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).\n5. Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -8123,7 +8123,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "7. Save. Do not change the policy state (leave it On).\n8. Rescan in IAMAI to confirm the correction.\n"
+          "text": "6. Save. Do not change the policy state (leave it On).\n7. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
