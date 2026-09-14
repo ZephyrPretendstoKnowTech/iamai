@@ -19,11 +19,10 @@ This policy already exists and is enforced. The correction adds the exclusions g
 3. Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).
 4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
 5. Target resources: All resources.
-6. Grant → Grant access → Require authentication strength: Modern MFA + TAP (the strength you created in the Authentication Strength step).
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Grant to **Require authentication strength** and select the tenant-local baseline custom strength. Its ID is **{{authStrength.target.id}}**. Remove a non-canonical built-in MFA or different strength only from this policy.
+Set Grant to **Require authentication strength** and select the tenant-local baseline custom strength. Its ID is **{{authStrength.target.id}}**. Remove a non-canonical built-in MFA or different strength only from this policy. The baseline's custom strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not, so replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -35,8 +34,8 @@ Rename the same stable policy to **{{policy.target.displayName}}**; never locate
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-7. Save. Do not change the policy state.
-8. Rescan in IAMAI.
+6. Save. Do not change the policy state.
+7. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -19,7 +19,6 @@ This policy already exists and is enforced. The correction adds the exclusions g
 3. Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
 4. Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).
 5. Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).
-6. Grant: Grant access → Require multifactor authentication.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -35,8 +34,8 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Do not use
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-7. Save. Do not change the policy state (leave it On).
-8. Rescan in IAMAI to confirm the correction.
+6. Save. Do not change the policy state (leave it On).
+7. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

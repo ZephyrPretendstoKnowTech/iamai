@@ -266,6 +266,28 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
   return out
 }
 
+const isJsonFormat = (block: Block): boolean => block.meta.format === 'json' || block.meta.format === 'json-template'
+
+/** The JSON string a planning preview's unresolved whole JSON value stands as while its body is parsed and merged. */
+const standInToken = (key: string): string => JSON.stringify(`@@iamai-stand-in:${key}@@`)
+const STAND_IN_TOKEN = /"@@iamai-stand-in:([A-Za-z0-9_.-]+)@@"/g
+
+/**
+ * A JSON block's `{{json:x}}` values IAMAI does not hold yet, as tokens: the body
+ * still parses and merges as one request, and the stand-in is put back bare
+ * (`unmaskStandIns`). Bound as a quoted string, `"conditions": "‹policy
+ * conditions›"` read as a typed Graph body with a string where Graph takes an
+ * object or a list; bare, the preview is visibly a template with a value to
+ * resolve, which is what it is (C06).
+ */
+function maskStandIns(text: string, standIns: Readonly<Record<string, string>>): string {
+  return text.replace(/\{\{json:([A-Za-z0-9_.-]+)\}\}/g, (m, key: string) => (Object.hasOwn(standIns, key) ? standInToken(key) : m))
+}
+
+function unmaskStandIns(text: string, standIns: Readonly<Record<string, string>>): string {
+  return text.replace(STAND_IN_TOKEN, (m, key: string) => (Object.hasOwn(standIns, key) ? standIns[key] : m))
+}
+
 function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: ((binding: string) => string) | null): Projection {
   const planning = placeholder !== null
   if (!planning && NO_ACTION_STATES.has(state)) return { state, hold: null, channels: [] }
@@ -331,7 +353,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
         bad.push(`${id}: no such block`)
         continue
       }
-      const bound = bindText(block.text, b, required)
+      const bound = bindText(planning && isJsonFormat(block) ? maskStandIns(block.text, standIns) : block.text, b, required)
       if ('missing' in bound) {
         miss.push(...bound.missing)
         continue
@@ -442,7 +464,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
     })
     if (bears) bearing.add(ch)
     const corrections = [...new Set(runs.flatMap((r) => r.corrections))]
-    channels.push({ channel: ch, blocks: blockIds, format: String(pkg.blocks[blockIds[0]]?.meta.format ?? 'markdown'), text: texts.join('\n\n'), requests, mode: runs[0]?.mode ?? null, corrections, runs, communication })
+    channels.push({ channel: ch, blocks: blockIds, format: String(pkg.blocks[blockIds[0]]?.meta.format ?? 'markdown'), text: planning ? unmaskStandIns(texts.join('\n\n'), standIns) : texts.join('\n\n'), requests, mode: runs[0]?.mode ?? null, corrections, runs, communication })
   }
   // A channel that carries none of IAMAI's values — a parameterised script
   // template, a note — is this tenant's work only beside one that does. Where
