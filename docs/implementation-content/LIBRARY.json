@@ -275,7 +275,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 5,
-      "optionalBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -705,7 +705,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 4,
-      "optionalBindings": 8,
+      "optionalBindings": 9,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -5151,6 +5151,20 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "policy.target.json",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-admins-phishing-resistant",
+        "s-goal-mfa-all-users"
+      ],
+      "packages": [
+        "s-goal-admins-phishing-resistant",
+        "s-goal-mfa-all-users"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policy.target.mode",
       "requiredBy": [
         "s-goal-register-info-protected"
@@ -6149,14 +6163,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 961,
-    "uniqueBindings": 268,
+    "uniqueBindings": 269,
     "bindingsRequiredByAtLeastOneProjection": 95,
-    "bindingsOptionalInAtLeastOnePackage": 177,
+    "bindingsOptionalInAtLeastOnePackage": 178,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 223,
+    "bindingDefinitionsPendingHolisticReview": 224,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 223,
+    "knownIAMAIInputUnreviewed": 224,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
