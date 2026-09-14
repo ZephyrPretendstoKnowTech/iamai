@@ -1015,3 +1015,35 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - `git diff 1390c3f f6e6794 -- '*.test.ts'`: one modified file (quotedNameLiterals, three cases added); no `.skip`, `.only` or todo.
 - Files changed outside docs: invocation.ts and that test. No package content, registry, LIBRARY, page contract, walk rule, content.json or dependency change.
 - No remote, tenant or external write was made, and no generated script was executed.
+
+## Cycle 11 (2026-09-14, from 13:59 MDT; 6-minute budget)
+
+**Start state**
+- HEAD f6e6794. Stash empty. Uncommitted, docs only: the cycle 10 ledger (RESULTS/BLOCKED, with placeholders) and the cycle 10 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json, CONTINUE). Inspected. FINAL-REPORT.md holds literal control bytes (NUL and C0 inside two backtick spans quoting the probe and the regex), which is why git shows it as binary; kept verbatim.
+- Logs: `../logs/c11/`.
+
+### Commits
+| Commit | Scope |
+|---|---|
+| c7a0163 | docs: cycle 10 ledger with the placeholders replaced (full suite 2760/2758/0/2 skipped, exit not captured; walk did not complete) and the cycle 10 review, verbatim |
+| (this commit) | test: review 10 missing test, NUL/ESC/lone CR/U+001F/U+007F in quotedNameLiterals; this ledger |
+
+### Review 10 missing test: ADDED
+- `quotedNameLiterals.test.ts` (**modified**, additive): the read-back loop also covers `\0`, `\u001b[31m`, a lone `\r`, `\u001f` and `\u007f`. No source change; f6e6794 already handles them.
+- Non-vacuity of the new cases alone was not shown: the pre-fix source already fails at the earlier `U+9` case (cycle 10 `nonvacuity-2.txt`).
+
+### Verification (code state: f6e6794 source + this test edit)
+| Check | Command | Exit | Result |
+|---|---|---|---|
+| Targeted | `node --test --test-isolation=none src/ui/surfaces/quotedNameLiterals.test.ts` (`targeted-1.txt`) | 0 | 2/2 |
+| Typecheck | `npx tsc --noEmit` (`tsc-1.txt`) | 0 | no output |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` on dist built at f6e6794 (`build-2`, source unchanged since), from 13:59 in the background (`walk-1.txt`) | not finished at checkpoint | reached "walking demo" at 14:00; **no result recorded**. The next session should read `../logs/c11/walk-1.txt` (it ends with `walk exit N` when done) and compare to the 0989d8a walk (0 P0, 495 P1, 50 P2) |
+| Full suite, build, acceptance, matrix | not re-run: no source change this cycle | — | cycle 10 values stand |
+
+### Not done in cycle 11 (actionable; see BLOCKED cycle 10 list, unchanged)
+1. A completed walk at the committed state (running at checkpoint; see above).
+2. register-info-protected step 4 binding (medium); board/export Ready vs blocked (medium); session-lifetime reportOnly/readyToEnforce (low-medium); pim gaps, emergency-wait correction, guests adjust run mode, low leftovers. Not started: they did not fit a 6-minute budget.
+3. Review 10 missing tests for the export "Ready · Create" / "not ready to run" pair and the unconfirmed-prerequisite hold belong with item 2's fix.
+
+### Scope
+- Only `quotedNameLiterals.test.ts` changed outside docs; no `.skip`, `.only` or todo. No source, package, registry, LIBRARY, page contract, walk rule, content.json or dependency change. No remote, tenant or external write; no generated script executed.
