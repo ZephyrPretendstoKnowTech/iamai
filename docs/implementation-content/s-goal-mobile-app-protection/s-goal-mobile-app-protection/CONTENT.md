@@ -10,7 +10,7 @@
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
 3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the canonical grant and session controls exactly as described in STEP.md.
+4. Configure the grant and session controls exactly as the target policy sets them.
 5. Set **Enable policy: Report-only** and create it.
 6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
 @@IAMAI-END
@@ -36,7 +36,7 @@ Re-open the same policy by stable ID, compare the corrected object to IAMAI's ca
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus the step-specific evidence described in STEP.md. Do not treat a quiet dashboard as proof. Confirm the Intune APP prerequisite independently. Do not interpret Report-only failure for the app-protection grant as automatic proof that the enabled flow will fail.
+Leave the policy in **Report-only**. Review the report-only results plus this step's own readiness evidence. Do not treat a quiet dashboard as proof. Confirm the Intune APP prerequisite independently. Do not interpret Report-only failure for the app-protection grant as automatic proof that the enabled flow will fail.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -131,7 +131,7 @@ Policy {{policy.current.id}} has these mismatches for **Require App Protection o
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Require App Protection on Phones** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use the exact readiness conditions in STEP.md and do not recommend enforcement merely because no failures appeared.
+Assess Report-only evidence for **Require App Protection on Phones** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use this step's readiness conditions and do not recommend enforcement merely because no failures appeared.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
