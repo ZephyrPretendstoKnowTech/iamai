@@ -332,3 +332,22 @@ Critical R1-F2; high: the red required check foundationB.test.ts:73 and R1-F4. N
 | Build | `npm run build` at ae9d246 (`build.txt`) and 03e6340 (`build-2.txt`) | 0 | built; pre-existing chunk-size warning; `git status` clean afterwards (tracked home/ unchanged) |
 | Probes | r1-c01-groups(-ready), r1-a1-drift, s5-f2-hold, s5-group-dump, s5-dump, s5-lone-group-admins | 0 | as above |
 | Browser / PowerShell parse | — | — | NOT RUN in S5 (no browser-facing or script change beyond hold copy; R2) |
+
+## R2 — final independent verification (2026-09-13 23:29 MDT –; checkpoint 23:36)
+
+Start: HEAD e567436ae2c275e1a4f28611e53cbf495d66ab4a, working tree clean, `git stash list` empty — no preserved unfinished diff. No remote (`git remote -v` empty); core.hooksPath → ../empty-hooks. No application code changed in R2. Logs: ../logs/r2/. Synthetic fixtures, mocked fetch, local parsing and a local browser with every non-localhost host blocked; no Graph, no tenant, no sign-in.
+
+### Checks (R2, at e567436)
+| Check | Command | Exit | Result |
+|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` (`tsc.txt`) | 0 | no errors |
+| Full suite | `npm test` (`full-test.txt`, 23:30:02–23:33:17) | 0 | 2596 tests · 2594 pass · 0 fail · 0 cancelled · 2 skipped (Learn-link external health; HUGE=1 — same two as S0) · 194 s |
+| Build | `npm run build` (`build.txt`) | 0 | built in 300 ms; pre-existing chunk-size warning; `git status` clean afterwards |
+| Scope diff | `git diff --name-status c65d9f4 HEAD`; test-diff scan for `.skip/.todo/.only`, removed `assert` lines | 0 | 44 files outside docs/preview-corrections (S5 added coverage/types.ts, copy/reasons.ts, stateReason.ts, stepExport.ts, stepContract.ts, types.ts to R1's 38); no deletions/renames; no package, lockfile, baselines, .github, scripts, vite/tsconfig, CLAUDE.md or docs/qa change; no skip/todo/only added; removed asserts only in tracking.drift (4, R1-F1), mfaAuthContentSpecs (8) and sessionAdminContentSpecs (2), each replaced (explained in S3/S4/S5) |
+| C01 identity | `r1-c01-groups-ready.ts` (+`REV=1`), `SHAPE=groups\|roles\|mixed r1-c01-groups.ts`, `s5-f2-hold.ts`, `s5-lone-group-admins.ts`, `r1-a1-drift.ts` | 0 | groups tie → all-users held (`observe`, not executable, no ops, untracked) both orders; roles/mixed → internal/admin/session both orders; **lone admins-group policy → `correct`, executable, PATCH `includeUsers:["All"], includeGroups:[]` (critical, open)**; A1 drift → executable `create-report-only` (R1-F1, open) |
+| Viewer vs export | `SHAPE=tie\|lone\|all REV=0\|1 docs/preview-corrections/probes/r2-hold-export.ts` (`hold-export.txt`, `hold-export-tie-full.txt`) | 0 | see R2 notes |
+| C03/C04 | `s0-repro.ts` (`s0-repro.txt`) | 0 | as S2 "after" |
+| Packaged channels | `NOEX=1 s3-c01-packaged.ts` (`packaged-noex.txt`) | 0 | all-users/admins conditions corrections carry no grant; F3 Intune Enrollment disagreement present; admin-session Entra "move it to Report-only first" beside "leave it On" (C02 lifecycle, open) |
+| Matrix | `s3-matrix.ts curated all` (`matrix.txt`) | 0 | 490 renders · 0 mistyped · 0 empty · 143 uncalled templates · 20 passkey `packageFault` · 66 preview bodies not parseable (visible templates, not copyable); identical to S5 `matrix-2.txt` and R1 `matrix.txt` apart from the timing trailer |
+| PowerShell syntax | `s3-ps-render.ts ../logs/r2/ps`, then Windows PowerShell 5.1.26100 `Parser::ParseFile` (parse only, nothing executed) (`ps-parse.txt`) | 0 | 8 files · 0 parse errors |
+| Walk | `node --import ../logs/r2/netblock.mjs scripts/walk.mjs` with Playwright chromium-1243 (`walk.txt`) | — | running at checkpoint |
