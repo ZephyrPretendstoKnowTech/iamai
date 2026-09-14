@@ -75,7 +75,8 @@ const SPEC: InvocationSpec = {
 const SCRIPT = 'param([Parameter(Mandatory)][string]$Mode, [string]$Name, [string[]]$Ids, [string]$TargetJson)'
 
 test('an invocation line is ASCII alone, and every text, list item and JSON value reads back as the value', () => {
-  for (const q of [...QUOTES, ...ANSI_QUOTES, '\u{1F600}', 'Équipe – “Staff”']) {
+  // Review 9 L9-2: a tab or line break in text left the call spread over lines.
+  for (const q of [...QUOTES, ...ANSI_QUOTES, '\u{1F600}', 'Équipe – “Staff”', '\t', '\n', '\r\n']) {
     const name = `Finance${q}s MFA${q}; ${COMMAND} #`
     const target = JSON.stringify({ displayName: name })
     const r = renderInvocation(SCRIPT, SPEC, [{ mode: 'Create', corrections: [] }], { name, ids: [`g${q}1`, 'g2'], 'target.json': target }, new Set())
