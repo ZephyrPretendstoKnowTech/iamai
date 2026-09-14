@@ -595,7 +595,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 21,
+      "contentBlocks": 22,
       "outputs": {
         "entra": true,
         "json": true,
@@ -6406,7 +6406,7 @@
     "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 961,
+    "contentBlocks": 962,
     "uniqueBindings": 284,
     "bindingsRequiredByAtLeastOneProjection": 100,
     "bindingsOptionalInAtLeastOnePackage": 188,

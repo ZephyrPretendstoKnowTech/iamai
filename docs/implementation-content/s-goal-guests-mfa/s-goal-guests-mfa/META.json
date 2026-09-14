@@ -123,6 +123,7 @@
             "sessionControls"
           ],
           "entra": "entra.correct-pair",
+          "json": "json.correct-pair",
           "powershell": [
             {
               "block": "powershell.run",
@@ -175,7 +176,9 @@
       "entra": [
         "entra.enforce-pair"
       ],
-      "json": [],
+      "json": [
+        "json.enforce-pair"
+      ],
       "powershell": [
         {
           "block": "powershell.run",
