@@ -680,7 +680,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 
 ### Not done in cycle 6 (actionable; see BLOCKED)
 1. Board Ready vs blocked: 7 remain; not started.
-2. Package gaps: session-lifetime unmanaged displayName and `excludeUsers`, register-info-protected `policy.target.mode`, pim-activation-reauth authContext/strength, and the pim grant+session floor test.
+2. Package gaps. session-lifetime was investigated after the verification above, with no code change: the package requires an "unmanaged" member with no stable id, and the pin maps the goal to one policy, `ea9459a9`. Evidence and the next step are in BLOCKED (`../logs/c6/session-members.txt`). Not started: register-info-protected `policy.target.mode`, pim-activation-reauth authContext/strength, and the pim grant+session floor test.
 3. Whether a report-only policy's correction should be released under an emergency-access wait (nextSafeAction and screen together).
 4. Low: unprojected lifecycle/ReportOnly leftovers (shared-devices' `entra.correct.lifecycle` and `json.report-only` included); same-name create; passkey profiles; worker Lane B/P1; the guests pair not rendered end to end by any fixture.
 
