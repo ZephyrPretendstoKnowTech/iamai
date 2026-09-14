@@ -104,3 +104,24 @@ None of the remaining entries is an owner decision under RUN-CONTEXT. Risk order
 - **Residual export "before" line under a hold (low, reassessed, no change).** stepExport.ts:210–211 already gates the lead and "before" lines on `instructionsHeld`, the reading the screen makes (stepInstructions.ts). Only portal lines are additionally gated on `implementationIsCurrent` (2997bb3). Review 4 found the screen draws the same Intune prerequisite for large require-managed-device inside a non-copyable preview, so gating the export alone would make the two surfaces differ again. This is prose parity, not a hand-over.
 - **Package gaps (medium/low, not started):** session-lifetime unmanaged displayName and `excludeUsers` (still `missing=` in the matrix); register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
 - **Low, unchanged:** unprojected lifecycle/ReportOnly/Location leftovers (the three packages changed this cycle still carry an unprojected `ReportOnly` mode); same-name create; passkey profiles; worker Lane B/P1 paths and scoring of a missing methods entry; real-login latency not claimed.
+
+## Cycle 6 reassessment (2026-09-14)
+
+Fixed in cycle 6 (RESULTS):
+- review 5 queue 1, removed exclusions named in the viewer's Entra, AI Info and called scripts (2f8a008);
+- R5-1, the guests pair's requestless JSON (6d96531);
+- queue 2, the shared-devices Create AI note (6d96531);
+- queue 6, the N1 comment, the report-only pin and the partly deployed pair pin (6d96531);
+- new: s-goal-unmanaged-browser's authored correction staged an enabled policy to report-only (2f8a008; withheld from projection, so never drawn).
+
+None of the remaining entries is an owner decision under RUN-CONTEXT. Risk order:
+
+- **Board Ready vs blocked: 7 remain (medium, unchanged).** Lane probe at 2f8a008 `{"steps":107,"boardReadyBlocked":7,"noLaneReadyBlocked":7}`; rv-parity 0 diff lines against cycle 5. Classes as the cycle 4 entry: 3 demo enforced drifted policies with a pending exclude mapping (the hold is the safe reading), and 4 report-only watches whose action line could name what the watch waits on. Not started in cycle 6.
+- **Report-only policy under an emergency-access wait (low-medium, reading, not changed).** stepPackage.ts now says why a report-only policy's correction is held too (nextSafeAction holds every correction under the wait), and packageState.test.ts pins it. docs/product/actionability §18.3 ("exclusions gate enforced CA, never report-only") would support releasing it, but that change belongs in nextSafeAction and the screen together, and SEGMENTS asks not to rework the readiness framework. Next, if taken: release a report-only policy's correction in nextSafeAction and packageStateOf together, pinned by the same test with the expectation reversed.
+- **Removed exclusions, residual (low).**
+  - The JSON channel carries no prose, so a PATCH body cannot say what it removes; the Entra, AI Info, PowerShell, portal and export lines do.
+  - s-goal-unmanaged-browser has no member bindings (no `baselineAuthority.members`) and a withheld Partial projection, so it carries no removal line; the goal is not in the pinned baseline.
+- **shared-devices (low).** `readyToEnforce` still names the withheld Enforce run. That is the same as user-risk-medium and service-accounts-trusted-network (cycle 5): the reason is declared in `withheldModes` and the compiler's lint error is the disclosure; not changed. The unprojected `entra.correct.lifecycle` ("Return the dedicated policy to **Report-only** while material corrections are being validated") and `json.report-only` blocks remain as leftovers. They are in no projection, so the authored-package scan does not flag them.
+- **Package gaps (medium/low, not started):** session-lifetime unmanaged displayName and `excludeUsers` (still `missing=` in the matrix); register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
+- **Guests pair on a real tenant (low-medium, not verifiable locally):** unchanged; no fixture resolves both pinned members.
+- **Low, unchanged:** unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 paths and scoring of a missing methods entry; real-login latency not claimed.

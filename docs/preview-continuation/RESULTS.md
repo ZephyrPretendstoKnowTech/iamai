@@ -566,3 +566,126 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - Outside the clone: `../logs/c5/` (including `ps/`, the rendered scripts, parsed only); `../scratch/c5-*` and `../scratch/guestsPairInvocation.test.ts` (the draft copied into the clone); archive copies `../c5-src-e0163b0`, `../acc-src-311b8a9-c5`, `../acc-src-c4cb5a6-c5`, `../acc-src-d6d1e30-c5`.
 - `../c5-src-e0163b0/node_modules` is a **directory junction** to the clone's `node_modules`, and that copy also holds this cycle's test files for the non-vacuity runs. Anyone removing it must remove the junction itself and not follow it.
 - No remote, tenant or external write was made, and no generated script was executed.
+
+## Cycle 6 (2026-09-14, from 11:26 MDT)
+
+**Start state**
+- HEAD c3b3f41 (code d6d1e30). Stash empty.
+- Uncommitted: the cycle 5 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json), docs only. Inspected and committed first (a6c157a). No other unfinished work.
+- Logs: `../logs/c6/`, outside the clone. Scratch, not in the clone: `../scratch/c6-removed-lines.mjs` (the checked transform), `c6-removed-render.ts`, `c6-ps-blocks.mjs`.
+- Archive copies:
+  - `../c6-src-6d96531`, the pre-batch-2 source. Its `node_modules` is a **directory junction** to the clone's: remove the junction itself, never follow it. It also holds this cycle's two new test files for the non-vacuity runs.
+  - `../acc-src-2f8a008-c6` and `../acc-src-ec7bfed-c6`, plain archives for acceptance.
+
+### Commits
+| Commit | Scope |
+|---|---|
+| a6c157a | docs: cycle 5 fresh review, committed after inspection |
+| 6d96531 | Review 5 queue 3 (R5-1): guests pair JSON with no request no longer projected. Queue 2: shared-devices Create AI note. Queue 6: N1 comment, report-only pin, partly deployed pair pin |
+| 2f8a008 | Review 5 queue 1: removed exclusions named in 25 correction packages' Entra, AI Info and script (stepPackage.ts bindings, checked transform); removedExclusionChannels.test.ts; disclosed pins. New: unmanaged-browser's authored correction keeps state, and its script's unclosed brace is closed; authored-package keep-state scan |
+| ec7bfed | AuthoredText: a space before each `<br />` in a list item, so the new line under a Save item is its own sentence in the item's text (the walk had counted 3 long sentences) |
+
+### Queue 1: removed exclusions in the viewer's Entra, AI Info and scripts: FIXED (2f8a008)
+- **Reproduced before editing:** the new test run on the tree with only the bindings added failed 3 of 4 (`removed-test-before.txt`). On rv-edge's staff-guest shape, the Entra tab drew "…Save. Leave **Enable policy** as it is…" and "Rescan", with no removal line. The registry check stopped at s-goal-admin-session.
+- **Binding** (stepPackage.ts):
+  - `removedExclusionNames(op, nameOf)` gives the names from `PolicyOperation.removes`. Guest exclusions use the portal line's own words ("guest or external users"); objects use the plan's name, never an id.
+  - It is bound as `policy.current.removedExclusions` when the step has exactly one planned operation.
+  - memberBindings binds `policies.<family>.<role>.current.removedExclusions` for each member's own update.
+- **Content**, via a checked transform (`../scratch/c6-removed-lines.mjs`):
+  - Every insertion had to match exactly once, and every META had to parse; otherwise nothing was written. The first run stopped on s-goal-azure-management-mfa, whose verify block is prose, and wrote nothing (`transform-1.txt`). The rerun covered 25 packages (`transform-2.txt`).
+  - Entra: the six packages whose save is a numbered Save item get "This change removes {{…}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]" indented under that item. The guests pair gets it under items 5 and 9, naming each member. The other 18 packages get it as the save block's closing paragraph.
+  - AI Info gets the same line as a closing paragraph.
+  - Each `powershell.run` gets it as its first comment line.
+  - META declares the optional bindings. The registry and LIBRARY.json were regenerated (`registry-4.txt`, `library-1.txt`: 270 → 277 bindings).
+- **After** (`removed-render-2.txt`), the rv-edge shapes opened in the viewer:
+  - staffGuestExcl: "This change removes guest or external users from the policy's exclusions…" in Entra (inside the Save item), AI Info and the CorrectConditions script.
+  - staffExclOtherApp: "…removes Office 365 Exchange Online…" in the same three tabs, named and never an id.
+  - JSON is unchanged: a request body carries no prose.
+- **Plain demo:** step-07 (MFA for everyone) and step-08 (block device code) now draw "This change removes Break-glass 1 / Core - Break glass from the policy's exclusions…" in their planning previews (`walk/2f8a008/demo/1280/step-07…txt`:61, `step-08…txt`:61). Those corrections do remove that exclusion; before this cycle only the export line said so.
+- **PowerShell parse** (`c6-ps-blocks.mjs` + `Parser::ParseFile`, parse only): all 39 registered `powershell.run` blocks were written with the line unbound and bound (a sample name with a quote), for 2f8a008 and for 6d96531. Result: 156 files, 0 errors in each set (`psall-parse.txt`). The two rendered rv-edge scripts also parse with 0 errors (`ps-parse-2.txt`).
+- **Tests:** `src/ui/surfaces/removedExclusionChannels.test.ts` (4):
+  - the guest shape's line appears in Entra (under the Save item and before Rescan), AI Info and the called CorrectConditions script, and matches the export line;
+  - the Exchange Online shape is named, never an id;
+  - control: a correction keeping every exclusion draws no line and no `{{` or marker;
+  - every registered CA correction package (≥ 24) carries and declares the binding in a drawn Entra, AI Info and PowerShell block of its correction.
+  - Non-vacuity: 3 of 4 fail against `../c6-src-6d96531` (the control passes; `nonvacuity-2.txt`).
+- **Pins changed (disclosed):**
+  - mfaAuthContentSpecs (mfa-all-users, admins, block-auth-transfer and block-device-code Save items; guests items 5 and 9) and sessionAdminContentSpecs (admin-session and block-legacy-auth Save items) now include the optional line in the item.
+  - block-device-code's script is asserted to start with the line, then `param(`. It had asserted `^param\(`.
+  - block-legacy-auth's exact AI text gains the paragraph.
+  - pilot.test.ts and conditionsInvocation.test.ts compare the authored script with its unbound optional line removed, as the projection draws it. pilot adds a premise that the line exists and a check that it is not drawn when nothing is removed.
+  - The first full suite after the transform had exactly these 9 failures (`full-1.txt`).
+
+### New finding: s-goal-unmanaged-browser's authored correction staged an enabled policy: FIXED as authored content (2f8a008); never drawn
+- **Found** while mapping correction blocks for queue 1. The authored Partial projection:
+  - ran `StageA`/`StageB` (PATCH `state` to report-only when enabled) before `CorrectA`/`CorrectB`;
+  - `Correct` threw "Refusing correction while policy is On. Stage first.";
+  - Entra said "Stage any enabled policy to Report-only before access-affecting correction."
+- **Not drawn:** the compiled registry has no `partial` projection for this package, before and after (checked in both registries). The goal is also absent from the pinned baseline (baselineScope.test.ts). cycle 3's keepStateOnCorrection scan read only the registry, and its verb list lacked "stage", so it passed. Its widened form still passed against 6d96531 (`nonvacuity-1.txt`) because the projection is withheld.
+- **Fix:**
+  - removed the stage runs from META;
+  - removed the `Stage` function, its ValidateSet entries and switch arms, and the refusal guard (Correct PATCHes name, conditions, grant and session, never state);
+  - Entra: "Keep each policy's current state: if it is On, the corrected restrictions apply to browser sessions as soon as you save.";
+  - AI Info states the same.
+- **Pre-existing parse error fixed:** the script's final `foreach` never closed its `{` ("Missing closing '}'", in HEAD's copy too; `ub-ps-parse-2.txt`). One brace added; it now parses with 0 errors (`ps-parse-2.txt`).
+- **Test** (keepStateOnCorrection.test.ts):
+  - It scans every authored package (META plus parsed CONTENT, withheld parts included) for staging runs, state-only report-only PATCHes, staging prose and the refusal guard.
+  - The verb list gains "stage", and a prose control is added for this sentence.
+  - Against 6d96531 the new test fails on exactly this package: Entra, StageA, StageB and the guard (`nonvacuity-3.txt`). In the tree it passes 4/4 (`keepstate-2.txt`).
+
+### Queue 3 (R5-1): guests pair JSON with no request: FIXED (6d96531)
+- `json.target-pair` (missing, partial) and `json.enforce-pair` (readyToEnforce) are removed from the projections; the blocks stay unprojected. Entra, the called script and AI Info carry the pair.
+- Test (guestsPairInvocation.test.ts): with every pair value bound, none of the three states has a hold, a JSON degraded entry or a JSON channel, and Entra, PowerShell and AI Info are drawn.
+- Matrix at 2f8a008 against cycle 5: exactly 2 rows change, getiamai and getiamai+curated guests, whose degraded list drops the JSON entry (`matrix-1.diff`).
+
+### Queue 2: shared-devices: Create note FIXED (6d96531); Enforce reference kept
+- ai.create: "The PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies."
+- `readyToEnforce` still names the withheld Enforce run, as user-risk-medium and service-accounts do (cycle 5): the reason is declared in `withheldModes`. Not changed (BLOCKED).
+
+### Queue 6: N1 follow-ups: FIXED (6d96531)
+- stepPackage.ts comment: the lock-out reading applies to an enforced policy. A report-only policy's correction is held because nextSafeAction holds every correction under the wait (review 5 R5-2).
+- packageState.test.ts: a report-only policy owing a correction under a break-glass wait reads `blocked`, with nextSafeAction not executable as the premise and an ungated control reading `partial`.
+- guestsPairInvocation.test.ts: a partly deployed pair (strong id unbound) withholds only the script, on exactly `policies.guests.strong.current.id`, and Entra is still drawn.
+- Not changed: whether nextSafeAction should release a report-only policy's correction under the wait (§18.3; BLOCKED).
+
+### Walk finding from this cycle's change: FIXED (ec7bfed)
+- The walk at 2f8a008 had 3 more P1s than cycle 5 (498 against 495): "sentence over 25 words: 'Leave Enable policy as it is: if the policy is On, these changes apply to sign-ins as soon…'" on demo MFA for everyone, demo block device code and mock-operator MFA for everyone (`walk-report-diff.txt`).
+- The captures show two lines (step-07 lines 60–61). walk.mjs measures each block's `textContent`, and AuthoredText joined an item's lines with a bare `<br />`, so the item read "…as soon as you save.This change removes…".
+- ec7bfed adds a space before each `<br />` in list items. The walk rule is unchanged, and nothing changes on screen.
+- Walk at ec7bfed: 495 P1, report identical to cycle 5's after stripping digits, removal line still drawn (`walk-report-diff-2.txt`).
+
+### Verification (exact code states)
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Targeted | guestsPairInvocation, packageState, sharedDevicesPeopleJson, sharedDevicesInvocation, library | tree = 6d96531 | 0 | 30/30 (`small-tests-1.txt`) |
+| Typecheck | `npx tsc --noEmit` | batch 2 tree before the transform; after the transform; 2f8a008 tree; ec7bfed tree | 0 ×4 | `tsc-1.txt` … `tsc-4.txt` |
+| Full suite | `npm test` | after the transform, before the pin updates | 1 | 2751 · 2740 pass · **9 fail** (the pins above) · 2 skipped (`full-1.txt`) |
+| Full suite | `npm test`, 11:46–11:49 | 2f8a008 less the authored-package keep-state test | 0 | 2751 · 2749 pass · 0 fail · 2 skipped (`full-2.txt`) |
+| Full suite | `npm test`, 11:52–11:55 | **2f8a008** (clean tree) | 0 | **2752 tests · 2750 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-3.txt`) |
+| Full suite | `npm test`, 12:02–12:05 | **ec7bfed** (final code) | 0 | **2752 tests · 2750 pass · 0 fail · 0 cancelled · 2 skipped** (same two) (`full-4.txt`) |
+| Build | `npm run build` | 2f8a008; **ec7bfed** | 0; 0 | chunk-size warning only (`build-1.txt`, `build-2.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | 2f8a008 product code (ec7bfed changes a React component the matrix does not read) | 0 | vs cycle 5 `c5/matrix-5.txt`: 2 rows (getiamai guests JSON degraded entry gone); uncalled-template 0, packageFault 0 (`matrix-1.txt`, `matrix-1.diff`) |
+| Lane / parity | `c2-export-lane.ts`; `../logs/review1/rv-parity.ts` | 2f8a008 tree | 0; 0 | `{"steps":107,"boardReadyBlocked":7,"noLaneReadyBlocked":7}` (cycle 5: same); parity 0 diff lines against `c5/rv-parity-2.txt` (`export-lane-1.txt`, `rv-parity-1.diff`) |
+| PowerShell parse | `../scratch/c6-ps-blocks.mjs` + `Parser::ParseFile` (parse only) | 2f8a008 and 6d96531 registries | 0 | 39 scripts × unbound/bound × 2 registries = 156 files, 0 errors; unmanaged-browser composite 0 (HEAD's copy 1); rv-edge renders 0 (`psall-parse.txt`, `ps-parse-2.txt`, `ub-ps-parse-2.txt`) |
+| Non-vacuity | new tests in `../c6-src-6d96531` (junction) | 6d96531 source | 1; 1 | removedExclusionChannels 3 of 4 fail (`nonvacuity-2.txt`); authored keep-state scan fails on unmanaged-browser only (`nonvacuity-3.txt`). The registry-only keep-state test passes there (`nonvacuity-1.txt`): see the finding |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c6/acceptance-<sha>`, `<copy>` = `git archive` into a new directory, harness identical by `cmp` | 2f8a008; **ec7bfed** | 0; 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** each (`acceptance-1.txt`, `acceptance-2.txt`) |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after that commit's build (preload re-read: localhost only); reports `docs/reports/walk-2f8a008.md`, `walk-ec7bfed.md`, captures `walk/<sha>/` (gitignored) | 2f8a008, 11:55–11:59 | 0 | 0 P0, **498 P1**, 50 P2; 3 added long-sentence P1s (above) (`walk-1.txt`, `walk-report-diff.txt`) |
+| Walk | same | **ec7bfed**, 12:05–12:09 | 0 | "0 P0, **495 P1**, 50 P2"; report identical to cycle 5's d6d1e30 walk after stripping digits (0 diff lines) (`walk-2.txt`, `walk-report-diff-2.txt`) |
+
+### Test edits and scope (this cycle)
+- `git diff a6c157a HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. Three assert lines were replaced, each disclosed above: pilot's "carried whole", block-device-code's `^param\(`, and block-legacy-auth's exact AI text.
+- Files changed outside package content: stepPackage.ts, StepSections.tsx, registry.generated.json, and nine test files (one new).
+- Package content: 25 correction packages (CONTENT/META), unmanaged-browser, guests META, shared-devices CONTENT, and LIBRARY.json.
+- Untouched: package.json, lockfile, baselines, .github, vite/tsconfig, data, scripts (walk.mjs included), page-contracts.json, src/feedback.ts and content.json (the Connect notice's `mailto:feedback@getiamai.com` is present).
+
+### Not done in cycle 6 (actionable; see BLOCKED)
+1. Board Ready vs blocked: 7 remain; not started.
+2. Package gaps: session-lifetime unmanaged displayName and `excludeUsers`, register-info-protected `policy.target.mode`, pim-activation-reauth authContext/strength, and the pim grant+session floor test.
+3. Whether a report-only policy's correction should be released under an emergency-access wait (nextSafeAction and screen together).
+4. Low: unprojected lifecycle/ReportOnly leftovers (shared-devices' `entra.correct.lifecycle` and `json.report-only` included); same-name create; passkey profiles; worker Lane B/P1; the guests pair not rendered end to end by any fixture.
+
+**Working tree at the end of cycle 6.**
+- Commits: a6c157a, 6d96531, 2f8a008, ec7bfed (code; ec7bfed is the final verified state), and the docs commit carrying this ledger and BLOCKED. Nothing else is uncommitted; stash empty.
+- Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-2f8a008.md`, `docs/reports/walk-ec7bfed.md`, `walk/2f8a008/`, `walk/ec7bfed/`.
+- Outside the clone: `../logs/c6/` (including `ps/` and `psall/`, rendered scripts, parsed only); `../scratch/c6-*`; `../c6-src-6d96531` (node_modules **junction**: remove the junction itself), `../acc-src-2f8a008-c6`, `../acc-src-ec7bfed-c6`.
+- No remote, tenant or external write was made, and no generated script was executed.
