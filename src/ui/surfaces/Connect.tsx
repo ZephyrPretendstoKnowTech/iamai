@@ -53,7 +53,8 @@ import { demoUrl, exitDemoUrl, isDemo } from '../demoMode.ts'
 // page reads four numbers and never loads the demo chunk.
 import SAMPLE_FACTS from 'virtual:demo-facts'
 import { elapsedLabel } from '../format.ts'
-import { Button, LinkButton } from '../components/index.ts'
+import { Button, Callout, LinkButton } from '../components/index.ts'
+import { FEEDBACK_ADDRESS } from '../../feedback.ts'
 import { PINNED_BASELINE, baselineReview, checkAuthorHead, loadPinnedBaseline, loadUploadedBaseline } from '../baseline.ts'
 import type { BaselineResult } from '../baseline.ts'
 import { PLAN_HREF } from '../shell/AppShell.tsx'
@@ -97,8 +98,27 @@ export function Connect(
       <p className="eyebrow">{W.eyebrow}</p>
       <h1 className="display">{W.h1}</h1>
       <p className="lede">{W.intro}</p>
+      <BetaNotice />
       {account ? <SignedIn {...props} account={account} /> : <SignedOut error={props.authError} baseline={props.baseline} baselineRestoreError={props.baselineRestoreError} authorUpdate={props.authorUpdate} />}
     </section>
+  )
+}
+
+/**
+ * The public-beta notice: one callout above the setup controls, drawn by
+ * Connect itself so it is there before sign-in and after it (the demo too). The
+ * feedback address is a mail link. Nothing to accept, nothing recorded.
+ */
+function BetaNotice() {
+  const [before, after] = W.notice.body.split('{feedback}')
+  return (
+    <Callout kind="warning" title={W.notice.title}>
+      {before}
+      <a className="lnk" href={`mailto:${FEEDBACK_ADDRESS}`}>
+        {FEEDBACK_ADDRESS}
+      </a>
+      {after}
+    </Callout>
   )
 }
 

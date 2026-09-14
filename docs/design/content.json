@@ -559,6 +559,11 @@
           "open": "Open the sample plan"
         }
       },
+      "notice": {
+        "$comment": "Owner decision (corrective pass, 2026-09-13): one compact public-beta notice on Connect, above the setup controls before and after sign-in. {feedback} is the feedback address, drawn as a mail link. No acknowledgement, nothing recorded.",
+        "title": "Public beta — review before applying",
+        "body": "IAMAI’s recommendations and implementation guidance are still being validated. Check every instruction, JSON payload and PowerShell script against your tenant and current Microsoft documentation before applying it. IAMAI reads your tenant; changes happen only when you apply them yourself. Report incorrect or contradictory guidance to {feedback}."
+      },
       "next": "Next"
     },
     "plan": {
