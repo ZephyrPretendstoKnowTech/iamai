@@ -689,3 +689,121 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-2f8a008.md`, `docs/reports/walk-ec7bfed.md`, `walk/2f8a008/`, `walk/ec7bfed/`.
 - Outside the clone: `../logs/c6/` (including `ps/` and `psall/`, rendered scripts, parsed only); `../scratch/c6-*`; `../c6-src-6d96531` (node_modules **junction**: remove the junction itself), `../acc-src-2f8a008-c6`, `../acc-src-ec7bfed-c6`.
 - No remote, tenant or external write was made, and no generated script was executed.
+
+## Cycle 7 (2026-09-14, from 12:25 MDT)
+
+**Start state**
+- HEAD 0aabf68 (code ec7bfed). Stash empty.
+- Uncommitted: the cycle 6 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json), docs only. Inspected and committed first (06315a7). No other unfinished work.
+- Logs: `../logs/c7/`, outside the clone. Scratch, not in the clone: `../scratch/c7-*`.
+- Archive copy `../c7-nv-06315a7` (`git archive 06315a7`), the pre-cycle-7 source. Its `node_modules` is a **directory junction** to the clone's: remove the junction itself, never follow it. It also holds this cycle's new and changed test files for the non-vacuity runs.
+
+### Commits
+| Commit | Scope |
+|---|---|
+| 06315a7 | docs: cycle 6 fresh review, committed after inspection |
+| e7a065b | Review 6 R6-1: a tenant name bound into a script comment, a list item or an export line stays on its line |
+| 4361874 | Review 6 queue 2: session-lifetime creates the pinned browser policy alone; a preview lists only the values its runs pass |
+
+### Queue 1 (R6-1): FIXED (e7a065b)
+- **Reproduced before editing** with the reviewer's probe (`../scratch/c7-removed-name.ts`, paths adjusted; `removed-name-before.txt`). Group X is named "Contractors", a line break, then a Remove-MgGroup command. The Entra Save item, the script's `#` line, AI Info and the export line all split at the break. The rendered script, parse only, has 11 errors (`removed-name-parse.txt`).
+- **Fix:**
+  - project.ts `oneLine`: in a `{{x}}` value (a string, or each string of a list), line breaks and other control characters read as one space. That covers U+0000–0008, U+000A–001F, U+007F–009F, U+2028 and U+2029; a tab stays.
+  - `{{json:x}}` values are unchanged, because JSON encoding already escapes a break.
+  - stepPortal.ts reads object names and policy display names through the same function, so the portal and export removal lines say what the tabs say.
+- **After** (`removed-name-after.txt`): each of the four lines is one line, and the rendered script parses with 0 errors.
+- **All scripts** (`../scratch/c7-ps-linebreak.ts`, parse only, nothing executed): each of the 39 registered `powershell.run` blocks is bound through `bindText`, with every value set to a name holding a quote, a line break and a Remove-MgGroup command. Result: 39 files, 0 parse errors, and 0 line-count differences against a plain value (`ps-linebreak.txt`, `ps-linebreak-parse.txt`).
+- **Test** `src/ui/surfaces/boundNameLineBreaks.test.ts` (3):
+  - `bindText` with LF, CRLF, CR, U+2028 and U+0085. The JSON binding keeps its escaped break. Control: a tab and non-ASCII letters are unchanged.
+  - Every registered non-JSON block with a text binding (more than 100) keeps its line count, and at least 25 of them are scripts.
+  - rv-edge's staff shape with a group name holding LF, CRLF or CR:
+    - the script's removal comment sits between `function Invoke-IAMAIStep {` and `param(`;
+    - no line starts with the command;
+    - the Entra Save item and AI Info carry the whole sentence;
+    - there is one export line.
+  - Non-vacuity: 3 of 3 fail against `../c7-nv-06315a7` (`nonvacuity-1.txt`).
+- **Verification at the e7a065b tree:** `npx tsc --noEmit` exit 0 (`tsc-3.txt`). Targeted 30/30 (`targeted-1.txt`). `npm test`, 12:32–12:36: exit 0, **2755 tests · 2753 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-1-r61.txt`).
+
+### Queue 2: session-lifetime unmanaged member: FIXED as far as the evidence goes; still a preview on `excludeUsers` (BLOCKED)
+- **Evidence re-read:**
+  - The pinned baseline's session policies (`baselines/jhope188-conditionalaccesspolicies.pinned.json`) include none with a device filter for this goal.
+  - `PINNED_GOAL_MAP['all-users-no-persistence']` is the one id `ea9459a9…`.
+  - The package's unmanaged member has `memberStableId: null`.
+  - No authoritative target exists for the companion, and none is invented.
+- **Before** (`../scratch/c7-session.ts`, `session-before.txt`), on curated demo-week2, demo+curated and mid: every render is a preview.
+  - Entra: "Create two separate Conditional Access policies", including Policy B named with the unmanaged stand-in.
+  - Script call: `-Mode 'Create'`, passing the stand-in companion name.
+  - JSON: unavailable.
+  - Note: "Values still to resolve: unmanaged device session policy name, excluded people, browser session policy ID and unmanaged device session policy ID."
+- **Package change** (s-goal-session-lifetime):
+  - META: `policies.session.unmanaged.target.displayName` moves from required to optional and leaves `missing.requires`. `missing.json` is the browser create only, and `missing.powershell` runs `CreateBrowser`.
+  - CONTENT `entra.create-set`: Policy A is unchanged. Policy B reads "Not offered here yet. The pinned baseline has no unmanaged-device session policy, so IAMAI has no name or stable identity for this companion. Create Policy A only."
+  - `ai.create` ROLE says the same.
+  - `withheldModes.Create` gives the reason: Create also writes the companion, which the pinned baseline has no policy to name.
+  - The unmanaged correction modules, the JSON blocks and the script's modes stay in the package.
+  - Registry and LIBRARY.json regenerated (`registry-1.txt`, `library-1.txt`).
+- **Preview-note fix found here (project.ts `planningValues`):** a script parameter's binding is listed as a value to resolve only when its `modes` include a mode the preview runs. Before, a create's note listed the policy ids that only its corrections pass.
+- **After** (`session-after.txt`):
+  - Entra names the browser policy and states why Policy B is not offered.
+  - Call: `Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Core - Session - Non-persistent browser sessions' -ExcludeGroupIds @('000f4435-…')`, with the excluded-people stand-in.
+  - The JSON browser POST is drawn in the preview.
+  - Note: "Values still to resolve: excluded people."
+- **Still a preview:** `policy.target.excludeUsers` is `[]`, meaning the target excludes no accounts, and a required empty list is not a value IAMAI holds (bindingInventory.test.ts; pilot.test.ts:210 pins the same rule for exclusion groups). See BLOCKED.
+- **Matrix** (`node docs/preview-corrections/probes/s3-matrix.ts curated all`, `matrix-1.txt`) against the review 6 matrix: exactly the 20 all-users-no-persistence rows change (`matrix-1.diff`; the 41st diff line is the reviewer file's trailing `exit 0`).
+  - Hold before: the unmanaged name and `policy.target.excludeUsers`. Now: `policy.target.excludeUsers` only.
+  - `json:-` becomes `json:+`, with `json does-not-parse` as on the 66 other preview rows whose JSON holds a stand-in.
+  - No other row changes.
+- **Preview notes** (`../scratch/c7-preview-notes.mjs`, run on the clone and on `../c7-nv-06315a7`): 74 of 102 notes change (`preview-notes.diff`).
+  - Values are only removed: none added, no lead line changed (`preview-notes-words.txt`).
+  - Every changed note is a create render (blocked or missing), plus 2 guests adjust renders in blocked (`preview-notes-join.txt`).
+  - Removed: "policy ID" on 13 packages' create previews; browser/unmanaged session policy IDs; the unmanaged name; the guests member ids (2); PIM role settings (2).
+- **Tests:**
+  - `src/ui/surfaces/sessionLifetimeUnmanaged.test.ts` (2):
+    - premises (pin, null stable id, no unmanaged binding);
+    - Entra's reason and browser name;
+    - AI Info;
+    - one script call, `CreateBrowser`, with nothing unmanaged;
+    - a browser JSON body;
+    - the note lists only excluded people;
+    - with the excluded accounts held, the projection has no hold and no degraded channel. Entra, PowerShell (`CreateBrowser` with the accounts), a JSON POST (browser, report-only, the accounts) and AI Info are all drawn, with no stand-in or marker;
+    - the withheld Create reason;
+    - the unmanaged modules kept.
+  - bindingInventory.test.ts pin changed (disclosed): the held session create is on exactly `['policy.target.excludeUsers']`, where it had included the unmanaged name.
+  - Non-vacuity: 3 of 3 fail against `../c7-nv-06315a7` (`nonvacuity-2.txt`).
+  - Targeted 65/65 (`targeted-3.txt`); `npx tsc --noEmit` exit 0 (`tsc-4.txt`).
+
+### Verification (exact code states)
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | e7a065b tree (`tsc-3.txt`); 4361874 tree (`tsc-4.txt`) | 0; 0 | no output |
+| Targeted | `node --test` on the new and neighbouring files | e7a065b tree; 4361874 tree | 0; 0 | 30/30 (`targeted-1.txt`); 65/65 (`targeted-3.txt`) |
+| Full suite | `npm test`, 12:32–12:36 | **e7a065b** tree | 0 | **2755 tests · 2753 pass · 0 fail · 0 cancelled · 2 skipped** (`full-1-r61.txt`) |
+| Full suite | `npm test`, 12:41–12:45 | **4361874** tree (committed after this run, same files) | 0 | **2757 tests · 2755 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-2.txt`) |
+| Non-vacuity | new/changed tests in `../c7-nv-06315a7` (junction) | 06315a7 source | 1; 1 | boundNameLineBreaks 3 of 3 fail (`nonvacuity-1.txt`); sessionLifetimeUnmanaged 2 of 2 and the bindingInventory pin fail (`nonvacuity-2.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | 4361874 tree | 0 | against review 6 `../logs/review6/matrix.txt`: the 20 all-users-no-persistence rows only (`matrix-1.txt`, `matrix-1.diff`) |
+| Preview notes | `ROOT=<tree> node ../scratch/c7-preview-notes.mjs` on the clone and on 06315a7 | 4361874 tree vs 06315a7 | 0; 0 | 74 of 102 change, removals only (`preview-notes.diff`, `-words.txt`, `-join.txt`) |
+| PowerShell parse | `../scratch/c7-ps-linebreak.ts` + `Parser::ParseFile` (parse only) | e7a065b registry | 0 | 39 scripts bound with a line-break name: 0 errors, 0 line-count differences (`ps-linebreak-parse.txt`); rv-edge render before 11 errors, after 0 (`removed-name-parse.txt`) |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c7/acceptance-4361874`, `<copy>` = `git archive` of 4361874 into `../acc-src-4361874-c7`, harness identical by `cmp` | **4361874** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-1.txt`) |
+| Build | `npm run build` | **4361874** | 0 | `build-1.txt` |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after that build; report `docs/reports/walk-4361874.md`, captures `walk/4361874/` (gitignored) | **4361874**, 12:47–12:51 | 0 | **0 P0, 495 P1, 50 P2**. The report matches review 6's `walk-0aabf68.md` after stripping digits, except for the capture directory name (`walk-report-diff.txt`). demo step 23 draws "Create the browser policy…" and "Not offered here yet…", where the ec7bfed capture had "Create two separate…". The demo removal lines are identical to cycle 6's capture |
+
+### Not done in cycle 7 (actionable; see BLOCKED)
+1. session-lifetime `policy.target.excludeUsers`: the required empty list keeps every render a preview. The next reading is in BLOCKED; the pilot group rule must stay.
+2. session-lifetime reportOnly/readyToEnforce still require the unmanaged id.
+3. Board Ready vs blocked: 7 remain, not started.
+4. Package gaps: register-info-protected `policy.target.mode`, pim-activation-reauth; report-only correction under an emergency-access wait; low leftovers.
+
+**Working tree at the end of cycle 7.**
+- Commits: 06315a7 (docs), e7a065b and 4361874 (code; 4361874 is the final verified state), and the docs commit carrying this ledger and BLOCKED. Stash empty.
+- Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-4361874.md`, `walk/4361874/`.
+- Outside the clone:
+  - `../logs/c7/`, including `ps-linebreak/` and `c7-removed-name-*.ps1`: rendered scripts, parsed only;
+  - `../scratch/c7-*`;
+  - `../c7-nv-06315a7`: its node_modules is a **junction**, so remove the junction itself;
+  - `../acc-src-4361874-c7`.
+- No remote, tenant or external write was made, and no generated script was executed.
+
+### Test edits and scope (this cycle)
+- `git diff 0aabf68 HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. One assert line was replaced, disclosed above: bindingInventory's session hold, which now reads exactly `['policy.target.excludeUsers']`.
+- Files changed outside docs: project.ts, stepPortal.ts, registry.generated.json, and three test files (two new). Package content: s-goal-session-lifetime CONTENT/META and LIBRARY.json.
+- Untouched (`git diff --stat 0aabf68 HEAD` over them is empty): package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts (walk.mjs included), page-contracts and docs/design/content.json. The Connect notice's `mailto:feedback@getiamai.com` is present.

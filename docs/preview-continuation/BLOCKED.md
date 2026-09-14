@@ -133,3 +133,24 @@ None of the remaining entries is an owner decision under RUN-CONTEXT. Risk order
 - **Package gaps (medium/low, not started):** register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
 - **Guests pair on a real tenant (low-medium, not verifiable locally):** unchanged; no fixture resolves both pinned members.
 - **Low, unchanged:** unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 paths and scoring of a missing methods entry; real-login latency not claimed.
+
+## Cycle 7 reassessment (2026-09-14)
+
+Fixed in cycle 7 (RESULTS): review 6 R6-1, the tenant names that left their line (e7a065b); the session-lifetime unmanaged companion; the preview notes that listed values a create never passes. None of the remaining entries is an owner decision under RUN-CONTEXT. Risk order:
+
+- **session-lifetime `excludeUsers` (medium, actionable, not changed).** The browser create is now the only work and names nothing unmanaged, but every render is still a preview on `policy.target.excludeUsers`.
+  - Evidence: on curated demo-week2, `policy.target.excludeUsers` binds `[]` (the pinned target excludes no accounts) while `excludeGroups` binds the exclusions group (`../logs/c7/session-after.txt`).
+  - `present([])` is false, so a required empty list is missing in `requires`, in `{{json:…}}` (`bound`) and in the invocation (invocation.ts:130).
+  - That rule is deliberate for exclusion *groups*: pilot.test.ts:210 "an empty exclusion set produced a Create". bindingInventory.test.ts:53 calls the target's empty `excludeUsers` "bound as the fact it is". Only session-lifetime declares `policy.target.excludeUsers`.
+  - Why not changed: treating every deliberately set empty list as held would weaken the pilot rule for groups. Making the binding optional would drop the JSON `users` line, leaving a POST with no users.
+  - The package's readiness tile also asks that "the complete shared-device account exclusion set is resolved", while s-shared-devices makes the people-policy exclusions as its own Entra step. So whether `[]` answers that tile is not settled by the target alone.
+  - Next:
+    1. Read s-shared-devices and the shared-device evidence to decide whether this policy's excluded accounts come from the target (`[]`) or from that step's resolved accounts.
+    2. If from the target, a package-scoped declaration that an empty `policy.target.excludeUsers` is a value, honoured by `requires`, the JSON binding and the invocation together, with pilot's group rule kept and pinned beside it.
+    3. `sessionLifetimeUnmanaged.test.ts`' second test already pins the handed-over create once the list is held.
+- **session-lifetime reportOnly/readyToEnforce (low-medium, not changed).** Both still require `policies.session.unmanaged.current.id`, and the script's Verify and Enforce read both ids, so a report-only or enforce state of the browser policy always holds. Next: a browser-only Verify reading, or the states' requires narrowed with the Entra observe/enforce text, in the same way as the create.
+- **Board Ready vs blocked: 7 remain (medium, not started in cycle 7).** Unchanged from cycle 6. For the 4 report-only watches, the action line could name what the watch waits on; the 3 enforced demo holds stay.
+- **Preview-note change, for review (low).** `planningValues` now lists a script parameter only for a mode the preview runs. 74 of 102 notes drop values and none gains one; every changed note is a create (blocked/missing) or a guests adjust in blocked (`../logs/c7/preview-notes-join.txt`). The guests adjust renders lose "guests policy ID" and "mixed guests policy ID". Their drawn run was not traced beyond the parameters' declared `modes`.
+- **Package gaps (medium/low, not started):** register-info-protected `policy.target.mode`; pim-activation-reauth authContext/strength; the pim grant+session floor test.
+- **Report-only correction under an emergency-access wait (low):** unchanged (cycle 6 entry).
+- **Low, unchanged:** unprojected lifecycle/ReportOnly/Location leftovers (session-lifetime's `entra.correct.*.lifecycle` and `json.*.report-only` included); same-name create; passkey profiles; worker Lane B/P1 paths and scoring of a missing methods entry; guests pair not rendered end to end by a fixture; real-login latency not claimed.
