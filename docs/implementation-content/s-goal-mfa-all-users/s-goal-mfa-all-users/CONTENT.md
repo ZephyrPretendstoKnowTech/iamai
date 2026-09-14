@@ -144,12 +144,12 @@ Review the proposed MFA-for-everyone target for {{tenant.displayName}}. Confirm 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 This is the foundational MFA policy: every user must present a second factor (MFA) at sign-in. It's the single most impactful control in the baseline.
 
-The policy is already enforced on your tenant. The correction aligns its configuration with the baseline:
+The policy already exists on your tenant. The correction aligns its configuration with the baseline:
 — The exclusions group is added so emergency access accounts are exempt.
 — Microsoft Intune Enrollment is excluded from target resources to prevent devices from failing enrollment because MFA fires during the enrollment flow.
 — Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally.
 
-After this step, the MFA Registration Campaign step ensures every person has registered a phishing-resistant method. Until that's done, the 33% threshold tile tracks progress.
+After this step, the MFA Registration Campaign step helps people register a method. Whether each person has one is shown on MFA Readiness, not by this policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

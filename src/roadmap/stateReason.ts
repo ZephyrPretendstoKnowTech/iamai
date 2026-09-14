@@ -103,7 +103,7 @@ export function holdReasonFor(step: Step, stepById: Map<string, Step>): string |
         case 'readiness-unmet':
           return boundBy('readiness') ?? blockedReasonFor(step, stepById)
         case 'unmatched-pair':
-          return BLOCKED_REASON.pairUnmatched
+          return step.action.ambiguousTarget ? BLOCKED_REASON.targetAmbiguous : BLOCKED_REASON.pairUnmatched
         case 'no-operation':
           return BLOCKED_REASON.noOperation
         case 'manual-correction':

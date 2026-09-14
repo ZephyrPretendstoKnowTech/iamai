@@ -211,7 +211,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   if (!held && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
   if (portal && portal.length > 0) lines.push(...portal)
   else if (waiting) lines.push(waitingLine(step, String(ex.tenant ?? '')))
-  else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
+  else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan[step.action.ambiguousTarget ? 'targetAmbiguous' : 'pairUnmatched']), { tenant: String(ex.tenant ?? '') }))
   // The conflict explanation belongs to the reviewed source policy the step's
   // own state names (roadmap/baselineConflict.ts), never to the goal's content
   // entry: the artifacts say the same thing the screen says about it, on

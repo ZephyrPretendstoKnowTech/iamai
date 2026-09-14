@@ -10,10 +10,11 @@
 // the role policy with the grant, the admin-session goal the session policy.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture, noExclusionsAnswer } from './fixtures/index.ts'
+import { curatedFixture, fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
+import { nextSafeAction } from './nextSafeAction.ts'
 
 const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
 const ADMIN = 'c0100000-0000-4000-8000-000000000001'
@@ -154,4 +155,71 @@ test('C01: an all-users policy is the one corrected when the admin policy is lis
   assert.equal(update?.policyId, EVERYONE)
   // The admin policy's assignment and grant are not what this step writes.
   assert.equal((step.action.changes ?? []).some((c) => c.field === 'Grant controls'), false, 'an MFA-for-everyone correction of an MFA policy leaves its grant alone')
+})
+
+// Review R1-F2: an admins policy assigned to a group (built-in phishing-resistant
+// strength) and a staff policy assigned to a group (MFA) are both "assigned to
+// groups". Correcting the first listed for the all-users goal rewrote the admins
+// policy to All users. Expected, independent of the engine: neither is taken by
+// scan order or name; with nothing to tell them apart the step holds and hands
+// over nothing, and beside an All users policy that policy is the one.
+function groupRun(opts: { reversed: boolean; names: [string, string]; staffToAll: boolean }): FixtureRun {
+  // The curated week-two demo (its source groups answered), as R1 reproduced it:
+  // the tenant's other policies stay, the three this shape stands in for go.
+  const base = curatedFixture('demo-week2')
+  const f = { ...base, groups: new Map(base.groups) }
+  const exclusions = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') })
+  assert.ok(exclusions, 'the demo tenant has a chosen exclusions group')
+  const staffGroup = [...f.groups.keys()].find((id) => id !== exclusions)
+  assert.ok(staffGroup, 'the demo tenant has another group')
+  const adminsGroup = 'bbbbbbbb-0000-4000-8000-00000000000a'
+  const copy = structuredClone(f.groups.get(staffGroup)) as unknown as { memberIds?: string[] }
+  f.groups.set(adminsGroup, { ...copy, groupId: adminsGroup, memberIds: (copy.memberIds ?? []).slice(0, 1), memberCount: 1 } as never)
+  const apps = { includeApplications: ['All'] }
+  const staffUsers = opts.staffToAll ? { includeUsers: ['All'], excludeGroups: [exclusions] } : { includeGroups: [staffGroup], excludeGroups: [exclusions] }
+  const rows: Record<string, unknown>[] = [
+    { id: ADMIN, displayName: opts.names[0], state: 'enabled', conditions: { users: { includeGroups: [adminsGroup], excludeGroups: [exclusions] }, applications: apps, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } },
+    { id: EVERYONE, displayName: opts.names[1], state: 'enabled', conditions: { users: staffUsers, applications: apps, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } },
+  ]
+  const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const keep = (ca.rows as Record<string, unknown>[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...(opts.reversed ? [...rows].reverse() : rows), ...keep] } } }
+  return runFixture({ ...f, snapshot }, { snapshot } as never)
+}
+
+const GROUP_NAMES: [string, string][] = [
+  ['Policy 1', 'Policy 2'],
+  ['MFA for Internal Users', 'MFA for Admins'],
+]
+
+test('C01 R1-F2: two group-assigned MFA policies nothing tells apart hold the all-users step, whatever the order or names', () => {
+  for (const reversed of [false, true]) {
+    for (const names of GROUP_NAMES) {
+      const r = groupRun({ reversed, names, staffToAll: false })
+      const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+      assert.ok(step, 'the all-users goal is on the plan')
+      const own = r.coverage.results.find((x) => x.goal.id === 'mfa-all-users')?.candidates.filter((c) => c.ownScope).map((c) => c.policyId).sort()
+      assert.deepEqual(own, [ADMIN, EVERYONE].sort(), 'the premise: both group policies are candidates of the all-users goal')
+      assert.equal(step.kind, 'adjust', 'the premise: the step corrects a tenant policy rather than creating one, so the choice is made')
+      const ops = step.action.resolution?.policies ?? []
+      assert.deepEqual(ops.filter((o) => o.mode === 'update').map((o) => o.policyId), [], `no update of either policy (reversed ${reversed}, ${names.join('/')})`)
+      assert.equal(ops.some((o) => o.mode === 'create'), false, 'and no duplicate beside them')
+      assert.equal(step.action.ambiguousTarget, true, 'the step says it cannot tell which is the goal’s own')
+      assert.equal(nextSafeAction(step).executable, false, 'nothing is handed over')
+      assert.equal(step.tracking?.policyId ?? null, null, 'neither is tracked as the all-users policy')
+    }
+  }
+})
+
+test('C01 R1-F2: beside an All users policy, a group-assigned admins policy is never the all-users step’s target', () => {
+  for (const reversed of [false, true]) {
+    for (const names of GROUP_NAMES) {
+      const r = groupRun({ reversed, names, staffToAll: true })
+      const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+      assert.ok(step, 'the all-users goal is on the plan')
+      assert.notEqual(step.action.ambiguousTarget, true, 'the All users policy tells them apart')
+      for (const op of step.action.resolution?.policies ?? []) assert.notEqual(op.mode === 'update' ? op.policyId : null, ADMIN, `the admins policy is not rewritten (reversed ${reversed})`)
+      if (step.tracking?.policyId) assert.equal(step.tracking.policyId, EVERYONE, 'tracking follows the All users policy')
+    }
+  }
 })

@@ -122,6 +122,7 @@ type ContractWords = {
   doneHeldEnd: string
   doneMissingUnreadable: string
   donePair: string
+  doneTarget: string
   doneEscapeHatch: string
   doneEmergency: string
   doneOperation: string
@@ -433,7 +434,7 @@ function reasonLine(step: Step, reason: UnavailableReason, tenant: string, exclu
     case 'missing-object':
       return waitingLine(step, tenant, exclusionsUnconfirmed)
     case 'unmatched-pair':
-      return fillText(app.plan.pairUnmatched, { tenant })
+      return fillText(step.action.ambiguousTarget ? app.plan.targetAmbiguous : app.plan.pairUnmatched, { tenant })
     case 'no-operation':
       return fillText(app.plan.noOperation, { tenant })
     case 'manual-correction':
@@ -471,7 +472,7 @@ function doneForReason(step: Step, reason: UnavailableReason, tenant: string): s
       return done.join(' ')
     }
     case 'unmatched-pair':
-      return CONTRACT.donePair
+      return step.action.ambiguousTarget ? fillText(CONTRACT.doneTarget, { tenant }) : CONTRACT.donePair
     case 'no-operation':
       return CONTRACT.doneOperation
     case 'manual-correction':

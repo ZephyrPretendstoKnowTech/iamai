@@ -118,6 +118,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // review page's example plan dates its enforcement, so it renders the dated body.
   '.steps[16].comms.bodyUndated',
   '.pages.plan.blocked.pairUnmatched',
+  '.pages.plan.blocked.targetAmbiguous',
   '.pages.plan.blocked.noOperation',
   // A4 (2026-09-12): the row reasons for a correction only a person can make and
   // for a group the scan could not read (copy/reasons.ts BLOCKED_REASON).
