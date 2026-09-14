@@ -171,6 +171,22 @@ test('s-goal-guests-mfa: two PATCHes reaching one policy, or a bound value that 
   }
 })
 
+test('s-goal-guests-mfa: one policy id in two casings is one target, refused like an exact duplicate; two distinct ids still pass', () => {
+  const lower = 'abcdefab-1234-4567-89ab-abcdefabcdef'
+  const upper = 'ABCDEFAB-1234-4567-89AB-ABCDEFABCDEF'
+  const DUPLICATE = /mixed: a PATCH to a policy another request in the batch already targets/
+  for (const [state, extra] of [['partial', PARTIAL], ['readyToEnforce', {}]] as const) {
+    for (const [name, strong, mixed] of [['different casing', lower, upper], ['same casing', lower, lower], ['same casing, upper', upper, upper]] as const) {
+      const { json, withheld } = batchOf(PKG, state, bindings({ ...extra, 'policies.guests.strong.current.id': strong, 'policies.guests.mixed.current.id': mixed }))
+      assert.equal(json, undefined, `${state}/${name}: a batch reaching one policy twice is offered`)
+      assert.match(withheld?.invalid.join('\n') ?? '', DUPLICATE, `${state}/${name}`)
+    }
+    const distinct = batchOf(PKG, state, bindings({ ...extra, 'policies.guests.strong.current.id': lower, 'policies.guests.mixed.current.id': ID(4).toUpperCase() }))
+    assert.ok(distinct.batch, `${state}: two distinct ids are refused: ${JSON.stringify(distinct.withheld)}`)
+    assert.deepEqual(distinct.batch.requests.map((r) => [r.id, r.method, r.url]), [['strong', 'PATCH', policyUrl(lower)], ['mixed', 'PATCH', policyUrl(ID(4).toUpperCase())]], state)
+  }
+})
+
 test('s-goal-guests-mfa: the guard reads every inner request: a swapped member id, another url, method or member, or a body naming an id is refused', () => {
   const ENFORCE = 'json.enforce-pair'
   const edited = (edit: (text: string) => string): CompiledPackage => ({ ...PKG, blocks: { ...PKG.blocks, [ENFORCE]: { ...PKG.blocks[ENFORCE], text: edit(PKG.blocks[ENFORCE].text) } } })
