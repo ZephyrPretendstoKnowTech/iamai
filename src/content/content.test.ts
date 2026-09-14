@@ -217,6 +217,10 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The service-accounts block's none line (E9); the example has service accounts.
   '.steps[43].who.none',
   '.pages.plan.blocked.sourceMapping',
+  // The line an update draws when it takes a tenant exclusion off the policy (review 3
+  // queue 3, stepPortal.ts): the example corrects no policy that has one.
+  '.shared.changeRemoves',
+  '.shared.changeRemovesGuests',
 ]
 
 // whatToDoReference is a policy step's reviewer-only reference block (prompt 52

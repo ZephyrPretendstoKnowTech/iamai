@@ -63,6 +63,8 @@
     "portalOpen": "Entra admin center → Entra ID → Conditional Access → Policies → open \"{policy}\"",
     "descriptionLine": "Description: {description} — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant.",
     "changeUntouched": "Change only the settings listed above; leave every other setting on this policy as it is.",
+    "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
+    "changeRemovesGuests": "guest or external users",
     "enableLine": "Enable policy: On → Save",
     "exclusionsLine": "Users → Exclude → Groups: {exclusionsGroup}. Never exclude the emergency accounts directly; they are members of this group.",
     "reportOnlyLine": "Enable policy: Report-only → Create",

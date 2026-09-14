@@ -78,6 +78,16 @@ for (const [label, grant] of WAYS_ROUND) {
         const t = JSON.parse(target[1].replaceAll("''", "'")) as { grantControls: unknown }
         assert.deepEqual(t.grantControls, body.grantControls, 'the script submits the listed grant')
         assert.ok(art.ps.includes(`-PolicyId '${A}'`))
+        // The script's CorrectConditions writes conditions only and CorrectGrant the grant only
+        // (mfa-all-users CONTENT.md), so both calls have to be drawn: the target JSON carrying
+        // the grant says nothing about whether the grant is ever written (review 3 queue 7).
+        const calls = art.ps.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep -Mode '))
+        const modes = calls.map((l) => /^Invoke-IAMAIStep -Mode '(\w+)'/.exec(l)?.[1])
+        assert.deepEqual([...modes].sort(), ['CorrectConditions', 'CorrectGrant'], calls.join('\n'))
+        for (const call of calls) assert.ok(call.endsWith(`-PolicyId '${A}'`), call)
+        const grantCall = calls.find((l) => l.startsWith("Invoke-IAMAIStep -Mode 'CorrectGrant' "))!
+        const grantTarget = JSON.parse(/-TargetPolicyJson '(.*?)' -PolicyId/.exec(grantCall)![1].replaceAll("''", "'")) as { grantControls: unknown }
+        assert.deepEqual(grantTarget.grantControls, body.grantControls, 'the CorrectGrant call submits the listed grant')
         assert.doesNotMatch(art.json ?? '', /compliantDevice/)
         const exported = stepExportView(step, ctx).whatToDo.join('\n')
         assert.match(exported, /Grant → Require multifactor authentication/)

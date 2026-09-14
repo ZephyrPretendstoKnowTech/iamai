@@ -100,6 +100,14 @@ type PolicyOperationBase = {
    * Read for comparison only; no channel submits it.
    */
   intent?: Record<string, unknown>
+  /**
+   * On an update, the exclusions the tenant's policy has today that the sections
+   * this body writes no longer carry: its guest or external user exclusion, and
+   * the groups, users, roles and applications it excludes. The body replaces the
+   * whole section, so these are removed when it is saved; the channels say so
+   * beside the change. Read for explanation only; no channel submits it.
+   */
+  removes?: { guestsOrExternalUsers: boolean; ids: string[] }
 }
 
 /**

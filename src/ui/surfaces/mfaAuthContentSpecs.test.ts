@@ -115,11 +115,13 @@ test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names 
         ['Open the strong-tier policy (find it by ID in Plan settings).'],
         ['Users → Exclude → Groups: add the exclusions group.'],
         ['Verify: the Grant requires the authentication strength "Modern MFA + TAP."'],
-        ['Save.'],
+        // Review 3 queue 5: each save now says what it does to a guest policy that is On
+        // (was "Save." alone, which stated no effect).
+        ['Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group\'s members stop being asked for this policy\'s authentication strength as soon as you save.'],
         ['Open the mixed-tier policy (find it by ID in Plan settings).'],
         ['Users → Exclude → Groups: add the exclusions group.'],
         ['Verify: the Grant requires "Require multifactor authentication."'],
-        ['Save.'],
+        ['Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group\'s members stop being asked for this policy\'s MFA as soon as you save.'],
         ['Rescan in IAMAI.'],
       ],
     },

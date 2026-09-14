@@ -22,11 +22,11 @@ Corrections:
 2. Open the strong-tier policy (find it by ID in Plan settings).
 3. Users → Exclude → Groups: add the exclusions group.
 4. Verify: the Grant requires the authentication strength "Modern MFA + TAP."
-5. Save.
+5. Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's authentication strength as soon as you save.
 6. Open the mixed-tier policy (find it by ID in Plan settings).
 7. Users → Exclude → Groups: add the exclusions group.
 8. Verify: the Grant requires "Require multifactor authentication."
-9. Save.
+9. Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's MFA as soon as you save.
 10. Rescan in IAMAI.
 
 Do not merge these two policies into one. They serve different guest populations with different MFA requirements.
@@ -131,7 +131,7 @@ Review the two guest policy targets for {{tenant.displayName}}. Confirm the pinn
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Guest policy mismatches: {{policies.guests.semanticMismatches}}. Explain the smallest corrections to the exact strong/mixed policy identities without changing the saved partner/service-provider decision or merging the policies.
+Guest policy mismatches: {{policies.guests.semanticMismatches}}. Explain the smallest corrections to the exact strong/mixed policy identities without changing the saved partner/service-provider decision or merging the policies. Each policy keeps its current state: if it is On, adding the exclusions group exempts that group's members from the policy as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.partner-trust","channel":"aiInfo","states":["partnerTrustRequired"],"format":"markdown","kind":"template"}
