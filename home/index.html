@@ -52,8 +52,8 @@
            claims the trust section below spends the rest of the page proving. -->
       <div class="hero">
         <p class="eyebrow">Microsoft identity security</p>
-        <h1>Strengthen identity security without guessing what will break.</h1>
-        <p class="site-line">IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each change starts in report-only before it is enforced.</p>
+        <h1>Find the gaps. Catch the hidden risks. Plan a safer rollout.</h1>
+        <p class="site-line">IAMAI looks beyond whether a policy exists. It checks the details that can make a rollout succeed or fail: which sign-in methods people have, whether the available records show they’ve used them, and whether exclusions or external accounts need attention.</p>
         <p class="actions">
           <a class="btn btn-primary" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a>
           <a class="btn btn-secondary" href="/{{TOOL_PATH}}/?demo=1#/plan">Try it with sample data</a>
@@ -73,18 +73,18 @@
           <div>
             <p class="eyebrow">What it does</p>
         <h2 id="work-heading">From a tenant scan to a dated plan you can carry out.</h2>
-            <p class="lead">See what the tenant already protects, what it does not, who each change touches, and what to do before enforcement.</p>
+            <p class="lead">Get a practical plan for what to address first, what to check, and how to move toward stronger protection. You stay in control of every change.</p>
             <div class="steps">
               <div class="step"><b>Reads</b><span>A tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records.</span></div>
               <div class="step"><b>Compares</b><span>What each baseline policy is for with what the tenant already has, so a control you built yourself counts as done.</span></div>
-              <div class="step"><b>Plans</b><span>The difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send.</span></div>
+              <div class="step"><b>Plans</b><span>The difference as dated steps: report-only first where a policy supports it, who each change touches, what would break, and the emails to send.</span></div>
             </div>
           </div>
           <aside class="side">
             <p class="label">Default baseline</p>
             <strong>Defense in Depth</strong>
             <p>A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.</p>
-            <p>Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.</p>
+            <p>Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.</p>
             <p class="small">IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.</p>
             <p class="small"><a class="enter" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a></p>
           </aside>
@@ -108,7 +108,7 @@
         <h2 id="trust-heading">Inspect it before you connect a tenant.</h2>
         <div class="trust">
           <span><strong>Read-only</strong> IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in.</span>
-          <span><strong>Your tenant's data never leaves the browser</strong> The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no upload, nothing about your tenant sent anywhere; an export is a file you save yourself. The web host that serves this page counts page loads, as web hosts do, and never sees your tenant.</span>
+          <span><strong>Your scan and plan stay in your browser</strong> IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data.</span>
           <span><strong>Source is public</strong> Read the code, the permissions and the limits, then decide whether to connect. <a class="lnk" href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a></span>
         </div>
       </section>
