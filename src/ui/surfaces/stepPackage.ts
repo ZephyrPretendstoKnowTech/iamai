@@ -602,7 +602,13 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null, name
     const name = (op.body as PolicyShape).displayName ?? whole?.displayName
     if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
     // A member whose target still waits on a reference is not whole (see incompleteFieldsOf).
-    if (whole && typeof name === 'string' && incompleteFieldsOf(step, op).size === 0) pair.push({ role: m.role, displayName: name, conditions: whole.conditions, grantControls: whole.grantControls ?? null, sessionControls: whole.sessionControls ?? null })
+    if (whole && typeof name === 'string' && incompleteFieldsOf(step, op).size === 0) {
+      pair.push({ role: m.role, displayName: name, conditions: whole.conditions, grantControls: whole.grantControls ?? null, sessionControls: whole.sessionControls ?? null })
+      // The member's own material roots, for a request that sends each member whole
+      // (the guests pair's JSON batch), where the package declares them: only a member
+      // resolved whole binds them, so a batch is never built with a member partly waiting.
+      for (const root of ['conditions', 'grantControls', 'sessionControls'] as const) if (declared.includes(`${prefix}.target.${root}`)) out[`${prefix}.target.${root}`] = whole[root] ?? null
+    }
     // Users still waiting on a reference are not the target (see packageBindings).
     if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
     // Whether this member is created or corrected, and — for a correction — the
