@@ -49,9 +49,9 @@ for (const { high, medium, risk } of PAIRS) {
       const theirs = projectImplementation(PACKAGES[medium], state, bindings).channels.map((c) => c.channel)
       assert.ok(theirs.length > 0, `${medium} ${state}: the premise, the counterpart projects channels`)
       for (const c of theirs) {
-        // The one exception: the High package's script declares its invocation and withholds
-        // Enforce, an attestation IAMAI cannot pass; the Medium user-risk script is an
-        // undeclared template that asks the operator for the same switches at run time.
+        // The one exception: a script that declares its invocation withholds Enforce, an
+        // attestation IAMAI cannot pass. The Medium user-risk script does too since cycle 5,
+        // so this only skips a PowerShell channel neither side draws.
         if (state === 'readyToEnforce' && c === 'powershell' && withheldEnforce(PACKAGES[high])) continue
         assert.ok(channels.has(c), `${high} ${state}: ${c} is missing (${[...channels].join(', ') || 'none'}; hold ${JSON.stringify(own.hold)})`)
       }

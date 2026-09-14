@@ -150,14 +150,14 @@ Immediately before enforcement, re-verify the stable policy, user-based identity
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"ServiceAccountsGroupId":{"binding":"serviceAccounts.group.id","modes":["Create","CorrectConditions","Verify","Enforce"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]},"TrustedLocations":{"binding":"trustedLocations.ids","modes":["Create","CorrectConditions","Verify","Enforce"]}},"withheldModes":{"Enforce":"Enforce runs only with -IdentityTypesValidated and -WorkflowSourcesValidated, and this package declares no prerequisite IAMAI can check to pass them."}}}
 param(
   [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,
-  [string]$PolicyId='{{policy.current.id}}',
-  [string]$DisplayName='{{policy.target.displayName}}',
-  [string]$ServiceAccountsGroupId='{{serviceAccounts.group.id}}',
-  [string]$ExcludeGroupsJson='{{policy.target.excludeGroups}}',
-  [string]$TrustedLocationsJson='{{trustedLocations.ids}}',
+  [string]$PolicyId,
+  [string]$DisplayName,
+  [string]$ServiceAccountsGroupId,
+  [string[]]$ExcludeGroups=@(),
+  [string[]]$TrustedLocations=@(),
   [switch]$IdentityTypesValidated,
   [switch]$WorkflowSourcesValidated
 )
@@ -170,16 +170,12 @@ function InvokeCA([string]$Method,[string]$Uri,$Body=$null){
   if($null-ne$Body){$p.Body=($Body|ConvertTo-Json -Depth 30 -Compress);$p.ContentType='application/json'}
   Invoke-MgGraphRequest @p
 }
-function ParseArray([string]$Json){
-  $v=$Json|ConvertFrom-Json
-  if($null-eq$v){@()}elseif($v-is[array]){@($v)}else{@($v)}
-}
 function Conditions {
   if($ServiceAccountsGroupId -notmatch '^[0-9a-fA-F-]{36}$'){throw 'Resolved service-accounts group GUID required.'}
-  $loc=@(ParseArray $TrustedLocationsJson)
+  $loc=@($TrustedLocations)
   if($loc.Count-lt1){throw 'At least one resolved trusted named-location ID is required.'}
   @{
-    users=@{includeUsers=@();excludeUsers=@();includeGroups=@($ServiceAccountsGroupId);excludeGroups=@(ParseArray $ExcludeGroupsJson);includeRoles=@();excludeRoles=@()};
+    users=@{includeUsers=@();excludeUsers=@();includeGroups=@($ServiceAccountsGroupId);excludeGroups=@($ExcludeGroups);includeRoles=@();excludeRoles=@()};
     applications=@{includeApplications=@('All');excludeApplications=@();includeUserActions=@();includeAuthenticationContextClassReferences=@()};
     clientAppTypes=@('all');locations=@{includeLocations=@('All');excludeLocations=$loc};
     userRiskLevels=@();signInRiskLevels=@();servicePrincipalRiskLevels=@()
@@ -194,7 +190,7 @@ function AssertCanonical($p){
   if(@($p.conditions.users.includeGroups).Count-ne1 -or $p.conditions.users.includeGroups[0]-ne$ServiceAccountsGroupId){throw 'Wrong service-accounts include group.'}
   if(-not(@($p.conditions.applications.includeApplications)-contains'All')){throw 'Target is not All resources.'}
   if(-not(@($p.conditions.locations.includeLocations)-contains'All')){throw 'Network include is not Any/All.'}
-  $want=@(ParseArray $TrustedLocationsJson)|Sort-Object
+  $want=@($TrustedLocations)|Sort-Object
   $got=@($p.conditions.locations.excludeLocations)|Sort-Object
   if(($want -join ',')-ne($got -join ',')){throw 'Trusted-location exclusions differ from canonical IDs.'}
   if(-not(@($p.grantControls.builtInControls)-contains'block')){throw 'Grant is not Block.'}
