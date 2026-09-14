@@ -1,148 +1,144 @@
-# Final report: continuation cycle 1, fresh review
+# Final report: continuation cycle 2, fresh review
 
-**Status: CONTINUE.** Not ready for owner review. This does not authorize publication, merge or deployment. No push, deploy, tenant action or external write was made.
+**Status: CONTINUE.** Not ready for owner review. This does not authorize publication, merge or deployment. No push, deploy, tenant action, script execution or external write was made. Only public Microsoft Learn documentation was read.
 
 ## Identity
 | Item | Value |
 |---|---|
-| Reviewed HEAD | `d15428eaa9c2485e399a2e5676528a0192685d8b` (branch preview-continuation) |
-| Continuation commits | 37d32f5 (launcher docs), 6f41c3a, ed76b36, d15428e on adae27d |
-| Reviewer edits | None to application code or tests; nothing committed. New files: this report, REVIEW-STATUS.json |
-| Logs | `../logs/review1/` (outside the clone). Scratch source copies `../rv-src-d15428e`, `../rv-src-adae27d` (`git archive` of this clone, with node_modules junctioned to the clone's) |
-| Walk outputs | `docs/reports/walk-d15428e.md`, `walk/d15428e/`. Both are gitignored and written inside the clone by scripts/walk.mjs |
-| Stash | empty |
-
-## Dirty working tree at review (preserved, not touched)
-| Path | What it is |
-|---|---|
-| docs/preview-continuation/BLOCKED.md, RESULTS.md | Fixer's cycle 1 ledger, uncommitted |
-| src/ui/surfaces/contentReview.test.ts | **Unfinished work.** Expects `Prerequisite · To do`, but `planBoard.ts:280` still maps Ready to `In progress` |
-| src/ui/surfaces/riskDeviceCampaignContentSpecs.test.ts | Same unfinished rename (two regexes) |
-
-These edits fail against the committed source. `node --test --test-isolation=none` on the two files gives 19 tests, 16 pass, **3 fail** (R3 prerequisite label, s-goal-require-managed-device, s-verify-mfa) (`dirty-tests.txt`). 98 files under `docs/qa/step-snapshots` still read `Prerequisite · In progress`. RESULTS.md makes two inaccurate claims:
-- "No unfinished work is left uncommitted apart from these docs." Two test files are also uncommitted.
-- The walk at d15428e is "pending". That run never wrote a report. The reviewer's run is below.
+| Reviewed HEAD | `a3d22f32bf20abc4bb7c40b345ca52e924bf0864` (branch preview-continuation) |
+| Cycle 2 commits | 081da09 (cycle 1 docs), e208d3d, 7ed4caf, 74ad604, 58915aa, 3211c4b, 7898cb4, a409b3c, a3d22f3 (docs + probes) |
+| Code state | `a409b3c..HEAD` changes only RESULTS.md, BLOCKED.md and the two c2 probes, so HEAD's code is the fixer's a409b3c |
+| Dirty tree at review start | none (`git status --porcelain` empty); stash empty. No unfinished work to preserve |
+| Reviewer edits | this report and REVIEW-STATUS.json only; no application/test edits; nothing committed |
+| Logs | `../logs/review2/` (outside the clone). Clean source copy `../rv-src-a3d22f3` (`git archive a3d22f32`, node_modules junctioned). Reviewer probes: `../logs/review2/probes/rv2-gap4.ts`, `rv2-effect.ts`, `rv2-or.ts`, `../logs/review1/rv2-edge2.ts`; cycle 1 reviewer probes `rv-edge.ts`, `rv-parity.ts` rerun |
+| Walk outputs | `docs/reports/walk-a3d22f3.md`, `walk/a3d22f3/` (gitignored, written by scripts/walk.mjs) |
 
 ## Checks run by the reviewer (exact code state)
 | Check | Command / state | Result |
 |---|---|---|
-| Typecheck | `npx tsc --noEmit` in `../rv-src-d15428e` (HEAD archive) | exit 0 (`tsc.txt`) |
-| Full suite | `node --test --test-isolation=none "src/**/*.test.ts"` in `../rv-src-d15428e` | exit 0: 2602 tests · 2599 pass · 0 fail · 0 cancelled · 3 skipped (184 s). Skipped: the Learn-link external-health test and the HUGE=1 fixture (the fixer's same two), plus "the scope script passes on HEAD", which the archive cannot run because it has no git history. The fixer's in-clone run of the same code (`full-3.txt`) passed it (`full.txt`) |
-| Changed test files | policyIdentity, tracking.drift, connectSignedOut at HEAD (clean files) | 45/45 pass. Each new test named in RESULTS ran and passed (`targeted.txt`). Their loops iterate non-empty constant lists |
-| Dirty test files | contentReview, riskDeviceCampaignContentSpecs, working tree | 3 fail (above) |
-| Acceptance | `run-acceptance.mjs ../acc-src-d15428e` (the harness's 3 hashed sources plus generate.ts and coverage.ts byte-identical to the clone) | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance.txt`) |
-| Walk | `node --import ../logs/c1/netblock.mjs scripts/walk.mjs` at HEAD (preload read first: localhost only). 06:52–06:56 | exit 0. **0 P0**, 495 P1, 50 P2; throttled first load 4630 ms (P1). Normalized findings compared with the fixer's ed76b36 walk: exactly 11 lines differ, all removed, all "link feedback@getiamai.com is not in the connect.* allow list". No new finding. The empty-value self-control ran at walk start. The only `@()` in the captures is `$changed=@()` (`walk.txt`) |
-| Matrix | `s3-matrix.ts curated all` at HEAD | Row-for-row identical to the fixer's `matrix-2.txt` (diff 0). **143** `uncalled-template` rows; **20/20** passkey `held:packageFault` (`matrix.txt`) |
-| PowerShell parse | Parse-only (`Parser::ParseFile`) on the rendered mfa-all-users correction (R1-F3 target) and create scripts; not executed | 0 errors each (`ps-parse.txt`) |
-| readGroup probe | `c1-readgroup.ts` with module mocks | 8 PASS · 0 FAIL (`readgroup.txt`) |
-| Build | not rerun | Fixer's `build-2.txt` at d15428e: exit 0 |
-
-Reviewer probes: `rv-edge.ts`, `rv-portal.ts`, `rv-parity.ts` (also run against adae27d), `rv-psid.ts`, `rv-ps-dump.ts`. The fixer's `s5-lone-group-admins.ts`, `s1-gap4-reportonly-weak.ts`, `c1-a1-tagged.ts` and `r2-hold-export.ts` (SHAPE all/tie/lone) were rerun at HEAD.
+| Typecheck | `npx tsc --noEmit` in `../rv-src-a3d22f3` | exit 0 (`tsc.txt`) |
+| Full suite | `node --test --test-isolation=none "src/**/*.test.ts"` in `../rv-src-a3d22f3`, 08:01–08:04 | exit 0: **2659 tests · 2656 pass · 0 fail · 0 cancelled · 3 skipped**. Skipped: Learn-link external health, HUGE=1 fixture, and "the scope script passes on HEAD" (the archive has no git history; the fixer's in-clone `full-5.txt` at a409b3c passed it, 2657/2 skipped). New cycle 2 tests are in the output and pass: 51 stateKeepingCorrection, 3 passkeyProjection, 3 gap 4 (`full.txt`) |
+| Acceptance | `run-acceptance.mjs ../rv-src-a3d22f3` (harness byte-identical to the clone by `cmp`) | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance.txt`); matches the fixer's `acceptance-3.txt` |
+| Matrix | `s3-matrix.ts curated all` in the archive | exit 0; **row-for-row identical to the fixer's `matrix-5.txt` (0 diff lines)**. packageFault 0; `uncalled-template` 23 (guests-mfa 5, service-accounts-trusted-network 8, user-risk-medium 2, shared-devices 8); session-lifetime `missing=` 2 rows; register-info-protected `degraded entra(policy.target.mode)` 17 rows (`matrix.txt`) |
+| PowerShell parse | not rerun | sha256 over all 40 PowerShell blocks (text + meta) in registry.generated.json is identical at 7898cb4 and a409b3c, so the fixer's parse at 7898cb4 (37 rendered files, 0 errors, `../logs/c2/ps-parse-2.txt`) covers HEAD |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` at HEAD (preload re-read: Node fetch and Chrome host resolution limited to localhost) | exit 0, 08:06–08:10. **0 P0, 498 P1, 50 P2**; "show-ready on this walk (no P0)"; throttled first load 4643 ms (P1, as before). After stripping item numbers, times, dates and the SHA, the findings are **identical to the fixer's a409b3c walk (507 lines each, 0 differ)**. Still present: the three passkey "supporting methods" dangling-lead P1s (cause below). The empty-value self-control ran at start. The feedback address appears on the Connect captures, and the walk's single-`mailto` notice rule raised no P0 (`walk.txt`, `walk-norm-*.txt`) |
+| Snapshots | `git diff -U0 e208d3d^ e208d3d -- docs/qa/step-snapshots` | 98 files, 220 changed lines, all `"label": "Prerequisite · In progress"` → `"To do"`; no other snapshot change after e208d3d |
+| Test edits | cycle 2 `*.test.ts` diff | no `.skip`/`.only`/todo added; 5 removed assert lines, each replaced by the new-wording assertion with a comment |
+| Scope | `git diff --name-only adae27d a3d22f3` over package.json, lockfile, baselines, .github, vite/tsconfig | untouched |
 
 ## Queue verdicts
-### 1. C01 lone group-assigned admins policy: FIXED (verified)
-- Original reproduction at HEAD: `s5-lone-group-admins.ts` gives candidate "Policy A" with ownScope false and step `create-report-only` of "Core - Require - MFA for all users" in report-only. There is no update and tracking is null. In `r2-hold-export SHAPE=lone`, no channel or export carries the admins id.
-- Selection is by grant: `strength.ts grantExceedsFloor`, used in `coverage.ts` ownScope. No name or order rule is involved. Shapes covered by executing tests:
-  - lone strength policy, group and group+user
-  - lone MFA AND compliant device
-  - lone MFA with group+role
-  - each of those reversed and under two name sets
-  - strength policy beside a staff policy: the staff policy is the target
-  - two MFA group policies: held
-  - lone staff MFA: an executable correction of the staff policy, whose PowerShell names its id
-  - All users beside an admins policy
-- True tie (`rv-edge tieMfa`): export "On Hold · Not supported" carries the ambiguity text, the contract carries the hold copy, every viewer artifact is unavailable, and previewNote is null.
-- Residual (low): a lone admins-group strength policy **named with the plan's own name** gets a report-only create with that same display name (`rv-edge loneNamed`). It is safe, since nothing is updated, but it gives the tenant two policies with one name.
-- Missing test: `grantExceedsFloor`'s OR multi-control branch. For example, MFA OR compliant device must stay the goal's own.
 
-### 2. C01/C05 hold consistency and A1 drift
-- **R2-N1 held-step Implementation: FIXED.** `stepPackage.ts` plans nothing for `ambiguousTarget`. Across 214 steps with operations in 10 curated fixtures, both as-is and all-Ready, no ambiguous step draws an artifact (`rv-parity.txt`).
-- **A1 vacuous assertion: FIXED.** The A1 test now asserts directly: exactly one report-only create, and neither the untracked drifted policy nor another goal's policy is tracked. It runs and passes. The 6 assertion lines removed across the continuation's test diff are all replaced by direct or stronger ones.
-- **A1 tagged/named drift duplicate: FIXED.** `c1-a1-tagged.ts` at HEAD: tagged and named give an update of the drifted policy, tracked, `manual-correction`, not executable. Untracked keeps the report-only create.
-- **Gap 4, below-floor report-only own policy: REMAINING (high).** `s1-gap4-reportonly-weak.ts` at HEAD: coverage `absent`, candidate `Policy W` reportOnly with ownScope true, reasons `[]`. It still gives a create beside it (`create-report-only`, blocked).
+### C01 lone group-admins policy: FIXED (re-verified at HEAD)
+- `s5-lone-group-admins.ts`: candidate "Policy A" ownScope false; step `create-report-only` of "Core - Require - MFA for all users"; no update; tracking null (`lone.txt`).
+- `r2-hold-export.ts` lone/all/tie × REV 0/1: lone exports "Ready · Create" with no admins id in any channel; tie exports the correct lead against "Policy B"; all-users correction still targets the staff policy (`hold-*.txt`).
+- `c1-a1-tagged.ts`: untracked keeps a report-only create, tagged/named update the drifted policy, `manual-correction`, not executable (`a1.txt`).
+- **New finding in the same class, pre-existing (see R1 below):** the OR branch of `grantExceedsFloor` lets a group policy with a weaker alternative be widened to All users with its grant kept.
 
-### 3. C02/C06 lifecycle, channels and scripts
-- **Correct-step lead: FIXED in the synthetic shapes.** Export: "Correct the existing policy with the changes listed." A create keeps "Create the policy in report-only." **No test pins it**. Curated fixtures do not exercise it: the parity probe finds no mismatch at adae27d either.
-- **R1-F3 Intune Enrollment: FIXED.** In the all, tie and lone shapes at HEAD, portal, PowerShell, JSON, AI and export all carry the exclusion. The rendered PowerShell target includes `d4ebce55…` and parses. The Admin Portal goal, the other pinned policy with application exclusions, is held on `baseline-conflict` in all 8 synthetic shapes. The new applications section cannot reach it (`rv-portal.txt`).
-- **Uncalled script templates: REMAINING (critical).** 143 rows, unchanged. `rv-psid.txt` (demo block-legacy-auth, large require-managed-device): the script declares mandatory `-Mode`/`-TargetPolicyJson` and has no call line. `StageForCorrection` PATCHes an enabled policy to report-only, and `CorrectConditions|Grant|Session` throw "Refusing access-affecting correction while policy is On". That contradicts RUN-CONTEXT: preserve active enforcement by default. The export for the same steps says "Change only the settings listed above".
-- **Immediate effect of changing an enabled policy: REMAINING.** `rv-edge staffExclOtherApp` / `staffGuestExcl`: an **executable** correction widens the enabled "Policy B" from a group to All users and changes its resources. Export, Entra and AI never say that saving applies MFA to everyone at once.
-- **Guest exclusion removal: REMAINING (medium).** `rv-edge staffGuestExcl`: the update's `users` omits the tenant's `excludeGuestsOrExternalUsers`. The change appears only inside the raw from/to JSON. The export reads "Include: All users, Guest or external users → all types" and never says a guest exclusion is removed. Graph PATCH semantics for `conditions.users` remain unverified from a primary source.
-- **Tenant application exclusion replaced: new observation (medium, disclosure).** `rv-edge staffExclOtherApp`: coverage reason `apps-excluded`. The update replaces the tenant's Exchange Online exclusion with the baseline's Intune Enrollment exclusion. This is consistent with the goal. The export line states only the new target and not the removal.
+### Unfinished prerequisite label: FIXED
+planBoard.ts `Ready: 'To do'`; the two cycle 1 test edits committed with it; snapshots label-only (above). The two inaccurate cycle 1 RESULTS claims are corrected in RESULTS.md.
 
-### 4. C05 passkey and other package gaps: REMAINING
-- The matrix at HEAD still has **20/20** `held:packageFault`:
-  - missing: `authenticator.target.configuration`, `tap.target.configuration`
-  - invalid: `json.fido2: a JSON body with no request`
-- Session-lifetime: `missing=policies.session.unmanaged.target.displayName,policy.target.excludeUsers`.
-- register-info-protected: `degraded entra(policy.target.mode)`.
-- No change was made in cycle 1.
+### C02/C06 staging scripts and state-keeping corrections: FIXED for the ten packages; wording gaps REMAIN
+- Verified in content and registry: `StageForCorrection`, its ValidateSet entry and "Refusing access-affecting correction while policy is On" are gone. State is written only by Create (report-only) and Enforce (enabled, still guarded by "Refusing enforcement: policy is not Report-only…" checks). `powershell.run` is `deployableAfterBinding` with `-TargetPolicyJson`/`-PolicyId` bound. META `safety` says the policy keeps its state.
+- `rv2-effect.ts` (10 packages + mfa-all-users/admins × CorrectConditions/Grant/Session): every correction draws exactly one call bound to the target and the policy id. No Entra, AI or PowerShell text asks to move a policy to Report-only. (The probe's `ps=STAGE` column is a reviewer false positive: `/Refusing/` matched the legitimate Enforce guards.)
+- `rv-parity.ts` at HEAD: `ps-missing-update-id` 8 → **0**; 0 exports open a non-target policy.
+- Three Enforce modes that need `-ReadinessApproved` are `withheldModes.Enforce` with a reason.
+- **REMAINING (medium): immediate effect not stated in every channel.** `rv2-effect.txt`:
+  - The Entra CorrectConditions text of **s-goal-admin-session**, **s-goal-block-auth-transfer** and **s-goal-block-device-code** ends "5. Save. Leave **Enable policy** as it is." with no effect sentence. Adding the exclusions group to an On policy exempts its members at once.
+  - AI Info states no effect for any correction of **admin-session**, **block-auth-transfer** or **admins-phishing-resistant**.
+  - `stateKeepingCorrection.test.ts` lets this through. Its Entra regex accepts `Leave \*\*Enable policy\*\* as it is` (which states no effect) as satisfying the effect check, and it asserts only the *absence* of staging text in AI Info (`if (!c) continue`), never the effect. RESULTS.md's "Entra/AI … do carry the save effect" is therefore inaccurate.
+- The export/Contract lead for an all-update step now reads "Correct the existing policy with the changes listed. If it is On, they apply to sign-ins as soon as you save." (rv-edge diff, hold-tie). It is generic: on a group → All users widening it does not say *who* is newly required, though the mfa-all-users AI Info does.
 
-### 5. Required walk and notice
-- **Walk contract for the notice: FIXED.** 0 P0 at HEAD, with the 11 notice-link P1s gone as described above. The walk still raises a P0 if the address appears on Connect outside the notice's single `mailto:` link, or if that link is missing or duplicated. `forbidEverywhere`, the error page's rules and How's rules are unchanged.
-- **Empty value `@()`: FIXED.** The negative/positive control runs at walk start.
-- **"without locking anyone out": FIXED.** Content, test pin and walk pin were changed together.
-- **"Prerequisite · In progress": UNFINISHED** (dirty tests only; see above).
-- **STEP.md references: NOT STARTED.**
+### C05 passkey: FIXED (projection); Authenticator/TAP correctly unresolved
+- Matrix: 0 packageFault; passkey rows `executable portal:+ ai:+`. `json.fido2` is `PATCH …/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2` with the pinned body, restriction included. No Authenticator/TAP body invented; `Apply` withheld with a reason; `FIXED_IDENTITY` is anchored to the Graph v1.0 authenticationMethodsPolicy root. The negative controls run: id-less CA PATCH refused, look-alike path refused, positive twin projects.
+- Microsoft Learn (how-to-enable-passkey-fido2, fetched during review, updated 2026-06-15) contains both quoted sentences verbatim. "Key restrictions set the usability of specific models or providers for both registration and authentication" supports Entra step 3's "a key already registered with any other AAGUID can no longer be used to sign in".
+- **Not verified (low, pre-existing):** the same page now documents *passkey profiles* (opt-in is irreversible, and global settings move into a Default passkey profile). Whether the drawn portal path "Under Allowed passkeys, enable Enforce key restrictions" and a top-level `keyRestrictions` PATCH still apply to a tenant opted into profiles was not checked against the Graph reference.
+- **Walk P1 "Then configure the supporting methods: has nothing listed under it": cause found, not a missing list.**
+  - authoredText.ts:43-45 turns the authored blank line into a `break` part, and StepSections.tsx:434 draws it as `<span class="authored-break">`. The lead `<p>`'s next sibling is therefore that span.
+  - walk.mjs:368-375 only accepts `ul, ol, .names-group, .picker, .decision, p, div` there, so it flags the lead.
+  - The list is drawn: capture `walk/a409b3c/demo/1280/step-02-…txt` lines 32–39.
+  - Fix the rule, which does not skip `.authored-break` (checking the rest of the walk stays clean), or the block's blank line. Do not drop the colon.
+- Residual: `passkeyProjection.test.ts` reaches Verify with `'verificationRequired' as never`. Settings steps draw no PowerShell tab, so this has no drawn effect.
 
-### 6. Verification
-- readGroup: VERIFIED (8/8, rerun).
-- Worker end-to-end uncertainty propagation: **NOT VERIFIED**.
-- Real-login latency (C08): NOT VERIFIED; an offline fast path does not establish it.
-- Export parity beyond all-users (`rv-parity.ts`, 214 steps):
-  - 0 exports open a policy other than the update target.
-  - 0 PS/JSON name a non-target policy.
-  - **114 exports show a `Ready · …` state while `nextSafeAction` is blocked or held.**
-    - 109 `blocked`, e.g. small s-goal-admin-session "Ready · Create" / "Clear what this step is waiting on."
-    - 4 `escape-hatch-unverified`
-    - 1 `readiness-unmet` (demo s-goal-mfa-all-users "Ready · Correct")
-    - The adae27d copy gives identical counts, so these predate cycle 1. They are still a contradiction in the export.
-  - 8 update steps whose PowerShell carries no policy id: these are the uncalled staging templates.
+### Gap 4 below-floor report-only own policy: FIXED; side effects reviewed
+- `s1-gap4-reportonly-weak.ts` at HEAD: coverage partial, reason weaker-control, one update of Policy W with body `[grantControls]`, changes `[Grant controls]`, stays report-only (`gap4.txt`).
+- `rv2-gap4.ts` at HEAD vs d15428e:
+  - (E) the gap 4 shape: create → grant-only update. Fixed.
+  - (C) enforced All users MFA + report-only admins MFA: the admins goal was a create beside the admins policy; it is now a grant-only update of that role-assigned report-only policy. Consistent with the fix.
+  - (A, D) a report-only **All users** MFA policy is not taken by the admins goal. No cross-goal takeover.
+  - (B) enforced admins phishing-resistant + report-only admins MFA: status stays `enforced` with no operation, but the result now carries a `weaker-control` reason beside `excluded`. The enforced-weak branch already behaves this way. Whether any surface shows that reason on an in-place goal was not checked (low).
+
+### STEP.md in technician text: FIXED
+`grep -c STEP.md` over every CONTENT.md sums to 0.
+
+### Export/board lane vs next safe action: REMAINING (medium-high, reproduced)
+- `c2-export-lane.ts` at HEAD: `{"steps":107,"boardReadyBlocked":45,"noLaneReadyBlocked":45}`, identical to the fixer's, e.g. demo s-goal-block-legacy-auth "Ready · Correct" blockedBy `missing-object`.
+- `rv-parity.ts` (10 fixtures × as-is/all-Ready, 214 steps): 114 unchanged. 109 `blocked`, 4 `escape-hatch-unverified` (demo/midflight admins "Ready · Observing"), 1 `readiness-unmet` (demo mfa-all-users "Ready · Correct").
+
+### Removed exclusions not disclosed: REMAINING (medium, reproduced)
+`rv-edge.ts` at HEAD:
+- **staffGuestExcl:** the executable update's `users` drops the tenant's `excludeGuestsOrExternalUsers`. It appears only in the raw from/to JSON of "Users".
+- **staffExclOtherApp:** the tenant's Exchange Online exclusion is replaced by Intune Enrollment.
+- Export, Entra and AI for both say neither "the guest exclusion is removed" nor "the Exchange Online exclusion is removed". The export also says "Change only the settings listed above; leave every other setting on this policy as it is."
+- `conditions.users` PATCH semantics were still not read from Microsoft's conditionalAccessPolicy update reference.
+
+### Remaining uncalled scripts: REMAINING (high)
+23 matrix rows (above). guests-mfa `-TargetPoliciesJson` (two policies); service-accounts-trusted-network and shared-devices `-Mode`; user-risk-medium.
+
+### Package gaps: REMAINING (medium/low)
+- session-lifetime (`all-users-no-persistence`): `missing=policies.session.unmanaged.target.displayName,policy.target.excludeUsers`, preview with stand-ins.
+- register-info-protected: `degraded entra(policy.target.mode)` on 17 rows.
+
+### Verification (FINDINGS 6)
+- readGroup: verified in cycle 1 (8/8); not rerun, no change since.
+- Worker end-to-end uncertainty propagation: **NOT VERIFIED** (no probe or test in cycle 2).
+- Real-login latency (C08): not claimed, not verified.
+- Export parity beyond all-users: rv-parity covers 214 steps. No wrong-target export, no id-less update script. The Ready/blocked contradiction remains.
+
+## New finding
+
+### R1 (high, pre-existing since adae27d): a part-population policy with a weaker OR alternative is widened to All users with its grant kept
+Probe `../logs/review2/probes/rv2-or.ts`, run on HEAD, d15428e and adae27d with identical plans (`rv2-or-head.txt`, `-d15428e.txt`, `-adae27d.txt`); also `../logs/review1/rv2-edge2.ts` with staff and admins groups.
+- Shape: an **enabled** policy for an admins group with grant `{operator: OR, builtInControls: [compliantDevice], authenticationStrength: phishing-resistant}`, no other MFA policy.
+- mfa-all-users: candidate `weak`, **ownScope true**, meetsFloor false. The step is `correct`, **executable**, and updates `c0100000-…0001` with body keys `[conditions]` only: `includeUsers:["All"]`, `includeGroups:[]`. Changes `["Users","Target resources"]`, no grant change, no `weaker-control` reason.
+- The PowerShell call `CorrectConditions -PolicyId c0100000-…0001` carries a target whose `grantControls` is still `OR [compliantDevice] + phishing-resistant strength`. The export: "open "Policy A" … Include: All users … Change only the settings listed above; leave every other setting on this policy as it is."
+- Effect if followed: as soon as it is saved (the policy is On), every user without a compliant device must satisfy phishing-resistant MFA. That is the C01 hazard reached through OR. The same shape with `MFA OR compliant device` widens a grant that lets everyone skip MFA with a compliant device; the correction does not deliver the goal's floor and does not say so.
+- Why it slips through: strength.ts `grantExceedsFloor` under OR counts as exceeding only if *every* control is stronger, so `strength OR compliantDevice` is not "exceeding" and the policy stays own. Nothing then corrects its below-floor grant on the widening path.
+- No test covers the OR branch. The cycle 1 review asked for one.
+- **The fix is routine, not an owner decision:** a policy chosen as the all-users goal's own must not be widened with a grant that is not the goal's floor. Either the update also writes the floor grant (listed as a change, with its effect stated), or such a part-population policy is not own and the goal gets the report-only create. Pick the reading consistent with gap 4 (correct the grant in place) or with C01 (asks something other than the floor, so it is not own). Cover OR-with-stronger, OR-with-weaker (MFA OR compliant device), AND and plain shapes, both orders, and assert on the target JSON and the export.
+
+### Other lower observations
+- `loneNamed` (rv-edge): a lone admins-group strength policy named "Core - Require - MFA for all users" still gets a report-only create with the same display name. Safe (no update) but gives the tenant two same-named policies; unstated. No test.
+- The matrix counts 51 rows whose issues include `stand-in:‹complete target policy›`; RESULTS.md cycle 2 cites 45 new ones at 7ed4caf. Preview-only rows; not investigated further.
 
 ## Scope and feature preservation
-- The `adae27d..HEAD` diff has 21 files, all added or modified. No deletions or renames. package.json, lockfile, baselines, .github and vite/tsconfig are untouched. The Jon Hope pin is unchanged.
-- Tabs and channels are unchanged: the matrix rows are identical to the fixer's, and the drawn tab sets match R2. The Connect beta notice with `mailto:feedback@getiamai.com` is present once on every Connect fixture (walk, 0 P0).
-- Test and contract edits are narrow:
-  - The feedback address was removed only from the `connect.signedOut`/`connect.signedIn` forbid lists, with a stricter walk P0 in their place.
-  - `EMPTY_VALUE` exempts only `@()` and carries a control.
-  - The R1-F2 tie test's premise change is disclosed, and the old shape has its own test expecting the staff target.
-  - No `.skip`, `.only` or `.todo` was added.
-- Enforcement:
-  - No cycle 1 change moves an enabled policy to report-only.
-  - R1-F3 adds the baseline's Intune Enrollment exclusion to an enabled MFA policy on correction. It is listed as a "Target resources" change, but no immediate effect is stated.
-  - The pre-existing staging scripts still demote enabled policies (item 3).
+- Tabs and channels: matrix drawn columns are unchanged except passkey (now drawn Entra + AI, which were withheld by the fault). No settings step gained machine tabs (stepBody.ts U15 unchanged).
+- Enforcement: no cycle 2 change moves an enabled policy to report-only. The staging default that did is removed. Create stays report-only, and Enforce keeps its report-only precondition. The gap 4 correction writes no state.
+- Baseline: the Jon Hope pin is untouched. The passkey AAGUID allow list and attestation are kept.
+- Notice: cycle 2 does not change the Connect contracts or the beta notice. The walk at HEAD raised no P0 under the rule that requires exactly one `mailto:feedback@getiamai.com` link in the notice and forbids the address elsewhere on Connect.
+- Working tree after review: ` M docs/preview-continuation/FINAL-REPORT.md`, ` M docs/preview-continuation/REVIEW-STATUS.json` (uncommitted, as REVIEW.md requires); stash empty; HEAD still `a3d22f32…`. The walk wrote gitignored `docs/reports/walk-a3d22f3.md` and `walk/a3d22f3/`.
+- Test/pin edits are narrow: each replaced assertion names the removed staging or "leave it On" wording and asserts its replacement. Snapshots are label-only. The one weak spot is the stateKeepingCorrection effect regex (above).
 
 ## Genuine owner choices
-None. Every remaining item is routine under RUN-CONTEXT: target selection, channel contradictions, broken invocation, invalid binding, disclosure, or missing verification.
+None. Every remaining item is routine under RUN-CONTEXT: wrong target or grant on widening, broken invocation, channel/state contradiction, disclosure, invalid binding, missing verification.
 
 ## Queue for the next fixer (in order)
-1. **Unfinished prerequisite label.** Finish the dirty `To do` change:
-   - `planBoard.ts:280` plus its doc comment
-   - the 98 `docs/qa/step-snapshots` files, updated transparently
-   - rerun contentReview/riskDeviceCampaign and the full suite
-   - Commit the two test edits with it, and correct the two inaccurate RESULTS.md claims.
-2. **C02/C06 scripts (critical):**
-   - Give the 143 uncalled templates a bound call line (`-Mode` plus `policy.target.json`).
-   - Make in-place correction keep the policy's state by default. `StageForCorrection` and the "Refusing … while policy is On" throw must not be the default path; staging can stay as an opt-in with its effect stated.
-   - Word block, grant and session separately.
-   - `-ReadinessApproved` needs a declared prerequisite or a withheld reason.
-   - Tests must read the script body and call line together.
-3. **Immediate effect on enabled policies.** Where a correction targets an enabled policy, say so in export, Entra and AI (e.g. "the policy is On; saving applies MFA to all users immediately"). Cover the group-to-All-users widening and resource changes.
-4. **C05 passkey (critical).**
-   - Give `json.fido2` its request (Graph v1.0 PATCH on authenticationMethodConfigurations/fido2) and project FIDO2 only.
-   - A JSON hold must stop holding Entra, PowerShell and AI.
-   - Authenticator and TAP stay unresolved.
-   - Explain the AAGUID restriction's effect on existing keys.
-5. **Gap 4:** coverage records the below-floor grant of a report-only own policy, and generate corrects it instead of creating beside it.
-6. **Removed exclusions.**
-   - Disclose an omitted `excludeGuestsOrExternalUsers` and a replaced tenant `excludeApplications` in changes and export, or preserve them where the baseline allows.
-   - Settle `conditions.users` PATCH semantics from Microsoft documentation.
-7. **Export state vs blocked action** (114 exports; pre-existing). The state label must not read Ready when `nextSafeAction` is blocked, held by the escape hatch, or unmet on readiness.
-8. **Remaining package gaps:** session-lifetime unmanaged member and `excludeUsers` binding, register-info-protected `policy.target.mode`, STEP.md references in technician text.
-9. **Missing tests:**
-   - `grantExceedsFloor` OR multi-control
-   - export lead "Correct the existing policy…" on an update step
-   - a lone policy carrying the plan's name gets no duplicate display name, or the duplicate is stated
-10. **Verification:**
-    - worker end-to-end uncertainty propagation with mocked fetch
-    - export parity for block-legacy-auth, admin-session and the guests pair once their scripts are callable
-    - rerun walk, matrix, acceptance (expect 28/28) and a PowerShell parse on the code state that is finally committed
+1. **R1 OR-alternative widening (high).** Fix the own-scope or grant correction for part-population policies whose OR grant is not the floor (above). Add the missing `grantExceedsFloor` OR tests at the fixture level with target JSON and export assertions.
+2. **Remaining 23 uncalled scripts (high).**
+   - guests-mfa: a pair binding, or `withheldModes` with a reason.
+   - service-accounts-trusted-network, shared-devices, user-risk-medium: a bound invocation or a withheld reason.
+   - Tests read the body and call together.
+3. **Board/export Ready vs blocked (medium-high).** 45 steps by the board lane, 114 no-lane. Classify by `blockedBy` (`blocked`, `missing-object`, `escape-hatch-unverified`, `readiness-unmet`). Find whether planLanes or nextSafeAction misreads each, and fix that reading without adding a new readiness rule.
+4. **Immediate effect in every correction channel (medium).**
+   - Entra CorrectConditions for admin-session, block-auth-transfer, block-device-code.
+   - AI Info for admin-session, block-auth-transfer, admins-phishing-resistant.
+   - Tighten `stateKeepingCorrection.test.ts`: require an effect sentence in Entra *and* AI, not "Leave **Enable policy** as it is" alone.
+5. **Removed exclusions (medium).** Disclose (or preserve where the baseline allows) a dropped `excludeGuestsOrExternalUsers` and a replaced tenant `excludeApplications` in changes, export, Entra and AI. Read Microsoft's conditionalAccessPolicy update reference for `conditions.users` PATCH semantics.
+6. **Package gaps (medium/low).** session-lifetime unmanaged displayName and `excludeUsers`; register-info-protected `policy.target.mode`.
+7. **Walk rule vs `.authored-break` (low).** The passkey lead is followed by its list. Make the dangling-lead rule skip the break span, or remove the blank line, and confirm no other finding hides behind it.
+8. **Low.**
+   - Same-name report-only create beside a lone plan-named admins policy: state it or avoid it, with a test.
+   - Whether an enforced goal's `weaker-control` reason from a report-only companion (rv2-gap4 B) is drawn anywhere.
+   - Passkey portal path and `keyRestrictions` body under passkey profiles.
+9. **Verification.**
+   - Worker end-to-end uncertainty propagation with mocked fetch.
+   - After changes: full suite, typecheck, build, matrix, PowerShell parse of any changed script, acceptance 28/28, and the walk on the committed state.
