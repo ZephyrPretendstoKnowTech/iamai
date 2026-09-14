@@ -59,7 +59,8 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
         ["Verify the session controls match the baseline: Sign-in frequency enabled, set to the baseline's interval. Persistent browser session: set to Never persistent."],
       ],
     },
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is.'], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI's canonical target|canonical|stable tenant ID/)
   const ai = packageOf(SESSION).blocks['ai.correct'].text
@@ -117,17 +118,18 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.'],
-        ['If the policy is currently On (Enforced), switch it to Report-only before making changes.'],
+        // Cycle 2 (C02): the correction no longer moves an enforced block to Report-only; it keeps the state and says what saving does.
+        ['Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save.'],
         ['Under Conditions → Client apps, confirm only "Exchange ActiveSync clients" and "Other clients" are checked.'],
         ['Under Users → Include, confirm "All users" is selected.'],
         ['Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.'],
         ['Under Grant, confirm "Block access" is selected.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Leave the policy in Report-only.'], ['Click Save, then rescan in IAMAI.']] },
+    { kind: 'list', ordered: true, start: 7, items: [['Leave **Enable policy** as it is and click Save.'], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /stable tenant ID|resolved policy|canonical|conditions object/)
-  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.\n")
+  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). Correct the conditions to match the baseline target without changing the policy's state: if the policy is On, the corrected block applies to sign-ins as soon as it is saved.\n")
   const words = stepWords('block-legacy-auth')
   assert.equal(words.doneEnd, 'The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.')
   // The shared readiness sentence and the stored answers stay (BLOCKED.md).

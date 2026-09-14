@@ -763,6 +763,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "policy.current.displayName",
           "policy.current.state",
@@ -825,10 +826,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -850,10 +847,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -873,10 +866,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -1047,7 +1036,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -1059,7 +1048,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -1083,7 +1072,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Do not change the policy state (leave it On).\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -1204,9 +1193,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
         },
         "ai.create": {
           "meta": {
@@ -1990,6 +2007,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "policy.current.state",
           "evidence.reportOnly",
@@ -2052,10 +2070,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -2077,10 +2091,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -2100,10 +2110,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -2134,12 +2140,6 @@
             ],
             "json": [
               "json.enforce"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Enforce"
-              }
             ],
             "aiInfo": [
               "ai.enforce"
@@ -2246,7 +2246,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
+          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, its grant applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -2258,7 +2258,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -2270,7 +2270,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -2294,7 +2294,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.\n"
+          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.\n"
         },
         "entra.observe": {
           "meta": {
@@ -2415,9 +2415,40 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              },
+              "withheldModes": {
+                "Enforce": "Enforce runs only with -ReadinessApproved, and this package declares no prerequisite IAMAI can check to pass it."
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$ReadinessApproved\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n if(-not $ReadinessApproved){throw 'Refusing enforcement: readiness approval was not supplied.'}\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$ReadinessApproved\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n if(-not $ReadinessApproved){throw 'Refusing enforcement: readiness approval was not supplied.'}\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
         },
         "ai.create": {
           "meta": {
@@ -2441,7 +2472,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Require MFA for Azure Management**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Require MFA for Azure Management**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -2571,6 +2602,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "people.affected.count",
           "policy.current.displayName",
@@ -2633,10 +2665,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -2658,10 +2686,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -2681,10 +2705,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -2844,7 +2864,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -2856,7 +2876,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -2880,7 +2900,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Do not change the policy state (leave it On).\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -3001,9 +3021,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}\n}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}\n}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -3157,6 +3205,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "people.affected.count",
           "policy.current.displayName",
@@ -3220,10 +3269,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -3245,10 +3290,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -3268,10 +3309,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -3431,7 +3468,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -3443,7 +3480,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -3467,7 +3504,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "5. Save. Do not change the policy state (leave it On).\n6. Rescan in IAMAI to confirm the correction.\n"
+          "text": "5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.\n"
         },
         "entra.observe": {
           "meta": {
@@ -3588,9 +3625,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}\n}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}\n}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -3614,7 +3679,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Device Code Sign-in**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Device Code Sign-in**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -3744,6 +3809,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "people.affected.count",
           "policy.current.state",
@@ -3806,10 +3872,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -3831,10 +3893,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -3854,10 +3912,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -4006,7 +4060,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.\n2. If the policy is currently On (Enforced), switch it to Report-only before making changes.\n3. Under Conditions → Client apps, confirm only \"Exchange ActiveSync clients\" and \"Other clients\" are checked.\n4. Under Users → Include, confirm \"All users\" is selected.\n5. Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.\n6. Under Grant, confirm \"Block access\" is selected.\n"
+          "text": "1. In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.\n2. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save.\n3. Under Conditions → Client apps, confirm only \"Exchange ActiveSync clients\" and \"Other clients\" are checked.\n4. Under Users → Include, confirm \"All users\" is selected.\n5. Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.\n6. Under Grant, confirm \"Block access\" is selected.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -4018,7 +4072,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -4030,7 +4084,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -4054,7 +4108,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "7. Leave the policy in Report-only.\n8. Click Save, then rescan in IAMAI.\n"
+          "text": "7. Leave **Enable policy** as it is and click Save.\n8. Rescan in IAMAI.\n"
         },
         "entra.observe": {
           "meta": {
@@ -4175,9 +4229,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}\n}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}\n}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -4201,7 +4283,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.\n"
+          "text": "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). Correct the conditions to match the baseline target without changing the policy's state: if the policy is On, the corrected block applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -4332,6 +4414,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "policy.current.state",
           "evidence.reportOnly",
@@ -4392,10 +4475,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -4417,10 +4496,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -4440,10 +4515,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -4474,12 +4545,6 @@
             ],
             "json": [
               "json.enforce"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Enforce"
-              }
             ],
             "aiInfo": [
               "ai.enforce"
@@ -4601,7 +4666,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
+          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -4613,7 +4678,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -4625,7 +4690,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -4649,7 +4714,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.\n"
+          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.\n"
         },
         "entra.observe": {
           "meta": {
@@ -4770,9 +4835,40 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              },
+              "withheldModes": {
+                "Enforce": "Enforce runs only with -ReadinessApproved, and this package declares no prerequisite IAMAI can check to pass it."
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$ReadinessApproved\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n if(-not $ReadinessApproved){throw 'Refusing enforcement: readiness approval was not supplied.'}\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$ReadinessApproved\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n if(-not $ReadinessApproved){throw 'Refusing enforcement: readiness approval was not supplied.'}\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
         },
         "ai.create": {
           "meta": {
@@ -4796,7 +4892,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Unsupported Device Platforms**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Unsupported Device Platforms**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -5922,6 +6018,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "policy.current.state",
           "evidence.reportOnly",
@@ -5984,10 +6081,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -6009,10 +6102,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -6032,10 +6121,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -6188,7 +6273,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
+          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -6200,7 +6285,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -6212,7 +6297,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -6236,7 +6321,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.\n"
+          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.\n"
         },
         "entra.observe": {
           "meta": {
@@ -6357,9 +6442,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
         },
         "ai.create": {
           "meta": {
@@ -6383,7 +6496,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Sign-ins From Countries Not Allowed**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Block Sign-ins From Countries Not Allowed**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -8456,6 +8569,7 @@
           "policy.current.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "policy.current.state",
           "evidence.reportOnly",
@@ -8518,10 +8632,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -8543,10 +8653,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -8566,10 +8672,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -8600,12 +8702,6 @@
             ],
             "json": [
               "json.enforce"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Enforce"
-              }
             ],
             "aiInfo": [
               "ai.enforce"
@@ -8739,7 +8835,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
+          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, its grant applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -8751,7 +8847,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -8763,7 +8859,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -8787,7 +8883,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.\n"
+          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.\n"
         },
         "entra.observe": {
           "meta": {
@@ -8908,9 +9004,40 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              },
+              "withheldModes": {
+                "Enforce": "Enforce runs only with -ReadinessApproved, and this package declares no prerequisite IAMAI can check to pass it."
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$ReadinessApproved\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n if(-not $ReadinessApproved){throw 'Refusing enforcement: readiness approval was not supplied.'}\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$ReadinessApproved\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n if(-not $ReadinessApproved){throw 'Refusing enforcement: readiness approval was not supplied.'}\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
         },
         "ai.create": {
           "meta": {
@@ -8934,7 +9061,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Require App Protection on Phones**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Require App Protection on Phones**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -10119,6 +10246,7 @@
           "policy.target.mode"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "people.affected.count",
           "policy.current.state",
@@ -10181,10 +10309,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -10206,10 +10330,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -10229,10 +10349,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -10378,7 +10494,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. If it is **On**, move that same policy to **Report-only** before changing any access-affecting assignment or condition. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.\n"
+          "text": "Open the exact resolved policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, its grant applies to the corrected users and conditions as soon as you save. Replace the complete `conditions` object with the IAMAI-resolved canonical target; do not create a replacement policy.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -10390,7 +10506,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -10402,7 +10518,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -10426,7 +10542,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. Any policy staged to Report-only stays there until a separate Ready-to-enforce state is reached.\n"
+          "text": "Re-open the same policy by stable ID, verify the corrected fields against the canonical target, and rescan IAMAI. The policy keeps the state it had.\n"
         },
         "entra.observe": {
           "meta": {
@@ -10547,9 +10663,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}\n}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){\n $pre=IG GET $uri\n if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}\n}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}\n foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}\n return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){\n   $a=@($v|ForEach-Object { Norm $_ })\n   return @($a|Sort-Object { $_|ConvertTo-Json -Depth 80 -Compress })\n }\n $h=[ordered]@{}\n foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p}\n return [pscustomobject]$h\n}\nfunction Same($actual,$target){\n $a=Norm (Project $actual $target);$t=Norm $target\n return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))\n}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions -or $null -eq $target.grantControls){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body\n $PolicyId=[string]$created.id\n Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{\n PolicyId=$actual.id; DisplayName=$actual.displayName; State=$actual.state;\n NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);\n ConditionsCanonical=(Same $actual.conditions $target.conditions);\n GrantCanonical=(Same $actual.grantControls $target.grantControls);\n SessionCanonical=(Same $actual.sessionControls $target.sessionControls)\n}\n"
         },
         "ai.create": {
           "meta": {
@@ -10573,7 +10717,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Protect Sign-in Method Registration**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Protect Sign-in Method Registration**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {
@@ -10705,6 +10849,7 @@
           "intune.compliance.prerequisiteState"
         ],
         "optionalBindings": [
+          "policy.target.json",
           "tenant.displayName",
           "policy.current.state",
           "evidence.reportOnly",
@@ -10775,10 +10920,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectConditions"
                   }
                 ]
@@ -10800,10 +10941,6 @@
                 "powershell": [
                   {
                     "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
-                  {
-                    "block": "powershell.run",
                     "mode": "CorrectGrant"
                   }
                 ]
@@ -10823,10 +10960,6 @@
                   }
                 ],
                 "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "StageForCorrection"
-                  },
                   {
                     "block": "powershell.run",
                     "mode": "CorrectSession"
@@ -11002,7 +11135,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
+          "text": "Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, its grant applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.\n"
         },
         "entra.correct-grant": {
           "meta": {
@@ -11014,7 +11147,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.\n"
         },
         "entra.correct-session": {
           "meta": {
@@ -11026,7 +11159,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
+          "text": "Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.\n"
         },
         "entra.correct-name": {
           "meta": {
@@ -11050,7 +11183,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.\n"
+          "text": "Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.\n"
         },
         "entra.observe": {
           "meta": {
@@ -11171,9 +11304,37 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPolicyJson": {
+                  "binding": "policy.target.json",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                },
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "CorrectSession",
+                    "CorrectName",
+                    "Observe",
+                    "Enforce"
+                  ]
+                }
+              }
+            }
           },
-          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}\nif($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
+          "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId\n)\n$ErrorActionPreference='Stop'\nConnect-MgGraph -Scopes 'Policy.Read.All','Policy.ReadWrite.ConditionalAccess' -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};return Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){\n if($null -eq $target){return $actual}\n if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual}\n if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)}\n $h=[ordered]@{}; foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value}; return [pscustomobject]$h\n}\nfunction Norm($v){\n if($null -eq $v){return $null}\n if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v}\n if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|ForEach-Object {Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})}\n $h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h\n}\nfunction Same($actual,$target){$a=Norm (Project $actual $target);$t=Norm $target;return (($a|ConvertTo-Json -Depth 80 -Compress) -eq ($t|ConvertTo-Json -Depth 80 -Compress))}\n$target=$TargetPolicyJson|ConvertFrom-Json\nif(-not $target.displayName -or $null -eq $target.conditions){throw 'TargetPolicyJson is incomplete.'}\nif($Mode -eq 'Create'){\n $body=[ordered]@{displayName=$target.displayName;state='enabledForReportingButNotEnforced';conditions=$target.conditions;grantControls=$target.grantControls;sessionControls=$target.sessionControls}\n $created=IG POST \"$G/identity/conditionalAccess/policies\" $body; $PolicyId=[string]$created.id; Write-Host \"Created $PolicyId in Report-only.\"\n}else{GuidOk $PolicyId 'PolicyId'}\n$uri=\"$G/identity/conditionalAccess/policies/$PolicyId\"\nif($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}\nif($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}\nif($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}\nif($Mode -eq 'CorrectName'){IG PATCH $uri @{displayName=$target.displayName}|Out-Null}\nif($Mode -eq 'Enforce'){\n $pre=IG GET $uri\n if([string]$pre.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only immediately before enforcement.'}\n if(-not (Same $pre.conditions $target.conditions)){throw 'Refusing enforcement: conditions do not match canonical target.'}\n if(-not (Same $pre.grantControls $target.grantControls)){throw 'Refusing enforcement: grant controls do not match canonical target.'}\n if(-not (Same $pre.sessionControls $target.sessionControls)){throw 'Refusing enforcement: session controls do not match canonical target.'}\n IG PATCH $uri @{state='enabled'}|Out-Null\n}\n$actual=IG GET $uri\n[pscustomobject]@{PolicyId=$actual.id;DisplayName=$actual.displayName;State=$actual.state;NameCanonical=([string]$actual.displayName -eq [string]$target.displayName);ConditionsCanonical=(Same $actual.conditions $target.conditions);GrantCanonical=(Same $actual.grantControls $target.grantControls);SessionCanonical=(Same $actual.sessionControls $target.sessionControls)}\n"
         },
         "ai.create": {
           "meta": {
@@ -11197,7 +11358,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Require a Managed Device Outside the Office**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPolicy {{policy.current.id}} has these mismatches for **Require a Managed Device Outside the Office**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.\n"
         },
         "ai.observe": {
           "meta": {

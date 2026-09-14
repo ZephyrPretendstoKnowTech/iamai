@@ -186,7 +186,8 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
         ['Verify: Target resources = All resources, Conditions = Client apps: Authentication flows: Authentication transfer, Grant = Block access.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is.'], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
   const ai = packageOf(AUTH).blocks['ai.correct'].text
@@ -220,7 +221,8 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
         ['Verify all other settings match the baseline: Target resources = All resources, Conditions = Client apps: Authentication flows: Device code, Grant = Block access.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is.'], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
   // PowerShell, JSON and AI Info are unchanged (BLOCKED.md).
