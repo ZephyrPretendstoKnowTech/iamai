@@ -108,18 +108,21 @@ export function invocationErrors(at: string, spec: unknown, script: string, voca
  * a single-quoted string at those as well as at U+0027. So every character above U+007E
  * leaves the quotes: a JSON value (a `.json` binding) carries it as a `\uXXXX` escape,
  * which ConvertFrom-Json reads back as the same character, and other text as `[char]`,
- * in a parenthesised concatenation that evaluates to the same string. U+0027 is doubled.
+ * in a parenthesised concatenation that evaluates to the same string. A control character
+ * (a tab or line break) in text leaves the quotes as `[char]` too, so the call stays one
+ * ASCII line; JSON.stringify already escapes controls in a JSON value. U+0027 is doubled.
  * Invocations use no double-quoted strings.
  */
 const NOT_ASCII = /[\u007f-\uffff]/g
+const OUTSIDE_QUOTES = /([\u0000-\u001f\u007f-\uffff])/
 function literal(v: unknown, json = false): string {
   const quoted = (s: string): string => `'${s.replace(/'/g, "''")}'`
   const text = (x: unknown): string => {
     const s = String(x)
     if (json) return quoted(s.replace(NOT_ASCII, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`))
-    const parts = s.split(/([\u007f-\uffff])/).filter((p, i) => i % 2 === 1 || p !== '')
-    if (parts.length <= 1) return quoted(s)
-    const terms = parts.map((p) => (p.length === 1 && p.charCodeAt(0) > 0x7e ? `[char]0x${p.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}` : quoted(p)))
+    if (!OUTSIDE_QUOTES.test(s)) return quoted(s)
+    const parts = s.split(OUTSIDE_QUOTES).filter((p) => p !== '')
+    const terms = parts.map((p) => (p.length === 1 && OUTSIDE_QUOTES.test(p) ? `[char]0x${p.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}` : quoted(p)))
     // [char] + string would convert the string to a char, so the concatenation starts with a string.
     if (terms[0].startsWith('[char]')) terms.unshift("''")
     return `(${terms.join(' + ')})`
