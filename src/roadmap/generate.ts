@@ -1493,6 +1493,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // through the same boundary.
       const changing = source ? stepPolicies() : templatePolicy()
       const sections = changedSections(result)
+      // The applications the baseline's policy excludes and the tenant's does not
+      // (review R1-F3): the target resources are the baseline's, so the correction
+      // submits them and lists the change. The update used to keep the tenant's
+      // resources while the Entra steps and AI Info named the exclusion.
+      if (existingRaw && changing.length === 1) {
+        const excludedBy = (p: RawPolicy | undefined): unknown => ((p?.conditions as RawPolicy | undefined)?.applications as RawPolicy | undefined)?.excludeApplications
+        const wanted = excludedBy(changing[0].resolved.body as RawPolicy)
+        const had = excludedBy(existingRaw)
+        const present = new Set((Array.isArray(had) ? had : []).map((a) => String(a).toLowerCase()))
+        if (Array.isArray(wanted) && wanted.some((a) => !present.has(String(a).toLowerCase()))) sections.add('applications')
+      }
       // A policy that already meets the goal's floor has no grant or session of its
       // own to correct, and an enforced one no state: those reasons belong to
       // another candidate (a session-only policy's "requires nothing", a report-only

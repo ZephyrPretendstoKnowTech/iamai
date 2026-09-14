@@ -183,6 +183,8 @@ type GroupShape = {
   admins?: { grant: Record<string, unknown>; users: 'group' | 'group+user' | 'group+role' } | null
   /** Every person Ready, so nothing but the target decides whether the step is handed over. */
   ready?: boolean
+  /** The second policy's target resources, where not All resources with nothing excluded. */
+  staffApps?: Record<string, unknown>
 }
 function groupRun(opts: GroupShape): FixtureRun & { ctx: StepVarContext } {
   // The curated week-two demo (its source groups answered), as R1 reproduced it:
@@ -204,7 +206,7 @@ function groupRun(opts: GroupShape): FixtureRun & { ctx: StepVarContext } {
   const staffUsers = opts.staff === 'all' ? { includeUsers: ['All'], excludeGroups: [exclusions] } : { includeGroups: [staffGroup], excludeGroups: [exclusions] }
   const rows: Record<string, unknown>[] = [
     ...(admins ? [{ id: ADMIN, displayName: opts.names[0], state: 'enabled', conditions: { users: adminUsers, applications: apps, clientAppTypes: ['all'] }, grantControls: admins.grant }] : []),
-    ...(opts.staff !== 'none' ? [{ id: EVERYONE, displayName: opts.names[1], state: 'enabled', conditions: { users: staffUsers, applications: apps, clientAppTypes: ['all'] }, grantControls: MFA }] : []),
+    ...(opts.staff !== 'none' ? [{ id: EVERYONE, displayName: opts.names[1], state: 'enabled', conditions: { users: staffUsers, applications: opts.staffApps ?? apps, clientAppTypes: ['all'] }, grantControls: MFA }] : []),
   ]
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const keep = (ca.rows as Record<string, unknown>[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
@@ -333,6 +335,37 @@ test('C01: a lone staff group MFA policy is still corrected to All users', () =>
     assert.equal(next.executable, true, 'the legitimate correction is handed over')
     assert.ok(handedOver(r, step).includes(EVERYONE), 'the PowerShell names the staff policy it corrects')
   }
+})
+
+// Review R1-F3: the correction's Entra and AI Info said Microsoft Intune Enrollment
+// is excluded, while its JSON and PowerShell target kept the tenant's resources.
+// The pinned all-users policy excludes it, so the target is the baseline's: the
+// update submits the exclusion, lists the change, and every channel carries it.
+const INTUNE_ENROLLMENT = 'd4ebce55-015a-49b5-a083-c84d1797ae8c'
+
+test('C02 R1-F3: correcting a policy without the baseline’s Intune Enrollment exclusion submits it, lists it and carries it in every channel', () => {
+  for (const reversed of [false, true]) {
+    const r = groupRun({ reversed, names: GROUP_NAMES[0], staff: 'group', admins: null, ready: true })
+    const step = allUsersStep(r)
+    const update = (step.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
+    assert.ok(update, 'the premise: the staff policy is corrected')
+    const applications = (update.body.conditions as { applications?: Record<string, unknown> }).applications
+    assert.deepEqual(applications?.includeApplications, ['All'])
+    assert.deepEqual(applications?.excludeApplications, [INTUNE_ENROLLMENT], 'the update submits the baseline’s exclusion')
+    assert.ok((step.action.changes ?? []).some((c) => c.field === 'Target resources'), 'and lists it as a change')
+    const body = stepBodyOf(step, r.ctx)
+    for (const [id, carries] of [['portal', /Intune Enrollment/], ['ai', /Intune Enrollment/], ['json', new RegExp(INTUNE_ENROLLMENT)], ['ps', new RegExp(INTUNE_ENROLLMENT)]] as const) {
+      const artifact = body.artifacts.find((a) => a.id === id)
+      assert.ok(artifact && !artifact.unavailable, `${id} is drawn`)
+      assert.match(artifact.text(), carries, `${id} carries the exclusion`)
+    }
+    assert.match(stepExportView(step, r.ctx).whatToDo.join('\n'), /Target resources → Resources → All resources; Exclude: Microsoft Intune Enrollment/, 'the export names it too')
+  }
+  // Where the tenant's policy already excludes it, the resources are not a change.
+  const r = groupRun({ reversed: false, names: GROUP_NAMES[0], staff: 'group', admins: null, staffApps: { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] } })
+  const step = allUsersStep(r)
+  assert.ok((step.action.resolution?.policies ?? []).some((o) => o.mode === 'update'), 'the premise: the staff policy is still corrected')
+  assert.equal((step.action.changes ?? []).some((c) => c.field === 'Target resources'), false, 'no resources change is listed')
 })
 
 test('C01 R1-F2: beside an All users policy, a group-assigned admins policy is never the all-users step’s target', () => {
