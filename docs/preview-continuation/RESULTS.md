@@ -439,6 +439,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | 8332f82 | Review 4 N1: a correction held on emergency access is planned on screen, not handed over (stepPackage.ts), three tests |
 | 311b8a9 | Review 4 queue 3: user-risk-medium and service-accounts-trusted-network scripts called with IAMAI's values; riskNetworkInvocation.test.ts |
 | c4cb5a6 | Review 4 queue 3: the guests pair script called with both targets and both ids (stepPackage.ts `memberBindings` pair JSON, guests META/CONTENT, content.json value label); guestsPairInvocation.test.ts, guestsPairBinding.test.ts |
+| d6d1e30 | Review 4 queue 6: the shared-devices JSON is no longer withheld by the requestless people-policy patches block (META); sharedDevicesPeopleJson.test.ts |
 
 ### N1 (high): screen handed over a held correction the export withheld: FIXED at 8332f82
 - **Reproduced before editing** (`../scratch/c5-n1-diag.ts`, `n1-diag-1.txt`): across the curated and plain fixtures, exactly two steps reach `partial` through stepPackage.ts's "correction owed" branch while their implementation is not current. Both are curated demo, s-goal-block-legacy-auth and s-goal-block-device-code: enforced, `condition` blocked, `nextSafeAction` `{correct, executable:false, blockedBy:"blocked"}`, one step blocker `s-prereq-break-glass`, `removes.ids` = `000f4434…` (Core - Break glass).
@@ -527,21 +528,39 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Acceptance | same harness, `<copy>` = `../acc-src-c4cb5a6-c5` (`git archive c4cb5a6a`, harness identical by `cmp`) | **c4cb5a6** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-2.txt`) |
 | Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after the build row above, 10:58–11:02 (same chain as the full suite); report `docs/reports/walk-c4cb5a6.md`, captures `walk/c4cb5a6/` (gitignored) | **c4cb5a6** | 0 | "Verdict: show-ready on this walk (no P0). **495 P1, 50 P2**." First load 4719 ms throttled (P1, as before). Against review 4's 2997bb3 walk (`../scratch/c5-walk-compare.sh`): report body below the header identical after stripping digits (0 diff lines); normalized stdout 544 → 545 lines, the one added line being "wrote docs\reports\walk-….md", no finding added or removed (`walk-1.txt`, `walk-norm-diff.txt`, `walk-report-diff.txt`) |
 
+### shared-devices people-policy exclusions (review 4 queue 6): JSON FIXED at d6d1e30; script note and Enforce reference NOT DONE
+- **Reproduced by direct projection** (`../scratch/c5-shared-people.ts`); no fixture binds a single trusted location, so the matrix could not show it. With every value bound:
+  - `missing` without patches: JSON degraded on `peoplePolicies.resolvedPatches`.
+  - `missing` with patches, and a users correction with patches: JSON invalid ("json.people-patches: a JSON body with no request (method and endpoint)").
+  - The valid create POST and the conditions PATCH were therefore never offered.
+- **Cause:** `json.people-patches` is a `referenceOnly` json-template with no request (the patches target several people policies; no single Graph request carries them). It was composed into `missing` beside `json.create` and was the only JSON of the partial `people-policy-exclusions` module.
+- **Fix:** both references removed from META.json by checked text removal; the result parses to the original minus exactly those two members. `entra.people-exclusions` stays in both projections, so the people-policy exclusions remain the Entra step that says to make them. Registry regenerated; LIBRARY.json unchanged; withheld count unchanged (5).
+- **Matrix** (`matrix-5.diff`): the 8 shared-devices rows drop `peoplePolicies.resolvedPatches` from their JSON degraded list (they stay degraded on the trusted location); no other row changed.
+- **Tests:** `sharedDevicesPeopleJson.test.ts` (4): before and after the patches resolve, the create's JSON is `json.create` alone, one POST, no JSON degradation, and Entra keeps `entra.people-exclusions`; a users correction with patches offers exactly the conditions PATCH to the policy id; no projection composes the block. Implementation suite 216/216 (`impl-5.txt`); tsc 0 (`tsc-6.txt`). Non-vacuity: 4/4 fail against `git archive e0163b0` (`shared-people-nonvacuity.txt`).
+- **Not done:** the called PowerShell Create does not apply the people-policy exclusions and does not say they are a separate step (the Entra tab does). `readyToEnforce` still names the withheld Enforce run (the lint error disclosed in cycle 3).
+
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Matrix | `s3-matrix.ts curated all` | tree = d6d1e30 | 0 | vs c4cb5a6: 8 rows (shared-devices degraded lists only) (`matrix-5.txt`, `matrix-5.diff`) |
+| Acceptance | same harness, `<copy>` = `../acc-src-d6d1e30-c5` (`git archive d6d1e309`, harness identical by `cmp`) | **d6d1e30** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-3.txt`) |
+| Lane / parity | `c2-export-lane.ts`; `../logs/review1/rv-parity.ts` | d6d1e30 | 0; 0 | `{"steps":107,"boardReadyBlocked":7,"noLaneReadyBlocked":7}`; parity 0 diff lines against `c4/rv-parity-3.txt` (`export-lane-2.txt`, `rv-parity-2.txt`) |
+| Full suite | `npm test`, 11:05–11:09 | **d6d1e30** (clean tree) | 0 | **2744 tests · 2742 pass · 0 fail · 0 cancelled · 2 skipped** (same two) (`full-4.txt`) |
+
 ### Test edits and scope (this cycle)
 - `git diff e0163b0 HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. One assert line removed: correctionProjection.test.ts' `packageStateOf … 'partial'` (A1a task 6 pin), replaced by `'blocked'` plus two premise/planned assertions, with an in-place comment. highRiskChannels.test.ts: comment only.
-- Files changed since e0163b0: stepPackage.ts; three packages' CONTENT.md (guests also META.json); registry.generated.json; LIBRARY.json; content.json (one value label); seven test files (four new). package.json, lockfile, baselines, .github, vite/tsconfig, data/goals.json, walk.mjs, page-contracts.json and src/feedback.ts are untouched this cycle (walk.mjs last changed in cycle 1, disclosed then).
+- Files changed since e0163b0: stepPackage.ts; three packages' CONTENT.md (guests also META.json); shared-devices META.json; registry.generated.json; LIBRARY.json; content.json (one value label); eight test files (five new). package.json, lockfile, baselines, .github, vite/tsconfig, data/goals.json, walk.mjs, page-contracts.json and src/feedback.ts are untouched this cycle (walk.mjs last changed in cycle 1, disclosed then).
 
 ### Not done in cycle 5 (actionable; see BLOCKED)
 1. Removed exclusions in the viewer's Entra and AI Info tabs and in the script/JSON disclosure (review 4 queue 5): needs a binding from `PolicyOperation.removes` and an authored line in each correction package; not started.
-2. shared-devices people-policy exclusions and the dangling readyToEnforce Enforce reference (queue 6).
+2. shared-devices: the JSON is fixed (d6d1e30). Still open: the PowerShell Create path saying the people-policy exclusions are a separate Entra step, and the dangling readyToEnforce Enforce reference (queue 6).
 3. Board Ready vs blocked: 7 remain (queue 7), unchanged.
 4. Package gaps: session-lifetime, register-info-protected, pim-activation-reauth; the pim grant+session floor test (queue 8).
 5. Low: the export "before" line under a hold; unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry.
 6. The guests pair is not rendered end to end by any fixture (no fixture resolves both pinned members); proven by unit and keyed-step tests only.
 
 **Working tree at the end of cycle 5.**
-- Commits: e0163b0, 8332f82, 311b8a9, c4cb5a6 (code; the verified state), f1e121f and the docs commit carrying this walk row (docs only). Nothing else is uncommitted; stash empty.
-- Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-c4cb5a6.md`, `walk/c4cb5a6/`.
-- Outside the clone: `../logs/c5/` (including `ps/`, the rendered scripts, parsed only); `../scratch/c5-*` and `../scratch/guestsPairInvocation.test.ts` (the draft copied into the clone); archive copies `../c5-src-e0163b0`, `../acc-src-311b8a9-c5`, `../acc-src-c4cb5a6-c5`.
+- Commits: e0163b0, 8332f82, 311b8a9, c4cb5a6, d6d1e30 (code; d6d1e30 is the final verified state), f1e121f, 4e4eb8d and the docs commit carrying the d6d1e30 rows (docs only). Nothing else is uncommitted; stash empty.
+- Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-c4cb5a6.md`, `docs/reports/walk-d6d1e30.md`, `walk/c4cb5a6/`, `walk/d6d1e30/`.
+- Outside the clone: `../logs/c5/` (including `ps/`, the rendered scripts, parsed only); `../scratch/c5-*` and `../scratch/guestsPairInvocation.test.ts` (the draft copied into the clone); archive copies `../c5-src-e0163b0`, `../acc-src-311b8a9-c5`, `../acc-src-c4cb5a6-c5`, `../acc-src-d6d1e30-c5`.
 - `../c5-src-e0163b0/node_modules` is a **directory junction** to the clone's `node_modules`, and that copy also holds this cycle's test files for the non-vacuity runs. Anyone removing it must remove the junction itself and not follow it.
 - No remote, tenant or external write was made, and no generated script was executed.
