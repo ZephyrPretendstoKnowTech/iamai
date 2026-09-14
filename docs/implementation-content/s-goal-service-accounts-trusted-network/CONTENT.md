@@ -55,6 +55,8 @@ When IAMAI selected lifecycle correction, set the policy to Report-only. Do not 
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -243,6 +245,8 @@ Review IAMAI's proposed user-based service-account block policy. Target: canonic
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity, canonical group identity, and approved trusted location IDs. Do not broaden network trust or convert service-principal handling into a user policy.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

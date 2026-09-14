@@ -219,9 +219,12 @@ test('a two-policy set corrects only the member that differs, creates only the m
   const missing = blocksOf({ ...set, 'policies.session.unmanaged.operation': 'create', 'policies.session.unmanaged.current.id': undefined, 'policies.session.unmanaged.current.state': undefined })
   assert.ok(missing.blocks.has('json.unmanaged.create') && missing.blocks.has('mode:CreateUnmanaged'), [...missing.blocks].join(', '))
   assert.equal([...missing.blocks].some((b) => /browser\.create|CreateBrowser|mode:Create$|entra\.create-set/.test(b)), false, `the healthy member was created again: ${[...missing.blocks].join(', ')}`)
-  // A live member that differs goes back to report-only beside its correction; its report-only sibling does not.
+  // Cycle 3 (C02, RUN-CONTEXT): a live member that differs keeps its state. It used to go back to
+  // report-only beside its correction; now only its correction is drawn, and saving it is described.
   const live = blocksOf({ ...set, 'policies.session.browser.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.session.browser.current.changedFields': ['conditions.users.excludeGroups'] })
-  assert.ok(live.blocks.has('entra.correct.browser.lifecycle') && !live.blocks.has('entra.correct.unmanaged.lifecycle'), [...live.blocks].join(', '))
+  assert.ok(live.blocks.has('entra.correct.browser.conditions'), [...live.blocks].join(', '))
+  assert.equal([...live.blocks].some((b) => /lifecycle|report-only|ReportOnly/.test(b)), false, `a correction moved a live policy to report-only: ${[...live.blocks].join(', ')}`)
+  assert.match(live.p.channels.find((c) => c.channel === 'entra')?.text ?? '', /if it is On, its correction applies to sign-ins as soon as you save/)
   // A change the set reports that no member accounts for belongs to nobody IAMAI can name: it holds.
   const stray = projectSafely(pkg, 'partial', { ...set, [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] }, runtime)
   assert.deepEqual(stray.hold?.unknownMismatches, ['grantControls.builtInControls'])

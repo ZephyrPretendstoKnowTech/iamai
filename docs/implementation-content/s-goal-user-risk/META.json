@@ -245,30 +245,6 @@
               "mode": "CorrectSession"
             }
           ]
-        },
-        "lifecycle.report-only": {
-          "select": {
-            "equals": [
-              "policy.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "requires": [
-            "policy.current.id"
-          ],
-          "entra": [
-            "entra.correct.lifecycle"
-          ],
-          "json": [
-            "json.correct.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnly"
-            }
-          ]
         }
       },
       "sharedAfter": {

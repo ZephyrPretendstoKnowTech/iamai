@@ -56,6 +56,8 @@ If correction work should return to observation, set Enable policy to Report-onl
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save once after the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate policy.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -255,6 +257,8 @@ Review IAMAI's proposed Medium user-risk password-change policy. Target: All use
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity. Current v1.0 authoring uses built-in MFA + passwordChange with AND. Do not invent exclusions, add unrelated conditions, or disable the separate High-risk policy.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

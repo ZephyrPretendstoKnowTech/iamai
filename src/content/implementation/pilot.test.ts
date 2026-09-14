@@ -177,11 +177,14 @@ test('Partial selects correction modules from the engine’s changed fields, one
   const shared = project('partial', { [CHANGED_FIELDS_BINDING]: ['conditions.users.includeUsers', 'conditions.users.excludeGroups'] })
   assert.deepEqual(shared.channels.find((c) => c.channel === 'json')!.blocks, ['json.correct.conditions'])
   assert.deepEqual(shared.channels.find((c) => c.channel === 'powershell')!.corrections, ['Conditions'])
-  // A live policy being corrected goes back to report-only alongside the correction, never on its own.
+  // Cycle 3 (C02, RUN-CONTEXT): a live policy being corrected keeps its state. It used to go back
+  // to report-only alongside every correction, taking enforcement off to fix a grant; the
+  // correction now says what saving does to a policy that is On instead.
   const live = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] })
-  assert.ok(live.channels.find((c) => c.channel === 'entra')!.blocks.includes('entra.correct.lifecycle.report-only'))
-  assert.deepEqual(JSON.parse(live.channels.find((c) => c.channel === 'json')!.text).state, 'enabledForReportingButNotEnforced')
-  assert.deepEqual(live.channels.find((c) => c.channel === 'powershell')!.corrections, ['Grant', 'ReportOnly'])
+  assert.equal(live.channels.find((c) => c.channel === 'entra')!.blocks.includes('entra.correct.lifecycle.report-only'), false)
+  assert.match(live.channels.find((c) => c.channel === 'entra')!.text, /if it is On, the correction applies to sign-ins as soon as you save/)
+  assert.equal('state' in JSON.parse(live.channels.find((c) => c.channel === 'json')!.text), false, 'the correction request writes no state')
+  assert.deepEqual(live.channels.find((c) => c.channel === 'powershell')!.corrections, ['Grant'])
   const aloneAlone = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: undefined })
   assert.deepEqual(aloneAlone.channels, [], 'returning a policy to report-only was offered as a correction on its own')
   // A field no module covers holds the whole projection: no partial correction.

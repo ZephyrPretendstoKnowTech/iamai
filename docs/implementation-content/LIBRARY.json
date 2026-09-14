@@ -531,7 +531,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 6,
+      "correctionModules": 5,
       "requiredBindings": 6,
       "optionalBindings": 8,
       "verifiedSourceCount": 15,
@@ -661,7 +661,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 6,
+      "correctionModules": 5,
       "requiredBindings": 4,
       "optionalBindings": 8,
       "verifiedSourceCount": 8,
@@ -793,7 +793,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 8,
       "optionalBindings": 10,
       "verifiedSourceCount": 7,
@@ -922,7 +922,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 6,
       "optionalBindings": 10,
       "verifiedSourceCount": 8,
@@ -964,7 +964,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 10,
+      "correctionModules": 8,
       "requiredBindings": 7,
       "optionalBindings": 10,
       "verifiedSourceCount": 6,
@@ -1006,7 +1006,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 6,
       "optionalBindings": 8,
       "verifiedSourceCount": 9,
@@ -1048,7 +1048,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 4,
       "optionalBindings": 7,
       "verifiedSourceCount": 7,
@@ -1090,7 +1090,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 10,
+      "correctionModules": 9,
       "requiredBindings": 4,
       "optionalBindings": 7,
       "verifiedSourceCount": 6,
@@ -1177,7 +1177,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 6,
       "optionalBindings": 10,
       "verifiedSourceCount": 10,
@@ -1220,7 +1220,7 @@
         "sourceConflict",
         "notLicensed"
       ],
-      "correctionModules": 7,
+      "correctionModules": 6,
       "requiredBindings": 4,
       "optionalBindings": 9,
       "verifiedSourceCount": 7,
@@ -1858,7 +1858,7 @@
         "inPlace",
         "blocked"
       ],
-      "correctionModules": 6,
+      "correctionModules": 5,
       "requiredBindings": 6,
       "optionalBindings": 7,
       "verifiedSourceCount": 4,

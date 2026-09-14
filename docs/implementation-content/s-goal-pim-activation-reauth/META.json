@@ -260,30 +260,6 @@
               "mode": "CorrectConditions"
             }
           ]
-        },
-        "policy.lifecycle": {
-          "select": {
-            "equals": [
-              "policy.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "requires": [
-            "policy.current.id"
-          ],
-          "entra": [
-            "entra.correct.policy.report-only"
-          ],
-          "json": [
-            "json.policy.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnly"
-            }
-          ]
         }
       },
       "sharedAfter": {

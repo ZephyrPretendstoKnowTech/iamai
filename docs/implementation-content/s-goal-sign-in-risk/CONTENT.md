@@ -44,6 +44,8 @@ Set **Enable policy = Report-only** while correcting it unless IAMAI is explicit
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -128,6 +130,8 @@ The exclusions group ensures emergency access accounts are not blocked during a 
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review only these IAMAI-classified mismatches for the High-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, High-only threshold, the authentication-strength grant, and Every-time sign-in frequency. Do not weaken the grant to plain MFA.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

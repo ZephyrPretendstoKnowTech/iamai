@@ -44,6 +44,8 @@ Set **Enable policy = Report-only** while correcting it unless IAMAI is explicit
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.
+
+Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -123,6 +125,8 @@ The exclusions group is excluded so emergency access accounts are never blocked 
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review only these IAMAI-classified mismatches for the Medium-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, Medium-only threshold, built-in MFA grant, and no-session target. Do not add Every-time reauthentication merely because current Microsoft generic guidance recommends it.
+
+The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
