@@ -180,13 +180,15 @@ async function run(tenantId: string, licenceOverride?: LicenceProfile): Promise<
     post({ type: 'section', source: `config:${key}`, status: 'started' })
     const t0 = performance.now()
     const result = await collectConfigSection(runCtx, key)
-    config[key] = result
+    // The section's reason travels in the snapshot as well as in the section event,
+    // so it is redacted here too: a denied read's Graph message can name a UPN.
+    config[key] = result.reason ? { ...result, reason: redactIdentifiers(result.reason) } : result
     post({
       type: 'section',
       source: `config:${key}`,
       status: result.status === 'ok' ? 'ok' : result.status,
       rows: result.rows.length,
-      reason: result.reason ?? undefined,
+      reason: config[key].reason ?? undefined,
       ms: Math.round(performance.now() - t0),
     })
   }
