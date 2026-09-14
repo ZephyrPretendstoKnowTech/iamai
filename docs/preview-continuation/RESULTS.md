@@ -191,6 +191,8 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | fadd5a7 | New finding: eleven more packages' corrections kept an enabled policy's state only after moving it to report-only; now they keep it. keepStateOnCorrection.test.ts; pilot/correctionProjection pins |
 | c0e91fe | shared-devices script called with bound values; Enforce withheld |
 | 6ed777e | Worker: a config section's reason is redacted in the snapshot; workerReasons.test.ts; c3-worker.ts |
+| dedd58f | docs: cycle 3 RESULTS/BLOCKED checkpoint; keep-state scan counts "is currently On" as a default |
+| dfb6274 | workload-identity-block corrections keep an enabled policy's state (the last staging package); `STILL_STAGING` empty |
 
 ### R1 OR-alternative widening (review 2 queue 1): FIXED
 - **Reproduced at a3d22f3** (`r1-repro.txt`, `r1-both.txt`). Grants: "phishing-resistant strength OR compliant device" and "MFA OR compliant device", on the admins group and on the staff group, all enabled.
@@ -223,7 +225,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - **Pins changed (disclosed):** mfaAuthContentSpecs (block-auth-transfer and block-device-code verify lists) and sessionAdminContentSpecs (admin-session verify list). Each asserted the effect-less line and now asserts the new one, with a comment.
 - Not changed: the export/Contract lead stays generic on a group → All users widening. The changes list now names the grant, and mfa-all-users AI Info names who is asked.
 
-### New finding: eleven packages returned an enabled policy to report-only on correction: FIXED (one package remains)
+### New finding: twelve packages returned an enabled policy to report-only on correction: FIXED (eleven at fadd5a7, workload-identity-block at dfb6274)
 - **Found:** a scan of every META Partial projection for report-only modules.
 - **Affected:** device-registration-mfa, intune-enrollment-reauth, pim-activation-reauth, service-accounts-trusted-network, session-lifetime (browser and unmanaged members), sign-in-risk, sign-in-risk-medium, token-protection, user-risk, user-risk-medium and shared-devices.
 - **What they did:** each projected a module selected whenever `policy.current.state` was `enabled` (`alongside: true`). Beside every correction it drew:
@@ -250,6 +252,14 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
   - The exemption now also treats "is currently/still On" as a default, with that sentence as a control. Rerun: 3/3, and no other package is flagged (`keepstate-test-3.txt`).
 - **Pins changed (disclosed):** `pilot.test.ts` and `correctionProjection.test.ts` asserted the live report-only module. They now assert no lifecycle block, no state in the request, corrections `['Grant']`, and the effect sentence.
 - Content suites after the batch: 804 tests · 803 pass · 0 fail · 1 skipped (`impl-4.txt`).
+- **workload-identity-block (the twelfth): FIXED at dfb6274.**
+  - **Before:** every Partial module ran `Correct` with `ReportOnly` and PATCHed `json.correct.report-only`. A lifecycle module and a sharedBefore block ("If it is On, return that same policy to Report-only first") rode along. AI Info asked for "Report-only during material correction", and `Correct` threw without ReportOnly.
+  - **Fix:** a checked META text edit inside the Partial region (`../scratch/c3-workload-keep-state-2.mjs`; the first attempt's heredoc broke a backslash and changed nothing). It removes ReportOnly and the report-only JSON ref from the six modules, the lifecycle module and ensure-report-only, and removes the guard line.
+  - **Effect statement,** in the save/verify block and AI Info, grounded in Microsoft Learn *Conditional Access for workload identities* ("The policy applies only when a service principal requests a token."; "Access is blocked when a token request is made from outside the allowed range."): if the policy is On, the correction applies to the sync service principal's token requests as soon as it is saved, so confirm the sync server's egress address is in the approved location first.
+  - **Left unprojected:** the Location branch and its guard, the ip-ranges text, the lifecycle blocks and the ReportOnly mode (BLOCKED).
+  - **Rendered for an enabled policy** (`workload-render.txt`): conditions, grant and both draw `Correct -Corrections 'PolicyConditions'` / `'PolicyGrant'` only. The request carries no state, and Entra has no Report-only instruction and does state the effect. The AI check printed "effect: false" only because the render script's regex was case-sensitive; the registry text was checked separately: effect present, no "return it to Report-only".
+  - **PowerShell parse:** 3 files, 0 errors (`workload-ps-parse.txt`).
+  - **Tests:** `STILL_STAGING` is now empty. Content suites 809 tests · 808 pass · 0 fail · 1 skipped (`impl-6.txt`); typecheck 0 (`tsc-7.txt`). LIBRARY.json `correctionModules` 7 → 6.
 
 ### Uncalled scripts (queue 2): shared-devices FIXED; guests-mfa, service-accounts-trusted-network, user-risk-medium NOT DONE
 - **shared-devices:** `powershell.run` is `deployableAfterBinding` with a declared invocation.
@@ -300,9 +310,8 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Worker probe | `node docs/preview-continuation/probes/c3-worker.ts` | 6ed777e tree | 0 | 7 PASS · 0 FAIL (`worker-4.txt`) |
 
 ### Not done in cycle 3 (actionable; see BLOCKED)
-1. workload-identity-block still returns an enabled policy to report-only on every material correction (script guard).
-2. Board/export lane reads Ready while the next safe action is blocked (45 steps).
-3. Remaining 15 uncalled scripts: guests-mfa, service-accounts-trusted-network, user-risk-medium.
-4. Removed tenant exclusions not disclosed.
-5. session-lifetime and register-info-protected bindings.
-6. Low: unprojected lifecycle blocks; same-name create; passkey profiles; Lane B and P1 worker paths not probed.
+1. Board/export lane reads Ready while the next safe action is blocked (45 steps).
+2. Remaining 15 uncalled scripts: guests-mfa, service-accounts-trusted-network, user-risk-medium.
+3. Removed tenant exclusions not disclosed.
+4. session-lifetime and register-info-protected bindings.
+5. Low: unprojected lifecycle blocks, ReportOnly modes and workload-identity-block's Location guard; same-name create; passkey profiles; Lane B and P1 worker paths not probed.
