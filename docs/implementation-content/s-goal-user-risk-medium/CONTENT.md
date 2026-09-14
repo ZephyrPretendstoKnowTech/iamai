@@ -161,12 +161,12 @@ Open policy ID `{{policy.current.id}}`, re-verify the canonical configuration an
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]}},"withheldModes":{"Enforce":"Enforce runs only with -MfaRegistrationValidated, and with -HybridPasswordWritebackValidated where hybrid users are in scope, and this package declares no prerequisite IAMAI can check to pass them."}}}
 param(
   [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,
-  [string]$PolicyId = '{{policy.current.id}}',
-  [string]$DisplayName = '{{policy.target.displayName}}',
-  [string]$ExcludeGroupsJson = '{{policy.target.excludeGroups}}',
+  [string]$PolicyId,
+  [string]$DisplayName,
+  [string[]]$ExcludeGroups=@(),
   [switch]$MfaRegistrationValidated,
   [switch]$HybridUsersInScope,
   [switch]$HybridPasswordWritebackValidated
@@ -180,10 +180,7 @@ function InvokeCA([string]$Method,[string]$Uri,$Body=$null){
   if($null-ne$Body){$p.Body=($Body|ConvertTo-Json -Depth 30 -Compress);$p.ContentType='application/json'}
   Invoke-MgGraphRequest @p
 }
-function Exclusions {
-  $v=$ExcludeGroupsJson | ConvertFrom-Json
-  if($null-eq$v){ @() } elseif($v -is [array]){ @($v) } else { @($v) }
-}
+function Exclusions { @($ExcludeGroups) }
 function Conditions {
   @{
     users=@{
