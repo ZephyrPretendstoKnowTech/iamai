@@ -174,6 +174,85 @@ const ENDPOINT_IDENTITY = /\{[A-Za-z0-9_.-]+\}/
  */
 const FIXED_IDENTITY = /^https:\/\/graph\.microsoft\.com\/v1\.0\/policies\/authenticationMethodsPolicy\/authenticationMethodConfigurations\/[A-Za-z0-9]+$/
 
+/** Graph's JSON batch endpoint: the requests it sends travel inside its body. */
+const BATCH_ENDPOINT = /^https:\/\/graph\.microsoft\.com\/v1\.0\/\$batch$/
+/** The one collection a batch sub-request may create a policy in. */
+const CA_POLICIES = '/identity/conditionalAccess/policies'
+/** A batch sub-request that changes a policy names one member's own bound id: `…/policies/{policies.<family>.<role>.current.id}`. */
+const MEMBER_POLICY_URL = /^\/identity\/conditionalAccess\/policies\/\{(policies\.[A-Za-z0-9_-]+\.([A-Za-z0-9_-]+)\.current\.id)\}$/
+/** A sub-request url in a JSON block's template that names an identity to bind. */
+const BATCH_URL_IDENTITY = /"url":"[^"]*\{([A-Za-z0-9_.-]+)\}"/g
+const POLICY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The endpoint-identity guard, reaching into a Graph JSON batch. Every sub-request
+ * is one of the package's pinned members, once, by its role. A POST creates in
+ * the policies collection. A PATCH addresses that same member's own policy id,
+ * bound from a value IAMAI holds: a missing one withholds the channel on it; a
+ * value that is not an id, or one another sub-request already targets, is
+ * refused. Any other method, url or a body naming an id is refused. The bound ids
+ * replace the url templates; `text` is null where nothing needed binding. Graph
+ * runs a batch's requests independently: it is not atomic.
+ */
+function batchRequests(parsed: unknown, pkg: CompiledPackage, b: Bindings, standIns: Readonly<Record<string, string>>): { text: string | null } | { missing: string[] } | { invalid: string[] } {
+  const requests = (parsed as { requests?: unknown } | null)?.requests
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed) || Object.keys(parsed).length !== 1 || !Array.isArray(requests) || requests.length === 0) return { invalid: ['a $batch body that is not one list of requests'] }
+  const roles = new Set((pkg.meta.baselineAuthority?.members ?? []).map((m) => m.role))
+  const invalid: string[] = []
+  const missing: string[] = []
+  const seen = new Set<string>()
+  const targets = new Set<string>()
+  let rebound = false
+  for (const r of requests as unknown[]) {
+    const q = (r !== null && typeof r === 'object' && !Array.isArray(r) ? r : {}) as Record<string, unknown>
+    const role = typeof q.id === 'string' ? q.id : ''
+    const method = typeof q.method === 'string' ? q.method : ''
+    const url = typeof q.url === 'string' ? q.url : ''
+    const body = q.body
+    if (!roles.has(role) || seen.has(role)) {
+      invalid.push(`a $batch request ${JSON.stringify(role)} that is not one pinned member, once`)
+      continue
+    }
+    seen.add(role)
+    if (body === null || typeof body !== 'object' || Array.isArray(body) || Object.hasOwn(body, 'id')) {
+      invalid.push(`${role}: a $batch request whose body is not a policy body`)
+      continue
+    }
+    if (method === 'POST') {
+      if (url !== CA_POLICIES) invalid.push(`${role}: a POST to ${JSON.stringify(url)}, not the policies collection`)
+      continue
+    }
+    if (method !== 'PATCH') {
+      invalid.push(`${role}: a ${JSON.stringify(method)} request in a $batch`)
+      continue
+    }
+    const m = MEMBER_POLICY_URL.exec(url)
+    if (!m || m[2] !== role) {
+      invalid.push(`${role}: a PATCH whose url does not name the ${role} member's own policy id`)
+      continue
+    }
+    if (!present(b[m[1]])) {
+      missing.push(m[1])
+      continue
+    }
+    const id = formatValue(b[m[1]])
+    if (!Object.hasOwn(standIns, m[1]) && !POLICY_ID.test(id)) {
+      invalid.push(`${role}: ${m[1]} is not a policy id`)
+      continue
+    }
+    if (targets.has(id)) {
+      invalid.push(`${role}: a PATCH to a policy another request in the batch already targets`)
+      continue
+    }
+    targets.add(id)
+    q.url = `${CA_POLICIES}/${id}`
+    rebound = true
+  }
+  if (invalid.length > 0) return { invalid }
+  if (missing.length > 0) return { missing }
+  return { text: rebound ? JSON.stringify(parsed) : null }
+}
+
 /** A projection list with each block once: a block several mismatches share is one correction, its script corrections merged. */
 function dedupe(refs: ProjectionRef[]): ProjectionRef[] {
   const out: ProjectionRef[] = []
@@ -276,6 +355,8 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
     if (!block) continue
     for (const m of block.text.matchAll(BINDING)) if (required.has(m[2])) keys.add(m[2])
     if (typeof block.meta.endpoint === 'string') for (const m of block.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) keys.add(m[1])
+    // A batch sub-request's own url identity (batchRequests) is this step's value too.
+    if (isJsonFormat(block)) for (const m of block.text.matchAll(BATCH_URL_IDENTITY)) keys.add(m[1])
     // A script parameter is this step's value only in a mode the preview runs: a create
     // never passes the policy id its corrections take (cycle 7, session-lifetime).
     const modes = runModes.get(id)
@@ -434,13 +515,27 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: bound JSON does not parse`)
           continue
         }
+        let text = bound.text
+        // A Graph JSON batch carries its requests inside the body, where the guard above does not reach.
+        if (ch === 'json' && BATCH_ENDPOINT.test(String(block.meta.endpoint ?? ''))) {
+          const batch = batchRequests(parsed, pkg, b, standIns)
+          if ('missing' in batch) {
+            miss.push(...batch.missing)
+            continue
+          }
+          if ('invalid' in batch) {
+            bad.push(...batch.invalid.map((x) => `${id}: ${x}`))
+            continue
+          }
+          if (batch.text !== null) text = batch.text
+        }
         if (typeof block.meta.endpoint === 'string') {
           const ep = bindEndpoint(block.meta.endpoint, b)
           if ('missing' in ep) {
             miss.push(...ep.missing)
             continue
           }
-          bodies.push({ method: String(block.meta.method ?? ''), endpoint: ep.endpoint, body: (parsed ?? {}) as Record<string, unknown>, text: bound.text })
+          bodies.push({ method: String(block.meta.method ?? ''), endpoint: ep.endpoint, body: (parsed ?? {}) as Record<string, unknown>, text })
           continue
         }
       }
@@ -488,7 +583,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
     const bears = blockIds.some((id) => {
       const bl = pkg.blocks[id]
       // A binding the block names but IAMAI does not hold dropped its line, and carries nothing.
-      return bl !== undefined && ([...bl.text.matchAll(BINDING)].some((m) => bound(b, m[2])) || (typeof bl.meta.endpoint === 'string' && /\{[A-Za-z0-9_.-]+\}/.test(bl.meta.endpoint)) || bl.meta.invocation !== undefined)
+      return bl !== undefined && ([...bl.text.matchAll(BINDING)].some((m) => bound(b, m[2])) || (typeof bl.meta.endpoint === 'string' && /\{[A-Za-z0-9_.-]+\}/.test(bl.meta.endpoint)) || (isJsonFormat(bl) && [...bl.text.matchAll(BATCH_URL_IDENTITY)].length > 0) || bl.meta.invocation !== undefined)
     })
     if (bears) bearing.add(ch)
     const corrections = [...new Set(runs.flatMap((r) => r.corrections))]

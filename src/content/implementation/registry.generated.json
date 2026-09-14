@@ -6670,6 +6670,11 @@
                     "block": "entra.correct-pair"
                   }
                 ],
+                "json": [
+                  {
+                    "block": "json.correct-pair"
+                  }
+                ],
                 "powershell": [
                   {
                     "block": "powershell.run",
@@ -6713,7 +6718,9 @@
             "entra": [
               "entra.enforce-pair"
             ],
-            "json": [],
+            "json": [
+              "json.enforce-pair"
+            ],
             "powershell": [
               {
                 "block": "powershell.run",
@@ -6912,6 +6919,20 @@
           },
           "text": "{\"kind\":\"resolvedCrossTenantInboundTrustPatchSet\",\"partners\":{{json:partnerTrust.resolvedPatches}},\"rule\":\"Each item must contain tenantId and the complete resolved inboundTrust object so existing compliant-device/hybrid-join trust values are preserved. Do not use this for GDAP.\"}\n"
         },
+        "json.correct-pair": {
+          "meta": {
+            "id": "json.correct-pair",
+            "channel": "json",
+            "states": [
+              "partial"
+            ],
+            "format": "json-template",
+            "kind": "deployableAfterBinding",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/$batch"
+          },
+          "text": "{\"requests\":[{\"id\":\"strong\",\"method\":\"PATCH\",\"url\":\"/identity/conditionalAccess/policies/{policies.guests.strong.current.id}\",\"headers\":{\"Content-Type\":\"application/json\"},\"body\":{\"displayName\":{{json:policies.guests.strong.target.displayName}},\"conditions\":{{json:policies.guests.strong.target.conditions}},\"grantControls\":{{json:policies.guests.strong.target.grantControls}},\"sessionControls\":{{json:policies.guests.strong.target.sessionControls}}}},{\"id\":\"mixed\",\"method\":\"PATCH\",\"url\":\"/identity/conditionalAccess/policies/{policies.guests.mixed.current.id}\",\"headers\":{\"Content-Type\":\"application/json\"},\"body\":{\"displayName\":{{json:policies.guests.mixed.target.displayName}},\"conditions\":{{json:policies.guests.mixed.target.conditions}},\"grantControls\":{{json:policies.guests.mixed.target.grantControls}},\"sessionControls\":{{json:policies.guests.mixed.target.sessionControls}}}}]}\n"
+        },
         "json.enforce-pair": {
           "meta": {
             "id": "json.enforce-pair",
@@ -6919,10 +6940,12 @@
             "states": [
               "readyToEnforce"
             ],
-            "format": "json",
-            "kind": "template"
+            "format": "json-template",
+            "kind": "deployableAfterBinding",
+            "method": "POST",
+            "endpoint": "https://graph.microsoft.com/v1.0/$batch"
           },
-          "text": "{\"state\":\"enabled\",\"applyTo\":\"both canonical guest policy IDs in one controlled change window\"}\n"
+          "text": "{\"requests\":[{\"id\":\"strong\",\"method\":\"PATCH\",\"url\":\"/identity/conditionalAccess/policies/{policies.guests.strong.current.id}\",\"headers\":{\"Content-Type\":\"application/json\"},\"body\":{\"state\":\"enabled\"}},{\"id\":\"mixed\",\"method\":\"PATCH\",\"url\":\"/identity/conditionalAccess/policies/{policies.guests.mixed.current.id}\",\"headers\":{\"Content-Type\":\"application/json\"},\"body\":{\"state\":\"enabled\"}}]}\n"
         },
         "powershell.run": {
           "meta": {

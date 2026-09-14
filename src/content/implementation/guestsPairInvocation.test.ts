@@ -82,9 +82,9 @@ test('s-goal-guests-mfa: Observe and EnforcePair are called on both ids; ApplyPa
 // neither carried a request, so both were taken out of every projection. A pair create
 // is two Graph requests and the JSON channel carries one: the create is now Graph's own
 // JSON batch, one report-only POST per pinned member, each body that member's resolved
-// target. A pair correction or enforcement still offers no JSON: its two PATCHes would
-// carry the policy ids inside a batch body, where the channel's endpoint-identity guard
-// (project.ts) does not reach.
+// target. A pair correction and an enforcement are batches too, one PATCH per member: the
+// endpoint-identity guard (project.ts batchRequests) now reads every inner request, so
+// each PATCH names its own member's bound policy id and nothing else is sent.
 const NASTY = 'Sample - O\'Brien "guests"\n\u0000\u001b[31m\u001f\u007f\u2028 strong'
 test('s-goal-guests-mfa: with both members resolved, the create is one Graph JSON batch of two report-only POSTs, each the member’s own target', () => {
   const p = projectImplementation(PKG, 'missing', bindings({ 'policies.guests.strong.current.id': undefined, 'policies.guests.mixed.current.id': undefined, 'policies.guests.strong.target.displayName': NASTY }))
@@ -113,15 +113,86 @@ test('s-goal-guests-mfa: a partly resolved pair offers no batch: the JSON is wit
   assert.ok(p.channels.some((c) => c.channel === 'entra'), 'the Entra create was withheld with the JSON')
 })
 
-test('s-goal-guests-mfa: a pair correction or enforcement offers no JSON body with no request, and fails on none', () => {
-  const partial = bindings({ 'policies.guests.semanticMismatches': ['users.exclusions'], [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.guests.strong.current.changedFields': ['conditions.users.excludeGroups'], 'policies.guests.mixed.current.changedFields': ['conditions.users.excludeGroups'] })
-  for (const [state, b] of [['partial', partial], ['readyToEnforce', bindings()]] as const) {
-    const p = projectImplementation(PKG, state, b)
-    assert.equal(p.hold, null, `${state}: ${JSON.stringify(p.hold)}`)
-    assert.deepEqual((p.degraded ?? []).filter((d) => d.channel === 'json'), [], `${state}: the JSON channel is withheld`)
-    assert.equal(p.channels.some((c) => c.channel === 'json'), false, `${state}: a JSON body with no request is offered`)
-    for (const channel of ['entra', 'powershell', 'aiInfo']) assert.ok(p.channels.some((c) => c.channel === channel), `${state}: ${channel} is not drawn`)
+const PARTIAL = { 'policies.guests.semanticMismatches': ['users.exclusions'], [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.guests.strong.current.changedFields': ['conditions.users.excludeGroups'], 'policies.guests.mixed.current.changedFields': ['conditions.users.excludeGroups'] }
+type Batch = { requests: { id: string; method: string; url: string; headers: Record<string, string>; body: Record<string, unknown> }[] }
+const batchOf = (pkg: CompiledPackage, state: PackageState, b: Record<string, unknown>) => {
+  const p = projectImplementation(pkg, state, b)
+  const json = p.channels.find((c) => c.channel === 'json')
+  return { p, json, batch: json ? (JSON.parse(json.text) as Batch) : null, withheld: p.degraded?.find((d) => d.channel === 'json') }
+}
+/** The fields the script's own PATCH in `mode` sends (its first `IG PATCH …/policies/$id @{…}`). */
+const scriptPatchFields = (mode: string): string[] => {
+  const branch = new RegExp(`if\\(\\$Mode -eq '${mode}'\\)\\{[\\s\\S]*?\\n\\}`).exec(PKG.blocks['powershell.run'].text)?.[0] ?? ''
+  const hash = /IG PATCH "\$G\/identity\/conditionalAccess\/policies\/\$id" @\{([^}]*)\}/.exec(branch)?.[1] ?? ''
+  return hash.split(';').map((kv) => kv.split('=')[0])
+}
+const policyUrl = (id: string): string => `/identity/conditionalAccess/policies/${id}`
+
+test('s-goal-guests-mfa: a pair correction is one Graph JSON batch PATCHing each member by its own id with its resolved target and no state, as CorrectPair does', () => {
+  const { p, json, batch } = batchOf(PKG, 'partial', bindings(PARTIAL))
+  assert.ok(json && batch, JSON.stringify(p.degraded))
+  assert.deepEqual(json.requests, [{ method: 'POST', endpoint: 'https://graph.microsoft.com/v1.0/$batch' }])
+  assert.deepEqual(batch.requests.map((r) => [r.id, r.method, r.url, r.headers['Content-Type']]), [['strong', 'PATCH', policyUrl(ID(3)), 'application/json'], ['mixed', 'PATCH', policyUrl(ID(4)), 'application/json']])
+  assert.deepEqual(batch.requests[0].body, { displayName: "Sample - O'Brien guests strong", ...STRONG })
+  assert.deepEqual(batch.requests[1].body, { displayName: 'Sample - guests mixed', ...MIXED })
+  // The operations the script runs: CorrectPair on the same two ids, sending the same fields and never a state.
+  const ps = p.channels.find((c) => c.channel === 'powershell')!
+  assert.ok(callsOf(ps.text)[0].endsWith(`-StrongPolicyId '${ID(3)}' -MixedPolicyId '${ID(4)}'`))
+  for (const r of batch.requests) assert.deepEqual(Object.keys(r.body), scriptPatchFields('CorrectPair'))
+  assert.doesNotMatch(json.text, /\{policies\.|"state"/)
+})
+
+test('s-goal-guests-mfa: an enforcement is one Graph JSON batch setting only state to enabled on exactly the two member ids EnforcePair enables', () => {
+  const { p, json, batch } = batchOf(PKG, 'readyToEnforce', bindings())
+  assert.ok(json && batch, JSON.stringify(p.degraded))
+  assert.deepEqual(batch.requests.map((r) => [r.id, r.method, r.url, r.body]), [['strong', 'PATCH', policyUrl(ID(3)), { state: 'enabled' }], ['mixed', 'PATCH', policyUrl(ID(4)), { state: 'enabled' }]])
+  assert.deepEqual(scriptPatchFields('EnforcePair'), ['state'])
+  assert.match(PKG.blocks['powershell.run'].text, /@\{state='enabled'\}/)
+  assert.ok(callsOf(p.channels.find((c) => c.channel === 'powershell')!.text)[0].startsWith("Invoke-IAMAIStep -Mode 'EnforcePair'"))
+  assert.doesNotMatch(json.text, /\{policies\./, 'a url template reached the copied text')
+})
+
+test('s-goal-guests-mfa: with one member’s id unresolved the correction and enforcement JSON is withheld on that id, never sent as half a batch', () => {
+  for (const [state, extra] of [['partial', PARTIAL], ['readyToEnforce', {}]] as const) {
+    const { json, withheld } = batchOf(PKG, state, bindings({ ...extra, 'policies.guests.mixed.current.id': undefined }))
+    assert.equal(json, undefined, state)
+    assert.deepEqual(withheld?.missingBindings, ['policies.guests.mixed.current.id'], state)
   }
+})
+
+test('s-goal-guests-mfa: two PATCHes reaching one policy, or a bound value that is not a policy id, are refused', () => {
+  for (const [state, extra] of [['partial', PARTIAL], ['readyToEnforce', {}]] as const) {
+    const dup = batchOf(PKG, state, bindings({ ...extra, 'policies.guests.mixed.current.id': ID(3) }))
+    assert.equal(dup.json, undefined, state)
+    assert.match(dup.withheld?.invalid.join('\n') ?? '', /mixed: a PATCH to a policy another request in the batch already targets/, state)
+    const wrong = batchOf(PKG, state, bindings({ ...extra, 'policies.guests.strong.current.id': "x'); DROP" }))
+    assert.equal(wrong.json, undefined, state)
+    assert.match(wrong.withheld?.invalid.join('\n') ?? '', /strong: policies\.guests\.strong\.current\.id is not a policy id/, state)
+  }
+})
+
+test('s-goal-guests-mfa: the guard reads every inner request: a swapped member id, another url, method or member, or a body naming an id is refused', () => {
+  const ENFORCE = 'json.enforce-pair'
+  const edited = (edit: (text: string) => string): CompiledPackage => ({ ...PKG, blocks: { ...PKG.blocks, [ENFORCE]: { ...PKG.blocks[ENFORCE], text: edit(PKG.blocks[ENFORCE].text) } } })
+  const cases: [string, (t: string) => string, RegExp][] = [
+    ['swapped', (t) => t.replace('policies/{policies.guests.strong.current.id}', 'policies/{policies.guests.mixed.current.id}'), /strong: a PATCH whose url does not name the strong member's own policy id/],
+    ['absolute url', (t) => t.replace('"url":"/identity/', '"url":"https://graph.microsoft.com/v1.0/identity/'), /strong: a PATCH whose url/],
+    ['literal id', (t) => t.replace('{policies.guests.strong.current.id}', ID(9)), /strong: a PATCH whose url/],
+    ['other object', (t) => t.replace('conditionalAccess/policies/{policies.guests.mixed.current.id}', 'conditionalAccess/namedLocations/{policies.guests.mixed.current.id}'), /mixed: a PATCH whose url/],
+    ['DELETE', (t) => t.replace('"method":"PATCH"', '"method":"DELETE"'), /strong: a "DELETE" request in a \$batch/],
+    ['GET', (t) => t.replace('"method":"PATCH"', '"method":"GET"'), /strong: a "GET" request in a \$batch/],
+    ['POST elsewhere', (t) => t.replace('"method":"PATCH","url":"/identity/conditionalAccess/policies/{policies.guests.strong.current.id}"', '"method":"POST","url":"/policies/crossTenantAccessPolicy/partners"'), /strong: a POST to "\/policies\/crossTenantAccessPolicy\/partners"/],
+    ['unknown member', (t) => t.replace('"id":"mixed"', '"id":"everyone"'), /a \$batch request "everyone" that is not one pinned member/],
+    ['member twice', (t) => t.replace('"id":"mixed"', '"id":"strong"'), /a \$batch request "strong" that is not one pinned member, once/],
+    ['body names an id', (t) => t.replace('"body":{"state":"enabled"}', '"body":{"id":"x","state":"enabled"}'), /strong: a \$batch request whose body is not a policy body/],
+    ['not a batch', (t) => `{"value":${t}}`, /a \$batch body that is not one list of requests/],
+  ]
+  for (const [name, edit, reason] of cases) {
+    const { json, withheld } = batchOf(edited(edit), 'readyToEnforce', bindings())
+    assert.equal(json, undefined, `${name}: the JSON is offered`)
+    assert.match(withheld?.invalid.join('\n') ?? '', reason, name)
+  }
+  assert.ok(batchOf(edited((t) => t), 'readyToEnforce', bindings()).json, 'the unedited block is refused')
 })
 
 // Review 5 missing test: a pair with one member in the tenant is corrected as a set
@@ -131,6 +202,7 @@ test('s-goal-guests-mfa: a partly deployed pair withholds only the script, on th
   const { p, ps } = psOf('partial', bindings({ 'policies.guests.strong.current.id': undefined, 'policies.guests.semanticMismatches': ['users.exclusions'], [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.guests.mixed.current.changedFields': ['conditions.users.excludeGroups'] }))
   assert.equal(ps, undefined, 'a CorrectPair call without the strong policy id is drawn')
   assert.deepEqual(p.degraded?.find((d) => d.channel === 'powershell')?.missingBindings, ['policies.guests.strong.current.id'])
+  assert.deepEqual(p.degraded?.find((d) => d.channel === 'json')?.missingBindings, ['policies.guests.strong.current.id'], 'the batch is withheld on the same id')
   assert.ok(p.channels.some((c) => c.channel === 'entra'), JSON.stringify(p.hold))
 })
 
