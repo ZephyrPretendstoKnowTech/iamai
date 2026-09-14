@@ -1,4 +1,4 @@
-# R1 — fresh adversarial review (2026-09-13 22:48 MDT –, in progress)
+# R1 — fresh adversarial review (2026-09-13 22:48 MDT –; checkpoint 23:00)
 
 Reviewer did not implement S0–S4. Candidate HEAD at start 144b6ce, tree clean, `git stash list` empty, no preserved unfinished diff. Compared against audited source c65d9f4. No application code modified in R1. Logs: ../logs/r1/.
 
@@ -25,3 +25,53 @@ Reviewer did not implement S0–S4. Candidate HEAD at start 144b6ce, tree clean,
 - Control shapes (same probe): `SHAPE=roles` and `SHAPE=mixed` (roles + group) → all-users → internal, admins → admin, session → session in both orders (the S1 invariant holds there).
 - Relation to ledger: BLOCKED S1 21:50 gap (2) says two own-scope same-tier candidates "still resolve in scan order" with a benign example (two All-users policies). This probe shows the same gap with a realistic, security-changing shape (the audit's live pair was "MFA for Admins" vs "MFA for Internal Users"; group-assigned admin policies are common), so it is not benign and C01's acceptance ("repeat with names changed and input order reversed") fails for it.
 - S5 direction (not implemented by R1): order-independent choice among own-scope candidates of one tier (e.g. prefer the candidate whose grant is the goal's own kind/floor and whose population reach is broadest, else ambiguity hold); never select a candidate whose grant exceeds the goal's floor by a phishing-resistant strength without surfacing it; a regression test with this shape listed/reversed/renamed. No name-based rule.
+
+## R1-F3 — C02/C06: all-users correction — Entra and AI say Intune Enrollment is excluded; the JSON/PowerShell conditions do not carry it [FAILED · high · channel parity; pre-existing, not introduced by S0–S4]
+- Scenario: `NOEX=1 node docs/preview-corrections/probes/s3-c01-packaged.ts` (`../logs/r1/s3-c01-packaged-noex.txt`), all-users `partial`, packaged channels as the viewer draws them.
+- Expected: every channel of one correction describes the same target (REVIEW.md 6). If the baseline intends the Intune Enrollment exclusion, JSON/PowerShell carry it and `changedFields` lists it; if the resolved target deliberately keeps the tenant's applications, Entra and AI do not tell the technician it is excluded.
+- Actual: Entra step 4 "Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded"; AI Info "— Microsoft Intune Enrollment is excluded from target resources …" as a change the correction makes; JSON `PATCH {"conditions":{"users":{…},"applications":{"includeApplications":["All"]},"clientAppTypes":["all"]}}` (no `excludeApplications`), the PowerShell `CorrectConditions` PATCHes `$target.conditions` (same object); `changedFields` = `["conditions.users.excludeGroups"]`. In `r1-c01-groups.ts DUMP=1` the engine's resolution `intent.conditions.applications.excludeApplications` is `["d4ebce55-015a-49b5-a083-c84d1797ae8c"]` (Microsoft Intune Enrollment) while its `target` has `excludeApplications: []`. If the tenant's policy already excludes Intune Enrollment, a conditions PATCH without it may remove it (Graph complex-property PATCH semantics not established from a primary source — same open question as BLOCKED S3 22:25 guest exclusion).
+- Decision needed (not invented by R1): whether the baseline-equivalence policy requires the Intune Enrollment exclusion on this goal's target. Then align the target or the prose.
+
+## R1-F4 — C07: the all-users AI Info correction still calls a possibly report-only policy enforced and states an unbound threshold [FAILED · high · incomplete S4 fix]
+- Source: docs/implementation-content/s-goal-mfa-all-users/…/CONTENT.md:144-152, block `ai.correct`, states `["partial"]` — the same state set as `entra.correct-open`, which S4 (c85f773) corrected because it renders for report-only corrections too.
+- Actual: ":147 The policy is already enforced on your tenant." (unchanged); ":152 … ensures every person has registered a phishing-resistant method. Until that's done, the 33% threshold tile tracks progress." — a literal percentage with no binding (the same class as the admins "0% threshold" sentence S4 removed in f3ea04d), and "phishing-resistant" for the all-users MFA goal, whose grant is built-in MFA. Rendered in `../logs/r1/s3-c01-packaged-noex.txt`.
+- Expected: the AI text is true for every state the block renders in; no fixed number without a value behind it. Only this package carries these sentences (grep over all CONTENT.md).
+
+## Per-finding review verdicts (R1)
+| ID | R1 verdict | Scenario / command (R1-run unless stated) | Notes |
+|---|---|---|---|
+| C01 | **FAILED** | `r1-c01-groups.ts` SHAPE=groups/roles/mixed × listed/reversed, neutral names; `r1-a1-drift.ts`; policyIdentity + tracking.drift + foundationA pass | Role-assigned and roles+group shapes: correct identity in both orders (S1 invariant holds). Group-assigned admins policy: F2 (critical). Drifted own policy: F1 (high, assertion made vacuous) |
+| C02 | **FAILED** (lifecycle BLOCKED critical, unchanged) | `s3-c01-packaged.ts NOEX=1` re-run; source diff of admins/all-users/admin-session CONTENT.md | VERIFIED sub-claim: the all-users/admins conditions corrections carry no grant in Entra, JSON (`PATCH conditions`) or PowerShell (`CorrectConditions` PATCHes conditions only); the admins `entra.correct-grant` and AI text name the TAP difference. Still failing: lifecycle of On policies (admin-session script still offers `StageForCorrection`; its Entra "move it to Report-only first" beside "leave it On") — BLOCKED S1 21:35, owner decision; F3 parity |
+| C03 | **VERIFIED** for graphRequest/graphPaged/Lane B/collectMethods shapes; **FAILED** required check | `s0-repro.ts` re-run (`../logs/r1/s0-repro.txt`): `value:[]` → `[]`; not-json, `{}`, unexpected object, non-array value, malformed later page → `GraphResponseShapeError`; responseShape.test.ts pass; code read: `collectConfigSection` maps any non-403 error to `error` (collectors.ts:86-88), users fallback only on SectionDisabledError (:226) | foundationB.test.ts:73 fails at HEAD (http.ts third status assignment from e6a73a3) — a red required test. NOT VERIFIED: `readGroup` shape checks (no test), worker end-to-end propagation |
+| C04 | **VERIFIED** (narrow rule) | `s0-repro.ts` re-run: undated replacement → needsProof, created 2026 → needsProof, created 2023 same key → ready (retained); proofChronology + phishingResistant tests pass; diff read: history not deleted, no expiry, both date spellings mapped (collectors.ts mapMethod) | Owner acceptance needed, not a defect finding: a certificate or registration-report-only inventory no longer keeps retained proof (Ready → Needs proof when the sole proof is retained); an undated replacement inside the scan's window is not detected (BLOCKED S2 22:00) |
+| C05 | **FAILED** (critical items BLOCKED) | `s3-matrix.ts curated all` re-run (`../logs/r1/matrix.txt`): 490 renders, 0 mistyped, 0 empty tabs, 143 uncalled templates — S3 figures reproduced | Blank tabs → unavailable tab: VERIFIED by matrix + emptyArtifact test. Passkey setup still `held:packageFault`, every tab unavailable (BLOCKED S3, critical) |
+| C06 | **VERIFIED** for preview JSON typing and all-users/admins scripts; **FAILED** overall | Matrix (0 mistyped); Windows PowerShell 5.1 `Parser::ParseFile` of `logs/s3/ps/*.ps1` (syntax only, nothing executed): 8 files, 0 parse errors (`../logs/r1/ps-parse.txt`) | 143 renders of the other policy packages still ship uncallable templates (BLOCKED S3, tied to C02 lifecycle). F3 |
+| C07 | **FAILED** (partial) | Source diff + mfaAuthContentSpecs/sessionAdminContentSpecs pass for S4's four sentences; packaged render re-run | S4's four fixes present and pinned (expectation changes read: each replaces the defective sentence, no assertion loosened; admins adds a `doesNotMatch`). Remaining: F4; F5; "Prerequisite · In progress" for unstarted work unchanged (BLOCKED S4 22:48); STEP.md references in technician text (BLOCKED S4 22:45) |
+| C08 | **NOT VERIFIED** by R1 | Not re-run in R1 (time); S4 logs read | S4 NOT REPRODUCED with synthetic data; login-dependent sequential `readGroup` hypothesis open |
+| C09 | **VERIFIED** (limited) | Exact title/body in content.json:562-565 match RUN-CONTEXT; Connect.tsx `BetaNotice` before the signed-in/out branch, `Callout warning`, `mailto:`; betaNotice.test.ts pass; S4 screenshot `logs/s4/browser2/c09-signed-out-dark-375.png` inspected (1 of 12): once, above the flow, readable, no overflow | Browser not re-run in R1. F5 is adjacent copy on the same screen |
+
+## Test-expectation changes reviewed
+- foundationA.test.ts: premise rebuilt (guests policy removed) — assertions unchanged; justified by policyTruth.test.ts:452.
+- tracking.drift.test.ts A1: **weakened** (F1).
+- planVariants INVENTORY: one added shape, none removed — justified in policyIdentity.test.ts.
+- mfaAuthContentSpecs / sessionAdminContentSpecs: pinned defective sentences replaced by corrected ones; grant line removal matches JSON/PS; no loosening found.
+- No snapshot files (docs/qa/step-snapshots) changed.
+
+## R1-F5 — C07/C09: Connect's intro promises "without locking anyone out" directly above the beta notice [FAILED · medium · pre-existing]
+- Source: docs/design/content.json:360 `pages.connect.intro` "… writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser." Seen above the notice in `logs/s4/browser2/c09-signed-out-dark-375.png`.
+- Expected: FINDINGS C07 "Do not promise no lockouts"; C09 corrects existing absolute statements where source does not support them. F2 shows a scenario in which a correction could lock users out.
+- Pinned by src/ui/scan/connectSignedOut.test.ts:41 and scripts/walk.mjs:771 (P0 walk check). walk.mjs is test infrastructure, so the wording change plus the walk pin needs owner sign-off; not a release blocker on its own.
+
+## Not reviewed in R1 (time)
+- C08 browser journeys and C09 browser runs were not re-executed (S4 logs/screenshot only).
+- Exports (Export.tsx / artifactLines) were not checked for old contradictory instructions after the content fixes (REVIEW.md 6).
+- Full `npm test`, typecheck and build were not run (RUN-CONTEXT: R2); focused suites only.
+- `readGroup` (onDemand.ts) behaviour without MSAL; S3's BLOCKED guest-exclusion `changedFields` item; session-lifetime and register-info-protected holds (BLOCKED S3 22:30) — read, not re-probed.
+- Stand-in token leakage: the only consumer of a projection's `requests` outside tests is stepBody.ts:67-68 (method + endpoint label), so a planning preview's masked token does not reach Copy through `requests`. Not checked through exports.
+
+## R1 summary
+- Blockers for S5 (critical): F2 (C01 identity by scan order for a group-assigned admins policy). Still-open critical items from earlier sessions, unchanged and outside R1's mandate to fix: C02 lifecycle decision, C05 passkey setup, C06 staging-package scripts (BLOCKED S1 21:35, S3 22:25).
+- High: F1 (duplicate create replacing an audited hold; weakened A1 test), F3 (Intune Enrollment channel disagreement), F4 (all-users AI Info "already enforced", "33% threshold"), and the red required test foundationB.test.ts:73.
+- Medium: F5.
+- No removed tabs, deleted files, dependency/lockfile/baseline/CI/script changes, or snapshot rewrites found in c65d9f4..144b6ce. Feature preservation holds for what was inspected; the matrix drew the same tab sets S3 reported.
+- R1 changed no application code. Candidate state: see RESULTS R1 section for commits.
