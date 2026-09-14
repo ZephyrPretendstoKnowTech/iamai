@@ -448,6 +448,22 @@ function evaluateGoal(
     } else if (c.state === 'enabledForReportingButNotEnforced') {
       contribution = 'reportOnly'
       for (const id of strongPop) reportOnly.add(id)
+      // A report-only policy asking less than the floor still stands for the goal:
+      // its grant is the finding, so the step corrects that policy's grant and
+      // keeps it in report-only rather than creating a second policy beside it
+      // (gap 4). Its people are not counted as report-only coverage — that would
+      // make the correction also switch it on with an untested grant.
+      if (!meetsFloor && pop.size > 0) {
+        const sessionOnly = floor.grant === undefined && floor.session !== undefined
+        reasons.push({
+          kind: sessionOnly ? 'session-weaker' : 'weaker-control',
+          userIds: [...pop],
+          detail: meetsCatalogueFloor ? REASON.belowBaseline(c.name, describeFloor(floor)) : REASON.weakerControl(c.name, describeFloor(floor)),
+          ...(meetsCatalogueFloor ? { belowBaseline: true } : {}),
+          current: sessionOnly ? describeSession(c.session) : describeGrant(c.grant),
+          floor: describeFloor(floor),
+        })
+      }
     } else if (meetsFloor) {
       contribution = 'strong'
       for (const id of strongPop) enforced.add(id)
@@ -635,6 +651,8 @@ function evaluateGoal(
     enforced.size > 0 ||
     reportOnly.size > 0 ||
     weak.size > 0 ||
+    // A report-only policy of the goal's below its floor (gap 4): partly in place, and the policy to correct.
+    reasons.some((r) => (r.kind === 'weaker-control' || r.kind === 'session-weaker') && r.userIds.length > 0) ||
     (contributions.some((c) => c.contribution === 'strong') && (vacuous || reasons.some((r) => r.kind === 'excluded' && !r.expected && r.userIds.length > 0)))
   )
     status = 'partial'
