@@ -58,7 +58,7 @@
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
     "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes and the sign-in records are clear and complete",
     "datesReview": "Report-only since {reportOnly} · Held until the change somebody made to the policy has been looked at · No enforcement date while it is held",
-    "commsForecastNote": "That date is our target, not a commitment: we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
+    "commsForecastNote": "That date is our target, not a commitment: where the policy supports it, we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
     "portalOpen": "Entra admin center → Entra ID → Conditional Access → Policies → open \"{policy}\"",
     "descriptionLine": "Description: {description} — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant.",
@@ -412,7 +412,7 @@
         "loading": "loading {source}…",
         "none": "none loaded",
         "what": "A baseline is the identity-security standard IAMAI plans your tenant towards: a published set of Conditional Access policies to measure it against. The default is Defense in Depth, built and maintained by Jon Hope, a Microsoft MVP, at ConditionalAccess.Tech.",
-        "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+        "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
         "updated": "Updated by its author on {date} · {n} policies changed · review",
         "updatedPartial": "Updated by its author on {date} · IAMAI could not read every change · review",
         "incomplete": "IAMAI could not read every changed file in the author's repository, so this review is incomplete. Nothing changes here until you take an update.",
@@ -525,7 +525,7 @@
         },
         "ready": {
           "state": "not started",
-          "note": "About ten minutes. Reads the tenant into this browser; nothing is sent anywhere.",
+          "note": "About ten minutes. The scan is processed in this browser; nothing is uploaded to IAMAI.",
           "start": "Scan tenant"
         },
         "scanning": {
@@ -1004,8 +1004,8 @@
         "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
       },
       "eyebrow": "Microsoft identity security",
-      "h1": "Strengthen identity security without guessing what will break.",
-      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each change starts in report-only before it is enforced.",
+      "h1": "Find the gaps. Catch the hidden risks. Plan a safer rollout.",
+      "siteLine": "IAMAI looks beyond whether a policy exists. It checks the details that can make a rollout succeed or fail: which sign-in methods people have, whether the available records show they’ve used them, and whether exclusions or external accounts need attention.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
       "heroMeta": [
@@ -1015,7 +1015,7 @@
       ],
       "workLabel": "What it does",
       "workHeading": "From a tenant scan to a dated plan you can carry out.",
-      "workLead": "See what the tenant already protects, what it does not, who each change touches, and what to do before enforcement.",
+      "workLead": "Get a practical plan for what to address first, what to check, and how to move toward stronger protection. You stay in control of every change.",
       "work": [
         {
           "verb": "Reads",
@@ -1027,13 +1027,13 @@
         },
         {
           "verb": "Plans",
-          "text": "The difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send."
+          "text": "The difference as dated steps: report-only first where a policy supports it, who each change touches, what would break, and the emails to send."
         }
       ],
       "baselineLabel": "Default baseline",
       "baselineName": "Defense in Depth",
       "baseline": "A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
-      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
       "baselineNote": "IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.",
       "catchesLabel": "What it catches",
       "catchesHeading": "Problems worth finding before enforcement.",
@@ -1067,8 +1067,8 @@
           "body": "IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in."
         },
         {
-          "title": "Your tenant's data never leaves the browser",
-          "body": "The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no upload, nothing about your tenant sent anywhere; an export is a file you save yourself. The web host that serves this page counts page loads, as web hosts do, and never sees your tenant."
+          "title": "Your scan and plan stay in your browser",
+          "body": "IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data."
         },
         {
           "title": "Source is public",
@@ -2056,7 +2056,7 @@
       "kind": "blocker",
       "title": "Create or Correct Exclusions Group",
       "changeLine": null,
-      "why": "One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members can always sign in.",
+      "why": "One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members are a backup way in: one to check and test, not a guarantee.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations"
       },

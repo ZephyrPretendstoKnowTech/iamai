@@ -54,7 +54,7 @@ test('s-prereq-break-glass: Why names the tenant, Entra names the group and wher
 
 test('s-prereq-exclusion-group: Why says what the group does, a match says what Save confirms, the note links its partner, and Entra has two paths', () => {
   const cs = stepOf(EXCLUSIONS)
-  assert.equal(cs.why, 'One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members can always sign in.')
+  assert.equal(cs.why, 'One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members are a backup way in: one to check and test, not a guarantee.')
   // The pre-filled match: a ✓ badge, and one line saying what Save confirms.
   assert.equal(app.picker.matched, '✓ Matched by IAMAI')
   assert.equal(matchedNoteOf(cs.decision?.matchedNote, [{ name: 'Breakglass Exclusion', badge: app.picker.matched }], app.picker.matched), 'IAMAI found "Breakglass Exclusion" in your tenant. Confirm this is the group every policy should exclude, then Save.')

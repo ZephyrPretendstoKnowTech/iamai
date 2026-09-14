@@ -32,8 +32,10 @@ Microsoft Graph request, generated from the collector registry the code runs fro
 (`src/graph/collect/registry.ts`). In summary: Conditional Access policies, named
 locations, authentication strengths and the authentication methods policy; users,
 devices, group memberships, role assignments and subscribed licences; per-user registered
-method types (never phone numbers or secrets); and interactive sign-in records for up to
-the last 30 days.
+sign-in methods; and interactive sign-in records for up to the last 30 days. For registered
+methods, Microsoft returns each method's details; IAMAI saves only a summary of each method
+(its kind, and for a phone, whether it is a mobile or office line), and phone numbers are
+dropped before anything is saved.
 
 Every permission is a delegated **read** scope, requested once at sign-in on a single
 consent screen (`src/graph/scopes.ts`). There is no write scope, and
@@ -45,7 +47,7 @@ consent screen (`src/graph/scopes.ts`). There is no write scope, and
 | `Directory.Read.All` | People, groups and members, devices, licences, the organisation name, the signed-in account | No names, counts or populations |
 | `AuditLog.Read.All` | Up to 30 days of interactive sign-in records, and the registered-methods report | No predicted impact and no verification |
 | `RoleManagement.Read.Directory` | Which accounts hold which directory roles, permanently or through PIM | IAMAI cannot tell who administers the tenant |
-| `UserAuthenticationMethod.Read.All` | Which kinds of method each account has registered, never the values | The emergency-access method and shared-device checks cannot run |
+| `UserAuthenticationMethod.Read.All` | Each account's registered methods; IAMAI saves which kinds, without phone numbers | The emergency-access method and shared-device checks cannot run |
 | `Reports.Read.All` | Aggregated per-application sign-in counts, and application sign-in activity | App-scoping advice loses its evidence |
 | `openid`, `profile`, `offline_access` | That the sign-in happened, who signed in, and a session that can refresh | Signing in, and finishing a long scan |
 
@@ -127,7 +129,7 @@ build served from a clone or another host loads neither.
 
 ## What it stores, and where
 
-Everything stays in the browser on this device:
+What IAMAI saves stays in the browser on this device:
 
 - **IndexedDB**, database `iamai`, seven stores keyed by tenant id: `snapshot` (the scan),
   `signin-rows` (the sign-in rows the evidence is read from), `evidence-meta`,
@@ -145,7 +147,8 @@ signed in. *Sign out* clears the sign-in session.
 
 ## What can leave the browser
 
-Nothing leaves on its own. Data moves when you choose to move it: downloading a file
+Apart from the Microsoft sign-in, the Microsoft Graph reads and the GitHub checks listed
+above, nothing leaves on its own. Data moves when you choose to move it: downloading a file
 (the plan file, CSVs, the calendar file, the prompts, the grounding bundle, a policy's
 JSON, diagnostics), copying text to the clipboard, printing, or sending the feedback
 message, which opens your own mail client with a prefilled message you send yourself.

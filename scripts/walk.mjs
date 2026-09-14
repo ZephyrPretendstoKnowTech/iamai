@@ -995,7 +995,7 @@ async function walkFixture(fx) {
           if (want === 'ready') {
             expectBtn(t3, /^Scan tenant$/, 'primary', 'the ready tile')
             if (t3.buttons.length !== 1) add('P0', `${label}: the ready tile has ${t3.buttons.length} buttons; Scan tenant alone`)
-            if (!/About ten minutes\. Reads the tenant into this browser; nothing is sent anywhere\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
+            if (!/About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t3.text)) add('P0', `${label}: the ready tile lacks the ten-minute line`)
           }
           if (want === 'sample' && t3.buttons.length !== 0) add('P0', `${label}: the signed-out Scan tile has ${t3.buttons.length} buttons; none`)
         }
