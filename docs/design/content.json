@@ -1209,7 +1209,7 @@
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
         "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
         "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
-        "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, assign it to All users, or retire the extra one), then scan again.",
+        "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, widen it to everyone, or retire the extra one), then scan again.",
         "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",

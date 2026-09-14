@@ -681,12 +681,15 @@ function evaluateGoal(
 }
 
 /**
- * The one candidate `fits` admits, whatever order the scan listed them in (C01,
- * review R1-F2): the only one, or among several the only one reaching furthest —
- * the goal's whole population, else an All users assignment. Several nothing
- * tells apart are `'ambiguous'`: an admins group's policy and a staff group's
- * policy are both "assigned to a group", and taking the first listed rewrote
- * the admins policy to All users.
+ * The one candidate `fits` admits (C01, review R1-F2): the only one, or among
+ * several the only one reaching furthest — the goal's whole population, else an
+ * All users assignment. Where several reach only part of the population (named
+ * groups, users or roles), nothing tells them apart and correcting one would
+ * change who it applies to, so they are `'ambiguous'`: an admins group's policy
+ * and a staff group's policy are both "assigned to a group", and taking the
+ * first listed rewrote the admins policy to All users. Several that already
+ * reach as far as the goal asks keep the first listed: correcting any of them
+ * changes nobody's scope (a remaining order dependence, BLOCKED S1 21:50 gap 2).
  */
 export function ownCandidate<T extends CandidateContribution>(candidates: readonly T[], fits: (c: T) => boolean): T | 'ambiguous' | null {
   const hits = candidates.filter(fits)
@@ -694,7 +697,7 @@ export function ownCandidate<T extends CandidateContribution>(candidates: readon
   const reach = (c: T): number => (c.reachesWhole === true ? 2 : c.assignedToAll === true ? 1 : 0)
   const furthest = Math.max(...hits.map(reach))
   const top = hits.filter((c) => reach(c) === furthest)
-  return top.length === 1 ? top[0] : 'ambiguous'
+  return top.length === 1 || furthest > 0 ? top[0] : 'ambiguous'
 }
 
 /**
