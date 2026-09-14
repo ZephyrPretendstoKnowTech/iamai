@@ -808,3 +808,81 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - `git diff 0aabf68 HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. One assert line was replaced, disclosed above: bindingInventory's session hold, which now reads exactly `['policy.target.excludeUsers']`.
 - Files changed outside docs: project.ts, stepPortal.ts, registry.generated.json, and three test files (two new). Package content: s-goal-session-lifetime CONTENT/META and LIBRARY.json.
 - Untouched (`git diff --stat 0aabf68 HEAD` over them is empty): package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts (walk.mjs included), page-contracts and docs/design/content.json. The Connect notice's `mailto:feedback@getiamai.com` is present.
+
+## Cycle 8 (2026-09-14, from 13:06 MDT)
+
+**Start state**
+- HEAD 41a760f (code 4361874). Stash empty.
+- Uncommitted: the cycle 7 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json), docs only. Inspected and committed first (7130d3c). No other unfinished work.
+- Logs: `../logs/c8/`, outside the clone. Scratch, not in the clone: `../scratch/c8-quote.ts` (the reviewer's `rv7-quote.ts` with its import paths moved), `c8-ps-invoke.ts`, `c8-ast-all.ps1`, `c8-preview-export.ts`, `c8-export-dump.ts`.
+- Copies: `../c8-nv-7130d3c` (`git archive 7130d3c`, pre-cycle-8 source, with this cycle's two new tests copied in; its `node_modules` is a **directory junction** to the clone's, so remove the junction itself). `../acc-src-2b4e795-c8` (plain archive for acceptance).
+
+### Commits
+| Commit | Scope |
+|---|---|
+| 7130d3c | docs: cycle 7 fresh review, committed after inspection |
+| 2b4e795 | Review 7 R7-1: a PowerShell invocation literal doubles every single-quote character |
+| 84cd431 | Review 7 queue 2: an exported walk-through of work the screen previews carries the screen's preview note |
+
+### Queue 1 (R7-1, high): FIXED (2b4e795)
+- **Reproduced before editing** with the reviewer's shapes (`../scratch/c8-quote.ts`), rendered to `quote-before/`, parsed only with the reviewer's `rv7-ast.ps1` (`ParseInput` on UTF-8 text and `ParseFile`), on Windows PowerShell 5.1.26100 and PowerShell 7.6.6:
+  - `Finance’s MFA policy`: 1 `ParseInput` error on both (ParseFile: 0 on 5.1, which reads the BOM-less file as ANSI; 1 on 7.6);
+  - `Policy B’; Remove-MgGroup … #`: **0 errors with a `Remove-MgGroup` CommandAst on line 67** on both;
+  - U+2019 and U+201A/U+201B names: 2 errors and the CommandAst;
+  - controls (ASCII quote, `$(…)`, line break, plain): 0 errors, no command (`quote-before-ast-ps51.txt`, `quote-before-ast-pwsh.txt`).
+- **Fix:** `invocation.ts` `literal()` doubles each of U+0027, U+2018, U+2019, U+201A and U+201B. Nothing else in the literal changes; invocations still use no double-quoted strings. This is the one PowerShell escaper in `src` (review 7 scope).
+- **After** (`quote-after/`, `quote-after-ast-ps51.txt`, `-pwsh.txt`): all 8 shapes, both versions, `ParseInput` 0 errors, `ParseFile` 0 errors, 0 `Remove-Mg*` CommandAst, and the call has 7 elements (mode, target, policy id) in every case. The comment-tail call reads `-TargetPolicyJson '{"displayName":"Policy B’’; Remove-MgGroup … #"…'`.
+- **Every invocation** (`../scratch/c8-ps-invoke.ts`, `ps-invoke.txt`): each of the 26 registered `powershell.run` blocks that declares an invocation (the other 13 declare none), called once per declared mode (161 calls), with every bound text value and list item `Finance’s MFA’; Remove-MgGroup … #` and every switch's prerequisite satisfied. Parsed only (`../scratch/c8-ast-all.ps1`): 26 files, 0 errors, 0 `Remove-Mg*` commands, and every top-level statement outside the function is exactly one `Invoke-IAMAIStep` call, one per call line, on 5.1 and 7.6 (`ps-invoke-ast-ps51.txt`, `ps-invoke-ast-pwsh.txt`). Nothing was executed.
+- **Test** `src/ui/surfaces/quotedNameLiterals.test.ts` (2):
+  - `renderInvocation` with each of the five characters in a text value and a list item: the exact call line, and the literal read back the way the tokenizer reads it (any two quote characters in a row are one) equals the name and ends where the next parameter starts. Control: U+0022, U+201C–U+201E, `$(…)`, a backtick and non-ASCII letters are unchanged.
+  - The reviewer's staff-group correction (curated demo-week2, handed over, `previewNote` null) with the policy named `Finance’s MFA policy`, `’ … #`, `‚ … ‛`, `‘ … ’`, and the controls ASCII-quote and plain: one call, `-TargetPolicyJson` read back parses as JSON whose `displayName` is the name, and exactly ` -PolicyId '<id>'` follows the literal.
+  - Non-vacuity: 2 of 2 fail in `../c8-nv-7130d3c` (`nonvacuity-1.txt`: "U+2018 … actual `'Finance‘s MFA‘; …'`").
+  - Existing tests that build an expected literal with an ASCII-only doubling (stateKeepingCorrection, guestsPairInvocation, channelParity) use names with no typographic quote, so they are unchanged and pass.
+
+### Queue 2 (session-lifetime `excludeUsers`, medium): the hold is kept; the export's disagreement FIXED (84cd431)
+- **Reading (BLOCKED step 1):** the package asks for "the resolved shared-device accounts" (`entra.create` step 2) and gates on "The complete shared-device account exclusion set is resolved." `policy.target.excludeUsers` comes from the pinned target alone (stepPackage.ts:454), which says nothing about a tenant's shared-device accounts. So an empty list is not treated as a value, and the binding is not changed. Details in BLOCKED.
+- **The export's disagreement.** Probe `../scratch/c8-preview-export.ts` (`preview-export-1.txt`) over the nine fixtures and the two curated ones: 133 policy steps, 62 draw a package preview, and **10** of them exported the portal walk-through ("Create the policy in report-only…" then the Entra lines) with nothing saying it could not be copied. Eight are s-goal-all-users-no-persistence (every fixture that reaches it), plus mid s-goal-pim-activation-reauth and mid s-goal-user-risk. In all 10 the screen's note says "cannot be copied" and lists the values.
+- **Fix** (stepExport.ts `previewValueLines`): where the export pushes the portal lines, it appends the screen's own preview note: the same `CONTRACT.implementation.preview` sentence stepBody.ts picks, then "Values still to resolve: …". It is computed with the package calls stepBody.ts makes, and only for a hold on values IAMAI does not hold, because the export has no owner confirmations and a missing value holds whatever they satisfy. The state line is the lane's and is not changed.
+- **After** (`preview-export-2.txt`): all 10 exports carry the note word for word as the screen draws it, including demo-week2+curated's "Nothing blocks this step, but IAMAI cannot fill in every value yet…".
+- **Every export** (`../scratch/c8-export-dump.ts`, `ROOT=` the pre-cycle copy and the clone, `export-before.txt` / `export-after.txt`, 283 steps each; `export-diff-summary.txt`): exactly those 10 steps change; each gains only the two note lines; no line is removed, the order of the rest is kept, and no other field (state, done when, if wrong, dates) changes.
+- **Test** `src/ui/surfaces/previewExportNote.test.ts` (1), over curated demo-week2, small and mid: where the screen's preview note lists values and the walk-through is current, every note line is in the export after the first line; where the screen draws no preview, the export carries no note line. Premises: the curated session-lifetime step is among those read, at least 3 were, and handed-over steps were read too. Non-vacuity: fails in `../c8-nv-7130d3c` on "demo-week2+curated s-goal-all-users-no-persistence: "Nothing blocks this step…" missing from […]" (`nonvacuity-2.txt`).
+
+### Verification (exact code states)
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | 2b4e795 tree (`tsc-1.txt`); export change tree (`tsc-2.txt`) | 0; 0 | no output |
+| Targeted | `node --test --test-isolation=none` quotedNameLiterals, conditionsInvocation, stateKeepingCorrection, guestsPairInvocation, boundNameLineBreaks | 2b4e795 tree | 0 | 105/105 (`quote-test-1.txt`) |
+| Targeted | previewExportNote, removedExclusionChannels, sessionLifetimeUnmanaged, cleanupExports, heldCorrectionExport | export change tree | 0 | 13/13 (`export-test-1.txt`) |
+| Full suite | `npm test`, 13:10–13:13 | **2b4e795** tree (committed after this run, same files) | 0 | **2759 tests · 2757 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-1.txt`) |
+| Full suite | `npm test`, 13:16–13:19 | **84cd431** tree (committed after this run, same files) | 0 | **2760 tests · 2758 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-2.txt`) |
+| Build | `npm run build` | **84cd431** | 0 | chunk-size warning only (`build-2.txt`) |
+| Acceptance | same harness, `<copy>` = `git archive 84cd431` into `../acc-src-84cd431-c8`, harness identical by `cmp`, output `../logs/c8/acceptance-84cd431` | **84cd431** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-2.txt`) |
+| Build | `npm run build` | 2b4e795 tree | 0 | chunk-size warning only (`build-1.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | 2b4e795 tree; export change tree | 0; 0 | against review 7 `../logs/review7/matrix.txt`: row for row identical (the one diff line is that file's trailing wrapper line) (`matrix-1.txt`, `matrix-1.diff`); export change tree identical to `matrix-1.txt`, 0 diff lines (`matrix-2.txt`, `matrix-2.diff`) |
+| PowerShell parse | reviewer shapes + all 26 invocations, `ParseInput` (UTF-8) and `ParseFile`, parse only | 2b4e795 tree | 0 | before: benign `’` 1 error, `’ … #` 0 errors with a Remove-MgGroup command; after: 34 files, 0 errors, no injected command, on 5.1 and 7.6 (above) |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c8/acceptance-2b4e795`, `<copy>` = `git archive 2b4e795` into `../acc-src-2b4e795-c8`, harness identical by `cmp` | **2b4e795** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-1.txt`) |
+| Non-vacuity | the two new tests in `../c8-nv-7130d3c` | 7130d3c source | 1; 1 | quotedNameLiterals 2 of 2 fail (`nonvacuity-1.txt`); previewExportNote 1 of 1 fails (`nonvacuity-2.txt`) |
+| C01 | `node docs/preview-corrections/probes/s5-lone-group-admins.ts`; `SHAPE=lone\|tie\|all node docs/preview-corrections/probes/r2-hold-export.ts` | **84cd431** tree | 0 ×4 | **0 diff lines** each against review 7's `s5-lone.txt`, `hold-export-{lone,tie,all}.txt` (`s5-lone.txt`, `hold-export-*.txt`) |
+| Removed exclusions | `CASE=staffGuestExcl\|staffExclOtherApp LEN=100000 node ../logs/review1/rv-edge.ts` | **84cd431** tree | 0 | 0 diff lines against review 7's `rv-edge-100000.txt`; each removal sentence drawn 4 times, as before (`rv-edge-100000.txt`) |
+
+### Not done in cycle 8 (actionable; see BLOCKED)
+1. register-info-protected step 4: render facts and the concrete binding plan are in BLOCKED; not started because this session's budget could not also cover its verification.
+2. session-lifetime reportOnly/readyToEnforce still require the unmanaged id.
+3. Board Ready vs blocked: 7 remain, not started.
+4. pim-activation-reauth authContext/strength and the pim grant+session floor test; the report-only correction under an emergency-access wait; low leftovers.
+5. Residual of queue 2: the export reads only a values hold (no owner confirmations reach it); no fixture step has another hold with an exported walk-through.
+
+**Working tree at the end of cycle 8.**
+- Commits: 7130d3c (docs), 2b4e795 and 84cd431 (code; 84cd431 is the final verified state), and the docs commit carrying this ledger and BLOCKED. Stash empty.
+- Gitignored outputs written this cycle: `dist/`, `docs/reports/walk-84cd431.md`, `walk/84cd431/`.
+- Outside the clone:
+  - `../logs/c8/`, including `quote-before/`, `quote-after/` and `ps-invoke/`: rendered scripts, parsed only, never executed;
+  - `../scratch/c8-*`;
+  - `../c8-nv-7130d3c`: its node_modules is a **junction**, so remove the junction itself;
+  - `../acc-src-2b4e795-c8`, `../acc-src-84cd431-c8` (plain archives).
+- No remote, tenant or external write was made, and no generated script was executed.
+
+### Test edits and scope (this cycle)
+- `git diff 41a760f HEAD -- '*.test.ts'`: two added files (quotedNameLiterals, previewExportNote); no test file modified; no `.skip`, `.only` or todo; no assert line removed.
+- Files changed outside docs: invocation.ts, stepExport.ts and the two tests. No package content, registry or LIBRARY change.
+- Untouched (`git diff --stat 41a760f HEAD` over them is empty): package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts (walk.mjs included), page-contracts and docs/design/content.json. The Connect notice's `mailto:feedback@getiamai.com` is present.
