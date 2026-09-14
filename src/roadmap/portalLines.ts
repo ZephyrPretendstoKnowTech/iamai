@@ -166,7 +166,13 @@ function resourcesLine(f: PolicyFacts, ctx: PortalContext): string | null {
   if (a.userActions.has('urn:user:registersecurityinfo')) return 'Target resources → User actions → Register security information'
   if (a.userActions.has('urn:user:registerdevice')) return 'Target resources → User actions → Register or join devices'
   if (a.authContexts.size > 0) return `Target resources → Authentication context → ${names(a.authContexts, ctx)}`
-  if (a.all) return 'Target resources → Resources → All resources'
+  // The resources an all-resources policy excludes are part of its target: "All
+  // resources" beside a request that excludes Microsoft Intune Enrollment was two
+  // different targets (review R1-F3).
+  if (a.all) {
+    const excluded = [...a.excludedIds].filter((id) => !/^none$/i.test(id))
+    return excluded.length > 0 ? `Target resources → Resources → All resources; Exclude: ${excluded.map((id) => ctx.nameOf(id)).join(', ')}` : 'Target resources → Resources → All resources'
+  }
   const selected: string[] = []
   if (a.office365) selected.push('Office 365')
   if (a.adminPortals) selected.push('Microsoft Admin Portals')
