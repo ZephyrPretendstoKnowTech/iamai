@@ -10,7 +10,7 @@
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 1. In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.
-2. If the policy is currently On (Enforced), switch it to Report-only before making changes.
+2. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save.
 3. Under Conditions → Client apps, confirm only "Exchange ActiveSync clients" and "Other clients" are checked.
 4. Under Users → Include, confirm "All users" is selected.
 5. Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.
@@ -18,11 +18,11 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.
+Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.
+Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -30,8 +30,8 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Display na
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-7. Leave the policy in Report-only.
-8. Click Save, then rescan in IAMAI.
+7. Leave **Enable policy** as it is and click Save.
+8. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -66,9 +66,9 @@ Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only*
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId
 )
@@ -109,14 +109,6 @@ if($Mode -eq 'Create'){
  Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}
-}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}
-}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -146,7 +138,7 @@ Review the proposed **Block Legacy Authentication** implementation for {{tenant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). If the policy is currently enforced, switch it to Report-only before making changes, then correct the conditions to match the baseline target.
+This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). Correct the conditions to match the baseline target without changing the policy's state: if the policy is On, the corrected block applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -51,6 +51,7 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.target.json",
     "tenant.displayName",
     "people.affected.count",
     "policy.current.displayName",
@@ -96,10 +97,6 @@
           "powershell": [
             {
               "block": "powershell.run",
-              "mode": "StageForCorrection"
-            },
-            {
-              "block": "powershell.run",
               "mode": "CorrectConditions"
             }
           ]
@@ -114,10 +111,6 @@
           "powershell": [
             {
               "block": "powershell.run",
-              "mode": "StageForCorrection"
-            },
-            {
-              "block": "powershell.run",
               "mode": "CorrectGrant"
             }
           ]
@@ -130,10 +123,6 @@
           "entra": "entra.correct-session",
           "json": "json.correct-session",
           "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "StageForCorrection"
-            },
             {
               "block": "powershell.run",
               "mode": "CorrectSession"
@@ -249,17 +238,17 @@
     {
       "id": "conditions.canonical",
       "appliesWhen": "population, exclusions, resources, or policy conditions differ from the canonical tenant-resolved target",
-      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+      "safety": "the policy keeps its current state; if it is On, this access-affecting correction applies to sign-ins as soon as it is saved"
     },
     {
       "id": "grant.canonical",
       "appliesWhen": "grant controls differ from canonical target",
-      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+      "safety": "the policy keeps its current state; if it is On, this access-affecting correction applies to sign-ins as soon as it is saved"
     },
     {
       "id": "session.none",
       "appliesWhen": "session controls are present even though this goal owns none",
-      "safety": "stage an enabled policy to Report-only before this access-affecting correction"
+      "safety": "the policy keeps its current state; if it is On, this access-affecting correction applies to sign-ins as soon as it is saved"
     },
     {
       "id": "name.canonical",

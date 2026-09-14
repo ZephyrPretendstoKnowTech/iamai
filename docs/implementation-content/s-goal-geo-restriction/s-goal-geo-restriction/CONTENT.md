@@ -8,15 +8,15 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. If it is On, move that same policy to **Report-only** first. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Grant controls with the canonical target, including an intentional `None`/unconfigured grant when STEP.md says this is a session-only policy.
+Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is On, move it to **Report-only** first. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -24,7 +24,7 @@ Rename the same stable policy to **{{policy.target.displayName}}** only when nam
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. A policy staged to Report-only stays there until Ready to enforce.
+Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -59,9 +59,9 @@ Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, e
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId
 )
@@ -90,8 +90,6 @@ if($Mode -eq 'Create'){
  $created=IG POST "$G/identity/conditionalAccess/policies" $body; $PolicyId=[string]$created.id; Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null;Write-Host 'Moved policy to Report-only before semantic correction.'}}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){$pre=IG GET $uri;if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first.'}}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -117,7 +115,7 @@ Review the proposed **Block Sign-ins From Countries Not Allowed** implementation
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Block Sign-ins From Countries Not Allowed**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Stage an enabled policy to Report-only before access-affecting correction.
+Policy {{policy.current.id}} has these mismatches for **Block Sign-ins From Countries Not Allowed**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
