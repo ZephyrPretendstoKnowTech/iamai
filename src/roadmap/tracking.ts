@@ -291,11 +291,13 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // 4. the goal's coverage fingerprint, for a step with one member
   if (sole && !out[0].policy && !out[0].ambiguous) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
-    const candidate =
-      result?.candidates.find((c) => c.contribution === 'strong') ??
-      result?.candidates.find((c) => c.contribution === 'reportOnly') ??
-      result?.candidates.find((c) => c.contribution === 'weak') ??
-      null
+    // The goal's own policy first, then any (coverage.ts ownScope): the order the
+    // scan listed policies in never decides which goal a policy belongs to.
+    const find = (ownOnly: boolean) =>
+      result?.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'strong') ??
+      result?.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'reportOnly') ??
+      result?.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'weak')
+    const candidate = find(true) ?? find(false) ?? null
     const policy = candidate ? byId.get(candidate.policyId) : undefined
     if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
   }
