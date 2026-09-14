@@ -39,6 +39,7 @@ import type { PortalContext } from '../../roadmap/portalLines.ts'
 import type { Step, StepResolution } from '../../roadmap/types.ts'
 import { shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
+import { oneLine } from '../../content/implementation/project.ts'
 import type { StepVarContext } from './stepVars.ts'
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 
@@ -87,7 +88,8 @@ const BUILT_IN_STRENGTH_NAMES = new Map<string, string>(builtinStrengths.strengt
 /** The names a step's lines need, from its variable context. */
 export function portalNamesFor(ctx: StepVarContext, ex: Record<string, unknown>, fallbackTitle: string): PortalNames {
   return {
-    nameOf: ctx.nameOf,
+    // A name is one line of an instruction, as in the package tabs (project.ts oneLine).
+    nameOf: (id) => oneLine(ctx.nameOf(id)),
     policyName: String(ex.policyName ?? fallbackTitle),
     strengthName: typeof ex.strengthName === 'string' ? ex.strengthName : null,
     strengthNameFor: (id) => strengthNameOf(id, ctx),
@@ -104,7 +106,7 @@ function contextFor(p: PinnedPolicy, names: PortalNames, used: StepResolution['t
   const exclusionsGroupId: string | null = used.exclusionsGroupId?.toLowerCase() ?? null
   const serviceAccountsGroupId: string | null = used.serviceAccountsGroupId?.toLowerCase() ?? null
   const nameOf = names.nameOf
-  const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? p.displayName : names.policyName
+  const policyName = typeof p.displayName === 'string' && p.displayName.length > 0 ? oneLine(p.displayName) : names.policyName
   // The strength the operation's own body names. A body that names one and
   // carries no friendly name for it — a confirmed mapping to a tenant object the
   // scan has no row for — falls back to the generic phrase, never to the
@@ -283,7 +285,7 @@ export function stepPortalLines(step: Step, names: PortalNames): string[] | null
   // tenant's policy, a create names the one the plan proposes.
   const openNameOf = (one: (typeof mapped)[number]): string => {
     const whole = (one.target ?? one.body) as Record<string, unknown>
-    return typeof whole.displayName === 'string' && whole.displayName ? whole.displayName : names.policyName
+    return typeof whole.displayName === 'string' && whole.displayName ? oneLine(whole.displayName) : names.policyName
   }
   const linesOf = (one: (typeof mapped)[number], body: Record<string, unknown>): string[] => {
     const p = asPolicy(body)
