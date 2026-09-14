@@ -264,19 +264,22 @@ test('A1: when the MFA-for-all policy drifts, the correction never edits another
   const step = stepOf(run, 'mfa-all-users')
   assert.equal(goalOf(run, 'admins-phishing-resistant').verdict, 'inPlace', 'the premise: the admins goal is still delivered by its own policy')
   const claimed = new Set(run.coverage.results.filter((r) => r.goal.id !== 'mfa-all-users').flatMap((r) => r.satisfaction?.policyIds ?? []))
-  let foreign = 0
+  assert.ok(claimed.size > 0, 'the premise: other goals stand on policies of their own')
+  // The regeneration used to write its update against the admins policy — the
+  // first candidate in scan order — and relied on the tracking hold below to stop
+  // it. Since C01 the step never takes another goal's policy as its target, so
+  // there is no foreign update to hold: the invariant is asserted directly.
+  for (const op of step.action.resolution?.policies ?? []) {
+    assert.ok(op.mode !== 'update' || !claimed.has(op.policyId), `no update is written against another goal’s policy (${op.mode === 'update' ? op.policyId : ''})`)
+  }
+  assert.equal(step.tracking?.policyId != null && claimed.has(step.tracking.policyId), false, 'nor is another goal’s policy tracked as this step’s')
+  // Where a tracked member still points at another goal's policy, it is held with its reason.
   for (const m of step.tracking?.members ?? []) {
-    const op = step.action.resolution?.policies.find((o) => o.memberKey === m.key) ?? step.action.resolution?.policies[0]
-    if (!op || op.mode !== 'update' || (op.policyId === m.policyId && !claimed.has(op.policyId))) continue
-    foreign += 1
-    // Only a policy the goal itself owns and no other goal claims is corrected; otherwise the step holds with the reason.
-    assert.equal(m.correction?.safe, false, JSON.stringify(m.correction))
+    if (!m.policyId || !claimed.has(m.policyId)) continue
     assert.ok(m.correction && !m.correction.safe && m.correction.note.length > 0, 'the hold explains itself')
     assert.equal(m.ready, false)
+    assert.equal(nextSafeAction(step).executable, false, 'nothing against another goal’s policy is handed over')
   }
-  assert.equal(foreign, 1, 'the premise: the regeneration wrote its update against the admins policy')
-  assert.equal(driftOutcomeOf(step), 'review-required')
-  assert.equal(nextSafeAction(step).executable, false, 'nothing against another goal’s policy is handed over')
 })
 
 test('A2: a policy excluding a group the scan cannot resolve keeps its goal on the plan, held until the exclusion can be verified', () => {

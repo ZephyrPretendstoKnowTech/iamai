@@ -291,13 +291,16 @@ export function matchMembers(step: Step, snapshot: TenantSnapshot, coverage: Cov
   // 4. the goal's coverage fingerprint, for a step with one member
   if (sole && !out[0].policy && !out[0].ambiguous) {
     const result = coverage.results.find((r) => r.goal.id === step.goalId)
-    // The goal's own policy first, then any (coverage.ts ownScope): the order the
-    // scan listed policies in never decides which goal a policy belongs to.
-    const find = (ownOnly: boolean) =>
-      result?.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'strong') ??
-      result?.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'reportOnly') ??
-      result?.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'weak')
-    const candidate = find(true) ?? find(false) ?? null
+    // The goal's own policy (coverage.ts ownScope), whatever order the scan listed
+    // policies in. Another goal's policy stands for this step only where the
+    // classifier counted it towards delivering the goal — an all-users policy
+    // that delivers the guests goal — never a narrower one that cannot (C01).
+    const delivering = new Set(result?.satisfaction?.policyIds ?? [])
+    const find = (fits: (c: { policyId: string; ownScope: boolean }) => boolean) =>
+      result?.candidates.find((c) => fits(c) && c.contribution === 'strong') ??
+      result?.candidates.find((c) => fits(c) && c.contribution === 'reportOnly') ??
+      result?.candidates.find((c) => fits(c) && c.contribution === 'weak')
+    const candidate = find((c) => c.ownScope) ?? find((c) => delivering.has(c.policyId)) ?? null
     const policy = candidate ? byId.get(candidate.policyId) : undefined
     if (policy && !claimed.has(policy.id as string)) claim(out[0], policy, 'fingerprint')
   }
