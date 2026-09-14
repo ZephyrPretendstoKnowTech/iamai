@@ -1416,12 +1416,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const groups = [...unread].map((g) => g.slice(0, 8))
       blockers.push({ kind: 'evidence', label: 'unverified-exclusion', binding: BLOCKED_REASON.unverifiedExclusion(groups.length > 0 ? groups.join(', ') : '?'), unverified: true })
       state = { ...state, condition: conditionFor(blockers) }
-    } else if (result.status === 'absent' && claimedPolicy() !== null && source && stepPolicies().length === 1) {
+    } else if (claimedPolicy() !== null && source && stepPolicies().length === 1 && (result.status === 'absent' || !result.candidates.some((c) => c.policyId === String(claimedPolicy()?.id)))) {
       // A live tenant policy carrying this step's plan tag, or the very name the
       // plan gives this goal's policy, is this goal's policy however far it has
       // drifted from the goal's signature (A3 of the drift audit). The step
       // corrects it — or says a person has to (roadmap/tracking.ts) — and never
-      // proposes "(2)" beside it.
+      // proposes "(2)" beside it. The same holds where other policies leave the
+      // goal partly delivered: the drifted policy is no candidate there either,
+      // and the step proposed its duplicate beside it (cycle 1, A1).
       kind = 'adjust'
       const claimed = claimedPolicy() as RawPolicy
       existingRaw = claimed
