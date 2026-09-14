@@ -1515,6 +1515,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
         sections.delete('sessionControls')
         if (existing.contribution === 'strong') sections.delete('state')
       }
+      // The converse: the goal's own policy that falls short of the floor is corrected
+      // to the floor, even when none of its current people count (all of them excluded,
+      // or it is widened from a group). Widening it with its own grant kept put that
+      // grant — an admins group's "phishing-resistant OR compliant device" — on
+      // everyone, and the step claimed a correction that does not reach the floor (R1).
+      if (existing && existing.meetsFloor === false && existing.contribution !== 'disabled') {
+        sections.add(goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
+      }
       if (ambiguousTarget && changing.length < 2) {
         // Several of the goal's own policies nothing tells apart: the step will not
         // guess which one to rewrite, and it does not create a duplicate beside them.
