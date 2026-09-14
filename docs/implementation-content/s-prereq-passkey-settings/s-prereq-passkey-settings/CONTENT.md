@@ -9,12 +9,13 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 4. Add the Microsoft Authenticator AAGUIDs:
    — iOS: 90a3ccdf-635c-4729-a248-9b709135078f
    — Android: de1e552d-db1d-4423-a619-566b625cdc84
-5. Enable Enforce attestation.
+   — The restriction applies at sign-in as well as registration: once you save, a passkey or security key someone already registered with any other AAGUID can no longer be used to sign in.
+5. Enable Enforce attestation. It applies to new registrations; a passkey already registered without attestation can still sign in.
 6. Save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure-authenticator","channel":"entra","states":["missingOrPartial"],"format":"markdown","kind":"template"}
-Then configure the supporting methods:
+Then configure the supporting methods here. The JSON tab sets Passkey (FIDO2) only.
 
 7. Open Microsoft Authenticator in the same Authentication methods list.
 8. Set Enable to Yes. Target: All users.
@@ -31,7 +32,7 @@ Then configure the supporting methods:
 Re-open Passkey (FIDO2), Microsoft Authenticator, and Temporary Access Pass. Compare the full configuration to IAMAI's canonical target, then rescan. Registration/sign-in proof occurs in later human/campaign steps.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.fido2","channel":"json","states":["missingOrPartial"],"format":"json-template","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.fido2","channel":"json","states":["missingOrPartial"],"format":"json-template","kind":"template","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2"}
 {{json:passkey.target.fido2Configuration}}
 @@IAMAI-END
 
@@ -43,7 +44,7 @@ Re-open Passkey (FIDO2), Microsoft Authenticator, and Temporary Access Pass. Com
 {{json:tap.target.configuration}}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missingOrPartial","verificationRequired"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missingOrPartial","verificationRequired"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{},"withheldModes":{"Apply":"Apply also writes the Microsoft Authenticator and Temporary Access Pass configurations, and IAMAI holds no target for either; the JSON request sets Passkey (FIDO2) alone."}}}
 param([Parameter(Mandatory=$true)][ValidateSet('Apply','Verify')][string]$Mode,[string]$Fido2Json,[string]$AuthenticatorJson,[string]$TapJson,[switch]$ProfileOptInApproved)
 $ErrorActionPreference='Stop';$G='https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations'
 function IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 50) -ContentType 'application/json' -OutputType PSObject}
@@ -72,6 +73,8 @@ Explain the irreversible passkey-profile opt-in to the owner using current tenan
 Passkey (FIDO2) is the phishing-resistant sign-in method this baseline targets. These settings control which passkey providers are accepted tenant-wide.
 
 The two AAGUIDs above are the Microsoft Authenticator app on iOS and Android. Enforcing attestation and restricting to these AAGUIDs means only Authenticator passkeys are accepted — not third-party security keys or browser-based passkeys.
+
+Key restrictions apply at sign-in as well as registration, so a passkey or security key someone already registered from another provider stops working for sign-in once these settings are saved. Enforcing attestation affects new registrations only.
 
 Temporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with.
 

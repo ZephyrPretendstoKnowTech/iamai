@@ -155,6 +155,14 @@ const CHANGE_METHODS: ReadonlySet<string> = new Set(['PATCH', 'PUT', 'DELETE'])
 /** An endpoint template that names the object it addresses (`/policies/{policy.current.id}`). */
 const ENDPOINT_IDENTITY = /\{[A-Za-z0-9_.-]+\}/
 
+/**
+ * An endpoint whose object Microsoft names itself: an authentication method's
+ * configuration is addressed by the method's fixed id
+ * (`/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2`),
+ * not by a tenant value IAMAI binds. Nothing else is exempt from naming its target.
+ */
+const FIXED_IDENTITY = /^https:\/\/graph\.microsoft\.com\/v1\.0\/policies\/authenticationMethodsPolicy\/authenticationMethodConfigurations\/[A-Za-z0-9]+$/
+
 /** A projection list with each block once: a block several mismatches share is one correction, its script corrections merged. */
 function dedupe(refs: ProjectionRef[]): ProjectionRef[] {
   const out: ProjectionRef[] = []
@@ -393,7 +401,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: a JSON body with no request (method and endpoint)`)
           continue
         }
-        if (CHANGE_METHODS.has(method) && !ENDPOINT_IDENTITY.test(endpoint)) {
+        if (CHANGE_METHODS.has(method) && !ENDPOINT_IDENTITY.test(endpoint) && !FIXED_IDENTITY.test(endpoint)) {
           bad.push(`${id}: a ${method} whose endpoint names no target identifier`)
           continue
         }

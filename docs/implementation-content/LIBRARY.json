@@ -1546,7 +1546,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 11,
+      "strictValidationErrors": 13,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"

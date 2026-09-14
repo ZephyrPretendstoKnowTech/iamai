@@ -105,15 +105,17 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
         ['Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).'],
         ['Set Enable to Yes. Target: All users.'],
         ['Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow.'],
-        ['Add the Microsoft Authenticator AAGUIDs:', '— iOS: 90a3ccdf-635c-4729-a248-9b709135078f', '— Android: de1e552d-db1d-4423-a619-566b625cdc84'],
-        ['Enable Enforce attestation.'],
+        // Cycle 2 (C05): the restriction is kept, and the step says what it does to keys already registered (Microsoft Learn, how-to-enable-passkey-fido2).
+        ['Add the Microsoft Authenticator AAGUIDs:', '— iOS: 90a3ccdf-635c-4729-a248-9b709135078f', '— Android: de1e552d-db1d-4423-a619-566b625cdc84', '— The restriction applies at sign-in as well as registration: once you save, a passkey or security key someone already registered with any other AAGUID can no longer be used to sign in.'],
+        ['Enable Enforce attestation. It applies to new registrations; a passkey already registered without attestation can still sign in.'],
         ['Save.'],
       ],
     },
     { kind: 'list', ordered: true, start: 7, items: [['Open Microsoft Authenticator in the same Authentication methods list.'], ['Set Enable to Yes. Target: All users.'], ['Save.']] },
     { kind: 'list', ordered: true, start: 10, items: [['Open Temporary Access Pass in the same list.'], ['Set Enable to Yes. Target: All users. Set a lifetime and one-time-use policy that fits your organization.'], ['Save.']] },
   ])
-  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then configure the supporting methods:'))
+  // Cycle 2 (C05): the JSON request covers FIDO2 alone; Authenticator and Temporary Access Pass have no IAMAI target body.
+  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then configure the supporting methods here. The JSON tab sets Passkey (FIDO2) only.'))
   assert.doesNotMatch(entra, /profileOptInApproved|resolved target|\{\{/)
   const ai = b['ai.apply'].text
   assert.match(ai, /^Passkey \(FIDO2\) is the phishing-resistant sign-in method this baseline targets\. These settings control which passkey providers are accepted tenant-wide\.$/m)
