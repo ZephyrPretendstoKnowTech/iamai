@@ -358,6 +358,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - **After** (`../logs/review1/rv-edge.ts`, `rv-edge-1.txt`): staffGuestExcl → "This change removes guest or external users from the policy's exclusions…"; staffExclOtherApp and the no-exclusions-group case → "…removes Office 365 Exchange Online…".
 - **Tests** (`src/roadmap/removedExclusions.test.ts`, 3): guest exclusion (body still without it, `removes`, line text, above the untouched line); Exchange Online (body carries Intune Enrollment, `removes.ids == [EXO]`, named not an id); control keeping every exclusion removes nothing and draws no line.
 - **Not changed:** the viewer's Entra and AI Info tabs are package-authored text with no binding for removed exclusions; the `changes` list is unchanged.
+- **Found through the new line (pre-existing, not fixed; BLOCKED first entry):** on the curated demo, s-goal-block-legacy-auth and s-goal-block-device-code (enforced, held on emergency access, action "Clear what this step is waiting on.") export their correction lines anyway, now ending "This change removes Core - Break glass from the policy's exclusions…". At 3ca3fd1 the same lines were drawn without that sentence (`demo-action-curated-1.txt`, `demo-action-curated-3ca3fd1.txt`).
 - **Content test (disclosed):** content.test.ts lists `.shared.changeRemoves` and `.shared.changeRemovesGuests` as example-suppressed strings (the review page's example corrects no policy with such an exclusion); the test failed until then (`suites-3.txt`).
 
 ### guests-mfa effect statement (review 3 queue 5): FIXED
@@ -386,6 +387,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after `npm run build` (build exit 0), 09:54–09:58; report `docs/reports/walk-ebb9633.md`, captures `walk/ebb9633/` (gitignored) | **ebb9633** | 0 | "show-ready on this walk (no P0)": **0 P0, 495 P1, 50 P2** (review 3ca3fd1: 0/494/50); throttled first load 4.6 s (P1, as before). Against the review's report, finding for finding: none removed, **one added**: mock-operator "Require Token Protection on Windows" `button "Troubleshooting" is not in the plan.step contract's allow list`. That step now hands over its report-only create (queue 1), which draws its existing Troubleshooting control; no contract was changed. Normalized stdout: 544 → 545 lines (`walk-1.txt`, `walk-norm-*.txt`, `walk-norm-diff.txt`) |
 
 ### Not done in cycle 4 (actionable; see BLOCKED)
+0. **High, pre-existing:** the export draws an enforced block policy's correction (removing a direct break-glass exclusion) under an emergency-access hold (curated demo block-legacy-auth, block-device-code).
 1. Board/export Ready vs blocked: 7 board-lane steps remain (three classes above).
 2. Uncalled/withheld scripts: guests-mfa 5, service-accounts-trusted-network 8; user-risk-medium's create now withheld on `policy.current.id`.
 3. guests-mfa on getiamai: a single-policy resolution the pair package cannot bind (Entra withheld).
