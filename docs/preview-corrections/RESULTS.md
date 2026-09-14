@@ -350,4 +350,26 @@ Start: HEAD e567436ae2c275e1a4f28611e53cbf495d66ab4a, working tree clean, `git s
 | Packaged channels | `NOEX=1 s3-c01-packaged.ts` (`packaged-noex.txt`) | 0 | all-users/admins conditions corrections carry no grant; F3 Intune Enrollment disagreement present; admin-session Entra "move it to Report-only first" beside "leave it On" (C02 lifecycle, open) |
 | Matrix | `s3-matrix.ts curated all` (`matrix.txt`) | 0 | 490 renders · 0 mistyped · 0 empty · 143 uncalled templates · 20 passkey `packageFault` · 66 preview bodies not parseable (visible templates, not copyable); identical to S5 `matrix-2.txt` and R1 `matrix.txt` apart from the timing trailer |
 | PowerShell syntax | `s3-ps-render.ts ../logs/r2/ps`, then Windows PowerShell 5.1.26100 `Parser::ParseFile` (parse only, nothing executed) (`ps-parse.txt`) | 0 | 8 files · 0 parse errors |
-| Walk | `node --import ../logs/r2/netblock.mjs scripts/walk.mjs` with Playwright chromium-1243 (`walk.txt`) | — | running at checkpoint |
+| Walk | `CHROME=<playwright chromium-1243> node --import ../logs/r2/netblock.mjs scripts/walk.mjs` (`walk.txt`, 23:33:56–23:37:53). The preload lives outside the clone and blocks every non-localhost host for Chrome (host-resolver rule) and Node fetch; no test infrastructure edited. Report and captures: docs/reports/walk-e567436.md, walk/e567436/ (gitignored) | **1** | **23 P0**, 506 P1, 50 P2. P0: 22 = `feedback@getiamai.com` on Connect — walk.mjs:784 invariant plus page-contracts.json `connect.signedIn`/`connect.signedOut` forbid, both unchanged since c65d9f4, against the owner-mandated C09 notice (2 per fixture × 11 Connect fixtures); 1 = mock-operator "Require MFA for Guests" empty value "()", which is `$changed=@()` in the guests pair PowerShell (package unchanged since c65d9f4; walk result at c65d9f4 not established — no walk baseline). P1 #1 throttled first load 4580 ms (> 2 s); P1 count not comparable (no baseline). 41 Learn links recorded as not checkable (blocked offline, P2) |
+| Browser journeys | `CHROME=… node probes/s4-browser.mjs ../logs/r2/browser` (`browser.txt`, `browser/*.png`); `node probes/s4-preview.mjs` (`preview.txt`) | 0 / 0 | C09 12 runs (signed out, dev-mock signed in, demo × light/dark × 1280/375): present once, above first control, exact copy, `mailto:feedback@getiamai.com`, 0 dialogs, 0 inputs, no horizontal overflow; screenshots signed-out-light-375 and mock-signed-in-dark-1280 inspected. C08 dev: demo cold 339 ms, reload 12 ms, mock cold 340 ms, demo→mock 227 ms, frozen/resumed 3 ms, demo→non-demo Connect; preview: cold 251 ms, reload 0 ms, resumed 3 ms, demo→non-demo `#/connect`; 0 page exceptions; 62 blocked external requests |
+
+### R2 notes
+- R1-F2 tie (`SHAPE=tie`): engine hold verified in both orders; Step Contract carries `targetAmbiguous`/`doneTarget`, export "On Hold · Not supported" with the ambiguity copy. **R2-N1 (high):** the Implementation region (`stepBodyOf`) for the same held step draws a non-copyable create preview (Entra "New policy … Grant: Require multifactor authentication … Set Enable policy: Report-only and create it", JSON create template) with the note "the work once the prerequisites are resolved … Values still to resolve: policy name, complete target policy, policy ID and policy conditions" — contradicts the hold's "does not guess / no duplicate" and misattributes the cause. Not copyable, not executable.
+- Lone admins-group policy (`SHAPE=lone`, both orders): Entra "Users → Include: All users", JSON `includeUsers:["All"]`, PowerShell with that policy id, export "Ready · Correct" whose first line reads "Create the policy in report-only." followed by update lines for "Policy A" (R2-N2). Critical, open (BLOCKED S5 23:30).
+- All-users correction (`SHAPE=all`): export lines and JSON carry no Intune Enrollment exclusion and no grant; viewer Entra/AI name the exclusion (R1-F3 extends to the export: export agrees with JSON, not with the viewer's Entra tab).
+- R1-F4 fix present in the packaged render; R1-F5 wording still above the notice (screenshots).
+
+### Per-C-ID verdicts (R2; detail in FINAL-REPORT.md)
+| ID | R2 verdict |
+|---|---|
+| C01 | FAILED — lone admins-group policy rewritten to All users (critical); R1-F1 (high); R2-N1 (high). Tie hold and role/mixed identity VERIFIED |
+| C02 | FAILED — lifecycle BLOCKED (critical); R1-F3 (high). Conditions corrections carry no grant: VERIFIED |
+| C03 | VERIFIED (shapes; foundationB green); readGroup/worker NOT VERIFIED |
+| C04 | VERIFIED (narrow rule; owner acceptance items) |
+| C05 | FAILED — passkey setup held (critical BLOCKED) |
+| C06 | VERIFIED for preview JSON typing and all-users/admins scripts; FAILED overall (143 templates, critical BLOCKED) |
+| C07 | FAILED (partial) — F4 VERIFIED fixed; F5, In progress label, STEP.md references open |
+| C08 | NOT REPRODUCED (synthetic); login path NOT VERIFIED |
+| C09 | VERIFIED (behaviour); required walk check FAILS on the notice's feedback address (owner/contract conflict) |
+
+Verdict: **NOT READY** (FINAL-REPORT.md).
