@@ -41,7 +41,14 @@ Fixed in cycle 3 (RESULTS): R1 OR-grant widening; the immediate-effect wording a
   - All 15 rows are blocked previews.
   - Next: explicit `[string[]]` parameters (or a JSON-text binding), a declared invocation, and `withheldModes.Enforce`. For guests, either a pair binding built from the step's two resolution policies, or the modes withheld with the reason.
   - Compiler behaviour found in cycle 3: a withheld mode referenced from one module of a composed Partial withholds the whole Partial PowerShell channel. Remove that one module's run instead, as shared-devices does.
-- **Removed exclusions not disclosed (medium, not started).** Unchanged (cycle 2 entry).
+- **Removed exclusions not disclosed (medium, evidence refreshed, not fixed).**
+  - The reviewer probe `../logs/review1/rv-edge.ts` rerun at the dfb6274 code (`../logs/c3/rv-edge.txt`) still reproduces both cases.
+  - "staff group MFA excluding guests": the executable update's `Users` change goes from a value carrying `excludeGuestsOrExternalUsers` (`b2bCollaborationGuest`) to one without it.
+  - "staff group MFA excluding Exchange Online": the applications section replaces the tenant's exclusion with Intune Enrollment.
+  - The export states only the new target ("Users → Include: All users, Guest or external users → all types …"), and none of export, Entra or AI says an exclusion is removed.
+  - Microsoft Graph *Update conditionalAccessPolicy* (v1.0, read in cycle 3) says only: "In the request body, supply the values for relevant fields that should be updated. Existing properties that aren't included in the request body maintain their previous values or are recalculated based on changes to other property values."
+  - It does not say whether a nested `conditions.users` object sent in part is merged or replaced. The product sends the whole `users` object, so the removal is what IAMAI writes, and it is the disclosure that is missing.
+  - Next: list removed tenant exclusions by name in the changes and export ("Removes: guest and external users exclusion"; "Removes: Exchange Online from excluded resources"), with the effect on an enabled policy, then pin both cases.
 - **Package gaps (medium/low, not started):** session-lifetime unmanaged displayName and `excludeUsers`; register-info-protected `policy.target.mode`.
 - **Unprojected leftovers (low, cleanup).** The eleven packages still carry their lifecycle Entra/JSON blocks and the scripts' ReportOnly modes, now referenced by no projection and never drawn. sessionAdminContentSpecs.test.ts:111 still reads the token-protection lifecycle block's text. Removing them is a cleanup, not a behaviour change.
 - **Verification gaps (low).**
