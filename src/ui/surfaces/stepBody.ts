@@ -273,9 +273,11 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // (RUN-CONTEXT-B decision 12, U15): an account, a group or a setting is portal
   // work, and filtering here keeps the tabs, the viewer and Copy on one list.
   const machine = cs.kind === 'policy'
+  // A package channel whose every line waited on a value IAMAI does not hold (the AI
+  // Info shared warning aside) has no content: it is not drawn as a blank tab.
   const produced: Artifact[] = (
     packaged
-      ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
+      ? ((preview ?? projection)?.channels ?? []).map(packageArtifact).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
   // Every channel draws, always (content review D2): a channel with content shows

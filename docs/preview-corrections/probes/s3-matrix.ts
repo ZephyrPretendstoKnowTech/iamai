@@ -69,6 +69,7 @@ function planRows(label: string, f: Fixture, ready: boolean): Row[] {
     const issues: string[] = []
     for (const a of b.artifacts) {
       if (a.unavailable) continue
+      if (a.text().replace(/\*\*Contains tenant context[^*]*\*\*/g, '').trim() === '') issues.push(`${a.id} empty-text`)
       if (a.id === 'json') issues.push(...jsonIssues(a.text()).map((i) => `json ${i}`))
       if (a.id === 'ps') issues.push(...psIssues(a.text()).map((i) => `ps ${i}`))
     }

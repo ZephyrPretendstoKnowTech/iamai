@@ -68,6 +68,8 @@ export function scriptParameters(script: string): { name: string; mandatory: boo
   const out: { name: string; mandatory: boolean }[] = []
   let prev = 0
   for (const m of block.matchAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    // `[Parameter(Mandatory=$true)]`: PowerShell's constants are values in an attribute, not parameters.
+    if (/^(true|false|null)$/i.test(m[1])) continue
     const attributes = block.slice(prev, m.index)
     out.push({ name: m[1], mandatory: /Parameter\s*\([^)]*Mandatory/i.test(attributes) })
     prev = (m.index ?? 0) + m[0].length

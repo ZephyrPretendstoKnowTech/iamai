@@ -16,6 +16,7 @@ import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
 import { NO_RUNTIME, projectImplementation, projectPlanned } from './project.ts'
+import { scriptParameters } from './invocation.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 /** Sample ids, never a tenant's. */
@@ -57,6 +58,47 @@ for (const stepId of ['s-goal-admins-phishing-resistant', 's-goal-mfa-all-users'
     assert.ok(entra && json, JSON.stringify(p.hold))
     assert.match(entra.text, /Grant/)
     assert.deepEqual(Object.keys(JSON.parse(json.text)), ['grantControls'])
+  })
+}
+
+test('a script parameter declared Mandatory=$true is read as that parameter, mandatory — $true is not a parameter', () => {
+  const script = "param(\n [Parameter(Mandatory=$true)][ValidateSet('A','B')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPolicyJson,\n [string]$PolicyId,\n [switch]$Flag=$false\n)\n$x=$true"
+  assert.deepEqual(scriptParameters(script), [
+    { name: 'Mode', mandatory: true },
+    { name: 'TargetPolicyJson', mandatory: true },
+    { name: 'PolicyId', mandatory: false },
+    { name: 'Flag', mandatory: false },
+  ])
+})
+
+for (const stepId of ['s-goal-admins-phishing-resistant', 's-goal-mfa-all-users']) {
+  test(`${stepId}: the script is called with the whole target and the policy it corrects, in every state it projects`, () => {
+    const target = { displayName: "Sample - O'Brien", conditions: CONDITIONS, grantControls: { operator: 'OR', builtInControls: ['mfa'] }, sessionControls: null }
+    const values = bindings({ 'policy.target.json': JSON.stringify(target) })
+    const literal = `'${JSON.stringify(target).replaceAll("'", "''")}'`
+    const cases: [string, Record<string, unknown>, string[]][] = [
+      ['missing', {}, ['Create']],
+      ['partial', { [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'] }, ['CorrectConditions']],
+      ['reportOnly', {}, ['Observe']],
+      ['readyToEnforce', {}, ['Enforce']],
+    ]
+    for (const [state, extra, modes] of cases) {
+      const p = projectImplementation(PACKAGES[stepId], state as never, { ...values, ...extra })
+      const ps = p.channels.find((c) => c.channel === 'powershell')
+      assert.ok(ps, `${state}: ${JSON.stringify(p.hold)} ${JSON.stringify(p.degraded ?? null)}`)
+      assert.deepEqual(ps.runs.map((r) => r.mode), modes)
+      const calls = ps.text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep '))
+      assert.equal(calls.length, modes.length)
+      for (const call of calls) {
+        assert.ok(call.includes(`-TargetPolicyJson ${literal}`), `${state}: ${call}`)
+        assert.equal(call.includes(`-PolicyId '${ID(3)}'`), state !== 'missing', `${state}: ${call}`)
+      }
+    }
+    // A target short of any material root is not the target: the script waits, the other channels still project.
+    const { ['policy.target.json']: _none, ...short } = values
+    const held = projectImplementation(PACKAGES[stepId], 'missing', short)
+    assert.equal(held.channels.some((c) => c.channel === 'powershell'), false)
+    assert.deepEqual(held.degraded?.map((d) => [d.channel, d.missingBindings]), [['powershell', ['policy.target.json']]])
   })
 }
 

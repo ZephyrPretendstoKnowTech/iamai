@@ -424,6 +424,13 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   putField('policy.target.conditions', settled('conditions') as Record<string, unknown> | null, 'conditions')
   putField('policy.target.grantControls', settled('grantControls') as Record<string, unknown> | null, 'grantControls')
   putField('policy.target.sessionControls', settled('sessionControls') as Record<string, unknown> | null, 'sessionControls')
+  // The whole target a policy script takes as one value (`-TargetPolicyJson`): the
+  // name and the three material roots bound above, and only where every one of them
+  // is bound — a target short of a field still waiting on a reference is not the target.
+  const roots = ['policy.target.conditions', 'policy.target.grantControls', 'policy.target.sessionControls']
+  if (whole && typeof out['policy.target.displayName'] === 'string' && roots.every((k) => Object.hasOwn(out, k))) {
+    out['policy.target.json'] = JSON.stringify({ displayName: out['policy.target.displayName'], conditions: out['policy.target.conditions'], grantControls: out['policy.target.grantControls'], sessionControls: out['policy.target.sessionControls'] })
+  }
   const strength = settled('grantControls')?.grantControls?.authenticationStrength?.id
   put('authStrength.target.id', typeof strength === 'string' ? strength : undefined)
   // The strength's name, where the tenant's scan or Microsoft's own list names it:
