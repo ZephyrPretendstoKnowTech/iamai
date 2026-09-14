@@ -71,7 +71,7 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   // Entra: the three blocks a conditions correction draws.
   assert.ok(packageOf(MFA_ALL).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   const entra = channel(MFA_ALL, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group and aligns the conditions with the baseline.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction adds the exclusions group and aligns the conditions with the baseline.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
     {
@@ -146,7 +146,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   // Entra: the three blocks a conditions correction draws.
   assert.ok(packageOf(ADMINS).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   const entra = channel(ADMINS, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group and aligns the admin roles with the baseline.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction adds the exclusions group and aligns the admin roles with the baseline.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
     {
@@ -173,7 +173,7 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
   assert.ok(packageOf(AUTH).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(AUTH, ['entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction adds the exclusions group.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [
@@ -207,7 +207,7 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
   assert.ok(packageOf(DEVICE).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   // The two blocks a conditions correction draws.
   const entra = channel(DEVICE, ['entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists and is enforced. The correction adds the exclusions group.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction adds the exclusions group.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     {
       kind: 'list', ordered: true, start: 1, items: [

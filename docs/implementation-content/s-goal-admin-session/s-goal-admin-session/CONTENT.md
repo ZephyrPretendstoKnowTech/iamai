@@ -8,7 +8,7 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This policy already exists and is enforced. The correction adds the exclusions group.
+This policy already exists. The correction adds the exclusions group.
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
@@ -125,7 +125,7 @@ This policy shortens how long an admin's session stays valid. After the sign-in 
 
 This protects against token theft: even if an attacker steals an admin's session token, it expires quickly. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have.
 
-The correction on this step adds the exclusions group so emergency access accounts are not affected by the session limit.
+The correction on this step changes only what IAMAI found different from the baseline. The exclusions group in the target keeps emergency access accounts out of the session limit.
 
 The persistent browser session control ensures admin sessions are not remembered across browser closures.
 @@IAMAI-END

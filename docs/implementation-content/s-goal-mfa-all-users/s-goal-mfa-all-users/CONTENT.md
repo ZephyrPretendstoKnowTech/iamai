@@ -9,7 +9,7 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This policy already exists and is enforced. The correction adds the exclusions group and aligns the conditions with the baseline.
+This policy already exists. The correction adds the exclusions group and aligns the conditions with the baseline.
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
