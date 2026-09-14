@@ -48,3 +48,15 @@ test('one member missing, or a member still waiting on a reference: no pair targ
   const waiting = withMembers(['strong', 'mixed'], [{ token: 'ffffffff-0000-4000-8000-000000000001' } as NonNullable<Step['action']['missing']>[number]])
   assert.equal(memberBindings(waiting, f.snapshot)['policies.guests.targets.json'], undefined)
 })
+
+test('each member resolved whole binds its own conditions, grant and session for the JSON batch; a member missing or waiting binds none', () => {
+  const roots = ['conditions', 'grantControls', 'sessionControls'] as const
+  const body = create.body as Record<(typeof roots)[number], unknown>
+  const both = memberBindings(withMembers(['strong', 'mixed']), f.snapshot)
+  for (const role of ['strong', 'mixed']) for (const r of roots) assert.deepEqual(both[`policies.guests.${role}.target.${r}`], body[r] ?? null, `${role} ${r}`)
+  const one = memberBindings(withMembers(['strong']), f.snapshot)
+  assert.ok(Object.hasOwn(one, 'policies.guests.strong.target.conditions'))
+  assert.equal(roots.some((r) => Object.hasOwn(one, `policies.guests.mixed.target.${r}`)), false)
+  const waiting = withMembers(['strong', 'mixed'], [{ token: 'ffffffff-0000-4000-8000-000000000001' } as NonNullable<Step['action']['missing']>[number]])
+  assert.equal(Object.keys(memberBindings(waiting, f.snapshot)).some((k) => /\.target\.(conditions|grantControls|sessionControls)$/.test(k)), false)
+})
