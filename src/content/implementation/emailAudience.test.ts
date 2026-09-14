@@ -26,7 +26,7 @@ const REVIEWED: Readonly<Record<string, Readonly<Record<string, readonly [string
   's-goal-block-legacy-auth': { 'email.rollout': ['affected-users', 'If you own an older mail client'], 'email.enforce': ['affected-users', 'If something legitimate stops working'] },
   's-goal-block-unsupported-platforms': { 'email.rollout': ['affected-users', 'If you use a Linux'], 'email.enforce': ['affected-users', 'Use an approved supported device for work access'] },
   's-goal-geo-restriction': { 'email.rollout': ['affected-users', 'If you travel for work'], 'email.enforce': ['affected-users', 'Work travel must be arranged before departure'] },
-  's-goal-guests-mfa': { 'email.partner-trust': ['client-contact', 'Confirm partner MFA trust change'], 'email.enforce': ['help-desk', 'Support should troubleshoot'] },
+  's-goal-guests-mfa': { 'email.rollout': ['client-contact', 'Please share this with the guests and partner contacts'], 'email.partner-trust': ['client-contact', 'Confirm partner MFA trust change'], 'email.enforce': ['help-desk', 'Support should troubleshoot'] },
   's-goal-mfa-all-users': { 'email.enforce': ['help-desk', 'If someone cannot complete the prompt'] },
   's-goal-mobile-app-protection': { 'email.rollout': ['affected-users', 'Company mail and files on phones'], 'email.enforce': ['affected-users', 'Use the supported protected Microsoft apps'] },
   's-goal-register-info-protected': { 'email.rollout': ['affected-users', 'how sign-in methods are registered'], 'email.enforce': ['affected-users', 'If a legitimate registration is blocked, contact IT'] },
@@ -49,7 +49,6 @@ const REVIEWED: Readonly<Record<string, Readonly<Record<string, readonly [string
 
 /** Emails whose text establishes no single recipient: withheld until authored (package → block). */
 const NEEDS_AUTHORING: Readonly<Record<string, readonly string[]>> = {
-  's-goal-guests-mfa': ['email.rollout'],
   's-goal-mfa-all-users': ['email.rollout'],
   's-prereq-auth-strength': ['email.admin-change'],
   's-question-partner': ['email.change'],
@@ -98,8 +97,9 @@ test('every Email audience is the author’s or established by the Email’s own
       assert.ok(audience === null || fromMeta || onBlock, `${where}: audience ${audience} was assigned without authoring or evidence in its text`)
     }
   }
-  // 52 reviewed: 46 unchanged, 1 corrected (account-owner), 5 withheld for authoring.
-  assert.equal(reviewed, 47, 'the reviewed Email count changed: review the new audience against its text')
+  // 52 reviewed: 46 unchanged, 1 corrected (account-owner), 5 withheld for authoring; the guest
+  // creation Email was since authored with its reader (content corrections pass): 48.
+  assert.equal(reviewed, 48, 'the reviewed Email count changed: review the new audience against its text')
 })
 
 test('an Email withheld for authoring is refused by the validator, so it is never shown with a guessed recipient', () => {
