@@ -144,9 +144,9 @@ Review the proposed administrator policy for {{tenant.displayName}} against the 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in.
 
-Unlike the "MFA for Everyone" policy which accepts any MFA method (including phone call), this policy uses the authentication strength "Modern MFA + TAP" which only accepts phishing-resistant methods and Temporary Access Pass.
+Unlike the "MFA for Everyone" policy which accepts any MFA method (including phone call), this policy uses the baseline's authentication strength "Modern MFA + TAP", which accepts phishing-resistant methods and also a Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.
 
-The 0% threshold means none of your admins currently have a qualifying method registered. The MFA Registration Campaign step handles getting them registered. This policy enforces the requirement; the campaign helps people meet it.
+Whether your admins have a qualifying method registered is shown on MFA Readiness, not by this policy. The MFA Registration Campaign step helps them register one. This policy enforces the requirement; the campaign helps people meet it.
 
 The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.
 @@IAMAI-END
