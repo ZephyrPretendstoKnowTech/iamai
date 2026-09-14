@@ -69,6 +69,8 @@
     "policies.guests.semanticMismatches"
   ],
   "optionalBindings": [
+    "policies.guests.strong.current.removedExclusions",
+    "policies.guests.mixed.current.removedExclusions",
     "tenant.displayName",
     "guests.affected.count",
     "policies.guests.strong.current.displayName",

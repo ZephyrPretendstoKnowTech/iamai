@@ -25,6 +25,9 @@ const channel = (stepId: string, ids: string[]): string => ids.map((id) => packa
 type ContentStepWords = { id: string; why: string; doneEnd?: string; doneWhen?: string[]; decision?: { help?: string; options?: string[] } }
 const stepWords = (id: string): ContentStepWords => (JSON.parse(readFileSync('docs/design/content.json', 'utf8')).steps as ContentStepWords[]).find((s) => s.id === id)!
 const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
+// Cycle 6 (review 5 queue 1): a correction's Save item and AI Info also carry the line naming
+// the exclusions the update removes, omitted when it removes none ([omit this line when unavailable]).
+const REMOVED = "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]"
 
 /** Every step's body on a fixture, as the Plan composes it (contentReview.test.ts). */
 function bodiesOf(f: Fixture): Map<string, StepBody> {
@@ -61,7 +64,7 @@ test('s-goal-admin-session: Why is two whole sentences, Entra is one numbered pr
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
     // Cycle 3 (review 2): and says what saving does to a policy that is On — adding the exclusions group exempts its members at once.
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI to confirm the correction.']] },
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI's canonical target|canonical|stable tenant ID/)
   const ai = packageOf(SESSION).blocks['ai.correct'].text
@@ -127,10 +130,10 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
         ['Under Grant, confirm "Block access" is selected.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Leave **Enable policy** as it is and click Save.'], ['Rescan in IAMAI.']] },
+    { kind: 'list', ordered: true, start: 7, items: [['Leave **Enable policy** as it is and click Save.', REMOVED], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /stable tenant ID|resolved policy|canonical|conditions object/)
-  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). Correct the conditions to match the baseline target without changing the policy's state: if the policy is On, the corrected block applies to sign-ins as soon as it is saved.\n")
+  assert.equal(packageOf(LEGACY).blocks['ai.correct'].text, "This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). Correct the conditions to match the baseline target without changing the policy's state: if the policy is On, the corrected block applies to sign-ins as soon as it is saved.\n\n" + REMOVED + '\n')
   const words = stepWords('block-legacy-auth')
   assert.equal(words.doneEnd, 'The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.')
   // The shared readiness sentence and the stored answers stay (BLOCKED.md).

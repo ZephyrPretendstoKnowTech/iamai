@@ -46,6 +46,8 @@ Set **Enable policy = Report-only** while correcting it unless IAMAI is explicit
 Save the bounded correction, read the policy back by stable ID, and rescan IAMAI.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -81,6 +83,7 @@ Immediately before enforcement, re-read the stable policy and confirm Medium-onl
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Challenge Medium-Risk Sign-ins
 [CmdletBinding()]
 param(
@@ -127,6 +130,8 @@ The exclusions group is excluded so emergency access accounts are never blocked 
 Review only these IAMAI-classified mismatches for the Medium-risk policy: {{policy.current.semanticMismatches}}. Preserve the stable policy identity, Medium-only threshold, built-in MFA grant, and no-session target. Do not add Every-time reauthentication merely because current Microsoft generic guidance recommends it.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

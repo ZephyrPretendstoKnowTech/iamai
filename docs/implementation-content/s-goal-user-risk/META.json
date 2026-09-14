@@ -53,6 +53,7 @@
     "authStrength.target.displayName"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "policy.current.state",
     "authStrength.target.allowedCombinations",

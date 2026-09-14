@@ -62,6 +62,9 @@ Set the unmanaged-device component to Report-only while material corrections are
 Save only the selected correction(s), read the affected policy back, and rescan IAMAI. Do not enable either component until the two-policy set is canonical and readiness passes.
 
 Keep each policy's current state: if it is On, its correction applies to sign-ins as soon as you save.
+
+This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Leave both component policies in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins and the unmanaged-device policy is limited by its compliance filter. Confirm shared-device accounts remain excluded. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.
@@ -146,6 +149,8 @@ Open both IAMAI-resolved component policies by stable identity. Confirm each sti
 {"state":"enabled"}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
+# This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Limit How Long Sessions Last
 # Module: Microsoft.Graph.Authentication
 [CmdletBinding()]
@@ -326,6 +331,9 @@ RULES
 Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
 
 Each policy keeps its current state. If it is On, its correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**

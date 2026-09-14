@@ -9,7 +9,9 @@ After the SharePoint prerequisite has been changed **and IAMAI has rescanned**, 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-set","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open each affected policy by its **post-rescan stable tenant ID**. Stage any enabled policy to Report-only before access-affecting correction. Replace only the mismatched complete conditions/session object with IAMAI's canonical target. Do not reuse an ID captured before a SharePoint access-control change.
+Open each affected policy by its **post-rescan stable tenant ID**. Replace only the mismatched complete conditions/session object with IAMAI's canonical target. Do not reuse an ID captured before a SharePoint access-control change.
+
+Keep each policy's current state: if it is On, the corrected restrictions apply to browser sessions as soon as you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -54,7 +56,7 @@ Configure/validate Policy A and the SharePoint prerequisite only to the extent I
 
 @@IAMAI-BEGIN {"id":"powershell.composite","channel":"powershell","states":["configurePrerequisite","missing","partial","reportOnly","readyToEnforce","notLicensed"],"format":"powershell","kind":"template"}
 param(
- [Parameter(Mandatory=$true)][ValidateSet('ConfigureSharePoint','CreateA','CreateB','StageA','StageB','CorrectA','CorrectB','Observe','EnforceA','EnforceB','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('ConfigureSharePoint','CreateA','CreateB','CorrectA','CorrectB','Observe','EnforceA','EnforceB','Verify')][string]$Mode,
  [string]$SharePointAdminUrl,
  [string]$PolicyAJson,
  [string]$PolicyBJson,
@@ -94,12 +96,11 @@ $a=if($PolicyAJson){$PolicyAJson|ConvertFrom-Json}else{$null};$b=if($PolicyBJson
 function Target([string]$which){if($which -eq 'A'){if($null -eq $a){throw 'PolicyAJson is required.'};return $a};if(-not $DefenderCloudAppsLicensed){throw 'Policy B is not actionable without the resolved Defender for Cloud Apps dependency.'};if($null -eq $b){throw 'PolicyBJson is required.'};return $b}
 function IdFor([string]$which){$id=if($which -eq 'A'){$PolicyAId}else{$PolicyBId};GuidOk $id "Policy${which}Id";return $id}
 function Create([string]$which){$t=Target $which;$body=[ordered]@{displayName=$t.displayName;state='enabledForReportingButNotEnforced';conditions=$t.conditions;grantControls=$null;sessionControls=$t.sessionControls};$x=IG POST "$G/identity/conditionalAccess/policies" $body;Write-Host "Created Policy $which $($x.id) in Report-only."}
-function Stage([string]$which){$id=IdFor $which;$u="$G/identity/conditionalAccess/policies/$id";$x=IG GET $u;if([string]$x.state -eq 'enabled'){IG PATCH $u @{state='enabledForReportingButNotEnforced'}|Out-Null}}
-function Correct([string]$which){$t=Target $which;$id=IdFor $which;$u="$G/identity/conditionalAccess/policies/$id";$x=IG GET $u;if([string]$x.state -eq 'enabled'){throw 'Refusing correction while policy is On. Stage first.'};IG PATCH $u @{displayName=$t.displayName;conditions=$t.conditions;grantControls=$null;sessionControls=$t.sessionControls}|Out-Null}
+function Correct([string]$which){$t=Target $which;$id=IdFor $which;$u="$G/identity/conditionalAccess/policies/$id";IG PATCH $u @{displayName=$t.displayName;conditions=$t.conditions;grantControls=$null;sessionControls=$t.sessionControls}|Out-Null}
 function Enforce([string]$which){$t=Target $which;$id=IdFor $which;$u="$G/identity/conditionalAccess/policies/$id";$x=IG GET $u;if([string]$x.state -ne 'enabledForReportingButNotEnforced'){throw 'Refusing enforcement: policy is not Report-only.'};if(-not (Same $x.conditions $t.conditions)){throw 'Conditions mismatch.'};if($null -ne $x.grantControls){throw 'Grant must remain null.'};if(-not (Same $x.sessionControls $t.sessionControls)){throw 'Session controls mismatch.'};IG PATCH $u @{state='enabled'}|Out-Null}
-switch($Mode){'CreateA'{Create 'A'}'CreateB'{Create 'B'}'StageA'{Stage 'A'}'StageB'{Stage 'B'}'CorrectA'{Correct 'A'}'CorrectB'{Correct 'B'}'EnforceA'{Enforce 'A'}'EnforceB'{Enforce 'B'}}
+switch($Mode){'CreateA'{Create 'A'}'CreateB'{Create 'B'}'CorrectA'{Correct 'A'}'CorrectB'{Correct 'B'}'EnforceA'{Enforce 'A'}'EnforceB'{Enforce 'B'}}
 $out=@()
-foreach($w in @('A','B')){$id=if($w -eq 'A'){$PolicyAId}else{$PolicyBId};if($id){GuidOk $id "Policy${w}Id";$x=IG GET "$G/identity/conditionalAccess/policies/$id";$out+=[pscustomobject]@{Policy=$w;Id=$x.id;State=$x.state;DisplayName=$x.displayName;GrantIsNull=($null -eq $x.grantControls)}}
+foreach($w in @('A','B')){$id=if($w -eq 'A'){$PolicyAId}else{$PolicyBId};if($id){GuidOk $id "Policy${w}Id";$x=IG GET "$G/identity/conditionalAccess/policies/$id";$out+=[pscustomobject]@{Policy=$w;Id=$x.id;State=$x.state;DisplayName=$x.displayName;GrantIsNull=($null -eq $x.grantControls)}}}
 $out
 @@IAMAI-END
 
@@ -119,6 +120,8 @@ Review the two-policy **Limit Unmanaged Devices in the Browser** target for {{te
 **Contains tenant context. Review before sharing with an external AI service.**
 
 These unmanaged-browser mismatches remain: {{policies.unmanagedBrowser.semanticMismatches}}. Recommend corrections only against post-rescan stable tenant IDs and keep SharePoint configuration outside CA JSON.
+
+Each policy keeps its current state: if it is On, the correction applies to sign-ins as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -37,6 +37,8 @@ Set Enable policy to Report-only while corrections are being validated.
 Save only the selected corrections, read back the same stable policy, then rescan IAMAI. Do not apply correction modules for fields IAMAI already classifies as canonical.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Leave the canonical policy in Report-only. Review that the intended user-driven enrollment paths actually target Microsoft Intune Enrollment and note any userless/self-deploying paths separately. Report-only can show policy applicability, but it cannot prove a fresh reauthentication prompt occurred. Rescan when evidence changes.
@@ -71,6 +73,7 @@ Leave the canonical policy in Report-only. Review that the intended user-driven 
 {"state":"enabled"}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["resourceMissing","missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved and -EnrollmentWorkflowsValidated, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require a Fresh Sign-in for Intune Enrollment
 [CmdletBinding()]
 param(
@@ -162,6 +165,8 @@ SAFETY
 Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**

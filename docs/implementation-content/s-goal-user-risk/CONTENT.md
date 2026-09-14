@@ -55,6 +55,8 @@ Set **Enable policy = Report-only** while correcting the policy unless IAMAI is 
 Save the bounded correction, read the policy back by stable ID, and rescan IAMAI. Do not combine unrelated mismatch fixes.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -90,6 +92,7 @@ Immediately before enforcement, re-read the exact policy by stable ID and confir
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved and -MfaRegistrationValidated and -GuestExternalScopeValidated, an attestation this package declares no prerequisite for, so IAMAI cannot pass it, and -HybridUsersInScope is a tenant fact IAMAI does not bind"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Remediate High-Risk Users
 [CmdletBinding()]
 param(
@@ -146,6 +149,8 @@ Review IAMAI's proposed creation of the High user-risk Conditional Access policy
 Review only these IAMAI-classified mismatches for the existing High user-risk policy: {{policy.current.semanticMismatches}}. Compare them to the canonical step. Preserve stable policy identity and unrelated settings outside the selected correction boundary. Do not replace riskRemediation with passwordChange/MFA or invent exclusions.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

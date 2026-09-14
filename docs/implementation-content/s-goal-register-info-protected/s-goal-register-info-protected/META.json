@@ -52,6 +52,7 @@
     "policy.target.mode"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "policy.target.json",
     "tenant.displayName",
     "people.affected.count",

@@ -68,6 +68,7 @@
     "location.current.id"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "workload.cloudSync.displayName",
     "policy.current.displayName",

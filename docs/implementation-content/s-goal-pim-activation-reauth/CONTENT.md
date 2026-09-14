@@ -44,6 +44,8 @@ Set the CA policy to Report-only while material corrections are being validated.
 Save only the selected correction(s), read back by stable ID, and rescan IAMAI. PIM role settings remain unchanged until the CA policy is canonical and On.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Leave the CA policy in Report-only while reviewing its exact context target, strength, exclusions, and Every time session control. Use Conditional Access What If where useful. Do not configure the PIM role authentication-context rule yet: Microsoft's current guidance says the backup MFA mechanism is not triggered when the matching CA policy is Report-only.
@@ -82,6 +84,7 @@ Use a controlled eligible admin/test account to activate one selected role. Conf
 {"@odata.type":"#microsoft.graph.unifiedRoleManagementPolicyAuthenticationContextRule","id":"AuthenticationContext_EndUser_Assignment","isEnabled":true,"claimValue":"{{authContext.target.id}}"}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["contextMissing","missing","partial","reportOnly","readyToEnforce","pimSettingsPending","verificationPending"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"AuthenticationContextId":{"binding":"authContext.target.id","modes":["PrepareContext","Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM","VerifyPIM"]},"AuthenticationContextDisplayName":{"binding":"authContext.target.displayName","modes":["PrepareContext","Verify","ConfigurePIM"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify","ConfigurePIM"]},"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify","ConfigurePIM"]},"RoleManagementPolicyIds":{"binding":"pim.roleManagementPolicyIds","modes":["ConfigurePIM","VerifyPIM"]}},"withheldModes":{"EnforceCA":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require MFA at Every Role Activation
 # Module: Microsoft.Graph.Authentication
 [CmdletBinding()]
@@ -312,6 +315,8 @@ LIMIT
 Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**

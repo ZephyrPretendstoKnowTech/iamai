@@ -35,6 +35,7 @@ Rename the same stable policy to **{{policy.target.displayName}}**; never locate
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 6. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
+   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 7. Rescan in IAMAI.
 @@IAMAI-END
 
@@ -71,6 +72,7 @@ Confirm the same policy remains canonical and Report-only, confirm affected admi
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
  [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
@@ -151,6 +153,8 @@ Whether your admins have a qualifying method registered is shown on MFA Readines
 The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.
 
 The policy keeps its current state. If it is On, the correction applies as soon as you save. An admin the corrected role list newly includes must use a method this strength accepts at their next sign-in.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -51,6 +51,7 @@
     "pim.roleManagementPolicyIds"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "authStrength.target.displayName",
     "authStrength.target.allowedCombinations",

@@ -23,10 +23,12 @@ Corrections:
 3. Users → Exclude → Groups: add the exclusions group.
 4. Verify: the Grant requires the authentication strength "Modern MFA + TAP."
 5. Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's authentication strength as soon as you save.
+   This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 6. Open the mixed-tier policy (find it by ID in Plan settings).
 7. Users → Exclude → Groups: add the exclusions group.
 8. Verify: the Grant requires "Require multifactor authentication."
 9. Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's MFA as soon as you save.
+   This change removes {{policies.guests.mixed.current.removedExclusions}} from the exclusions of {{policies.guests.mixed.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 10. Rescan in IAMAI.
 
 Do not merge these two policies into one. They serve different guest populations with different MFA requirements.
@@ -57,6 +59,8 @@ Re-open both exact policies, confirm both are canonical and Report-only and any 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPoliciesJson":{"binding":"policies.guests.targets.json","modes":["CreateMissing","CorrectPair","Observe","EnforcePair","Verify"]},"StrongPolicyId":{"binding":"policies.guests.strong.current.id","modes":["CorrectPair","Observe","EnforcePair","Verify"]},"MixedPolicyId":{"binding":"policies.guests.mixed.current.id","modes":["CorrectPair","Observe","EnforcePair","Verify"]}},"withheldModes":{"ApplyPartnerTrust":"ApplyPartnerTrust reads the owner-approved partner trust patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."}}}
+# This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
+# This change removes {{policies.guests.mixed.current.removedExclusions}} from the exclusions of {{policies.guests.mixed.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
  [Parameter(Mandatory=$true)][ValidateSet('CreateMissing','CorrectPair','ApplyPartnerTrust','Observe','EnforcePair','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPoliciesJson,
@@ -132,6 +136,9 @@ Review the two guest policy targets for {{tenant.displayName}}. Confirm the pinn
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Guest policy mismatches: {{policies.guests.semanticMismatches}}. Explain the smallest corrections to the exact strong/mixed policy identities without changing the saved partner/service-provider decision or merging the policies. Each policy keeps its current state: if it is On, adding the exclusions group exempts that group's members from the policy as soon as it is saved.
+
+This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+This change removes {{policies.guests.mixed.current.removedExclusions}} from the exclusions of {{policies.guests.mixed.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.partner-trust","channel":"aiInfo","states":["partnerTrustRequired"],"format":"markdown","kind":"template"}

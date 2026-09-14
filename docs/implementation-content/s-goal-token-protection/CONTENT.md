@@ -65,6 +65,8 @@ Set **Enable policy** to **Report-only** while correcting or revalidating this p
 Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected semantic mismatch(es).
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -211,6 +213,7 @@ IAMAI has reached the enforcement state; do not rebuild the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","apiStability":"beta-exception","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","Correct","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -CompatibilityEvidenceReviewed and -UnsupportedDeviceFlowsResolved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require Token Protection on Windows
 # Token Protection's secureSignInSession field is currently a Graph beta-only session-control property.
 # Required module: Microsoft.Graph.Authentication
@@ -401,6 +404,8 @@ Current limitation: token protection only works on Windows devices running suppo
 The correction on this step adds the exclusions group so emergency access accounts are not affected.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

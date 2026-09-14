@@ -28,6 +28,10 @@ const PACKAGE_SRC = readFileSync('src/ui/surfaces/stepPackage.ts', 'utf8')
 const GUESTS = 's-goal-guests-mfa'
 const CONFIRM = 'Complete the Exclusions Group step first. IAMAI found a matching group, but needs your confirmation before this policy can reference it.'
 const MFA_ALL = 's-goal-mfa-all-users'
+// Cycle 6 (review 5 queue 1): a correction's Save item also carries the line naming the
+// exclusions the update removes, omitted when it removes none ([omit this line when unavailable]).
+const REMOVED = "This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]"
+const REMOVED_MEMBER = (role: string): string => `This change removes {{policies.guests.${role}.current.removedExclusions}} from the exclusions of {{policies.guests.${role}.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]`
 
 /** Every step's body on a fixture, as the Plan composes it (contentReview.test.ts). */
 function bodiesOf(f: Fixture): Map<string, StepBody> {
@@ -83,7 +87,7 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
     },
     // A conditions correction writes no grant (S3, C02): the grant is its own module, drawn only when the grant differs.
     // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
-    { kind: 'list', ordered: true, start: 6, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI to confirm the correction.']] },
+    { kind: 'list', ordered: true, start: 6, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(MFA_ALL).blocks['ai.correct'].text
@@ -117,11 +121,11 @@ test('s-goal-guests-mfa: the partner tile says what to confirm, and Entra names 
         ['Verify: the Grant requires the authentication strength "Modern MFA + TAP."'],
         // Review 3 queue 5: each save now says what it does to a guest policy that is On
         // (was "Save." alone, which stated no effect).
-        ['Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group\'s members stop being asked for this policy\'s authentication strength as soon as you save.'],
+        ['Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group\'s members stop being asked for this policy\'s authentication strength as soon as you save.', REMOVED_MEMBER('strong')],
         ['Open the mixed-tier policy (find it by ID in Plan settings).'],
         ['Users → Exclude → Groups: add the exclusions group.'],
         ['Verify: the Grant requires "Require multifactor authentication."'],
-        ['Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group\'s members stop being asked for this policy\'s MFA as soon as you save.'],
+        ['Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group\'s members stop being asked for this policy\'s MFA as soon as you save.', REMOVED_MEMBER('mixed')],
         ['Rescan in IAMAI.'],
       ],
     },
@@ -162,7 +166,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
     },
     // A conditions correction writes no grant (S3, C02): it used to set the TAP-inclusive custom strength while the JSON beside it PATCHed conditions only.
     // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
-    { kind: 'list', ordered: true, start: 6, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI.']] },
+    { kind: 'list', ordered: true, start: 6, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', REMOVED], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(ADMINS).blocks['ai.correct'].text
@@ -192,7 +196,7 @@ test('s-goal-block-auth-transfer: the bar names the Exclusions Group step, Entra
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
     // Cycle 3 (review 2): and says what saving does to a policy that is On — adding the exclusions group exempts its members at once.
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI to confirm the correction.']] },
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
   const ai = packageOf(AUTH).blocks['ai.correct'].text
@@ -228,11 +232,12 @@ test('s-goal-block-device-code: the device code tile says what to confirm, the d
     },
     // Cycle 2 (C02): "leave it On" was wrong for a Report-only policy; the correction keeps whatever state the policy has.
     // Cycle 3 (review 2): and says what saving does to a policy that is On — adding the exclusions group exempts its members at once.
-    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI to confirm the correction.']] },
+    { kind: 'list', ordered: true, start: 5, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', REMOVED], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /IAMAI-resolved|canonical|stable tenant ID/)
-  // PowerShell, JSON and AI Info are unchanged (BLOCKED.md).
-  assert.match(packageOf(DEVICE).blocks['powershell.run'].text, /^param\(/)
+  // PowerShell, JSON and AI Info are unchanged (BLOCKED.md), apart from the cycle 6 line naming
+  // removed exclusions, which heads the script and is omitted when nothing is removed.
+  assert.match(packageOf(DEVICE).blocks['powershell.run'].text, /^# This change removes \{\{policy\.current\.removedExclusions\}\}[^\n]*\[omit this line when unavailable\]\nparam\(/)
   assert.doesNotMatch(packageOf(DEVICE).blocks['json.correct-conditions'].text, /\/\//)
   assert.match(packageOf(DEVICE).blocks['ai.correct'].text, /\{\{policy\.current\.semanticMismatches\}\}/)
 })
