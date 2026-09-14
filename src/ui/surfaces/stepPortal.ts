@@ -290,9 +290,17 @@ export function stepPortalLines(step: Step, names: PortalNames): string[] | null
     const ctx = contextFor(p, names, resolution!.tenant, openNameOf(one))
     // An update lists the fields its own body carries and says the rest is left
     // alone; a create describes the whole policy it writes.
-    return one.mode === 'update'
-      ? portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx, { mode: 'change', only: sectionsOf(body) })
-      : portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx)
+    if (one.mode !== 'update') return portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx)
+    const lines = portalLines(policyFacts(p as unknown as CaPolicy, new Map()), ctx, { mode: 'change', only: sectionsOf(body) })
+    // The exclusions the tenant's policy has that the sections this update sends
+    // whole no longer carry: named beside the change, above the line that says the
+    // rest is left alone, because "Users → Include: All users" alone never says a
+    // guest or application exclusion goes (review 3 queue 3).
+    const removed = one.removes ? [...(one.removes.guestsOrExternalUsers ? [shared.changeRemovesGuests as string] : []), ...one.removes.ids.map((id) => names.nameOf(id))] : []
+    if (removed.length === 0) return lines
+    const line = (shared.changeRemoves as string).replace('{removed}', removed.join(', '))
+    const at = ctx.changeUntouched ? lines.lastIndexOf(ctx.changeUntouched) : -1
+    return at >= 0 ? [...lines.slice(0, at), line, ...lines.slice(at)] : [...lines, line]
   }
   // A policy an answer changed carries the baseline's own version with it
   // (roadmap/generate.ts), so every line the answer moved is shown beside what

@@ -6843,7 +6843,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "This step manages two Conditional Access policies that work together:\n\n**Policy 1: {{policies.guests.strong.current.displayName}} (strong tier)**\nFor trusted partners — requires the authentication strength \"Modern MFA + TAP.\"\n\n**Policy 2: {{policies.guests.mixed.current.displayName}} (mixed tier)**\nFor all other guests — requires standard MFA (any second factor).\n\nCorrections:\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the strong-tier policy (find it by ID in Plan settings).\n3. Users → Exclude → Groups: add the exclusions group.\n4. Verify: the Grant requires the authentication strength \"Modern MFA + TAP.\"\n5. Save.\n6. Open the mixed-tier policy (find it by ID in Plan settings).\n7. Users → Exclude → Groups: add the exclusions group.\n8. Verify: the Grant requires \"Require multifactor authentication.\"\n9. Save.\n10. Rescan in IAMAI.\n\nDo not merge these two policies into one. They serve different guest populations with different MFA requirements.\n"
+          "text": "This step manages two Conditional Access policies that work together:\n\n**Policy 1: {{policies.guests.strong.current.displayName}} (strong tier)**\nFor trusted partners — requires the authentication strength \"Modern MFA + TAP.\"\n\n**Policy 2: {{policies.guests.mixed.current.displayName}} (mixed tier)**\nFor all other guests — requires standard MFA (any second factor).\n\nCorrections:\n\n1. Go to Entra admin center → Conditional Access → Policies.\n2. Open the strong-tier policy (find it by ID in Plan settings).\n3. Users → Exclude → Groups: add the exclusions group.\n4. Verify: the Grant requires the authentication strength \"Modern MFA + TAP.\"\n5. Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's authentication strength as soon as you save.\n6. Open the mixed-tier policy (find it by ID in Plan settings).\n7. Users → Exclude → Groups: add the exclusions group.\n8. Verify: the Grant requires \"Require multifactor authentication.\"\n9. Save. Leave **Enable policy** as it is: if the policy is On, the exclusions group's members stop being asked for this policy's MFA as soon as you save.\n10. Rescan in IAMAI.\n\nDo not merge these two policies into one. They serve different guest populations with different MFA requirements.\n"
         },
         "entra.partner-trust": {
           "meta": {
@@ -6956,7 +6956,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nGuest policy mismatches: {{policies.guests.semanticMismatches}}. Explain the smallest corrections to the exact strong/mixed policy identities without changing the saved partner/service-provider decision or merging the policies.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nGuest policy mismatches: {{policies.guests.semanticMismatches}}. Explain the smallest corrections to the exact strong/mixed policy identities without changing the saved partner/service-provider decision or merging the policies. Each policy keeps its current state: if it is On, adding the exclusions group exempts that group's members from the policy as soon as it is saved.\n"
         },
         "ai.partner-trust": {
           "meta": {

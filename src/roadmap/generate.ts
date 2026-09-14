@@ -398,6 +398,34 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], Cha
 }
 
 /**
+ * The exclusions an update takes off the tenant's policy (PolicyOperation.removes):
+ * the patch sends its users and applications sections whole, so an exclusion the
+ * tenant has there and the patch does not carry is gone once it is saved. The
+ * request is right to send the baseline's section; what was missing was saying so.
+ */
+function removedExclusions(current: RawPolicy, patch: RawPolicy): PolicyOperation['removes'] {
+  const cur = (current.conditions ?? {}) as RawPolicy
+  const next = (patch.conditions ?? {}) as RawPolicy
+  const gone = (from: unknown, to: unknown): string[] => {
+    const kept = new Set((Array.isArray(to) ? to : []).map((x) => String(x).toLowerCase()))
+    return (Array.isArray(from) ? from : []).map(String).filter((x) => !kept.has(x.toLowerCase()))
+  }
+  const ids: string[] = []
+  let guestsOrExternalUsers = false
+  // Only a section the patch writes replaces the tenant's values; one it leaves out keeps them.
+  const curUsers = cur.users as RawPolicy | undefined
+  const nextUsers = next.users as RawPolicy | undefined
+  if (curUsers && nextUsers) {
+    for (const key of ['excludeGroups', 'excludeUsers', 'excludeRoles']) ids.push(...gone(curUsers[key], nextUsers[key]))
+    guestsOrExternalUsers = curUsers.excludeGuestsOrExternalUsers != null && nextUsers.excludeGuestsOrExternalUsers == null
+  }
+  const curApps = cur.applications as RawPolicy | undefined
+  const nextApps = next.applications as RawPolicy | undefined
+  if (curApps && nextApps) ids.push(...gone(curApps.excludeApplications, nextApps.excludeApplications))
+  return guestsOrExternalUsers || ids.length > 0 ? { guestsOrExternalUsers, ids } : undefined
+}
+
+/**
  * The policy an update leaves behind: the tenant's own policy with this exact
  * patch applied. Built from what the tenant has, not from the baseline's version
  * of it, so a field the update does not submit stays as the tenant set it —
@@ -556,7 +584,9 @@ export function buildCreateAction(
       // Without the tenant's policy there is no complete target, and the whole
       // step is unavailable rather than described from a partial body.
       const current = target.policy
+      const removes = current ? removedExclusions(current, patch) : undefined
       operations.push({
+        ...(removes ? { removes } : {}),
         sourceName: p.sourceName,
         memberKey,
         mode: 'update',

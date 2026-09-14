@@ -122,6 +122,18 @@ for (const stepId of [...STAGED, 's-goal-mfa-all-users', 's-goal-admins-phishing
   }
 }
 
+// Review 3 queue 5: the guests pair's correction adds the exclusions group to both guest
+// policies and said only "Save." twice. Its script is not called yet, so the check reads
+// the two authored blocks the partial state projects rather than a bound projection.
+test('s-goal-guests-mfa: the pair correction says in Entra (both saves) and in AI Info what saving does to a policy that is On', () => {
+  const blocks = PACKAGES['s-goal-guests-mfa'].blocks
+  const entra = blocks['entra.correct-pair'].text
+  const saves = entra.split('\n').filter((l) => /^\d+\. Save\b/.test(l))
+  assert.equal(saves.length, 2, entra)
+  for (const line of saves) assert.match(line, EFFECT, line)
+  assert.match(blocks['ai.correct'].text, EFFECT)
+})
+
 test('effect control: "Leave Enable policy as it is" alone states no effect', () => {
   assert.doesNotMatch('5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.', EFFECT)
   assert.match('5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', EFFECT)
