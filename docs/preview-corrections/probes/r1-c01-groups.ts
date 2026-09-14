@@ -4,7 +4,8 @@
 // SHAPE=roles (admins by directory role) | groups (admins by group) | mixed (roles + group)
 import { fixture } from '../../../src/roadmap/fixtures/index.ts'
 import { runFixture } from '../../../src/roadmap/fixtures/run.ts'
-import { stepOperations } from '../../../src/ui/surfaces/stepJson.ts'
+import { policyJsonText, stepOperations } from '../../../src/ui/surfaces/stepJson.ts'
+import { nextSafeAction } from '../../../src/roadmap/nextSafeAction.ts'
 const GA = '62e90394-69f5-4237-9190-012177145e10'
 const GOALS = ['mfa-all-users', 'admins-phishing-resistant', 'admin-session']
 const IDS = { admin: 'aaaaaaaa-0000-4000-8000-000000000001', internal: 'aaaaaaaa-0000-4000-8000-000000000002', session: 'aaaaaaaa-0000-4000-8000-000000000003' }
@@ -43,6 +44,11 @@ function variant(label: string, names: Record<keyof typeof IDS, string>, reverse
     const ops = s ? stepOperations(s) : []
     console.log(' ', g.padEnd(26), 'cov', cov?.status, JSON.stringify(cov?.candidates.map((c) => [who(c.policyId), c.contribution, c.ownScope, c.caveats.join('+')])))
     console.log(' ', ''.padEnd(26), 'ops', JSON.stringify(ops.map((o: any) => [o.mode, who(o.policyId), JSON.stringify(o.body ?? {}).slice(0, 160)])), 'track', JSON.stringify([s?.tracking?.matchedBy, who((s?.tracking as any)?.policyId)]), 'resolution', JSON.stringify((s?.action.resolution?.policies ?? []).map((o: any) => [o.mode, who(o.policyId), JSON.stringify(o.policy?.conditions?.users ?? o.changes ?? o.sections ?? null).slice(0, 140)])), 'lifecycle', s?.state?.lifecycle)
+    if (process.env.DUMP === '1' && s && g === 'mfa-all-users') {
+      const nsa = nextSafeAction(s) as any
+      console.log('   DUMP nextSafeAction', JSON.stringify({ kind: nsa.kind, executable: nsa.executable }), 'blockers', JSON.stringify(s.blockers.map((b: any) => b.label)))
+      console.log('   DUMP resolution', JSON.stringify(s.action.resolution?.policies ?? []).slice(0, 1200))
+      console.log('   DUMP policyJsonText', policyJsonText(s).replace(/\s+/g, ' ').slice(0, 900))    }
   }
 }
 variant('listed', { admin: 'Policy 3', internal: 'Policy 1', session: 'Policy 2' }, false)
