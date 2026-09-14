@@ -17,7 +17,7 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
-import { badgeLabel, factOf, stepContract } from './stepContract.ts'
+import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
 import type { LaneView } from './stepContract.ts'
 import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
@@ -209,7 +209,14 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // print, the prompts, the grounding bundle): the next action stands alone.
   if (!held && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
   if (!held && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
-  if (portal && portal.length > 0) lines.push(...portal)
+  // The screen draws these lines only in the channel strip, and only while the
+  // implementation is the step's current action (stepBody.ts `deployNow`). An
+  // enforced block policy held on emergency access exported the correction that
+  // removes its direct break-glass exclusion under "Clear what this step is
+  // waiting on."; held, the export carries the action alone, as the screen does.
+  if (portal && portal.length > 0) {
+    if (implementationIsCurrent(step)) lines.push(...portal)
+  }
   else if (waiting) lines.push(waitingLine(step, String(ex.tenant ?? '')))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan[step.action.ambiguousTarget ? 'targetAmbiguous' : 'pairUnmatched']), { tenant: String(ex.tenant ?? '') }))
   // The conflict explanation belongs to the reviewed source policy the step's
