@@ -42,16 +42,17 @@ import { scheduleOf } from '../../roadmap/stepSchedule.ts'
 /** The When column's placeholder where a row has no date (A1b: a date, or this), and the Up Next label's tail words. */
 export const WHEN = (pages.plan as unknown as { when: { none: string; after: string; afterPrerequisites: string } }).when
 /** The lane and substatus words (pages.plan.lanes, pages.plan.substatus): the one vocabulary every surface says a state in (A1b decision 11). */
-const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'readyToEnforce', string> })
-/** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word). */
+const LANE_WORDS = (pages.plan as unknown as { lanes: Record<'ready' | 'upNext' | 'onHold' | 'completed' | 'deferred' | 'doesntApply', string>; substatus: Record<'create' | 'correct' | 'needsDecision' | 'observing' | 'review' | 'readyToEnforce', string> })
+/** The Ready lane's substatus word, by the engine's own literal (src/actionability/lanes.ts `Substatus`, an identifier and never a display word).
+ *  `Observing` on Ready is the review of what report-only collected; the wait while it collects is On Hold · Observing. */
 export const SUBSTATUS_WORD: Readonly<Record<Substatus, string>> = {
   Create: LANE_WORDS.substatus.create,
   Correct: LANE_WORDS.substatus.correct,
   Decision: LANE_WORDS.substatus.needsDecision,
-  Observing: LANE_WORDS.substatus.observing,
+  Observing: LANE_WORDS.substatus.review,
   'Ready to enforce': LANE_WORDS.substatus.readyToEnforce,
 }
-/** The tone a lane draws in: Ready and Completed are fine, Up Next waits, On Hold is stopped by something abnormal, Deferred is out of the rollout. */
+/** The tone a lane draws in: Ready and Completed are fine, Up Next waits, On Hold waits on something deeper, Deferred is out of the rollout. */
 export const LANE_TONE: Readonly<Record<Lane, StatusTone>> = { Ready: 'ok', 'Up Next': 'wait', 'On Hold': 'stop', Completed: 'ok', Deferred: 'idle' }
 
 /**
@@ -104,6 +105,8 @@ export const BOARD = {
     step: 'Prerequisite on hold',
     suspendedPrerequisite: 'Deferred prerequisite',
     unsupported: 'Not supported',
+    /** A report-only policy still collecting its evidence: the lane's own word for watching it. */
+    evidence: LANE_WORDS.substatus.observing,
   },
   type: {
     ca: 'Conditional Access',
@@ -238,6 +241,11 @@ export function laneViewFor(step: Step, steps: readonly Step[] = [step], titleOf
 /** The primary blocker's label, which On Hold groups by. A blocker that is a step names it. The lane alone where the engine named no reason. */
 export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | null): string {
   if (r.reason === null) return BOARD.lanes.onHold
+  // A healthy prerequisite that is still more than one action away: the wait reads as Up Next's does.
+  if (r.reason.kind === 'step' && !r.reason.abnormal) {
+    const title = titleOf(r.reason.id)
+    return title !== null ? fillText(WHEN.after, { step: title }) : WHEN.afterPrerequisites
+  }
   const kind = BOARD.blockers[r.reason.kind]
   if (r.reason.kind === 'step' || r.reason.kind === 'suspendedPrerequisite') {
     const title = titleOf(r.reason.id)
@@ -248,6 +256,7 @@ export function holdLabelOf(r: LaneReading, titleOf: (id: string) => string | nu
 
 /** The On Hold group a reading sits in: the blocker kind's label, so rows held by the same kind of thing sit together. */
 export function holdGroupOf(r: LaneReading): string {
+  if (r.reason?.kind === 'step' && !r.reason.abnormal) return WHEN.afterPrerequisites
   return r.reason === null ? BOARD.lanes.onHold : BOARD.blockers[r.reason.kind]
 }
 

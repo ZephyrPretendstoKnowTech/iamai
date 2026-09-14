@@ -22,6 +22,8 @@ import { laneReadings, tenantStateOf } from './planLanes.ts'
 import { readinessOf, stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { correctionFieldsOf, packageStateOf, plannedOperationsOf, safeCorrectionOf } from './stepPackage.ts'
+import { BOARD, laneViewFor } from './planBoard.ts'
+import { stepExportView } from './stepExport.ts'
 
 const graph = buildGraph(data as DependencyData)
 const LEGACY = 's-goal-block-legacy-auth'
@@ -43,14 +45,16 @@ const read = (steps: Record<string, StepObservation>, id = LEGACY): string => {
 
 const ENFORCED: StepObservation = { exists: true, evidenceSatisfied: true, enforced: true }
 
-test('U20/U21 engine: an enforced policy as pinned is Completed, a drifted one is Ready · Correct, and report-only still observes', () => {
+// The owner's status contract supersedes U21's "enforced drift reads Ready · Correct": a
+// correction is Ready only where it can be performed now.
+test('U20/U21 engine: an enforced policy as pinned is Completed, a drifted one is Ready · Correct only where the correction can be built, and report-only waits', () => {
   assert.equal(read({ [LEGACY]: ENFORCED }), 'Completed')
   assert.equal(read({ [LEGACY]: { ...ENFORCED, gates: [{ id: 'evidence:readiness:threshold', satisfied: false, minDays: null, reason: null }] } }), 'Completed', 'a threshold on a policy already On is informational, never a gate')
   assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true } }), 'Ready · Correct')
-  assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceMapping', id: 'sourceMapping:62d67e66' }] } }), 'Ready · Correct', 'an unmapped reference does not hold correcting a policy that is On')
+  assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceMapping', id: 'sourceMapping:62d67e66' }] } }), 'On Hold', 'an unmapped reference leaves the correction unbuildable: the policy being On does not make it Ready')
   assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'sourceConflict', id: 'sourceConflict:test' }] } }), 'On Hold', 'a contradictory baseline still holds it')
   assert.equal(read({ [LEGACY]: { ...ENFORCED, drift: true, blockers: [{ kind: 'fact', id: 'fact:group' }] } }), 'On Hold', 'a tenant fact the scan could not read still holds it')
-  assert.equal(read({ [LEGACY]: { exists: true } }), 'Ready · Observing')
+  assert.equal(read({ [LEGACY]: { exists: true } }), 'On Hold', 'report-only and still collecting evidence')
 })
 
 test('U28 / P0-12 engine: an unsaved conditional input keeps a policy short of Completed and of Ready to enforce, and reads Decision, not Observing', () => {
@@ -61,8 +65,8 @@ test('U28 / P0-12 engine: an unsaved conditional input keeps a policy short of C
   assert.equal(read({ [LEGACY]: { ...ENFORCED, unsaved } }), 'Ready · Decision')
   // Queued work beside it (the service-accounts group the mail devices join) does not make an enforced policy observe.
   assert.equal(read({ [LEGACY]: { ...ENFORCED, unsaved }, 's-prereq-service-accounts-group': { exists: false } }), 'Ready · Decision')
-  // A report-only policy still gathering evidence keeps observing: the evidence gate is open too.
-  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: false, gates: [{ id: 'evidence:soak', satisfied: false, minDays: 14, reason: null }], unsaved } }), 'Ready · Observing')
+  // A report-only policy still gathering evidence waits on it: the evidence gate is open too.
+  assert.equal(read({ [LEGACY]: { exists: true, evidenceSatisfied: false, gates: [{ id: 'evidence:soak', satisfied: false, minDays: 14, reason: null }], unsaved } }), 'On Hold')
 })
 
 const demo = fixture('demo')
@@ -78,15 +82,23 @@ const stepOf = (run: ReturnType<typeof runFixture>, id: string): Step => {
   return s
 }
 
-test('U21: on the demo Initial scan every enforced policy that drifted reads Ready · Correct', () => {
+test('U21 (owner contract): on the demo Initial scan every enforced policy that drifted behind an unmapped reference is On Hold, on the board and in its export alike, and its operations are untouched', () => {
+  const before = demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s)))
   const readings = laneReadings(demoRun.steps)
   const drifted = demoRun.steps.filter((s) => s.state.lifecycle === 'enforced' && s.status !== 'done')
   assert.deepEqual(drifted.map((s) => s.id).sort(), ['s-goal-block-device-code', LEGACY, 's-goal-mfa-all-users'], 'the premise')
+  const ctx = ctxOf(demo, demoRun, demo.snapshot)
   for (const s of drifted) {
     assert.notEqual(driftOutcomeOf(s), null, `${s.id}: the tracker reads no drift`)
     const r = readings.get(s.id)
-    assert.equal([r?.lane, r?.substatus].join(' · '), 'Ready · Correct', s.id)
+    assert.equal(r?.lane, 'On Hold', s.id)
+    assert.equal(r?.reason?.kind, 'sourceMapping', `${s.id}: the correction waits on a Baseline mapping`)
+    const view = laneViewFor(s, demoRun.steps)
+    const exported = stepExportView(s, ctx, view)
+    assert.deepEqual([exported.state, exported.lane, exported.reason], [view.label, BOARD.lanes.onHold, view.tail], `${s.id}: the export says another state`)
   }
+  // Classification reads the operations; it never changes them.
+  assert.deepEqual(demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s))), before)
 })
 
 test('U20: on the demo Follow-up scan with its saved answers every enforced policy with no drift reads Completed; report-only still observes', () => {
@@ -99,7 +111,9 @@ test('U20: on the demo Follow-up scan with its saved answers every enforced poli
     assert.equal(readings.get(s.id)?.lane, 'Completed', s.id)
   }
   const intune = readings.get('s-goal-intune-enrollment-reauth')
-  assert.equal([intune?.lane, intune?.substatus].join(' · '), 'Ready · Observing')
+  assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'evidence'], 'report-only and collecting its evidence: a wait, not an action')
+  const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), run.steps)
+  assert.equal(view.label, `${BOARD.lanes.onHold} · ${BOARD.blockers.evidence}`)
 })
 
 test('U28: a step whose conditional input nobody saved does not read Completed even when the scan delivers it; a Save clears it', () => {

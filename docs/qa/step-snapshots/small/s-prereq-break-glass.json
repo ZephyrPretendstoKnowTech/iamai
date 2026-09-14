@@ -1,10 +1,10 @@
 {
   "lane": "Ready",
-  "substatus": "Observing",
+  "substatus": "Correct",
   "reason": null,
   "fact": null,
-  "badge": "Ready · Observing",
-  "bar": "Continue observation",
+  "badge": "Ready · Correct",
+  "bar": "Needs correction",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",

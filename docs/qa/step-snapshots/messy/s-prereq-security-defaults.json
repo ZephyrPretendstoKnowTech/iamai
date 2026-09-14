@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": null,
   "fact": null,
-  "badge": "Up Next · After Block Legacy Authentication",
-  "bar": "After Block Legacy Authentication",
+  "badge": "On Hold · After Require Phishing-Resistant MFA for Admins",
+  "bar": "After Require Phishing-Resistant MFA for Admins",
   "rail": "Aug 31, 2026",
   "headings": [
     "Why",
@@ -18,7 +18,7 @@
       "state": "Block Legacy Authentication"
     },
     {
-      "label": "Prerequisite · To do",
+      "label": "Prerequisite · Waiting",
       "state": "Require Phishing-Resistant MFA for Admins"
     }
   ],

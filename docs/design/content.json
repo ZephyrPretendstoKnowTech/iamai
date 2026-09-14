@@ -612,6 +612,7 @@
         "correct": "Correct",
         "needsDecision": "Decision",
         "observing": "Observing",
+        "review": "Review",
         "readyToEnforce": "Ready to enforce"
       },
       "progress": {
@@ -1423,6 +1424,7 @@
               "correct": "Needs correction",
               "needsDecision": "Needs a decision",
               "observing": "Continue observation",
+              "review": "Review the report-only results",
               "readyToEnforce": "Ready to enforce",
               "none": "Nothing left to do"
             },

@@ -57,22 +57,23 @@ test('1. prerequisite Ready, dependent not started → Up Next after Allowed Cou
   assert.equal(geo.nextAction, 'create')
 })
 
-test('2. prerequisite Observing, dependent not started → Up Next after Require MFA for Everyone', () => {
+test('2. prerequisite still collecting evidence → it waits On Hold, and so does the dependent behind it', () => {
   const s = state({ 's-goal-mfa-all-users': REPORT_ONLY, 's-prereq-per-user-mfa': ABSENT })
-  assert.equal(read(lane('s-goal-mfa-all-users', s)), 'Ready · Observing')
+  assert.equal(read(lane('s-goal-mfa-all-users', s)), 'On Hold · evidence:evidence:observation')
   const r = lane('s-prereq-per-user-mfa', s)
-  assert.equal(read(r), 'Up Next · step:s-goal-mfa-all-users')
+  assert.equal(read(r), 'On Hold · step:s-goal-mfa-all-users')
   assert.equal(r.reason?.milestone, 'enforced')
 })
 
-test('3. prerequisite Up Next several layers away: depth sorts, never holds', () => {
+test('3. prerequisite Up Next several layers away: the deeper dependency holds, and depth still sorts', () => {
   const s = state({ 's-prereq-break-glass': ABSENT, 's-prereq-exclusion-group': ABSENT, 's-goal-token-protection': ABSENT })
   assert.equal(read(lane('s-prereq-break-glass', s)), 'Ready · Create')
   const group = lane('s-prereq-exclusion-group', s)
   assert.equal(read(group), 'Up Next · step:s-prereq-break-glass')
   assert.equal(group.layers, 1)
   const token = lane('s-goal-token-protection', s)
-  assert.equal(read(token), 'Up Next · step:s-prereq-exclusion-group')
+  assert.equal(read(token), 'On Hold · step:s-prereq-exclusion-group')
+  assert.equal(token.reason?.abnormal, false, 'a deeper healthy prerequisite, not an abnormal blocker')
   assert.equal(token.layers, 2)
   const sorted = sortUpNext(
     [{ id: 's-goal-token-protection', result: token }, { id: 's-prereq-exclusion-group', result: group }],
@@ -122,12 +123,40 @@ test('8. blocked owner decision (identity type not in evidence) → On Hold · d
   assert.equal(read(deriveLane('s-goal-workload-identity-block', graph, tenant, owner)), 'Up Next · decision:decision:workload-identity-type')
 })
 
-test('9. policy already Report-only and healthy → Ready · Observing', () => {
-  const s = state({ 's-goal-block-device-code': REPORT_ONLY })
-  const r = lane('s-goal-block-device-code', s)
-  assert.equal(read(r), 'Ready · Observing')
+test('9. policy already Report-only and healthy: On Hold while it collects evidence, Ready · Observing (the review) once that can be reviewed, never Ready to enforce on time alone', () => {
+  const id = 's-goal-block-device-code'
+  const r = lane(id, state({ [id]: REPORT_ONLY }))
+  assert.equal(read(r), 'On Hold · evidence:evidence:observation')
   assert.equal(r.nextAction, 'observe')
+  assert.equal(r.reason?.abnormal, false, 'ordinary waiting, not an abnormal blocker')
   assert.deepEqual(r.blockers, [])
+  // The window closed over records that were read, but they have not cleared the gate: the review is due.
+  const due = { id: 'evidence:observation', satisfied: false, minDays: 7, reason: '2 failing or interrupted, 40 of 50 active people seen in 9 days', reviewable: true }
+  const review = lane(id, state({ [id]: { exists: true, gates: [due] } }))
+  assert.equal(read(review), 'Ready · Observing · evidence:evidence:observation')
+  assert.equal(review.reason?.text, due.reason)
+  assert.equal(review.nextAction, 'observe', 'the review is the action; enforcement is not offered')
+})
+
+test("owner's status contract: Ready, Up Next, On Hold, Completed and Deferred from the next action's facts", () => {
+  const mfa = 's-goal-mfa-all-users'
+  const perUser = 's-prereq-per-user-mfa'
+  // Up Next: the prerequisite is Ready and enforcing it gives the milestone with nothing more to wait for.
+  assert.equal(read(lane(perUser, state({ [mfa]: PREDICATE_MET, [perUser]: ABSENT }))), `Up Next · step:${mfa}`)
+  // On Hold: the prerequisite is Ready to create, but reaching "enforced" still takes an observation period.
+  const behindCreate = lane(perUser, state({ [mfa]: ABSENT, [perUser]: ABSENT }))
+  assert.equal(read(lane(mfa, state({ [mfa]: ABSENT }))), 'Ready · Create')
+  assert.equal(read(behindCreate), `On Hold · step:${mfa}`)
+  // An available correction is Ready; the same correction behind an unmapped reference is not.
+  const legacy = 's-goal-block-legacy-auth'
+  const drifted: StepObservation = { exists: true, evidenceSatisfied: true, enforced: true, drift: true }
+  assert.equal(read(lane(legacy, state({ [legacy]: drifted }))), 'Ready · Correct')
+  assert.equal(read(lane(legacy, state({ [legacy]: { ...drifted, blockers: [{ kind: 'sourceMapping', id: 'sourceMapping:62d67e66' }] } }))), 'On Hold · sourceMapping:sourceMapping:62d67e66')
+  // Completed: the outcome is in place; Deferred: the owner chose not to, and it satisfies nothing downstream.
+  assert.equal(lane(legacy, state({ [legacy]: { exists: true, evidenceSatisfied: true, enforced: true } })).lane, 'Completed')
+  const deferred = state({ [mfa]: PREDICATE_MET, [perUser]: ABSENT }, { deferred: [mfa] })
+  assert.equal(lane(mfa, deferred).lane, 'Deferred')
+  assert.equal(read(lane(perUser, deferred)), `On Hold · suspendedPrerequisite:${mfa}`)
 })
 
 test('10. Report-only policy with a new abnormal blocker → On Hold, never back to Up Next', () => {
@@ -158,7 +187,7 @@ test('13. baseline safety conflict on enforce holds only once enforce is the nex
   const id = 's-goal-require-managed-device'
   const conflict = { kind: 'baselineSafetyConflict' as const, id: 'baselineSafetyConflict:emergency-exclusion', action: 'enforce' as const }
   assert.equal(read(lane(id, state({ [id]: { exists: false, blockers: [conflict] } }))), 'Ready · Create')
-  assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'Ready · Observing')
+  assert.equal(read(lane(id, state({ [id]: { exists: true, blockers: [conflict] } }))), 'On Hold · evidence:evidence:observation', 'still collecting evidence, not held by the enforce-side conflict')
   const held = lane(id, state({ [id]: { ...PREDICATE_MET, blockers: [conflict] } }))
   assert.equal(read(held), 'On Hold · baselineSafetyConflict:baselineSafetyConflict:emergency-exclusion')
   assert.equal(held.nextAction, 'enforce')
@@ -195,12 +224,12 @@ test('15. mixed prerequisite states: enforce-side gates do not affect a create; 
   assert.equal(read(deriveLane('s-goal-sign-in-risk', licensed, tenant, { resolved: ['license/platform:entra-id-p2'] })), 'Ready · Create')
 })
 
-test('§7 evidence gates: a started policy behind an open gate reads Ready · Observing with the gate as its reason; its create is never gated; closed gates give Ready to enforce', () => {
+test('§7 evidence gates: a started policy behind an open gate waits On Hold with the gate as its reason; its create is never gated; closed gates give Ready to enforce', () => {
   const id = 's-goal-block-device-code'
   const threshold = { id: 'evidence:readiness:mfa', satisfied: false, minDays: null, reason: 'when MFA readiness reaches 90% (now 40%)' }
   const window = { id: 'evidence:observation', satisfied: true, minDays: 7, reason: null }
   const observing = lane(id, state({ [id]: { ...PREDICATE_MET, gates: [threshold, window] } }))
-  assert.equal(read(observing), 'Ready · Observing · evidence:evidence:readiness:mfa')
+  assert.equal(read(observing), 'On Hold · evidence:evidence:readiness:mfa')
   assert.equal(observing.reason?.text, threshold.reason)
   assert.equal(observing.reason?.abnormal, false)
   assert.equal(observing.nextAction, 'enforce')
@@ -212,7 +241,7 @@ test('§7 evidence gates: a started policy behind an open gate reads Ready · Ob
   assert.equal(read(lane(id, state({ [id]: { exists: true, drift: true, gates: [threshold] } }))), 'Ready · Correct')
 })
 
-test('§7 an `evidence` or `time/evidence-window` edge is an evidence gate on enforce, never a fact and never a hold', () => {
+test('§7 an `evidence` or `time/evidence-window` edge is an evidence gate on enforce, never a fact: the started policy waits on it On Hold', () => {
   const id = 's-goal-block-device-code'
   const edges: DependencyData['edges'] = [
     { step: id, action: 'enforce', prerequisite: 'evidence:sign-in-samples', prerequisiteKind: 'evidence', milestone: 'resolved', condition: null, edgeKind: 'hard', source: 'test', status: 'ok', table: 'test' },
@@ -221,7 +250,7 @@ test('§7 an `evidence` or `time/evidence-window` edge is an evidence gate on en
   const g = buildGraph({ ...(data as DependencyData), edges: [...(data as DependencyData).edges, ...edges] })
   const [tenant, owner] = state({ [id]: PREDICATE_MET }, { prerequisites: { 'evidence:sign-in-samples': 'blocked', 'time/evidence-window:seven-days': 'blocked' } })
   const r = deriveLane(id, g, tenant, owner)
-  assert.equal(read(r), 'Ready · Observing · evidence:evidence:sign-in-samples')
+  assert.equal(read(r), 'On Hold · evidence:evidence:sign-in-samples')
   assert.deepEqual(r.gates.map((x) => [x.id, x.satisfied]), [['evidence:sign-in-samples', false], ['time/evidence-window:seven-days', false]])
   assert.deepEqual(r.blockers, [])
   const [absent] = state({ [id]: ABSENT }, { prerequisites: { 'evidence:sign-in-samples': 'blocked', 'time/evidence-window:seven-days': 'blocked' } })
@@ -239,8 +268,9 @@ test('an observed step edge reads as a graph edge: healthy queued work, On Hold 
   assert.equal(read(held), `On Hold · step:${maker}`)
   const gate = lane(id, state({ [id]: { exists: false, waitsOn: [{ step: maker, action: 'enforce' }] }, [maker]: ABSENT }))
   assert.equal(read(gate), 'Ready · Create', 'an enforce-side wait never gates the report-only create')
+  // Evidence in, enforcement behind a Ready maker whose one action finishes it: Up Next.
   const observing = lane(id, state({ [id]: { ...PREDICATE_MET, waitsOn: [{ step: maker, action: 'enforce' }] }, [maker]: ABSENT }))
-  assert.equal(read(observing), `Ready · Observing · step:${maker}`)
+  assert.equal(read(observing), `Up Next · step:${maker}`)
   assert.equal(observing.started, true)
 })
 
@@ -296,7 +326,7 @@ test('§13 Ready order: unlocking creates by unlock count, then policy creates, 
     's-prereq-auth-strength': ABSENT,                  // Create, unlocks 8
     's-goal-intune-enrollment-reauth': ABSENT,         // policy create, unlocks 0
     's-goal-block-legacy-auth': PREDICATE_MET,         // Ready to enforce
-    's-goal-block-device-code': REPORT_ONLY,           // Observing
+    's-goal-block-device-code': { exists: true, gates: [{ id: 'evidence:observation', satisfied: false, minDays: 7, reason: null, reviewable: true }] }, // Observing (review due)
     's-check-dormant-accounts': ABSENT,                // object start, unlocks 0
   })
   const results = deriveLanes(graph, tenant, owner)
@@ -326,12 +356,13 @@ test('§14 Up Next order: fewest layers, then nearest blocker closest to complet
   const results = deriveLanes(graph, tenant, owner)
   assert.equal(results.get('s-prereq-per-user-mfa')?.layers, 1, 'a created policy has passed its create gates')
   const upNext = [...results].filter(([, r]) => r.lane === 'Up Next').map(([id, result]) => ({ id, result }))
+  // Behind an unfinished prerequisite that is not itself Ready, a step waits On Hold (owner's status contract); its depth still sorts it.
+  const deeper = [...results].filter(([, r]) => r.lane === 'On Hold').map(([id, result]) => ({ id, result }))
+  assert.deepEqual(sortUpNext(deeper, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] })).map((r) => r.id), ['s-goal-token-protection', 's-goal-require-managed-device'])
   const sorted = sortUpNext(upNext, graph, unlockCounts(graph, { excludeConditions: ['sd-enabled'] }))
   assert.deepEqual(sorted.map((r) => r.id), [
     's-prereq-per-user-mfa',
     's-prereq-exclusion-group', 's-shared-devices',
     'cleanup-drill', 'cleanup-hardening', 's-goal-service-accounts-trusted-network',
-    's-goal-token-protection',
-    's-goal-require-managed-device',
   ])
 })

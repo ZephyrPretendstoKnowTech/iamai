@@ -737,7 +737,7 @@ function stateOf(o: {
 
 const STATES = {
   'not-deployed': stateOf({ lane: laneOf('Ready', 'Create'), lifecycle: 'not-deployed', condition: 'healthy', kind: 'deploy', at: '2026-09-22T00:00:00.000Z', offered: true }),
-  'report-only': stateOf({ lane: laneOf('Ready', 'Observing'), lifecycle: 'report-only', condition: 'healthy', status: 'in-report-only', kind: 'observe', at: '2026-09-17T00:00:00.000Z', hold: 'observation-incomplete' }),
+  'report-only': stateOf({ lane: laneOf('On Hold', null, BOARD.blockers.evidence), lifecycle: 'report-only', condition: 'healthy', status: 'in-report-only', kind: 'observe', at: '2026-09-17T00:00:00.000Z', hold: 'observation-incomplete' }),
   'review-required': stateOf({ lane: laneOf('Ready', 'Correct'), lifecycle: 'report-only', condition: 'review-required', status: 'in-report-only', kind: 'resolve', hold: 'observation-incomplete', observation: 'The policy changed since IAMAI last read it.', gatedBy: 'The policy changed since IAMAI last read it.', fix: 1 }),
   'in-place': stateOf({ lane: laneOf('Completed'), lifecycle: 'enforced', condition: 'healthy', status: 'done', satisfied: true, inPlace: true, kind: 'preserve' }),
   'baseline-conflict': stateOf({ lane: laneOf('On Hold', null, BOARD.blockers.sourceConflict), lifecycle: null, condition: 'baseline-conflict', status: 'blocked', kind: 'resolve', reason: 'baseline-conflict' }),
@@ -762,7 +762,7 @@ test('the five canonical states are one frame whose content the state changes', 
   // The badge is the lane label the row says (A1b decision 1); the track is the
   // lifecycle alone, and a review moves no stage.
   assert.equal(badgeLabel(S['not-deployed'].c), 'Ready · Create')
-  assert.equal(badgeLabel(S['report-only'].c), 'Ready · Observing')
+  assert.equal(badgeLabel(S['report-only'].c), `On Hold · ${BOARD.blockers.evidence}`)
   assert.equal(badgeLabel(S['review-required'].c), 'Ready · Correct')
   assert.equal(badgeLabel(S['in-place'].c), 'Completed')
   assert.equal(badgeLabel(S['baseline-conflict'].c), `On Hold · ${BOARD.blockers.sourceConflict}`)
@@ -790,7 +790,7 @@ test('the five canonical states are one frame whose content the state changes', 
   // The bar is keyed by the lane (A1b): the Ready substatus's words, the tenant fact on Completed, the blocker on On Hold.
   assert.deepEqual(
     [bar(S['not-deployed']), bar(S['report-only']), bar(S['review-required']), bar(S['in-place']), bar(S['baseline-conflict'])],
-    [B.create, B.observing, B.correct, CONTRACT.lifecycle.enforced, BOARD.blockers.sourceConflict],
+    [B.create, BOARD.blockers.evidence, B.correct, CONTRACT.lifecycle.enforced, BOARD.blockers.sourceConflict],
   )
 
   // Implementation only where it is the current action; otherwise the one box, at the weight of the reason.
