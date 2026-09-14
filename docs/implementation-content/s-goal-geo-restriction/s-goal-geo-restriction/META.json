@@ -59,6 +59,7 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "policy.target.json",
     "tenant.displayName",
     "policy.current.state",

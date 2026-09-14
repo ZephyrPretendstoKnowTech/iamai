@@ -75,6 +75,8 @@ Set **Enable policy** to **Report-only** while correcting or revalidating a mate
 Save the same object(s), read them back, and rescan IAMAI. Do not enforce until the named location and workload policy both match the canonical target and service-principal sign-in evidence is ready.
 
 Keep the policy's current state: if it is On, the correction applies to the sync service principal's token requests as soon as you save. A request from outside the approved named location is then blocked, so confirm the sync server's current egress address is in that location first.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -203,6 +205,7 @@ IAMAI has reached the enforcement state; do not rebuild the location or policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["locationMissing","missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","correctionsParameter":"Corrections","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["CreatePolicy"]},"LocationId":{"binding":"location.syncServer.id","modes":["CreatePolicy","Correct","Verify"]},"ServicePrincipalId":{"binding":"workload.cloudSync.servicePrincipalId","modes":["CreatePolicy","Correct","Verify"]},"PolicyId":{"binding":"policy.current.id","modes":["Correct","Verify"]}},"withheldModes":{"CreateLocation":"-IpRanges takes Graph ipRange objects (@odata.type and cidrAddress); IAMAI binds the approved ranges as CIDR text, so the call cannot be built","Enforce":"the script enforces only with -CurrentEgressAddressConfirmed and -ReportOnlyEvidenceReviewed, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Restrict the Entra Connect Sync Account to Its Address
 # Required module: Microsoft.Graph.Authentication
 # Create/Correct/Enforce delegated scopes: Policy.Read.All, Policy.ReadWrite.ConditionalAccess
@@ -462,6 +465,8 @@ Do not create duplicate objects. If the named-location IP ranges change, supply 
 
 YOUR ROLE
 Apply only the supplied mismatch modules to the same stable objects and stop for IAMAI rescan.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

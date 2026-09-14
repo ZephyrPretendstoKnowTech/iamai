@@ -95,7 +95,12 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   assert.deepEqual(by.powershell.blocks, ['powershell.run'])
   assert.deepEqual(by.powershell.runs, [{ mode: 'Enforce', corrections: [] }])
   assert.ok(by.powershell.text.startsWith('function Invoke-IAMAIStep {\n# IAMAI compact implementation script'))
-  assert.ok(by.powershell.text.includes(authored('powershell.run')), 'the authored script is not carried whole')
+  // Cycle 6 (review 5 queue 1): the script's line naming the exclusions a correction removes
+  // is omitted when nothing is removed, as here; every other authored line is carried.
+  const optional = /\[omit this line when unavailable\]/
+  assert.ok(authored('powershell.run').split('\n').some((l) => optional.test(l)), 'the premise: the script carries the optional removal line')
+  assert.ok(by.powershell.text.includes(authored('powershell.run').split('\n').filter((l) => !optional.test(l)).join('\n')), 'the authored script is not carried whole')
+  assert.doesNotMatch(by.powershell.text, /This change removes|\{\{/)
   assert.ok(
     by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -AuthenticationStrengthId '${PILOT_IDS.strength}' -LegacyDeviceMfaToggleConfirmedNo -EnrollmentWorkflowsValidated -ExternalAuthenticationCompatibilityResolved`),
     by.powershell.text.slice(-300),

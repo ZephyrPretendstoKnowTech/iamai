@@ -121,15 +121,7 @@
       "powershell": [
         {
           "block": "powershell.composite",
-          "mode": "StageA"
-        },
-        {
-          "block": "powershell.composite",
           "mode": "CorrectA"
-        },
-        {
-          "block": "powershell.composite",
-          "mode": "StageB"
         },
         {
           "block": "powershell.composite",

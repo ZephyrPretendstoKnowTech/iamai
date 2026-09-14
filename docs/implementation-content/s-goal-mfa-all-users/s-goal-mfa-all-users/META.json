@@ -54,6 +54,7 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "people.affected.count",
     "policy.current.displayName",

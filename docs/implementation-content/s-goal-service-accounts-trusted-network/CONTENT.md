@@ -57,6 +57,8 @@ When IAMAI selected lifecycle correction, set the policy to Report-only. Do not 
 Save the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -151,6 +153,7 @@ Immediately before enforcement, re-verify the stable policy, user-based identity
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"ServiceAccountsGroupId":{"binding":"serviceAccounts.group.id","modes":["Create","CorrectConditions","Verify","Enforce"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]},"TrustedLocations":{"binding":"trustedLocations.ids","modes":["Create","CorrectConditions","Verify","Enforce"]}},"withheldModes":{"Enforce":"Enforce runs only with -IdentityTypesValidated and -WorkflowSourcesValidated, and this package declares no prerequisite IAMAI can check to pass them."}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
   [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,
   [string]$PolicyId,
@@ -243,6 +246,8 @@ Review IAMAI's proposed user-based service-account block policy. Target: canonic
 Review only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity, canonical group identity, and approved trusted location IDs. Do not broaden network trust or convert service-principal handling into a user policy.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

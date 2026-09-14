@@ -39,6 +39,7 @@
     "peoplePolicies.resolvedPatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "shared.confirmedAccounts",
     "shared.deviceEvidence",
     "policy.current.displayName",

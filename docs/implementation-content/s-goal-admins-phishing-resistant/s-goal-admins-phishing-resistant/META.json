@@ -58,6 +58,7 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "admins.affected.count",
     "admins.notReady",

@@ -80,6 +80,10 @@
     "policies.session.semanticMismatches"
   ],
   "optionalBindings": [
+    "policies.session.browser.current.removedExclusions",
+    "policies.session.browser.current.displayName",
+    "policies.session.unmanaged.current.removedExclusions",
+    "policies.session.unmanaged.current.displayName",
     "tenant.displayName",
     "people.affected.count",
     "evidence.unmanagedBrowser",

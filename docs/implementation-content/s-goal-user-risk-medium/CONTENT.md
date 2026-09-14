@@ -58,6 +58,8 @@ If correction work should return to observation, set Enable policy to Report-onl
 Save once after the selected corrections, read back the same stable policy ID, and rescan IAMAI. Do not create a duplicate policy.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -162,6 +164,7 @@ Open policy ID `{{policy.current.id}}`, re-verify the canonical configuration an
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]}},"withheldModes":{"Enforce":"Enforce runs only with -MfaRegistrationValidated, and with -HybridPasswordWritebackValidated where hybrid users are in scope, and this package declares no prerequisite IAMAI can check to pass them."}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
   [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','ReportOnly','Verify','Enforce')][string]$Mode,
   [string]$PolicyId,
@@ -256,6 +259,8 @@ Review IAMAI's proposed Medium user-risk password-change policy. Target: All use
 Review only these IAMAI-classified mismatches: {{policy.current.semanticMismatches}}. Preserve stable policy identity. Current v1.0 authoring uses built-in MFA + passwordChange with AND. Do not invent exclusions, add unrelated conditions, or disable the separate High-risk policy.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}

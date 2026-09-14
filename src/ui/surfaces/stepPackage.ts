@@ -32,6 +32,7 @@ import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts
 import type { Bindings, ChannelArtifact, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
+import { shared } from '../../content/content.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
@@ -190,6 +191,16 @@ export function safeCorrectionOf(step: Step, snapshot: TenantSnapshot | null): b
 function waitsOnEmergencyAccess(step: Step): boolean {
   const gate = new Set(GATING_SUBJECTS.map(blockerStepId))
   return step.action.escapeHatch != null || step.blockers.some((b) => b.kind === 'step' && gate.has(b.stepId))
+}
+
+/**
+ * The exclusions an update takes off the tenant's policy (PolicyOperation.removes), by
+ * name: guest or external users, then each object by the plan's name for it, the words
+ * the step's portal lines use (stepPortal.ts). A create removes nothing.
+ */
+export function removedExclusionNames(op: PolicyOperation | null, nameOf: (id: string) => string): string[] {
+  if (op?.mode !== 'update' || !op.removes) return []
+  return [...(op.removes.guestsOrExternalUsers ? [shared.changeRemovesGuests as string] : []), ...op.removes.ids.map((id) => nameOf(id))]
 }
 
 /** A multi-policy set with a member to create beside a member the tenant already has. */
@@ -466,6 +477,10 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)
   put('policy.current.state', step.tracking?.state)
+  // The exclusions the one update takes off the tenant's policy, by name, as the step's
+  // portal lines name them: the package's correction save, AI Info and script say so
+  // beside the change (review 5 queue 1). A set names each member's own (memberBindings).
+  if (plannedOperationsOf(step).length === 1) putSome('policy.current.removedExclusions', removedExclusionNames(op, ctx.nameOf))
   // An enforced policy whose update a hold emptied while it waits on the exclusions
   // group is still owed that group's exclusion: the one field its correction will
   // change (B10 P0-1), so the planning preview selects the correction's module.
@@ -509,7 +524,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('emergency.target.userId', owed[0].id)
     put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === owed[0].id)?.userPrincipalName)
   }
-  for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot))) out[key] = value
+  for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot, ctx.nameOf))) out[key] = value
   // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
   if (step.id === PASSKEY_SETTINGS_STEP_ID) for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
@@ -529,7 +544,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
  * position or a display name, which is how a pair collapses into one policy. A
  * member with no stable id, or none the step resolves, binds nothing.
  */
-export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bindings {
+export function memberBindings(step: Step, snapshot: TenantSnapshot | null, nameOf?: (id: string) => string): Bindings {
   const pkg = implementationPackageFor(step)
   const members = pkg?.meta.baselineAuthority?.members ?? []
   if (!pkg || members.length === 0) return {}
@@ -562,6 +577,9 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
       if (typeof row?.displayName === 'string') out[`${prefix}.current.displayName`] = row.displayName
       const changed = changedFieldsOf(op.body as Record<string, unknown>, row)
       if (changed.length > 0) out[`${prefix}.current.changedFields`] = changed
+      // The exclusions this member's own update takes off (see packageBindings).
+      const removed = nameOf ? removedExclusionNames(op, nameOf) : []
+      if (removed.length > 0) out[`${prefix}.current.removedExclusions`] = removed
     }
   }
   // Every member's whole target, as a script that takes the set reads it

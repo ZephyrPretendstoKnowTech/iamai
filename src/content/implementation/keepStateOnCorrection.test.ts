@@ -9,8 +9,11 @@
 // Partial projection rather than a rendered sample.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync, readdirSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
 import registry from './registry.generated.json' with { type: 'json' }
 import type { CompiledPackage } from './protocol.ts'
+import { parseBlocks } from './protocol.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -45,7 +48,7 @@ function partialRefs(pkg: CompiledPackage): { module: string; channel: string; r
 }
 
 const REPORT_ONLY_BODY = /^\s*\{\s*"state"\s*:\s*"enabledForReportingButNotEnforced"\s*\}\s*$/
-const REPORT_ONLY_PROSE = /\b(set|return|move|switch|keep)\b[^.]{0,80}\*{0,2}Report-only\*{0,2}[^.]{0,40}\b(while|first|before (chang|apply|correct))|canonical Report-only target/i
+const REPORT_ONLY_PROSE = /\b(set|return|move|switch|keep|stage)\b[^.]{0,80}\*{0,2}Report-only\*{0,2}[^.]{0,40}\b(while|first|before (chang|apply|correct|access-affecting))|canonical Report-only target/i
 /**
  * A sentence that moves or keeps a policy in report-only as part of correcting it. A recovery
  * step for when something goes wrong ("If a correction creates unexpected risk, return … to
@@ -61,9 +64,10 @@ function stagingIn(pkg: CompiledPackage): string[] {
     const id = typeof ref === 'string' ? ref : ref.block
     const block = pkg.blocks[id]
     if (channel === 'powershell' && typeof ref !== 'string') {
-      if (/^ReportOnly/.test(ref.mode ?? '') || (ref.corrections ?? []).includes('ReportOnly')) found.push(`${module}: runs ${ref.mode}${ref.corrections ? ` ${ref.corrections.join(',')}` : ''}`)
+      if (/^(ReportOnly|Stage)/.test(ref.mode ?? '') || (ref.corrections ?? []).includes('ReportOnly')) found.push(`${module}: runs ${ref.mode}${ref.corrections ? ` ${ref.corrections.join(',')}` : ''}`)
     }
     if (!block) continue
+    if (channel === 'powershell' && /Refusing correction while policy is On/.test(block.text)) found.push(`${module}: ${id} refuses a correction while the policy is On`)
     if (channel === 'json' && REPORT_ONLY_BODY.test(block.text)) found.push(`${module}: ${id} PATCHes the state to report-only`)
     if ((channel === 'entra' || channel === 'aiInfo') && stagesInProse(block.text)) found.push(`${module}: ${id} tells the technician to move it to report-only`)
   }
@@ -77,6 +81,25 @@ test('no registered package corrects a policy by moving it to report-only, apart
     if (found.length > 0) staging[id] = found
   }
   assert.deepEqual(Object.keys(staging).sort(), Object.keys(STILL_STAGING).sort(), JSON.stringify(staging, null, 1))
+})
+
+// Cycle 6: the registry is compiled with the parts the runtime cannot project withheld, so a
+// withheld Partial projection never reaches the scan above. s-goal-unmanaged-browser's was
+// one: its authored correction ran StageA/StageB, refused to correct an enabled policy and
+// said "Stage any enabled policy to Report-only". Nothing drew it, but the authored package
+// is the source a later compile would project, so every authored package is scanned too.
+test('no authored package, the parts the registry withholds included, corrects a policy by moving it to report-only', () => {
+  const ROOT = 'docs/implementation-content'
+  const metas = (readdirSync(ROOT, { recursive: true }) as string[]).filter((p) => basename(p) === 'META.json')
+  assert.ok(metas.length >= 44, `${metas.length} authored packages`)
+  const staging: Record<string, string[]> = {}
+  for (const path of metas) {
+    const dir = dirname(join(ROOT, path))
+    const authored = { meta: JSON.parse(readFileSync(join(dir, 'META.json'), 'utf8')), blocks: parseBlocks(readFileSync(join(dir, 'CONTENT.md'), 'utf8')) } as unknown as CompiledPackage
+    const found = stagingIn(authored)
+    if (found.length > 0) staging[path] = found
+  }
+  assert.deepEqual(staging, {})
 })
 
 test('the scan sees staging where it is: any named package, and a synthetic lifecycle module', () => {
@@ -102,5 +125,7 @@ test('prose control: a recovery step is not a correction default, a report-only 
   assert.equal(stagesInProse('If the workload policy is currently On and the location range is wrong, return the workload policy to Report-only before changing the allowed address.'), true)
   assert.equal(stagesInProse('Keep or return a materially incorrect policy to **Report-only** while correcting it.'), true)
   assert.equal(stagesInProse('Set **Enable policy** to **Report-only** before applying semantic corrections.'), true)
+  // Cycle 6: unmanaged-browser's wording, which the verb list missed (it also ran StageA/StageB).
+  assert.equal(stagesInProse('Stage any enabled policy to Report-only before access-affecting correction.'), true)
   assert.equal(stagesInProse('GOAL\nMove the existing resolved policy to the canonical Report-only target without creating a duplicate.'), true)
 })

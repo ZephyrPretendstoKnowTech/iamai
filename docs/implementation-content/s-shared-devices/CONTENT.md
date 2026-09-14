@@ -41,6 +41,8 @@ For each person-interactive policy IAMAI identifies, open that exact policy by s
 Save, re-open the same stable object(s), verify the intended scope, then rescan IAMAI.
 
 Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -76,6 +78,7 @@ Open the exact dedicated policy by stable ID, re-confirm the trusted-network loc
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"IncludeUsers":{"binding":"policy.target.includeUsers","modes":["Create","CorrectConditions"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]},"TrustedLocationId":{"binding":"policy.target.trustedLocationId","modes":["Create","CorrectConditions"]}},"withheldModes":{"Enforce":"Enforce runs only with -TrustedLocationReconfirmed and -ReportOnlyEvidenceReviewed, and this package declares no prerequisite IAMAI can check to pass them.","PeopleExclusions":"PeopleExclusions reads the resolved people-policy patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
  [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','ReportOnly','PeopleExclusions','Verify','Enforce')][string]$Mode,
  [string]$PolicyId,
@@ -126,6 +129,8 @@ The PowerShell Create writes this one policy only. Excluding these accounts from
 Review only these detected semantic mismatches: {{policy.current.semanticMismatches}}. Preserve stable IDs and existing canonical exclusions.
 
 The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
