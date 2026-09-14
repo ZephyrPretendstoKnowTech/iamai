@@ -193,6 +193,7 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | 6ed777e | Worker: a config section's reason is redacted in the snapshot; workerReasons.test.ts; c3-worker.ts |
 | dedd58f | docs: cycle 3 RESULTS/BLOCKED checkpoint; keep-state scan counts "is currently On" as a default |
 | dfb6274 | workload-identity-block corrections keep an enabled policy's state (the last staging package); `STILL_STAGING` empty |
+| cfbee44, 1c7fccb | docs only: RESULTS/BLOCKED updated for dfb6274; BLOCKED evidence for the undisclosed exclusion removal (rv-edge rerun, Graph PATCH reference) |
 
 ### R1 OR-alternative widening (review 2 queue 1): FIXED
 - **Reproduced at a3d22f3** (`r1-repro.txt`, `r1-both.txt`). Grants: "phishing-resistant strength OR compliant device" and "MFA OR compliant device", on the admins group and on the staff group, all enabled.
@@ -308,10 +309,19 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c3/acceptance-<sha>`, `<copy>` = `git archive` into a new directory, harness identical by `cmp` | c0e91fe; **6ed777e** | 0; 0 | 28 PASS · 0 FAIL · 0 HARNESS_ERROR each (`acceptance-1.txt`, `acceptance-2.txt`) |
 | Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` (preload re-read: localhost only); report `docs/reports/walk-c0e91fe.md`, captures `walk/c0e91fe/` (gitignored) | **c0e91fe** (bundle built before the 6ed777e worker edit; the demo walk does not run the collection worker) | 0 | "show-ready on this walk (no P0)": **0 P0, 494 P1, 50 P2** (review a3d22f3: 0/498/50). Normalized against the review's walk: 4 findings removed (above), none added; first load 4.7 s throttled (P1, as before) (`walk-1.txt`, `walk-norm-*.txt`) |
 | Worker probe | `node docs/preview-continuation/probes/c3-worker.ts` | 6ed777e tree | 0 | 7 PASS · 0 FAIL (`worker-4.txt`) |
+| Full suite | `npm test` | **dfb6274** (final code; later commits are docs only) | 0 | **2715 tests · 2713 pass · 0 fail · 0 cancelled · 2 skipped** (same two), 09:00–09:03 (`full-3.txt`) |
+| Build | `npm run build` | **dfb6274** | 0 | pre-existing chunk-size warning (`build-3.txt`) |
+| Typecheck | `npx tsc --noEmit` | dedd58f tree; dfb6274 tree | 0; 0 | `tsc-6.txt`, `tsc-7.txt` |
+| Matrix | `s3-matrix.ts curated all` | **dfb6274** | 0 | 490 renders · 0 packageFault · 15 uncalled · 0 empty; **row-for-row identical to c0e91fe** (0 diff lines). No curated fixture renders a workload-identity-block correction (`matrix-2.txt`) |
+| PowerShell parse | render + `Parser::ParseFile` (parse only) | dfb6274 tree | 0 | workload-identity-block Correct (conditions, grant, both): 3 files, 0 errors (`workload-ps-parse.txt`) |
+| Acceptance | same harness, `<copy>` = `git archive dfb62744` into a new directory, harness identical by `cmp` | **dfb6274** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-3.txt`) |
+| Walk | same walk command and preload; report `docs/reports/walk-1c7fccb.md`, captures `walk/1c7fccb/` (gitignored) | **1c7fccb** (code = dfb6274; tree clean at start), 09:04–09:08 | 0 | "show-ready on this walk (no P0)": **0 P0, 494 P1, 50 P2**. Normalized findings **identical to the c0e91fe walk** (574 lines each, 0 differ) (`walk-2.txt`, `walk-norm-1c7fccb.txt`) |
 
 ### Not done in cycle 3 (actionable; see BLOCKED)
 1. Board/export lane reads Ready while the next safe action is blocked (45 steps).
 2. Remaining 15 uncalled scripts: guests-mfa, service-accounts-trusted-network, user-risk-medium.
-3. Removed tenant exclusions not disclosed.
+3. Removed tenant exclusions not disclosed (evidence refreshed at dfb6274).
 4. session-lifetime and register-info-protected bindings.
 5. Low: unprojected lifecycle blocks, ReportOnly modes and workload-identity-block's Location guard; same-name create; passkey profiles; Lane B and P1 worker paths not probed.
+
+**Working tree at the end of cycle 3.** This ledger is committed with the final docs commit below, and nothing else is uncommitted; stash empty. Gitignored outputs written this cycle: `docs/reports/walk-c0e91fe.md`, `walk-1c7fccb.md`, `walk/c0e91fe/`, `walk/1c7fccb/` and `dist/`. Outside the clone: `../logs/c3/`, `../scratch/c3-*`, and archive copies `../acc-src-c0e91fe-c3`, `../acc-src-6ed777e-c3`, `../acc-src-dfb6274-c3`. One command was declined: an acceptance copy step that began with `rm -rf` of a directory outside the clone. It was redone into a new directory with no deletion.
