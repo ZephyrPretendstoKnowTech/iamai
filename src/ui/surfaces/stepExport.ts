@@ -19,7 +19,7 @@ import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
 import { CONTRACT, badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
-import { bindingLabel, implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
@@ -132,7 +132,9 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
  * walk-through of work the package can only preview because values IAMAI does not hold
  * are missing. Without it the export read "Ready · Create" over a create the screen said
  * could not be copied (review 7 queue 2). Only a values hold is read: the export has no
- * owner confirmations, and a missing value holds whatever they satisfy.
+ * owner confirmations, and a missing value holds whatever they satisfy. The lines are
+ * the screen's own (stepPackage.ts previewNoteLines), so a "Ready · Create" export is
+ * never over a note that says the create is not ready to run.
  */
 function previewValueLines(step: Step, ctx: StepVarContext, contract: StepContract): string[] {
   const pkg = implementationPackageFor(step)
@@ -140,10 +142,9 @@ function previewValueLines(step: Step, ctx: StepVarContext, contract: StepContra
   if (!pkg || state === null) return []
   const bindings = packageBindings(step, ctx, contract)
   const { runtime } = packageRuntime(pkg, state, bindings, {})
-  const missing = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projectSafely(pkg, state, bindings, runtime))?.hold?.missingBindings ?? []
-  if (missing.length === 0) return []
-  const W = CONTRACT.implementation.preview
-  return [contract.fix.length === 0 && !contract.state.held ? W.textValues : W.text, fillText(W.values, { values: list([...new Set(missing.map(bindingLabel))]) })]
+  const hold = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projectSafely(pkg, state, bindings, runtime))?.hold ?? null
+  if (hold === null || hold.missingBindings.length === 0) return []
+  return previewNoteLines(step, contract, hold)
 }
 
 /**
