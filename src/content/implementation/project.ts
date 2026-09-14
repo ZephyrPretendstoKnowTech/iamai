@@ -108,10 +108,23 @@ function formatValue(v: unknown): string {
  * and that null is the baseline's own value, not a value IAMAI lacks (correction
  * batch 1). A key IAMAI never set is not held.
  */
-export function bound(bindings: Bindings, key: string): boolean {
+export function bound(bindings: Bindings, key: string, emptyOk: ReadonlySet<string> = NO_EMPTY): boolean {
   if (!Object.hasOwn(bindings, key)) return false
   const v = bindings[key]
-  return v === null || present(v)
+  return v === null || present(v) || (emptyOk.has(key) && Array.isArray(v))
+}
+
+const NO_EMPTY: ReadonlySet<string> = new Set()
+
+/**
+ * The bindings a package declares a resolved empty list is a value for
+ * (`resolvedEmptyBindings`): the authoritative target sets the list, and it is
+ * empty — the session policy's excluded accounts, where the pinned target excludes
+ * nobody. A key IAMAI did not bind is still missing, a non-list is not a value, and
+ * no other required binding becomes optional.
+ */
+export function resolvedEmptyOf(pkg: { meta: Record<string, unknown> }): ReadonlySet<string> {
+  return new Set(asStrings(pkg.meta.resolvedEmptyBindings))
 }
 
 /**
@@ -128,13 +141,13 @@ export const UNRESOLVED = /\{\{(?:json:)?[A-Za-z0-9_.-]+\}\}|\[omit (?:this line
  * marker and all; a missing required value refuses the block rather than printing
  * a placeholder.
  */
-export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>): { text: string } | { missing: string[] } {
+export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>, emptyOk: ReadonlySet<string> = NO_EMPTY): { text: string } | { missing: string[] } {
   const missing = new Set<string>()
   const out: string[] = []
   for (const line of text.split('\n')) {
     const used = [...line.matchAll(BINDING)].map((m) => ({ json: m[1] !== undefined, key: m[2] }))
     // A whole JSON value may be null; a word in a sentence may not.
-    const absent = used.filter((u) => (u.json ? !bound(bindings, u.key) : !present(bindings[u.key]))).map((u) => u.key)
+    const absent = used.filter((u) => (u.json ? !bound(bindings, u.key, emptyOk) : !present(bindings[u.key]))).map((u) => u.key)
     if (absent.length > 0) {
       for (const b of absent) if (required.has(b)) missing.add(b)
       continue
@@ -371,7 +384,8 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
   // The engine's facts about a correction and the selected-module binding are IAMAI's to supply, never a value to resolve.
   const own = mismatchBindingOf(p)
   const out: Record<string, string> = {}
-  for (const k of keys) if (!bound(bindings, k) && k !== CHANGED_FIELDS_BINDING && k !== own && !k.endsWith('.semanticMismatches')) out[k] = placeholder(k)
+  const emptyOk = resolvedEmptyOf(pkg as unknown as { meta: Record<string, unknown> })
+  for (const k of keys) if (!bound(bindings, k, emptyOk) && k !== CHANGED_FIELDS_BINDING && k !== own && !k.endsWith('.semanticMismatches')) out[k] = placeholder(k)
   return out
 }
 
@@ -403,6 +417,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
   const hold = emptyHold()
   const p = pkg.meta.projection[state] as Record<string, unknown> | undefined
   if (!p) return { state, hold: { ...hold, noProjection: true }, channels: [] }
+  const emptyOk = resolvedEmptyOf(pkg as unknown as { meta: Record<string, unknown> })
 
   // The next transition's prerequisites, before anything is built: an artifact
   // that performs a transition a person has not cleared is not offered. A
@@ -439,7 +454,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
   let b: Bindings = planning ? { ...bindings, ...standIns } : bindings
   if (selection !== null) b = { ...b, [selection.binding]: selection.selected }
   // What the state as a whole requires holds every channel: none of them is the work without it.
-  hold.missingBindings = [...requires].filter((r) => !present(b[r]))
+  hold.missingBindings = [...requires].filter((r) => !present(b[r]) && !(emptyOk.has(r) && Array.isArray(b[r])))
   if (hold.missingBindings.length > 0) return { state, hold, channels: [] }
 
   const required = new Set(pkg.meta.requiredBindings ?? [])
@@ -464,7 +479,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
         bad.push(`${id}: no such block`)
         continue
       }
-      const bound = bindText(planning && isJsonFormat(block) ? maskStandIns(block.text, standIns) : block.text, b, required)
+      const bound = bindText(planning && isJsonFormat(block) ? maskStandIns(block.text, standIns) : block.text, b, required, emptyOk)
       if ('missing' in bound) {
         miss.push(...bound.missing)
         continue
@@ -479,7 +494,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: a deployable script with no invocation`)
           continue
         }
-        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied, new Set(Object.keys(standIns)))
+        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied, new Set(Object.keys(standIns)), emptyOk)
         if ('missing' in rendered) {
           miss.push(...rendered.missing)
           continue
@@ -585,7 +600,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
     const bears = blockIds.some((id) => {
       const bl = pkg.blocks[id]
       // A binding the block names but IAMAI does not hold dropped its line, and carries nothing.
-      return bl !== undefined && ([...bl.text.matchAll(BINDING)].some((m) => bound(b, m[2])) || (typeof bl.meta.endpoint === 'string' && /\{[A-Za-z0-9_.-]+\}/.test(bl.meta.endpoint)) || (isJsonFormat(bl) && [...bl.text.matchAll(BATCH_URL_IDENTITY)].length > 0) || bl.meta.invocation !== undefined)
+      return bl !== undefined && ([...bl.text.matchAll(BINDING)].some((m) => bound(b, m[2], emptyOk)) || (typeof bl.meta.endpoint === 'string' && /\{[A-Za-z0-9_.-]+\}/.test(bl.meta.endpoint)) || (isJsonFormat(bl) && [...bl.text.matchAll(BATCH_URL_IDENTITY)].length > 0) || bl.meta.invocation !== undefined)
     })
     if (bears) bearing.add(ch)
     const corrections = [...new Set(runs.flatMap((r) => r.corrections))]

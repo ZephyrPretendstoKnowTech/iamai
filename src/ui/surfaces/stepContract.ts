@@ -156,6 +156,10 @@ type ContractWords = {
     ai: string
     email: string
     aiWarning: string
+    /** The grounding every AI Info carries after the package's own words (aiGrounding.ts). */
+    aiFacts: { heading: string; boundary: string; observed: string; members: string; existing: string; current: string; currentState: string; changedFields: string; removedExclusions: string; target: string; targetName: string; includeUsers: string; includeRoles: string; excludeGroups: string; excludeUsers: string; locations: string; grant: string; strength: string; accounts: string; more: string; none: string }
+    /** The session policy's excluded accounts where the resolved target excludes nobody (stepPackage.ts). */
+    excludeUsersNone: string
     copy: string
     expand: string
     dialogEyebrow: string

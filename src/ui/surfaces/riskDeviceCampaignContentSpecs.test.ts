@@ -40,6 +40,13 @@ function bodyOf(name: FixtureName, stepId: string): StepBody {
 }
 /** The text one channel tab draws. */
 const drawn = (b: StepBody, id: string): string => b.artifacts.find((a) => a.id === id)!.text()
+/** AI Info's own words: the package's text, before the IAMAI facts every AI Info carries after it (aiGrounding.ts), which must follow. */
+const ownAi = (b: StepBody): string => {
+  const text = drawn(b, 'ai')
+  const at = text.indexOf(`\n\n${CONTRACT.implementation.aiFacts.heading}\n\n`)
+  assert.ok(at > 0, 'the AI Info carries no IAMAI facts after its own words')
+  return text.slice(0, at)
+}
 
 test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming the exclusions group step, and AI Info explains the policy for a tech', () => {
   const MEDIUM = 's-goal-sign-in-risk-medium'
@@ -62,7 +69,7 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
     },
   ])
   assert.doesNotMatch(entra, /canonical|retained baseline member/)
-  assert.equal(drawn(b, 'ai'), [
+  assert.equal(ownAi(b), [
     'This policy requires MFA when Microsoft detects a medium-risk sign-in — for example, a sign-in from an unfamiliar location, a new device, or credentials found in a leaked database.',
     'It starts in Report-only so you can observe which sign-ins would be challenged without blocking anyone. After the observation window, IAMAI will prompt you to enforce it.',
     'The exclusions group is excluded so emergency access accounts are never blocked by this policy.',
@@ -175,7 +182,7 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   const entra = drawn(b, 'portal')
   assert.match(entra, /^2\. Name: Core - Session - Fresh sign-in for Intune enrollment\.$/m)
   assert.doesNotMatch(entra, /canonical|retained baseline member|read back|\{\{/)
-  assert.equal(drawn(b, 'ai'), AI)
+  assert.equal(ownAi(b), AI)
   const words = stepWords('intune-enrollment-reauth')
   assert.equal(words.doneEnd, 'The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.')
   assert.equal(words.why, 'Enrollment makes a device trusted; it should never ride on a session someone else could be holding, so it asks for a fresh sign-in every time.')
@@ -214,7 +221,7 @@ test('s-verify-mfa: Why is two sentences, the special-care tile is short, the in
     { kind: 'break' },
     { kind: 'line', text: 'Each user will see a prompt at their next sign-in asking them to register a passkey. They can snooze it, but it returns until they complete registration.' },
   ])
-  assert.equal(drawn(b, 'ai'), [
+  assert.equal(ownAi(b), [
     'After enabling the campaign, help each special-care person register in person:',
     [
       '1. Book 10 minutes with each person listed under "People who need special care."',

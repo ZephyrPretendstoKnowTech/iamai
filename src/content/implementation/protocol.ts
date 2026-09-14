@@ -87,6 +87,12 @@ export type PackageMeta = {
    */
   baselineAuthority?: { pinCommit?: string; members?: { role: string; memberStableId: string | null }[] } & Record<string, unknown>
   email?: { block?: string; audience?: string; communicationTrigger?: string; purpose?: string } & Record<string, unknown>
+  /**
+   * Bindings whose resolved empty list is a value rather than a missing one
+   * (project.ts resolvedEmptyOf): the authoritative target sets the list, and it
+   * is empty. Each must be a declared binding; a key IAMAI did not bind stays missing.
+   */
+  resolvedEmptyBindings?: string[]
 } & Record<string, unknown>
 
 export type CompiledPackage = { meta: PackageMeta; blocks: Record<string, Block> }
@@ -520,6 +526,8 @@ export function packageIssues(pkg: CompiledPackage): PackageIssue[] {
   }
   const { meta, blocks } = pkg
   const declared = new Set([...asStrings(meta.requiredBindings), ...asStrings(meta.optionalBindings), CHANGED_FIELDS_BINDING])
+  // A resolved empty list is a value only for a binding the package declares (project.ts resolvedEmptyOf).
+  for (const key of asStrings(meta.resolvedEmptyBindings)) if (!declared.has(key)) add({ kind: 'prerequisite', index: -1 }, `resolvedEmptyBindings: ${key} is not a declared binding`)
   const prerequisites = Array.isArray(meta.prerequisites) ? meta.prerequisites : []
   const prerequisiteIds = new Set(prerequisites.map((p) => p?.id).filter((id): id is string => typeof id === 'string'))
   const vocab: ConditionVocabulary = { bindings: declared, prerequisites: prerequisiteIds, states: new Set(PACKAGE_STATES) }

@@ -361,7 +361,7 @@
   "pages": {
     "connect": {
       "eyebrow": "Setup",
-      "h1": "Strengthen identity security without guessing what will break.",
+      "h1": "Strengthen identity security with evidence about who could be affected.",
       "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects. It is read-only and runs in this browser.",
       "status": {
         "$comment": "Task 032: the approved pack's status strip above the staged flow (docs/design/approved/connect-v3.html). It is a projection of the same progression the stages already carry — the stage with the next action, or nothing left to do — never a second reading of readiness. The quiet half is the current stage's own state line, so the strip and the step cannot disagree.",
@@ -996,7 +996,7 @@
     },
     "home": {
       "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
-      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
+      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
       "brand": "IAMAI",
       "navHow": "How it works",
       "navSource": {
@@ -1027,7 +1027,7 @@
         },
         {
           "verb": "Plans",
-          "text": "The difference as dated steps: report-only first where a policy supports it, who each change touches, what would break, and the emails to send."
+          "text": "The difference as dated steps: report-only first where a policy supports it, who could be affected by each change, and the emails to send."
         }
       ],
       "baselineLabel": "Default baseline",
@@ -1067,7 +1067,7 @@
           "body": "IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in."
         },
         {
-          "title": "Your scan and plan stay in your browser",
+          "title": "Your plan is built in your browser",
           "body": "IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data."
         },
         {
@@ -1449,6 +1449,31 @@
             "tabsLabel": "Implementation channel",
             "ai": "AI Info",
             "aiWarning": "Contains tenant context. Review before sharing with an external AI service.",
+            "aiFacts": {
+              "$comment": "The grounding every AI Info carries after the package's own instructions (stepBody.ts, aiGrounding.ts): IAMAI's facts for this step, so an assistant needs no screen. Observations and plan, never confirmation that a change was made.",
+              "heading": "IAMAI FACTS FOR THIS STEP",
+              "boundary": "What follows is what IAMAI observed in this tenant's latest scan and what its plan proposes. It does not confirm that any change has been made.",
+              "observed": "Observed",
+              "members": "Policies IAMAI tracks for this step",
+              "existing": "Tenant policies already delivering this goal",
+              "current": "Current tenant policy",
+              "currentState": "Current state",
+              "changedFields": "Fields that differ from the target",
+              "removedExclusions": "Exclusions the correction removes",
+              "target": "Intended target",
+              "targetName": "Policy name",
+              "includeUsers": "Included people",
+              "includeRoles": "Included roles",
+              "excludeGroups": "Excluded groups",
+              "excludeUsers": "Excluded accounts",
+              "locations": "Locations",
+              "grant": "Grant",
+              "strength": "Authentication strength",
+              "accounts": "Accounts IAMAI observed",
+              "more": "{n} more not listed here",
+              "none": "none"
+            },
+            "excludeUsersNone": "none: the resolved target excludes no individual accounts",
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",

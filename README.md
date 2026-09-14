@@ -19,7 +19,7 @@ side by side.
 
 IAMAI reads the tenant, compares its policies with a baseline by what each policy does
 rather than what it is called, and writes a dated plan: which steps are needed, who
-each change is predicted to affect, what has to be ready first, and the change to make.
+each change could affect, what has to be ready first, and the change to make.
 Predicted impact is an estimate from the tenant's own records, confirmed in report-only
 before a policy is enforced. IAMAI does not guarantee that nobody is locked out.
 

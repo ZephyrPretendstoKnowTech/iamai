@@ -191,7 +191,7 @@ We are preparing the tenant-wide MFA policy in Report-only first. No enforcement
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: MFA enforcement is ready
 
-The tenant-wide MFA policy has completed its validation stage and is ready to be enabled. After enforcement, ordinary sign-ins will require MFA. If someone cannot complete the prompt, use the documented registration/recovery workflow rather than adding a permanent exclusion.
+The tenant-wide MFA policy has finished its Report-only review and is ready to be turned on. After enforcement, ordinary sign-ins will require MFA. If someone cannot complete the prompt, use the documented registration/recovery workflow rather than adding a permanent exclusion.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}

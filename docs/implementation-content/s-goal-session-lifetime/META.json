@@ -78,7 +78,11 @@
     "policies.session.unmanaged.current.id",
     "policies.session.semanticMismatches"
   ],
+  "resolvedEmptyBindings": [
+    "policy.target.excludeUsers"
+  ],
   "optionalBindings": [
+    "policy.target.excludeUsersSummary",
     "policies.session.browser.current.removedExclusions",
     "policies.session.browser.current.displayName",
     "policies.session.unmanaged.current.removedExclusions",

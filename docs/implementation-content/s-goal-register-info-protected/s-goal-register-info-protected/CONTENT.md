@@ -32,7 +32,7 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review Conditional Access report-only results and the step-specific evidence. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.
+Leave the policy in **Report-only**. Check its settings by reading the policy back by stable tenant ID; that confirms the configuration, not the registration experience. Report-only results may not show sign-in method registration attempts, so validate the actual registration steps with a controlled test account before enforcement. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -146,7 +146,7 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess the Report-only evidence for **Protect Sign-in Method Registration** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear.
+Assess the Report-only evidence for **Protect Sign-in Method Registration** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear. Report-only results may not show registration attempts: treat a settings read-back as a check of the configuration and a controlled registration test as the check of the workflow, and say which of the two the available evidence supports.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -172,7 +172,7 @@ Subject: Sign-in method registration policy entering validation
 
 Hi,
 
-We are validating a policy that protects how sign-in methods are registered in {{tenant.displayName}}. Depending on the tenant's resolved trusted-network design, method registration may require the trusted network or an MFA bootstrap path. We will validate the actual registration workflows in Report-only before enforcement.
+We are validating a policy that protects how sign-in methods are registered in {{tenant.displayName}}. Depending on the tenant's resolved trusted-network design, method registration may require the trusted network or an MFA bootstrap path. Before the policy is turned on, we will check its settings and test the registration steps with a test account; report-only records alone may not show how registration behaves.
 
 {{signature}}
 @@IAMAI-END
@@ -182,7 +182,7 @@ Subject: Sign-in method registration protection enforcement
 
 Hi,
 
-The sign-in method registration protection for {{tenant.displayName}} is ready to enforce after Report-only validation. If a legitimate registration is blocked, contact IT rather than adding a user exclusion.
+We plan to turn on the sign-in method registration protection for {{tenant.displayName}}. Before we do, we check its settings and test the registration steps with a test account. If a legitimate registration is blocked, contact IT rather than adding a user exclusion.
 
 {{signature}}
 @@IAMAI-END

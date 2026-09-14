@@ -76,7 +76,7 @@ export const SCOPE_COPY: Record<string, ScopeCopy> = {
     consentReads: 'Who holds which role, and which through PIM',
   },
   'UserAuthenticationMethod.Read.All': {
-    reads: 'Which kinds of sign-in method each account has registered. Microsoft returns each method’s details; IAMAI saves only a summary of its kind, and drops phone numbers before saving.',
+    reads: 'Which kinds of sign-in method each account has registered. IAMAI saves the sign-in details needed for its checks, leaving out phone numbers.',
     without: 'The emergency-access checks lose the method and shared-device tests, and readiness falls back to the registration report alone.',
     consentName: "Read all users' authentication methods",
     consentReads: 'Which kinds of sign-in method each account has; phone numbers are not saved',

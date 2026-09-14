@@ -773,7 +773,7 @@ async function walkFixture(fx) {
         }
         // One heading above the tiles, in both states.
         const h1 = await evaluate(`((document.querySelector('main.page h1') || {}).textContent || '').trim()`)
-        if (h1 !== 'Strengthen identity security without guessing what will break.') add('P0', `${label}: the heading reads "${h1}"; Strengthen identity security without guessing what will break.`)
+        if (h1 !== 'Strengthen identity security with evidence about who could be affected.') add('P0', `${label}: the heading reads "${h1}"; Strengthen identity security with evidence about who could be affected.`)
         if (!/IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
         if (/Connect a tenant/.test(text)) add('P0', `${label}: "Connect a tenant" still renders`)
         // Task 016: the outcome first. Conditional Access is introduced at the

@@ -477,6 +477,17 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // groups: an empty list is the baseline's own "nobody", and a users field still
   // waiting on a reference binds nothing (`settled` above).
   if (Array.isArray(users?.excludeUsers)) put('policy.target.excludeUsers', users.excludeUsers.map(String))
+  // The same resolved accounts in the words a package's portal steps, AI Info and
+  // verification say them: each by name and id, or that the target excludes none.
+  // Bound only where the users field is settled, so an unresolved set says nothing.
+  if (Array.isArray(users?.excludeUsers)) {
+    const named = users.excludeUsers.map((raw) => {
+      const id = String(raw)
+      const name = ctx.nameOf?.(id)
+      return name && name !== id ? `${name} (${id})` : id
+    })
+    put('policy.target.excludeUsersSummary', named.length === 0 ? CONTRACT.implementation.excludeUsersNone : named.join(', '))
+  }
   if (Array.isArray(users?.includeUsers)) put('policy.target.includeUsers', users.includeUsers.map(String))
   else if (target === null && step.kind === 'prerequisite') putSome('policy.target.includeUsers', step.population.ids)
   put('policy.target.includeRoles', Array.isArray(users?.includeRoles) ? users.includeRoles.map(String) : undefined)

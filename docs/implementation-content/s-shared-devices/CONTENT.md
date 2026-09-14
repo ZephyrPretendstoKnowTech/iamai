@@ -160,7 +160,7 @@ Please confirm which listed accounts are assigned to Teams Rooms, panels, shared
 @@IAMAI-BEGIN {"id":"email.change","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: Shared-device Conditional Access change
 
-We are enabling the dedicated shared-device Conditional Access policy after report-only validation. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.
+We plan to turn on the dedicated shared-device Conditional Access policy after its report-only review. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["needsDecision","missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"referenceOnly"}
