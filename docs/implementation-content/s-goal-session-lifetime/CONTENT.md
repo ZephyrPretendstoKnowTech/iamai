@@ -3,7 +3,7 @@
 Do not parse headings for execution. Select blocks only by `META.json` block IDs.
 
 @@IAMAI-BEGIN {"id":"entra.create-set","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create two separate Conditional Access policies. For each: Entra admin center → Entra ID → Conditional Access → Policies → New policy.
+Create the browser policy: Entra admin center → Entra ID → Conditional Access → Policies → New policy.
 
 **Policy A — browser**
 1. Name: `{{policies.session.browser.target.displayName}}`.
@@ -15,15 +15,9 @@ Create two separate Conditional Access policies. For each: Entra admin center �
 7. Enable policy: **Report-only**.
 
 **Policy B — unmanaged device**
-1. Name: `{{policies.session.unmanaged.target.displayName}}`.
-2. Users: same canonical groups/shared-device exclusions.
-3. Target resources: **All resources**.
-4. Conditions → Filter for devices: Configure Yes → Exclude filtered devices → `device.isCompliant -eq True`.
-5. Grant: no grant requirement.
-6. Session: Sign-in frequency → Periodic reauthentication → **9 hours**; Persistent browser session → **Never persistent**.
-7. Enable policy: **Report-only**.
+Not offered here yet. The pinned baseline has no unmanaged-device session policy, so IAMAI has no name or stable identity for this companion. Create Policy A only.
 
-Save each once. Rescan IAMAI so each tenant object gets a stable ID.
+Save once. Rescan IAMAI so the policy gets a stable ID.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Open only the component policy IAMAI identified. Confirm the stable policy identity shown by IAMAI before saving.
@@ -148,7 +142,7 @@ Open both IAMAI-resolved component policies by stable identity. Confirm each sti
 @@IAMAI-BEGIN {"id":"json.unmanaged.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]}},"withheldModes":{"Create":"Create also writes the unmanaged-device companion, and the pinned baseline has no unmanaged-device session policy to name it; CreateBrowser writes the browser policy alone","Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
 # This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Limit How Long Sessions Last
@@ -294,7 +288,7 @@ switch ($Mode) {
 **Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Create the intentional two-policy session set in Report-only.
+Help implement the IAMAI step **Limit How Long Sessions Last**. Create the browser policy (Policy A) in Report-only. The pinned baseline has no unmanaged-device session policy, so Policy B is not created here.
 
 AUTHORITY
 The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.

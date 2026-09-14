@@ -69,9 +69,10 @@ test('the target’s excluded accounts bind as the resolved target holds them: a
   assert.equal(bound({}, 'k'), false)
   assert.deepEqual(bindText('"excludeUsers": {{json:k}}', { k: ['user-1'] }, new Set(['k'])), { text: '"excludeUsers": ["user-1"]' })
   assert.deepEqual(bindText('"excludeUsers": {{json:k}}', {}, new Set(['k'])), { missing: ['k'] })
-  // Session Lifetime still waits on a real blocker beside it: its second member has no stable id in the pin.
+  // Session Lifetime's create waits on exactly that rule: the empty list above is required and not held.
+  // Its unmanaged companion, which has no stable id in the pin, no longer holds the create (cycle 7).
   const held = projectSafely(implementationPackageFor(step)!, 'missing', bindings, NO_RUNTIME).hold
-  assert.ok((held?.missingBindings ?? []).includes('policies.session.unmanaged.target.displayName'), JSON.stringify(held))
+  assert.deepEqual(held?.missingBindings, ['policy.target.excludeUsers'], JSON.stringify(held))
 })
 
 test('every value a registered package requires has one human name in the content', () => {

@@ -268,7 +268,7 @@ export function projectPlanned(pkg: CompiledPackage, state: PackageState, bindin
  * blocks name is not this step's to resolve, and listing it said "Values still to
  * resolve" about values the step never uses (correction batch 1).
  */
-function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn: ReadonlySet<string>, requires: ReadonlySet<string>, bindings: Bindings, placeholder: (binding: string) => string): Record<string, string> {
+function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn: ReadonlySet<string>, requires: ReadonlySet<string>, bindings: Bindings, placeholder: (binding: string) => string, runModes: ReadonlyMap<string, ReadonlySet<string>> = new Map()): Record<string, string> {
   const required = new Set(pkg.meta.requiredBindings ?? [])
   const keys = new Set<string>(requires)
   for (const id of drawn) {
@@ -276,7 +276,14 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
     if (!block) continue
     for (const m of block.text.matchAll(BINDING)) if (required.has(m[2])) keys.add(m[2])
     if (typeof block.meta.endpoint === 'string') for (const m of block.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) keys.add(m[1])
-    for (const param of Object.values((block.meta.invocation?.parameters ?? {}) as Record<string, { binding?: unknown }>)) if (typeof param?.binding === 'string') keys.add(param.binding)
+    // A script parameter is this step's value only in a mode the preview runs: a create
+    // never passes the policy id its corrections take (cycle 7, session-lifetime).
+    const modes = runModes.get(id)
+    for (const param of Object.values((block.meta.invocation?.parameters ?? {}) as Record<string, { binding?: unknown; modes?: unknown }>)) {
+      if (typeof param?.binding !== 'string') continue
+      if (modes && Array.isArray(param.modes) && !param.modes.some((m) => modes.has(String(m)))) continue
+      keys.add(param.binding)
+    }
   }
   // The engine's facts about a correction and the selected-module binding are IAMAI's to supply, never a value to resolve.
   const own = mismatchBindingOf(p)
@@ -343,7 +350,9 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
     for (const ch of OUTPUT_ORDER) refs.set(ch, refsOf(p[ch]))
   }
   const drawn = new Set([...refs.values()].flat().map((r) => r.block))
-  const standIns = planning ? planningValues(pkg, p, drawn, requires, bindings, placeholder) : {}
+  const runModes = new Map<string, Set<string>>()
+  for (const r of [...refs.values()].flat()) if (typeof r.mode === 'string') runModes.set(r.block, new Set([...(runModes.get(r.block) ?? []), r.mode]))
+  const standIns = planning ? planningValues(pkg, p, drawn, requires, bindings, placeholder, runModes) : {}
   let b: Bindings = planning ? { ...bindings, ...standIns } : bindings
   if (selection !== null) b = { ...b, [selection.binding]: selection.selected }
   // What the state as a whole requires holds every channel: none of them is the work without it.

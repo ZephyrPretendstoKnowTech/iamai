@@ -12279,7 +12279,6 @@
         "contentFile": "CONTENT.md",
         "requiredBindings": [
           "policies.session.browser.target.displayName",
-          "policies.session.unmanaged.target.displayName",
           "policy.target.excludeGroups",
           "policy.target.excludeUsers",
           "policies.session.browser.current.id",
@@ -12291,6 +12290,7 @@
           "policies.session.browser.current.displayName",
           "policies.session.unmanaged.current.removedExclusions",
           "policies.session.unmanaged.current.displayName",
+          "policies.session.unmanaged.target.displayName",
           "tenant.displayName",
           "people.affected.count",
           "evidence.unmanagedBrowser",
@@ -12306,7 +12306,6 @@
           "missing": {
             "requires": [
               "policies.session.browser.target.displayName",
-              "policies.session.unmanaged.target.displayName",
               "policy.target.excludeGroups",
               "policy.target.excludeUsers"
             ],
@@ -12314,13 +12313,12 @@
               "entra.create-set"
             ],
             "json": [
-              "json.browser.create",
-              "json.unmanaged.create"
+              "json.browser.create"
             ],
             "powershell": [
               {
                 "block": "powershell.run",
-                "mode": "Create"
+                "mode": "CreateBrowser"
               }
             ],
             "aiInfo": [
@@ -12780,7 +12778,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create two separate Conditional Access policies. For each: Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n\n**Policy A — browser**\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude IAMAI's canonical groups and the resolved shared-device accounts.\n3. Target resources: **All resources**.\n4. Conditions → Client apps: **Browser**.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\n**Policy B — unmanaged device**\n1. Name: `{{policies.session.unmanaged.target.displayName}}`.\n2. Users: same canonical groups/shared-device exclusions.\n3. Target resources: **All resources**.\n4. Conditions → Filter for devices: Configure Yes → Exclude filtered devices → `device.isCompliant -eq True`.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **9 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\nSave each once. Rescan IAMAI so each tenant object gets a stable ID.\n"
+          "text": "Create the browser policy: Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n\n**Policy A — browser**\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude IAMAI's canonical groups and the resolved shared-device accounts.\n3. Target resources: **All resources**.\n4. Conditions → Client apps: **Browser**.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\n**Policy B — unmanaged device**\nNot offered here yet. The pinned baseline has no unmanaged-device session policy, so IAMAI has no name or stable identity for this companion. Create Policy A only.\n\nSave once. Rescan IAMAI so the policy gets a stable ID.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -13193,6 +13191,7 @@
                 }
               },
               "withheldModes": {
+                "Create": "Create also writes the unmanaged-device companion, and the pinned baseline has no unmanaged-device session policy to name it; CreateBrowser writes the browser policy alone",
                 "Enforce": "the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"
               }
             }
@@ -13209,7 +13208,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Create the intentional two-policy session set in Report-only.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Create the browser policy (Policy A) in Report-only. The pinned baseline has no unmanaged-device session policy, so Policy B is not created here.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
         },
         "ai.correct": {
           "meta": {
