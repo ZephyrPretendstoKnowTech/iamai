@@ -339,6 +339,8 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | d62046d | docs: cycle 3 fresh review, committed after inspection |
 | d03337c | Queue 1: an unstarted policy waiting only on emergency access reads "create it in report-only now" (lifecycle.ts nextMilestone), two content strings, emergencyGateCreate.test.ts |
 | ebb9633 | Queue 3: removed tenant exclusions named in the step's portal/export lines (generate.ts `PolicyOperation.removes`, stepPortal.ts), removedExclusions.test.ts. Queue 5: guests-mfa correction saves and AI Info state their effect. Queue 7: orGrantWidening asserts the drawn CorrectGrant call |
+| 3e32075, 8b6815f | docs: cycle 4 RESULTS/BLOCKED checkpoints (verification at ebb9633; the export hand-over finding) |
+| 2997bb3 | A correction held on emergency access exports its action alone, as the screen shows it (stepExport.ts), heldCorrectionExport.test.ts |
 
 ### Board/export Ready vs blocked (review 3 queue 1): 38 of 45 FIXED
 - **Reproduced at 3ca3fd1:** `c2-export-lane.ts` → `{"steps":107,"boardReadyBlocked":45}`. `../scratch/c4-lane-diag.ts` classified the 45 (`lane-diag.txt`, `lane-diag-v.txt`):
@@ -386,11 +388,39 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 | Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c4/acceptance-ebb9633`, `<copy>` = `../acc-src-ebb9633-c4` (`git archive ebb9633c` into a new directory, harness identical by `cmp`) | **ebb9633** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-1.txt`) |
 | Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` after `npm run build` (build exit 0), 09:54–09:58; report `docs/reports/walk-ebb9633.md`, captures `walk/ebb9633/` (gitignored) | **ebb9633** | 0 | "show-ready on this walk (no P0)": **0 P0, 495 P1, 50 P2** (review 3ca3fd1: 0/494/50); throttled first load 4.6 s (P1, as before). Against the review's report, finding for finding: none removed, **one added**: mock-operator "Require Token Protection on Windows" `button "Troubleshooting" is not in the plan.step contract's allow list`. That step now hands over its report-only create (queue 1), which draws its existing Troubleshooting control; no contract was changed. Normalized stdout: 544 → 545 lines (`walk-1.txt`, `walk-norm-*.txt`, `walk-norm-diff.txt`) |
 
+### Export hand-over under an emergency-access hold (found in cycle 4, pre-existing): FIXED at 2997bb3
+- **Found** through the removed-exclusion line (queue 3) on the curated demo, the fixture rv-parity reads (`../scratch/c4-demo-action-curated.ts`, `demo-action-curated-1.txt`):
+  - s-goal-block-legacy-auth and s-goal-block-device-code are enforced, lane Ready · Correct, milestone `resolve` gated by "after: Create or Correct Emergency Access Accounts", `implementationOffered` true, `implementationIsCurrent` false, `instructionsHeld` false (`held-lines-1.txt`).
+  - Their export drew `open "Core - Block - Legacy authentication"`, the users line and "This change removes Core - Break glass from the policy's exclusions…" under "Clear what this step is waiting on.".
+  - At 3ca3fd1 the same lines were drawn without the removal sentence (`demo-action-curated-3ca3fd1.txt`).
+  - The screen already drew none of it: stepBody.ts draws channels only while `deployNow = implementationIsCurrent(step)`, and a step with portal lines draws no authored steps. Only the export skipped that gate.
+- **First attempt, discarded:** making the shared `instructionsHeld` (stepInstructions.ts) also hold an offered-but-not-current step failed stepFamilies.test.ts's channel-count invariant for large s-goal-require-managed-device (`suites-4.txt`: 2 fail; the test counts portal presence against `implementation.offered`). The change was wider than the defect, so this session's three stepInstructions.ts edits were restored to HEAD (diff shown before restoring) and no test was edited.
+- **Fix:** stepExport.ts pushes the portal lines only while the implementation is the step's current action; a held step with portal lines draws nothing else in their place, as on screen.
+- **After:** the two steps export only "Clear what this step is waiting on." (`demo-action-curated-3.txt`). Every curated policy step's export (no lane) compared with a copy of ebb9633 (`../exp-src-ebb9633-c4`, `git archive` + node_modules junction; `../scratch/c4-export-diff-2.ts`): **4 of 140 changed**: demo block-legacy-auth 5 → 1 line, demo block-device-code 5 → 1, large intune-enrollment-reauth 9 → 1, large require-managed-device 5 → 2 (its action and a "Before this policy: Intune → … compliance" line, see BLOCKED) (`export-diff-2.txt`).
+- **Test** `src/ui/surfaces/heldCorrectionExport.test.ts` (2): both curated demo steps are enforced, offered and not current, and their export equals `["Clear what this step is waiting on."]`. The pre-fix export drew five lines for each (`demo-action-curated-1.txt`), so the assertion is not vacuous. Control: getiamai's due gate-only creates keep an "Entra admin center → …" line.
+
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | first attempt; tree identical to **2997bb3** | 0; 0 | `tsc-4.txt`; `tsc-5.txt` |
+| Suites | surfaces, testing, content, implementation, roadmap | first attempt; tree identical to **2997bb3** | 1; 0 | 1545 · 1541 pass · 2 fail (stepFamilies channel count ×2) (`suites-4.txt`); **1547 · 1545 pass · 0 fail · 2 skipped** (`suites-5.txt`) |
+| Targeted | heldCorrectionExport, emergencyGateCreate, removedExclusions | tree identical to 2997bb3 | 0 | 7/7 (`held-test-1.txt`) |
+| Full suite | `npm test`, 10:13–10:16 | tree identical to **2997bb3** (staged, committed unchanged) | 0 | **2723 tests · 2721 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-3.txt`) |
+| Matrix | `s3-matrix.ts curated all` | **2997bb3** | 0 | identical to ebb9633 (0 diff lines) (`matrix-3.txt`) |
+| Parity | `../logs/review1/rv-parity.ts` | tree identical to 2997bb3 | 0 | unchanged: 11 `blocked`, 4 `escape-hatch-unverified`, 1 `readiness-unmet` (`rv-parity-3.txt`) |
+| Acceptance | same harness, `<copy>` = `../acc-src-2997bb3-c4` (`git archive 2997bb3b` into a new directory, harness identical by `cmp`) | **2997bb3** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-2.txt`) |
+
 ### Not done in cycle 4 (actionable; see BLOCKED)
-0. **High, pre-existing:** the export draws an enforced block policy's correction (removing a direct break-glass exclusion) under an emergency-access hold (curated demo block-legacy-auth, block-device-code).
+0. Residual of the 2997bb3 fix: a held step's export still carries its content "before" lines (large require-managed-device: the Intune compliance setting), which the screen draws only inside the channel strip.
 1. Board/export Ready vs blocked: 7 board-lane steps remain (three classes above).
 2. Uncalled/withheld scripts: guests-mfa 5, service-accounts-trusted-network 8; user-risk-medium's create now withheld on `policy.current.id`.
 3. guests-mfa on getiamai: a single-policy resolution the pair package cannot bind (Entra withheld).
 4. Removed exclusions in the viewer's Entra and AI Info tabs.
 5. shared-devices people-policy exclusions and the dangling readyToEnforce Enforce reference (queue 4).
 6. session-lifetime and register-info-protected bindings; pim-activation-reauth grant+session floor edge.
+
+**Working tree at the end of cycle 4.**
+- Commits: d62046d, d03337c, ebb9633, 3e32075, 8b6815f, 2997bb3, and the docs commit carrying this final ledger. Nothing else is uncommitted; stash empty.
+- Gitignored outputs written this cycle: `docs/reports/walk-ebb9633.md`, `docs/reports/walk-2997bb3.md`, `walk/ebb9633/`, `walk/2997bb3/`, `dist/`.
+- Outside the clone: `../logs/c4/`; `../scratch/c4-lane-diag.ts`, `c4-guests-bind.ts`, `c4-demo-missing.ts`, `c4-demo-action.ts`, `c4-demo-action-curated.ts`, `c4-demo-action-curated-3ca3fd1.ts`, `c4-held-lines.ts`, `c4-export-diff.ts`, `c4-export-diff-2.ts`; archive copies `../acc-src-ebb9633-c4`, `../acc-src-2997bb3-c4` and `../exp-src-ebb9633-c4`.
+- `../exp-src-ebb9633-c4/node_modules` is a directory junction to the clone's `node_modules`. Anyone removing that copy must remove the junction itself and not follow it.
+- No remote, tenant or external write was made, and no generated script was executed.
