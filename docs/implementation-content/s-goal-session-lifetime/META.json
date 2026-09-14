@@ -326,7 +326,6 @@
     "reportOnly": {
       "requires": [
         "policies.session.browser.current.id",
-        "policies.session.unmanaged.current.id",
         "policy.target.excludeGroups",
         "policy.target.excludeUsers"
       ],
@@ -337,7 +336,7 @@
       "powershell": [
         {
           "block": "powershell.run",
-          "mode": "Verify"
+          "mode": "VerifyBrowser"
         }
       ],
       "aiInfo": [
@@ -348,7 +347,6 @@
     "readyToEnforce": {
       "requires": [
         "policies.session.browser.current.id",
-        "policies.session.unmanaged.current.id",
         "policy.target.excludeGroups",
         "policy.target.excludeUsers"
       ],
@@ -356,8 +354,7 @@
         "entra.enforce"
       ],
       "json": [
-        "json.browser.enforce",
-        "json.unmanaged.enforce"
+        "json.browser.enforce"
       ],
       "powershell": [
         {

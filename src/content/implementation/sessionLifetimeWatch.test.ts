@@ -1,0 +1,74 @@
+// Review queue (session-lifetime reportOnly/readyToEnforce): both states required
+// `policies.session.unmanaged.current.id`, an id the package's unmanaged companion can
+// never bind (the pin maps the goal to the browser policy alone, and the companion has
+// no stable id), and their Entra, AI Info, JSON and Verify run named both policies. So a
+// report-only or enforce state of the authoritative browser policy always held. Both
+// states now read the browser policy alone, as the create already does, and say why
+// there is no Policy B. Enforce stays withheld (-ReadinessApproved), as before.
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import registry from './registry.generated.json' with { type: 'json' }
+import type { CompiledPackage, PackageState } from './protocol.ts'
+import { planSafely, projectImplementation } from './project.ts'
+import type { Projection } from './project.ts'
+
+const PKG = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages['s-goal-session-lifetime']
+/** Sample ids, never a tenant's. */
+const ID = (n: number): string => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+const bindings = (): Record<string, unknown> => ({
+  'tenant.displayName': 'Sample tenant',
+  'policies.session.browser.target.displayName': "Sample - O'Brien browser sessions",
+  'policies.session.browser.current.id': ID(3),
+  'policy.target.excludeGroups': [ID(1)],
+  'policy.target.excludeUsers': [ID(2)],
+})
+const by = (p: Projection, channel: string) => p.channels.find((c) => c.channel === channel)
+const callsOf = (text: string): string[] => text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep '))
+const NO_POLICY_B = /pinned baseline has no unmanaged-device session policy/
+
+test('session-lifetime report-only: the browser policy alone, verified by its own id, with no unmanaged id asked for', () => {
+  const p = projectImplementation(PKG, 'reportOnly', bindings())
+  assert.equal(p.hold, null, JSON.stringify(p.hold))
+  assert.deepEqual(p.degraded ?? [], [])
+  const entra = by(p, 'entra')?.text ?? ''
+  assert.match(entra, /browser policy \(Policy A\) in Report-only/)
+  assert.match(entra, NO_POLICY_B)
+  assert.doesNotMatch(entra, /both component policies|unmanaged-device policy is limited/)
+  const ps = by(p, 'powershell')
+  assert.ok(ps, JSON.stringify(p.degraded))
+  const calls = callsOf(ps.text)
+  assert.equal(calls.length, 1, ps.text.slice(-400))
+  assert.ok(calls[0].startsWith(`Invoke-IAMAIStep -Mode 'VerifyBrowser' -BrowserPolicyId '${ID(3)}'`), calls[0])
+  assert.ok(calls[0].includes(ID(1)) && calls[0].includes(ID(2)), calls[0])
+  assert.doesNotMatch(calls[0], /Unmanaged/)
+  // The branch the call runs reads the browser policy alone.
+  const branch = /'VerifyBrowser' \{[\s\S]*?\n {2}\}/.exec(ps.text)?.[0] ?? ''
+  assert.ok(branch.includes('Get-Policy $BrowserPolicyId') && !branch.includes('Unmanaged'), branch)
+  assert.match(by(p, 'aiInfo')?.text ?? '', /Review the browser policy \(Policy A\)/)
+})
+
+test('session-lifetime ready to enforce: the browser policy is turned on by its own id; nothing names a Policy B to turn on; Enforce stays withheld', () => {
+  const p = projectImplementation(PKG, 'readyToEnforce', bindings())
+  assert.equal(p.hold, null, JSON.stringify(p.hold))
+  const json = by(p, 'json')
+  assert.ok(json, JSON.stringify(p.degraded))
+  assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${ID(3)}` }])
+  assert.deepEqual(JSON.parse(json.text), { state: 'enabled' })
+  const entra = by(p, 'entra')?.text ?? ''
+  assert.match(entra, /browser policy \(Policy A\)/)
+  assert.match(entra, NO_POLICY_B)
+  assert.doesNotMatch(entra, /Policy A and Policy B/)
+  assert.equal(by(p, 'powershell'), undefined, 'the withheld Enforce run was drawn')
+  assert.match(PKG.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', /ReadinessApproved[\s\S]*unmanaged-device companion/)
+  assert.match(by(p, 'aiInfo')?.text ?? '', /Enable the browser policy \(Policy A\)/)
+  assert.doesNotMatch(by(p, 'email')?.text ?? '', /managed\/compliant/)
+})
+
+test('session-lifetime report-only and ready to enforce: without the excluded accounts, both hold and preview on that value alone, never on an unmanaged id', () => {
+  const { ['policy.target.excludeUsers']: _users, ...short } = bindings()
+  for (const state of ['reportOnly', 'readyToEnforce'] as PackageState[]) {
+    assert.deepEqual(projectImplementation(PKG, state, short).hold?.missingBindings, ['policy.target.excludeUsers'], state)
+    const preview = planSafely(PKG, state, short, { satisfied: new Set(), baselineCommit: null }, (binding) => `‹${binding}›`)
+    assert.deepEqual(preview.hold?.missingBindings, ['policy.target.excludeUsers'], state)
+  }
+})
