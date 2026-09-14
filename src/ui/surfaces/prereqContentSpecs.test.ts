@@ -114,8 +114,7 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
     { kind: 'list', ordered: true, start: 7, items: [['Open Microsoft Authenticator in the same Authentication methods list.'], ['Set Enable to Yes. Target: All users.'], ['Save.']] },
     { kind: 'list', ordered: true, start: 10, items: [['Open Temporary Access Pass in the same list.'], ['Set Enable to Yes. Target: All users. Set a lifetime and one-time-use policy that fits your organization.'], ['Save.']] },
   ])
-  // Cycle 2 (C05): the JSON request covers FIDO2 alone; Authenticator and Temporary Access Pass have no IAMAI target body.
-  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then configure the supporting methods here. The JSON tab sets Passkey (FIDO2) only.'))
+  assert.ok(authoredParts(entra).some((p) => p.kind === 'line' && p.text === 'Then configure the supporting methods:'))
   assert.doesNotMatch(entra, /profileOptInApproved|resolved target|\{\{/)
   const ai = b['ai.apply'].text
   assert.match(ai, /^Passkey \(FIDO2\) is the phishing-resistant sign-in method this baseline targets\. These settings control which passkey providers are accepted tenant-wide\.$/m)

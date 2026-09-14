@@ -34,7 +34,8 @@ test('passkey settings: Entra, JSON and AI Info project; the JSON is the FIDO2 r
   assert.equal(p.degraded, undefined, JSON.stringify(p.degraded))
   const entra = p.channels.find((c) => c.channel === 'entra')!.text
   assert.match(entra, /can no longer be used to sign in/)
-  assert.match(entra, /The JSON tab sets Passkey \(FIDO2\) only\./)
+  // A settings step draws no JSON tab (stepBody.ts: machine channels are Conditional Access policy steps'), so Entra names none.
+  assert.doesNotMatch(entra, /JSON tab/)
   assert.doesNotMatch(entra, /lifetime (of|to) \d|\d+ (minutes|hours|days)/)
   assert.match(p.channels.find((c) => c.channel === 'aiInfo')!.text, /stops working for sign-in once these settings are saved/)
 })
