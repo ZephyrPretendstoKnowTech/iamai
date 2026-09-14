@@ -82,7 +82,7 @@ test('unavailable → the unsupported blocker: On Hold', () => {
   assert.equal(label(readingOf(step)), 'On Hold · unsupported:unmatched-pair')
 })
 
-test('readiness → an evidence gate on enforce: a started policy reads Ready · Observing with the threshold as what it waits on; its report-only create is not gated', () => {
+test('readiness → an evidence gate on enforce: a started policy waits On Hold with the threshold as what it waits on; its report-only create is not gated', () => {
   const step = cleanPolicy()
   const binding = 'when MFA readiness reaches 90% (now 5%)'
   step.blockers = [{ kind: 'readiness', label: 'mfa-readiness', binding }]
@@ -94,7 +94,7 @@ test('readiness → an evidence gate on enforce: a started policy reads Ready ·
   assert.deepEqual(o.gates?.find((g) => g.id === 'evidence:readiness:mfa-readiness'), { id: 'evidence:readiness:mfa-readiness', satisfied: false, minDays: null, reason: binding })
   assert.deepEqual(o.blockers, [], 'a threshold is never a blocker')
   const started = readingOf(step)
-  assert.equal(label(started), 'Ready · Observing')
+  assert.equal(label(started), 'On Hold · evidence:evidence:readiness:mfa-readiness')
   assert.equal(started.gates.find((g) => !g.satisfied)?.reason, binding, 'the threshold text is what the step waits on')
   assert.ok(started.gates.some((g) => g.id === 'evidence:observation' && g.minDays === observationDaysFor(step)), 'the window is the observation gate\'s time part')
   // The same threshold on a policy nobody has deployed gates nothing: the create lands in report-only.
