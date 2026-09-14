@@ -23021,12 +23021,6 @@
                 ],
                 "json": [
                   "json.people-patches"
-                ],
-                "powershell": [
-                  {
-                    "block": "powershell.run",
-                    "mode": "PeopleExclusions"
-                  }
                 ]
               }
             },
@@ -23062,12 +23056,6 @@
             ],
             "json": [
               "json.enforce"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Enforce"
-              }
             ],
             "aiInfo": [
               "ai.enforce"
@@ -23336,7 +23324,52 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "PolicyId": {
+                  "binding": "policy.current.id",
+                  "modes": [
+                    "CorrectConditions",
+                    "CorrectGrant",
+                    "Verify",
+                    "Enforce"
+                  ]
+                },
+                "DisplayName": {
+                  "binding": "policy.target.displayName",
+                  "modes": [
+                    "Create"
+                  ]
+                },
+                "IncludeUsers": {
+                  "binding": "policy.target.includeUsers",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions"
+                  ]
+                },
+                "ExcludeGroups": {
+                  "binding": "policy.target.excludeGroups",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions"
+                  ]
+                },
+                "TrustedLocationId": {
+                  "binding": "policy.target.trustedLocationId",
+                  "modes": [
+                    "Create",
+                    "CorrectConditions"
+                  ]
+                }
+              },
+              "withheldModes": {
+                "Enforce": "Enforce runs only with -TrustedLocationReconfirmed and -ReportOnlyEvidenceReviewed, and this package declares no prerequisite IAMAI can check to pass them.",
+                "PeopleExclusions": "PeopleExclusions reads the resolved people-policy patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."
+              }
+            }
           },
           "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','ReportOnly','PeopleExclusions','Verify','Enforce')][string]$Mode,\n [string]$PolicyId,\n [string]$DisplayName,\n [string[]]$IncludeUsers=@(),\n [string[]]$ExcludeGroups=@(),\n [string]$TrustedLocationId,\n [string]$PeoplePolicyPatchesJson='[]',\n [switch]$TrustedLocationReconfirmed,\n [switch]$ReportOnlyEvidenceReviewed\n)\n$ErrorActionPreference='Stop'; $G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 40) -ContentType 'application/json' -OutputType PSObject}\nfunction Conditions(){@{users=@{includeUsers=@($IncludeUsers);excludeGroups=@($ExcludeGroups)};applications=@{includeApplications=@('All')};clientAppTypes=@('all');locations=@{includeLocations=@('All');excludeLocations=@($TrustedLocationId)}}}\nif($Mode -ne 'PeopleExclusions'){\n if($Mode -ne 'Create'){GuidOk $PolicyId 'PolicyId'}\n if($Mode -in @('Create','CorrectConditions')){if($IncludeUsers.Count -eq 0){throw 'Owner-confirmed shared-device IDs are required.'};foreach($x in $IncludeUsers){GuidOk $x 'IncludeUser'};GuidOk $TrustedLocationId 'TrustedLocationId'}\n}\nswitch($Mode){\n 'Create'{if([string]::IsNullOrWhiteSpace($DisplayName)){throw 'DisplayName required.'};$f=[uri]::EscapeDataString(\"displayName eq '$($DisplayName.Replace(\"'\",\"''\"))'\");$x=IG GET \"$G/identity/conditionalAccess/policies?`$filter=$f\";if(@($x.value).Count){throw 'Display name collision: resolve stable identity; do not duplicate.'};$b=@{displayName=$DisplayName;state='enabledForReportingButNotEnforced';conditions=(Conditions);grantControls=@{operator='OR';builtInControls=@('block')};sessionControls=$null};$c=IG POST \"$G/identity/conditionalAccess/policies\" $b;[pscustomobject]@{PolicyId=$c.id;Next='Rescan IAMAI'}}\n 'CorrectConditions'{IG PATCH \"$G/identity/conditionalAccess/policies/$PolicyId\" @{conditions=(Conditions)}|Out-Null}\n 'CorrectGrant'{IG PATCH \"$G/identity/conditionalAccess/policies/$PolicyId\" @{grantControls=@{operator='OR';builtInControls=@('block')};sessionControls=$null}|Out-Null}\n 'ReportOnly'{IG PATCH \"$G/identity/conditionalAccess/policies/$PolicyId\" @{state='enabledForReportingButNotEnforced'}|Out-Null}\n 'PeopleExclusions'{foreach($p in @($PeoplePolicyPatchesJson|ConvertFrom-Json)){GuidOk $p.id 'People policy id';if($null -eq $p.conditions){throw 'Every people-policy patch must carry complete resolved conditions.'};IG PATCH \"$G/identity/conditionalAccess/policies/$($p.id)\" @{conditions=$p.conditions}|Out-Null}}\n 'Verify'{IG GET \"$G/identity/conditionalAccess/policies/$PolicyId\"}\n 'Enforce'{if(-not $TrustedLocationReconfirmed -or -not $ReportOnlyEvidenceReviewed){throw 'Reconfirm location and review report-only evidence before enforcement.'};IG PATCH \"$G/identity/conditionalAccess/policies/$PolicyId\" @{state='enabled'}|Out-Null;IG GET \"$G/identity/conditionalAccess/policies/$PolicyId\"}\n}\n"
         },

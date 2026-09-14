@@ -165,12 +165,6 @@
           ],
           "json": [
             "json.people-patches"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "PeopleExclusions"
-            }
           ]
         }
       },

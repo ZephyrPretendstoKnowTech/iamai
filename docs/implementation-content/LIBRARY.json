@@ -1867,7 +1867,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting-policy",
-      "strictValidationErrors": 4,
+      "strictValidationErrors": 5,
       "registered": true,
       "provenance": "tenant-prerequisite",
       "review": "current"

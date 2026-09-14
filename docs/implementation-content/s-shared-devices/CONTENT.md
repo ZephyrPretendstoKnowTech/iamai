@@ -75,7 +75,7 @@ Open the exact dedicated policy by stable ID, re-confirm the trusted-network loc
 {"kind":"iamaiResolvedConditionalAccessPatchSet","policies":{{json:peoplePolicies.resolvedPatches}},"rule":"Each item must carry the stable policy id and a complete IAMAI-resolved desired conditions object; do not reconstruct exclusions from display names."}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","Verify","Enforce"]},"DisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"IncludeUsers":{"binding":"policy.target.includeUsers","modes":["Create","CorrectConditions"]},"ExcludeGroups":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions"]},"TrustedLocationId":{"binding":"policy.target.trustedLocationId","modes":["Create","CorrectConditions"]}},"withheldModes":{"Enforce":"Enforce runs only with -TrustedLocationReconfirmed and -ReportOnlyEvidenceReviewed, and this package declares no prerequisite IAMAI can check to pass them.","PeopleExclusions":"PeopleExclusions reads the resolved people-policy patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."}}}
 param(
  [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','ReportOnly','PeopleExclusions','Verify','Enforce')][string]$Mode,
  [string]$PolicyId,
