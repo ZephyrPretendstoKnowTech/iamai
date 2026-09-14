@@ -15,14 +15,12 @@ import type { CompiledPackage } from './protocol.ts'
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
 /**
- * The one package that still returns an enabled policy to report-only on a correction, and
- * why it is not changed here: its script throws unless ReportOnly rides with a material
- * correction, and every one of its modules and its troubleshooting say so. It is listed so
- * the test fails the day it is corrected, not so the check passes it.
+ * Packages that still return an enabled policy to report-only on a correction, each with the
+ * reason it is not changed. None remains: workload-identity-block, the last one (its Correct
+ * mode threw unless ReportOnly rode with a material correction), was corrected in cycle 3.
+ * A package added here must name its reason, and the test fails once it no longer stages.
  */
-const STILL_STAGING: Record<string, string> = {
-  's-goal-workload-identity-block': 'the Correct mode throws "A material policy correction requires the policy to be returned to Report-only first" (script and every module)',
-}
+const STILL_STAGING: Record<string, string> = {}
 
 type Ref = string | { block: string; mode?: string; corrections?: string[] }
 const refsOf = (v: unknown): Ref[] => (v === undefined ? [] : Array.isArray(v) ? (v as Ref[]) : [v as Ref])
@@ -72,7 +70,7 @@ function stagingIn(pkg: CompiledPackage): string[] {
   return found
 }
 
-test('no registered package corrects a policy by moving it to report-only, apart from the one named with its reason', () => {
+test('no registered package corrects a policy by moving it to report-only, apart from any named with its reason', () => {
   const staging: Record<string, string[]> = {}
   for (const [id, pkg] of Object.entries(PACKAGES)) {
     const found = stagingIn(pkg)
@@ -81,7 +79,7 @@ test('no registered package corrects a policy by moving it to report-only, apart
   assert.deepEqual(Object.keys(staging).sort(), Object.keys(STILL_STAGING).sort(), JSON.stringify(staging, null, 1))
 })
 
-test('the scan sees staging where it is: the named package, and a synthetic lifecycle module', () => {
+test('the scan sees staging where it is: any named package, and a synthetic lifecycle module', () => {
   for (const id of Object.keys(STILL_STAGING)) assert.ok(stagingIn(PACKAGES[id]).length > 0, `${id} no longer stages: remove it from STILL_STAGING`)
   const base = PACKAGES['s-goal-user-risk']
   const partial = (base.meta.projection as Record<string, Record<string, unknown>>).partial

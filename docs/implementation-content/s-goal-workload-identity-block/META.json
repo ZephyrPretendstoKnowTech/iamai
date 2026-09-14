@@ -143,8 +143,7 @@
       ],
       "sharedBefore": {
         "entra": [
-          "entra.correct.open",
-          "entra.correct.ensure-report-only"
+          "entra.correct.open"
         ]
       },
       "mismatches": {
@@ -157,7 +156,6 @@
             "entra.correct.policy.service-principal"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -165,7 +163,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -180,7 +177,6 @@
             "entra.correct.policy.all-resources"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -188,7 +184,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -203,7 +198,6 @@
             "entra.correct.policy.location-boundary"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -211,7 +205,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -226,7 +219,6 @@
             "entra.correct.policy.client-apps"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -234,7 +226,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -256,7 +247,6 @@
             "entra.correct.policy.remove-noncanonical"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -264,7 +254,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -279,7 +268,6 @@
             "entra.correct.policy.grant-block"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-grant"
           ],
           "powershell": [
@@ -287,33 +275,7 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyGrant"
-              ]
-            }
-          ]
-        },
-        "lifecycle.report-only": {
-          "select": {
-            "equals": [
-              "policy.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "appliesWhen": "a semantically incorrect workload policy is not in Report-only while being corrected",
-          "entra": [
-            "entra.correct.policy.report-only"
-          ],
-          "json": [
-            "json.correct.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Correct",
-              "corrections": [
-                "ReportOnly"
               ]
             }
           ]
