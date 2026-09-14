@@ -116,6 +116,8 @@ Review the proposed shared-device accounts for {{tenant.displayName}}: {{shared.
 **Contains tenant context. Review before sharing with an external AI service.**
 
 Review the dedicated shared-device policy for {{tenant.displayName}}. Confirm it is scoped only to confirmed resource accounts and the canonical trusted-network ID, starts Report-only, and does not add user-interactive MFA.
+
+The PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}

@@ -71,6 +71,33 @@ test('s-goal-guests-mfa: Observe and EnforcePair are called on both ids; ApplyPa
   assert.match(PKG.blocks['powershell.run'].meta.invocation?.withheldModes?.ApplyPartnerTrust ?? '', /JSON text/)
 })
 
+// Review 5 R5-1: `json.target-pair` and `json.enforce-pair` carried no request (a pair of
+// policies is two Graph requests, and the enforce body was not a Graph body), so with
+// every pair value bound the JSON channel was invalid in missing, partial and
+// readyToEnforce. They are no longer projected; Entra, the called script and AI Info
+// carry the pair.
+test('s-goal-guests-mfa: with the pair bound, no state offers or fails on a JSON body with no request', () => {
+  const partial = bindings({ 'policies.guests.semanticMismatches': ['users.exclusions'], [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.guests.strong.current.changedFields': ['conditions.users.excludeGroups'], 'policies.guests.mixed.current.changedFields': ['conditions.users.excludeGroups'] })
+  const create = bindings({ 'policies.guests.strong.current.id': undefined, 'policies.guests.mixed.current.id': undefined })
+  for (const [state, b] of [['missing', create], ['partial', partial], ['readyToEnforce', bindings()]] as const) {
+    const p = projectImplementation(PKG, state, b)
+    assert.equal(p.hold, null, `${state}: ${JSON.stringify(p.hold)}`)
+    assert.deepEqual((p.degraded ?? []).filter((d) => d.channel === 'json'), [], `${state}: the JSON channel is withheld`)
+    assert.equal(p.channels.some((c) => c.channel === 'json'), false, `${state}: a JSON body with no request is offered`)
+    for (const channel of ['entra', 'powershell', 'aiInfo']) assert.ok(p.channels.some((c) => c.channel === channel), `${state}: ${channel} is not drawn`)
+  }
+})
+
+// Review 5 missing test: a pair with one member in the tenant is corrected as a set
+// (stepPackage.ts partlyDeployed), and CorrectPair needs both ids. With the member still
+// to create unbound, only the script is withheld, on exactly that id.
+test('s-goal-guests-mfa: a partly deployed pair withholds only the script, on the id of the member still to create', () => {
+  const { p, ps } = psOf('partial', bindings({ 'policies.guests.strong.current.id': undefined, 'policies.guests.semanticMismatches': ['users.exclusions'], [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.guests.mixed.current.changedFields': ['conditions.users.excludeGroups'] }))
+  assert.equal(ps, undefined, 'a CorrectPair call without the strong policy id is drawn')
+  assert.deepEqual(p.degraded?.find((d) => d.channel === 'powershell')?.missingBindings, ['policies.guests.strong.current.id'])
+  assert.ok(p.channels.some((c) => c.channel === 'entra'), JSON.stringify(p.hold))
+})
+
 test('s-goal-guests-mfa: without both targets the script is never drawn as a call; a create keeps Entra, a report-only watch is planned', () => {
   const { ['policies.guests.targets.json']: _none, ...short } = bindings()
   // A create's Entra binds the names, so only the script is withheld.
