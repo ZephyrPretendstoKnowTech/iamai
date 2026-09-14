@@ -80,9 +80,6 @@ for (const stepId of STAGED) {
         if (!c) continue
         assert.doesNotMatch(c.text, STAGING, `${channel}: ${c.text}`)
       }
-      const entra = p.channels.find((c) => c.channel === 'entra')
-      assert.ok(entra, `${stepId} ${mode}: no Entra`)
-      assert.match(entra.text, /if it is On, .* as soon as you save|Leave \*\*Enable policy\*\* as it is/)
     })
   }
 
@@ -106,6 +103,29 @@ for (const stepId of STAGED) {
     }
   })
 }
+
+// Cycle 3 (review 2): the effect check accepted "Leave **Enable policy** as it is", which
+// states no effect, and never read AI Info. Every correction now has to say, in Entra and
+// in AI Info, what saving does to a policy that is On — the ten packages above and the two
+// (mfa-all-users, admins-phishing-resistant) whose corrections already kept the state.
+const EFFECT = /\bif (it|the policy) is On, [^.]*(as soon as (you save|it is saved)|saving applies it at once)/i
+for (const stepId of [...STAGED, 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant']) {
+  for (const [changed, mode] of CORRECTIONS) {
+    test(`${stepId}: a ${mode} correction says in Entra and in AI Info what saving does to a policy that is On`, () => {
+      const p = projectImplementation(PACKAGES[stepId], 'partial', bindings({ [CHANGED_FIELDS_BINDING]: [changed], 'authStrength.target.id': ID(4) }))
+      for (const channel of ['entra', 'aiInfo']) {
+        const c = p.channels.find((x) => x.channel === channel)
+        assert.ok(c, `${stepId} ${mode}: no ${channel} ${JSON.stringify(p.degraded ?? p.hold)}`)
+        assert.match(c.text, EFFECT, `${channel}: ${c.text}`)
+      }
+    })
+  }
+}
+
+test('effect control: "Leave Enable policy as it is" alone states no effect', () => {
+  assert.doesNotMatch('5. Save. Leave **Enable policy** as it is.\n6. Rescan in IAMAI to confirm the correction.', EFFECT)
+  assert.match('5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.', EFFECT)
+})
 
 test('a target short of the whole policy withholds only the script', () => {
   const { ['policy.target.json']: _none, ...short } = bindings({})

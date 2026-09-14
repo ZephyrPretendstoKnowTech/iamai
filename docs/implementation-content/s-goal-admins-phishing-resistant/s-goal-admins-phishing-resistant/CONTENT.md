@@ -149,6 +149,8 @@ Unlike the "MFA for Everyone" policy which accepts any MFA method (including pho
 Whether your admins have a qualifying method registered is shown on MFA Readiness, not by this policy. The MFA Registration Campaign step helps them register one. This policy enforces the requirement; the campaign helps people meet it.
 
 The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.
+
+The policy keeps its current state. If it is On, the correction applies as soon as you save. An admin the corrected role list newly includes must use a method this strength accepts at their next sign-in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
