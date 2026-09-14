@@ -29,7 +29,8 @@ import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
-import type { Bindings, ChannelArtifact, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
+import type { Bindings, ChannelArtifact, Hold, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
+import { list } from '../../copy/statements.ts'
 import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { shared } from '../../content/content.ts'
@@ -342,6 +343,24 @@ export function planningPreview(pkg: CompiledPackage, step: Step, c: StepContrac
   if (planned === null) return null
   const preview = planSafely(pkg, planned, bindings, runtime, (binding) => fillText(CONTRACT.implementation.preview.value, { value: bindingLabel(binding) }))
   return preview.preview && preview.channels.length > 0 ? preview : null
+}
+
+/**
+ * Why a planning preview cannot be copied, as the screen's disabled Copy
+ * (stepBody.ts) and the export (stepExport.ts) both say it: one reading, so the two
+ * never disagree. The lead follows the step's intended next action
+ * (roadmap/nextSafeAction.ts implementationIsCurrent). Where the implementation is
+ * the current action — a report-only create an emergency-access wait does not hold
+ * (A3 B3: that wait holds enforcement) — only the values IAMAI cannot fill stand
+ * between it and Copy, and it is not called "not ready to run" under a "Ready ·
+ * Create" state. Otherwise the work waits on prerequisites. A preview still waiting
+ * on a check to confirm is never read as values alone.
+ */
+export function previewNoteLines(step: Step, c: StepContract, hold: Hold | null): string[] {
+  const W = CONTRACT.implementation.preview
+  const missing = hold?.missingBindings ?? []
+  const valuesOnly = (c.fix.length === 0 && !c.state.held) || (implementationIsCurrent(step) && missing.length > 0 && (hold?.pendingPrerequisites.length ?? 0) === 0)
+  return [valuesOnly ? W.textValues : W.text, ...(missing.length > 0 ? [fillText(W.values, { values: list([...new Set(missing.map(bindingLabel))]) })] : [])]
 }
 
 const REFERENCE_ROOTS = ['conditions', 'grantControls', 'sessionControls'] as const

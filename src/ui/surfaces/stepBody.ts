@@ -30,7 +30,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepC
 import { laneViewFor } from './planBoard.ts'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, previewNoteLines, reviewedPackageFor } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -287,16 +287,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Why a preview's work cannot be copied: the values still to resolve, never the
   // blocker again. No Planned work banner draws it over the channels (U4); it is
   // the disabled Copy's reason (U18, B5).
-  const previewNote = preview
-    ? {
-        lines: [
-          // Nothing to fix and nothing holding it: what stands between the step and
-          // Copy is values IAMAI cannot fill, not prerequisites (correction batch 1).
-          contract.fix.length === 0 && !contract.state.held ? W.preview.textValues : W.preview.text,
-          ...(preview.hold && preview.hold.missingBindings.length > 0 ? [fillText(W.preview.values, { values: list([...new Set(preview.hold.missingBindings.map(bindingLabel))]) })] : []),
-        ],
-      }
-    : null
+  // The lead follows the step's intended next action, and the export reads the same
+  // lines (stepPackage.ts previewNoteLines).
+  const previewNote = preview ? { lines: previewNoteLines(step, contract, preview.hold) } : null
   // A channel the package could not finish on its own (project.ts `degraded`) is
   // not offered, and nothing stands in for it (S6, A1 §16.2): a line that only
   // says a channel is missing is not implementation content, and whatever really
