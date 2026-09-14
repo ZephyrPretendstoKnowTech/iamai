@@ -10207,9 +10207,10 @@
           "policy.target.grantControls",
           "policy.current.id",
           "policy.current.semanticMismatches",
-          "policy.target.mode"
+          "policy.target.grantWords"
         ],
         "optionalBindings": [
+          "policy.target.locationWords",
           "policy.current.removedExclusions",
           "policy.target.json",
           "tenant.displayName",
@@ -10447,7 +10448,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this canonical scope: **Target resources > User actions > Register security information**. Apply the exact IAMAI-resolved Users/exclusions and Location mode. `blockOutsideTrusted` means Any location with All trusted locations excluded; the no-trusted-network fallback uses the resolved MFA target instead.\n4. Grant/access control: Use **{{policy.target.mode}}** exactly as resolved by IAMAI and match the canonical grant. Do not improvise a third mode.\n5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.\n6. Set **Enable policy: Report-only** and create it.\n7. Re-open the created policy, compare it with the IAMAI target, then rescan.\n"
+          "text": "1. Open **Entra ID > Conditional Access > Policies > New policy**.\n2. Name: **{{policy.target.displayName}}**.\n3. Configure exactly this canonical scope: **Target resources > User actions > Register security information**. Apply the exact IAMAI-resolved Users/exclusions, and set Conditions only as IAMAI resolved them.\n   Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]\n4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.\n5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.\n6. Set **Enable policy: Report-only** and create it.\n7. Re-open the created policy, compare it with the IAMAI target, then rescan.\n"
         },
         "entra.correct-conditions": {
           "meta": {
@@ -10778,7 +10779,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Ready only when IAMAI has resolved `{{policy.target.mode}}`, canonical exclusions and any trusted location are valid, report-only registration evidence is understood, and affected Windows Hello for Business/macOS Platform SSO registration workflows have been considered after the July 6, 2026 platform change.\n"
+          "text": "Ready only when IAMAI has resolved the target's location scope and grant, canonical exclusions and any trusted location are valid, report-only registration evidence is understood, and affected Windows Hello for Business/macOS Platform SSO registration workflows have been considered after the July 6, 2026 platform change.\n"
         },
         "troubleshooting.model": {
           "meta": {

@@ -49,9 +49,10 @@
     "policy.target.grantControls",
     "policy.current.id",
     "policy.current.semanticMismatches",
-    "policy.target.mode"
+    "policy.target.grantWords"
   ],
   "optionalBindings": [
+    "policy.target.locationWords",
     "policy.current.removedExclusions",
     "policy.target.json",
     "tenant.displayName",

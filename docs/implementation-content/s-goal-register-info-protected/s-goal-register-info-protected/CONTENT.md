@@ -1,8 +1,9 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure exactly this canonical scope: **Target resources > User actions > Register security information**. Apply the exact IAMAI-resolved Users/exclusions and Location mode. `blockOutsideTrusted` means Any location with All trusted locations excluded; the no-trusted-network fallback uses the resolved MFA target instead.
-4. Grant/access control: Use **{{policy.target.mode}}** exactly as resolved by IAMAI and match the canonical grant. Do not improvise a third mode.
+3. Configure exactly this canonical scope: **Target resources > User actions > Register security information**. Apply the exact IAMAI-resolved Users/exclusions, and set Conditions only as IAMAI resolved them.
+   Conditions > Locations: **{{policy.target.locationWords}}**. [omit this line when unavailable]
+4. Grant: **{{policy.target.grantWords}}**, exactly as IAMAI resolved the target. Do not add or swap a control.
 5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.
 6. Set **Enable policy: Report-only** and create it.
 7. Re-open the created policy, compare it with the IAMAI target, then rescan.
@@ -187,7 +188,7 @@ The sign-in method registration protection for {{tenant.displayName}} is ready t
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when IAMAI has resolved `{{policy.target.mode}}`, canonical exclusions and any trusted location are valid, report-only registration evidence is understood, and affected Windows Hello for Business/macOS Platform SSO registration workflows have been considered after the July 6, 2026 platform change.
+Ready only when IAMAI has resolved the target's location scope and grant, canonical exclusions and any trusted location are valid, report-only registration evidence is understood, and affected Windows Hello for Business/macOS Platform SSO registration workflows have been considered after the July 6, 2026 platform change.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

@@ -837,7 +837,7 @@
       ],
       "correctionModules": 4,
       "requiredBindings": 6,
-      "optionalBindings": 11,
+      "optionalBindings": 12,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 0,
@@ -5267,6 +5267,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "policy.target.grantWords",
+      "requiredBy": [
+        "s-goal-register-info-protected"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-register-info-protected"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policy.target.includeRoles",
       "requiredBy": [],
       "optionalBy": [
@@ -5325,11 +5337,11 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
-      "binding": "policy.target.mode",
-      "requiredBy": [
+      "binding": "policy.target.locationWords",
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-register-info-protected"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-register-info-protected"
       ],
@@ -6323,14 +6335,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 961,
-    "uniqueBindings": 277,
+    "uniqueBindings": 278,
     "bindingsRequiredByAtLeastOneProjection": 94,
-    "bindingsOptionalInAtLeastOnePackage": 187,
+    "bindingsOptionalInAtLeastOnePackage": 188,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 232,
+    "bindingDefinitionsPendingHolisticReview": 233,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 232,
+    "knownIAMAIInputUnreviewed": 233,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [
