@@ -3391,6 +3391,10 @@ footer.app a {
 .surface.connect .lede {
   max-width: var(--measure-lead);
 }
+/* The public-beta notice, between the lead and the status strip in both states. */
+.surface.connect > .callout {
+  margin-top: 20px;
+}
 
 /* The status strip: where setup stands, above the flow. The dot is decoration
    (aria-hidden) — the strip's title is the state in words, so it reads with no
