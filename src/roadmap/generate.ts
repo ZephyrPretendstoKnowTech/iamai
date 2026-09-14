@@ -1473,12 +1473,17 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // through the same boundary.
       const changing = source ? stepPolicies() : templatePolicy()
       const sections = changedSections(result)
-      // A policy that already meets the goal's floor, enforced, has no grant,
-      // session or state of its own to correct: those reasons belong to another
-      // candidate (a session-only policy's "requires nothing", a report-only
+      // A policy that already meets the goal's floor has no grant or session of its
+      // own to correct, and an enforced one no state: those reasons belong to
+      // another candidate (a session-only policy's "requires nothing", a report-only
       // policy's state). Writing them onto this one would swap a tenant's stronger
-      // grant for the baseline's, under a correction that was about its users (C01/C02).
-      if (existing?.contribution === 'strong') for (const s of ['grantControls', 'sessionControls', 'state'] as const) sections.delete(s)
+      // grant for the baseline's, under a correction that was about its users or
+      // its state (C01/C02). A report-only policy's own state is still its own.
+      if (existing?.contribution === 'strong' || existing?.meetsFloor === true) {
+        sections.delete('grantControls')
+        sections.delete('sessionControls')
+        if (existing.contribution === 'strong') sections.delete('state')
+      }
       if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
         const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))

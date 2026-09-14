@@ -10,7 +10,7 @@
 // the role policy with the grant, the admin-session goal the session policy.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fixture } from './fixtures/index.ts'
+import { fixture, noExclusionsAnswer } from './fixtures/index.ts'
 import { runFixture } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
@@ -89,6 +89,43 @@ test('C01/C02: correcting a policy that already meets the floor writes no grant 
     assert.equal((session.action.changes ?? []).some((c) => c.field === 'Grant controls'), false, 'a shorter sign-in frequency is not listed as a grant change')
     assert.ok((session.action.changes ?? []).some((c) => c.field === 'Session controls'))
   }
+})
+
+test('C01/C02: a report-only admin policy that already asks for the built-in phishing-resistant strength keeps it', () => {
+  const f = fixture('demo-week2')
+  const group = actionableExclusionsGroupId({ snapshot: f.snapshot, mapping: f.mapping, groups: f.groups, directory: directoryEvidenceFromGroups(f.groups, 'complete') })
+  const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const apps = { includeApplications: ['All'] }
+  const rows = [
+    { id: ADMIN, displayName: 'Policy A', state: 'enabledForReportingButNotEnforced', conditions: { users: { includeRoles: [GLOBAL_ADMIN], excludeGroups: [group] }, applications: apps, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } },
+    // A session-only policy for the same role: its "requires nothing" is its own finding.
+    { id: SESSION, displayName: 'Policy C', state: 'enabled', conditions: { users: { includeRoles: [GLOBAL_ADMIN], excludeGroups: [group] }, applications: apps, clientAppTypes: ['all'] }, grantControls: null, sessionControls: { signInFrequency: { isEnabled: true, value: 24, type: 'hours', frequencyInterval: 'timeBased' } } },
+  ]
+  for (const order of [rows, [...rows].reverse()]) {
+    const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: order } } }
+    const r = runFixture({ ...f, snapshot }, { snapshot } as never)
+    const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind !== 'verify')
+    assert.ok(admins, 'the admins goal is on the plan')
+    for (const op of admins.action.resolution?.policies ?? []) {
+      assert.equal(op.mode === 'update' ? op.policyId : ADMIN, ADMIN, 'it is the admin policy the step follows')
+      assert.equal(Object.hasOwn(op.body, 'grantControls'), false, 'the built-in strength is not swapped for the baseline’s')
+    }
+    assert.equal((admins.action.changes ?? []).some((c) => c.field === 'Grant controls'), false)
+  }
+})
+
+test('C01: a guests step does not claim the all-users policy that does not deliver it; the all-users step does', () => {
+  const f = noExclusionsAnswer(fixture('small'))
+  const r = runFixture(f)
+  const everyoneId = r.coverage.results.find((x) => x.goal.id === 'mfa-all-users')?.candidates.find((c) => c.ownScope)?.policyId
+  assert.ok(everyoneId, 'the premise: the tenant has an all-users MFA policy')
+  const guests = r.coverage.results.find((x) => x.goal.id === 'guests-mfa')
+  assert.ok(guests && guests.satisfaction === null, 'the premise: nothing delivers the guests goal here')
+  const guestsStep = r.steps.find((x) => x.goalId === 'guests-mfa' && x.kind !== 'verify')
+  assert.ok(guestsStep, 'the guests goal is on the plan')
+  assert.notEqual(guestsStep.tracking?.policyId ?? null, everyoneId, 'the guests step does not name the all-users policy as its own')
+  const everyoneStep = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+  assert.equal(everyoneStep?.tracking?.policyId, everyoneId, 'the all-users step still finds it')
 })
 
 test('C01: where the only MFA policy is assigned to an admin role, the all-users step neither rewrites nor tracks it', () => {

@@ -481,7 +481,7 @@ function evaluateGoal(
     // for a grant goal — is another goal's policy whatever its assignment.
     const ownScope =
       (impl.expectedWho.kind === 'all' ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null) : !c.who.all) && carriesFloorControl(c, floor)
-    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope })
+    contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only
     // that: Microsoft asks no exclusion of a report-only policy, and Foundation A
