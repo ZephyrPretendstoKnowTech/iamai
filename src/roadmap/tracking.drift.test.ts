@@ -257,28 +257,50 @@ const goalOf = (run: ReturnType<typeof runFixture>, goal: string) => run.coverag
 const conditions = (row: Row): Row => row.conditions as Row
 const users = (row: Row): Row => conditions(row).users as Row
 
+const driftToDevice = (row: Row): void => {
+  row.grantControls = { operator: 'OR', builtInControls: ['compliantDevice'] }
+}
+const mfaAllId = String(rowsOf(ANSWERED.snapshot).find((p) => p.displayName === MFA_ALL)?.id)
+
 test('A1: when the MFA-for-all policy drifts, the correction never edits another goal’s policy', () => {
-  const run = mutated((row) => {
-    row.grantControls = { operator: 'OR', builtInControls: ['compliantDevice'] }
-  }, MFA_ALL)
+  const run = mutated(driftToDevice, MFA_ALL)
   const step = stepOf(run, 'mfa-all-users')
   assert.equal(goalOf(run, 'admins-phishing-resistant').verdict, 'inPlace', 'the premise: the admins goal is still delivered by its own policy')
   const claimed = new Set(run.coverage.results.filter((r) => r.goal.id !== 'mfa-all-users').flatMap((r) => r.satisfaction?.policyIds ?? []))
   assert.ok(claimed.size > 0, 'the premise: other goals stand on policies of their own')
   // The regeneration used to write its update against the admins policy — the
-  // first candidate in scan order — and relied on the tracking hold below to stop
-  // it. Since C01 the step never takes another goal's policy as its target, so
-  // there is no foreign update to hold: the invariant is asserted directly.
-  for (const op of step.action.resolution?.policies ?? []) {
+  // first candidate in scan order. Since C01 the step never takes another goal's
+  // policy as its target: the invariant is asserted directly.
+  const ops = step.action.resolution?.policies ?? []
+  for (const op of ops) {
     assert.ok(op.mode !== 'update' || !claimed.has(op.policyId), `no update is written against another goal’s policy (${op.mode === 'update' ? op.policyId : ''})`)
   }
   assert.equal(step.tracking?.policyId != null && claimed.has(step.tracking.policyId), false, 'nor is another goal’s policy tracked as this step’s')
-  // Where a tracked member still points at another goal's policy, it is held with its reason.
-  for (const m of step.tracking?.members ?? []) {
-    if (!m.policyId || !claimed.has(m.policyId)) continue
-    assert.ok(m.correction && !m.correction.safe && m.correction.note.length > 0, 'the hold explains itself')
-    assert.equal(m.ready, false)
-    assert.equal(nextSafeAction(step).executable, false, 'nothing against another goal’s policy is handed over')
+  // With no tag, no record of an earlier scan and not the plan's name, nothing
+  // identifies the drifted policy as this goal's: an All users policy requiring a
+  // compliant device is another goal's shape too. It stays as it is, and the
+  // goal's own policy is created beside it in report-only, which enforces nothing.
+  assert.deepEqual(ops.map((o) => o.mode), ['create'], 'the goal’s own policy is created; nothing is updated')
+  assert.equal(ops[0].body.state, 'enabledForReportingButNotEnforced')
+  assert.notEqual(step.tracking?.policyId ?? null, mfaAllId, 'the untracked policy is not taken for the goal’s own')
+})
+
+test('A1: a drifted MFA-for-all policy the plan identifies, by its tag or the plan’s own name, is the step’s own and never duplicated', () => {
+  const planName = String(stepOf(mutated(driftToDevice, MFA_ALL), 'mfa-all-users').action.resolution?.policies.find((o) => o.mode === 'create')?.body.displayName)
+  assert.notEqual(planName, MFA_ALL, 'the premise: the demo’s own name is not the plan’s')
+  const identify: [string, (row: Row) => void][] = [
+    ['tagged', (row) => { row.description = `[IAMAI:${ANSWERED.planId}:${stepIdForGoal('mfa-all-users')}]` }],
+    ['named', (row) => { row.displayName = planName }],
+  ]
+  for (const [label, mark] of identify) {
+    const step = stepOf(mutated((row) => { driftToDevice(row); mark(row) }, MFA_ALL), 'mfa-all-users')
+    const ops = step.action.resolution?.policies ?? []
+    assert.equal(ops.some((o) => o.mode === 'create'), false, `${label}: no duplicate is proposed beside it`)
+    assert.deepEqual(ops.filter((o) => o.mode === 'update').map((o) => o.policyId), [mfaAllId], `${label}: the correction is written against the drifted policy`)
+    assert.equal(step.tracking?.policyId, mfaAllId, `${label}: tracking follows it`)
+    // IAMAI does not write the drifted grant back itself: a person corrects it, and the step says so.
+    assert.equal(nextSafeAction(step).executable, false, `${label}: nothing is handed over`)
+    assert.equal(unavailableReason(step), 'manual-correction', `${label}: held as a person’s correction, with its reason`)
   }
 })
 

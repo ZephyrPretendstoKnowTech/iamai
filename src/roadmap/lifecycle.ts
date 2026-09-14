@@ -31,7 +31,7 @@ import { absoluteDate } from '../copy/dates.ts'
 import type { ObservationChange } from './observation.ts'
 import { dimensionWords, historyReset } from './observation.ts'
 import { holdOf } from './holds.ts'
-import { implementationOffered, unavailableReason } from './operations.ts'
+import { implementationOffered, operationsOf, unavailableReason } from './operations.ts'
 import { scheduleOf } from './stepSchedule.ts'
 import type { Blocker, Step, StepStatus } from './types.ts'
 
@@ -348,6 +348,10 @@ export function nextMilestone(step: Step): Milestone {
   if (step.kind === 'verify' || step.kind === 'check') return { kind: 'verify', label: MILESTONE.verify, at: null, gatedBy: null }
   if (s.lifecycle === null) return { kind: 'deploy', label: MILESTONE.prepare, at: null, gatedBy: null }
   // The day the plan schedules it (roadmap/stepSchedule.ts): the report-only
-  // creation, or the change to the tenant's policy — the day its row reads.
-  return { kind: 'deploy', label: MILESTONE.deploy, at: step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
+  // creation, or the change to the tenant's policy — the day its row reads. A
+  // change to a policy the tenant already has is not a create: "Create the policy
+  // in report-only." above the steps that open and correct it was two instructions.
+  const ops = operationsOf(step)
+  const correcting = ops.length > 0 && ops.every((o) => o.mode === 'update')
+  return { kind: 'deploy', label: correcting ? MILESTONE.correct : MILESTONE.deploy, at: step.scheduled ? scheduleOf(step).at : (step.events?.announce?.at ?? null), gatedBy: null }
 }

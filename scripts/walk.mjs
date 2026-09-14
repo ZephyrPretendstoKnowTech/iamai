@@ -387,7 +387,10 @@ const holeIn = (text) => text.replace(/\/\{id\}/g, '/').match(HOLE)
 // An empty value: a doubled or trailing separator, empty brackets, a doubled
 // comma, "from ·" — the shapes a missing date or name leaves. A lead's colon is
 // content (its list or none-branch follows), so it is not one.
-const EMPTY_VALUE = /(·\s*·)|(\(\s*\))|(,\s*,)|(\bfrom\s+until\b)|(\bfrom\s*·)|(·\s*$)|(^\s*·)/m
+// PowerShell's empty array `@()` is a value a script starts from, not a hole.
+const EMPTY_VALUE = /(·\s*·)|((?<!@)\(\s*\))|(,\s*,)|(\bfrom\s+until\b)|(\bfrom\s*·)|(·\s*$)|(^\s*·)/m
+// The control both ways: a script's `$changed=@()` passes, an emptied "()" does not.
+if (EMPTY_VALUE.test('$changed=@()') || !EMPTY_VALUE.test('Grant: ()') || !EMPTY_VALUE.test('Exclude @ ( )')) throw new Error('walk: the empty-value check misreads PowerShell @() or misses an empty value')
 // A variable the engine does not fill renders as nothing, and the sentence
 // around it closes on a preposition or an article: "From , signing in", "over
 // the next days", "Personal devices ." (the campaign email read "over the next
@@ -768,7 +771,7 @@ async function walkFixture(fx) {
         // One heading above the tiles, in both states.
         const h1 = await evaluate(`((document.querySelector('main.page h1') || {}).textContent || '').trim()`)
         if (h1 !== 'Strengthen identity security without guessing what will break.') add('P0', `${label}: the heading reads "${h1}"; Strengthen identity security without guessing what will break.`)
-        if (!/IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
+        if (!/IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects\. It is read-only and runs in this browser\./.test(text)) add('P0', `${label}: the line under the heading is missing or changed`)
         if (/Connect a tenant/.test(text)) add('P0', `${label}: "Connect a tenant" still renders`)
         // Task 016: the outcome first. Conditional Access is introduced at the
         // baseline stage, where the term has something to attach to.
@@ -781,7 +784,11 @@ async function walkFixture(fx) {
         if (/Everything the scan found is inside the plan/.test(text)) add('P0', `${label}: the "everything the scan found" line still renders`)
         if ((await evaluate(`document.querySelectorAll('main.page .footer-link').length`)) > 0) add('P0', `${label}: the footer How link still renders`)
         if (/Built for|What it catches/.test(text)) add('P0', `${label}: Built for or What it catches still renders on Connect; they moved to the home page`)
-        if (/feedback@getiamai\.com/.test(text)) add('P0', `${label}: the feedback address renders on Connect; it appears on the error page and How's Limits only`)
+        // The beta notice carries the feedback address as its one mail link (owner,
+        // continuation RUN-CONTEXT); anywhere else on Connect the address is out of place.
+        const feedback = await evaluate(`(() => { const main = document.querySelector('main.page'); if (!main) return { outside: '', links: [] }; const links = [...main.querySelectorAll('.callout a[href^="mailto:"]')].map((a) => a.getAttribute('href')); const copy = main.cloneNode(true); copy.querySelectorAll('.callout a[href="mailto:feedback@getiamai.com"]').forEach((a) => a.remove()); return { outside: copy.textContent || '', links } })()`)
+        if (/feedback@getiamai\.com/.test(feedback.outside)) add('P0', `${label}: the feedback address renders on Connect outside the beta notice's mail link`)
+        if (feedback.links.filter((h) => h === 'mailto:feedback@getiamai.com').length !== 1) add('P0', `${label}: the beta notice does not carry one mailto:feedback@getiamai.com link`)
         // The header: the brand links to Connect; signed in, no tenant tab and three tabs.
         const brand = await evaluate(`(() => { const a = document.querySelector('header.app a.wordmark'); return a ? a.getAttribute('href') : null })()`)
         if (brand !== '#/connect') add('P0', `${label}: the brand links to ${brand}; #/connect`)

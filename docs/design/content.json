@@ -256,6 +256,7 @@
         "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
         "prepare": "Make the object this step names.",
         "deploy": "Create the policy in report-only.",
+        "correct": "Correct the existing policy with the changes listed.",
         "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
         "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
         "observe": "Leave it in report-only and watch it.",
@@ -357,7 +358,7 @@
     "connect": {
       "eyebrow": "Setup",
       "h1": "Strengthen identity security without guessing what will break.",
-      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.",
+      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects. It is read-only and runs in this browser.",
       "status": {
         "$comment": "Task 032: the approved pack's status strip above the staged flow (docs/design/approved/connect-v3.html). It is a projection of the same progression the stages already carry — the stage with the next action, or nothing left to do — never a second reading of readiness. The quiet half is the current stage's own state line, so the strip and the step cannot disagree.",
         "ready": "Ready to plan",
