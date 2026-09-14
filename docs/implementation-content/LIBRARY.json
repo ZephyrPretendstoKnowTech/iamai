@@ -965,8 +965,8 @@
         "notLicensed"
       ],
       "correctionModules": 8,
-      "requiredBindings": 7,
-      "optionalBindings": 14,
+      "requiredBindings": 6,
+      "optionalBindings": 15,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 4,
@@ -4654,10 +4654,10 @@
     },
     {
       "binding": "policies.session.unmanaged.target.displayName",
-      "requiredBy": [
+      "requiredBy": [],
+      "optionalBy": [
         "s-goal-session-lifetime"
       ],
-      "optionalBy": [],
       "packages": [
         "s-goal-session-lifetime"
       ],
@@ -6324,8 +6324,8 @@
     "packagesWithOpenIssues": 8,
     "contentBlocks": 961,
     "uniqueBindings": 277,
-    "bindingsRequiredByAtLeastOneProjection": 95,
-    "bindingsOptionalInAtLeastOnePackage": 186,
+    "bindingsRequiredByAtLeastOneProjection": 94,
+    "bindingsOptionalInAtLeastOnePackage": 187,
     "bindingDefinitionsCarriedForward": 45,
     "bindingDefinitionsPendingHolisticReview": 232,
     "knownIAMAIInputTrue": 43,
