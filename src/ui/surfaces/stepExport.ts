@@ -17,8 +17,10 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
-import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
-import type { LaneView } from './stepContract.ts'
+import { CONTRACT, badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
+import type { LaneView, StepContract } from './stepContract.ts'
+import { bindingLabel, implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview } from './stepPackage.ts'
+import { projectSafely } from '../../content/implementation/project.ts'
 import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -126,6 +128,25 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
 }
 
 /**
+ * The screen's preview note (stepBody.ts `previewNote`), for an export that carries the
+ * walk-through of work the package can only preview because values IAMAI does not hold
+ * are missing. Without it the export read "Ready · Create" over a create the screen said
+ * could not be copied (review 7 queue 2). Only a values hold is read: the export has no
+ * owner confirmations, and a missing value holds whatever they satisfy.
+ */
+function previewValueLines(step: Step, ctx: StepVarContext, contract: StepContract): string[] {
+  const pkg = implementationPackageFor(step)
+  const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
+  if (!pkg || state === null) return []
+  const bindings = packageBindings(step, ctx, contract)
+  const { runtime } = packageRuntime(pkg, state, bindings, {})
+  const missing = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projectSafely(pkg, state, bindings, runtime))?.hold?.missingBindings ?? []
+  if (missing.length === 0) return []
+  const W = CONTRACT.implementation.preview
+  return [contract.fix.length === 0 && !contract.state.held ? W.textValues : W.text, fillText(W.values, { values: list([...new Set(missing.map(bindingLabel))]) })]
+}
+
+/**
  * The step as the screen says it, for an export.
  *
  * `lane` is the board's one state reading of the step (planBoard.ts laneViewOf,
@@ -215,7 +236,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // removes its direct break-glass exclusion under "Clear what this step is
   // waiting on."; held, the export carries the action alone, as the screen does.
   if (portal && portal.length > 0) {
-    if (implementationIsCurrent(step)) lines.push(...portal)
+    if (implementationIsCurrent(step)) lines.push(...portal, ...previewValueLines(step, ctx, contract))
   }
   else if (waiting) lines.push(waitingLine(step, String(ex.tenant ?? '')))
   else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan[step.action.ambiguousTarget ? 'targetAmbiguous' : 'pairUnmatched']), { tenant: String(ex.tenant ?? '') }))
