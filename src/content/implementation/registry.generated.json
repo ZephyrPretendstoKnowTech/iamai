@@ -6622,9 +6622,7 @@
             "entra": [
               "entra.create-pair"
             ],
-            "json": [
-              "json.target-pair"
-            ],
+            "json": [],
             "powershell": [
               {
                 "block": "powershell.run",
@@ -6651,11 +6649,6 @@
                 "entra": [
                   {
                     "block": "entra.correct-pair"
-                  }
-                ],
-                "json": [
-                  {
-                    "block": "json.target-pair"
                   }
                 ],
                 "powershell": [
@@ -6701,9 +6694,7 @@
             "entra": [
               "entra.enforce-pair"
             ],
-            "json": [
-              "json.enforce-pair"
-            ],
+            "json": [],
             "powershell": [
               {
                 "block": "powershell.run",
@@ -23452,7 +23443,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview the dedicated shared-device policy for {{tenant.displayName}}. Confirm it is scoped only to confirmed resource accounts and the canonical trusted-network ID, starts Report-only, and does not add user-interactive MFA.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nReview the dedicated shared-device policy for {{tenant.displayName}}. Confirm it is scoped only to confirmed resource accounts and the canonical trusted-network ID, starts Report-only, and does not add user-interactive MFA.\n\nThe PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies.\n"
         },
         "ai.correct": {
           "meta": {

@@ -11,6 +11,7 @@ import { stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { correctionFieldsOf, packageStateOf, safeCorrectionOf } from './stepPackage.ts'
 import { PILOT_IDS, PILOT_STEP_ID, pilotStepAt } from '../../testing/pilotFixture.ts'
+import { nextSafeAction } from '../../roadmap/nextSafeAction.ts'
 
 const f = fixture('small')
 const run = runFixture(f)
@@ -122,4 +123,13 @@ test('review 4 N1: under an emergency-access wait only the add-only correction (
   const adding = gated({ ...step, action: { ...step.action, resolution: { ...step.action.resolution!, policies: [addOnly] } } } as unknown as Step)
   assert.equal(safeCorrectionOf(adding, snapshot), true, 'the premise: the control adds and never takes away')
   assert.equal(stateOf(adding, snapshot), 'partial', 'the add-only correction was hidden behind the wait')
+})
+
+test('review 5 R5-2: a report-only policy under the same wait is planned too, because the next safe action holds its correction', () => {
+  const gated = (step: Step): Step => ({ ...step, blockers: [{ kind: 'step', stepId: 's-prereq-break-glass' }], blockedBy: ['s-prereq-break-glass'], state: { ...step.state, condition: 'blocked' }, status: 'blocked' }) as unknown as Step
+  const { step, snapshot } = owingACorrection('report-only')
+  assert.equal(stateOf(step, snapshot), 'partial', 'control: with nothing holding it the correction is handed over')
+  const held = gated(step)
+  assert.equal(nextSafeAction(held).executable, false, 'the premise: the next safe action holds the correction')
+  assert.equal(stateOf(held, snapshot), 'blocked', 'the screen handed over a correction the next safe action holds')
 })

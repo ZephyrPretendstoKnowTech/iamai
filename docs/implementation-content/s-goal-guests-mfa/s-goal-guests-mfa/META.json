@@ -87,9 +87,7 @@
       "entra": [
         "entra.create-pair"
       ],
-      "json": [
-        "json.target-pair"
-      ],
+      "json": [],
       "powershell": [
         {
           "block": "powershell.run",
@@ -115,7 +113,6 @@
             "sessionControls"
           ],
           "entra": "entra.correct-pair",
-          "json": "json.target-pair",
           "powershell": [
             {
               "block": "powershell.run",
@@ -168,9 +165,7 @@
       "entra": [
         "entra.enforce-pair"
       ],
-      "json": [
-        "json.enforce-pair"
-      ],
+      "json": [],
       "powershell": [
         {
           "block": "powershell.run",

@@ -237,10 +237,13 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // policy — projects whatever holds the step (A1a; A3 B3 "creation vs
   // enforcement"): the correction is safe to plan and to run today, and
   // enforcement stays behind its own gates. Not while the step waits on emergency
-  // access: every correction but U19's (above) can lock someone out, and one that
-  // takes an exclusion off an enforced policy before the way back in is confirmed
-  // is what that wait exists to stop (correction batch 2; review 4 N1). It is
-  // planned, not handed over, as nextSafeAction and the export already read it.
+  // access: on an enforced policy every correction but U19's (above) can lock
+  // someone out, and one that takes an exclusion off before the way back in is
+  // confirmed is what that wait exists to stop (correction batch 2; review 4 N1).
+  // A report-only policy's correction locks nobody out, but nextSafeAction holds
+  // every correction under this wait, and the screen does not hand over what the
+  // action withholds (review 5 R5-2). It is planned, not handed over, as
+  // nextSafeAction and the export already read it.
   if (!s.satisfied && correctionFieldsOf(step, snapshot).length > 0 && !waitsOnEmergencyAccess(step)) return 'partial'
   // The next technical action is not the step's to take today (roadmap/nextSafeAction.ts).
   if (!implementationIsCurrent(step)) return 'blocked'
