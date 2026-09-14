@@ -203,6 +203,9 @@ Start: HEAD e6a73a3. Preserved diff inspected: S2's complete ledger and BLOCKED 
 - Passkey setup held in every fixture; unholding without registered-AAGUID evidence risks locking out existing security keys.
 - all-users correction removing a guest exclusion is not reported in `changedFields` (engine), so Entra understates it.
 - PowerShell syntax parse not run (denied). Wording found for S4 recorded in BLOCKED S3.
+- Session corrections preview in every render: the package's `unmanaged` member has no pinned source, and a legitimately empty `excludeUsers` reads as unresolved (`present`); not changed because loosening empty lists globally would also bind an empty `excludeGroups` (`probes/s3-session.ts`, BLOCKED S3 22:30).
+- register-info-protected Entra create needs `policy.target.mode`, IAMAI's own mode with no binding source; not invented (BLOCKED S3 22:30).
+- Not attempted in S3: Email/AI template repairs beyond the blank-tab cause (no common cause found other than never-bound optional evidence values such as `evidence.reportOnly`), the guests pair script, and prerequisite-step JSON request metadata (not drawn on non-policy steps).
 
 ### Test expectation changes
 - `src/ui/surfaces/mfaAuthContentSpecs.test.ts` (all-users :50, admins :131): each pinned the Entra procedure of a conditions correction including its grant line ("Grant: Grant access → Require multifactor authentication.", "Grant → … Require authentication strength: Modern MFA + TAP …") and the verify list starting at 7. That line is the C02 defect fixed in d0a5f73 (the JSON and PowerShell of the same correction change conditions only). The grant item is removed and the verify list starts at 6; every other assertion in both tests is unchanged, and `channelParity.test.ts` asserts the grant module still appears when the grant differs.
