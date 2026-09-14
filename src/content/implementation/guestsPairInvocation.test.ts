@@ -104,6 +104,25 @@ test('s-goal-guests-mfa: with both members resolved, the create is one Graph JSO
   assert.doesNotMatch(json.text, /"kind"|"role"|"rule"|applyTo|[\u0000-\u001f]/)
 })
 
+// Release review R04: the creation Email was withheld because it declared no audience or
+// communication trigger. It is now authored for the partner and guest contacts, before
+// the report-only rollout, and says nothing has changed yet.
+test('s-goal-guests-mfa: the creation Email is drawn for partner and guest contacts before report-only, as planned work', () => {
+  const p = projectImplementation(PKG, 'missing', bindings({ 'policies.guests.strong.current.id': undefined, 'policies.guests.mixed.current.id': undefined }))
+  const email = p.channels.find((c) => c.channel === 'email')
+  assert.ok(email, JSON.stringify(p.degraded))
+  assert.equal(email.communication?.audience, 'client-contact')
+  assert.equal(email.communication?.trigger, 'before-report-only')
+  assert.match(email.text, /^Subject: Planned: /)
+  assert.match(email.text, /Nothing has changed yet\. We plan to add/)
+  assert.match(email.text, /they start in Report-only: they record what would happen at sign-in without prompting or blocking anyone/)
+  assert.match(email.text, /write again before anything is enforced/)
+  // Planned work, never described as already done.
+  assert.doesNotMatch(email.text, /\b(we have|we've|has been|have been|is now|are now) (created|enabled|enforced|turned on|changed|added)\b/i)
+  // The JSON and script the create offers are untouched by the Email.
+  assert.ok(p.channels.some((c) => c.channel === 'json') && p.channels.some((c) => c.channel === 'powershell'), JSON.stringify(p.degraded))
+})
+
 test('s-goal-guests-mfa: a partly resolved pair offers no batch: the JSON is withheld on the unresolved member’s values, and never sent as one policy', () => {
   const create = bindings({ 'policies.guests.strong.current.id': undefined, 'policies.guests.mixed.current.id': undefined })
   for (const r of ROOTS) delete create[`policies.guests.mixed.target.${r}`]

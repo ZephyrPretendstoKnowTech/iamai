@@ -626,7 +626,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "policy",
-      "strictValidationErrors": 10,
+      "strictValidationErrors": 9,
       "registered": true,
       "provenance": "baseline-member",
       "review": "current"
