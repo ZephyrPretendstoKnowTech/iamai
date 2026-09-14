@@ -84,9 +84,20 @@ export const NO_ACTION_STATES: ReadonlySet<PackageState> = new Set<PackageState>
 /** The authored marker on a line that disappears when its optional value is unavailable, in either of the library's spellings ("when" and "if"). */
 const OMIT = /\s*\[omit (?:this line )?(?:when|if) unavailable\]/g
 
+/**
+ * A tenant's free text on one line. A directory or policy name is stored as read,
+ * and a line break in one, put into a sentence, a list item or a script's `#`
+ * comment, ends that line: the rest of the name became code in a handed-over
+ * script (review 6 R6-1). Line breaks and other control characters read as one
+ * space; a tab stays. `{{json:x}}` values are JSON-encoded instead and keep theirs.
+ */
+export function oneLine(text: string): string {
+  return text.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ')
+}
+
 function formatValue(v: unknown): string {
-  if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(', ')
-  if (typeof v === 'string') return v
+  if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? oneLine(x) : JSON.stringify(x))).join(', ')
+  if (typeof v === 'string') return oneLine(v)
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return JSON.stringify(v)
 }
