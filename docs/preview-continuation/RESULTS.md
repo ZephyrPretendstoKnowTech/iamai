@@ -971,3 +971,47 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - `git diff 84cd431 HEAD -- '*.test.ts'`: one modified file (quotedNameLiterals), for the reason above; no `.skip`, `.only` or todo. The removed exact assertions are replaced by read-back and ASCII assertions over a superset of the shapes.
 - Files changed outside docs: invocation.ts, project.ts (one argument) and that test. No package content, registry or LIBRARY change.
 - Untouched (`git diff --stat 84cd431 HEAD` over them is empty): package.json, lockfile, .github, vite/tsconfig, data, baselines, src/feedback.ts, scripts (walk.mjs included), page-contracts and docs/design/content.json.
+
+## Cycle 10 (2026-09-14, from 13:51 MDT)
+
+**Start state**
+- HEAD 0ec26c7. Stash empty.
+- Uncommitted, docs only: the cycle 9 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json, status CONTINUE). Inspected and committed verbatim (1390c3f). No other unfinished work.
+- Logs: `../logs/c10/`. Scratch, not in the clone: `../scratch/c10-l92.cjs` (the patch), `c10-ctl.ts` (control-character render). Copy: `../c10-nv-1390c3f` (`git archive 1390c3f` with the modified test copied in; its `node_modules` is a **directory junction** to the clone's, so remove the junction itself).
+
+### Commits
+| Commit | Scope |
+|---|---|
+| 1390c3f | docs: cycle 9 fresh review, committed after inspection |
+| f6e6794 | Review 9 L9-2: a control character in invocation text leaves the quotes |
+
+### Review 9 L9-2 (low): FIXED (f6e6794)
+- **Cause.** `literal()` moved only U+007F–U+FFFF out of the single quotes. A tab or line break in a non-JSON text value or list item stayed inside the quotes. It could not end the literal, but the call ran over several lines, which breaks the "one ASCII line" property R8-1 relies on and the test asserts.
+- **Fix** (`invocation.ts`): `OUTSIDE_QUOTES` is U+0000–U+001F plus U+007F–U+FFFF, and each of those characters becomes a `[char]0xXXXX` term. Values holding none of them render exactly as before. The JSON path is unchanged: `JSON.stringify` already escapes controls inside strings, and escaping structural whitespace would break the JSON.
+- **Test** `quotedNameLiterals.test.ts` (**modified** again, one line plus a comment): the read-back loop also covers `\t`, `\n` and `\r\n`. Nothing was removed.
+- **Non-vacuity:** in `../c10-nv-1390c3f` (invocation.ts identical to HEAD 1390c3f by `cmp`; the test identical to the clone's), 1 of 2 fail, at `U+9` (`nonvacuity-2.txt`). The other test is unchanged. `nonvacuity-1.txt` is void: the junction was not created, so the file failed at import.
+- **PowerShell, parse only** (`../logs/c10/ctl/*.ps1`, BOM-less, rendered by `c10-ctl.ts`; `ctl/ast.ps1`). The cases are tab, LF followed by `'; Remove-MgGroup -GroupId x #`, CRLF+`Ñ`, and a leading LF, each in `-Name` and `-Ids`. `ParseFile` on 5.1.26100 and 7.6.6 gives, for all 4: `errors=0 top=1 bad=0 remove=0`, and the folded `-Name` equals the input (`ctl-ps51.txt`, `ctl-pwsh.txt`; `Ñ` prints as `�` only because of console output encoding). Nothing was executed.
+
+### Verification (exact code state: f6e6794 = the working tree the checks ran on)
+| Check | Command | Exit | Result |
+|---|---|---|---|
+| Targeted | `node --test --test-isolation=none` quotedNameLiterals, boundNameLineBreaks, channelParity (`targeted-1.txt`) | 0 | 5/5 |
+| Typecheck | `npx tsc --noEmit` (`tsc-1.txt`) | 0 | no output |
+| Full suite | `npm test`, from 13:53:12 (`full-1.txt`) | not captured (no exit line in the log) | 2760 tests · 2758 pass · 0 fail · 2 skipped (read after the cycle ended, as in review 10) |
+| Build | `npm run build` (`build-1.txt`; `build-2.txt` after commit) | 0 | chunk-size warning only |
+| Acceptance | `node docs/preview-continuation/acceptance/run-acceptance.mjs . ../logs/c10/acceptance` (`acceptance-1.txt`) | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` (`matrix-1.txt`) | 0 | 0 diff lines against `../logs/c9/matrix-1.txt` |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs`, from 13:55, dist from `build-2` (`walk-1.txt`) | none | **did not complete**: the log stops at "walking demo" and no process remained (review 10). Re-run in cycle 11 |
+| C01 | not re-run: the change touches invocation literal spelling only, not target selection | — | cycle 9 and review 9: lone/tie/all 0 diff |
+
+### Not done in cycle 10 (actionable; see BLOCKED)
+1. register-info-protected step 4 binding (medium). Not started: its package, registry and LIBRARY changes and their verification did not fit this 12-minute budget beside the walk.
+2. Board/export Ready vs blocked (medium): 7 lane lines, and 9 exports reading "Ready · Create" above "not ready to run".
+3. session-lifetime reportOnly/readyToEnforce (low-medium).
+4. pim-activation-reauth authContext/strength and the grant+session floor test; the report-only correction under an emergency-access wait; the guests adjust preview's run mode; low leftovers.
+5. Review 9 L9-1 (stand-in branch doubles only U+0027) and L9-3 (DBCS code pages for comment-bound names): not changed. A stand-in is product text in a preview that is never copied, and L9-3 was not reproduced.
+
+### Test edits and scope (this cycle)
+- `git diff 1390c3f f6e6794 -- '*.test.ts'`: one modified file (quotedNameLiterals, three cases added); no `.skip`, `.only` or todo.
+- Files changed outside docs: invocation.ts and that test. No package content, registry, LIBRARY, page contract, walk rule, content.json or dependency change.
+- No remote, tenant or external write was made, and no generated script was executed.

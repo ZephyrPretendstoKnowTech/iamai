@@ -188,3 +188,12 @@ Fixed in cycle 9 (RESULTS): review 8 R8-1. Invocation lines are now ASCII alone:
 - **Board/export Ready vs blocked (medium):** 7 lane lines, and 9 exports reading "Ready · Create" above "not ready to run" (review 8). Not started.
 - **session-lifetime reportOnly/readyToEnforce (low-medium), pim gaps, report-only correction under an emergency wait, low leftovers:** unchanged; not started.
 - **R8-1 body bindings: closed, no change needed (RESULTS cycle 9, not-done item 5).** The only tenant text in PowerShell template bodies (`*.current.removedExclusions`, `*.current.displayName`) sits in `#` line comments kept on one line by `oneLine()`. The removed group `Contractors Ñ; Remove-MgGroup … #` parses clean under 5.1 `ParseFile` on a BOM-less file. Template comment non-ASCII (e.g. em dashes) only garbles under an ANSI read (review 8).
+
+## Cycle 10 reassessment (2026-09-14)
+
+Fixed in cycle 10 (RESULTS): review 9 L9-2. A tab or line break in invocation text now leaves the quotes as `[char]`. None of the remaining entries is an owner decision under RUN-CONTEXT. Risk order:
+
+- **register-info-protected step 4 (medium):** not started. The cycle 8 binding plan stands.
+- **Board/export Ready vs blocked (medium):** 7 lane lines, and 9 exports reading "Ready · Create" above "not ready to run". Not started.
+- **session-lifetime reportOnly/readyToEnforce (low-medium), pim gaps, report-only correction under an emergency wait, guests adjust preview run mode, low leftovers:** unchanged; not started.
+- **L9-1 stand-in quoting, L9-3 DBCS code pages (low):** unchanged, not reproduced. A stand-in appears only in a never-copied preview.
