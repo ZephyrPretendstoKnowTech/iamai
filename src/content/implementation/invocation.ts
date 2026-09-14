@@ -101,14 +101,29 @@ export function invocationErrors(at: string, spec: unknown, script: string, voca
 }
 
 /**
- * A PowerShell literal: single-quoted text, an @() array of them, or a bare number.
- * PowerShell ends a single-quoted string at U+2018, U+2019, U+201A and U+201B as well
- * as at U+0027, so each of them is doubled; a tenant name such as "Finance’s" stays
- * inside its literal. Invocations use no double-quoted strings.
+ * A PowerShell literal: single-quoted text, an @() array of them, or a bare number,
+ * written in ASCII alone. Scripts leave by Copy; saved without a BOM and run in Windows
+ * PowerShell 5.1 they are read in the ANSI code page, where the UTF-8 bytes of "Ñ", "В"
+ * or "€" include 0x91/0x92/0x82, which read as U+2018/U+2019/U+201A, and PowerShell ends
+ * a single-quoted string at those as well as at U+0027. So every character above U+007E
+ * leaves the quotes: a JSON value (a `.json` binding) carries it as a `\uXXXX` escape,
+ * which ConvertFrom-Json reads back as the same character, and other text as `[char]`,
+ * in a parenthesised concatenation that evaluates to the same string. U+0027 is doubled.
+ * Invocations use no double-quoted strings.
  */
-const SINGLE_QUOTES = /['‘’‚‛]/g
-function literal(v: unknown): string {
-  const text = (x: unknown): string => `'${String(x).replace(SINGLE_QUOTES, '$&$&')}'`
+const NOT_ASCII = /[\u007f-\uffff]/g
+function literal(v: unknown, json = false): string {
+  const quoted = (s: string): string => `'${s.replace(/'/g, "''")}'`
+  const text = (x: unknown): string => {
+    const s = String(x)
+    if (json) return quoted(s.replace(NOT_ASCII, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`))
+    const parts = s.split(/([\u007f-\uffff])/).filter((p, i) => i % 2 === 1 || p !== '')
+    if (parts.length <= 1) return quoted(s)
+    const terms = parts.map((p) => (p.length === 1 && p.charCodeAt(0) > 0x7e ? `[char]0x${p.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}` : quoted(p)))
+    // [char] + string would convert the string to a char, so the concatenation starts with a string.
+    if (terms[0].startsWith('[char]')) terms.unshift("''")
+    return `(${terms.join(' + ')})`
+  }
   if (Array.isArray(v)) return `@(${v.map(text).join(', ')})`
   if (typeof v === 'number') return String(v)
   return text(v)
@@ -120,12 +135,12 @@ function literal(v: unknown): string {
  * refuses the whole artifact, exactly as a missing required binding refuses a
  * block; a switch is passed only for a satisfied prerequisite.
  */
-export function renderInvocation(script: string, spec: InvocationSpec, runs: ScriptRun[], bindings: Bindings, satisfied: ReadonlySet<string>): { text: string; calls: string[] } | { missing: string[] } {
+export function renderInvocation(script: string, spec: InvocationSpec, runs: ScriptRun[], bindings: Bindings, satisfied: ReadonlySet<string>, standIns: ReadonlySet<string> = new Set()): { text: string; calls: string[] } | { missing: string[] } {
   const fn = spec.function ?? DEFAULT_FUNCTION
   const missing = new Set<string>()
   const calls = runs.map((run) => {
     const args = [`-${spec.modeParameter} ${literal(run.mode)}`]
-    if (run.corrections.length > 0 && spec.correctionsParameter) args.push(`-${spec.correctionsParameter} ${run.corrections.map(literal).join(',')}`)
+    if (run.corrections.length > 0 && spec.correctionsParameter) args.push(`-${spec.correctionsParameter} ${run.corrections.map((c) => literal(c)).join(',')}`)
     for (const [name, p] of Object.entries(spec.parameters)) {
       if (!p.modes.includes(run.mode)) continue
       if (p.switch) {
@@ -137,7 +152,8 @@ export function renderInvocation(script: string, spec: InvocationSpec, runs: Scr
         if (p.binding) missing.add(p.binding)
         continue
       }
-      args.push(`-${name} ${literal(value)}`)
+      // A preview's stand-in ("‹policy conditions›") is drawn as it reads; a preview is never copied.
+      args.push(`-${name} ${standIns.has(p.binding!) ? `'${String(value).replace(/'/g, "''")}'` : literal(value, p.binding!.endsWith('.json'))}`)
     }
     return `${fn} ${args.join(' ')}`
   })
