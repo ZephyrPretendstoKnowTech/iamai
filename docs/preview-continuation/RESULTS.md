@@ -424,3 +424,112 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 - Outside the clone: `../logs/c4/`; `../scratch/c4-lane-diag.ts`, `c4-guests-bind.ts`, `c4-demo-missing.ts`, `c4-demo-action.ts`, `c4-demo-action-curated.ts`, `c4-demo-action-curated-3ca3fd1.ts`, `c4-held-lines.ts`, `c4-export-diff.ts`, `c4-export-diff-2.ts`; archive copies `../acc-src-ebb9633-c4`, `../acc-src-2997bb3-c4` and `../exp-src-ebb9633-c4`.
 - `../exp-src-ebb9633-c4/node_modules` is a directory junction to the clone's `node_modules`. Anyone removing that copy must remove the junction itself and not follow it.
 - No remote, tenant or external write was made, and no generated script was executed.
+## Cycle 5 (2026-09-14, from 10:31 MDT)
+
+**Start state**
+- HEAD 2997bb3. Stash empty.
+- Uncommitted: the cycle 4 fixer's final ledger (RESULTS.md, BLOCKED.md) and the cycle 4 fresh review (FINAL-REPORT.md, REVIEW-STATUS.json). All four are docs only; inspected and committed first (e0163b0).
+- **Correction (review 4 queue 2):** the cycle 4 ledger said "the docs commit carrying this final ledger". No such commit existed at the end of cycle 4; the ledger was uncommitted until e0163b0.
+- Logs: `../logs/c5/`, outside the clone. Scratch, not in the clone: `../scratch/c5-n1-diag.ts`, `c5-invocation.mjs`, `c5-ps-render.ts`, `c5-guests-members.ts`, `c5-guests-invocation.mjs`. Archive copies: `../c5-src-e0163b0` (node_modules is a **directory junction** to the clone's; remove the junction itself, never follow it) and `../acc-src-311b8a9-c5`.
+
+### Commits
+| Commit | Scope |
+|---|---|
+| e0163b0 | docs: cycle 4 final ledger and cycle 4 fresh review, committed after inspection |
+| 8332f82 | Review 4 N1: a correction held on emergency access is planned on screen, not handed over (stepPackage.ts), three tests |
+| 311b8a9 | Review 4 queue 3: user-risk-medium and service-accounts-trusted-network scripts called with IAMAI's values; riskNetworkInvocation.test.ts |
+| c4cb5a6 | Review 4 queue 3: the guests pair script called with both targets and both ids (stepPackage.ts `memberBindings` pair JSON, guests META/CONTENT, content.json value label); guestsPairInvocation.test.ts, guestsPairBinding.test.ts |
+
+### N1 (high): screen handed over a held correction the export withheld: FIXED at 8332f82
+- **Reproduced before editing** (`../scratch/c5-n1-diag.ts`, `n1-diag-1.txt`): across the curated and plain fixtures, exactly two steps reach `partial` through stepPackage.ts's "correction owed" branch while their implementation is not current. Both are curated demo, s-goal-block-legacy-auth and s-goal-block-device-code: enforced, `condition` blocked, `nextSafeAction` `{correct, executable:false, blockedBy:"blocked"}`, one step blocker `s-prereq-break-glass`, `removes.ids` = `000f4434…` (Core - Break glass).
+- **Cause:** `packageStateOf` returned `partial` for any owed correction "whatever holds the step" (A1a task 6), so the viewer drew an executable CorrectConditions call and PATCH with Copy enabled. `nextSafeAction` and the export (2997bb3) held the same correction.
+- **Fix:** while the step waits on an emergency-access foundation (a step blocker on a `GATING_SUBJECTS` step, or `action.escapeHatch`), that branch does not apply. Only the U19 add-only correction (the branch above it) is still handed over. Any other correction falls through to `blocked`, and `plannedPackageStateOf` still plans it as `partial`, so the step shows a non-copyable planning preview. Readiness holds are unchanged (the A3 B3 test still passes).
+- **Option chosen:** review 4's option (a), narrowing. docs/product/actionability/BLOCKED.md A1a task 6 had left "owner confirms the reversal or narrows 'safe'" open. RUN-CONTEXT (preserve safety exclusions, align channels) and correction batch 2's own reading ("the Plan releases it only once emergency access is sorted") settle it without a new rule.
+- **Matrix:** exactly two rows change, `demo+curated … adjust · partial · executable` → `blocked · preview`, same channels (`matrix-1.diff`).
+- **Tests:**
+  - heldCorrectionExport.test.ts: screen side on both steps. The correction removes an exclusion, it is not U19, the package state is `blocked`, it is planned as `partial`, `previewNote` is set and channels are still drawn.
+  - packageState.test.ts: a removing correction under a gate step blocker, and under the escape hatch, reads `blocked`. Controls: the same correction with nothing holding it is `partial`; an add-only correction under the same wait is `partial`.
+  - correctionProjection.test.ts (**pin changed, disclosed**): the A1a task 6 assertion `partial` now reads `blocked`, plus a premise that the step waits on emergency access and that it is still planned. The in-place comment says why.
+  - Non-vacuity: the three edited files run against `git archive e0163b0` fail exactly those 3 of 17 tests (`n1-nonvacuity.txt`).
+
+### Uncalled scripts (review 4 queue 3): user-risk-medium and service-accounts-trusted-network FIXED at 311b8a9; guests-mfa see below
+- **Cause:** both `powershell.run` blocks were `template`s with a mandatory `-Mode` nothing called, and every other parameter defaulted to a `'{{binding}}'` literal. user-risk-medium's create was withheld on `policy.current.id` (a value no create has). `-ExcludeGroupsJson`/`-TrustedLocationsJson` read JSON text while IAMAI holds arrays.
+- **Fix** (checked text transform `../scratch/c5-invocation.mjs`; every replacement matched exactly once):
+  - `deployableAfterBinding` with a declared invocation.
+  - user-risk-medium: Create ← DisplayName, ExcludeGroups; CorrectConditions ← PolicyId, ExcludeGroups; CorrectGrant/CorrectSession/Verify ← PolicyId.
+  - service-accounts-trusted-network: the same, plus ServiceAccountsGroupId and TrustedLocations wherever `Conditions`/`AssertCanonical` read them.
+  - `[string[]]$ExcludeGroups=@()` and `[string[]]$TrustedLocations=@()` replace the JSON-text parameters; the unused ParseArray is removed.
+  - `withheldModes.Enforce` with the reason: `-MfaRegistrationValidated`/hybrid writeback, `-IdentityTypesValidated`/`-WorkflowSourcesValidated`, which no declared prerequisite attests.
+  - What Create and the corrections write is unchanged.
+- Registry regenerated (`registry-1.txt`); `--library-index`: `strictValidationErrors` 12 → 13 for each package, the withheld Enforce reference, as shared-devices in cycle 3 (`library-1.txt`).
+- **Matrix** (`matrix-2.diff`, 10 rows): `uncalled-template` 13 → **5** (guests-mfa only). The 8 service-accounts previews no longer flag uncalled and no longer need ‹policy ID› to create. mid and mid+curated user-risk-medium create now draw PowerShell (`degraded powershell(policy.current.id)` gone). No other row changed.
+- **PowerShell parse** (`c5-ps-render.ts`, `Parser::ParseFile`, parse only, nothing executed): 6 files (both packages × Create/CorrectConditions/Verify), 0 errors (`ps-parse.txt`).
+- **Tests:** `riskNetworkInvocation.test.ts` (8): no JSON-text parameter or binding default; Create call after the whole body with no policy id, creating in report-only; CorrectConditions and CorrectGrant calls, no state; Verify call; Enforce withheld with its reason and not drawn. The first run failed 2 on the test's own regex (it matched the body's `ConvertTo-Json` and the `-like '{{*'` guard; `impl-1.txt`), narrowed to `$…Json`/ParseArray/`='{{`; 208/208 (`impl-2.txt`). Non-vacuity: 8/8 fail against `git archive e0163b0` (`invocation-nonvacuity.txt`).
+- **Comment corrected (disclosed):** highRiskChannels.test.ts said the Medium user-risk script "is an undeclared template"; no assertion changed.
+
+### getiamai guests-mfa single-policy resolution (review 4 queue 4): NOT a product defect on the pinned baseline
+- `../scratch/c5-guests-members.ts` (`guests-members-1.txt`): no curated or plain fixture resolves both guests members. Most are In place; demo is blocked with no operations; getiamai (plain and curated) has one create with member key `27a0c25c`, source "IAC - GLOBAL - GRANT - MFA - AllUsers".
+- The pinned goal map (`PINNED_GOAL_MAP`, from the Jon Hope pin) maps guests-mfa to exactly `e0fabad3…` and `f25f94e0…`, the package's two members.
+- getiamai is a non-demo fixture, and fixtures/index.ts:722–725 builds it on `syntheticBaseline(seed)`, a stand-in with one policy per family and no pinned ids. The single AllUsers-sourced resolution is that stand-in's, so withholding the pair's Entra there (nothing to bind) is the honest reading. No member is invented.
+
+### Guests pair script (review 4 queue 3): FIXED at c4cb5a6
+- **Cause:** `powershell.run` was a `template` with mandatory `-Mode` and `-TargetPoliciesJson` (both members' whole targets, each with `role`), and no binding held the pair. The matrix drew it uncalled on 5 rows.
+- **Fix:**
+  - stepPackage.ts `memberBindings` binds `policies.<family>.targets.json` = `[{role, displayName, conditions, grantControls, sessionControls}]`, the same fields `policy.target.json` carries for a single policy. It is bound only when every declared member resolved whole: no member missing, and no reference still waiting on it (`incompleteFieldsOf` empty).
+  - guests META declares it (optional).
+  - The block is `deployableAfterBinding`. TargetPoliciesJson is passed in CreateMissing, CorrectPair, Observe, EnforcePair and Verify; StrongPolicyId and MixedPolicyId in all of those but CreateMissing.
+  - `withheldModes.ApplyPartnerTrust`: it reads the partner trust patches as JSON text, and IAMAI holds them as objects. The runtime never reaches `partnerTrustRequired` anyway (not a `PackageState`).
+  - The script body is unchanged. CorrectPair PATCHes name, conditions, grant and session, never state.
+  - content.json value label "both guest policy targets" for the preview stand-in.
+- **Effect (disclosed):**
+  - No curated or plain fixture resolves both members, so the matrix shows the script withheld or planned, never executable.
+  - getiamai and getiamai+curated: PowerShell is now withheld (`degraded powershell(policies.guests.targets.json)`), as Entra and JSON already were there.
+  - demo, demo+curated and demo-week2+curated+unanswered (blocked previews): the call is drawn with the ‹both guest policy targets› stand-in.
+  - Found while testing: a report-only watch without the pair value draws only an Entra note carrying none of IAMAI's values. project.ts:477–482 does not offer such a note alone, so the projection holds on the pair value, and the planning preview draws Entra, PowerShell and AI Info with Copy withheld and the value named (`../scratch/c5-guests-short-2.ts`, `c5-guests-preview.ts`). Before this change, the uncalled template was not "degraded", so the note was offered as copyable. This is the product's existing rule, now reached; no fixture renders it.
+- **Matrix** (`matrix-3.diff`, `matrix-4.diff`): `uncalled-template` 5 → **0**. Only the 5 guests rows changed.
+- **PowerShell parse** (`../scratch/c5-guests-ps-render.ts`, `Parser::ParseFile`, parse only): CreateMissing, CorrectPair, Observe and EnforcePair, 4 files, 0 errors (`guests-ps-parse.txt`).
+- **Registry/LIBRARY:** regenerated (`registry-2.txt`, `library-2.txt`). Guests `strictValidationErrors` 9 → 10 (the withheld ApplyPartnerTrust reference); the new optional binding is indexed.
+- **Tests:**
+  - `guestsPairInvocation.test.ts` (4): the CreateMissing call after the whole body, with no ids, creating in report-only; the CorrectPair call with both ids, its branch writing no `state=`; the Observe and EnforcePair calls; the ApplyPartnerTrust reason; without the pair value a create keeps Entra and withholds only the script, and a report-only watch holds on exactly that value and previews all three channels with the stand-in in the call.
+  - `guestsPairBinding.test.ts` (3): on getiamai's real guests step, with its create keyed to each pinned member, both members give a two-role JSON equal to the resolved body. Controls: one member, getiamai's own single create, and a waiting reference each bind nothing.
+  - First runs: one assertion expected `degraded` for the report-only watch and got a hold (the finding above; the test now asserts the hold and the preview). tsc refused a `partnerTrustRequired` projection call (removed; the reason is asserted instead).
+  - Non-vacuity against `git archive e0163b0`: invocation 4/4 fail; binding: the positive case fails, the controls pass (`guests-invocation-nonvacuity.txt`, `guests-binding-nonvacuity.txt`).
+
+### Verification (exact code states)
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | N1 tree; N1 tree after the test cast fix (= 8332f82) | 1; 0 | TS2352 in the new packageState test (cast via `unknown`) (`tsc-1.txt`); clean (`tsc-2.txt`) |
+| Targeted | heldCorrectionExport, packageState, correctionProjection, implementationRegion, stepFamilies, stepSnapshots | tree = 8332f82 | 0 | 46/46 (`n1-targeted-1.txt`) |
+| Non-vacuity | the three N1 test files in `git archive e0163b0` (node_modules junction) | e0163b0 source | 1 | 3 of 17 fail, exactly the N1 assertions (`n1-nonvacuity.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | 8332f82 | 0 | vs cycle 4 `c4/matrix-3.txt`: 2 rows (N1) (`matrix-1.txt`, `matrix-1.diff`) |
+| Full suite | `npm test`, 10:34–10:40 | **8332f82** | 0 | **2725 tests · 2723 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-1.txt`) |
+| Implementation suites | `node --test --test-isolation=none "src/content/implementation/*.test.ts"` | invocation tree, first test regex; fixed regex (= 311b8a9) | 1; 0 | 208 · 206 pass · 2 fail (the test's own regex) (`impl-1.txt`); 208/208 (`impl-2.txt`) |
+| Typecheck | same | tree = 311b8a9 | 0 | `tsc-3.txt` |
+| Matrix | same | 311b8a9 | 0 | vs 8332f82: 10 rows; `uncalled-template` 13 → 5 (`matrix-2.txt`, `matrix-2.diff`) |
+| PowerShell parse | `../scratch/c5-ps-render.ts` + `Parser::ParseFile` (parse only) | 311b8a9 | 0 | 6 files, 0 errors (`ps-render.txt`, `ps-parse.txt`) |
+| Non-vacuity | riskNetworkInvocation.test.ts in the e0163b0 archive | e0163b0 source | 1 | 8/8 fail (`invocation-nonvacuity.txt`) |
+| Full suite | `npm test`, 10:42–10:47 | **311b8a9** | 0 | **2733 tests · 2731 pass · 0 fail · 0 cancelled · 2 skipped** (same two) (`full-2.txt`) |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c5/acceptance-311b8a9`, `<copy>` = `../acc-src-311b8a9-c5` (`git archive 311b8a9d` into a new directory, harness identical by `cmp`) | **311b8a9** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-1.txt`) |
+| Typecheck | same | guests tree with the test's `partnerTrustRequired` call; after its removal (= c4cb5a6) | 1; 0 | TS2345 (`tsc-4.txt`); clean (`tsc-5.txt`) |
+| Implementation suites | same glob | guests tree, first test; rewritten test (= c4cb5a6) | 1; 0 | 212 · 211 pass · 1 fail (report-only hold, see finding) (`impl-3.txt`); 212/212 (`impl-4.txt`) |
+| Surfaces + testing | `node --test --test-isolation=none "src/ui/surfaces/*.test.ts" "src/testing/*.test.ts"` | guests tree before the content.json value label (not exactly c4cb5a6; the full suite below is) | 0 | 603/603, guestsPairBinding 3/3 included (`surfaces-1.txt`) |
+| Content | content.test.ts, contentChecks.test.ts | after the value label (= c4cb5a6 content) | 0 | 12/12 (`content-1.txt`) |
+| PowerShell parse | `../scratch/c5-guests-ps-render.ts` + `Parser::ParseFile` | c4cb5a6 registry | 0 | 4 files, 0 errors (`guests-ps-render.txt`, `guests-ps-parse.txt`) |
+| Non-vacuity | guestsPairInvocation, guestsPairBinding in the e0163b0 archive | e0163b0 source | 1; 1 | 4/4 fail; 1 of 3 fail (the positive case; the controls pass) |
+| Matrix | same | **c4cb5a6** | 0 | vs cycle 4: **17 rows** (2 N1, 10 invocation, 5 guests); `uncalled-template` 0, `packageFault` 0 (`matrix-4.txt`, `matrix-3.diff`, `matrix-4.diff`) |
+| Lane / parity | `c2-export-lane.ts`; `../logs/review1/rv-parity.ts` | c4cb5a6 | 0; 0 | `{"steps":107,"boardReadyBlocked":7,"noLaneReadyBlocked":7}` (review 4: same); parity 0 diff lines against `c4/rv-parity-3.txt` (`export-lane-1.txt`, `rv-parity-1.txt`) |
+| Full suite | `npm test`, 10:55–10:58 | **c4cb5a6** (clean tree) | 0 | **2740 tests · 2738 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-3.txt`) |
+| Build | `npm run build` | **c4cb5a6** | 0 | chunk-size warning only (`build-1.txt`) |
+| Acceptance | same harness, `<copy>` = `../acc-src-c4cb5a6-c5` (`git archive c4cb5a6a`, harness identical by `cmp`) | **c4cb5a6** | 0 | **28 PASS · 0 FAIL · 0 HARNESS_ERROR** (`acceptance-2.txt`) |
+
+### Test edits and scope (this cycle)
+- `git diff e0163b0 HEAD -- '*.test.ts'`: no `.skip`, `.only` or todo added. One assert line removed: correctionProjection.test.ts' `packageStateOf … 'partial'` (A1a task 6 pin), replaced by `'blocked'` plus two premise/planned assertions, with an in-place comment. highRiskChannels.test.ts: comment only.
+- Files changed since e0163b0: stepPackage.ts; three packages' CONTENT.md (guests also META.json); registry.generated.json; LIBRARY.json; content.json (one value label); seven test files (four new). package.json, lockfile, baselines, .github, vite/tsconfig, data/goals.json, walk.mjs, page-contracts.json and src/feedback.ts are untouched this cycle (walk.mjs last changed in cycle 1, disclosed then).
+
+### Not done in cycle 5 (actionable; see BLOCKED)
+1. Removed exclusions in the viewer's Entra and AI Info tabs and in the script/JSON disclosure (review 4 queue 5): needs a binding from `PolicyOperation.removes` and an authored line in each correction package; not started.
+2. shared-devices people-policy exclusions and the dangling readyToEnforce Enforce reference (queue 6).
+3. Board Ready vs blocked: 7 remain (queue 7), unchanged.
+4. Package gaps: session-lifetime, register-info-protected, pim-activation-reauth; the pim grant+session floor test (queue 8).
+5. Low: the export "before" line under a hold; unprojected lifecycle/ReportOnly/Location leftovers; same-name create; passkey profiles; worker Lane B/P1 and scoring of a missing methods entry.
+6. The guests pair is not rendered end to end by any fixture (no fixture resolves both pinned members); proven by unit and keyed-step tests only.
