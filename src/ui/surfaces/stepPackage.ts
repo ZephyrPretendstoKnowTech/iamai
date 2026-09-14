@@ -39,6 +39,7 @@ import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
+import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkeySettings.ts'
 import { tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
@@ -181,6 +182,16 @@ export function safeCorrectionOf(step: Step, snapshot: TenantSnapshot | null): b
   return owed
 }
 
+/**
+ * Whether the step waits on an emergency-access foundation (roadmap/blockerSteps.ts
+ * GATING_SUBJECTS): a step blocker on one, or the escape hatch it is held behind.
+ * Read at call time: blockerSteps.ts and lifecycle.ts import each other.
+ */
+function waitsOnEmergencyAccess(step: Step): boolean {
+  const gate = new Set(GATING_SUBJECTS.map(blockerStepId))
+  return step.action.escapeHatch != null || step.blockers.some((b) => b.kind === 'step' && gate.has(b.stepId))
+}
+
 /** A multi-policy set with a member to create beside a member the tenant already has. */
 const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o) => o.mode === 'create') && ops.some((o) => o.mode === 'update')
 
@@ -195,10 +206,11 @@ const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o
  *      even where Foundation A will not hand the whole policy over (U19);
  *   4a. an implementation Foundation A will not hand over: blocked;
  *   5. a correction owed — an update that changes material fields of the tenant's
- *      policy — partial, whatever the lifecycle and whatever holds the step: a
- *      report-only or an enforced policy that is not what the plan asked for is
- *      corrected before anything else is done to it, and hiding that behind its
- *      stage or its hold hid the correction (A1a; A3 B3);
+ *      policy — partial, whatever the lifecycle and whatever holds the step but
+ *      emergency access: a report-only or an enforced policy that is not what the
+ *      plan asked for is corrected before anything else is done to it, and hiding
+ *      that behind its stage or its hold hid the correction (A1a; A3 B3). Under an
+ *      emergency-access wait only 4's correction is handed over (review 4 N1);
  *   6. nothing to implement now — a blocker or a review — blocked. The one held
  *      step whose current action is the implementation is the owner's report-only
  *      preparation (nextSafeAction.ts implementationIsCurrent), and it continues;
@@ -224,8 +236,12 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // A correction owed — an update that changes material fields of the tenant's
   // policy — projects whatever holds the step (A1a; A3 B3 "creation vs
   // enforcement"): the correction is safe to plan and to run today, and
-  // enforcement stays behind its own gates.
-  if (!s.satisfied && correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+  // enforcement stays behind its own gates. Not while the step waits on emergency
+  // access: every correction but U19's (above) can lock someone out, and one that
+  // takes an exclusion off an enforced policy before the way back in is confirmed
+  // is what that wait exists to stop (correction batch 2; review 4 N1). It is
+  // planned, not handed over, as nextSafeAction and the export already read it.
+  if (!s.satisfied && correctionFieldsOf(step, snapshot).length > 0 && !waitsOnEmergencyAccess(step)) return 'partial'
   // The next technical action is not the step's to take today (roadmap/nextSafeAction.ts).
   if (!implementationIsCurrent(step)) return 'blocked'
   if (s.satisfied) return 'inPlace'

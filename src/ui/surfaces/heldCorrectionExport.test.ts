@@ -19,6 +19,8 @@ import { planDates } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepContract } from './stepContract.ts'
 import { stepExportView } from './stepExport.ts'
+import { stepBodyOf } from './stepBody.ts'
+import { packageStateOf, plannedOperationsOf, plannedPackageStateOf, safeCorrectionOf } from './stepPackage.ts'
 
 const PORTAL = /^Entra admin center → /
 
@@ -45,6 +47,31 @@ test('an enforced correction held on emergency access exports its action alone, 
     assert.equal(implementationIsCurrent(step), false, where)
     assert.equal(contract.whatToDo.text, engine.milestone.resolve, where)
     assert.deepEqual(view.whatToDo, [engine.milestone.resolve], `${where}: ${JSON.stringify(view.whatToDo)}`)
+  }
+})
+
+// Review 4 N1 (cycle 5): the screen still drew these two corrections as an executable
+// package — a CorrectConditions call and a PATCH whose excluded groups drop Core - Break
+// glass — with Copy enabled, while the export above held them. Both surfaces hold it now.
+test('the same held corrections are a planning preview on screen: no executable package, Copy withheld', () => {
+  const f = curatedFixture('demo')
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const readings = laneReadings(r.steps)
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+  const dates = planDates(r.steps, r.schedule.start, r.coverage.organisation.naming, f.snapshot)
+  for (const id of ['s-goal-block-legacy-auth', 's-goal-block-device-code']) {
+    const step = r.steps.find((s) => s.id === id) as Step
+    const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (x: string) => r.input.names!.label(x), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, ...dates, reportOnlyAt: step.reportOnlyAt ?? null, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming } as StepVarContext
+    const lane = laneViewOf(readings.get(id)!, titleOf)
+    const contract = stepContract(step, ctx, undefined, lane)
+    // The premise: the correction takes the tenant's direct exclusion off.
+    assert.ok(plannedOperationsOf(step).some((o) => (o.removes?.ids.length ?? 0) > 0), `${id}: removes nothing`)
+    assert.equal(safeCorrectionOf(step, f.snapshot), false, id)
+    assert.equal(packageStateOf(step, contract, f.snapshot), 'blocked', id)
+    assert.equal(plannedPackageStateOf(step, contract, f.snapshot), 'partial', `${id}: the correction is no longer planned`)
+    const body = stepBodyOf(step, ctx, { lane })
+    assert.ok(body.previewNote, `${id}: the held correction is drawn as copyable work`)
+    assert.ok(body.artifacts.some((a) => !a.unavailable), `${id}: the planned correction draws no channel`)
   }
 })
 
