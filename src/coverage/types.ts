@@ -198,6 +198,8 @@ export type CandidateContribution = {
    * kind of control (grant, block, session) the goal asks for (C01).
    */
   ownScope: boolean
+  /** The policy's grant and session meet the goal's floor, whatever its state: a report-only policy can already ask for enough. */
+  meetsFloor?: boolean
 }
 
 /**
