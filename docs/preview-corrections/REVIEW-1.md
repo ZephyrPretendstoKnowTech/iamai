@@ -65,7 +65,7 @@ Reviewer did not implement S0–S4. Candidate HEAD at start 144b6ce, tree clean,
 
 ## Not reviewed in R1 (time)
 - C08 browser journeys and C09 browser runs were not re-executed (S4 logs/screenshot only).
-- Exports (Export.tsx / artifactLines) were not checked for old contradictory instructions after the content fixes (REVIEW.md 6).
+- Exports (REVIEW.md 6), structure only, not rendered: Export.tsx draws steps through `stepExportView` (src/ui/surfaces/stepExport.ts), which imports the engine's `stepPortalLines`/stepJson helpers and neither the package projection nor `stepBodyOf`. So exports cannot keep the removed package sentences (the removed grant lines appear nowhere in src or CONTENT.md), but they come from a different source than the viewer's packaged Entra tab. Whether an exported correction matches the packaged tab for the same step is NOT VERIFIED. F2's wrong target is an engine selection, so it would reach exports as well (inferred, not rendered).
 - Full `npm test`, typecheck and build were not run (RUN-CONTEXT: R2); focused suites only.
 - `readGroup` (onDemand.ts) behaviour without MSAL; S3's BLOCKED guest-exclusion `changedFields` item; session-lifetime and register-info-protected holds (BLOCKED S3 22:30) — read, not re-probed.
 - Stand-in token leakage: the only consumer of a projection's `requests` outside tests is stepBody.ts:67-68 (method + endpoint label), so a planning preview's masked token does not reach Copy through `requests`. Not checked through exports.
