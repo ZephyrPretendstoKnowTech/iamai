@@ -71,6 +71,44 @@ for (const carveOut of [false, true]) {
   }
 }
 
+test('C01/C02: correcting a policy that already meets the floor writes no grant from another policy, and a session raise is a session change', () => {
+  for (const reversed of [false, true]) {
+    const r = run({ reversed, names: NAMES, carveOut: false })
+    // The admin policy's only shortfall is the exclusions group. The session-only
+    // policy "requires nothing", but that is its finding, not the admin policy's:
+    // the built-in phishing-resistant strength stays as the tenant has it.
+    const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind === 'adjust')
+    assert.ok(admins, 'the admins goal corrects its policy')
+    const update = (admins.action.resolution?.policies ?? []).find((o) => o.mode === 'update')
+    assert.equal(update?.policyId, ADMIN)
+    assert.equal(Object.hasOwn(update?.body ?? {}, 'grantControls'), false, 'no grant is written onto the admin policy')
+    assert.deepEqual((admins.action.changes ?? []).map((c) => c.field), ['Users'])
+
+    const session = r.steps.find((x) => x.goalId === 'admin-session' && x.kind === 'adjust')
+    assert.ok(session, 'the admin-session goal corrects its policy')
+    assert.equal((session.action.changes ?? []).some((c) => c.field === 'Grant controls'), false, 'a shorter sign-in frequency is not listed as a grant change')
+    assert.ok((session.action.changes ?? []).some((c) => c.field === 'Session controls'))
+  }
+})
+
+test('C01: where the only MFA policy is assigned to an admin role, the all-users step neither rewrites nor tracks it', () => {
+  const f = fixture('demo-week2')
+  const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
+  const rows = [{ id: ADMIN, displayName: 'Policy 2', state: 'enabled', conditions: { users: { includeRoles: [GLOBAL_ADMIN], excludeGroups: [] }, applications: { includeApplications: ['All'] }, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } }]
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows } } }
+  const r = runFixture({ ...f, snapshot }, { snapshot } as never)
+
+  const everyone = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+  assert.ok(everyone, 'the all-users goal is on the plan')
+  for (const op of everyone.action.resolution?.policies ?? []) assert.notEqual(op.mode === 'update' ? op.policyId : null, ADMIN, 'the admin policy is not rewritten to All users')
+  assert.notEqual(everyone.tracking?.policyId ?? null, ADMIN, 'nor tracked as the all-users policy')
+
+  // The admin policy is still the admins goal's to correct.
+  const admins = r.steps.find((x) => x.goalId === 'admins-phishing-resistant' && x.kind === 'adjust')
+  assert.ok(admins, 'the admins goal corrects its policy')
+  assert.equal((admins.action.resolution?.policies ?? []).find((o) => o.mode === 'update')?.policyId, ADMIN)
+})
+
 test('C01: an all-users policy is the one corrected when the admin policy is listed first and both lack the exclusions group', () => {
   const r = run({ reversed: false, names: NAMES, carveOut: false })
   const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind === 'adjust')

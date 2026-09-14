@@ -598,7 +598,11 @@ export { proposedPolicyName } from '../coverage/naming.ts'
 /** The sections a partly-covered goal's policy has to change (roadmap-v2.md §4.6). */
 function changedSections(result: GoalResult): Set<ChangedSection> {
   const sections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter((x): x is ChangedSection => Boolean(x)))
-  if (result.floorRaised) sections.add('grantControls')
+  // A raised floor is raised where the goal asks: a stronger authentication for a
+  // grant goal, a shorter sign-in frequency for a session goal (classify.ts
+  // raiseFloor). A session raise listed as a grant change put "Grant controls" on
+  // a step whose body carries no grant.
+  if (result.floorRaised) sections.add(result.goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
   return sections
 }
 
@@ -1450,15 +1454,18 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // that policy is the one to correct — not a report-only policy for a few of
       // the same people. Otherwise the weaker or report-only policy is.
       const onlyShort = !result.reasons.some((r) => r.kind === 'weaker-control' || r.kind === 'session-weaker' || r.kind === 'report-only')
-      // The goal's own policy before any other goal's, whatever order the scan
-      // listed them in (C01): an all-users step never takes the admin policy, and
-      // a grant step never takes a session policy, while one of its own is there.
-      const pickExisting = (ownOnly: boolean) =>
+      // Only the goal's own policy, whatever order the scan listed them in (C01).
+      // Another goal's policy is never the one this step corrects: correcting an
+      // admin-role policy for the all-users goal rewrites it to All users (and
+      // the admins step writes its own grant onto the same object), and
+      // correcting an all-users policy for an admin goal narrows it to the
+      // admins. With no policy of its own the step writes the goal's own policy.
+      existing =
         (onlyShort ? result.candidates.find((c) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))) : undefined) ??
-        result.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'weak') ??
-        result.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'reportOnly') ??
-        result.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution !== 'disabled')
-      existing = pickExisting(true) ?? pickExisting(false) ?? null
+        result.candidates.find((c) => c.ownScope && c.contribution === 'weak') ??
+        result.candidates.find((c) => c.ownScope && c.contribution === 'reportOnly') ??
+        result.candidates.find((c) => c.ownScope && c.contribution !== 'disabled') ??
+        null
       const existingId = existing?.policyId ?? null
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       // No baseline policy stands for this goal, so the policy the step changes
@@ -1466,6 +1473,12 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // through the same boundary.
       const changing = source ? stepPolicies() : templatePolicy()
       const sections = changedSections(result)
+      // A policy that already meets the goal's floor, enforced, has no grant,
+      // session or state of its own to correct: those reasons belong to another
+      // candidate (a session-only policy's "requires nothing", a report-only
+      // policy's state). Writing them onto this one would swap a tenant's stronger
+      // grant for the baseline's, under a correction that was about its users (C01/C02).
+      if (existing?.contribution === 'strong') for (const s of ['grantControls', 'sessionControls', 'state'] as const) sections.delete(s)
       if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
         const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
