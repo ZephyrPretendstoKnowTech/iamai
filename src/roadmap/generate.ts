@@ -1450,12 +1450,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // that policy is the one to correct — not a report-only policy for a few of
       // the same people. Otherwise the weaker or report-only policy is.
       const onlyShort = !result.reasons.some((r) => r.kind === 'weaker-control' || r.kind === 'session-weaker' || r.kind === 'report-only')
-      existing =
+      // The goal's own policy before any other goal's, whatever order the scan
+      // listed them in (C01): an all-users step never takes the admin policy, and
+      // a grant step never takes a session policy, while one of its own is there.
+      const pickExisting = (ownOnly: boolean) =>
         (onlyShort ? result.candidates.find((c) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))) : undefined) ??
-        result.candidates.find((c) => c.contribution === 'weak') ??
-        result.candidates.find((c) => c.contribution === 'reportOnly') ??
-        result.candidates.find((c) => c.contribution !== 'disabled') ??
-        null
+        result.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'weak') ??
+        result.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution === 'reportOnly') ??
+        result.candidates.find((c) => (!ownOnly || c.ownScope) && c.contribution !== 'disabled')
+      existing = pickExisting(true) ?? pickExisting(false) ?? null
       const existingId = existing?.policyId ?? null
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       // No baseline policy stands for this goal, so the policy the step changes

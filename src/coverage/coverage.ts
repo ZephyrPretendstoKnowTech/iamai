@@ -474,7 +474,13 @@ function evaluateGoal(
     }
     // A policy that targets all users is a broad match for a narrower goal (its
     // own scope belongs to mfa-all-users), so it is not this goal's own coverage.
-    const ownScope = impl.expectedWho.kind === 'all' || !c.who.all
+    // The converse holds for an all-users goal: a policy assigned only to
+    // directory roles or only to guests is the admin or guest goal's policy, and
+    // correcting it to All users would take it from that goal (C01). And a policy
+    // carrying no control of the kind the goal asks for — a session-only policy
+    // for a grant goal — is another goal's policy whatever its assignment.
+    const ownScope =
+      (impl.expectedWho.kind === 'all' ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null) : !c.who.all) && carriesFloorControl(c, floor)
     contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only
@@ -672,6 +678,25 @@ function evaluateGoal(
 
   const statement = buildStatement(goal, status, base, E, enforced, impl.expectedWho.kind, anyEstimated, baselineMatches, input.snapshot, assumed.users)
   return { ...base, status, statement }
+}
+
+/**
+ * The policy carries the kind of control the goal's floor names, at any strength:
+ * a grant goal's policy has a grant that is not a block, a block goal's a block,
+ * a session goal's some session control. Whether it is strong enough is the
+ * contribution's question, not this one.
+ */
+function carriesFloorControl(f: PolicyFacts, floor: Parameters<typeof satisfiesFloor>[2]): boolean {
+  const g = f.grant
+  const isBlock = g !== null && [...g.controls].some((x) => /^block$/i.test(x))
+  const hasGrant = g !== null && (g.controls.size > 0 || g.strengthId != null || g.strength != null)
+  if (floor.grant === 'block' && !isBlock) return false
+  if (floor.grant && floor.grant !== 'block' && (!hasGrant || isBlock)) return false
+  if (floor.session) {
+    const s = f.session
+    if (!(s.signInFrequencyHours !== null || s.signInFrequencyEveryTime || s.persistentBrowser !== null || s.appEnforced || s.secureSignInSession || s.cloudAppSecurity !== null)) return false
+  }
+  return true
 }
 
 function evaluateStructural(
