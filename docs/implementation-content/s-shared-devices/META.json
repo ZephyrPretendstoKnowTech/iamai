@@ -65,8 +65,7 @@
         "entra.people-exclusions"
       ],
       "json": [
-        "json.create",
-        "json.people-patches"
+        "json.create"
       ],
       "powershell": [
         {
@@ -162,9 +161,6 @@
           },
           "entra": [
             "entra.people-exclusions"
-          ],
-          "json": [
-            "json.people-patches"
           ]
         }
       },
