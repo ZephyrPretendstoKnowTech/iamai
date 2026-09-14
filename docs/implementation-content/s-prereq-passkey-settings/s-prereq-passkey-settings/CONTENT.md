@@ -15,7 +15,7 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.configure-authenticator","channel":"entra","states":["missingOrPartial"],"format":"markdown","kind":"template"}
-Then configure the supporting methods here. The JSON tab sets Passkey (FIDO2) only.
+Then configure the supporting methods:
 
 7. Open Microsoft Authenticator in the same Authentication methods list.
 8. Set Enable to Yes. Target: All users.

@@ -20967,7 +20967,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Then configure the supporting methods here. The JSON tab sets Passkey (FIDO2) only.\n\n7. Open Microsoft Authenticator in the same Authentication methods list.\n8. Set Enable to Yes. Target: All users.\n9. Save.\n"
+          "text": "Then configure the supporting methods:\n\n7. Open Microsoft Authenticator in the same Authentication methods list.\n8. Set Enable to Yes. Target: All users.\n9. Save.\n"
         },
         "entra.configure-tap": {
           "meta": {
