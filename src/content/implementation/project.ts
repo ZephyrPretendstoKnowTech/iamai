@@ -240,11 +240,13 @@ function batchRequests(parsed: unknown, pkg: CompiledPackage, b: Bindings, stand
       invalid.push(`${role}: ${m[1]} is not a policy id`)
       continue
     }
-    if (targets.has(id)) {
+    // A GUID names one object in any casing: two spellings of it are one target.
+    const target = id.toLowerCase()
+    if (targets.has(target)) {
       invalid.push(`${role}: a PATCH to a policy another request in the batch already targets`)
       continue
     }
-    targets.add(id)
+    targets.add(target)
     q.url = `${CA_POLICIES}/${id}`
     rebound = true
   }
