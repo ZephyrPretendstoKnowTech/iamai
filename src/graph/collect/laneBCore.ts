@@ -8,7 +8,7 @@ import {
   SLOW_THRESHOLD_MS,
   TIME_BUDGET_MS,
 } from './constants.ts'
-import { SectionDisabledError } from './http.ts'
+import { GraphResponseShapeError, SectionDisabledError } from './http.ts'
 import { absolute } from '../../copy/dates.ts'
 import { deriveScenarioEvidence } from '../../derive/evidence.ts'
 import type { ScenarioEvidence } from '../../derive/evidence.ts'
@@ -509,7 +509,9 @@ export async function runLaneB(deps: LaneBDeps): Promise<SignInEvidence> {
         deps.onSlow?.()
       }
       pages += 1
-      const value = Array.isArray(body.value) ? body.value : []
+      // A page without its value array is a failed read, never the end of history.
+      if (!Array.isArray(body.value)) throw new GraphResponseShapeError('sign-in page without a value array')
+      const value = body.value
       let pageOldest: string | null = null
       for (const raw of value) {
         const row = mapRow(raw)
