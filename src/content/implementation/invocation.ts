@@ -100,9 +100,15 @@ export function invocationErrors(at: string, spec: unknown, script: string, voca
   return errors
 }
 
-/** A PowerShell literal: single-quoted text, an @() array of them, or a bare number. */
+/**
+ * A PowerShell literal: single-quoted text, an @() array of them, or a bare number.
+ * PowerShell ends a single-quoted string at U+2018, U+2019, U+201A and U+201B as well
+ * as at U+0027, so each of them is doubled; a tenant name such as "Finance’s" stays
+ * inside its literal. Invocations use no double-quoted strings.
+ */
+const SINGLE_QUOTES = /['‘’‚‛]/g
 function literal(v: unknown): string {
-  const text = (x: unknown): string => `'${String(x).replaceAll("'", "''")}'`
+  const text = (x: unknown): string => `'${String(x).replace(SINGLE_QUOTES, '$&$&')}'`
   if (Array.isArray(v)) return `@(${v.map(text).join(', ')})`
   if (typeof v === 'number') return String(v)
   return text(v)
