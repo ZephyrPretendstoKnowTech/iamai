@@ -265,8 +265,8 @@ export function readinessBlockersOf(r: LaneReading | null | undefined, titleOf: 
 
 /**
  * A prerequisite tile's label, by the prerequisite step's own lane (decision 12,
- * content review R3): `Prerequisite · In progress` while it is Ready — actionable,
- * not done — `Prerequisite · Completed`, `Prerequisite · Waiting` while it is Up
+ * content review R3): `Prerequisite · To do` while it is Ready — actionable, not
+ * done, and nothing says anyone started it — `Prerequisite · Completed`, `Prerequisite · Waiting` while it is Up
  * Next or On Hold, `Prerequisite · Deferred`; null where the board has no reading
  * of the step, and the tile keeps its own label.
  */
@@ -277,7 +277,7 @@ export function prerequisiteLabelFor(readings: ReadonlyMap<string, LaneReading>)
   }
 }
 const PREREQUISITE = 'Prerequisite'
-const PREREQUISITE_STATE: Readonly<Record<Lane, string>> = { Ready: 'In progress', 'Up Next': 'Waiting', 'On Hold': 'Waiting', Completed: 'Completed', Deferred: BOARD.lanes.deferred }
+const PREREQUISITE_STATE: Readonly<Record<Lane, string>> = { Ready: 'To do', 'Up Next': 'Waiting', 'On Hold': 'Waiting', Completed: 'Completed', Deferred: BOARD.lanes.deferred }
 
 /**
  * What the board's timing column shows, which is not always what the row's

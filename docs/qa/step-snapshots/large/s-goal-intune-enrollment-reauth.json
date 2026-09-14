@@ -14,11 +14,11 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Decide How Devices Are Managed"
     },
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Create or Correct Emergency Access Accounts"
     }
   ],
