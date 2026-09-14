@@ -122,6 +122,22 @@ export function grantSatisfiesFloor(grant: PolicyFacts['grant'], floor: string, 
   return ranks.some((r) => r >= need)
 }
 
+// Whether a grant asks more of a sign-in than the floor (C01): a stronger method
+// than the floor names, or, under AND, a control of another kind the sign-in must
+// satisfy as well. Under OR the person may use the weakest control, so a grant asks
+// more only where every control does. A block or a password change is not graded.
+export function grantExceedsFloor(grant: PolicyFacts['grant'], floor: string): boolean {
+  if (!grant) return false
+  const dimension = FLOOR_DIMENSION[floor]
+  const need = FLOOR_RANK[floor]
+  if (dimension === undefined || need === undefined || floor === 'block' || floor === 'passwordChange') return false
+  const controls = [...grant.controls]
+  if (controls.length === 0) return false
+  const ranks = controls.map((c) => controlRank(c, grant.strength, dimension))
+  if (grant.operator === 'OR' && controls.length > 1) return ranks.every((r) => r > need)
+  return ranks.some((r) => r > need || r === 0)
+}
+
 export function sessionSatisfiesFloor(session: PolicyFacts['session'], floor: NonNullable<Floor['session']>): boolean {
   // "Every time" is the strictest possible sign-in frequency.
   const freqOk = session.signInFrequencyHours !== null || session.signInFrequencyEveryTime
