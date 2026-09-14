@@ -20819,15 +20819,7 @@
               "entra.configure-tap"
             ],
             "json": [
-              "json.fido2",
-              "json.authenticator",
-              "json.tap"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Apply"
-              }
+              "json.fido2"
             ],
             "aiInfo": [
               "ai.apply"
@@ -20873,15 +20865,7 @@
               "entra.configure-tap"
             ],
             "json": [
-              "json.fido2",
-              "json.authenticator",
-              "json.tap"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "Apply"
-              }
+              "json.fido2"
             ],
             "aiInfo": [
               "ai.apply"
@@ -20970,7 +20954,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Set Enable to Yes. Target: All users.\n3. Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow.\n4. Add the Microsoft Authenticator AAGUIDs:\n   — iOS: 90a3ccdf-635c-4729-a248-9b709135078f\n   — Android: de1e552d-db1d-4423-a619-566b625cdc84\n5. Enable Enforce attestation.\n6. Save.\n"
+          "text": "1. Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Set Enable to Yes. Target: All users.\n3. Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow.\n4. Add the Microsoft Authenticator AAGUIDs:\n   — iOS: 90a3ccdf-635c-4729-a248-9b709135078f\n   — Android: de1e552d-db1d-4423-a619-566b625cdc84\n   — The restriction applies at sign-in as well as registration: once you save, a passkey or security key someone already registered with any other AAGUID can no longer be used to sign in.\n5. Enable Enforce attestation. It applies to new registrations; a passkey already registered without attestation can still sign in.\n6. Save.\n"
         },
         "entra.configure-authenticator": {
           "meta": {
@@ -20983,7 +20967,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Then configure the supporting methods:\n\n7. Open Microsoft Authenticator in the same Authentication methods list.\n8. Set Enable to Yes. Target: All users.\n9. Save.\n"
+          "text": "Then configure the supporting methods here. The JSON tab sets Passkey (FIDO2) only.\n\n7. Open Microsoft Authenticator in the same Authentication methods list.\n8. Set Enable to Yes. Target: All users.\n9. Save.\n"
         },
         "entra.configure-tap": {
           "meta": {
@@ -21019,7 +21003,9 @@
               "missing"
             ],
             "format": "json-template",
-            "kind": "template"
+            "kind": "template",
+            "method": "PATCH",
+            "endpoint": "https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2"
           },
           "text": "{{json:passkey.target.fido2Configuration}}\n"
         },
@@ -21059,7 +21045,14 @@
               "missing"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {},
+              "withheldModes": {
+                "Apply": "Apply also writes the Microsoft Authenticator and Temporary Access Pass configurations, and IAMAI holds no target for either; the JSON request sets Passkey (FIDO2) alone."
+              }
+            }
           },
           "text": "param([Parameter(Mandatory=$true)][ValidateSet('Apply','Verify')][string]$Mode,[string]$Fido2Json,[string]$AuthenticatorJson,[string]$TapJson,[switch]$ProfileOptInApproved)\n$ErrorActionPreference='Stop';$G='https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 50) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Apply'){\n foreach($pair in @(@('fido2',$Fido2Json),@('microsoftAuthenticator',$AuthenticatorJson),@('temporaryAccessPass',$TapJson))){\n   if([string]::IsNullOrWhiteSpace($pair[1])){throw \"Complete resolved JSON required for $($pair[0]).\"}\n }\n $f=$Fido2Json|ConvertFrom-Json\n if($null -ne $f.passkeyProfiles -and -not $ProfileOptInApproved){throw 'Passkey profile use requires recorded owner approval when this is the tenant opt-in transition.'}\n IG PATCH \"$G/fido2\" $f|Out-Null\n IG PATCH \"$G/microsoftAuthenticator\" ($AuthenticatorJson|ConvertFrom-Json)|Out-Null\n IG PATCH \"$G/temporaryAccessPass\" ($TapJson|ConvertFrom-Json)|Out-Null\n}\n[pscustomobject]@{Fido2=(IG GET \"$G/fido2\");MicrosoftAuthenticator=(IG GET \"$G/microsoftAuthenticator\");TemporaryAccessPass=(IG GET \"$G/temporaryAccessPass\")}\n"
         },
@@ -21086,7 +21079,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPasskey (FIDO2) is the phishing-resistant sign-in method this baseline targets. These settings control which passkey providers are accepted tenant-wide.\n\nThe two AAGUIDs above are the Microsoft Authenticator app on iOS and Android. Enforcing attestation and restricting to these AAGUIDs means only Authenticator passkeys are accepted — not third-party security keys or browser-based passkeys.\n\nTemporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with.\n\nAfter saving these settings, the MFA Registration Campaign step guides each person through registering their passkey.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPasskey (FIDO2) is the phishing-resistant sign-in method this baseline targets. These settings control which passkey providers are accepted tenant-wide.\n\nThe two AAGUIDs above are the Microsoft Authenticator app on iOS and Android. Enforcing attestation and restricting to these AAGUIDs means only Authenticator passkeys are accepted — not third-party security keys or browser-based passkeys.\n\nKey restrictions apply at sign-in as well as registration, so a passkey or security key someone already registered from another provider stops working for sign-in once these settings are saved. Enforcing attestation affects new registrations only.\n\nTemporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with.\n\nAfter saving these settings, the MFA Registration Campaign step guides each person through registering their passkey.\n"
         },
         "ai.verify": {
           "meta": {

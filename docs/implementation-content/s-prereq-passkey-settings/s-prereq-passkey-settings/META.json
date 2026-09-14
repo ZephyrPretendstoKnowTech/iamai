@@ -91,9 +91,7 @@
         "entra.configure-tap"
       ],
       "json": [
-        "json.fido2",
-        "json.authenticator",
-        "json.tap"
+        "json.fido2"
       ],
       "powershell": [
         {
