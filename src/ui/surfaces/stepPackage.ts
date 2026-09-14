@@ -265,6 +265,10 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
 export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: TenantSnapshot | null): PackageState | null {
   const s = c.state
   if (s.setAside || s.satisfied || s.condition === 'baseline-conflict') return null
+  // A step that cannot tell which of the tenant's policies is its own plans no
+  // work: a create would be the duplicate its hold rules out, and a correction
+  // would name a policy it will not guess (review R2-N1).
+  if (step.action.ambiguousTarget === true) return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     // An enforced policy the plan has not finished is planned as its correction,

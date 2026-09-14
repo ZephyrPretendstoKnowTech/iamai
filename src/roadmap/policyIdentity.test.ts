@@ -15,6 +15,10 @@ import { runFixture } from './fixtures/run.ts'
 import type { FixtureRun } from './fixtures/run.ts'
 import { actionableExclusionsGroupId, directoryEvidenceFromGroups } from '../mapping/safetyChoice.ts'
 import { nextSafeAction } from './nextSafeAction.ts'
+import { personReadiness } from '../scoring/phishingResistant.ts'
+import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
+import { stepExportView } from '../ui/surfaces/stepExport.ts'
+import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 
 const GLOBAL_ADMIN = '62e90394-69f5-4237-9190-012177145e10'
 const ADMIN = 'c0100000-0000-4000-8000-000000000001'
@@ -161,9 +165,26 @@ test('C01: an all-users policy is the one corrected when the admin policy is lis
 // strength) and a staff policy assigned to a group (MFA) are both "assigned to
 // groups". Correcting the first listed for the all-users goal rewrote the admins
 // policy to All users. Expected, independent of the engine: neither is taken by
-// scan order or name; with nothing to tell them apart the step holds and hands
-// over nothing, and beside an All users policy that policy is the one.
-function groupRun(opts: { reversed: boolean; names: [string, string]; staffToAll: boolean }): FixtureRun {
+// scan order or name. A group policy asking more than MFA of every sign-in is not
+// the all-users goal's to widen, alone (BLOCKED S5 23:30) or beside a staff policy;
+// two that ask the same and nothing tells apart hold the step and hand over
+// nothing; beside an All users policy that policy is the one.
+const STRONG = { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } }
+const MFA = { operator: 'OR', builtInControls: ['mfa'] }
+const MFA_AND_DEVICE = { operator: 'AND', builtInControls: ['mfa', 'compliantDevice'] }
+const READY = personReadiness({ methods: [{ kind: 'passkey' }], registered: null, signIns: { read: true, proofs: [{ cls: 'passkey', os: 'Windows', at: '2026-01-01T00:00:00.000Z', method: 'Passkey (device-bound)' }], platforms: [{ os: 'Windows', at: '2026-01-01T00:00:00.000Z' }] }, history: null } as never)
+
+type GroupShape = {
+  reversed: boolean
+  names: [string, string]
+  /** The second policy: assigned to a staff group, to All users, or not in the tenant. */
+  staff: 'group' | 'all' | 'none'
+  /** The first policy: its grant and its assignment, or not in the tenant. */
+  admins?: { grant: Record<string, unknown>; users: 'group' | 'group+user' | 'group+role' } | null
+  /** Every person Ready, so nothing but the target decides whether the step is handed over. */
+  ready?: boolean
+}
+function groupRun(opts: GroupShape): FixtureRun & { ctx: StepVarContext } {
   // The curated week-two demo (its source groups answered), as R1 reproduced it:
   // the tenant's other policies stay, the three this shape stands in for go.
   const base = curatedFixture('demo-week2')
@@ -174,17 +195,25 @@ function groupRun(opts: { reversed: boolean; names: [string, string]; staffToAll
   assert.ok(staffGroup, 'the demo tenant has another group')
   const adminsGroup = 'bbbbbbbb-0000-4000-8000-00000000000a'
   const copy = structuredClone(f.groups.get(staffGroup)) as unknown as { memberIds?: string[] }
-  f.groups.set(adminsGroup, { ...copy, groupId: adminsGroup, memberIds: (copy.memberIds ?? []).slice(0, 1), memberCount: 1 } as never)
+  const adminMember = (copy.memberIds ?? [])[0]
+  assert.ok(adminMember, 'the demo group has a member')
+  f.groups.set(adminsGroup, { ...copy, groupId: adminsGroup, memberIds: [adminMember], memberCount: 1 } as never)
   const apps = { includeApplications: ['All'] }
-  const staffUsers = opts.staffToAll ? { includeUsers: ['All'], excludeGroups: [exclusions] } : { includeGroups: [staffGroup], excludeGroups: [exclusions] }
+  const admins = opts.admins === undefined ? { grant: STRONG, users: 'group' as const } : opts.admins
+  const adminUsers = { includeGroups: [adminsGroup], excludeGroups: [exclusions], ...(admins?.users === 'group+user' ? { includeUsers: [adminMember] } : admins?.users === 'group+role' ? { includeRoles: [GLOBAL_ADMIN] } : {}) }
+  const staffUsers = opts.staff === 'all' ? { includeUsers: ['All'], excludeGroups: [exclusions] } : { includeGroups: [staffGroup], excludeGroups: [exclusions] }
   const rows: Record<string, unknown>[] = [
-    { id: ADMIN, displayName: opts.names[0], state: 'enabled', conditions: { users: { includeGroups: [adminsGroup], excludeGroups: [exclusions] }, applications: apps, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: [], authenticationStrength: { id: '00000000-0000-0000-0000-000000000004' } } },
-    { id: EVERYONE, displayName: opts.names[1], state: 'enabled', conditions: { users: staffUsers, applications: apps, clientAppTypes: ['all'] }, grantControls: { operator: 'OR', builtInControls: ['mfa'] } },
+    ...(admins ? [{ id: ADMIN, displayName: opts.names[0], state: 'enabled', conditions: { users: adminUsers, applications: apps, clientAppTypes: ['all'] }, grantControls: admins.grant }] : []),
+    ...(opts.staff !== 'none' ? [{ id: EVERYONE, displayName: opts.names[1], state: 'enabled', conditions: { users: staffUsers, applications: apps, clientAppTypes: ['all'] }, grantControls: MFA }] : []),
   ]
   const ca = f.snapshot.config.caPolicies ?? { status: 'ok' as const, reason: null, rows: [] }
   const keep = (ca.rows as Record<string, unknown>[]).filter((p) => !/MFA for all users|Admins phishing-resistant|Admin sign-in|session/i.test(String(p.displayName)))
-  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: [...(opts.reversed ? [...rows].reverse() : rows), ...keep] } } }
-  return runFixture({ ...f, snapshot }, { snapshot } as never)
+  // Reversed, the shape's policies are listed after the tenant's others as well.
+  const snapshot = { ...f.snapshot, config: { ...f.snapshot.config, caPolicies: { ...ca, rows: opts.reversed ? [...keep, ...[...rows].reverse()] : [...rows, ...keep] } } }
+  const viability = opts.ready ? runFixture({ ...f, snapshot }, { snapshot } as never).viability.map((v) => ({ ...v, readiness: READY })) : undefined
+  const r = runFixture({ ...f, snapshot }, { snapshot, ...(viability ? { viability } : {}) } as never)
+  const ctx = { snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: snapshot.asOf, groups: f.groups, reportOnlyAt: null } as unknown as StepVarContext
+  return Object.assign(r, { ctx })
 }
 
 const GROUP_NAMES: [string, string][] = [
@@ -192,14 +221,24 @@ const GROUP_NAMES: [string, string][] = [
   ['MFA for Internal Users', 'MFA for Admins'],
 ]
 
+const allUsersStep = (r: FixtureRun) => {
+  const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
+  assert.ok(step, 'the all-users goal is on the plan')
+  return step
+}
+const ownOf = (r: FixtureRun) => (r.coverage.results.find((x) => x.goal.id === 'mfa-all-users')?.candidates ?? []).filter((c) => c.ownScope).map((c) => c.policyId).sort()
+/** Every text the Implementation region and the export hand over for a step. */
+function handedOver(r: FixtureRun & { ctx: StepVarContext }, step: ReturnType<typeof allUsersStep>): string {
+  const body = stepBodyOf(step, r.ctx)
+  return [...body.artifacts.filter((a) => !a.unavailable).map((a) => a.text()), ...stepExportView(step, r.ctx).whatToDo].join('\n')
+}
+
 test('C01 R1-F2: two group-assigned MFA policies nothing tells apart hold the all-users step, whatever the order or names', () => {
   for (const reversed of [false, true]) {
     for (const names of GROUP_NAMES) {
-      const r = groupRun({ reversed, names, staffToAll: false })
-      const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
-      assert.ok(step, 'the all-users goal is on the plan')
-      const own = r.coverage.results.find((x) => x.goal.id === 'mfa-all-users')?.candidates.filter((c) => c.ownScope).map((c) => c.policyId).sort()
-      assert.deepEqual(own, [ADMIN, EVERYONE].sort(), 'the premise: both group policies are candidates of the all-users goal')
+      const r = groupRun({ reversed, names, staff: 'group', admins: { grant: MFA, users: 'group' } })
+      const step = allUsersStep(r)
+      assert.deepEqual(ownOf(r), [ADMIN, EVERYONE].sort(), 'the premise: both group policies are candidates of the all-users goal')
       assert.equal(step.kind, 'adjust', 'the premise: the step corrects a tenant policy rather than creating one, so the choice is made')
       const ops = step.action.resolution?.policies ?? []
       assert.deepEqual(ops.filter((o) => o.mode === 'update').map((o) => o.policyId), [], `no update of either policy (reversed ${reversed}, ${names.join('/')})`)
@@ -211,10 +250,95 @@ test('C01 R1-F2: two group-assigned MFA policies nothing tells apart hold the al
   }
 })
 
+test('C01 R2-N1: the held step’s Implementation region plans no create or correction the hold rules out', () => {
+  for (const reversed of [false, true]) {
+    const r = groupRun({ reversed, names: GROUP_NAMES[0], staff: 'group', admins: { grant: MFA, users: 'group' }, ready: true })
+    const step = allUsersStep(r)
+    assert.equal(step.action.ambiguousTarget, true, 'the premise: the step is held on the tie')
+    const body = stepBodyOf(step, r.ctx)
+    assert.equal(body.previewNote, null, 'no preview blames prerequisites or values for the hold')
+    const text = handedOver(r, step)
+    assert.doesNotMatch(text, /New policy|create it|Report-only and create/i, 'no create procedure beside the tied policies')
+    for (const id of [ADMIN, EVERYONE]) assert.equal(text.includes(id), false, 'neither tied policy is named as a target')
+  }
+})
+
+test('C01: a group-assigned policy asking more than MFA is not the all-users goal’s own; beside a staff group MFA policy the staff policy is corrected', () => {
+  for (const reversed of [false, true]) {
+    for (const names of GROUP_NAMES) {
+      const r = groupRun({ reversed, names, staff: 'group' })
+      const step = allUsersStep(r)
+      assert.deepEqual(ownOf(r), [EVERYONE], `only the staff policy is the goal’s own (reversed ${reversed}, ${names.join('/')})`)
+      assert.notEqual(step.action.ambiguousTarget, true)
+      const updates = (step.action.resolution?.policies ?? []).filter((o) => o.mode === 'update')
+      assert.deepEqual(updates.map((o) => o.policyId), [EVERYONE], 'the update targets the staff policy')
+      const users = (updates[0].body.conditions as { users: Record<string, unknown> }).users
+      assert.deepEqual(users.includeUsers, ['All'], 'the staff policy is widened to All users')
+      assert.deepEqual(users.includeGroups, [], 'its group assignment is replaced')
+      assert.equal(Object.hasOwn(updates[0].body, 'grantControls'), false, 'its MFA grant stays as it is')
+      assert.equal(step.tracking?.policyId, EVERYONE, 'tracking follows the staff policy')
+    }
+  }
+})
+
+test('C01: a lone group-assigned policy that is not the all-users goal’s own is never rewritten to All users; the step creates the goal’s own report-only policy', () => {
+  const shapes = [
+    { label: 'phishing-resistant strength, group', grant: STRONG, users: 'group' as const },
+    { label: 'phishing-resistant strength, group and a user', grant: STRONG, users: 'group+user' as const },
+    { label: 'MFA and a compliant device, group', grant: MFA_AND_DEVICE, users: 'group' as const },
+    { label: 'MFA, group and a directory role', grant: MFA, users: 'group+role' as const },
+  ]
+  for (const shape of shapes) {
+    for (const reversed of [false, true]) {
+      for (const names of GROUP_NAMES) {
+        const label = `${shape.label} (reversed ${reversed}, ${names[0]})`
+        const r = groupRun({ reversed, names, staff: 'none', admins: { grant: shape.grant, users: shape.users } })
+        const step = allUsersStep(r)
+        assert.equal(ownOf(r).includes(ADMIN), false, `${label}: not the goal’s own`)
+        assert.notEqual(step.action.ambiguousTarget, true, `${label}: one policy is no tie`)
+        const ops = step.action.resolution?.policies ?? []
+        assert.deepEqual(ops.filter((o) => o.mode === 'update').map((o) => o.policyId), [], `${label}: no update of the tenant policy`)
+        const create = ops.find((o) => o.mode === 'create')
+        assert.ok(create, `${label}: the goal’s own policy is created`)
+        assert.equal(create.body.state, 'enabledForReportingButNotEnforced', `${label}: in report-only`)
+        assert.deepEqual((create.body.conditions as { users: Record<string, unknown> }).users.includeUsers, ['All'], `${label}: for All users`)
+        assert.notEqual(step.tracking?.policyId ?? null, ADMIN, `${label}: nor tracked as the all-users policy`)
+      }
+    }
+  }
+  // What is handed over, with nothing else holding the step: the create, and not a word of the admins policy.
+  for (const reversed of [false, true]) {
+    const r = groupRun({ reversed, names: GROUP_NAMES[1], staff: 'none', ready: true })
+    const step = allUsersStep(r)
+    assert.equal(nextSafeAction(step).kind, 'create-report-only', 'the next action is the report-only create')
+    const text = handedOver(r, step)
+    assert.equal(text.includes(ADMIN), false, 'no channel or export names the admins policy’s id')
+    assert.equal(text.includes(`"${GROUP_NAMES[1][0]}"`), false, 'nor opens the admins policy by name')
+    assert.match(text, /New policy/, 'the Entra procedure creates a policy')
+  }
+})
+
+test('C01: a lone staff group MFA policy is still corrected to All users', () => {
+  for (const reversed of [false, true]) {
+    const r = groupRun({ reversed, names: GROUP_NAMES[0], staff: 'group', admins: null, ready: true })
+    const step = allUsersStep(r)
+    assert.deepEqual(ownOf(r), [EVERYONE])
+    const ops = step.action.resolution?.policies ?? []
+    assert.deepEqual(ops.map((o) => [o.mode, o.mode === 'update' ? o.policyId : null]), [['update', EVERYONE]], 'one update of the staff policy, no create')
+    const users = (ops[0].body.conditions as { users: Record<string, unknown> }).users
+    assert.deepEqual(users.includeUsers, ['All'])
+    assert.equal(Object.hasOwn(ops[0].body, 'grantControls'), false, 'its MFA grant stays as it is')
+    const next = nextSafeAction(step)
+    assert.equal(next.kind, 'correct')
+    assert.equal(next.executable, true, 'the legitimate correction is handed over')
+    assert.ok(handedOver(r, step).includes(EVERYONE), 'the PowerShell names the staff policy it corrects')
+  }
+})
+
 test('C01 R1-F2: beside an All users policy, a group-assigned admins policy is never the all-users step’s target', () => {
   for (const reversed of [false, true]) {
     for (const names of GROUP_NAMES) {
-      const r = groupRun({ reversed, names, staffToAll: true })
+      const r = groupRun({ reversed, names, staff: 'all' })
       const step = r.steps.find((x) => x.goalId === 'mfa-all-users' && x.kind !== 'verify')
       assert.ok(step, 'the all-users goal is on the plan')
       assert.notEqual(step.action.ambiguousTarget, true, 'the All users policy tells them apart')

@@ -8,7 +8,7 @@ import { PINNED_GOAL_MAP, policyKey } from '../roadmap/goalMap.ts'
 import type { GoalMap } from '../roadmap/goalMap.ts'
 import { policyFacts } from './facts.ts'
 import type { StrengthLookup } from './strength.ts'
-import { satisfiesFloor } from './strength.ts'
+import { grantExceedsFloor, satisfiesFloor } from './strength.ts'
 import { resolveFactsWho, resolvePopulation } from './population.ts'
 import type { GroupMembers } from './population.ts'
 import { detectFacets } from './applicability.ts'
@@ -479,8 +479,15 @@ function evaluateGoal(
     // correcting it to All users would take it from that goal (C01). And a policy
     // carrying no control of the kind the goal asks for — a session-only policy
     // for a grant goal — is another goal's policy whatever its assignment.
+    // Nor is a policy for part of the people whose grant asks more than the floor
+    // (a stronger authentication strength, another control under AND): correcting
+    // it to All users puts that requirement on everyone and takes it from the
+    // people it was written for, as an admins group's phishing-resistant policy
+    // (C01). What it asks, not its name or its place in the scan, decides.
     const ownScope =
-      (impl.expectedWho.kind === 'all' ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null) : !c.who.all) && carriesFloorControl(c, floor)
+      (impl.expectedWho.kind === 'all'
+        ? c.who.all || (c.who.roles.size === 0 && c.who.guests === null && !(floor.grant !== undefined && grantExceedsFloor(c.grant, floor.grant)))
+        : !c.who.all) && carriesFloorControl(c, floor)
     contributions.push({ policyId: c.id, policyName: c.name, state: c.state, contribution, caveats, ownScope, meetsFloor, reachesWhole: reachesWhole.has(c.id), assignedToAll: c.who.all })
     // Stated for an enforced policy that meets the floor. A report-only or weaker
     // policy's gap is its state or its control, and its enforcement carries only
