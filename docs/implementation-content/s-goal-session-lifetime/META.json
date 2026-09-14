@@ -416,7 +416,7 @@
   "email": {
     "block": "email.users.pre-enforcement",
     "recommendation": "recommended",
-    "audience": "all-users-and-unmanaged-device-users",
+    "audience": "all-users",
     "applicableStates": [
       "readyToEnforce"
     ],

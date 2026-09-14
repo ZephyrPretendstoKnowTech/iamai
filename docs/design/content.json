@@ -4786,14 +4786,14 @@
       "kind": "policy",
       "title": "Limit How Long Sessions Last",
       "changeLine": null,
-      "why": "A browser left signed in on a shared or personal machine is a signed-in attacker later; on a device you do not manage, every app is.",
+      "why": "A browser left signed in on a shared or personal machine is a signed-in attacker later.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from browsers on unmanaged devices since {from}; they re-authenticate every 9 hours from {enforce}: {list:browserUsers}",
+          "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every 12 hours: {list:browserUsers}",
           "Shared devices are excluded by Give Shared Devices Their Own Policy.",
           "When several session policies apply, the shortest wins.",
           "{existingCoverage}"
@@ -4801,7 +4801,7 @@
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} with its pair, both carrying the baseline's session control values (sign-in frequency and persistent browser session), with the exclusions group applied.",
+      "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
         "Re-authentication prompts arrived at the set frequency and nobody lost unsaved work to them."
@@ -4810,7 +4810,7 @@
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, when you close your browser you are signed out of {tenant}, and you will be asked to sign in again about once a working day; on a personal or unmanaged device it is every 9 hours, and it applies to every app, not only the browser. On your work computer the desktop apps stay signed in.",
+        "body": "From {enforceLong}, your browser no longer keeps you signed in to {tenant} after you close it, and it asks you to sign in again about every 12 hours. Apps outside the browser are not affected by this change.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -4835,7 +4835,7 @@
           "Signed out when the browser closed: deliberate. Sign in again.",
           "Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account."
         ],
-        "manager": "Sessions end when the browser closes and re-authenticate daily; on unmanaged devices every app does. People sign in a little more often; without this, one unlocked screen stays usable for days.",
+        "manager": "Browser sessions end when the browser closes and re-authenticate every 12 hours; apps outside the browser are not affected. People sign in a little more often in the browser; without this, one unlocked browser stays signed in for days.",
         "waits": null
       },
       "example": {
@@ -4863,19 +4863,13 @@
         "byod-persistence"
       ],
       "whatToDoReference": {
-        "lead": "Two policies, as the baseline has them: everyone's browser, and everything on an unmanaged device.",
+        "lead": "One policy, as the pinned baseline has it: everyone's browser sessions.",
         "steps": [
           "Policy A: {policyNameA}: {portalRoot}",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
           "Conditions → Client apps → Browser",
           "Session → Sign-in frequency → Periodic reauthentication → 12 hours; Persistent browser session → Never persistent",
-          "{reportOnlyLine}",
-          "Policy B: {policyNameB}: {portalRoot}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
-          "Target resources → Resources → All resources",
-          "Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True",
-          "Session → Sign-in frequency → Periodic reauthentication → 9 hours; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
       }
