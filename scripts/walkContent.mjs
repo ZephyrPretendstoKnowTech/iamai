@@ -154,8 +154,8 @@ export const ACCEPTANCE = [
   { item: '30', step: 'token-protection', path: 'more.risks', must: 'meeting-room devices (already outside this policy once Give Shared Devices Their Own Policy is in place)' },
   { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in, this is why.' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
-  { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'about once a working day; on a personal or unmanaged device it is every 9 hours' },
-  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'they re-authenticate every 9 hours' },
+  { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'asks you to sign in again about every 12 hours. Apps outside the browser are not affected by this change.' },
+  { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'their browser sessions stop persisting and re-authenticate every 12 hours' },
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account.', mustNot: 'check the device clock' },
   { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'When several session policies apply, the shortest wins.' },
   { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'asks for your passkey or security key each time', mustNot: 'confirm with MFA each time' },
