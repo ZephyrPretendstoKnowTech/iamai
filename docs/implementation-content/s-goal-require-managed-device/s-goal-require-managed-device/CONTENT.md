@@ -35,7 +35,7 @@ Re-open the same policy by stable ID, compare the corrected object to IAMAI's ca
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus the step-specific evidence described in STEP.md. Do not treat a quiet dashboard as proof.
+Leave the policy in **Report-only**. Review the report-only results plus this step's own readiness evidence. Do not treat a quiet dashboard as proof.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
@@ -128,7 +128,7 @@ Policy {{policy.current.id}} has these mismatches for **Require a Managed Device
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Require a Managed Device Outside the Office** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use the exact readiness conditions in STEP.md and do not recommend enforcement merely because no failures appeared.
+Assess Report-only evidence for **Require a Managed Device Outside the Office** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use this step's readiness conditions and do not recommend enforcement merely because no failures appeared.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}

@@ -5,11 +5,10 @@ Microsoft now uses **passkey profiles** under **Entra ID > Security > Authentica
 @@IAMAI-BEGIN {"id":"entra.configure-fido2","channel":"entra","states":["missingOrPartial"],"format":"markdown","kind":"template"}
 1. Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).
 2. Set Enable to Yes. Target: All users.
-3. Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow.
+3. Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow. Once saved, a key already registered with any other AAGUID can no longer be used to sign in.
 4. Add the Microsoft Authenticator AAGUIDs:
    — iOS: 90a3ccdf-635c-4729-a248-9b709135078f
    — Android: de1e552d-db1d-4423-a619-566b625cdc84
-   — The restriction applies at sign-in as well as registration: once you save, a passkey or security key someone already registered with any other AAGUID can no longer be used to sign in.
 5. Enable Enforce attestation. It applies to new registrations; a passkey already registered without attestation can still sign in.
 6. Save.
 @@IAMAI-END

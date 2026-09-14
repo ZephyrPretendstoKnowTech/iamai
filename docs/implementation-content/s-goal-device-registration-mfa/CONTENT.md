@@ -928,7 +928,7 @@ IT
         "A duplicate policy was created instead of correcting the stable resolved object."
       ],
       "check": [
-        "Read the resolved policy by stable ID and compare only the security-significant fields in STEP.md to IAMAI\u2019s semantic mismatches."
+        "Read the resolved policy by stable ID and compare only the security-significant fields to IAMAI\u2019s semantic mismatches."
       ],
       "fix": [
         "Apply the smallest applicable correction module to the same stable policy ID; remove the mismatch rather than creating another policy."
