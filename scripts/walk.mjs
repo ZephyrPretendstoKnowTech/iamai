@@ -369,8 +369,11 @@ const extractIn = (rootExpr, excludeSel = '') => `(() => {
     const t = txt(p)
     if (!/:$/.test(t)) continue
     // A lead may name the thing on one line (the group and its count) before what is listed under it.
-    let n = p.nextElementSibling
-    while (n && n.matches('p') && !/:$/.test(txt(n)) && !/^(No |Nobody |None )/.test(txt(n)) && n.nextElementSibling && n.nextElementSibling.matches('ul, ol, .names-group')) n = n.nextElementSibling
+    // An authored blank line is drawn as an empty .authored-break span between blocks; it is
+    // spacing, not content, so it neither ends the lead nor stands in for the list.
+    const after = (e) => { let s = e.nextElementSibling; while (s && s.matches('.authored-break')) s = s.nextElementSibling; return s }
+    let n = after(p)
+    while (n && n.matches('p') && !/:$/.test(txt(n)) && !/^(No |Nobody |None )/.test(txt(n)) && after(n) && after(n).matches('ul, ol, .names-group')) n = after(n)
     if (!n || !n.matches('ul, ol, .names-group, .picker, .decision, p, div')) danglingLeads.push(t)
     else if (n.matches('p') && !/^(No |Nobody |None )/.test(txt(n))) danglingLeads.push(t)
   }
