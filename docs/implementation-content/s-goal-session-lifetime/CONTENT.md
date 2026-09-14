@@ -61,10 +61,10 @@ This change removes {{policies.session.browser.current.removedExclusions}} from 
 This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave both component policies in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins and the unmanaged-device policy is limited by its compliance filter. Confirm shared-device accounts remain excluded. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.
+Leave the browser policy (Policy A) in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins. Confirm shared-device accounts remain excluded. The pinned baseline has no unmanaged-device session policy, so there is no Policy B to review here. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Open both IAMAI-resolved component policies by stable identity. Confirm each still matches the canonical target and that readiness has no blocker. Change Policy A and Policy B from Report-only to **On** in the same controlled change window. Test managed, unmanaged, and shared-device paths, then rescan IAMAI.
+Open the IAMAI-resolved browser policy (Policy A) by stable identity. Confirm it still matches the canonical target and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window. Test managed, unmanaged, and shared-device browser paths, then rescan IAMAI. The pinned baseline has no unmanaged-device session policy, so there is no Policy B to turn on here.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.create","channel":"json","states":["missing","partial"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
 {
@@ -142,7 +142,7 @@ Open both IAMAI-resolved component policies by stable identity. Confirm each sti
 @@IAMAI-BEGIN {"id":"json.unmanaged.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]}},"withheldModes":{"Create":"Create also writes the unmanaged-device companion, and the pinned baseline has no unmanaged-device session policy to name it; CreateBrowser writes the browser policy alone","Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify","VerifyBrowser"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify","VerifyBrowser"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify","VerifyBrowser"]}},"withheldModes":{"Create":"Create also writes the unmanaged-device companion, and the pinned baseline has no unmanaged-device session policy to name it; CreateBrowser writes the browser policy alone","Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it; Enforce also turns on the unmanaged-device companion, which the pinned baseline has no policy for"}}}
 # This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Limit How Long Sessions Last
@@ -150,7 +150,7 @@ Open both IAMAI-resolved component policies by stable identity. Confirm each sti
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)]
-  [ValidateSet('Create','CreateBrowser','CreateUnmanaged','CorrectBrowserConditions','CorrectBrowserSession','CorrectBrowserGrant','ReportOnlyBrowser','CorrectUnmanagedConditions','CorrectUnmanagedSession','CorrectUnmanagedGrant','ReportOnlyUnmanaged','Verify','Enforce')]
+  [ValidateSet('Create','CreateBrowser','CreateUnmanaged','CorrectBrowserConditions','CorrectBrowserSession','CorrectBrowserGrant','ReportOnlyBrowser','CorrectUnmanagedConditions','CorrectUnmanagedSession','CorrectUnmanagedGrant','ReportOnlyUnmanaged','Verify','VerifyBrowser','Enforce')]
   [string] $Mode,
   [string] $BrowserPolicyDisplayName,
   [string] $UnmanagedPolicyDisplayName,
@@ -269,6 +269,13 @@ switch ($Mode) {
     if ($a.state -notin @('enabledForReportingButNotEnforced','enabled') -or $b.state -notin @('enabledForReportingButNotEnforced','enabled')) { throw 'Unexpected lifecycle state.' }
     Write-Host 'Canonical two-policy shapes verified. Readiness remains a separate decision.'
   }
+  'VerifyBrowser' {
+    Connect-CA $false
+    $a=Get-Policy $BrowserPolicyId
+    Assert-Canonical $a 'Browser'
+    if ($a.state -notin @('enabledForReportingButNotEnforced','enabled')) { throw 'Unexpected lifecycle state.' }
+    Write-Host 'Canonical browser policy shape verified. Readiness remains a separate decision.'
+  }
   'Enforce' {
     if (-not $ReadinessApproved) { throw 'Enforce requires ReadinessApproved.' }
     Connect-CA $true
@@ -333,7 +340,7 @@ This change removes {{policies.session.unmanaged.current.removedExclusions}} fro
 **Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Review the canonical two-policy set in Report-only without inventing successful observation.
+Help implement the IAMAI step **Limit How Long Sessions Last**. Review the browser policy (Policy A) in Report-only without inventing successful observation. The pinned baseline has no unmanaged-device session policy, so Policy B is not part of this review.
 
 AUTHORITY
 The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.
@@ -353,7 +360,7 @@ Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do n
 **Contains tenant context. Review before sharing with an external AI service.**
 
 ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Enable both canonical components only after readiness is satisfied.
+Help implement the IAMAI step **Limit How Long Sessions Last**. Enable the browser policy (Policy A) only after readiness is satisfied. The pinned baseline has no unmanaged-device session policy, so Policy B is not enabled here.
 
 AUTHORITY
 The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.
@@ -374,7 +381,7 @@ Subject: Sign-in sessions will refresh more often
 
 Hi everyone,
 
-We're updating sign-in session settings for {{tenant.displayName}}. Browser sessions will no longer stay permanently signed in, and you may be asked to sign in again about once during a working day. On devices that aren't managed/compliant, reauthentication can occur more frequently.
+We're updating sign-in session settings for {{tenant.displayName}}. Browser sessions will no longer stay permanently signed in, and you may be asked to sign in again about once during a working day.
 
 If you use a shared room, panel, or shared-device account, IT has separately checked those accounts before this change. If you see repeated prompts that prevent normal work, contact the help desk and include the app and device you were using.
 
