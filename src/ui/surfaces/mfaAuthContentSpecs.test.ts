@@ -82,7 +82,8 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
       ],
     },
     // A conditions correction writes no grant (S3, C02): the grant is its own module, drawn only when the grant differs.
-    { kind: 'list', ordered: true, start: 6, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
+    { kind: 'list', ordered: true, start: 6, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(MFA_ALL).blocks['ai.correct'].text
@@ -158,7 +159,8 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
       ],
     },
     // A conditions correction writes no grant (S3, C02): it used to set the TAP-inclusive custom strength while the JSON beside it PATCHed conditions only.
-    { kind: 'list', ordered: true, start: 6, items: [['Save. Do not change the policy state.'], ['Rescan in IAMAI.']] },
+    // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
+    { kind: 'list', ordered: true, start: 6, items: [['Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.'], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(ADMINS).blocks['ai.correct'].text

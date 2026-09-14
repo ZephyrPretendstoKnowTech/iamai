@@ -34,7 +34,7 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Do not use
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-6. Save. Do not change the policy state (leave it On).
+6. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
 7. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
@@ -150,6 +150,8 @@ The policy already exists on your tenant. The correction aligns its configuratio
 — Conditions are cleaned to match the baseline's intent: no location, platform, or risk filters — MFA applies everywhere, unconditionally.
 
 After this step, the MFA Registration Campaign step helps people register a method. Whether each person has one is shown on MFA Readiness, not by this policy.
+
+The correction keeps the policy's current state. If it is On, saving applies it at once: everyone the corrected policy now includes is asked for MFA at their next sign-in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
