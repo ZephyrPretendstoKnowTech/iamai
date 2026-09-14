@@ -791,7 +791,8 @@ Working tree at the end of cycle 2: these two docs and the two new probes, commi
 1. session-lifetime `policy.target.excludeUsers`: the required empty list keeps every render a preview. The next reading is in BLOCKED; the pilot group rule must stay.
 2. session-lifetime reportOnly/readyToEnforce still require the unmanaged id.
 3. Board Ready vs blocked: 7 remain, not started.
-4. Package gaps: register-info-protected `policy.target.mode`, pim-activation-reauth; report-only correction under an emergency-access wait; low leftovers.
+4. register-info-protected `policy.target.mode`: investigated after the verification above, with no code change. The resolved target (MFA outside All trusted locations) is neither of the package's two modes, so no mode is derivable (`../logs/c7/register-mode.txt`). The next step, reading step 4 from the target itself, is in BLOCKED.
+5. Package gaps: pim-activation-reauth; report-only correction under an emergency-access wait; low leftovers.
 
 **Working tree at the end of cycle 7.**
 - Commits: 06315a7 (docs), e7a065b and 4361874 (code; 4361874 is the final verified state), and the docs commit carrying this ledger and BLOCKED. Stash empty.
