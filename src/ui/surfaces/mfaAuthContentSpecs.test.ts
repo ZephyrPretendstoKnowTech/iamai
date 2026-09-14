@@ -79,10 +79,10 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
         ['Users → Include: All users. Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
         ['Target resources: All resources. Under Exclude, Microsoft Intune Enrollment should be excluded (this prevents an enrollment loop).'],
         ['Conditions: no sign-in risk, no device platform, no location, no client app filter — leave all conditions blank except client apps (All client apps).'],
-        ['Grant: Grant access → Require multifactor authentication.'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
+    // A conditions correction writes no grant (S3, C02): the grant is its own module, drawn only when the grant differs.
+    { kind: 'list', ordered: true, start: 6, items: [['Save. Do not change the policy state (leave it On).'], ['Rescan in IAMAI to confirm the correction.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(MFA_ALL).blocks['ai.correct'].text
@@ -154,10 +154,10 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
         ['Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).'],
         ['Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.'],
         ['Target resources: All resources.'],
-        ['Grant → Grant access → Require authentication strength: Modern MFA + TAP (the strength you created in the Authentication Strength step).'],
       ],
     },
-    { kind: 'list', ordered: true, start: 7, items: [['Save. Do not change the policy state.'], ['Rescan in IAMAI.']] },
+    // A conditions correction writes no grant (S3, C02): it used to set the TAP-inclusive custom strength while the JSON beside it PATCHed conditions only.
+    { kind: 'list', ordered: true, start: 6, items: [['Save. Do not change the policy state.'], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(ADMINS).blocks['ai.correct'].text
