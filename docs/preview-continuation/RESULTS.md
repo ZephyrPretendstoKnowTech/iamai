@@ -171,3 +171,138 @@ Start: HEAD d15428e. Uncommitted: the cycle 1 ledger (RESULTS, BLOCKED), the cyc
 STEP.md references in drawn package text: 18 removed in a409b3c (plus the grant-block ones in 7ed4caf); 0 remain.
 
 Working tree at the end of cycle 2: these two docs and the two new probes, committed together below. Nothing else is uncommitted; stash empty.
+
+## Cycle 3 (2026-09-14, from 08:12 MDT)
+
+**Start state**
+- HEAD a3d22f3. Stash empty.
+- Uncommitted: the cycle 2 fresh review, FINAL-REPORT.md and REVIEW-STATUS.json. They were inspected (docs only, the reviewer's queue) and committed first (7bcf4d3).
+- Logs: `../logs/c3/`, outside the clone.
+- New probes: `docs/preview-continuation/probes/c3-or-widening.ts` (the review's `rv2-or.ts`, run for both the admins and staff group) and `c3-worker.ts`.
+- Scratch, not in the clone: `../scratch/c3-keep-state.mjs`, `c3-keep-state-text.mjs`, `c3-shared-debug.ts`, `c3-shared-ps-render.ts`, `c3-walk-norm.mjs` (the last one unused: wrong report format).
+
+### Commits
+| Commit | Scope |
+|---|---|
+| 7bcf4d3 | docs: cycle 2 fresh review, committed after inspection |
+| ffd4787 | R1: a group policy whose OR grant falls short of the floor is widened with the floor grant (generate.ts), orGrantWidening.test.ts, c3-or-widening.ts |
+| 9da0ec6 | Immediate effect in every correction channel (4 CONTENT.md), stateKeepingCorrection.test.ts tightened, 3 verify-line pins |
+| 6318b9d | walk.mjs: the dangling-lead rule skips the `.authored-break` span |
+| fadd5a7 | New finding: eleven more packages' corrections kept an enabled policy's state only after moving it to report-only; now they keep it. keepStateOnCorrection.test.ts; pilot/correctionProjection pins |
+| c0e91fe | shared-devices script called with bound values; Enforce withheld |
+| 6ed777e | Worker: a config section's reason is redacted in the snapshot; workerReasons.test.ts; c3-worker.ts |
+
+### R1 OR-alternative widening (review 2 queue 1): FIXED
+- **Reproduced at a3d22f3** (`r1-repro.txt`, `r1-both.txt`). Grants: "phishing-resistant strength OR compliant device" and "MFA OR compliant device", on the admins group and on the staff group, all enabled.
+  - Every case is a `correct`, executable update of `c0100000-…0001` with body keys `[conditions]` only (`includeUsers:["All"]`).
+  - Changes `[Users, Target resources]`; the PowerShell target keeps the OR grant.
+- **Cause.** Under OR the grant asks no more than the floor, so the policy is correctly the goal's own (C01). Every member of its group is excluded in these fixtures, though, so coverage recorded no `weaker-control` reason (no counted people). `changedSections` derives sections only from reasons, so the widening wrote users only.
+- **Fix** (generate.ts, the converse of the existing rule that drops grant/session for a policy that meets the floor):
+  - When the chosen own policy does not meet the floor, the update also writes the goal's grant, or its session for a session goal.
+  - This follows gap 4's reading (correct the grant in place), not C01's (these grants ask no more than the floor).
+- **After** (`r1-after.txt`), all four shapes:
+  - body keys `[grantControls, conditions]`, changes `[Grant controls, Users, Target resources]`;
+  - PowerShell target grant `{"builtInControls":["mfa"],"operator":"OR",…}`;
+  - export line "Grant → Require multifactor authentication".
+- **Effect on an enabled policy (disclosed):** the correction replaces the compliant-device alternative with the goal's MFA grant for everyone the widened policy includes. It is listed as "Grant controls", and the lead says the changes apply as soon as the policy is saved.
+- **Tests** (`orGrantWidening.test.ts`, 11/11, `r1-test-3.txt`):
+  - Both OR shapes × admins/staff × both orders: update body, grant equal to the goal's create grant, listed change, the PowerShell `-TargetPolicyJson` grant equal to the body, `-PolicyId`, and the export line.
+  - Controls: a plain MFA staff policy gets no grant change; strength AND compliant device is still not own (C01).
+  - `grantExceedsFloor` OR unit cases (the review's missing test).
+  - The first two runs failed on the test's own mistakes (`r1-test-1.txt`, `r1-test-2.txt`): it used a plain MFA policy's update, which has no grant, as the grant reference, and it ran without Ready readiness, so the export was withheld.
+- Roadmap + coverage suites: 898 tests · 897 pass · 0 fail · 1 skipped (`cov-roadmap-1.txt`). Targeted policyIdentity, reportOnlyBelowFloor, tracking.drift: 42/42 (`r1-targeted-1.txt`).
+
+### Immediate effect in every correction channel (queue 4): FIXED
+- The Entra `entra.correct-verify` line of admin-session, block-auth-transfer and block-device-code now reads "Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save." This is the admins-phishing-resistant precedent.
+- AI Info `ai.correct` of admin-session, block-auth-transfer and admins-phishing-resistant gains a paragraph that the policy keeps its state and what saving does. Examples: exclusions-group members leave the session limit, or can use authentication transfer again; a newly included admin must use a method the strength accepts.
+- **Test tightened** (`stateKeepingCorrection.test.ts`):
+  - The old check accepted "Leave **Enable policy** as it is" alone and never read AI Info.
+  - Both Entra and AI Info must now match `if (it|the policy) is On, … as soon as (you save|it is saved)|saving applies it at once`.
+  - It covers the ten cycle 2 packages plus mfa-all-users and admins-phishing-resistant, × CorrectConditions/Grant/Session, with a negative control.
+  - The first run had 15 failures (`impl-1.txt`). 12 were the regex's own case sensitivity and mfa-all-users' "saving applies it at once"; 3 were the verify-line pins below.
+- **Pins changed (disclosed):** mfaAuthContentSpecs (block-auth-transfer and block-device-code verify lists) and sessionAdminContentSpecs (admin-session verify list). Each asserted the effect-less line and now asserts the new one, with a comment.
+- Not changed: the export/Contract lead stays generic on a group → All users widening. The changes list now names the grant, and mfa-all-users AI Info names who is asked.
+
+### New finding: eleven packages returned an enabled policy to report-only on correction: FIXED (one package remains)
+- **Found:** a scan of every META Partial projection for report-only modules.
+- **Affected:** device-registration-mfa, intune-enrollment-reauth, pim-activation-reauth, service-accounts-trusted-network, session-lifetime (browser and unmanaged members), sign-in-risk, sign-in-risk-medium, token-protection, user-risk, user-risk-medium and shared-devices.
+- **What they did:** each projected a module selected whenever `policy.current.state` was `enabled` (`alongside: true`). Beside every correction it drew:
+  - "Set Enable policy to Report-only while correcting" (or similar);
+  - a `{"state":"enabledForReportingButNotEnforced"}` PATCH;
+  - a `ReportOnly` script run.
+- **Why nothing showed it:** no curated fixture renders a correction of these packages (matrix rows are missing/blocked/readyToEnforce). `pilot.test.ts` pinned the behaviour ("A live policy being corrected goes back to report-only alongside the correction").
+- **Fix:**
+  - The module is removed from each Partial projection by text removal. Each META keeps its bytes and formatting, and is checked to parse to the original minus that member.
+  - A first JSON re-serialisation reformatted token-protection (+414 lines). Those 11 META files, touched only by that transform, were restored from HEAD and redone by text.
+  - The shared save/verify Entra block states the effect ("Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save."), and AI Info says the same.
+- **Three more texts the new test found** (`keepstate-test-1.txt`) and corrected:
+  - device-registration-mfa AI Info goal "Move the existing resolved policy to the canonical Report-only target" and its target state;
+  - pim-activation-reauth open line "keep/return it to Report-only while material mismatches remain";
+  - session-lifetime open line "Keep or return a materially incorrect policy to **Report-only** while correcting it".
+  - The conditional recovery "If a correction creates unexpected risk, return the same policy to Report-only before further changes" is kept.
+- **Left in place, unprojected:** the lifecycle blocks and the scripts' ReportOnly modes (BLOCKED, cleanup).
+- **LIBRARY.json** regenerated: `correctionModules` counts only; the library test had failed on the drift (`impl-3.txt`).
+- **Test** `keepStateOnCorrection.test.ts` (3/3, `keepstate-test-2.txt`):
+  - It reads every registered package's Partial projection for a ReportOnly run, a state-only report-only PATCH, or report-only-while-correcting prose.
+  - workload-identity-block is the one named exception, with its reason (its `Correct` throws without ReportOnly). The test fails once that package no longer stages.
+  - Controls: a synthetic lifecycle module is caught on all three counts. The recovery sentences are not flagged; "If it is On, return … first" is.
+  - Gap found after fadd5a7: the exemption for conditional "If …" sentences treated only "is On" as a default. workload-identity-block's "If the workload policy is currently On … return … to Report-only before changing the allowed address" was therefore not counted; the package was already listed for its other staging.
+  - The exemption now also treats "is currently/still On" as a default, with that sentence as a control. Rerun: 3/3, and no other package is flagged (`keepstate-test-3.txt`).
+- **Pins changed (disclosed):** `pilot.test.ts` and `correctionProjection.test.ts` asserted the live report-only module. They now assert no lifecycle block, no state in the request, corrections `['Grant']`, and the effect sentence.
+- Content suites after the batch: 804 tests · 803 pass · 0 fail · 1 skipped (`impl-4.txt`).
+
+### Uncalled scripts (queue 2): shared-devices FIXED; guests-mfa, service-accounts-trusted-network, user-risk-medium NOT DONE
+- **shared-devices:** `powershell.run` is `deployableAfterBinding` with a declared invocation.
+  - Create: DisplayName, IncludeUsers, ExcludeGroups, TrustedLocationId.
+  - CorrectConditions: those plus PolicyId. CorrectGrant and Verify: PolicyId.
+  - `withheldModes.Enforce`: it needs `-TrustedLocationReconfirmed` and `-ReportOnlyEvidenceReviewed`, which no prerequisite attests.
+  - `withheldModes.PeopleExclusions`: it reads JSON text IAMAI holds as objects.
+  - The script body is unchanged.
+- **First attempt failed** (`shared-test-1.txt`). Referencing the withheld PeopleExclusions mode from one Partial module made the compiler withhold the whole Partial PowerShell channel, CorrectConditions included (lint: `shared-lint.txt`). That one module's run was removed instead (META, text removal).
+- Lint now lists the 4 pre-existing errors plus the withheld Enforce reference; LIBRARY.json `strictValidationErrors` 4 → 5.
+- **Tests:** `sharedDevicesInvocation.test.ts` 4/4 (Create, CorrectConditions and Verify call lines after the whole body; a missing trusted location withholds only the script; Enforce not drawn).
+- **PowerShell parse:** Create, CorrectConditions and Verify renders, `Parser::ParseFile` → 0 errors in 3 files. Parse only, nothing executed (`shared-ps-render.txt`, `shared-ps-parse.txt`).
+- **Matrix:** `uncalled-template` 23 → 15. The 8 shared-devices rows changed from `ps:+ uncalled-template(mandatory:Mode)` to `ps:-` with `degraded … powershell(policy.target.trustedLocationId)`: those fixtures bind no single trusted location, and Entra/JSON were already degraded for the same value. No other row changed.
+
+### Walk rule vs `.authored-break` (queue 7): FIXED
+- walk.mjs skips `.authored-break` spans when looking for what follows a lead ending in ":"; the colon and the list are untouched.
+- The walk at c0e91fe removed exactly 4 findings against the review's a3d22f3 walk: the three passkey "Then configure the supporting methods:" P1s, and guests-mfa "Create the two IAMAI-resolved guest policies separately, both Report-o…".
+- The guests capture (`walk/c0e91fe/demo/1280/step-31-Require-MFA-for-Guests.txt`, lines 59–62) shows its two list items right after the break, so no real dangling lead is hidden. No finding was added.
+
+### FINDINGS 6 worker end-to-end: VERIFIED; one defect FIXED
+- **Probe** `c3-worker.ts` imports the real worker.ts with a synthetic `self` and a per-URL synthetic fetch. No network, no token.
+- **First run:** 4 PASS, 3 FAIL (`worker.txt`, `worker-2.txt` with diagnostics).
+  - Two failures were wrong probe assumptions. Without P1, users is correctly `partial` ("signInActivity not available on this licence (needs Entra ID P1)"), and a failed methods batch is correctly `partial`.
+  - One was a defect: a denied CA policies read naming an address posted that address in `snapshot.config.caPolicies.reason`. The section event was redacted; the snapshot was not. worker.ts's own rule says every reason is redacted before leaving the worker.
+- **Fix:** `runConfigTask` stores the redacted reason.
+- **After** (`worker-4.txt`, 7 PASS · 0 FAIL, at 6ed777e's tree):
+  - every read empty → users partial with the licence reason, devices/authMethods ok;
+  - 403 → section `disabled`, reason "Insufficient privileges for upn-1@redacted", config source partial, no posted message carries the address;
+  - users page not JSON → users `error`; users page without `value` → `error`;
+  - malformed nextLink → caPolicies `error`, rows `[]`;
+  - methods batch 500 → authMethods `partial`, no user recorded with a methods entry (asserted non-vacuously);
+  - devices 429 × 2 with Retry-After 1 → ok after 3 requests, ≥ 2 s.
+- **Regression test:** `src/graph/collect/workerReasons.test.ts`, the real worker, globals restored. Graph suites 54/54 (`graph-1.txt`).
+- **Not exercised:** Lane B and the P1-gated sections (the synthetic licence has no P1). Real-login latency is not claimed.
+
+### Verification (exact code states)
+| Check | Command | Code state | Exit | Result |
+|---|---|---|---|---|
+| Typecheck | `npx tsc --noEmit` | ffd4787+9da0ec6 tree; fadd5a7 tree (twice); c0e91fe tree; 6ed777e tree | 0 each | `tsc-1.txt` … `tsc-5.txt` |
+| Content suites | `node --test --test-isolation=none src/content/implementation/*.test.ts src/ui/surfaces/*.test.ts src/testing/*.test.ts [src/content/*.test.ts]` | 9da0ec6 tree; fadd5a7 tree; c0e91fe tree | 1 then 0; 1 then 0; 0 | 786/786 (`impl-2.txt`); 803 pass · 1 skipped (`impl-4.txt`, after the LIBRARY drift fail in `impl-3.txt`); 808 pass · 0 fail · 1 skipped (`impl-5.txt`) |
+| Full suite | `npm test` | **c0e91fe** | 0 | **2714 tests · 2712 pass · 0 fail · 0 cancelled · 2 skipped** (Learn-link external health; HUGE=1) (`full-1.txt`) |
+| Full suite | `npm test` | **6ed777e** | 0 | **2715 tests · 2713 pass · 0 fail · 0 cancelled · 2 skipped** (same two), 08:49–08:52 (`full-2.txt`) |
+| Build | `npm run build` | c0e91fe; **6ed777e** | 0; 0 | pre-existing chunk-size warning (`build-1.txt`; `build-2.txt`) |
+| Matrix | `node docs/preview-corrections/probes/s3-matrix.ts curated all` | **c0e91fe** (6ed777e changes worker.ts and a test only) | 0 | 490 renders · 0 packageFault · 15 uncalled-template (guests-mfa 5, service-accounts-trusted-network 8, user-risk-medium 2) · 0 empty · 187 preview · 174 executable; against the review's a3d22f3 matrix only the 8 shared-devices rows differ (`matrix-1.txt`) |
+| PowerShell parse | render + `Parser::ParseFile` (parse only) | c0e91fe tree | 0 | shared-devices 3 files, 0 errors. No other script body changed in cycle 3; R1 changes target JSON values only, and the eleven keep-state packages' scripts are unchanged |
+| Acceptance | `node <copy>/docs/preview-continuation/acceptance/run-acceptance.mjs <copy> ../logs/c3/acceptance-<sha>`, `<copy>` = `git archive` into a new directory, harness identical by `cmp` | c0e91fe; **6ed777e** | 0; 0 | 28 PASS · 0 FAIL · 0 HARNESS_ERROR each (`acceptance-1.txt`, `acceptance-2.txt`) |
+| Walk | `TEMP=../cache/tmp node --import ../logs/c1/netblock.mjs scripts/walk.mjs` (preload re-read: localhost only); report `docs/reports/walk-c0e91fe.md`, captures `walk/c0e91fe/` (gitignored) | **c0e91fe** (bundle built before the 6ed777e worker edit; the demo walk does not run the collection worker) | 0 | "show-ready on this walk (no P0)": **0 P0, 494 P1, 50 P2** (review a3d22f3: 0/498/50). Normalized against the review's walk: 4 findings removed (above), none added; first load 4.7 s throttled (P1, as before) (`walk-1.txt`, `walk-norm-*.txt`) |
+| Worker probe | `node docs/preview-continuation/probes/c3-worker.ts` | 6ed777e tree | 0 | 7 PASS · 0 FAIL (`worker-4.txt`) |
+
+### Not done in cycle 3 (actionable; see BLOCKED)
+1. workload-identity-block still returns an enabled policy to report-only on every material correction (script guard).
+2. Board/export lane reads Ready while the next safe action is blocked (45 steps).
+3. Remaining 15 uncalled scripts: guests-mfa, service-accounts-trusted-network, user-risk-medium.
+4. Removed tenant exclusions not disclosed.
+5. session-lifetime and register-info-protected bindings.
+6. Low: unprojected lifecycle blocks; same-name create; passkey profiles; Lane B and P1 worker paths not probed.

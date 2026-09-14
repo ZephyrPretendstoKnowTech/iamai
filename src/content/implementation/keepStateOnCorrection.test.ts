@@ -55,7 +55,7 @@ const REPORT_ONLY_PROSE = /\b(set|return|move|switch|keep)\b[^.]{0,80}\*{0,2}Rep
  * Report-only first" is the default, and is not.
  */
 const stagesInProse = (text: string): boolean =>
-  text.split(/(?<=[.!?])\s+|\n+/).some((s) => !/^\s*(-\s*)?If\b(?![^,]*\bis On\b)/.test(s) && REPORT_ONLY_PROSE.test(s))
+  text.split(/(?<=[.!?])\s+|\n+/).some((s) => !/^\s*(-\s*)?If\b(?![^,]*\bis (currently |still )?On\b)/.test(s) && REPORT_ONLY_PROSE.test(s))
 
 function stagingIn(pkg: CompiledPackage): string[] {
   const found: string[] = []
@@ -101,6 +101,7 @@ test('prose control: a recovery step is not a correction default, a report-only 
   assert.equal(stagesInProse('If a required workflow fails, return the same stable policy to Report-only first.'), false)
   assert.equal(stagesInProse("Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save."), false)
   assert.equal(stagesInProse('If it is On, return that same policy to Report-only first.'), true)
+  assert.equal(stagesInProse('If the workload policy is currently On and the location range is wrong, return the workload policy to Report-only before changing the allowed address.'), true)
   assert.equal(stagesInProse('Keep or return a materially incorrect policy to **Report-only** while correcting it.'), true)
   assert.equal(stagesInProse('Set **Enable policy** to **Report-only** before applying semantic corrections.'), true)
   assert.equal(stagesInProse('GOAL\nMove the existing resolved policy to the canonical Report-only target without creating a duplicate.'), true)
