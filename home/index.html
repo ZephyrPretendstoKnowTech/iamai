@@ -8,11 +8,11 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>IAMAI — Microsoft Entra Conditional Access planner</title>
-    <meta name="description" content="Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
+    <meta name="description" content="Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
     <!-- Root-relative: src/network.test.ts reads an absolute link href as a request. og:url carries the absolute address. -->
     <link rel="canonical" href="/" />
     <meta property="og:title" content="IAMAI — Microsoft Entra Conditional Access planner" />
-    <meta property="og:description" content="Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
+    <meta property="og:description" content="Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://getiamai.com/" />
     <meta property="og:image" content="https://getiamai.com/og.png" />
@@ -77,7 +77,7 @@
             <div class="steps">
               <div class="step"><b>Reads</b><span>A tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records.</span></div>
               <div class="step"><b>Compares</b><span>What each baseline policy is for with what the tenant already has, so a control you built yourself counts as done.</span></div>
-              <div class="step"><b>Plans</b><span>The difference as dated steps: report-only first where a policy supports it, who each change touches, what would break, and the emails to send.</span></div>
+              <div class="step"><b>Plans</b><span>The difference as dated steps: report-only first where a policy supports it, who could be affected by each change, and the emails to send.</span></div>
             </div>
           </div>
           <aside class="side">
@@ -108,7 +108,7 @@
         <h2 id="trust-heading">Inspect it before you connect a tenant.</h2>
         <div class="trust">
           <span><strong>Read-only</strong> IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in.</span>
-          <span><strong>Your scan and plan stay in your browser</strong> IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data.</span>
+          <span><strong>Your plan is built in your browser</strong> IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data.</span>
           <span><strong>Source is public</strong> Read the code, the permissions and the limits, then decide whether to connect. <a class="lnk" href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a></span>
         </div>
       </section>

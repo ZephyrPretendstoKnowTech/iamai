@@ -25,7 +25,7 @@ No new owner decision is introduced here. The current Jon Hope baseline pin `846
 IAMAI may use the current matching session policies, unmanaged-browser evidence, shared-device accounts, canonical exclusions, target frequency/persistence values, and device-compliance state already available to the product. Unknown evidence remains Unknown.
 
 ## Target state
-**Policy A — browser:** All users; canonical exclusion groups plus resolved shared-device user accounts; All resources; Client apps = Browser; no other security-significant condition; no grant control; Sign-in frequency = 12 hours, time based, primary and secondary authentication; Persistent browser = Never; Report-only before enforcement.
+**Policy A — browser:** All users; canonical exclusion groups plus any individual accounts the resolved target names (the pinned target names none); All resources; Client apps = Browser; no other security-significant condition; no grant control; Sign-in frequency = 12 hours, time based, primary and secondary authentication; Persistent browser = Never; Report-only before enforcement.
 
 **No unmanaged-device policy.** The pinned baseline has no unmanaged-device session policy. The package's retained unmanaged-device blocks and script modes are not offered, and are left for a separately authorized change.
 
@@ -44,7 +44,7 @@ For the browser policy: included users, excluded users/groups, target resources,
 - Do not add an unmanaged-device session policy the pinned baseline does not contain.
 - Do not add grant requirements, authentication strengths, locations, platforms, risks, or application exclusions not present in the canonical target.
 - Do not treat a missing device-compliance claim as proof that a device is unmanaged unless IAMAI's existing evidence/classifier says so.
-- Do not remove shared-device exclusions just to simplify rollout.
+- Do not remove an exclusion the resolved target names just to simplify rollout, and do not add one it does not name.
 - Do not create a duplicate based only on display-name mismatch.
 
 ## State variants
@@ -56,7 +56,7 @@ For the browser policy: included users, excluded users/groups, target resources,
 - **Blocked / Needs decision / Source conflict / Not licensed:** no actionable implementation.
 
 ## Verification
-Read the browser policy back by stable ID. Verify its exact scope and session controls. Use Conditional Access What If and sign-in logs where appropriate, and test representative managed and unmanaged browser sessions. Confirm shared-device accounts remain excluded. After enforcement, confirm expected reauthentication/persistence behavior and rescan IAMAI.
+Read the browser policy back by stable ID. Verify its exact scope and session controls. Use Conditional Access What If and sign-in logs where appropriate, and test representative managed and unmanaged browser sessions. Confirm the exclusions still match the resolved target. After enforcement, confirm expected reauthentication/persistence behavior and rescan IAMAI.
 
 ## Rollback / safe recovery
 If rollout causes unexpected prompts or shared-device disruption, return the browser policy to Report-only first. Correct the same stable objects; do not delete/recreate them or broaden exclusions as the first response.

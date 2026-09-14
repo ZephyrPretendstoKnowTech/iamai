@@ -138,7 +138,7 @@ function literal(v: unknown, json = false): string {
  * refuses the whole artifact, exactly as a missing required binding refuses a
  * block; a switch is passed only for a satisfied prerequisite.
  */
-export function renderInvocation(script: string, spec: InvocationSpec, runs: ScriptRun[], bindings: Bindings, satisfied: ReadonlySet<string>, standIns: ReadonlySet<string> = new Set()): { text: string; calls: string[] } | { missing: string[] } {
+export function renderInvocation(script: string, spec: InvocationSpec, runs: ScriptRun[], bindings: Bindings, satisfied: ReadonlySet<string>, standIns: ReadonlySet<string> = new Set(), emptyOk: ReadonlySet<string> = new Set()): { text: string; calls: string[] } | { missing: string[] } {
   const fn = spec.function ?? DEFAULT_FUNCTION
   const missing = new Set<string>()
   const calls = runs.map((run) => {
@@ -151,7 +151,8 @@ export function renderInvocation(script: string, spec: InvocationSpec, runs: Scr
         continue
       }
       const value = p.binding ? bindings[p.binding] : undefined
-      if (!present(value)) {
+      // A resolved empty list the package declares a value (`resolvedEmptyBindings`) is passed as @().
+      if (!present(value) && !(p.binding !== undefined && emptyOk.has(p.binding) && Array.isArray(value))) {
         if (p.binding) missing.add(p.binding)
         continue
       }

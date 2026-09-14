@@ -184,7 +184,7 @@ Subject: Legacy authentication will be blocked
 
 Hi,
 
-Legacy authentication blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Approved service/device dependencies have been accounted for. If something legitimate stops working, report the application/device and account rather than requesting a permanent user bypass.
+Legacy authentication blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Before the change, any known service or device that still uses legacy sign-in should move to a supported path. If something legitimate stops working, report the application/device and account rather than requesting a permanent user bypass.
 
 {{signature}}
 @@IAMAI-END

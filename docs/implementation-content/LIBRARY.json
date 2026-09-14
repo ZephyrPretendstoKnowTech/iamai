@@ -966,7 +966,7 @@
       ],
       "correctionModules": 8,
       "requiredBindings": 6,
-      "optionalBindings": 15,
+      "optionalBindings": 16,
       "verifiedSourceCount": 6,
       "packageSpecificMicrosoftSources": 6,
       "sharedPrimitivesReused": 4,
@@ -5309,6 +5309,18 @@
       "definitionStatus": "CARRIED-FORWARD"
     },
     {
+      "binding": "policy.target.excludeUsersSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-session-lifetime"
+      ],
+      "packages": [
+        "s-goal-session-lifetime"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "policy.target.grantControls",
       "requiredBy": [
         "s-goal-admin-session",
@@ -6407,14 +6419,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 962,
-    "uniqueBindings": 284,
+    "uniqueBindings": 285,
     "bindingsRequiredByAtLeastOneProjection": 100,
-    "bindingsOptionalInAtLeastOnePackage": 188,
+    "bindingsOptionalInAtLeastOnePackage": 189,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 239,
+    "bindingDefinitionsPendingHolisticReview": 240,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 239,
+    "knownIAMAIInputUnreviewed": 240,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

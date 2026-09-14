@@ -46,7 +46,9 @@ test('session-lifetime: every projected explanation in every state describes the
     const ai = p.channels.find((c) => c.channel === 'aiInfo')?.text ?? ''
     assert.ok(ai.length > 0, `${state}: no AI Info drawn`)
     // The whole briefing, not its first line: the target is the browser policy and says there is no second one.
-    assert.match(ai, /Policy A \(browser\): All users; canonical group\/shared-device exclusions; All resources; Browser; 12-hour/, state)
+    // The target names only the exclusions the resolved target has (consolidated batch item 2), never a mandatory shared-device set.
+    assert.match(ai, /Policy A \(browser\): All users; IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; All resources; Browser; 12-hour/, state)
+    assert.doesNotMatch(ai, /shared-device exclusions|group\/shared-device/, state)
     assert.match(ai, /This is the whole target: the pinned baseline has no unmanaged-device session policy/, state)
     assert.match(ai, /Do not add a companion policy the pinned baseline does not contain/, state)
     // Every channel but the script, whose retained modes are execution and unchanged in this pass.

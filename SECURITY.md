@@ -33,9 +33,9 @@ Microsoft Graph request, generated from the collector registry the code runs fro
 locations, authentication strengths and the authentication methods policy; users,
 devices, group memberships, role assignments and subscribed licences; per-user registered
 sign-in methods; and interactive sign-in records for up to the last 30 days. For registered
-methods, Microsoft returns each method's details; IAMAI saves only a summary of each method
-(its kind, and for a phone, whether it is a mobile or office line), and phone numbers are
-dropped before anything is saved.
+methods, Microsoft returns each method's details. IAMAI saves the sign-in details needed for
+its checks, leaving out phone numbers: each method's kind and when it was added, and for
+passkeys, security keys and Microsoft Authenticator the device details those checks read.
 
 Every permission is a delegated **read** scope, requested once at sign-in on a single
 consent screen (`src/graph/scopes.ts`). There is no write scope, and
@@ -47,7 +47,7 @@ consent screen (`src/graph/scopes.ts`). There is no write scope, and
 | `Directory.Read.All` | People, groups and members, devices, licences, the organisation name, the signed-in account | No names, counts or populations |
 | `AuditLog.Read.All` | Up to 30 days of interactive sign-in records, and the registered-methods report | No predicted impact and no verification |
 | `RoleManagement.Read.Directory` | Which accounts hold which directory roles, permanently or through PIM | IAMAI cannot tell who administers the tenant |
-| `UserAuthenticationMethod.Read.All` | Each account's registered methods; IAMAI saves which kinds, without phone numbers | The emergency-access method and shared-device checks cannot run |
+| `UserAuthenticationMethod.Read.All` | Each account's registered methods; IAMAI saves the sign-in details its checks need, leaving out phone numbers | The emergency-access method and shared-device checks cannot run |
 | `Reports.Read.All` | Aggregated per-application sign-in counts, and application sign-in activity | App-scoping advice loses its evidence |
 | `openid`, `profile`, `offline_access` | That the sign-in happened, who signed in, and a session that can refresh | Signing in, and finishing a long scan |
 

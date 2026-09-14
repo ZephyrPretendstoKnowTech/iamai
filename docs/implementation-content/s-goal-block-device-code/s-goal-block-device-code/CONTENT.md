@@ -186,7 +186,7 @@ Subject: Device-code sign-in will be blocked
 
 Hi,
 
-Device-code blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Known legitimate dependencies have been resolved. If a technical workflow fails, report the exact application/device and account; do not create a broad user exception.
+Device-code blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Before the change, any known workflow that still uses device code should move to a supported sign-in path. If a technical workflow fails, report the exact application/device and account; do not create a broad user exception.
 
 {{signature}}
 @@IAMAI-END

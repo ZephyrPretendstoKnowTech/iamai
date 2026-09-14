@@ -1959,7 +1959,7 @@
             "audience": "administrators-in-scope",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Administrator strong authentication is ready to enforce\n\nThe administrator policy has completed validation and is ready to be enabled. Admin sign-ins in scope will need one of the baseline's accepted strong methods. If an admin is blocked, use the documented recovery/readiness path rather than adding a permanent exception.\n"
+          "text": "Subject: Administrator strong authentication is ready to enforce\n\nThe administrator policy has finished its Report-only review and is ready to be turned on. Admin sign-ins in scope will need one of the baseline's accepted strong methods. If an admin is blocked, use the documented recovery/readiness path rather than adding a permanent exception.\n"
         },
         "readiness.model": {
           "meta": {
@@ -3762,7 +3762,7 @@
             "audience": "technical-owners",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Device-code sign-in will be blocked\n\nHi,\n\nDevice-code blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Known legitimate dependencies have been resolved. If a technical workflow fails, report the exact application/device and account; do not create a broad user exception.\n\n{{signature}}\n"
+          "text": "Subject: Device-code sign-in will be blocked\n\nHi,\n\nDevice-code blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Before the change, any known workflow that still uses device code should move to a supported sign-in path. If a technical workflow fails, report the exact application/device and account; do not create a broad user exception.\n\n{{signature}}\n"
         },
         "readiness.model": {
           "meta": {
@@ -4367,7 +4367,7 @@
             "audience": "affected-users",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Legacy authentication will be blocked\n\nHi,\n\nLegacy authentication blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Approved service/device dependencies have been accounted for. If something legitimate stops working, report the application/device and account rather than requesting a permanent user bypass.\n\n{{signature}}\n"
+          "text": "Subject: Legacy authentication will be blocked\n\nHi,\n\nLegacy authentication blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Before the change, any known service or device that still uses legacy sign-in should move to a supported path. If something legitimate stops working, report the application/device and account rather than requesting a permanent user bypass.\n\n{{signature}}\n"
         },
         "readiness.model": {
           "meta": {
@@ -7129,7 +7129,7 @@
             "audience": "help-desk",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Guest MFA policies are ready to enforce\n\nThe guest MFA policy pair has completed validation and is ready to be enabled. After enforcement, external users in scope must satisfy the MFA requirement appropriate to their guest policy path. Support should troubleshoot the external identity/home-tenant path rather than add permanent guest exclusions.\n"
+          "text": "Subject: Guest MFA policies are ready to enforce\n\nThe guest MFA policy pair has finished its Report-only review and is ready to be turned on. After enforcement, external users in scope must satisfy the MFA requirement appropriate to their guest policy path. Support should troubleshoot the external identity/home-tenant path rather than add permanent guest exclusions.\n"
         },
         "readiness.model": {
           "meta": {
@@ -8541,7 +8541,7 @@
             "audience": "help-desk",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: MFA enforcement is ready\n\nThe tenant-wide MFA policy has completed its validation stage and is ready to be enabled. After enforcement, ordinary sign-ins will require MFA. If someone cannot complete the prompt, use the documented registration/recovery workflow rather than adding a permanent exclusion.\n"
+          "text": "Subject: MFA enforcement is ready\n\nThe tenant-wide MFA policy has finished its Report-only review and is ready to be turned on. After enforcement, ordinary sign-ins will require MFA. If someone cannot complete the prompt, use the documented registration/recovery workflow rather than adding a permanent exclusion.\n"
         },
         "readiness.model": {
           "meta": {
@@ -10557,7 +10557,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Leave the policy in **Report-only**. Review Conditional Access report-only results and the step-specific evidence. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.\n"
+          "text": "Leave the policy in **Report-only**. Check its settings by reading the policy back by stable tenant ID; that confirms the configuration, not the registration experience. Report-only results may not show sign-in method registration attempts, so validate the actual registration steps with a controlled test account before enforcement. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -10732,7 +10732,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nAssess the Report-only evidence for **Protect Sign-in Method Registration** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nAssess the Report-only evidence for **Protect Sign-in Method Registration** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear. Report-only results may not show registration attempts: treat a settings read-back as a check of the configuration and a controlled registration test as the check of the workflow, and say which of the two the available evidence supports.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -10784,7 +10784,7 @@
             "audience": "affected-users",
             "communicationTrigger": "before-report-only"
           },
-          "text": "Subject: Sign-in method registration policy entering validation\n\nHi,\n\nWe are validating a policy that protects how sign-in methods are registered in {{tenant.displayName}}. Depending on the tenant's resolved trusted-network design, method registration may require the trusted network or an MFA bootstrap path. We will validate the actual registration workflows in Report-only before enforcement.\n\n{{signature}}\n"
+          "text": "Subject: Sign-in method registration policy entering validation\n\nHi,\n\nWe are validating a policy that protects how sign-in methods are registered in {{tenant.displayName}}. Depending on the tenant's resolved trusted-network design, method registration may require the trusted network or an MFA bootstrap path. Before the policy is turned on, we will check its settings and test the registration steps with a test account; report-only records alone may not show how registration behaves.\n\n{{signature}}\n"
         },
         "email.enforce": {
           "meta": {
@@ -10798,7 +10798,7 @@
             "audience": "affected-users",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Sign-in method registration protection enforcement\n\nHi,\n\nThe sign-in method registration protection for {{tenant.displayName}} is ready to enforce after Report-only validation. If a legitimate registration is blocked, contact IT rather than adding a user exclusion.\n\n{{signature}}\n"
+          "text": "Subject: Sign-in method registration protection enforcement\n\nHi,\n\nWe plan to turn on the sign-in method registration protection for {{tenant.displayName}}. Before we do, we check its settings and test the registration steps with a test account. If a legitimate registration is blocked, contact IT rather than adding a user exclusion.\n\n{{signature}}\n"
         },
         "readiness.model": {
           "meta": {
@@ -12324,6 +12324,7 @@
           "policies.session.semanticMismatches"
         ],
         "optionalBindings": [
+          "policy.target.excludeUsersSummary",
           "policies.session.browser.current.removedExclusions",
           "policies.session.browser.current.displayName",
           "policies.session.unmanaged.current.removedExclusions",
@@ -12339,6 +12340,9 @@
           "dependencies.blockers",
           "policies.session.browser.operation",
           "policies.session.unmanaged.operation"
+        ],
+        "resolvedEmptyBindings": [
+          "policy.target.excludeUsers"
         ],
         "projection": {
           "missing": {
@@ -12813,7 +12817,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Create the browser policy: Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n\n**Policy A — browser**\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude IAMAI's canonical groups and the resolved shared-device accounts.\n3. Target resources: **All resources**.\n4. Conditions → Client apps: **Browser**.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\n**Policy B — unmanaged device**\nNot offered here yet. The pinned baseline has no unmanaged-device session policy, so IAMAI has no name or stable identity for this companion. Create Policy A only.\n\nSave once. Rescan IAMAI so the policy gets a stable ID.\n"
+          "text": "Create the browser policy: Entra admin center → Entra ID → Conditional Access → Policies → New policy.\n\n**Policy A — browser**\n1. Name: `{{policies.session.browser.target.displayName}}`.\n2. Users: Include **All users**. Exclude IAMAI's canonical exclusion groups, and only the individual accounts the resolved target names.\n   Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n3. Target resources: **All resources**.\n4. Conditions → Client apps: **Browser**.\n5. Grant: no grant requirement.\n6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.\n7. Enable policy: **Report-only**.\n\n**Policy B — unmanaged device**\nNot offered here yet. The pinned baseline has no unmanaged-device session policy, so IAMAI has no name or stable identity for this companion. Create Policy A only.\n\nSave once. Rescan IAMAI so the policy gets a stable ID.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -12849,7 +12853,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "For the browser component, set Users to All users with IAMAI's canonical group/shared-device exclusions, Target resources to All resources, and Client apps to Browser. Remove noncanonical risk, location, platform, device-filter, authentication-flow, application-exclusion, or other conditions.\n"
+          "text": "For the browser component, set Users to All users, excluding IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps to Browser. Remove noncanonical risk, location, platform, device-filter, authentication-flow, application-exclusion, or other conditions.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n"
         },
         "entra.correct.browser.session": {
           "meta": {
@@ -12969,7 +12973,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Leave the browser policy (Policy A) in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins. Confirm shared-device accounts remain excluded. The pinned baseline has no unmanaged-device session policy, so there is no Policy B to review here. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.\n"
+          "text": "Leave the browser policy (Policy A) in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins. Confirm the policy's exclusions still match the resolved target. The pinned baseline has no unmanaged-device session policy, so there is no Policy B to review here. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.\n"
         },
         "entra.enforce": {
           "meta": {
@@ -12981,7 +12985,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Open the IAMAI-resolved browser policy (Policy A) by stable identity. Confirm it still matches the canonical target and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window. Test managed, unmanaged, and shared-device browser paths, then rescan IAMAI. The pinned baseline has no unmanaged-device session policy, so there is no Policy B to turn on here.\n"
+          "text": "Open the IAMAI-resolved browser policy (Policy A) by stable identity. Confirm it still matches the canonical target and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window. Test representative browser sign-ins, including any account the resolved target excludes, then rescan IAMAI. The pinned baseline has no unmanaged-device session policy, so there is no Policy B to turn on here.\n"
         },
         "json.browser.create": {
           "meta": {
@@ -13246,7 +13250,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Create the browser policy (Policy A) in Report-only. The pinned baseline has no unmanaged-device session policy, so Policy B is not created here.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Create the browser policy (Policy A) in Report-only. The pinned baseline has no unmanaged-device session policy, so Policy B is not created here.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
         },
         "ai.correct": {
           "meta": {
@@ -13258,7 +13262,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Correct only IAMAI-classified mismatches on the browser policy (Policy A).\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n\nThe browser policy keeps its current state. If it is On, its correction applies to sign-ins as soon as it is saved.\n\nThis change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\nThis change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Correct only IAMAI-classified mismatches on the browser policy (Policy A).\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n\nThe browser policy keeps its current state. If it is On, its correction applies to sign-ins as soon as it is saved.\n\nThis change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\nThis change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]\n"
         },
         "ai.observe": {
           "meta": {
@@ -13270,7 +13274,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Review the browser policy (Policy A) in Report-only without inventing successful observation. The pinned baseline has no unmanaged-device session policy, so Policy B is not part of this review.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Review the browser policy (Policy A) in Report-only without inventing successful observation. The pinned baseline has no unmanaged-device session policy, so Policy B is not part of this review.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
         },
         "ai.enforce": {
           "meta": {
@@ -13282,7 +13286,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Enable the browser policy (Policy A) only after readiness is satisfied. The pinned baseline has no unmanaged-device session policy, so Policy B is not enabled here.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nROLE\nHelp implement the IAMAI step **Limit How Long Sessions Last**. Enable the browser policy (Policy A) only after readiness is satisfied. The pinned baseline has no unmanaged-device session policy, so Policy B is not enabled here.\n\nAUTHORITY\nThe retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not add a companion policy the pinned baseline does not contain, and do not infer tenant facts.\n\nTENANT CONTEXT\n- Tenant: {{tenant.displayName}} [omit if unavailable]\n- Affected people: {{people.affected.count}} [omit if unavailable]\n- Existing blockers: {{dependencies.blockers}} [omit if unavailable]\n\nTARGET\nPolicy A (browser): All users; IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. This is the whole target: the pinned baseline has no unmanaged-device session policy, so there is no second policy to create, correct or enable.\nIndividual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]\n\nRULES\nUse stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.\n"
         },
         "email.users.pre-enforcement": {
           "meta": {
@@ -13334,7 +13338,7 @@
             "format": "json",
             "kind": "referenceOnly"
           },
-          "text": "{\n  \"schemaVersion\": \"1.0\",\n  \"stepId\": \"s-goal-session-lifetime\",\n  \"scenarios\": [\n    {\n      \"id\": \"unexpected-frequent-prompts\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session.\"\n      ],\n      \"fix\": [\n        \"Correct the unintended overlapping policy rather than weakening this policy without evidence.\"\n      ],\n      \"doNot\": [\n        \"Do not assume the displayed policy is the only session control applying.\"\n      ],\n      \"then\": [\n        \"Retest and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-concept\"\n      ],\n      \"title\": \"Users are prompted more often than the configured 12-hour value suggests\"\n    },\n    {\n      \"id\": \"shared-device-signout\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Confirm its account is in IAMAI’s resolved shared-device exclusions on the browser policy.\"\n      ],\n      \"fix\": [\n        \"Correct the same policies to the approved exclusion set, then retest.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exclude ordinary users or disable all session controls.\"\n      ],\n      \"then\": [\n        \"Return the browser policy to Report-only if service remains disrupted.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"A room/shared device starts cycling through sign-in prompts or signs out\"\n    },\n    {\n      \"id\": \"persistent-browser-not-working\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify the policy targets All resources and persistentBrowser is enabled with mode never.\"\n      ],\n      \"fix\": [\n        \"Restore the canonical All-resources target and session control.\"\n      ],\n      \"doNot\": [\n        \"Do not narrow the app/resource target for a persistent-browser policy.\"\n      ],\n      \"then\": [\n        \"Retest in a fresh browser session.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-persistent-browser-v1\"\n      ],\n      \"title\": \"Never persistent does not behave as expected\"\n    },\n    {\n      \"id\": \"wrong-unmanaged-scope\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify Client apps is Browser only, with no device filter the pinned baseline does not have.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy conditions by stable ID.\"\n      ],\n      \"doNot\": [\n        \"Do not add a device filter or an app list the pinned baseline does not contain.\"\n      ],\n      \"then\": [\n        \"Use What If/tenant evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-ca-device-filter-v1\",\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"The session control appears to affect apps outside the browser, or misses browser sign-ins\"\n    }\n  ]\n}\n"
+          "text": "{\n  \"schemaVersion\": \"1.0\",\n  \"stepId\": \"s-goal-session-lifetime\",\n  \"scenarios\": [\n    {\n      \"id\": \"unexpected-frequent-prompts\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session.\"\n      ],\n      \"fix\": [\n        \"Correct the unintended overlapping policy rather than weakening this policy without evidence.\"\n      ],\n      \"doNot\": [\n        \"Do not assume the displayed policy is the only session control applying.\"\n      ],\n      \"then\": [\n        \"Retest and rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-concept\"\n      ],\n      \"title\": \"Users are prompted more often than the configured 12-hour value suggests\"\n    },\n    {\n      \"id\": \"shared-device-signout\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Confirm its account is in IAMAI’s resolved exclusions on the browser policy, and whether the resolved target names it at all.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy to the resolved exclusion set, then retest.\"\n      ],\n      \"doNot\": [\n        \"Do not broadly exclude ordinary users or disable all session controls.\"\n      ],\n      \"then\": [\n        \"Return the browser policy to Report-only if service remains disrupted.\"\n      ],\n      \"sources\": [\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"A room/shared device starts cycling through sign-in prompts or signs out\"\n    },\n    {\n      \"id\": \"persistent-browser-not-working\",\n      \"classification\": \"documented\",\n      \"states\": [\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify the policy targets All resources and persistentBrowser is enabled with mode never.\"\n      ],\n      \"fix\": [\n        \"Restore the canonical All-resources target and session control.\"\n      ],\n      \"doNot\": [\n        \"Do not narrow the app/resource target for a persistent-browser policy.\"\n      ],\n      \"then\": [\n        \"Retest in a fresh browser session.\"\n      ],\n      \"sources\": [\n        \"ms-ca-session-controls-v1\",\n        \"ms-persistent-browser-v1\"\n      ],\n      \"title\": \"Never persistent does not behave as expected\"\n    },\n    {\n      \"id\": \"wrong-unmanaged-scope\",\n      \"classification\": \"derived\",\n      \"states\": [\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\"\n      ],\n      \"channels\": [\n        \"entra\",\n        \"json\",\n        \"powershell\"\n      ],\n      \"check\": [\n        \"Verify Client apps is Browser only, with no device filter the pinned baseline does not have.\"\n      ],\n      \"fix\": [\n        \"Correct the browser policy conditions by stable ID.\"\n      ],\n      \"doNot\": [\n        \"Do not add a device filter or an app list the pinned baseline does not contain.\"\n      ],\n      \"then\": [\n        \"Use What If/tenant evidence and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-ca-device-filter-v1\",\n        \"ms-session-lifetime-config\"\n      ],\n      \"title\": \"The session control appears to affect apps outside the browser, or misses browser sign-ins\"\n    }\n  ]\n}\n"
         }
       }
     },
@@ -21401,7 +21405,7 @@
             "audience": "help-desk",
             "communicationTrigger": "during-ready-to-disable"
           },
-          "text": "Subject: Microsoft Entra protection cutover\n\nSecurity Defaults is being replaced with the validated Conditional Access policy set in one controlled change window. If sign-in issues appear, record the affected account, application, time, and policy result; do not disable tenant-wide protection without the rollback owner.\n"
+          "text": "Subject: Microsoft Entra protection cutover\n\nWe plan to replace Security Defaults with the reviewed Conditional Access policy set in one controlled change window. If sign-in issues appear, record the affected account, application, time, and policy result; do not disable tenant-wide protection without the rollback owner.\n"
         },
         "readiness.model": {
           "meta": {
@@ -23584,7 +23588,7 @@
             "audience": "help-desk",
             "communicationTrigger": "before-enforcement"
           },
-          "text": "Subject: Shared-device Conditional Access change\n\nWe are enabling the dedicated shared-device Conditional Access policy after report-only validation. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.\n"
+          "text": "Subject: Shared-device Conditional Access change\n\nWe plan to turn on the dedicated shared-device Conditional Access policy after its report-only review. If a room or shared device stops signing in, record the device, account, time, and network rather than changing broad exclusions.\n"
         },
         "readiness.model": {
           "meta": {

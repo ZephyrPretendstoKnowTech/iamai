@@ -194,7 +194,7 @@ We are ready to trust MFA claims from the specifically approved partner tenant f
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: Guest MFA policies are ready to enforce
 
-The guest MFA policy pair has completed validation and is ready to be enabled. After enforcement, external users in scope must satisfy the MFA requirement appropriate to their guest policy path. Support should troubleshoot the external identity/home-tenant path rather than add permanent guest exclusions.
+The guest MFA policy pair has finished its Report-only review and is ready to be turned on. After enforcement, external users in scope must satisfy the MFA requirement appropriate to their guest policy path. Support should troubleshoot the external identity/home-tenant path rather than add permanent guest exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}

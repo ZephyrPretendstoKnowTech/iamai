@@ -190,7 +190,7 @@ We are placing the administrator strong-auth policy in Report-only first. Before
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
 Subject: Administrator strong authentication is ready to enforce
 
-The administrator policy has completed validation and is ready to be enabled. Admin sign-ins in scope will need one of the baseline's accepted strong methods. If an admin is blocked, use the documented recovery/readiness path rather than adding a permanent exception.
+The administrator policy has finished its Report-only review and is ready to be turned on. Admin sign-ins in scope will need one of the baseline's accepted strong methods. If an admin is blocked, use the documented recovery/readiness path rather than adding a permanent exception.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}

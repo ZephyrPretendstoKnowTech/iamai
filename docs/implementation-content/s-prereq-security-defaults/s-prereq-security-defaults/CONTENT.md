@@ -45,7 +45,7 @@ Verify that Security Defaults is off and replacement Conditional Access protecti
 @@IAMAI-BEGIN {"id":"email.cutover","channel":"email","states":["readyToDisable"],"format":"markdown","kind":"template","audience":"help-desk"}
 Subject: Microsoft Entra protection cutover
 
-Security Defaults is being replaced with the validated Conditional Access policy set in one controlled change window. If sign-in issues appear, record the affected account, application, time, and policy result; do not disable tenant-wide protection without the rollback owner.
+We plan to replace Security Defaults with the reviewed Conditional Access policy set in one controlled change window. If sign-in issues appear, record the affected account, application, time, and policy result; do not disable tenant-wide protection without the rollback owner.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["blocked","readyToDisable","verificationRequired"],"format":"json-template","kind":"referenceOnly"}

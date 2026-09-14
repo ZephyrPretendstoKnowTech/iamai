@@ -62,17 +62,23 @@ test('the target’s excluded accounts bind as the resolved target holds them: a
   for (const body of [nulled.action.resolution!.policies[0].body, nulled.action.resolution!.policies[0].target].filter((b): b is Record<string, unknown> => !!b)) ((body.conditions as { users: Record<string, unknown> }).users).excludeUsers = null
   assert.equal(Object.hasOwn(bindingsOf(nulled, ctxOf(f, r)), 'policy.target.excludeUsers'), false)
   // The projection keeps its contract: null is a whole JSON value; a required list
-  // that is empty is not a set IAMAI holds (pilot.test.ts: an empty exclusion set
-  // never produces a Create); a key IAMAI does not hold is missing.
+  // that is empty is not a set IAMAI holds unless the package declares that list's
+  // resolved "none" a value (pilot.test.ts: an empty exclusion set never produces a
+  // Create); a key IAMAI does not hold is missing.
   assert.equal(bound({ k: null }, 'k'), true)
   assert.equal(bound({ k: ['user-1'] }, 'k'), true)
+  assert.equal(bound({ k: [] }, 'k'), false)
   assert.equal(bound({}, 'k'), false)
   assert.deepEqual(bindText('"excludeUsers": {{json:k}}', { k: ['user-1'] }, new Set(['k'])), { text: '"excludeUsers": ["user-1"]' })
   assert.deepEqual(bindText('"excludeUsers": {{json:k}}', {}, new Set(['k'])), { missing: ['k'] })
-  // Session Lifetime's create waits on exactly that rule: the empty list above is required and not held.
-  // Its unmanaged companion, which has no stable id in the pin, no longer holds the create (cycle 7).
-  const held = projectSafely(implementationPackageFor(step)!, 'missing', bindings, NO_RUNTIME).hold
-  assert.deepEqual(held?.missingBindings, ['policy.target.excludeUsers'], JSON.stringify(held))
+  // Session Lifetime's create used to wait on that rule though the pinned target excludes nobody (the
+  // empty list above). The package now declares the resolved empty list a value (META
+  // resolvedEmptyBindings, consolidated batch), so the create is handed over carrying it; an unbound
+  // value still holds (resolvedEmptyExclusions.test.ts). Its unmanaged companion, which has no stable id
+  // in the pin, no longer holds the create (cycle 7).
+  const created = projectSafely(implementationPackageFor(step)!, 'missing', bindings, NO_RUNTIME)
+  assert.equal(created.hold, null, JSON.stringify(created.hold))
+  assert.match(created.channels.find((c) => c.channel === 'json')?.text ?? '', /"excludeUsers":\[\]/, 'the create carries the empty list the target holds')
 })
 
 test('every value a registered package requires has one human name in the content', () => {

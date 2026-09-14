@@ -50,9 +50,11 @@ test('the session create is the pinned browser policy alone, and the unmanaged c
   const json = tab('json')
   assert.match(json, /"displayName":"Core - Session - Non-persistent browser sessions"/)
   assert.doesNotMatch(json, /device\.isCompliant|unmanaged/i)
-  // It is still a preview, for the one value it lacks: the excluded accounts, an empty required list.
-  const values = (body.previewNote?.lines ?? []).join(' ')
-  assert.match(values, /Values still to resolve: excluded people\.$/, values)
+  // The target's excluded accounts are an empty list, and that is the target's own "none" (consolidated
+  // batch): the create used to preview on it as a missing value; it is now handed over carrying the empty list.
+  assert.equal(body.previewNote, null, JSON.stringify(body.previewNote))
+  assert.match(calls[0], /-ExcludeUserIds @\(\)$/)
+  assert.match(json, /"excludeUsers":\[\]/)
 })
 
 test('with the excluded accounts held, the browser create is handed over in every channel', () => {
