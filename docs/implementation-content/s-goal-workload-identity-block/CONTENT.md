@@ -73,6 +73,8 @@ Set **Enable policy** to **Report-only** while correcting or revalidating a mate
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Save the same object(s), read them back, and rescan IAMAI. Do not enforce until the named location and workload policy both match the canonical target and service-principal sign-in evidence is ready.
+
+Keep the policy's current state: if it is On, the correction applies to the sync service principal's token requests as soon as you save. A request from outside the approved named location is then blocked, so confirm the sync server's current egress address is in that location first.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
@@ -364,7 +366,6 @@ switch ($Mode) {
 
         if ($Corrections -contains 'PolicyConditions' -or $Corrections -contains 'PolicyGrant') {
             $policy = Get-PolicyById $PolicyId
-            if ($policy.state -eq 'enabled' -and $Corrections -notcontains 'ReportOnly') { throw 'A material policy correction requires the policy to be returned to Report-only first.' }
             $body = @{}
             if ($Corrections -contains 'PolicyConditions') { $body.conditions = New-CanonicalPolicyConditions $ServicePrincipalId $LocationId }
             if ($Corrections -contains 'PolicyGrant') { $body.grantControls = @{ operator='OR'; builtInControls=@('block'); customAuthenticationFactors=@(); termsOfUse=@() } }
@@ -454,10 +455,10 @@ Policy ID: {{policy.current.id}}
 Policy mismatches: {{policy.current.semanticMismatches}}
 
 TARGET STATE
-Approved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; Report-only during material correction.
+Approved IP range set; direct Cloud Sync service-principal assignment; All resources; Any location excluding the exact named location; Block grant; the policy's current state kept.
 
 DO NOT CHANGE
-Do not create duplicate objects. If the named-location IP ranges change, supply the complete approved range set. If the workload policy is On, return it to Report-only before changing the allowed address or material policy scope.
+Do not create duplicate objects. If the named-location IP ranges change, supply the complete approved range set. If the workload policy is On, each correction applies to the sync service principal's token requests as soon as it is saved. Confirm the sync server's current egress address is in the approved location first.
 
 YOUR ROLE
 Apply only the supplied mismatch modules to the same stable objects and stop for IAMAI rescan.
