@@ -6613,6 +6613,7 @@
           "policyPair.current.states",
           "evidence.reportOnly",
           "partnerTrust.resolvedPatches",
+          "policies.guests.targets.json",
           "dependencies.blockers",
           "signature"
         ],
@@ -6672,12 +6673,6 @@
             ],
             "json": [
               "json.partner-trust"
-            ],
-            "powershell": [
-              {
-                "block": "powershell.run",
-                "mode": "ApplyPartnerTrust"
-              }
             ],
             "aiInfo": [
               "ai.partner-trust"
@@ -6930,7 +6925,43 @@
               "readyToEnforce"
             ],
             "format": "powershell",
-            "kind": "template"
+            "kind": "deployableAfterBinding",
+            "invocation": {
+              "modeParameter": "Mode",
+              "parameters": {
+                "TargetPoliciesJson": {
+                  "binding": "policies.guests.targets.json",
+                  "modes": [
+                    "CreateMissing",
+                    "CorrectPair",
+                    "Observe",
+                    "EnforcePair",
+                    "Verify"
+                  ]
+                },
+                "StrongPolicyId": {
+                  "binding": "policies.guests.strong.current.id",
+                  "modes": [
+                    "CorrectPair",
+                    "Observe",
+                    "EnforcePair",
+                    "Verify"
+                  ]
+                },
+                "MixedPolicyId": {
+                  "binding": "policies.guests.mixed.current.id",
+                  "modes": [
+                    "CorrectPair",
+                    "Observe",
+                    "EnforcePair",
+                    "Verify"
+                  ]
+                }
+              },
+              "withheldModes": {
+                "ApplyPartnerTrust": "ApplyPartnerTrust reads the owner-approved partner trust patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."
+              }
+            }
           },
           "text": "param(\n [Parameter(Mandatory=$true)][ValidateSet('CreateMissing','CorrectPair','ApplyPartnerTrust','Observe','EnforcePair','Verify')][string]$Mode,\n [Parameter(Mandatory=$true)][string]$TargetPoliciesJson,\n [string]$StrongPolicyId,\n [string]$MixedPolicyId,\n [string]$PartnerTrustJson='[]'\n)\n$ErrorActionPreference='Stop'\n$scopes=@('Policy.Read.All','Policy.ReadWrite.ConditionalAccess')\nif($Mode -eq 'ApplyPartnerTrust'){$scopes += 'Policy.ReadWrite.CrossTenantAccess'}\nConnect-MgGraph -Scopes $scopes -NoWelcome\n$G='https://graph.microsoft.com/v1.0'\nfunction GuidOk([string]$v,[string]$n){$g=[guid]::Empty;if(-not [guid]::TryParse($v,[ref]$g)){throw \"$n must be a GUID.\"}}\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 80) -ContentType 'application/json' -OutputType PSObject}\nfunction Project($actual,$target){if($null -eq $target){return $actual};if($target -is [string] -or $target -is [bool] -or $target -is [int] -or $target -is [long] -or $target -is [double]){return $actual};if($target -is [System.Collections.IEnumerable] -and -not ($target -is [string])){return @($actual)};$h=[ordered]@{};foreach($p in $target.PSObject.Properties){$h[$p.Name]=Project $actual.($p.Name) $p.Value};return [pscustomobject]$h}\nfunction Norm($v){if($null -eq $v){return $null};if($v -is [string] -or $v -is [bool] -or $v -is [int] -or $v -is [long] -or $v -is [double]){return $v};if($v -is [System.Collections.IEnumerable] -and -not ($v -is [string])){$a=@($v|%{Norm $_});return @($a|Sort-Object {$_|ConvertTo-Json -Depth 80 -Compress})};$h=[ordered]@{};foreach($p in ($v.PSObject.Properties.Name|Sort-Object)){$h[$p]=Norm $v.$p};return [pscustomobject]$h}\nfunction Same($a,$t){return (((Norm (Project $a $t))|ConvertTo-Json -Depth 80 -Compress) -eq ((Norm $t)|ConvertTo-Json -Depth 80 -Compress))}\n$targets=@($TargetPoliciesJson|ConvertFrom-Json)\nif($targets.Count -ne 2){throw 'TargetPoliciesJson must contain exactly two canonical guest policy targets.'}\n$strong=$targets|Where-Object role -eq 'strong';$mixed=$targets|Where-Object role -eq 'mixed'\nif($null -eq $strong -or $null -eq $mixed){throw 'Targets must contain role=strong and role=mixed.'}\nif($Mode -eq 'ApplyPartnerTrust'){\n $patches=@($PartnerTrustJson|ConvertFrom-Json)\n foreach($p in $patches){GuidOk ([string]$p.tenantId) 'Partner tenant id';if($null -eq $p.inboundTrust){throw 'Each partner trust patch must include the complete resolved inboundTrust object.'};$u=\"$G/policies/crossTenantAccessPolicy/partners/$($p.tenantId)\";try{$cur=IG GET $u;IG PATCH $u @{inboundTrust=$p.inboundTrust}|Out-Null}catch{throw \"Could not update existing partner-specific cross-tenant configuration for $($p.tenantId). Create/relationship state must be resolved before this package patches trust: $($_.Exception.Message)\"};$after=IG GET $u;[pscustomobject]@{PartnerTenant=$p.tenantId;InboundTrust=$after.inboundTrust}}\n exit 0\n}\n$ids=@{strong=$StrongPolicyId;mixed=$MixedPolicyId}\nif($Mode -eq 'CreateMissing'){\n foreach($t in @($strong,$mixed)){\n  $id=[string]$ids[$t.role]\n  if([string]::IsNullOrWhiteSpace($id)){\n   $body=[ordered]@{displayName=$t.displayName;state='enabledForReportingButNotEnforced';conditions=$t.conditions;grantControls=$t.grantControls;sessionControls=$t.sessionControls}\n   $c=IG POST \"$G/identity/conditionalAccess/policies\" $body\n   $ids[$t.role]=[string]$c.id\n   Write-Host \"Created $($t.role) guest policy $($c.id) in Report-only.\"\n  }\n }\n}\nforeach($role in @('strong','mixed')){GuidOk ([string]$ids[$role]) \"$role policy id\"}\nif($Mode -eq 'CorrectPair'){\n foreach($t in @($strong,$mixed)){\n   $id=[string]$ids[$t.role]\n   IG PATCH \"$G/identity/conditionalAccess/policies/$id\" @{displayName=$t.displayName;conditions=$t.conditions;grantControls=$t.grantControls;sessionControls=$t.sessionControls}|Out-Null\n }\n}\nif($Mode -eq 'EnforcePair'){\n $changed=@()\n try{\n  foreach($t in @($strong,$mixed)){\n   $id=[string]$ids[$t.role];$a=IG GET \"$G/identity/conditionalAccess/policies/$id\"\n   if([string]$a.state -ne 'enabledForReportingButNotEnforced'){throw \"$($t.role) policy is not Report-only.\"}\n   if(-not (Same $a.conditions $t.conditions) -or -not (Same $a.grantControls $t.grantControls) -or -not (Same $a.sessionControls $t.sessionControls)){throw \"$($t.role) policy is not canonical.\"}\n  }\n  foreach($t in @($strong,$mixed)){$id=[string]$ids[$t.role];IG PATCH \"$G/identity/conditionalAccess/policies/$id\" @{state='enabled'}|Out-Null;$changed+=$id}\n }catch{\n  foreach($id in $changed){try{IG PATCH \"$G/identity/conditionalAccess/policies/$id\" @{state='enabledForReportingButNotEnforced'}|Out-Null}catch{Write-Warning \"Rollback to Report-only failed for $id\"}}\n  throw\n }\n}\nforeach($t in @($strong,$mixed)){\n $id=[string]$ids[$t.role];$a=IG GET \"$G/identity/conditionalAccess/policies/$id\"\n [pscustomobject]@{Role=$t.role;PolicyId=$a.id;DisplayName=$a.displayName;State=$a.state;ConditionsCanonical=(Same $a.conditions $t.conditions);GrantCanonical=(Same $a.grantControls $t.grantControls);SessionCanonical=(Same $a.sessionControls $t.sessionControls)}\n}\n"
         },
