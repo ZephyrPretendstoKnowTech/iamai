@@ -24,6 +24,8 @@ export type MappingWords = {
   status: Record<SourceReference['answer'], string>
   role: Record<NonNullable<SourceReference['role']>, string>
   usedBy: string
+  pendingCount: string
+  details: string
   roleExclude: string
   roleInclude: string
   roleBoth: string

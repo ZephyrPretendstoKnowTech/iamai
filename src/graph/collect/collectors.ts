@@ -300,6 +300,9 @@ function mapMethod(raw: unknown): AuthMethodSummary {
   if (kind === 'fido2' || kind === 'passkey') {
     if (typeof m.displayName === 'string') out.displayName = m.displayName
     if (typeof m.model === 'string') out.model = m.model
+    if (typeof m.aaGuid === 'string') out.aaGuid = m.aaGuid
+    if (typeof m.attestationLevel === 'string') out.attestationLevel = m.attestationLevel
+    if (typeof m.passkeyType === 'string') out.passkeyType = m.passkeyType
   }
   if (kind === 'phone' && typeof m.phoneType === 'string') {
     out.phoneType = m.phoneType as AuthMethodSummary['phoneType']

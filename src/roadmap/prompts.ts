@@ -17,7 +17,7 @@ import { content } from '../content/content.ts'
 import { fillText } from '../content/render.ts'
 
 /** The shared lines this module states a date with; the words live in content.json. */
-const SHARED = content.shared as unknown as { commsForecastNote: string }
+const SHARED = content.shared as unknown as { commsForecastNote: string; planPromptTitle: string }
 
 /** What a prompt in the pack is about, in the page's own words (pages.app.export). */
 const EXPORT = (content.pages.app as unknown as { export: { promptScope: string; promptWholePlan: string } }).export
@@ -161,31 +161,28 @@ export function cleanupText(cleanup: CleanupExport[]): string {
  */
 export function promptPack(args: { view: StepView; tenant: string; steps: Step[]; schedule: Schedule; changeRecord: string; planSummary: string; announcement: string | null; language?: string; cleanup?: CleanupExport[] }): PackItem[] {
   const { tenant } = args
-  const firstStep = args.steps.find((s) => (s.kind === 'create' || s.kind === 'adjust') && s.status !== 'done') ?? args.steps[0]
-  // The one step the step-grounded prompts speak for, and its title, so the pack
-  // and the page can say which step that is.
-  const stepText = firstStep ? stepContext(firstStep, args.view) : ''
-  const stepTitle = firstStep ? args.view(firstStep).title : null
   const cleanup = args.cleanup ?? []
   const withFacts = (head: string, label: string, body: string, extra: [string, string][] = []) => [head, dataBlock(label, body), ...extra.map(([l, b]) => dataBlock(l, b)), PROMPTS.noInvent].join('\n\n')
   const planBlocks: [string, string][] = cleanup.length > 0 ? [[PROMPTS.cleanup, cleanupText(cleanup)]] : []
-  return [
-    { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement ?? ''), scope: null },
-    { title: PROMPTS.pack.mfaGuide(tenant).split(',')[0], prompt: [PROMPTS.pack.mfaGuide(tenant), PROMPTS.noInvent].join('\n\n'), scope: null },
-    { title: PROMPTS.pack.kb(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.kb(tenant), PROMPTS.step, stepText), scope: stepTitle },
-    { title: PROMPTS.pack.changeRequest(tenant).split(',')[0], prompt: withFacts(PROMPTS.pack.changeRequest(tenant), PROMPTS.record, args.changeRecord), scope: null },
-    { title: PROMPTS.pack.explain, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.step, stepText), scope: stepTitle },
-    { title: PROMPTS.pack.pushback(tenant).split('.')[0], prompt: withFacts(PROMPTS.pack.pushback(tenant), PROMPTS.step, stepText), scope: stepTitle },
-    { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, args.announcement ?? ''), scope: null },
+  // Each step is independently bounded, so a long plan cannot silently lose its later steps.
+  const steps: [string, string][] = args.steps.map(step => [args.view(step).title, stepContext(step, args.view)])
+  const items: PackItem[] = [
+    { title: SHARED.planPromptTitle, prompt: withFacts(PROMPTS.pack.explain, PROMPTS.plan, args.planSummary, [...steps, ...planBlocks]), scope: null },
     { title: PROMPTS.pack.summarise(tenant).split(' for ')[0], prompt: withFacts(PROMPTS.pack.summarise(tenant), PROMPTS.plan, args.planSummary, planBlocks), scope: null },
   ]
+  if (args.announcement?.trim()) items.push(
+    { title: PROMPTS.pack.rewrite, prompt: withFacts(PROMPTS.rewrite(tenant), PROMPTS.draft, args.announcement), scope: null },
+    { title: PROMPTS.pack.translate(args.language ?? PROMPTS.language).split(',')[0], prompt: withFacts(PROMPTS.pack.translate(args.language ?? PROMPTS.language), PROMPTS.draft, args.announcement), scope: null },
+  )
+  if (args.changeRecord.trim()) items.push({ title: PROMPTS.pack.changeRequest(tenant).split(',')[0], prompt: withFacts(PROMPTS.pack.changeRequest(tenant), PROMPTS.record, args.changeRecord), scope: null })
+  return items
 }
 
 export function promptPackMarkdown(items: PackItem[], tenant: string): string {
   const lines = [`# ${PROMPTS.title}: ${tenant}`, '', PROMPTS.intro, '']
   // What each prompt is about, above the prompt: three of them are grounded in
   // one step and the file used to read as though all eight were about the plan.
-  for (const it of items) lines.push(`## ${it.title}`, '', it.scope === null ? EXPORT.promptWholePlan : fillText(EXPORT.promptScope, { step: it.scope }), '', '```', it.prompt, '```', '')
+  for (const it of items) lines.push(`## ${it.title}`, '', it.scope === null ? EXPORT.promptWholePlan : fillText(EXPORT.promptScope, { step: it.scope }), '', fenceFor(it.prompt), it.prompt, fenceFor(it.prompt), '')
   return lines.join('\n')
 }
 
@@ -230,7 +227,7 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
     return {
       id: s.id,
       kind: s.kind,
-      status: s.status,
+      status: v.lane,
       tracking: s.tracking ? { state: s.tracking.state, enforcedAt: s.tracking.enforcedAt, evidenceQuality: s.tracking.evidenceQuality } : null,
       // What the step's enforcement instant is worth (roadmap/forecast.ts). The
       // bundle is read by another tool, and a bare instant is indistinguishable
@@ -274,7 +271,7 @@ export function groundingBundle(args: { view: StepView; tenant: string; snapshot
     tenant: args.redacted ? { name: '[the tenant]' } : { name: args.tenant, id: snapshot.tenantId },
     profile,
     // The Cleanup rows under their own key (E4), as the screen says them.
-    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: args.schedule.derivation.criticalPath, steps, cleanup: args.cleanup ?? [] },
+    plan: { start: args.schedule.start, targetEnd: held ? null : args.schedule.targetEnd, weeks: held ? null : args.schedule.weeks, finish: finish.finish, criticalPath: held ? null : args.schedule.derivation.criticalPath, steps, cleanup: args.cleanup ?? [] },
     findings,
   }
   return args.redacted ? redactDeepShared(bundle, vocabulary) : bundle

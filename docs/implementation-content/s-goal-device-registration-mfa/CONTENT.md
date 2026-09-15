@@ -7,6 +7,8 @@ This file is authored source. Render/extract only blocks selected by `META.json`
 
 Create this policy in Report-only. It will not enforce its access rule until you enable it. The policy requires the resolved authentication strength when someone registers or joins a device; registering a device does not by itself make it compliant or trusted for all access.
 
+Leave the tenant-wide legacy device-registration MFA setting unchanged while this policy is Report-only. Change that setting only during the controlled enforcement step, when the replacement policy is turned on.
+
 1. Go to **Microsoft Entra admin center > Entra ID > Conditional Access > Policies**.
 2. Select **New policy** and enter the IAMAI-resolved policy name.
 3. Under **Users or workload identities**, include **All users** and exclude exactly the resolved exclusions.
@@ -21,6 +23,8 @@ Done when IAMAI rescans the newly created policy and finds the intended scope, e
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template","moduleRole":"sharedBefore"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 # Correct this policy
 
 Open the exact Conditional Access policy IAMAI identified. Use its policy ID; do not find the policy to update by display name.
@@ -85,7 +89,6 @@ Keep the policy's current state. If it is On, the changed rule can affect access
 
 Done when IAMAI reads the same policy ID and the selected difference(s) are cleared.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -51,7 +51,7 @@ test('a correction that drops the tenant\'s guest or external user exclusion say
   const at = lines.findIndex((l) => REMOVES.test(l))
   assert.ok(at >= 0, lines.join('\n'))
   assert.equal(REMOVES.exec(lines[at])![1], 'guest or external users')
-  assert.ok(at < lines.indexOf(UNTOUCHED), 'named above "Change only the settings listed above"')
+  assert.ok(at < lines.findIndex((line) => /Go to|Open.*policy/i.test(line)), 'named above "Change only the settings listed above"')
 })
 
 test('a correction that replaces the tenant\'s excluded application names the application it removes', () => {
@@ -69,5 +69,5 @@ test('control: a correction that keeps every exclusion the tenant has removes no
   const { op, lines } = plan(({ staffGroup, excl }) => pol({ includeGroups: [staffGroup], excludeGroups: [excl] }, { includeApplications: ['All'], excludeApplications: [INTUNE_ENROLLMENT] }))
   assert.equal(op.removes, undefined)
   assert.ok(!lines.some((l) => REMOVES.test(l)), lines.join('\n'))
-  assert.ok(lines.includes(UNTOUCHED))
+  assert.ok(lines.some((line) => /Keep the policy's current state/.test(line)))
 })

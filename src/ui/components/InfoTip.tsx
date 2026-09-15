@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { COMPONENTS } from '../../copy/components.ts'
 
-// A 14px outlined "i" in ink-3; the tip on hover or focus in bg-raised with a
+// An outlined "i" with a 24px target; the tip on hover or focus with a
 // hairline (prompt 47 Part 1). Text is at most 25 words, which the contract
 // measures. Keyboard: focus + Enter/Space toggles, Esc closes. The tip renders
 // in a portal at the top layer, positioned from the button's rectangle, and
@@ -21,8 +21,10 @@ const MARGIN = 8
 type Placement = { top: number; left: number; maxWidth: number }
 
 function place(anchor: DOMRect, pop: { width: number; height: number }): Placement {
-  const vw = window.innerWidth
-  const vh = window.innerHeight
+  // The scrollbar is not usable page space. innerWidth included it and placed
+  // the right edge of phone-sized tips underneath the scrollbar.
+  const vw = document.documentElement.clientWidth
+  const vh = document.documentElement.clientHeight
   const maxWidth = Math.min(pop.width, vw - 2 * MARGIN)
   let left = anchor.left
   if (left + maxWidth > vw - MARGIN) left = Math.max(MARGIN, vw - MARGIN - maxWidth)
@@ -85,7 +87,8 @@ export function InfoTip({ title, text, link }: { title: string; text: string; li
     const anchor = ref.current.getBoundingClientRect()
     const rect = popRef.current.getBoundingClientRect()
     setPos(place(anchor, { width: rect.width, height: rect.height }))
-  }, [open, title, text])
+  // Width clamping can wrap the text onto more lines: measure that height too.
+  }, [open, title, text, pos?.maxWidth])
 
   const popover = open
     ? createPortal(

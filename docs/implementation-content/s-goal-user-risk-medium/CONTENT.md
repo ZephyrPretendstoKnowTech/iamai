@@ -9,7 +9,7 @@ Do not treat SSPR as the mechanism used by the Conditional Access secure-passwor
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users. This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.
 1. Entra admin center → Entra ID → Conditional Access → Policies → New policy.
 2. Name: `{{policy.target.displayName}}`.
 3. Users: Include **All users**. Exclude the resolved groups: `{{policy.target.excludeGroups}}`. Also exclude **Guest or external users — all types / all external tenants**.
@@ -23,6 +23,8 @@ Create this policy in Report-only. It will not enforce its access rule until you
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the existing policy with policy ID `{{policy.current.id}}`. Correct only the differences IAMAI selected.
 @@IAMAI-END
 
@@ -59,7 +61,6 @@ Save once after the selected corrections, read back the same policy ID, and resc
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

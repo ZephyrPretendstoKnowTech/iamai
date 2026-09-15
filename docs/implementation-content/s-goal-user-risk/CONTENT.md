@@ -8,7 +8,7 @@ SSPR may remain available for recovery, but do not treat SSPR enablement as the 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create this policy in Report-only. It will not enforce its access rule until you enable it.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. Before enforcement, confirm MFA registration and working password writeback for synchronized password users whose remediation requires a password change.
 
 In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.
 1. Name: {{policy.target.displayName}}.
@@ -22,6 +22,8 @@ In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policie
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the existing policy with policy ID {{policy.current.id}}. Do not find the policy to update by display name alone.
 @@IAMAI-END
 
@@ -58,7 +60,6 @@ Save the selected correction, read the same policy ID back, and rescan IAMAI. Do
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

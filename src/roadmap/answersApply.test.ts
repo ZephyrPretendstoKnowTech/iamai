@@ -145,7 +145,7 @@ test('each question\'s effect line is true when it shows, and never before', () 
   assert.match(String(effectLine(guests.decision.question.effect, answerOf(m, QUESTION_STEP.partner, 'question'))), /Service provider type/)
   assert.equal(effectLine(guests.decision.question.effect, answerOf(before, QUESTION_STEP.partner, 'question')), null)
   const legacy = contentStepFor({ id: QUESTION_STEP.mailDevices, goalId: 'block-legacy-auth' }) as unknown as { decision: { effect: unknown } }
-  assert.match(String(effectLine(legacy.decision.effect, answerOf(m, QUESTION_STEP.mailDevices, 'decision'))), /in the service-accounts group now/)
+  assert.match(String(effectLine(legacy.decision.effect, answerOf(m, QUESTION_STEP.mailDevices, 'decision'))), /selected for the service-accounts exception/)
   assert.equal(effectLine(legacy.decision.effect, answerOf(before, QUESTION_STEP.mailDevices, 'decision')), null)
   // The first option changes nothing, so it has no effect line.
   const nobody = applyStepDecisions(before, { [QUESTION_STEP.travel]: { picked: ['AU'], answers: { [questionLabels(QUESTION_STEP.travel).question!]: 'Nobody' }, at: f.snapshot.asOf } })

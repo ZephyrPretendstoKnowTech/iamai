@@ -36,6 +36,8 @@ Add this emergency account to the resolved exclusions group. Do not add unrelate
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.auth","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+Before registering a new passkey, open Configure Passkey Authentication. Confirm that this account is included, is not in an excluded group, and that the hardware model is allowed by its applicable policy or profile. Keep existing working recovery credentials. Attestation affects new registration; model restrictions can affect existing sign-ins. Certificate-based recovery does not require FIDO2 configuration.
+
 Register an approved phishing-resistant method for this account. Microsoft recommends a dedicated passkey (FIDO2) security key, or certificate-based authentication where PKI already exists. The method must not depend on an employee's personal phone or the normal administrator sign-in path.
 @@IAMAI-END
 

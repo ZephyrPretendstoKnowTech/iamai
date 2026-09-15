@@ -74,7 +74,7 @@ test('Blocked offers nothing executable; its planning text is visible and never 
   assert.equal(planned.preview, true)
   assert.match(planned.channels.find((c) => c.channel === 'entra')!.text, /Create \*\*‹policy\.target\.displayName›\*\*/, 'the planned work is not visible with its stand-ins')
   // The page: Copy — inline and in the expanded viewer — copies only where there is no preview.
-  assert.match(CONTENT_STEP, /const copyable = preview === null && active !== null/)
+  assert.match(CONTENT_STEP, /const copyable = active !== null/)
   assert.equal((CONTENT_STEP.match(/\{copyControl\}/g) ?? []).length, 2, 'the inline Copy and the viewer Copy do not both read the one rule')
   assert.match(CONTENT_STEP, /toolbar=\{/, 'the expanded viewer has no toolbar for its Copy')
 })

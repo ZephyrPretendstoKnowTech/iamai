@@ -315,7 +315,8 @@ test('013.E: the pack says which step each of its prompts speaks for', () => {
   for (const c of CASES) {
     const pack = promptPack({ view: c.view, tenant: 'Tenant', steps: c.run.steps, schedule: c.run.schedule, changeRecord: '', planSummary: c.run.schedule.derivation.criticalPath, announcement: null })
     const stepGrounded = pack.filter((p) => p.scope !== null)
-    assert.ok(stepGrounded.length > 0, `${c.name}: no prompt is grounded in a step`)
+    assert.equal(stepGrounded.length, 0, 'the global pack must not pretend to be about an arbitrary step')
+    for (const step of c.run.steps) assert.ok(pack.some(p => p.prompt.includes(c.view(step).title)), `${c.name}: the plan briefing drops ${step.id}`)
     for (const p of stepGrounded) assert.ok(p.prompt.includes(p.scope!), `${c.name}: "${p.title}" claims a step its facts do not name`)
     // And the file a person downloads says it too, so the scope does not live
     // only in the page that built it.
@@ -385,11 +386,11 @@ test('013.G: every export the page offers goes through the guard, and only the t
   // (behind its warning and its checkbox), the print document, and the person's
   // own plan file. The calendar, the CSVs and the prompt pack are REDACTED.
   const unredacted = [...src.matchAll(/unredactedFrom\('([^']+)'\)/g)].map((m) => m[1])
-  assert.deepEqual([...new Set(unredacted)].sort(), ['grounding-bundle', 'plan-file', 'print-document'])
+  assert.deepEqual([...new Set(unredacted)].sort(), ['grounding-bundle', 'inventory-csv', 'plan-file', 'print-document'])
   for (const artifact of ['.ics', 'text/csv', 'text/markdown']) {
     const line = src.split('\n').find((l) => l.includes(artifact) && l.includes('exportDownload'))
     assert.ok(line, `the page no longer downloads ${artifact}`)
-    assert.match(line!, /REDACTED/, `${artifact} leaves without the guard's redaction`)
+    assert.match(line!, artifact === 'text/csv' ? /unredactedFrom\('inventory-csv'\)/ : /REDACTED/, `${artifact} leaves without its declared export policy`)
   }
 })
 

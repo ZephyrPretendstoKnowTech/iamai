@@ -18,6 +18,8 @@ Microsoft reference: https://learn.microsoft.com/en-us/entra/identity/conditiona
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the existing Conditional Access policy **{{policy.current.displayName}}** by its policy ID. Do not create a replacement.
 @@IAMAI-END
 
@@ -66,7 +68,6 @@ Save the same policy, read its settings back, and rescan IAMAI. Continue to obse
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

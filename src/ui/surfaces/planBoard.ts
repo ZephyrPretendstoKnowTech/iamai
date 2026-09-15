@@ -448,7 +448,8 @@ export function focusCounts(items: readonly BoardItem[]): { complete: number; de
  * tab; `asideGroupsFor` draws those. Pure.
  */
 export function groupsFor(tab: LaneTab, items: readonly BoardItem[]): BoardGroup[] {
-  const sorted = [...items].sort((a, b) => a.order - b.order)
+  const priority = (i: BoardItem): number => tab !== 'ready' ? 0 : i.id === 's-prereq-break-glass' ? -3 : i.id === 's-prereq-passkey-settings' ? -2 : i.id === 's-confirm-workloads' ? -1 : 0
+  const sorted = [...items].sort((a, b) => priority(a) - priority(b) || a.order - b.order)
   const out: BoardGroup[] = []
   const own = sorted.filter((i) => TAB_OF[i.lane] === tab)
   if (tab === 'onHold') {

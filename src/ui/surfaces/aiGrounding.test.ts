@@ -90,11 +90,12 @@ test('an observation step: the briefing carries its report-only window, the evid
   assert.doesNotMatch(facts, new RegExp(`^${F.observed}:`, 'm'))
 })
 
-test('in place: a step with nothing to implement draws no AI Info, so no facts are presented as a briefing', () => {
+test('in place: AI Info explains the delivered step without offering another change', () => {
   const o = opened('demo', 's-prereq-trusted-location')
   assert.equal(o.step.status, 'done', 'the premise: delivered')
-  assert.equal(o.unavailable, true)
-  assert.equal(o.ai.includes(F.heading), false)
+  assert.equal(Boolean(o.unavailable), false)
+  assert.equal(o.ai.includes(F.heading), true)
+  assert.match(o.ai, /Completed|already|in place/i)
 })
 
 test('the prompt pack and the AI Info share one reading of the step, and the copied text is the drawn text', () => {
