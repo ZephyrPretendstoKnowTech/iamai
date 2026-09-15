@@ -20,7 +20,13 @@ come from `docs/design/content.json`; the plan comes from the tenant snapshot + 
 - Before editing: open the files the task names, once. No repository survey, no reading tests or archive/. Grep only for a symbol a named file references.
 - One root cause per session. Fix it at the source; if a fact has two sources, delete one.
 - Words: reuse a `content.json` key. Missing key → add it, say so in the commit message.
-- While working: `npx tsc --noEmit` only. Tests once, before the push: `npm test`.
+- Batch related fixes and record an observable acceptance check for each.
+- While working: `npm run verify -- <relevant .test.ts files>` runs type checking and focused tests.
+  Check a decision, policy and completed step at desktop/mobile widths when shared UI changes.
+  Test saving, completion and reopening when those transitions change; compare screen/export where applicable.
+  CI runs the full suite once per PR update. Do not repeat a full local suite on unchanged code.
+  Use `npm run verify -- --release` only when a local full preflight is necessary.
+  Review the final diff against the requested scope and state any unverified outcome explicitly.
   Never run the walk (`npm run walk`), read a walk report, or add a walk invariant: CI runs
   the walk on every push to main (a job before deploy-pages; a P0 fails the job). A unit test
   per item is the acceptance. CI runs smoke. The one exception is a batch's closing segment
