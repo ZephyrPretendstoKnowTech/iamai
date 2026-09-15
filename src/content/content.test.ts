@@ -90,7 +90,6 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The completion of a User Action policy, whose readiness is its configuration
   // because Microsoft does not evaluate it in report-only (roadmap/evidenceStrategy.ts,
   // doneWhen.ts): the review page's example plans create no User Action policy.
-  '.shared.policyDoneWhenConfiguration[0]',
   // Connect's note and MFA Readiness's headline for a scan that holds no sign-in
   // proof (scoring/fromSnapshot.ts signInProofRead): the review page's example
   // scan read its proof.
@@ -261,7 +260,7 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
 // policy's own end state, read by stepContract.ts in place of the shared one (B8).
 // steps[].aiFocus is the step's own request to the assistant, read by AI Info's
 // briefing (aiGrounding.ts) and never by the review page.
-const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.registrationScope.') || p.startsWith('.pages.readiness.proof.marks.')
+const isAppOnly = (p: string): boolean => /^\.steps\[\d+\]\.preparation\[\d+\]$/.test(p) || /^\.steps\[\d+\]\.decision\.heading$/.test(p) || /^\.steps\[\d+\]\.(doneEnd|aiFocus)$/.test(p) || p.startsWith('.pages.app.') || p.startsWith('.pages.plan.settings.mappings.') || p.startsWith('.shared.engine.') || p.startsWith('.shared.deviation.') || p.startsWith('.shared.devicePlan.') || p === '.pages.plan.footer.notLicensedDevices' || p === '.shared.planPromptTitle' || p === '.shared.policySettingsForAction' || p.startsWith('.shared.deviceBriefing.') || p.startsWith('.shared.passkeyCompatibility.') || p.startsWith('.shared.registrationScope.') || p.startsWith('.pages.readiness.proof.marks.')
 const isStructural = (p: string): boolean =>
   /\.id$/.test(p) || /\.href$/.test(p) || /\.applies$/.test(p) || /pickerSource$/.test(p) || /\.kind$/.test(p) || /\.multi$/.test(p) || /\.mergesGoals\b/.test(p) || /\.learn\.url$/.test(p) || /\.whatToDoReference\b/.test(p) || /\.placement$/.test(p)
 

@@ -126,7 +126,7 @@ test('every row reads a When value: a day or the placeholder — never blank, ne
     for (const s of r.steps as Step[]) {
       const wi = r.schedule.waveOf?.[s.id]
       const when = boardWhenOf(s, wi !== undefined ? (r.schedule.waves[wi]?.start ?? null) : null)
-      assert.ok(['Not scheduled', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
+      assert.ok(['Not scheduled', 'Review now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${name}/${s.id}: When reads "${when}", neither a day nor the placeholder`)
       if (s.status === 'done') {
         assert.ok(when === 'Already in place' || DAY.test(when), `${name}/${s.id}`)
         complete += 1

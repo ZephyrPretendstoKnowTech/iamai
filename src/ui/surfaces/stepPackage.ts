@@ -47,7 +47,7 @@ import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkey
 import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
 import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
+import { portalNamesFor, stepPortalLines, plannedPortalLines } from './stepPortal.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -403,6 +403,21 @@ export function policyBodiesOfChannel(json: Pick<ChannelArtifact, 'text' | 'requ
     out.push({ method: r.method.toUpperCase(), policyId: m[1] ?? null, body: r.body as Record<string, unknown>, preview })
   }
   return out.length > 0 ? out : null
+}
+
+/** References to a resolved target need the actual settings beside the directions.
+ * Read the same selected request bodies as JSON; never substitute a different policy. */
+export function entraWithSettings(text: string, step: Step, ctx: StepVarContext, c: StepContract, projection: Projection): string {
+  if (!/resolved|match the target|target settings/i.test(text)) return text
+  const json = projection.channels.find(a => a.channel === 'json')
+  const selected = json ? policyBodiesOfChannel(json, projection.preview === true) : null
+  if (!selected || !selected.some(s => 'conditions' in s.body || 'grantControls' in s.body || 'sessionControls' in s.body)) return text
+  // The procedure already covers navigation, saving and removed exclusions.
+  // This supplement carries only the selected policy's settings and pair labels.
+  const lines = plannedPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx), c.title), selected)
+    ?.filter(line => /^(?:Policy [AB] —|Name:|Description:|Users →|Target resources|Cloud apps|Conditions →|Grant →|Session →)/.test(line)).map(line => line.replace(/: Entra admin center.*$/, ''))
+  if (!lines?.length) return text
+  return `${text.trim()}\n\n### ${shared.policySettingsForAction}\n\n${lines.map(line => `- ${line}`).join('\n')}`
 }
 
 /**

@@ -188,7 +188,7 @@ const evaluate = async (expr) => {
 }
 // The How page has drawn when its last section is on screen (the checks
 // registry and the limits below it), not when the shell has painted.
-const HOW_DRAWN = `/Every check IAMAI runs/.test(document.body.innerText) && /Field practice/.test(document.body.innerText)`
+const HOW_DRAWN = `/Every check/.test(document.body.innerText) && /Limits/.test(document.body.innerText)`
 const go = async (hash) => {
   await send('Page.navigate', { url: `${BASE}#/${hash}` })
   await sleep(900)
@@ -455,7 +455,7 @@ try {
   // would otherwise be asked what the loading line says.
   await waitFor(HOW_DRAWN)
   t = await text()
-  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check IAMAI runs/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
+  check('How IAMAI works: the reference page renders with its sections', /How IAMAI works/.test(t) && /Permissions/.test(t) && /What IAMAI reads/.test(t) && /Every check/.test(t) && /Baseline packages/.test(t) && /Limits/.test(t))
   check('How: the old reference routes redirect here', (await (async () => { await send('Page.navigate', { url: `${BASE}#/checks` }); await sleep(600); return await waitFor(`location.hash === '#/how'`) })()))
 
 
@@ -544,7 +544,7 @@ try {
   // When shows a calendar date, an estimate, or the condition preventing a date.
   // The chip continues to describe the observed policy state.
   const rowStates = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim(), chip: ((r.querySelector('.status') || {}).textContent || '').trim() }))`)
-  const whenWrong = rowStates.filter(({ when }) => !(['Already in place', 'Not scheduled', 'After prerequisites', 'After review'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
+  const whenWrong = rowStates.filter(({ when }) => !(['Already in place', 'Not scheduled', 'After prerequisites', 'After review', 'Review now'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
   check('Plan: every row’s When provides a date, estimate or scheduling condition', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
@@ -780,6 +780,9 @@ try {
   // The rule registry renders itself (validation-rules.md 5).
   await go('checks')
   await waitFor(HOW_DRAWN)
+  check('How: technical reference tables start collapsed', await evaluate(`document.querySelectorAll('details.how-reference').length === 3 && [...document.querySelectorAll('details.how-reference')].every((d) => !d.open)`))
+  await evaluate(`[...document.querySelectorAll('details.how-reference > summary')].find((s) => /Every check/.test(s.textContent)).click()`)
+  check('Checks: the disclosure opens the registry', await waitFor(`/Field practice/.test(document.body.innerText)`))
   t = await text()
   check('Checks: the reference page lists the registry by subject', /Every check IAMAI runs/.test(t) && /Emergency access accounts/.test(t) && /The exclusions group/.test(t))
   check('Checks: the severities render', /Must fix/.test(t) && /Recommended/.test(t) && /Note/.test(t))

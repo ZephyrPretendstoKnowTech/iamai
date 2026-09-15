@@ -19,7 +19,7 @@ import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
 import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
-import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf, entraWithSettings } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
@@ -288,7 +288,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     const entra = (preview?.channels ?? projection.channels).find(channel => channel.channel === 'entra')
     if (entra && implementationIsCurrent(step) && !suppressed && !unearned) {
       lines.splice(0)
-      lines.push(...entra.text.replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
+      lines.push(...entraWithSettings(entra.text, step, ctx, contract, preview ?? projection).replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(line => line.trim()).filter(Boolean), ...(preview ? previewNoteLines(step, contract, preview.hold) : []))
     }
   }
   const action = contract.whatToDo.text

@@ -34,9 +34,9 @@ export function cleanupVars(phase: CleanupPhase, row: CleanupPhase['rows'][numbe
  * Cleanup follows the last enforcement, and a day after work that is held is a
  * date nothing has made true.
  */
-export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false): string {
+export function cleanupWhen(row: CleanupPhase['rows'][number], undated = false, completed = false, readyReview = false): string {
   // Never blank (owner, 2026-09-11): an undated row reads the When column's placeholder (A1b: a day, or the placeholder).
-  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done.slice(0, 10)) }) : completed ? schedulingWords.done : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
+  return row.done ? fillText(A.cleanupDoneRow, { date: absoluteDate(row.done.slice(0, 10)) }) : completed ? schedulingWords.done : undated && readyReview ? schedulingWords.reviewNow : undated ? (pages.plan as unknown as { when: { afterPrerequisites: string } }).when.afterPrerequisites : absoluteDate(row.day.slice(0, 10))
 }
 
 /** The row as the screen says it, for an export (a line with a hole is dropped, as on screen). */

@@ -33,7 +33,7 @@ import { enforcesOnRun, implementationOffered, isPreserved, operationsOf, policy
 import { requiredMembers } from '../../roadmap/tracking.ts'
 import { reached, stepPopulation } from '../../derive/population.ts'
 import { populationLine } from '../../derive/whoLine.ts'
-import { app, engine, pages, shared, stepById } from '../../content/content.ts'
+import { app, engine, pages, shared, stepById, schedulingWords } from '../../content/content.ts'
 import { contentStepFor } from '../../content/stepTitle.ts'
 import { fillText, whole } from '../../content/render.ts'
 import { absoluteDate } from '../../copy/dates.ts'
@@ -161,6 +161,7 @@ type ContractWords = {
     /** The session policy's excluded accounts where the resolved target excludes nobody (stepPackage.ts). */
     excludeUsersNone: string
     copy: string
+    copyFailed: string
     expand: string
     dialogEyebrow: string
     close: string
@@ -759,6 +760,9 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
+  // A manual task keeps its actual completion criteria while prerequisites wait.
+  // A generic policy hold must not replace, for example, proof of a passkey sign-in.
+  if (cs?.kind !== 'policy' && own.length > 0) return own
   if (step.state.satisfied && step.state.condition !== 'needs-decision') {
     if (cs?.kind === 'policy' && !step.manualReview) return [fillText(CONTRACT.doneSatisfied, { tenant })]
     return own.length > 0 ? own : [fillText(CONTRACT.doneSatisfied, { tenant })]
@@ -1478,6 +1482,7 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads.
   if (c.scheduledOn && l?.lane === 'Ready') return { metric: absoluteDate(c.scheduledOn), sub }
+  if (l?.lane === 'Ready' && l.substatus === 'Review') return { metric: schedulingWords.reviewNow, sub }
   return { metric: NO_DATE, sub }
 }
 

@@ -369,6 +369,11 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
     const block: Block | undefined = pkg.blocks[id]
     if (!block) continue
     for (const m of block.text.matchAll(BINDING)) if (required.has(m[2])) keys.add(m[2])
+    // A missing setting must not erase a numbered instruction. Optional narrative
+    // lines can still disappear; procedural lines keep an explicit value to resolve.
+    if (block.meta.channel === 'entra') for (const line of block.text.split('\n')) {
+      if (/^\s*\d+\.\s/.test(line)) for (const m of line.matchAll(BINDING)) keys.add(m[2])
+    }
     if (typeof block.meta.endpoint === 'string') for (const m of block.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) keys.add(m[1])
     // A batch sub-request's own url identity (batchRequests) is this step's value too.
     if (isJsonFormat(block)) for (const m of block.text.matchAll(BATCH_URL_IDENTITY)) keys.add(m[1])
