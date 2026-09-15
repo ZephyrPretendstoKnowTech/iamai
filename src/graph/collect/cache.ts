@@ -3,6 +3,7 @@
 // everything stored for a tenant. Works in both the worker and the main
 // thread. Every call is failure-tolerant: a broken/unavailable IndexedDB
 // degrades to "no cache", never to a scan failure.
+import { reportStorageIssue } from './storageIssues.ts'
 import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { StoredSignIn } from './types.ts'
@@ -182,6 +183,8 @@ export async function saveEvidenceCache(
 }
 
 export async function loadMappingRecord<T>(tenantId: string): Promise<T | null> {
+  const unsaved = unsavedRecords.get('mapping:' + tenantId)
+  if (unsaved) return structuredClone(unsaved) as T
   try {
     const d = await db()
     return ((await d.get('mapping', tenantId)) as T | undefined) ?? null
@@ -190,16 +193,23 @@ export async function loadMappingRecord<T>(tenantId: string): Promise<T | null> 
   }
 }
 
+const unsavedRecords = new Map<string, Record<string, unknown>>()
+
 export async function saveMappingRecord(tenantId: string, value: Record<string, unknown>): Promise<void> {
+  const key = 'mapping:' + tenantId
+  unsavedRecords.set(key, value)
   try {
     const d = await db()
     await d.put('mapping', { ...value, tenantId })
+    if (unsavedRecords.get(key) === value) { unsavedRecords.delete(key); reportStorageIssue(tenantId, 'mapping', false) }
   } catch {
-    // Cache is an optimization; losing it must never fail the page.
+    reportStorageIssue(tenantId, 'mapping', true)
   }
 }
 
 export async function loadPlanRecord<T>(tenantId: string): Promise<T | null> {
+  const unsaved = unsavedRecords.get('plan:' + tenantId)
+  if (unsaved) return structuredClone(unsaved) as T
   try {
     const d = await db()
     return ((await d.get('plan', tenantId)) as T | undefined) ?? null
@@ -209,11 +219,14 @@ export async function loadPlanRecord<T>(tenantId: string): Promise<T | null> {
 }
 
 export async function savePlanRecord(tenantId: string, value: Record<string, unknown>): Promise<void> {
+  const key = 'plan:' + tenantId
+  unsavedRecords.set(key, value)
   try {
     const d = await db()
     await d.put('plan', { ...value, tenantId })
+    if (unsavedRecords.get(key) === value) { unsavedRecords.delete(key); reportStorageIssue(tenantId, 'plan', false) }
   } catch {
-    // Cache is an optimization; losing it must never fail the page.
+    reportStorageIssue(tenantId, 'plan', true)
   }
 }
 
@@ -256,6 +269,10 @@ export async function saveBaselineRecord(tenantId: string, value: Record<string,
 }
 
 export async function forgetTenant(tenantId: string): Promise<void> {
+  unsavedRecords.delete('plan:' + tenantId)
+  unsavedRecords.delete('mapping:' + tenantId)
+  reportStorageIssue(tenantId, 'plan', false)
+  reportStorageIssue(tenantId, 'mapping', false)
   const d = await db()
   const tx = d.transaction(['signin-rows', 'evidence-meta', 'group-members', 'mapping', 'plan', 'snapshot', 'baseline'], 'readwrite')
   for (const storeName of ['signin-rows', 'group-members'] as const) {
@@ -277,4 +294,26 @@ export async function forgetTenant(tenantId: string): Promise<void> {
 /** Opens the store once so a blocked upgrade is reported early (App). */
 export async function probeStorage(): Promise<void> {
   await db()
+}
+
+/** Both records change together, or neither changes. */
+export async function importPlanRecords(tenantId: string, plan: Record<string, unknown>, mapping: Record<string, unknown>): Promise<void> {
+  try {
+    const d = await db()
+    const tx = d.transaction(['plan', 'mapping'], 'readwrite')
+    try {
+      await Promise.all([tx.objectStore('plan').put({ ...plan, tenantId }), tx.objectStore('mapping').put({ ...mapping, tenantId }), tx.done])
+    } catch (error) {
+      try { tx.abort() } catch { /* A failed request may already have aborted it. */ }
+      await tx.done.catch(() => {})
+      throw error
+    }
+    unsavedRecords.delete('plan:' + tenantId)
+    unsavedRecords.delete('mapping:' + tenantId)
+    reportStorageIssue(tenantId, 'plan', false)
+    reportStorageIssue(tenantId, 'mapping', false)
+  } catch (error) {
+    reportStorageIssue(tenantId, 'plan', true)
+    throw error
+  }
 }

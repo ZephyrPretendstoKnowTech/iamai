@@ -211,7 +211,7 @@ test('the expanded viewer is materially larger than the inline preview, keeps th
   assert.match(rule('.step-dialog.step-dialog-wide'), /height: calc\(100vh - 48px\);/)
   assert.match(rule('.step-dialog .dialog-code'), /font-size: var\(--t-2\);/, 'the viewer’s code is not at reading size')
   // The phone rule lives in the step's own 650px block, beside the footer's stacking.
-  const narrow = css.lastIndexOf('@media (max-width: 650px) {')
+  const narrow = css.lastIndexOf('@media (max-width: 650px) {', css.lastIndexOf('.step-dialog.step-dialog-wide {'))
   assert.ok(css.indexOf('.step-dialog.step-dialog-wide {', narrow) > narrow, 'the viewer has no narrow-width rule')
   assert.match(rule('.step-dialog.step-dialog-wide', narrow), /width: calc\(100vw - 16px\);/)
   // The inline preview is unchanged.

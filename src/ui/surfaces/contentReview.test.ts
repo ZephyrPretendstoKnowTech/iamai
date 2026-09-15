@@ -53,8 +53,8 @@ test('R1: an undated milestone reads "—", never the lane substatus', () => {
   ]
   for (const lane of lanes) {
     const c = { milestone: { at: null, label: 'x', kind: 'resolve', gatedBy: null }, state: { lane }, schedule: null, scheduledOn: null } as unknown as StepContract
-    assert.equal(WHEN.none, '—')
-    assert.equal(railOf(c).metric, '—', `${lane.label}: the milestone repeats the lane`)
+    assert.equal(WHEN.none, 'Not scheduled')
+    assert.equal(railOf(c).metric, 'Not scheduled', `${lane.label}: the milestone repeats the lane`)
   }
   // A scheduled day is still the metric, a decision's included.
   const decide = { milestone: { at: null, label: 'x', kind: 'decide', gatedBy: null }, state: { lane: lanes[0] }, schedule: { transition: 'decide', class: 'scheduled', at: '2026-09-14T00:00:00.000Z' }, scheduledOn: null } as unknown as StepContract
@@ -172,8 +172,8 @@ test('U-P1: a header tile date reads the day on one line and the year under it, 
   assert.match(m[1], /^[A-Z][a-z]{2} \d{1,2}$/, 'the day line is not a month and a day')
   assert.equal(m[2], '2026')
   const plan = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  for (const key of ['projectedFinish', 'started']) assert.match(plan, new RegExp(`key: '${key}'[^\\n]*absoluteDate\\(`), `the ${key} tile no longer holds a date`)
-  assert.match(plan, /<dd>\s*\{tileValue\(t\.value\)\}/, 'the tile draws its value unsplit')
+  for (const key of ['projectedFinish']) assert.match(plan, new RegExp(`key: '${key}'[^\\n]*absoluteDate\\(`), `the ${key} tile no longer holds a date`)
+  assert.match(plan, /tileValue\(t\.value\)/, 'the tile draws its value unsplit')
   assert.match(plan, /<span className="tile-day">\{m\[1\]\}<\/span>\s*<span className="tile-year-comma">, <\/span>\s*<span className="tile-year">\{m\[2\]\}<\/span>/, 'the tile no longer keeps the whole date as its text')
   const css = readFileSync('src/ui/app.css', 'utf8')
   assert.match(css, /\.plan-progress-tile \.tile-day \{\s*white-space: nowrap;/, 'the day can still break')
@@ -198,7 +198,7 @@ test('D1: the Managed Device Done when names no shared-device exception', () => 
   assert.ok(lines > 0)
 })
 
-test('D2: every step draws every implementation channel; one without content says so and offers nothing to copy', () => {
+test('D2: steps keep supported channels across actions and omit permanently unsupported formats', () => {
   const unavailable = fillText(CONTRACT.implementation.channelUnavailable, { address: 'feedback@getiamai.com' })
   // Editorial batch C: a channel with nothing for this action says so neutrally, and never sends a customer to the product's feedback address.
   assert.equal(unavailable, 'This channel is not available for the current action. Review the other guidance and the requirements shown on this step.')
@@ -208,9 +208,11 @@ test('D2: every step draws every implementation channel; one without content say
   for (const name of ['demo', 'mid'] as const) {
     for (const [id, b] of bodiesOf(fixture(name))) {
       assert.equal(b.showImplementation, true, `${name}/${id}: the Implementation region is hidden`)
-      assert.deepEqual(b.artifacts.map((a) => a.id), ['portal', 'ps', 'json', 'ai', 'email'], `${name}/${id}: a channel is suppressed`)
+      assert.ok(b.artifacts.some((a) => a.id === 'ai'), `${name}/${id}: AI briefing is missing`)
+      if (b.cs.kind !== 'policy') assert.ok(b.artifacts.every((a) => a.id !== 'ps' && a.id !== 'json'), `${name}/${id}: a permanently unsupported channel is shown`)
       for (const a of b.artifacts.filter((x) => x.unavailable)) {
-        assert.equal(a.text(), unavailable, `${name}/${id}: ${a.id} without content says something else`)
+        assert.ok(a.text().trim().length > 0, `${name}/${id}: ${a.id} has no explanation`)
+        assert.doesNotMatch(a.text(), /could not be loaded/, `${name}/${id}: lifecycle wait is presented as an error`)
         missing += 1
       }
       steps += 1

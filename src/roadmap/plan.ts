@@ -7,6 +7,7 @@ import { emptyMappingState } from '../mapping/types.ts'
 import type { TenantMfaSummary } from '../scoring/mfaViability.ts'
 import type { Step } from './types.ts'
 import type { PlanDecisions, StepDecision } from './decisions.ts'
+import { isCleanupCheckpoint } from './cleanupDone.ts'
 import { engine } from '../content/content.ts'
 
 export const PLAN_SCHEMA_VERSION = 2
@@ -45,7 +46,7 @@ export type PlanFile = {
     operator: { userId: string; userPrincipalName: string }
   }
   baseline: {
-    source: { kind: 'github'; owner: string; repo: string; commit: string } | { kind: 'upload'; fileName: string }
+    source: { kind: 'github'; owner: string; repo: string; commit: string } | { kind: 'upload'; fileName: string; contentHash?: string }
     variantChoices: { familyKey: string; chosenPolicyName: string }[]
   }
   mappings: MappingState
@@ -114,9 +115,10 @@ export function makeCheckpoint(args: {
 }
 
 // First checkpoint plus the last 20 (plan-file.md).
-export function trimCheckpoints(checkpoints: Checkpoint[]): Checkpoint[] {
-  if (checkpoints.length <= 21) return checkpoints
-  return [checkpoints[0], ...checkpoints.slice(-20)]
+export function trimCheckpoints<T>(checkpoints: T[]): T[] {
+  const scans = checkpoints.filter((c) => !isCleanupCheckpoint(c))
+  const retained = new Set(scans.length <= 21 ? scans : [scans[0], ...scans.slice(-20)])
+  return checkpoints.filter((c) => isCleanupCheckpoint(c) || retained.has(c))
 }
 
 /**
@@ -131,6 +133,8 @@ export function trimCheckpoints(checkpoints: Checkpoint[]): Checkpoint[] {
 export function fileStep(s: Step): Step {
   return {
     ...s,
+    guidance: undefined,
+    workflowChoices: undefined,
     comms: null,
     forManager: '',
     unblockNotes: [],
@@ -159,6 +163,7 @@ function withoutProvenance(mapping: MappingState): MappingState {
 }
 
 export function buildPlanFile(args: {
+  decisions?: PlanDecisions
   planId: string
   snapshot: TenantSnapshot
   operator: { userId: string; userPrincipalName: string }
@@ -212,8 +217,9 @@ export function buildPlanFile(args: {
     mappings: withoutProvenance(args.mapping),
     steps: args.steps.map(fileStep),
     decisions: {
+      ...args.decisions,
       planId: args.planId,
-      skips: Object.fromEntries(
+      skips: args.decisions?.skips ?? Object.fromEntries(
         args.steps.filter((s) => s.status === 'skipped').map((s) => [s.id, { reason: s.skipReason ?? '', at: s.history.find((h) => h.to === 'skipped')?.at ?? generated }]),
       ),
       ...(args.schedule?.startDate ? { startDate: args.schedule.startDate } : {}),
@@ -233,6 +239,48 @@ export function buildPlanFile(args: {
   }
 }
 
+/** Compare source identity independently of JSON property order. */
+export function sameBaselineSource(a: PlanFile['baseline']['source'], b: PlanFile['baseline']['source']): boolean {
+  if (a.kind !== b.kind) return false
+  return a.kind === 'github' && b.kind === 'github'
+    ? a.owner.toLowerCase() === b.owner.toLowerCase() && a.repo.toLowerCase() === b.repo.toLowerCase() && a.commit.toLowerCase() === b.commit.toLowerCase()
+    : a.kind === 'upload' && b.kind === 'upload' && Boolean(a.contentHash) && a.contentHash === b.contentHash
+}
+
+function object(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value) }
+function validatePlanShape(plan: PlanFile): string | null {
+  if (!object(plan.tenant) || typeof plan.tenant.id !== 'string' || !plan.tenant.id.trim()) return 'not a plan file (missing tenant)'
+  if (typeof plan.planId !== 'string' || !plan.planId) return 'not a plan file (missing plan identity)'
+  if (!object(plan.mappings) || plan.mappings.tenantId !== plan.tenant.id) return 'not a plan file (tenant and mappings disagree)'
+  const defaults = emptyMappingState(plan.tenant.id)
+  for (const [key, value] of Object.entries(defaults)) {
+    const actual = (plan.mappings as unknown as Record<string, unknown>)[key]
+    if (Array.isArray(value) && (!Array.isArray(actual) || actual.some((x) => typeof x !== 'string'))) return `not a plan file (invalid mappings.${key})`
+    if (object(value) && !object(actual)) return `not a plan file (invalid mappings.${key})`
+  }
+  if (!Array.isArray(plan.checkpoints) || !plan.steps.every((step) => object(step) && typeof step.id === 'string')) return 'not a plan file (invalid steps or checkpoints)'
+  if (plan.decisions !== undefined && (!object(plan.decisions) || !object(plan.decisions.skips) || !Array.isArray(plan.decisions.checkpoints))) return 'not a plan file (invalid decisions)'
+  for (const value of Object.values(plan.mappings.records)) if (!object(value) || typeof value.placeholder !== 'string' || typeof value.kind !== 'string' || typeof value.doesNotExist !== 'boolean' || !(value.resolvedId === null || typeof value.resolvedId === 'string')) return 'not a plan file (invalid mapping record)'
+  for (const value of Object.values(plan.mappings.facetOverrides)) if (!object(value) || typeof value.on !== 'boolean' || typeof value.reason !== 'string') return 'not a plan file (invalid service choice)'
+  if (plan.mappings.workflowAnswers && (!object(plan.mappings.workflowAnswers) || Object.values(plan.mappings.workflowAnswers).some((v) => !['yes', 'no', 'unsure'].includes(v)))) return 'not a plan file (invalid workflow choice)'
+  const decisions = plan.decisions
+  if (decisions) {
+    if (decisions.planId !== plan.planId) return 'not a plan file (decisions belong to another plan)'
+    for (const value of Object.values(decisions.skips)) if (!object(value) || typeof value.reason !== 'string' || typeof value.at !== 'string') return 'not a plan file (invalid deferred step)'
+    if (decisions.stepDecisions !== undefined) {
+      if (!object(decisions.stepDecisions)) return 'not a plan file (invalid step decisions)'
+      for (const value of Object.values(decisions.stepDecisions)) if (!object(value) || typeof value.at !== 'string' || (value.picked !== undefined && (!Array.isArray(value.picked) || value.picked.some((id) => typeof id !== 'string'))) || (value.answers !== undefined && (!object(value.answers) || Object.values(value.answers).some((answer) => typeof answer !== 'string')))) return 'not a plan file (invalid step decision)'
+    }
+    if (decisions.confirmations !== undefined) {
+      if (!object(decisions.confirmations)) return 'not a plan file (invalid confirmations)'
+      for (const group of Object.values(decisions.confirmations)) if (!object(group) || Object.values(group).some((v) => !object(v) || typeof v.basis !== 'string' || typeof v.at !== 'string' || !Number.isFinite(Date.parse(v.at)))) return 'not a plan file (invalid confirmation)'
+    }
+  }
+  const source = plan.baseline?.source
+  if (!object(source) || !(source.kind === 'github' ? (['owner', 'repo', 'commit'] as const).every((k) => typeof source[k] === 'string' && source[k]) : source.kind === 'upload' && typeof source.fileName === 'string')) return 'not a plan file (invalid baseline)'
+  return null
+}
+
 export function parsePlanFile(text: string): { plan: PlanFile | null; error: string | null } {
   try {
     // A file saved in demo mode opens with the sample-data line (exportGuard):
@@ -245,7 +293,9 @@ export function parsePlanFile(text: string): { plan: PlanFile | null; error: str
     if (parsed.schemaVersion > PLAN_SCHEMA_VERSION) {
       return { plan: null, error: `plan file is newer (schema ${parsed.schemaVersion}) than this app understands: update the app` }
     }
-    return { plan: upgradePlanFile(parsed), error: null }
+    const upgraded = upgradePlanFile(parsed)
+    const error = validatePlanShape(upgraded)
+    return error ? { plan: null, error } : { plan: upgraded, error: null }
   } catch (e) {
     return { plan: null, error: e instanceof Error ? e.message : String(e) }
   }

@@ -34,7 +34,7 @@ test('emergency access is on every plan: Ready with one failing check on the dem
   // Day one: the second account is inside one enabled policy, and both accounts
   // signed in ten days before the scan with no drill recorded (E3): who and why.
   // The passphrase storage and sign-in alerting attestations nobody has given are hardening lines too (owner, 2026-09-11).
-  assert.deepEqual(bg1.checks?.items.map((i) => i.fix).sort(), ['credential-storage', 'excluded-everywhere', 'recent-sign-in', 'recent-sign-in', 'sign-in-alerting'], `the failing checks (${bg1.checks?.items.map((i) => i.fix).join(', ')})`)
+  assert.deepEqual(bg1.checks?.items.map((i) => i.fix).sort(), ['credential-storage', 'drill-due', 'drill-due', 'excluded-everywhere', 'recent-sign-in', 'recent-sign-in', 'sign-in-alerting'], `the failing checks (${bg1.checks?.items.map((i) => i.fix).join(', ')})`)
   const week2 = runFixture(fixture('demo-week2'))
   const bg2 = week2.steps.find((s) => s.id === BG)!
   assert.equal(bg2.status, 'done', 'In place on week two: the group is excluded and the sign-in is a recorded drill')

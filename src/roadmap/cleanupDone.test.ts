@@ -11,7 +11,7 @@ import { runFixture } from './fixtures/run.ts'
 import { cleanupDoneDates, cleanupRecord, drillDates, isRecordedDrill, withCleanupDone } from './cleanupDone.ts'
 import { renameLine } from './cleanupPhase.ts'
 import { supersededPolicies } from './generate.ts'
-import { cleanupVars, cleanupWhen } from '../ui/surfaces/cleanupExport.ts'
+import { cleanupWhen } from '../ui/surfaces/cleanupExport.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import { absoluteDate } from '../copy/dates.ts'
 
@@ -23,7 +23,7 @@ test('a Done records the row and its date in the checkpoints; the latest record 
   assert.equal(cps.length, 4, 'the scan checkpoint stays beside the Cleanup records')
   assert.deepEqual(cleanupDoneDates(cps), { drill: '2026-12-01T12:00:00.000Z', naming: '2026-09-04T12:00:00.000Z' })
   assert.deepEqual(drillDates(cps), ['2026-09-03T12:00:00.000Z', '2026-12-01T12:00:00.000Z'], 'every drill date is kept: an older sign-in matches an older drill')
-  assert.ok(isRecordedDrill('2026-09-03T02:15:00.000Z', drillDates(cps)))
+  assert.equal(isRecordedDrill('2026-09-03T02:15:00.000Z', drillDates(cps)), false, 'a legacy date does not identify the tested account')
   assert.ok(!isRecordedDrill('2026-09-05T02:15:00.000Z', drillDates(cps)))
   assert.ok(!isRecordedDrill('2026-09-03T02:15:00.000Z', []))
 })
@@ -42,13 +42,13 @@ test('the drill date exempts the matching emergency sign-in from the recent-sign
   const ex = stepVars(bg, ctx) as { failingChecks: [string, Record<string, unknown>][]; hardeningChecks: [string, Record<string, unknown>][] }
   assert.ok([...ex.failingChecks, ...ex.hardeningChecks].some(([fix, vals]) => fix === 'recent-sign-in' && typeof vals.name === 'string' && /days ago/.test(String(vals.ago))), 'the check fix line fills {name} and {ago}')
 
-  const drilled = runFixture(f, { cleanupRecord: cleanupRecord(withCleanupDone([], 'drill', signIn.slice(0, 10), signIn)) })
+  const drilled = runFixture(f, { cleanupRecord: cleanupRecord(withCleanupDone([], 'drill', signIn.slice(0, 10), signIn, { accountIds: f.mapping.breakGlassUserIds, timeZone: 'UTC' })) })
   const bgAfter = drilled.steps.find((s) => s.id === 's-prereq-break-glass')!
   assert.equal(bgAfter.checks!.items.filter((it) => it.fix === 'recent-sign-in').length, 0, 'a sign-in on a recorded drill day is the drill')
   const row = drilled.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!
   assert.equal(row.done, `${signIn.slice(0, 10)}T12:00:00.000Z`, 'the drill row carries its recorded date')
   assert.equal(cleanupWhen(row), `done ${absoluteDate(row.done!)}`, 'the row reads done <date>')
-  assert.equal(cleanupWhen(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!), absoluteDate(row.day), 'undone, the row reads its planned day')
+  assert.equal(cleanupWhen(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!), absoluteDate(before.schedule.cleanup!.rows.find((r) => r.kind === 'drill')!.day.slice(0, 10)), 'undone, the row reads its planned day')
 })
 
 test('the naming row renders renames as from → to, in the tenant\'s convention', () => {
@@ -85,13 +85,10 @@ test('the consolidation row exists whenever a step\'s existingCoverage line rend
   assert.ok(seen, 'a fixture has a step with existing coverage')
 })
 
-test('the not-assessed row\'s note names the policy and the reason; unnoted policies stay bare', () => {
-  const f = fixture('demo')
-  const r = runFixture(f)
-  const row = r.schedule.cleanup!.rows.find((x) => x.kind === 'notAssessed')!
-  assert.ok(row && row.lists.policies.length > 1, 'the demo has baseline policies IAMAI did not assess')
-  const [first, second] = row.lists.policies
-  const ex = cleanupVars(r.schedule.cleanup!, row, { [first]: 'no agents here' }) as { policies: string[] }
-  assert.equal(ex.policies[0], `${first}: does not apply: no agents here`)
-  assert.equal(ex.policies[1], second)
+test('unassessed baseline policies become individual reviews, with no catch-all completion', () => {
+  const r = runFixture(fixture('demo'))
+  assert.equal(r.schedule.cleanup!.rows.some((x) => x.kind === 'notAssessed'), false)
+  const reviews = r.steps.filter((s) => s.id.startsWith('s-review-baseline-'))
+  assert.equal(reviews.length, r.coverage.organisation.notAssessed.length)
+  assert.ok(reviews.every((s) => s.guidance?.doneWhen && s.manualReview))
 })

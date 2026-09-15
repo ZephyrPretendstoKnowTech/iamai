@@ -332,7 +332,7 @@ test('the rail’s metric is the date where there is one, and the placeholder wh
   // The caption says what happens next; the rail's headline says when, or — with
   // no date — the placeholder (content review R1), never the caption or the lane again.
   const gated = { milestone: { at: null, gatedBy: 'after: something', label: 'Clear what this step is waiting on.' }, state: { condition: 'blocked', setAside: false, lane: UP_NEXT }, whatToDo: { kind: 'resolve', text: 'x' } } as unknown as StepContract
-  assert.equal(railOf(gated).metric, '—', 'an undated queued step’s rail is not the placeholder')
+  assert.equal(railOf(gated).metric, 'Not scheduled', 'an undated queued step’s rail is not the placeholder')
   assert.equal((nextCaption(gated) ?? '').includes(railOf(gated).metric), false, 'the rail headline repeats the caption')
   const dated = { milestone: { at: '2026-09-17T00:00:00.000Z', gatedBy: null, label: 'Leave it in report-only until Sep 17.' }, state: { condition: 'healthy', setAside: false }, whatToDo: { kind: 'observe', text: 'x' } } as unknown as StepContract
   assert.equal(railOf(dated).metric, absoluteDate('2026-09-17T00:00:00.000Z'), 'a dated milestone does not lead with its date')

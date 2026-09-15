@@ -24,7 +24,7 @@
 import type { Action, DependencyData, Edge, Milestone, StepIndexEntry } from './parseDependencyDoc.ts'
 
 export type Lane = 'Ready' | 'Up Next' | 'On Hold' | 'Completed' | 'Deferred'
-export type Substatus = 'Create' | 'Correct' | 'Decision' | 'Observing' | 'Ready to enforce'
+export type Substatus = 'Review' | 'Create' | 'Correct' | 'Decision' | 'Observing' | 'Ready to enforce'
 
 /** The action ladder a step walks (§4 next-action determination). */
 export type StepKind = 'policy' | 'object' | 'decision'
@@ -156,7 +156,7 @@ const BLOCKER_ORDER: readonly BlockerKind[] = [
 
 /** §14 rule 2: nearest blocker closest to completion. */
 const SUBSTATUS_ORDINAL: Readonly<Record<Substatus, number>> = {
-  'Ready to enforce': 0, Observing: 1, Correct: 2, Create: 3, Decision: 4,
+  'Ready to enforce': 0, Review: 1, Observing: 1, Correct: 2, Create: 3, Decision: 4,
 }
 const UP_NEXT_ORDINAL = 5
 

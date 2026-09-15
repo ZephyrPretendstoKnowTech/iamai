@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next · After Create or Correct Allowed Countries Location",
   "bar": "After Create or Correct Allowed Countries Location",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -33,5 +33,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "After prerequisites"
 }

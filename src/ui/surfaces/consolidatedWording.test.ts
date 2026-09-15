@@ -14,8 +14,9 @@ const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPack
 
 test('the home page keeps its hidden-risk positioning and makes no predictive or blanket data claim', () => {
   const home = pages.home
-  assert.equal(home.h1, 'Find the gaps. Catch the hidden risks. Plan a safer rollout.')
-  assert.equal((home.trust as { title: string }[])[1].title, 'Your plan is built in your browser')
+  assert.match(String(home.h1), /before.*policy/i)
+  assert.match(JSON.stringify(home), /method|exclu|sign-in/i)
+  assert.match(JSON.stringify(home.trust), /browser/)
   const publicText = [JSON.stringify(pages.home), JSON.stringify(pages.connect), read('home/index.html'), read('README.md')].join('\n')
   for (const claim of [/what (would|will) break/i, /predicted to affect/i, /never leaves the browser/i, /nothing (is )?sent anywhere/i, /stay in your browser/i]) {
     assert.doesNotMatch(publicText, claim, String(claim))

@@ -90,7 +90,7 @@ test('P0-4: PowerShell and JSON render on Conditional Access policy steps only',
 test('P0-6: the baseline-conflict step says there is not enough information, and offers no channel', () => {
   const conflict = [...named('demo').values()].find((b) => b.contract.state.condition === 'baseline-conflict')
   assert.ok(conflict, 'the demo has a baseline-conflict step')
-  assert.ok(conflict.artifacts.length === 5 && conflict.artifacts.every((a) => a.unavailable === true), 'the conflict step offers a channel with content')
+  assert.ok(conflict.artifacts.length === 4 && conflict.artifacts.every((a) => a.unavailable === true), 'the conflict step offers a channel with content')
   assert.equal(conflict.empty.title, 'Not enough information to provide implementation guidance.')
   assert.equal(conflict.empty.text, 'The baseline defines this policy two ways. Until the baseline author publishes a corrected version, no implementation steps are available.')
 })

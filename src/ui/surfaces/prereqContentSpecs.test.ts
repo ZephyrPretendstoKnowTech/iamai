@@ -96,7 +96,7 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
   assert.equal(cs.why, 'Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.')
   assert.deepEqual(cs.doneWhen, [
     'Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.',
-    'Verify after the change: an emergency access account still signs in with its key; configuration checks do not replace that test.',
+    'An emergency access account still signs in with its key; configuration checks do not replace that test.',
   ])
   // Ready now with nothing unresolved: no filler under the bar (R2), and the clear tile (R5).
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)
@@ -141,7 +141,7 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
   assert.equal(cs.decision?.help, 'Check the five allowed combinations and every policy already using this strength before changing it.')
   assert.deepEqual(cs.doneWhen, [
     'An authentication strength named "{strengthName}" exists with exactly the five combinations listed above, or an existing strength with the same combinations is selected and confirmed.',
-    'Verify after the change: every policy already using the strength still accepts the methods its users rely on.',
+    'Every policy already using the strength still accepts the methods its users rely on.',
   ])
   const b = blocksOf('s-prereq-auth-strength')
   assert.deepEqual(authoredParts(b['entra.create'].text), [

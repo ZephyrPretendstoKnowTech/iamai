@@ -28,6 +28,7 @@
 // identifiable by design, and the redacted exports are a separate, explicit choice.
 // Pure: no DOM, no network. It reads the step's export view and its already-projected
 // JSON channel; it never renders the step body.
+import { workflowWords } from '../../content/content.ts'
 import type { Step } from '../../roadmap/types.ts'
 import { stepArtifactLines } from '../../roadmap/artifactLines.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
@@ -236,6 +237,8 @@ export function aiGroundingText(i: GroundingInput, own = ''): string {
   const focus = typeof i.cs.aiFocus === 'string' && i.cs.aiFocus.trim() !== '' ? `${W.focus}: ${i.cs.aiFocus}` : null
   section(S.implementation, [...(c.policy && i.json ? i.json.requests.map((r) => `${W.request}: ${r.method} ${r.endpoint}`) : []), focus])
 
+  if (i.step.workflowChoices) section(workflowWords.choiceContext, i.step.workflowChoices.map((choice) => `${choice.label}: ${workflowWords.answers[choice.answer as keyof typeof workflowWords.answers] ?? choice.answer}. ${choice.evidence}`))
+  if (i.step.baselineReviewSource) section(workflowWords.baselineContext, [i.step.baselineReviewSource.name, i.step.baselineReviewSource.reason, i.step.baselineReviewSource.json])
   if (sections.length === 0) return ''
   return [W.heading, W.boundary, ...sections.map((s) => s.join('\n'))].join('\n\n')
 }

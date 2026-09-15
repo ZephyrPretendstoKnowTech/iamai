@@ -54,15 +54,33 @@ function apply(content: string, d: Disposition): string {
   return d.redact ? redactIdentifiers(content) : content
 }
 
+/** Preserve the file grammar so sample downloads still open in their intended tools. */
+export function watermarkDemoFile(name: string, content: string): string {
+  const notice = app.shell.demoWatermark
+  if (/\.json$/i.test(name)) {
+    const value: unknown = JSON.parse(content)
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) return JSON.stringify({ _demo: notice, ...value }, null, 2)
+    // JSON arrays cannot carry a comment without changing their schema.
+    return JSON.stringify(value, null, 2)
+  }
+  if (/\.ics$/i.test(name)) return content.replace(/BEGIN:VCALENDAR\r?\n/, `BEGIN:VCALENDAR\r\nX-IAMAI-DEMO:${notice}\r\n`).replace(/SUMMARY:/g, 'SUMMARY:[DEMO] ')
+  if (/\.csv$/i.test(name)) {
+    let quoted = false
+    let out = '"IAMAI data",'
+    for (let i = 0; i < content.length; i++) {
+      const c = content[i]
+      out += c
+      if (c === '"') { if (quoted && content[i + 1] === '"') out += content[++i]; else quoted = !quoted }
+      if (c === '\n' && !quoted && i < content.length - 1) { out += `"${notice.replace(/"/g, '""')}",` }
+    }
+    return out
+  }
+  return `${notice}\n\n${content}`
+}
+
 /** Save a file. The only place in the app that creates a download. */
 export function exportDownload(name: string, content: string, type: string, d: Disposition): void {
-  // Every file leaving demo mode says so, in the file (prompt 45 item 5). A
-  // sample plan that looks like a real one is the one way demo mode could do
-  // harm: somebody forwards it, and the next person acts on a tenant that does
-  // not exist. The line goes at the top, where it is read first.
-  const body = isDemo() ? `${app.shell.demoWatermark}
-
-${apply(content, d)}` : apply(content, d)
+  const body = isDemo() ? watermarkDemoFile(name, apply(content, d)) : apply(content, d)
   const url = URL.createObjectURL(new Blob([body], { type }))
   const a = document.createElement('a')
   a.href = url

@@ -31,8 +31,8 @@ test('the count reconciles with the not-assessed Cleanup row on the demo: count 
   const assessed = new Set(run.coverage.assessed).size
   const notAssessed = run.coverage.organisation.notAssessed.length
   const row = run.schedule.cleanup?.rows.find((r) => r.kind === 'notAssessed')
-  assert.ok(row, 'the demo has a not-assessed Cleanup row')
-  assert.equal(row.lists?.policies?.length, notAssessed, 'the row lists what coverage did not assess')
+  assert.equal(row, undefined, 'the catch-all is gone')
+  assert.equal(run.steps.filter((s) => s.id.startsWith('s-review-baseline-')).length, notAssessed, 'every unassessed policy has a review')
   assert.equal(count - assessed, notAssessed, `${count} policies − ${assessed} assessed = ${notAssessed} not assessed`)
 })
 

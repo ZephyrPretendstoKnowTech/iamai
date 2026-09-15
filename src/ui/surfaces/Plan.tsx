@@ -1,3 +1,4 @@
+import { structuralWords } from '../../content/content.ts'
 // The Plan (prompt 48 Part 2, target-state §5). The front door once a scan
 // exists: two header lines, the phases as rows, the footer. Clicking a row opens
 // the step under it. Nothing sits above the plan but its two header lines; every
@@ -90,6 +91,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   const [showHow, setShowHow] = useState(false)
   // The board's three lanes (planBoard.ts). Ready is the default, because the
   // Plan's own subject is what can be done now; the other two hold the same rows.
+  const [summaryFilter, setSummaryFilter] = useState<'input' | 'observing' | 'completed' | null>(null)
   const [tab, setTab] = useState<LaneTab>('ready')
   const [focus, setFocus] = useState<Focus>(NO_FOCUS)
   // Which groups the operator has collapsed, keyed by lane and group, so
@@ -100,7 +102,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
   // that opened it is where focus belongs afterwards (task 017).
   const settingsLink = useRef<HTMLAnchorElement>(null)
   useEffect(() => {
-    const onHash = () => setOpen(stepFromPlanHash(window.location.hash))
+    const onHash = () => { setSummaryFilter(null); setOpen(stepFromPlanHash(window.location.hash)) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -225,14 +227,17 @@ export function Plan({ scan: lastScan, baseline, account }: {
         workType: 'setup',
         order: reading.order,
       })
-      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date) => data.markCleanupDone(r.kind, date)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
+      renderById.set(id, () => <CleanupRow key={r.kind} phase={cleanupPhase} row={r} answers={answers} open={open === id} onToggle={() => openStep(id)} onScan={onScan} onDone={(date, ids) => data.markCleanupDone(r.kind, date, ids)} notes={data.mapping?.notAssessedNotes ?? {}} onNote={data.setNotAssessedNote} tenant={tenantName} undated={cannotFinish} lane={laneView} />)
     }
   }
 
   // The tab panel draws its own lane; the Completed and Deferred groups the
   // toggles reveal are drawn after it, never inside a tab.
-  const shown = applyFocus(items, tab, focus)
-  const groups = groupsFor(tab, shown)
+  const inputIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'done' && s.status !== 'skipped' && (s.state.condition === 'needs-decision' || (s.unsavedInputs ?? []).length > 0 || s.action.missing?.some((m) => m.decision === true))).map((s) => s.id))
+  const observingIds = new Set(c.steps.filter((s) => !s.doesntApply && s.status !== 'skipped' && s.state.lifecycle === 'report-only').map((s) => s.id))
+  const summaryItems = summaryFilter === 'input' ? items.filter((i) => inputIds.has(i.id)) : summaryFilter === 'observing' ? items.filter((i) => observingIds.has(i.id)) : summaryFilter === 'completed' ? items.filter((i) => i.lane === 'Completed') : items
+  const shown = summaryFilter ? summaryItems.filter((i) => (!focus.search || i.title.toLowerCase().includes(focus.search.toLowerCase())) && (!focus.workType || focus.workType === i.workType)) : applyFocus(items, tab, focus)
+  const groups = summaryFilter ? LANES.flatMap((t) => groupsFor(t, shown)) : groupsFor(tab, shown)
   const aside = asideGroupsFor(shown)
   // A step opened by its hash — a Readiness tile's link to its prerequisite, a
   // deep link — is drawn under its own lane's tab (planBoard.ts TAB_OF), so the
@@ -271,12 +276,14 @@ export function Plan({ scan: lastScan, baseline, account }: {
       </>
     )
   }
-  const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string }[] = [
-    { key: 'steps', label: PP.progress.steps, value: stepFacts(c.steps, cleanupPhase, answers).steps },
-    { key: 'completed', label: PP.progress.completed, value: counts.complete },
-    // A2: the estimate at pace; committed {date} under it when the calendar names another day; the placeholder without an estimate.
-    { key: 'projectedFinish', label: PP.progress.projectedFinish, value: projected.estimate !== null ? absoluteDate(projected.estimate) : PP.progress.none, sub: projected.estimate !== null ? [PP.progress.atPace, ...(projected.committed !== null ? [fillText(PP.progress.committed, { date: absoluteDate(projected.committed) })] : [])] : [], tip: lengthTip },
-    { key: 'started', label: PP.progress.started, value: data.startedFrom !== null ? absoluteDate(data.startedFrom) : PP.progress.none },
+  const summary = structuralWords.summary
+  const selectSummary = (filter: typeof summaryFilter): void => { setSummaryFilter(filter); setFocus(NO_FOCUS); setToggled({ 'aside:complete': false }); setOpen(null) }
+  const progressTiles: { key: string; label: string; value: string | number; sub?: string[]; tip?: string; select?: () => void }[] = [
+    { key: 'ready', label: summary.ready, value: counts.lanes.ready, select: () => { selectSummary(null); setTab('ready') } },
+    { key: 'input', label: summary.input, value: inputIds.size, select: () => selectSummary('input') },
+    { key: 'observing', label: summary.observing, value: observingIds.size, select: () => selectSummary('observing') },
+    { key: 'completed', label: summary.completed, value: `${counts.complete} / ${items.filter((i) => i.lane !== 'Deferred').length}`, select: () => selectSummary('completed') },
+    { key: 'projectedFinish', label: summary.finish, value: projected.estimate !== null ? absoluteDate(projected.estimate) : summary.finishUnknown, tip: lengthTip },
   ]
 
   return (
@@ -291,7 +298,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
             <div key={t.key} className="plan-progress-tile" title={t.tip}>
               <dt>{t.label}</dt>
               <dd>
-                {tileValue(t.value)}
+                {t.select ? <button type="button" className="plan-tile-control" aria-label={`${t.label}: ${t.value}`} onClick={t.select}>{tileValue(t.value)}</button> : tileValue(t.value)}
                 {t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}
                 {t.sub?.map((line) => (
                   <small key={line}>{line}</small>
@@ -357,14 +364,15 @@ export function Plan({ scan: lastScan, baseline, account }: {
       <TabFollowsOpenStep open={open} openTab={openTab} tab={tab} onTab={setTab} />
       <PlanControls
         tab={tab}
-        onTab={setTab}
+        onTab={(next) => { setSummaryFilter(null); setTab(next) }}
         focus={focus}
         onFocus={setFocus}
         counts={counts}
         base={boardBase}
       />
+      {summaryFilter && <p className="actions"><strong>{fillText(summary.filter, { view: summary[summaryFilter] })}</strong><Button variant="tertiary" onClick={() => selectSummary(null)}>{summary.all}</Button></p>}
       <div className="plan-board" {...onePanelProps(boardBase, tab)}>
-        {groups.length === 0 && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : BOARD.emptyLane}</p>}
+        {groups.length === 0 && (aside.length === 0 || !summaryFilter) && <p className="reason plan-board-empty">{focusActive(focus) ? BOARD.empty : BOARD.emptyLane}</p>}
         {groups.map(drawGroup(tab))}
       </div>
       {aside.length > 0 && <div className="plan-board plan-board-aside">{aside.map(drawGroup('aside'))}</div>}
@@ -502,7 +510,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
   open: boolean
   onToggle: () => void
   onScan?: (returnTo: string) => void
-  onDone: (date: string) => void
+  onDone: (date: string, accountIds?: string[]) => void
   notes: NotAssessedNotes
   onNote: (policy: string, reason: string | null) => void
   tenant: string
@@ -517,12 +525,12 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
   // reads for the row's lane; the row and its opened head say that lane (A1b).
   const status = { word: lane.label, tone: lane.tone }
   const accounts = row.kind === 'alerting' || row.kind === 'drill' ? phase.accountIds : []
-  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, IMPACT.none)
+  const who = whoLineOf({ total: accounts.length, active: accounts.length, admins: 0, guests: 0, ids: accounts, activeIds: accounts, inScope: accounts.length }, null, (structuralWords.cleanupImpacts as Record<string, string>)[row.kind] ?? structuralWords.impactDefault)
   return (
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
-      <PlanRow lane={lane.label} tone={lane.tone} title={entry.title} who={who} when={lane.lane === 'Completed' ? WHEN.none : cleanupWhen(row, undated)} open={open} onToggle={onToggle} />
+      <PlanRow lane={lane.label} tone={lane.tone} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed')} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )

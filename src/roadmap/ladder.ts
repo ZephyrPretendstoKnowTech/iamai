@@ -59,7 +59,9 @@ type Facts = {
   guestNames: string[]
   unlicensedEnabled: number
   weakMethodsOn: string[]
+  weakMethodsOff: boolean
   authenticatorOn: boolean
+  passkeysOn: boolean
   methodsReadable: boolean
 }
 
@@ -106,14 +108,16 @@ export function ladderFacts(snapshot: TenantSnapshot, mapping: MappingState): Fa
     globalAdmins: adminIds.filter((id) => active[id]?.includes(GLOBAL_ADMIN_ROLE_ID)).length,
     adminsWithMailbox: adminIds.filter((id) => hasMailbox(byId.get(id) as UserRow)).map((id) => nameOf(byId.get(id) as UserRow)),
     securityDefaults,
-    breakGlassNames: mapping.breakGlassUserIds.map((id) => (byId.has(id) ? nameOf(byId.get(id) as UserRow) : id)).filter((n) => !/^[0-9a-f-]{36}$/i.test(n)),
+    breakGlassNames: [...new Set(mapping.breakGlassUserIds)].filter((id) => { const u = byId.get(id); return u && u.accountEnabled === true && u.onPremisesSyncEnabled !== true && active[id]?.includes(GLOBAL_ADMIN_ROLE_ID) }).map((id) => nameOf(byId.get(id)!)),
     migrationState: methodsReadable ? (methodsRow?.policyMigrationState ?? null) : null,
     guests: guests.length,
     pendingInvites: guests.filter((u) => u.externalUserState === 'PendingAcceptance').length,
     guestNames: guests.map(nameOf),
     unlicensedEnabled: enabled.filter((u) => !licensed(u)).length,
     weakMethodsOn,
+    weakMethodsOff: ['Sms', 'Voice'].every((id) => stateOf(id) === 'disabled'),
     authenticatorOn: stateOf('MicrosoftAuthenticator') === 'enabled',
+    passkeysOn: stateOf('Fido2') === 'enabled',
     methodsReadable,
   }
 }
@@ -142,7 +146,7 @@ function verdictFor(itemId: string, f: Facts): Verdict {
     case 'guest-review':
       return f.guests === 0 ? done('a directory with no guest accounts and no unaccepted invitations') : not
     case 'authenticator-over-sms':
-      return f.methodsReadable && f.weakMethodsOn.length === 0 ? done('an authentication methods policy with text message and voice call off') : not
+      return f.methodsReadable && f.weakMethodsOff && (f.authenticatorOn || f.passkeysOn) ? done('an authentication methods policy with text message and voice call off') : not
     default:
       return not
   }
@@ -174,6 +178,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
     const v = verdictFor(item.id, f)
     const id = ladderStepId(item.id)
     order.set(id, index)
+    const reviewIds = item.id === 'break-glass-accounts' ? [...new Set(mapping.breakGlassUserIds)].filter((id) => snapshot.users.some((u) => u.id === id && u.accountEnabled === true)) : []
     steps.push({
       ...STEP_EXTRAS,
       id,
@@ -187,7 +192,7 @@ export function ladderSteps(snapshot: TenantSnapshot, mapping: MappingState, exi
       blockedBy: [],
       blockers: [],
       unblockNotes: [],
-      population: { total: 0, active: 0, admins: 0, guests: 0, ids: [], activeIds: [], inScope: 0 },
+      population: { total: reviewIds.length, active: 0, admins: 0, guests: 0, ids: reviewIds, activeIds: [], inScope: reviewIds.length },
       readiness: { family: 'other', percent: null, lines: [] },
       evidence: { status: 'none', lines: [], affectedUserIds: [] },
       action: { kind: 'prerequisite', summary: [], json: null, portalSteps: [] },

@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+import { hasStorageIssue, subscribeStorageIssues } from '../../graph/collect/storageIssues.ts'
 // The shell (prompt 47 Part 3, target-state §2): one 48px header with a
 // hairline, and the page. No sidebar, no stepper, no statuses, no "Needs" or
 // "Next" framing. Signed out, the header is the wordmark and the theme control;
@@ -15,7 +17,7 @@ import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demoMode.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { absoluteDate } from '../../copy/dates.ts'
+import { absoluteDate, absolute, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { Button } from '../components/index.ts'
 import { BrandMark } from '../components/Mark.tsx'
@@ -221,6 +223,7 @@ export function AppShell({
   snapshot?: TenantSnapshot | null
   children: ReactNode
 }) {
+  const storageFailed = useSyncExternalStore(subscribeStorageIssues, () => hasStorageIssue(snapshot?.tenantId ?? ''), () => false)
   const [theme, toggleTheme] = useTheme()
   const signedIn = account !== null && state !== 'signedOut'
   const tabsOn = state === 'scanned'
@@ -321,11 +324,13 @@ export function AppShell({
       )}
       {signedIn && <ScanLine route={route} />}
       <main className="page" data-route={route}>
+        {storageFailed && <p role="alert" className="callout">{SHELL.saveFailed} <a href="#/export">{SHELL.saveBackup}</a></p>}
         {signedIn && (
           <div className="print-only muted">
             {fillText(SHELL.printHeader, { tenant: tenantName ?? account.username, date: absoluteDate(new Date().toISOString()), by: account.username })}
           </div>
         )}
+        {snapshot && route !== 'connect' && <div className="tenant-context"><p>{fillText(SHELL.evidenceContext, { tenant: tenantName ?? account?.username ?? '', date: absolute(snapshot.asOf) })}</p>{scanAgeDays(snapshot.asOf) >= STALE_SCAN_DAYS && <p className="reason">{SHELL.staleEvidence}</p>}{Object.values(snapshot.config).some((s) => s.status === 'error') && <p className="reason">{SHELL.partialEvidence}</p>}</div>}
         {children}
       </main>
       <Footer />
