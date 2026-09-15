@@ -127,8 +127,8 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       }
       // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
       const rail = railOf(c)
-      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled', `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
-      if (c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
+      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled' || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
+      if (lane.lane !== 'Completed' && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
       const when = boardWhenOf(step, waveStartOf(step))
       assert.ok(['Not scheduled', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)

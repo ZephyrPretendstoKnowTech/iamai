@@ -301,6 +301,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
     const artifact = packageArtifact(explanation, grounding)
     if (!produced.some((a) => a.id === artifact.id) && artifact.text().trim() !== '') produced.push(artifact)
   }
+  // An explanatory-only package must not replace a supporting step's existing
+  // portal instructions with an unavailable placeholder.
+  if (!machine && pkgState === 'missing' && projection?.hold === null && projection.channels.every(a => a.channel === 'aiInfo' || a.channel === 'email') && supported.has('portal') && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
   // Every step can explain its purpose, facts, decisions and remaining work,
   // even when no executable change can be offered yet.
   supported.add('ai')

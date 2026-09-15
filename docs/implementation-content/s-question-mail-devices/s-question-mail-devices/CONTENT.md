@@ -67,7 +67,7 @@ This mail-route step is on hold: {{dependencies.blockers}}. Do not assume a mail
 NEXT STEP: Explain what must be resolved before a route can be chosen or tested.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.owner","channel":"email","states":["routeDecisionRequired"],"format":"markdown","kind":"template","audience":"device-owner"}
+@@IAMAI-BEGIN {"id":"email.owner","channel":"email","states":["routeDecisionRequired","blocked","missing"],"format":"markdown","kind":"template","audience":"device-owner","communicationTrigger":"before choosing and testing the implementation route"}
 Subject: Action needed: Set Up an SMTP Relay for Mail-Sending Devices
 
 Please send IT the device's current mail settings, supported authentication methods, recipient requirements and a suitable test window. Please also tell us whether its network has a static public IP address or a suitable TLS certificate. Do not send its password.

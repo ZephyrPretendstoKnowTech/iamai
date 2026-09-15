@@ -65,6 +65,8 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // opener (every mapped policy here is created new), syncRoleNote is the
   // directory-sync caveat (no synced account in the example).
   '.shared.portalOpen',
+  '.shared.sessionLoopHold', // Runtime-only next action for the same guard.
+  '.shared.sessionLoopReview', // Runtime-only configuration guard; exercised by usability100.test.ts.
   // The two lines a change to an existing policy adds under portalOpen: the
   // "only these fields" note and the enable-and-save line. Every mapped policy
   // in the example is created new, so neither is emitted here.

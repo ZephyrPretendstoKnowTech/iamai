@@ -19811,7 +19811,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Use the emergency accounts you selected.\n\n1. In **Entra admin center → Entra ID → Users**, create or open the dedicated emergency account.\n2. For a new account, use the tenant's `*.onmicrosoft.com` domain and keep it cloud-only. Do not source it from federation or on-premises synchronization.\n3. Confirm the account is enabled and used only for emergency access, not for normal daily work.\n4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.\n5. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.\n6. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step, and verify that it is a member.\n7. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.\n8. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.\n9. Confirm monitoring exists for emergency-account use.\n10. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.\n\nThe JSON and PowerShell outputs perform only the permanent Global Administrator assignment and exclusions-group membership for a selected account's user ID. They do not create accounts, register methods or store credentials. Complete the sign-in and other manual checks separately.\n"
+          "text": "Use the emergency accounts you selected.\n\n1. In **Entra admin center → Entra ID → Users**, create or open the dedicated emergency account.\n2. For a new account, use the tenant's `*.onmicrosoft.com` domain and keep it cloud-only. Do not source it from federation or on-premises synchronization.\n3. Confirm the account is enabled and used only for emergency access, not for normal daily work.\n4. Assign **Global Administrator** as an active permanent assignment, not merely eligible through PIM.\n5. Register an approved phishing-resistant method that does not depend on normal administrator sign-in. Microsoft recommends a passkey (FIDO2); certificate-based authentication is also supported where PKI already exists. Do not bind the account to an employee's personal device.\n6. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step, and verify that it is a member.\n7. Repeat for each selected emergency account. Keep at least two, as Microsoft recommends.\n8. Store credentials and recovery keys where authorized staff can retrieve them without this tenant (for example, a safe or an independent vault). Do not store them in IAMAI.\n9. Confirm monitoring exists for emergency-account use.\n10. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.\n\nComplete account creation, method registration and credential storage in the appropriate Microsoft tools. IAMAI does not make these changes or store the credentials.\n"
         },
         "entra.correct.open": {
           "meta": {
@@ -22302,7 +22302,14 @@
             "aiInfo": [
               "ai.blocked"
             ],
-            "email": []
+            "email": [
+              "email.owner"
+            ]
+          },
+          "missing": {
+            "email": [
+              "email.owner"
+            ]
           },
           "needsDecision": {
             "entra": [],
@@ -22412,12 +22419,14 @@
             "channel": "email",
             "states": [
               "routeDecisionRequired",
+              "blocked",
+              "missing",
               "needsDecision"
             ],
             "format": "markdown",
             "kind": "template",
             "audience": "device-owner",
-            "communicationTrigger": "during-route-decision-required"
+            "communicationTrigger": "before choosing and testing the implementation route"
           },
           "text": "Subject: Action needed: Set Up an SMTP Relay for Mail-Sending Devices\n\nPlease send IT the device's current mail settings, supported authentication methods, recipient requirements and a suitable test window. Please also tell us whether its network has a static public IP address or a suitable TLS certificate. Do not send its password.\n"
         },
@@ -22558,7 +22567,14 @@
             "aiInfo": [
               "ai.blocked"
             ],
-            "email": []
+            "email": [
+              "email.decision"
+            ]
+          },
+          "missing": {
+            "email": [
+              "email.decision"
+            ]
           }
         },
         "supportBlocks": {
@@ -22692,12 +22708,14 @@
             "id": "email.decision",
             "channel": "email",
             "states": [
-              "needsDecision"
+              "needsDecision",
+              "blocked",
+              "missing"
             ],
             "format": "markdown",
             "kind": "template",
             "audience": "client-contact",
-            "communicationTrigger": "during-needs-decision"
+            "communicationTrigger": "before choosing and testing the implementation route"
           },
           "text": "Subject: Action needed: Exclude the Partner or MSP Accounts\n\nPlease confirm how your team administers this tenant and which access must continue during the rollout. We will check the policy scope and test that path with you.\n"
         },
@@ -23050,8 +23068,7 @@
           },
           "missing": {
             "entra": [
-              "entra.create",
-              "entra.people-exclusions"
+              "entra.manual-review"
             ],
             "json": [
               "json.create"
@@ -23201,7 +23218,9 @@
             "email": []
           },
           "blocked": {
-            "entra": [],
+            "entra": [
+              "entra.manual-review"
+            ],
             "json": [],
             "powershell": [],
             "aiInfo": [
@@ -23524,7 +23543,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nState: the dedicated shared-device policy does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: only the confirmed shared-device accounts, the exclusions group excluded, All resources, Any location except the trusted-network location, and Block access. It adds no MFA or other prompt a person would have to answer.\n\nThe PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nIAMAI has not automatically assessed a dedicated shared-device policy in {{tenant.displayName}}. Inspect existing policies first. If a new dedicated policy is needed, create it in Report-only: only the confirmed shared-device accounts, the exclusions group excluded, All resources, Any location except the trusted-network location, and Block access. It adds no MFA or other prompt a person would have to answer.\n\nThe PowerShell Create writes this one policy only. Excluding these accounts from the person-interactive policies is a separate step, made in Entra for each policy IAMAI identifies.\n"
         },
         "ai.correct": {
           "meta": {
@@ -23632,6 +23651,19 @@
             "kind": "referenceOnly"
           },
           "text": "{\n  \"scenarios\": [\n    {\n      \"id\": \"interactive-mfa-prompt\",\n      \"classification\": \"documented\",\n      \"check\": [\n        \"Identify which Conditional Access policy applied to the resource account.\"\n      ],\n      \"fix\": [\n        \"Exclude only the confirmed resource account from that person-interactive policy using its object ID; keep the dedicated shared-device policy.\"\n      ],\n      \"then\": [\n        \"Retest and rescan.\"\n      ],\n      \"sources\": [\n        \"ms-teams-ca\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"title\": \"A Teams Room or shared device is prompted for user-interactive MFA or registration\"\n    },\n    {\n      \"id\": \"trusted-location-miss\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Compare its current public IP address to the intended trusted named location.\"\n      ],\n      \"fix\": [\n        \"Correct the trusted-network object if the owner-approved egress changed; otherwise return this policy to Report-only while diagnosing.\"\n      ],\n      \"then\": [\n        \"Retest from the device.\"\n      ],\n      \"sources\": [\n        \"ms-teams-ca\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"title\": \"A known room device is blocked after the dedicated policy is enabled\"\n    },\n    {\n      \"id\": \"scope-too-broad\",\n      \"classification\": \"derived\",\n      \"check\": [\n        \"Read back includeUsers and compare with owner-confirmed resource-account IDs.\"\n      ],\n      \"fix\": [\n        \"Correct the included population on the same policy ID.\"\n      ],\n      \"then\": [\n        \"Rescan IAMAI.\"\n      ],\n      \"sources\": [\n        \"ms-ca-update\"\n      ],\n      \"states\": [\n        \"missing\",\n        \"partial\",\n        \"reportOnly\",\n        \"readyToEnforce\",\n        \"inPlace\"\n      ],\n      \"title\": \"A normal user is affected by the shared-device policy\"\n    }\n  ]\n}\n"
+        },
+        "entra.manual-review": {
+          "meta": {
+            "id": "entra.manual-review",
+            "channel": "entra",
+            "states": [
+              "missing",
+              "blocked"
+            ],
+            "format": "markdown",
+            "kind": "referenceOnly"
+          },
+          "text": "Review and test a dedicated access policy for the shared-device accounts listed on this step. IAMAI does not automatically match or verify this supporting policy.\n\nProposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]\nShared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]\n\n1. Confirm each account belongs to a room system or shared device and identify its owner. Do not assume every account without interactive sign-ins is a shared device.\n2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.\n3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts, target All resources, include Any location and exclude only the approved trusted location. Grant: Block access. Start in Report-only.\n4. Review the other policies that apply to these accounts. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.\n5. Test the device's actual tasks, including scheduled jobs. Review report-only results before enabling the dedicated policy. Confirm that approved access works and access from an unapproved network is blocked.\n6. Rescan after the changes, then record the completed review below. A later change to the listed accounts, policies or named locations reopens the review.\n"
         }
       }
     },

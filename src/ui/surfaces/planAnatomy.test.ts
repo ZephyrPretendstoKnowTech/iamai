@@ -808,7 +808,7 @@ test('the five canonical states are one frame whose content the state changes', 
   assert.equal(railOf(S['not-deployed'].c).metric, absoluteDate('2026-09-22T00:00:00.000Z'))
   assert.equal(railOf(S['report-only'].c).metric, absoluteDate('2026-09-17T00:00:00.000Z'))
   assert.equal(railOf(S['review-required'].c).metric, WHEN.none)
-  assert.equal(railOf(S['in-place'].c).metric, WHEN.none)
+  assert.equal(railOf(S['in-place'].c).metric, 'Completed')
   assert.equal(railOf(S['baseline-conflict'].c).metric, WHEN.none)
 })
 

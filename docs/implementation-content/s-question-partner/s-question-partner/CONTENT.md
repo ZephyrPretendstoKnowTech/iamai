@@ -82,7 +82,7 @@ This partner step is on hold: {{dependencies.blockers}}. Do not assume a partner
 NEXT STEP: Explain what must be resolved before the partner decision or policy change can continue.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.decision","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
+@@IAMAI-BEGIN {"id":"email.decision","channel":"email","states":["needsDecision","blocked","missing"],"format":"markdown","kind":"template","audience":"client-contact","communicationTrigger":"before choosing and testing the implementation route"}
 Subject: Action needed: Exclude the Partner or MSP Accounts
 
 Please confirm how your team administers this tenant and which access must continue during the rollout. We will check the policy scope and test that path with you.

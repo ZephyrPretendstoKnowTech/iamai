@@ -116,7 +116,14 @@
       "aiInfo": [
         "ai.blocked"
       ],
-      "email": []
+      "email": [
+        "email.owner"
+      ]
+    },
+    "missing": {
+      "email": [
+        "email.owner"
+      ]
     }
   },
   "supportBlocks": {

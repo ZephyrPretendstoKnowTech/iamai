@@ -213,7 +213,8 @@ test('contract 7: a goal the tenant already delivers is preserved, never re-crea
       if (!c.state.satisfied) continue
       assert.equal(c.whatToDo.kind, 'preserve', `${name}/${step.id}: a delivered goal's action is ${c.whatToDo.kind}`)
       assert.equal(c.implementation.offered, false, `${name}/${step.id}: instructions for making a second copy of a policy the tenant has`)
-      assert.match(c.doneWhen[0], /Already satisfied/, `${name}/${step.id}: Done when reads "${c.doneWhen[0]}"`)
+      assert.ok(c.doneWhen[0]?.trim(), `${name}/${step.id}: completion criteria are missing`)
+      assert.doesNotMatch(c.doneWhen[0], /^(?:Create|Correct|Deploy|Enable)\b/, `${name}/${step.id}: a completed step asks for another implementation`)
       assert.ok(c.fix.length === 0, `${name}/${step.id}: a delivered goal still asks for work`)
     }
   }

@@ -292,6 +292,7 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
     }
   }
   const action = contract.whatToDo.text
+  if (cs.kind !== 'policy' && contract.state.lane?.lane === 'Completed') lines.splice(0)
   if (action.trim().length > 0 && !lines.includes(action)) lines.unshift(action)
   // The completion, from the contract, for every step. Nothing here implies the
   // policy can be rolled out while it cannot be written: where a reason holds

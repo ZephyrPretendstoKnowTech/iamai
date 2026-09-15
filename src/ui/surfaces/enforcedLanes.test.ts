@@ -101,7 +101,7 @@ test('U21 (owner contract): on the demo Initial scan every enforced policy that 
   assert.deepEqual(demoRun.steps.map((s) => JSON.stringify(plannedOperationsOf(s))), before)
 })
 
-test('U20: on the demo Follow-up scan with its saved answers every enforced policy with no drift reads Completed; report-only still observes', () => {
+test('U20: on the demo Follow-up scan with its saved answers every enforced policy with no drift reads Completed; an unresolved session configuration stays On Hold', () => {
   const run = runFixture(answered, {}, null, answered.snapshot.asOf)
   const readings = laneReadings(run.steps)
   const enforced = run.steps.filter((s) => s.state.lifecycle === 'enforced')
@@ -111,9 +111,9 @@ test('U20: on the demo Follow-up scan with its saved answers every enforced poli
     assert.equal(readings.get(s.id)?.lane, 'Completed', s.id)
   }
   const intune = readings.get('s-goal-intune-enrollment-reauth')
-  assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'evidence'], 'report-only and collecting its evidence: a wait, not an action')
+  assert.deepEqual([intune?.lane, intune?.reason?.kind], ['On Hold', 'fact'], 'the session-loop configuration guard is not cleared by waiting for more evidence')
   const view = laneViewFor(stepOf(run, 's-goal-intune-enrollment-reauth'), run.steps)
-  assert.equal(view.label, `${BOARD.lanes.onHold} · ${BOARD.blockers.evidence}`)
+  assert.equal(view.label, `${BOARD.lanes.onHold} · ${BOARD.blockers.fact}`)
 })
 
 test('U28: a step whose conditional input nobody saved does not read Completed even when the scan delivers it; a Save clears it', () => {
