@@ -678,7 +678,7 @@
       "howTo": {
         "link": "How to use this plan",
         "items": [
-          "Start with Ready. Open a step to check who it affects, review the instructions, and take the action shown.",
+          "Open a step to see who it affects, what to do, and how to check the result.",
           "Ready: You can take the action now. Creating or reviewing a policy is different from enforcing it.",
           "Up Next: Complete its Ready prerequisites first.",
           "On Hold: More prerequisites, a future date, an observation period, or missing information must be addressed first. Open the step for details.",
@@ -706,11 +706,11 @@
         "signature": "Sign emails as",
         "close": "Close",
         "mappings": {
-          "h4": "Resolve baseline references",
-          "intro": "Match the baseline's groups and locations to this tenant. Unanswered references hold the affected policies.",
+          "h4": "Match Baseline Groups and Locations",
+          "intro": "Some baseline policies refer to groups or locations from the author's tenant. For each one, review the affected policies and choose an equivalent in your tenant, or confirm that you do not need it. IAMAI cannot determine the original group's purpose from its ID. Do not guess.",
           "empty": "Every group and location the plan's policies name has an answer.",
-          "groupLabel": "Group {id}",
-          "locationLabel": "Named location {id}",
+          "groupLabel": "Group used by {policy}",
+          "locationLabel": "Location used by {policy}",
           "status": {
             "pending": "Unmapped",
             "mapped": "Mapped",
@@ -722,11 +722,11 @@
             "both": "Included in some of its policies, excluded from others"
           },
           "usedBy": "Affects {n} policies",
-          "roleExclude": "The baseline leaves it out of {n} of its {total} policies: an exception to who they reach.",
-          "roleInclude": "The baseline names it as who {n} of its {total} policies reach.",
+          "roleExclude": "These policies exclude this group or location. Decide whether your tenant needs an equivalent exception.",
+          "roleInclude": "These policies apply to this group or location. Choose the equivalent scope for your tenant.",
           "roleBoth": "The baseline names it in {n} of its {total} policies: as who some of them reach, and as an exception to others.",
-          "omitExclude": "Leaving it out makes these policies in this tenant without this exception: the people it spared stay in scope, unless another exclusion in this tenant covers them.",
-          "omitInclude": "Leaving it out makes these policies in this tenant without this group among who they reach: the people it stood for are not covered by them.",
+          "omitExclude": "Without this exception, the affected policies apply to people or locations that it would have excluded. Other exclusions still apply.",
+          "omitInclude": "Without this target, these policies will not cover the people or locations it represents.",
           "omitBoth": "Leaving it out makes these policies in this tenant without it: where it was an exception the people it spared stay in scope, and where it said who a policy reaches those people are not covered.",
           "answered": "Your answer: {answer}",
           "unanswered": "Not answered yet: the policies that name it are on hold.",
@@ -1288,7 +1288,8 @@
         "jsonWaitsDecision": "Baseline mappings first (Plan settings): the baseline names a group of its author's, and IAMAI does not yet know whether it stands for something in {tenant} or is left out.",
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
         "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
-        "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
+        "pairReviewExpected": "Expected policy name: {name}. Confirm its scope and authentication requirement before assigning this name to an existing policy. Rescan after making an approved correction.",
+        "pairUnmatched": "IAMAI found existing guest coverage in {tenant}, but cannot match it to the two baseline policies. Compare the existing policies with the expected pair before creating or renaming anything. See Entra for the names to check.",
         "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, widen it to everyone, or retire the extra one), then scan again.",
         "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
@@ -1636,8 +1637,8 @@
             },
             "preview": {
               "$comment": "The planning preview (owner, 2026-09-11): a step whose implementation is authored but not yet executable shows the work with no Copy (stepPackage.ts planningPreview). No Planned work banner is drawn over it (U4); these lines are what B5 puts on the disabled Copy.",
-              "text": "This is the work once the prerequisites are resolved. It is not ready to run, so it cannot be copied yet.",
-              "textValues": "IAMAI cannot fill in every value this change needs yet, so it cannot be copied.",
+              "text": "You can copy this guidance. Resolve the prerequisites and any missing values before applying the change.",
+              "textValues": "You can copy this draft. Fill in the unresolved values and review the result before running it.",
               "values": "Values still to resolve: {values}.",
               "checks": "Checks to confirm first are under Readiness.",
               "value": "‹{value}›"
@@ -1865,7 +1866,7 @@
         "manualReviewUndo": "Reopen this review",
         "manualReviewScanFirst": "Complete the changes above and scan again. The account or setting checks must pass before you can record this review.",
         "workflows": {
-          "title": "Confirm the services you use",
+          "title": "Confirm the Services You Use",
           "why": "Your plan should cover the services this tenant uses. Activity helps IAMAI find them, but a quiet service may still need protection.",
           "instructions": "Review these services. Services found in use are selected for your confirmation. Add anything the scan missed; leave uncertain answers as Not sure.",
           "done": "You have confirmed which listed services are in use.",
@@ -2560,12 +2561,12 @@
           "options": [
             "Nobody",
             "Occasionally: I will add a country before each trip",
-            "Regularly: add: {travelCountries}"
+            "Countries used regularly: {travelCountries}"
           ],
           "effect": [
             "",
-            "The plan carries a travel step; the countries policy's email tells people to say before a trip.",
-            "The countries are on the allowed list now, and the plan carries a travel step; the countries policy's email tells people to say before a trip."
+            "Before each trip, approve the destination and update the allowed countries. Use the email draft in the countries policy step to ask people to notify IT before travelling.",
+            "The selected countries are on your plan’s allowed list. Apply the named-location update in Entra, and ask people to notify IT before travelling elsewhere."
           ]
         },
         "location": {
@@ -2977,6 +2978,7 @@
     },
     {
       "id": "s-prereq-passkey-settings",
+      "preparation": ["Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).", "Review the included and excluded groups. The emergency accounts must be eligible to register and use their chosen security keys; an excluded group takes precedence over inclusion.", "If passkey profiles are enabled, review the profile assigned to those accounts. Confirm that it allows device-bound security keys and their models. Preserve existing working profiles and assignments.", "If key restrictions are enabled, compare the hardware vendor’s model identifier (AAGUID) with the allowed or blocked models. Resolve a conflict before registering the emergency keys.", "Rescan after reviewing or correcting the settings. IAMAI will not generate an update from settings it could not fully assess. Test the emergency sign-in separately before relying on it."],
       "kind": "object",
       "title": "Configure Passkey Authentication",
       "changeLine": null,
@@ -3820,6 +3822,7 @@
     },
     {
       "id": "guests-mfa",
+      "preparation": ["Review the Readiness section to see which guest-policy settings or prerequisites need attention.", "Answer the IT Provider Access question. This choice controls whether the service-provider external-user type is included; it does not configure partner MFA trust.", "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."],
       "kind": "policy",
       "title": "Require MFA for Guests",
       "changeLine": null,
@@ -3838,15 +3841,14 @@
       },
       "decision": {
         "label": "Partner tier",
-        "help": "Partner tenants whose home MFA you trust; they get the stronger tier.",
-        "pickerSource": "partnerTenants",
-        "pickerRow": "{tenantName} · {n} guests · MFA trust {trust}",
+        "heading": "IT Provider Access",
+        "help": "Review MFA for both guest groups: guests covered by an approved partner trust, and other external users. Trust must be configured and verified in Entra; saving an answer here does not establish trust.",
         "save": "Save",
         "multi": true,
         "question": {
           "label": "Partner or MSP access",
           "tileValue": "Confirm whether partners access your tenant",
-          "text": "{spSignIns} service-provider sign-ins since {from} from {partners} partner tenants. Should this policy prompt them too?",
+          "text": "Does an IT provider or MSP access your tenant? Decide whether service-provider accounts should be covered by these guest policies.",
           "options": [
             "Prompt them like any guest",
             "Exclude service providers (they use their own tenant's MFA)"

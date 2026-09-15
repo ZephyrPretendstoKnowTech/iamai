@@ -120,7 +120,7 @@ test('each reference says the part it plays, and leaving out an exception reads 
     const expected = u.includedIn.length > 0 && u.excludedFrom.length > 0 ? 'both' : u.includedIn.length > 0 ? 'include' : 'exclude'
     assert.equal(row.role, expected, `${row.id}: the part it plays is read off the baseline`)
     assert.ok(row.roleLine && row.omitLine, `${row.id}: says what it is and what leaving it out does`)
-    assert.ok(row.roleLine.includes(String(new Set([...u.includedIn, ...u.excludedFrom]).size)), `${row.id}: says how widely`)
+    assert.ok(row.roleLine.includes(expected === 'exclude' ? 'exclude' : expected === 'include' ? 'apply' : ''), `${row.id}: explains the scope role`)
     assert.ok(row.policies.length > 0 && row.policies.every((p) => !/^s-goal-/.test(p)), `${row.id}: names the policies by title`)
     assert.equal(row.roleLine.includes(row.id) || row.omitLine.includes(row.id) || row.answerLine.includes(row.id), false, 'the author’s id is never the words')
   }

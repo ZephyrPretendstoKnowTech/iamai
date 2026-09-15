@@ -734,7 +734,7 @@ test('an unmatched pair and a contradictory baseline carry a next action and no 
   const exclusions = f.mapping.records['__globalExclusion']?.resolvedId ?? null
   const pair = withTenantPolicies([guestsMemberA('Some other name entirely', exclusions)])
   const cases: { label: string; step: Step; ctx: StepVarContext; says: RegExp }[] = [
-    { label: 'unmatched pair', step: pair.of('guests-mfa').step, ctx: pair.ctx, says: /IAMAI cannot match to either/ },
+    { label: 'unmatched pair', step: pair.of('guests-mfa').step, ctx: pair.ctx, says: /cannot match it to the two baseline policies/ },
   ]
   const plain = policySteps('demo-week2')
   const conflicted = plain.rows.find((x) => x.step.goalId === 'admin-portals-protected')

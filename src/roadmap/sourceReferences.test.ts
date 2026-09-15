@@ -163,8 +163,8 @@ test('S4: the Baseline mappings surface lists each unresolved reference with its
     const ref = refs[i]
     assert.equal(row.id, ref.id)
     assert.doesNotMatch(row.label, /\b(Group|Named location) \d+$/, `${row.id}: labelled by a running number`)
-    assert.ok(row.label.includes(shortId(ref.id)), `${row.id}: the label names the reference`)
-    assert.ok(row.label.startsWith(ref.kind === 'group' ? 'Group' : 'Named location'))
+    assert.ok(row.label.includes(row.policies[0] ?? shortId(ref.id)), `${row.id}: the label names an affected policy`)
+    assert.ok(row.label.startsWith(ref.kind === 'group' ? 'Group' : 'Location'))
     assert.equal(row.status, MAPPING_WORDS.status[ref.answer])
     assert.equal(row.role, ref.role ?? null)
     assert.ok(row.role !== null && row.roleWord === MAPPING_WORDS.role[row.role], `${row.id}: the role is stated`)

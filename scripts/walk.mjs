@@ -1654,7 +1654,7 @@ async function walkFixture(fx) {
         }
         // C2: every opened step and Cleanup row carries a Learn link beside its Why.
         const bodyLinks = await evaluate(`[...document.querySelectorAll('main.page .step-body a[href^="http"]')].map((a) => a.href)`)
-        if (/^Why$/m.test(bodyText) && bodyLinks.length === 0 && title !== 'Confirm the services you use') add('P0', `${slabel}: no Learn link on the opened step`)
+        if (/^Why$/m.test(bodyText) && bodyLinks.length === 0 && !/^Confirm the services you use$/i.test(title)) add('P0', `${slabel}: no Learn link on the opened step`)
         for (const href of bodyLinks) learnLinks.add(href)
         const overflowStep = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
         if (overflowStep > 0) add('P1', `${slabel}: the opened step overflows the viewport by ${overflowStep}px`)

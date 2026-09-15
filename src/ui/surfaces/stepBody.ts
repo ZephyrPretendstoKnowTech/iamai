@@ -309,6 +309,15 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   supported.add('ai')
   if (!produced.some((a) => a.id === 'ai')) produced.push({ id: 'ai', form: 'code', lines: [], text: () => aiBriefingText('', grounding('')), note: null })
   if (step.id === 's-prereq-break-glass') supported.delete('email')
+  // Preparation is useful even when the executable policy cannot yet be built.
+  // It does not replace a resolved operation or bypass its prerequisites.
+  if (Array.isArray(cs.preparation) && (step.id === 's-prereq-passkey-settings' ? step.blockers.some(b => b.label.startsWith('passkey-settings-')) : reason !== null || !produced.some(a => a.id === 'portal'))) {
+    const lines = [...cs.preparation.filter((line: unknown): line is string => typeof line === 'string'), ...(step.action.unmatchedPair ? step.action.portalSteps : [])]
+    const previous = produced.findIndex(a => a.id === 'portal')
+    if (previous >= 0) produced.splice(previous, 1)
+    produced.push({ id: 'portal', form: 'list', lines, text: () => lines.map((line: string, index: number) => `${index + 1}. ${line}`).join('\n'), note: null })
+    supported.add('portal')
+  }
   const artifacts: Artifact[] = CHANNEL_TABS.filter((t) => supported.has(t.id as Channel)).map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel, fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })))
   const W = CONTRACT.implementation
   // Why a preview's work cannot be copied: the values still to resolve, never the
