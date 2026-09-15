@@ -11,6 +11,8 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the existing policy with ID {{policy.current.id}}. Find it by this policy ID, not by display name alone.
 @@IAMAI-END
 
@@ -47,7 +49,6 @@ Save the correction, reopen the policy by the same policy ID to check the saved 
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

@@ -124,7 +124,7 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   // Readiness against the answer: hybrid-joined computers count as managed.
   const all = r.viability.map((v) => v.userId)
   assert.equal(compliant.readiness.percent, readinessFor(COMPLIANT_DEVICE_GOAL, all, r.viability, f.snapshot, { phones: false, computers: true, hybridCounts: true }).percent)
-  assert.ok((compliant.readiness.percent ?? 0) > (readinessFor(COMPLIANT_DEVICE_GOAL, all, r.viability, f.snapshot).percent ?? 0), 'hybrid counting raises the number on the demo (it is hybrid)')
+  assert.equal(compliant.readiness.percent, readinessFor(COMPLIANT_DEVICE_GOAL, all, r.viability, f.snapshot, { phones: false, computers: true, hybridCounts: false }).percent, 'hybrid join cannot satisfy a compliant-device grant')
   // The campaign: a device line per person, one sentence in its email.
   const campaign = r.steps.find((s) => s.id === 's-verify-mfa')!
   const cv = stepVars(campaign, ctx)
@@ -132,8 +132,8 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   assert.ok(deviceLines.some((l) => / · phone$/.test(l)), `a phone line per person: ${deviceLines.join(' | ')}`)
   assert.ok(deviceLines.some((l) => / · computer$/.test(l)), 'a computer line per person')
   assert.equal(deviceLines.length, (cv.phoneUsers as string[]).length + (cv.unjoinedUsers as string[]).length, 'one line per person on a phone or an unjoined computer')
-  assert.equal(cv.deviceIntro, 'Devices, from Decide How Devices Are Managed, one line per person: on a phone, use Outlook and Teams for work; nothing to enroll; on a computer, domain-joined computers are already covered:')
-  assert.equal(cv.deviceSentence, 'On your phone, use Outlook and Teams for work; nothing to enroll; on your computer, domain-joined computers are already covered.')
+  assert.equal(cv.deviceIntro, 'Devices, from Decide How Devices Are Managed, one line per person: on a phone, use supported work apps and follow the company app-protection instructions; on a computer, make sure your work computer meets the company compliance policy; hybrid join alone does not meet it:')
+  assert.equal(cv.deviceSentence, 'On your phone, use supported work apps and follow the company app-protection instructions; on your computer, make sure your work computer meets the company compliance policy; hybrid join alone does not meet it.')
 })
 
 test('the other answers: enrol keeps phones in, block phones keeps them in, nothing managed sends the device steps to the footer with the answer', () => {

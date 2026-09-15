@@ -340,7 +340,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
           <p className="reason">{P.cards.csv[1]}</p>
           <p className="actions">
             {csvTables.map((t) => (
-              <Button key={t.id} variant="tertiary" onClick={() => exportDownload(t.csvName, toCsv(t.header, t.rows), 'text/csv', REDACTED)}>
+              <Button key={t.id} variant="tertiary" onClick={() => exportDownload(t.csvName, toCsv(t.header, t.rows), 'text/csv', unredactedFrom('inventory-csv'))}>
                 {t.id === 'readiness' ? buttons('csv')[0] : fillText(A.csvTab, { label: t.label })}
               </Button>
             ))}

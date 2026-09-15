@@ -78,7 +78,8 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
   assert.ok(packageOf(MFA_ALL).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   const entra = channel(MFA_ALL, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
   // Editorial batch C: the open block precedes every module, so it says only that the correction changes what IAMAI found different.
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: REMOVED })
+  assert.deepEqual(authoredParts(entra).filter(p => p.kind === "line")[1], { kind: 'line', text: 'This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
     {
@@ -91,7 +92,7 @@ test('s-goal-mfa-all-users: the bar names the Exclusions Group step, the thresho
     // A conditions correction writes no grant (S3, C02): the grant is its own module, drawn only when the grant differs.
     // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
     // Editorial batch C: the human check after the rescan is labelled as one.
-    { kind: 'list', ordered: true, start: 6, items: [[`Save. ${KEEP_STATE}`, REMOVED], ['Rescan in IAMAI to confirm the correction. Verify after the change: an ordinary user in scope can complete MFA, and emergency access still works.']] },
+    { kind: 'list', ordered: true, start: 6, items: [[`Save. ${KEEP_STATE}`], ['Rescan in IAMAI to confirm the correction. Verify after the change: an ordinary user in scope can complete MFA, and emergency access still works.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(MFA_ALL).blocks['ai.correct'].text
@@ -172,7 +173,8 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
   // Entra: the three blocks a conditions correction draws.
   assert.ok(packageOf(ADMINS).meta.optionalBindings?.includes('policy.current.displayName'), 'the policy name is not a declared binding')
   const entra = channel(ADMINS, ['entra.correct-open', 'entra.correct-conditions', 'entra.correct-verify'])
-  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: 'This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.' })
+  assert.deepEqual(authoredParts(entra)[0], { kind: 'line', text: REMOVED })
+  assert.deepEqual(authoredParts(entra).filter(p => p.kind === "line")[1], { kind: 'line', text: 'This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.' })
   assert.deepEqual(authoredParts(entra).filter((p) => p.kind === 'list'), [
     { kind: 'list', ordered: true, start: 1, items: [['Go to Entra admin center → Conditional Access → Policies.'], ['Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).']] },
     {
@@ -184,7 +186,7 @@ test('s-goal-admins-phishing-resistant: Why names the attack, the threshold says
     },
     // A conditions correction writes no grant (S3, C02): it used to set the TAP-inclusive custom strength while the JSON beside it PATCHed conditions only.
     // Cycle 2 (C02): the correction keeps the state it finds and says what saving does to a policy that is On.
-    { kind: 'list', ordered: true, start: 6, items: [[`Save. ${KEEP_STATE}`, REMOVED], ['Rescan in IAMAI.']] },
+    { kind: 'list', ordered: true, start: 6, items: [[`Save. ${KEEP_STATE}`], ['Rescan in IAMAI.']] },
   ])
   assert.doesNotMatch(entra, /mismatch modules|IAMAI-resolved|canonical/)
   const ai = packageOf(ADMINS).blocks['ai.correct'].text

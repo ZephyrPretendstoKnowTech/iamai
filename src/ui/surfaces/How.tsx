@@ -147,11 +147,10 @@ export function How() {
       <h2 id="package" ref={packageHeading} tabIndex={-1}>{C.packages}</h2>
       <p className="reason">{PACKAGE.does}</p>
       <ol className="sections">
-        <li>{PACKAGE.way1Title}</li>
-        <li>{PACKAGE.way2Title}</li>
-        <li>{PACKAGE.way3Title}</li>
+        <li><h3>{PACKAGE.way1Title}</h3><ul>{PACKAGE.way1.map(line => <li key={line}>{line}</li>)}</ul></li>
+        <li><h3>{PACKAGE.way2Title}</h3><p>{PACKAGE.way2Intro}</p><pre className="mono">{PACKAGE.way2Commands.join('\n')}</pre></li>
+        <li><h3>{PACKAGE.way3Title}</h3><p>{PACKAGE.way3}</p></li>
       </ol>
-      <pre className="mono">{PACKAGE.way2Commands.join('\n')}</pre>
 
       {/* Where the public site runs, and where the tenant's data does not (task 016).
           Said once, here: the home page makes its own short read-only / browser /

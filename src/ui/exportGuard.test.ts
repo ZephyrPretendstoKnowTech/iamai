@@ -63,7 +63,7 @@ test('an unredacted export is only reachable from a surface that warns', () => {
   const declared = [...guard.matchAll(/'([a-z-]+)'/g)]
     .map((m) => m[1])
     .filter((v) => guard.includes(`UnredactedSurface = `) && guard.slice(guard.indexOf('UnredactedSurface ='), guard.indexOf('\n', guard.indexOf('UnredactedSurface ='))).includes(`'${v}'`))
-  assert.deepEqual(declared.sort(), ['grounding-bundle', 'implementation-artifact', 'plan-file', 'print-document'], 'the set of unredacted surfaces changed')
+  assert.deepEqual(declared.sort(), ['grounding-bundle', 'implementation-artifact', 'inventory-csv', 'plan-file', 'print-document'], 'the set of unredacted surfaces changed')
 
   // Each surface may be claimed from exactly one place, and that place is the
   // component that renders the warning.
@@ -75,9 +75,11 @@ test('an unredacted export is only reachable from a surface that warns', () => {
       if (text.includes(`unredactedFrom('${surface}')`)) callers.set(surface, [...(callers.get(surface) ?? []), file])
     }
   }
+  assert.deepEqual((callers.get('inventory-csv') ?? []).sort(), ['src/ui/components/DataTable.tsx', 'src/ui/surfaces/Export.tsx'])
+  assert.match(readFileSync('src/ui/components/DataTable.tsx', 'utf8'), /shared\.csvNotice/)
   for (const surface of declared) {
     const at = callers.get(surface) ?? []
-    assert.equal(at.length, 1, `${surface} is claimed from ${at.length} places (${at.join(', ')}); it must be exactly one, next to its warning`)
+    assert.equal(at.length, surface === 'inventory-csv' ? 2 : 1, `${surface} is claimed from ${at.length} places (${at.join(', ')}); it must be exactly one, next to its warning`)
   }
 })
 
@@ -99,4 +101,14 @@ test('redaction defaults to on for the bundle', () => {
   const page = readFileSync('src/ui/surfaces/Export.tsx', 'utf8')
   assert.match(page, /useState\(true\)[^\n]*\n?/, 'no state initialises to true')
   assert.match(page, /bundleRedacted[\s\S]{0,80}useState\(true\)|useState\(true\)[\s\S]{0,80}bundleRedacted/, 'bundleRedacted does not default to redacted')
+})
+
+test('sample calendar labels preserve complete summaries and the 75-octet physical line limit', async () => {
+  const { watermarkDemoFile } = await import('./exportGuard.ts')
+  const { foldIcsLine } = await import('../roadmap/ics.ts')
+  const summary = 'SUMMARY:' + 'Check devices — café '.repeat(12)
+  const calendar = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', foldIcsLine(summary), 'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n')
+  const result = watermarkDemoFile('plan.ics', calendar)
+  for (const line of result.split('\r\n')) assert.ok(Buffer.byteLength(line, 'utf8') <= 75, line)
+  assert.ok(result.replace(/\r\n[ \t]/g, '').includes(summary.replace('SUMMARY:', 'SUMMARY:[DEMO] ')))
 })

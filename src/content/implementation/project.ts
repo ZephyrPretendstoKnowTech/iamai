@@ -391,6 +391,15 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
 
 const isJsonFormat = (block: Block): boolean => block.meta.format === 'json' || block.meta.format === 'json-template'
 
+/** Explanations and communications do not execute a transition. Their own
+ * required bindings still apply, but a deployment hold must not hide them. */
+export function projectExplanation(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext): Projection {
+  const p = pkg.meta.projection[state] ?? {}
+  const explanatory = { ...pkg, meta: { ...pkg.meta, prerequisites: [], projection: { [state]: { aiInfo: p.aiInfo, email: p.email } } } }
+  try { return build(explanatory, state, bindings, runtime, null, true) }
+  catch { return { state, hold: { ...emptyHold(), noProjection: true }, channels: [] } }
+}
+
 /** The JSON string a planning preview's unresolved whole JSON value stands as while its body is parsed and merged. */
 const standInToken = (key: string): string => JSON.stringify(`@@iamai-stand-in:${key}@@`)
 const STAND_IN_TOKEN = /"@@iamai-stand-in:([A-Za-z0-9_.-]+)@@"/g
@@ -411,9 +420,9 @@ function unmaskStandIns(text: string, standIns: Readonly<Record<string, string>>
   return text.replace(STAND_IN_TOKEN, (m, key: string) => (Object.hasOwn(standIns, key) ? standIns[key] : m))
 }
 
-function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: ((binding: string) => string) | null): Projection {
+function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: ((binding: string) => string) | null, explanationOnly = false): Projection {
   const planning = placeholder !== null
-  if (!planning && NO_ACTION_STATES.has(state)) return { state, hold: null, channels: [] }
+  if (!planning && !explanationOnly && NO_ACTION_STATES.has(state)) return { state, hold: null, channels: [] }
   const hold = emptyHold()
   const p = pkg.meta.projection[state] as Record<string, unknown> | undefined
   if (!p) return { state, hold: { ...hold, noProjection: true }, channels: [] }

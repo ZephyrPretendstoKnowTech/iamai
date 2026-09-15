@@ -11,12 +11,12 @@
     "devicePlan": {
       "phone": {
         "enrol": "enroll it in Intune with the Company Portal app before {mfaEnforce}",
-        "apps": "use Outlook and Teams for work; nothing to enroll",
+        "apps": "use supported work apps and follow the company app-protection instructions",
         "none": "no company data on it; work from your computer"
       },
       "computer": {
         "enrol": "sign in to your work computer this week so we can confirm it is enrolled",
-        "hybrid": "domain-joined computers are already covered",
+        "hybrid": "make sure your work computer meets the company compliance policy; hybrid join alone does not meet it",
         "unmanaged": "nothing changes for computers"
       },
       "personLine": "{name} · {device}",
@@ -259,7 +259,7 @@
         "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
         "prepareGated": "Create the policy in report-only now; it is not turned on until emergency access is sorted.",
         "prepareScheduledGated": "Create the policy in report-only on {date}; it is not turned on until emergency access is sorted.",
-        "prepare": "Make the object this step names.",
+        "prepare": "Follow the Implementation instructions, then scan to check the result.",
         "deploy": "Create the policy in Report-only.",
         "correct": "Correct the identified settings, then rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save.",
         "review": "Keep the policy in Report-only, find out what changed on it and why, then rescan.",
@@ -351,7 +351,47 @@
     "policyDoneWhenConfiguration": [
       "The policy settings match the plan.",
       "Verify after the change: test the actual workflow; report-only results alone may not establish its behavior."
-    ]
+    ],
+    "deviceBriefing": {
+      "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
+      "unread": "The device inventory was not read. Device management and compliance are unknown.",
+      "phones": "{n} people used phones in the sign-in records that were read.",
+      "computers": "{n} people used computers without a join state in the sign-in records that were read.",
+      "intune": "Intune capability: {state}. A licence does not prove enrollment, compliance policies or app protection are configured.",
+      "options": "Device choices and technical meaning",
+      "details": [
+        "Intune enrollment lets the organisation manage a device. Enrollment alone does not make it compliant: configure compliance policies, assign them and confirm the device reports compliant before requiring compliance.",
+        "App protection protects work data in supported iOS and Android apps, including on unenrolled phones. It requires the appropriate Intune app protection policies and supported apps. It does not manage the whole phone or cover every browser and application.",
+        "Keeping company data off phones requires an access restriction that blocks those platforms. Excluding phones from a compliant-device policy does not block them. Verify that restriction separately before treating this choice as implemented.",
+        "Microsoft Entra hybrid join connects an on-premises domain-joined Windows device to Entra. It is not the same as Intune enrollment or compliance. Read the proposed policy grant: requiring compliance still requires a compliant device even when it is hybrid joined.",
+        "No computer management requirement leaves those computers out of the planned device requirement. Other applicable Conditional Access policies still apply.",
+        "Saving a choice changes the plan. It does not enroll a device or configure Intune."
+      ]
+    },
+    "registrationScope": {
+      "unknown": "Guest coverage is not resolved yet. Review the target policy before relying on it.",
+      "excluded": "The resolved registration policy excludes guests and external users.",
+      "partial": "The resolved registration policy excludes specific external-user types. Review its Users settings for the exact coverage.",
+      "included": "The resolved registration policy includes guests within its selected scope; explicit user or group exclusions still apply.",
+      "targeted": "Guest coverage depends on the users, groups or roles selected in the resolved registration policy."
+    },
+    "passkeyCompatibility": {
+      "heading": "Emergency passkey compatibility",
+      "noAccounts": "Choose the emergency accounts first. Before registering a key, verify account targeting, exclusions, the allowed hardware model and any assigned profile.",
+      "policyUnread": "Passkey policy not available. Verify it before registering a new key.",
+      "disabled": "Passkey authentication is disabled. Configure it before registering a new key.",
+      "excluded": "An excluded group prevents passkey registration and sign-in, even if the account is also included.",
+      "notTargeted": "The account is not in a confirmed passkey target. Review targeting before registration.",
+      "membershipUnread": "Group membership is incomplete; account eligibility is unknown.",
+      "profileOrPartial": "Review the applicable passkey profile or unread policy fields before registering a key.",
+      "methodsUnread": "Registered methods were not read. Key compatibility is unknown.",
+      "newKey": "No passkey was found. Confirm the intended hardware model, profile and attestation requirements before registration.",
+      "modelsUnread": "The key model or restriction list was not read. Verify the AAGUID in Entra before relying on it.",
+      "modelRestricted": "No registered key was confirmed allowed by the model restriction. Preserve other working recovery methods while correcting this.",
+      "eligible": "Targeting and the global model restriction allow at least one registered key. This does not prove recovery works; perform and record a controlled sign-in test."
+    },
+    "csvNotice": "CSV files include names and sign-in addresses so you can identify the accounts. Review them before sharing.",
+    "planPromptTitle": "Explain this plan"
   },
   "phases": {
     "first": "Preparation",
@@ -489,7 +529,7 @@
         "title": "Scan",
         "limitsSummary": "IAMAI limitations",
         "limits": [
-          "Devices that send mail without signing in (Direct Send printers, scanners) leave no record; a legacy-authentication block can stop one the plan never listed. The step asks before that block enforces.",
+          "Direct Send and connector-based SMTP relay do not sign in with user accounts, so these logs do not inventory them. A legacy-authentication block targets password-based sign-ins, not every mail-sending device. Confirm the sending method and test important jobs with their owners.",
           "Authentication that happens outside Entra (federation, third-party MFA, on-premises apps) is recorded as a sign-in but not as what the other system enforced.",
           "Anything on a longer cycle than the records (the quarterly invoice run, the yearly renewal) has left no evidence yet; keep new blocks in report-only across a full cycle.",
           "Credentials saved on equipment nobody has touched in years surface the day something blocks them; a walk through the comms room beats any report.",
@@ -634,13 +674,14 @@
         "none": "—"
       },
       "howTo": {
-        "link": "How to use this plan →",
+        "link": "How to use this plan",
         "items": [
-          "Preparation comes first: it makes the groups, accounts and answers later steps rely on.",
-          "Work is scheduled onto eligible workdays, from the plan start and the first deployment day.",
-          "A step that waits on another step is held until that step is done.",
-          "Open a step to review its readiness, its implementation and when it is done.",
-          "Plan settings sets the start, the first deployment and the change freeze."
+          "Start with Ready. Open a step to check who it affects, review the instructions, and take the action shown.",
+          "Ready: You can take the action now. Creating or reviewing a policy is different from enforcing it.",
+          "Up Next: Complete its Ready prerequisites first.",
+          "On Hold: More prerequisites, a future date, an observation period, or missing information must be addressed first. Open the step for details.",
+          "Completed: The required work is finished. Deferred: You chose to set it aside; it does not satisfy another step’s prerequisite.",
+          "Follow the step’s verification instructions after a change. Save decisions and manual checks in the step; scan again when asked. Estimated dates may change."
         ]
       },
       "settingsLink": "Plan settings",
@@ -648,23 +689,23 @@
         "h3": "Plan settings",
         "start": "Start date",
         "planStarts": "Plan starts",
-        "firstDeployment": "First deployment",
-        "firstDeploymentNote": "Preparation begins on the start date; policies are first created, in report-only, on the first deployment day.",
+        "firstDeployment": "Earliest policy deployment",
+        "firstDeploymentNote": "Optional. Use this if policy changes must start later than preparation.",
         "workdays": "Eligible workdays",
         "workdaysWeek": "Monday to Friday",
         "workdaysWith": "Monday to Friday and {days}",
-        "freeze": "Change freeze",
-        "freezeFrom": "from",
-        "freezeTo": "to",
+        "freeze": "Pause changes",
+        "freezeFrom": "From",
+        "freezeTo": "Through",
         "freezeNote": "No step enforces inside the freeze or on the last working day before it.",
-        "freezeNeedsTo": "Enter the day the freeze ends. A freeze with no end is not applied.",
-        "freezeOrder": "The freeze must end on or after the day it starts. It is not applied.",
-        "timezone": "Time zone",
-        "signature": "Emails signed as",
+        "freezeNeedsTo": "Enter both dates before saving. Your saved pause has not changed.",
+        "freezeOrder": "The end must be on or after the start. Your saved pause has not changed.",
+        "timezone": "Display time zone",
+        "signature": "Sign emails as",
         "close": "Close",
         "mappings": {
-          "h4": "Baseline mappings",
-          "intro": "The baseline names groups and locations of its author's own without saying what they are. For each one, pick the object in this tenant that stands in for it, or leave it out. Either answer can be changed here; until a reference has one, the policies that name it are on hold.",
+          "h4": "Resolve baseline references",
+          "intro": "Match the baseline's groups and locations to this tenant. Unanswered references hold the affected policies.",
           "empty": "Every group and location the plan's policies name has an answer.",
           "groupLabel": "Group {id}",
           "locationLabel": "Named location {id}",
@@ -678,7 +719,7 @@
             "include": "Included in its policies",
             "both": "Included in some of its policies, excluded from others"
           },
-          "usedBy": "Named in {policies}.",
+          "usedBy": "Affects {n} policies",
           "roleExclude": "The baseline leaves it out of {n} of its {total} policies: an exception to who they reach.",
           "roleInclude": "The baseline names it as who {n} of its {total} policies reach.",
           "roleBoth": "The baseline names it in {n} of its {total} policies: as who some of them reach, and as an exception to others.",
@@ -693,8 +734,16 @@
             "None needed here: leave it out",
             "Use this tenant's own: {object}"
           ],
-          "save": "Save"
-        }
+          "save": "Save mappings",
+          "pendingCount": "{n} unanswered references",
+          "details": "View affected policies"
+        },
+        "scheduling": "Scheduling options",
+        "communications": "Email signature",
+        "saveFreeze": "Save pause",
+        "removeFreeze": "Remove pause",
+        "cancelFreeze": "Cancel edits",
+        "freezeSaved": "The saved pause stays in effect until you save a valid replacement or remove it."
       },
       "blocked": {
         "after": "after: {stepTitle}",
@@ -863,7 +912,14 @@
         "noQualifying": "No qualifying method",
         "lost": "{method} last seen {date}",
         "unknown": "Not enough evidence",
-        "signInsUnread": "Sign-in records not read"
+        "signInsUnread": "Sign-in records not read",
+        "marks": {
+          "good": "Verified",
+          "warn": "Proof missing",
+          "bad": "Does not qualify",
+          "unknown": "Unknown",
+          "history": "Earlier evidence"
+        }
       },
       "actions": {
         "addPasskey": "Add passkey",
@@ -943,12 +999,12 @@
         ],
         "planFile": [
           "Plan file",
-          "Everything, to load back on any machine: steps, evidence, decisions and checkpoints. Names in full: it is your own working state.",
+          "Save your plan decisions and records. Restore them with a compatible baseline in the same tenant; the file does not change tenant settings.",
           "Save plan file · Load a plan file"
         ],
         "csv": [
           "CSV",
-          "MFA readiness and each inventory table as a spreadsheet.",
+          "CSV files include names and sign-in addresses so you can identify the accounts. Review them before sharing.",
           "MFA Readiness as CSV · Policies as CSV · …"
         ],
         "prompts": [
@@ -958,7 +1014,7 @@
         ],
         "bundle": [
           "Grounding bundle",
-          "The scan and plan as JSON, to feed another tool. Redacted unless you say otherwise.",
+          "Tenant facts for your own tools. The masked version removes common identifiers and known names; it is not guaranteed anonymous. Review it before sharing.",
           "Download the bundle"
         ]
       },
@@ -1520,7 +1576,7 @@
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
             "close": "Minimize",
-            "channelUnavailable": "This channel is not available for the current action. Review the other guidance and the requirements shown on this step.",
+            "channelUnavailable": "This format has no output for the current action. Use the available guidance and readiness checks on this step.",
             "empty": {
               "inPlace": [
                 "No implementation needed",
@@ -1782,7 +1838,7 @@
           },
           "doneHeldEnd": "The policy is enforced in {tenant}."
         },
-        "mfaReadinessHold": "{n} of the people this step reaches cannot meet its sign-in requirement yet.",
+        "mfaReadinessHold": "{n} people are not yet confirmed ready for this sign-in requirement. Review whether they need setup, recent proof, or a successful evidence read.",
         "mfaReadinessHoldUnknown": {
           "$comment": "Where the scan could not work out who a step's readiness hold reaches (MfaHandoff.tsx), by the hold's family: the line before the link, the link, and any words after it (content review S3).",
           "mfa": "This scan could not work out who cannot meet this step's sign-in requirement yet.",
@@ -1807,7 +1863,7 @@
         "workflows": {
           "title": "Confirm the services you use",
           "why": "Your plan should cover the services this tenant uses. Activity helps IAMAI find them, but a quiet service may still need protection.",
-          "instructions": "Confirm which services this tenant uses. Choose Not sure if you need to check; IAMAI will keep the question open.",
+          "instructions": "Review these services. Services found in use are selected for your confirmation. Add anything the scan missed; leave uncertain answers as Not sure.",
           "done": "You have confirmed which listed services are in use.",
           "names": {
             "sharepoint": "SharePoint and OneDrive",
@@ -1898,7 +1954,10 @@
             }
           ],
           "baselineContext": "Baseline source for manual review. This is the author’s definition, not a request ready to run against this tenant. Resolve its references and validate support before using it.",
-          "choiceContext": "Service choices recorded in IAMAI"
+          "choiceContext": "Service choices recorded in IAMAI",
+          "detected": "Detected in the scan",
+          "unanswered": "{n} services still need an answer",
+          "suggestionContext": "Suggested In use from scan evidence; not saved yet"
         },
         "impactLabels": {
           "s-confirm-workloads": "Services in this tenant",
@@ -2035,7 +2094,7 @@
         },
         "limitsFeedback": "Something wrong or unclear? feedback@getiamai.com — I would rather hear about it than not.",
         "hosting": "Where it runs",
-        "hostingBody": "getiamai.com is a static site: files on GitHub Pages, served through Cloudflare. Your tenant's data is not part of that. The scan calls Microsoft Graph from this browser and the snapshot stays here, so nothing Cloudflare or GitHub serves has ever held it. The source is public and inspectable on GitHub. One thing IAMAI does not control: Cloudflare adds its own page-load beacon to the HTML it serves. So the host measures page loads and network timing for this site. That beacon is not in IAMAI's bundle and cannot be taken out from here, only from the Cloudflare account. It measures the page, not the scan, and carries nothing from your tenant.",
+        "hostingBody": "IAMAI runs in your browser. It reads tenant data directly from Microsoft Graph and keeps the scan in this browser. The public source and site files are on GitHub Pages, served through Cloudflare. Hosting includes a Cloudflare page-load beacon, which is not in IAMAI's application bundle. IAMAI does not send the tenant snapshot to that beacon. Review exports before sharing them.",
         "credits": "Credits",
         "creditBaseline": "The default baseline is Jon Hope's Defense in Depth, published at ConditionalAccess.Tech. IAMAI pins a reviewed version of it and reads it unchanged.",
         "creditAnalyzer": "CA Policy Analyzer by Jon Hope",
@@ -2168,8 +2227,8 @@
       "who": {
         "lead": "The emergency access accounts, and every policy that must exclude them:",
         "accounts": "{list:emergencyAccounts}",
-        "policiesNotExcluding": "Policies that do not yet exclude the exclusions group: {list:policiesNotExcluding}; fixed in Create or Correct Exclusions Group, never by excluding these accounts directly.",
-        "operatorNote": "Your own account, {operator}, is not one of these and must not be."
+        "policiesNotExcluding": "Policies that do not exclude the selected exclusions group: {list:policiesNotExcluding}. Keep existing emergency-account exclusions until replacement coverage is verified.",
+        "operatorNote": "Use these accounts only for emergency recovery and controlled tests. Do not use them for daily administration."
       },
       "decision": {
         "label": "Emergency access accounts",
@@ -2915,7 +2974,7 @@
     {
       "id": "s-prereq-passkey-settings",
       "kind": "object",
-      "title": "Set Up Passkeys to Match the Baseline",
+      "title": "Configure Passkey Authentication",
       "changeLine": null,
       "why": "Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.",
       "learn": {
@@ -3109,38 +3168,30 @@
       "decision": {
         "label": "Phones",
         "text": "How should phones be managed?",
-        "help": "Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one. Current inventory informs the choice; it does not make it for you.",
+        "help": "Choose a policy for phones and for computers. Open AI Info for the technical differences and the device evidence from this scan.",
         "options": [
           "Enroll phones in Intune",
           "Protect company apps only",
           "Keep company data off phones"
         ],
         "effect": [
-          "Phones stay in the compliant-device policy: a phone that is not enrolled by the enforce date is blocked.",
+          "Phones remain in the compliant-device policy. Enrollment alone is not enough: each phone must meet the assigned compliance policy.",
           "Phones leave the compliant-device policy; the app-protection policy covers them where the baseline holds one.",
-          "Phones leave the compliant-device policy; people use their computer for work."
+          "Phones leave the compliant-device requirement. This does not block phone access; a separate access restriction must be implemented and tested."
         ],
         "question": {
           "label": "Computers",
           "text": "How should computers be managed?",
           "options": [
             "Enroll in Intune",
-            "Hybrid join is sufficient",
+            "Hybrid-joined Windows computers",
             "Not managed"
           ],
           "effect": [
             "Device readiness counts compliant computers.",
-            "Device readiness counts hybrid-joined computers as managed.",
+            "Hybrid join does not satisfy a policy that requires compliance. Prepare the devices to meet the actual grant shown in the device step.",
             "Computers leave the compliant-device policy; with phones out too, the device steps do not apply here."
           ]
-        },
-        "strict": {
-          "label": "Block phones",
-          "heading": "Unmanaged phones",
-          "text": "Should phones that aren't enrolled be blocked?",
-          "help": "Blocking keeps a phone that isn't enrolled away from company data once the device policy is enforced.",
-          "option": "Block phones that are not enrolled",
-          "when": "Enroll phones in Intune"
         },
         "save": "Save"
       },
@@ -3150,7 +3201,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Phones and computers are answered and saved; Require a Managed Device Outside the Office shows the platforms it covers beside the baseline's version. Saving the choice configures no device."
+        "Your phone and computer choices are saved. Complete the resulting device preparation and access controls before treating those choices as implemented."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3247,7 +3298,7 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Require MFA for Guests and Block Sign-ins From Countries Not Allowed now carry the Service provider exclusion in their What to do, beside the baseline's version; create them as shown.",
+          "Require MFA for Guests and Block Sign-ins From Countries Not Allowed now carry the Service provider exclusion in their Implementation instructions, beside the baseline's version; create them as shown.",
           "Delegated administration (GDAP) and ordinary guest (B2B) access are separate paths. Review inbound MFA trust for ordinary B2B collaboration on its own merits; do not turn it on as a fix for delegated administration."
         ]
       },
@@ -3900,7 +3951,7 @@
         "evidence": [
           "{n} people registered a method from outside the trusted network since {from}; check how the resolved registration rule treats them: {list:remoteRegistrants}",
           "Trusted network: {trustedLocation}, {matches} sign-ins matched in 30 days.",
-          "Guests are covered by the resolved registration rule; trusting a partner tenant's MFA is set in Require MFA for Guests.",
+          "{registrationGuestScope}",
           "{existingCoverage}"
         ]
       },
@@ -4000,13 +4051,13 @@
       },
       "decision": {
         "label": "Mail-sending devices",
-        "help": "The records show no printer, scanner or application sending mail by SMTP since {from}; that does not prove there is none. Is there one? A device that sends by SMTP AUTH stops when this is enforced.",
+        "help": "Do any printers, scanners or applications still send mail using a username and password? Check their settings and confirm with the owner. Sign-in records can miss infrequent jobs. SMTP with OAuth, Direct Send and connector-based relay use different authentication paths.",
         "options": [
           "None",
-          "Yes: add: {devices}; the service-accounts group carries them"
+          "Temporary exception accounts: {devices}"
         ],
-        "effect": "The devices are in the service-accounts group now; the legacy block leaves that group alone, and the group's step creates it where none exists.",
-        "save": "Save"
+        "effect": "These accounts are selected for the service-accounts exception. Review the actual policy exclusions, limit the exception and plan migration to a supported mail-sending method.",
+        "save": "Save mail-sending choices"
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
@@ -6095,6 +6146,33 @@
         "The strength has the intended combinations."
       ],
       "aiFocus": "Include the current and intended combinations, affected policies and TAP where present.",
+      "skip": false,
+      "scanControl": true
+    },
+    {
+      "id": "s-ladder-phone-access-restriction",
+      "kind": "ladder",
+      "title": "Keep Company Data Off Phones",
+      "why": "You chose not to allow company data on phones. Leaving phones out of a compliance policy does not prevent access.",
+      "who": {
+        "lead": "People who access company resources from iOS or Android."
+      },
+      "learn": {
+        "url": "https://learn.microsoft.com/en-us/entra/identity/conditional-access/policy-all-users-device-compliance"
+      },
+      "whatToDo": {
+        "lead": "Implement and test the phone access restriction before marking this review complete.",
+        "steps": [
+          "Review existing access controls for iOS and Android. Identify which work apps and browser paths must be blocked, and which emergency-access exclusions must remain.",
+          "Use an appropriately scoped Conditional Access restriction for those platforms. Review it in report-only and test the intended scope before enforcing it. An operating-system condition is not a complete data-loss-prevention control.",
+          "Check access from representative phones, including supported apps and browsers. Confirm that necessary recovery and administrator access still work.",
+          "Record the policy, scope and test result in your change record. Confirm this step only when the intended restriction is enforced and the tests pass."
+        ]
+      },
+      "doneWhen": [
+        "Phone access is restricted as agreed, the affected access paths have been tested, and you have recorded the result."
+      ],
+      "aiFocus": "Explain the difference between leaving phones out of a compliance requirement and actively blocking access. Help the administrator scope and test the restriction without changing baseline policies or emergency access blindly.",
       "skip": false,
       "scanControl": true
     }

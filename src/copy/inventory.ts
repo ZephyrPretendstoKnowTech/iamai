@@ -15,7 +15,7 @@ export const INVENTORY = {
     roles: 'Roles',
     licensing: 'Licensing',
     apps: 'Apps',
-    signIns: 'Sign-in records',
+    signIns: 'Sign-in countries',
   },
   source: {
     policies: { title: 'Where this comes from', text: 'Conditional Access policies read from the tenant at scan time (/identity/conditionalAccess/policies).' },
@@ -207,6 +207,7 @@ export const PACKAGE = {
   way2Title: '2. PowerShell (Microsoft Graph SDK)',
   way2Intro: 'Sign in with a read-only scope, then export each set to a folder:',
   way2Commands: [
+    'New-Item -ItemType Directory -Path .\\package -Force | Out-Null',
     'Connect-MgGraph -Scopes "Policy.Read.All"',
     'Get-MgIdentityConditionalAccessPolicy -All | ConvertTo-Json -Depth 10 | Set-Content .\\package\\policies.json',
     'Get-MgIdentityConditionalAccessNamedLocation -All | ConvertTo-Json -Depth 10 | Set-Content .\\package\\namedLocations.json',

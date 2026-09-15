@@ -118,7 +118,10 @@ export function redactText(text: string, vocabulary: Vocabulary): string {
     // same name reaches different artifacts through different code paths
     // (audit redact-10).
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, (m) => `\\${m}`)
-    out = out.replace(new RegExp(escaped, 'gi'), placeholder)
+    out = out.replace(new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, 'giu'), (match, offset: number, source: string) => {
+      const countWord = /department|job title|office/.test(placeholder) && /^people$|^person$|^users?$|^accounts?$|^devices?$/i.test(match)
+      return countWord && /\d+\s+$/.test(source.slice(0, offset)) ? match : placeholder
+    })
   }
   return redactIdentifiers(out)
 }

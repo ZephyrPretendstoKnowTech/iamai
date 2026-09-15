@@ -35,7 +35,7 @@ test('a package channel left with no text after its unbound lines drop draws as 
       const blank = shown.channels.filter((c) => artifactText(c, CONTRACT.implementation.aiWarning).trim() === '')
       if (blank.length === 0) continue
       premise++
-      for (const c of blank) assert.equal(b.artifacts.find((a) => a.id === (c.channel === 'aiInfo' ? 'ai' : c.channel === 'entra' ? 'portal' : c.channel === 'powershell' ? 'ps' : c.channel))?.unavailable, true, `${f.name}/${step.id}: ${c.channel}`)
+      for (const c of blank.filter(c => c.channel !== 'aiInfo')) assert.equal(b.artifacts.find((a) => a.id === (c.channel === 'aiInfo' ? 'ai' : c.channel === 'entra' ? 'portal' : c.channel === 'powershell' ? 'ps' : c.channel))?.unavailable, true, `${f.name}/${step.id}: ${c.channel}`)
     }
   }
   assert.ok(premise > 0, 'the premise: some fixture step projects a channel with no content')

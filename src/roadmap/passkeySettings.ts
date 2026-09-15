@@ -109,7 +109,7 @@ export const PASSKEY_TARGET_AAGUIDS: readonly string[] = strings(PASSKEY_TARGET.
  * pinned object whole.
  */
 export function resolvePasskeyTarget(current: Fido2Configuration | null): PasskeyResolution {
-  if (current === null) return { kind: 'target', target: structuredClone(PASSKEY_TARGET) as Fido2Configuration, restriction: 'allow', retained: [], added: [...PASSKEY_TARGET_AAGUIDS] }
+  if (current === null) return { kind: 'target', target: { ...structuredClone(PASSKEY_TARGET), keyRestrictions: { isEnforced: false, enforcementType: 'allow', aaGuids: [] } }, restriction: 'unrestricted', retained: [], added: [] }
   const includes = Array.isArray(current.includeTargets) ? (current.includeTargets as (Record<string, unknown> | null)[]) : null
   // Profiles first: a policy that uses them is not described by its global settings, however those read.
   const assigned = (includes ?? []).flatMap((t) => (Array.isArray(t?.allowedPasskeyProfiles) ? (t.allowedPasskeyProfiles as unknown[]) : []))

@@ -197,7 +197,7 @@ test('the Plan header offers four useful filters and an estimated finish, keepin
   assert.match(plan, /aria-expanded=\{showHow\} aria-controls=\{PLAN_HOW_ID\}/)
   assert.match(plan, /projectedFinish\(finish\.finish, c\.schedule\.estimate\?\.targetEnd \?\? null\)/)
   assert.match(plan, /c\.schedule\.derivation\.criticalPath, \.\.\.c\.schedule\.derivation\.relaxed/)
-  assert.match(plan, /freezeInputOf\(next\.from, next\.to\)\.freeze/)
+  assert.match(plan, /data\.setFreeze\(freezeInput\.freeze\)/)
   assert.match(plan, /freezeInput\.reason === 'needsTo' \? PP\.settings\.freezeNeedsTo : PP\.settings\.freezeOrder/)
 })
 
@@ -234,7 +234,7 @@ test('a blocked policy with authored implementation shows its planning preview w
   for (const ch of preview.channels) assert.equal(/\{\{|\{policy\.|\[omit /.test(ch.text), false, `${ch.channel}: raw binding syntax reached the preview`)
   assert.match(preview.channels.find((x) => x.channel === 'json')!.text, /‹exclusions group›/, 'an unknown value was filled silently')
   // The copy control — inline and in the expanded viewer — is not offered on a preview.
-  assert.match(CONTENT_STEP, /const copyable = preview === null && active !== null/)
+  assert.match(CONTENT_STEP, /const copyable = active !== null && active\.unavailable !== true && \(preview === null \|\| active\.id === 'ai' \|\| active\.id === 'email'\)/)
   // Copy stays drawn on a preview, not offered, with the preview's reason (decision 4, U18).
   assert.match(CONTENT_STEP, /aria-disabled=\{!copyable\}/)
   assert.match(CONTENT_STEP, /if \(copyable\) copy\('implementation'/)
@@ -289,15 +289,13 @@ test('Decide How Devices Are Managed: Decision until answered, one structure per
   assert.equal(d.text, 'How should phones be managed?')
   assert.deepEqual(d.options, ['Enroll phones in Intune', 'Protect company apps only', 'Keep company data off phones'])
   assert.equal(d.question.text, 'How should computers be managed?')
-  assert.deepEqual(d.question.options, ['Enroll in Intune', 'Hybrid join is sufficient', 'Not managed'])
-  assert.equal(d.strict.heading, 'Unmanaged phones')
-  assert.equal(d.strict.text, "Should phones that aren't enrolled be blocked?")
-  assert.doesNotMatch(d.strict.help, /Off:|On:/, 'the control explains its own implementation states')
+  assert.deepEqual(d.question.options, ['Enroll in Intune', 'Hybrid-joined Windows computers', 'Not managed'])
+  assert.equal(d.strict, undefined, 'a redundant phone toggle must not imply an extra policy was configured')
   assert.match(CONTENT_STEP, /typeof d\.text === 'string' && <p className="reason"><T s=\{d\.text\} ex=\{ex\} \/><\/p>/)
   assert.match(CONTENT_STEP, /\{strict\.heading \?\? strict\.label\}/)
   // An answer saved in the old words still answers its option.
   assert.deepEqual(parseAnswer('Protect the apps only', d.options), { index: 1, picked: [] })
-  assert.equal(currentAnswerText('Hybrid-joined is enough'), 'Hybrid join is sufficient')
+  assert.equal(currentAnswerText('Hybrid-joined is enough'), 'Hybrid-joined Windows computers')
 })
 
 // ------------------------------------------------------------ emergency access

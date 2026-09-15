@@ -33,7 +33,7 @@ import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
 import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, previewNoteLines, reviewedPackageFor } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
-import { projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
+import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
 
 type Ex = Record<string, unknown>
@@ -296,7 +296,17 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Keep every channel supported somewhere in this step's lifecycle. A temporarily
   // unavailable channel explains the next action; a permanently unsupported format has no tab.
   const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && (machine || (ch !== 'ps' && ch !== 'json'))) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
-  const artifacts: Artifact[] = CHANNEL_TABS.filter((t) => supported.has(t.id as Channel)).map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel, contract.whatToDo.text))
+  const explanations = pkg && pkgState && pkgBindings && pkgRuntime ? projectExplanation(pkg, pkgState, pkgBindings, pkgRuntime.runtime).channels : []
+  for (const explanation of explanations) {
+    const artifact = packageArtifact(explanation, grounding)
+    if (!produced.some((a) => a.id === artifact.id) && artifact.text().trim() !== '') produced.push(artifact)
+  }
+  // Every step can explain its purpose, facts, decisions and remaining work,
+  // even when no executable change can be offered yet.
+  supported.add('ai')
+  if (!produced.some((a) => a.id === 'ai')) produced.push({ id: 'ai', form: 'code', lines: [], text: () => aiBriefingText('', grounding('')), note: null })
+  if (step.id === 's-prereq-break-glass') supported.delete('email')
+  const artifacts: Artifact[] = CHANNEL_TABS.filter((t) => supported.has(t.id as Channel)).map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel, fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })))
   const W = CONTRACT.implementation
   // Why a preview's work cannot be copied: the values still to resolve, never the
   // blocker again. No Planned work banner draws it over the channels (U4); it is

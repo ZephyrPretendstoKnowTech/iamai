@@ -22,23 +22,19 @@ test('P0-8: Phones and Computers are select elements, with nothing chosen until 
   assert.equal((decision.match(/<Options [^\n]* select \/>/g) ?? []).length, 2)
 })
 
-test('P0-8: Unmanaged phones renders only when Phones is Enroll phones in Intune, and is off otherwise', () => {
-  assert.ok(d.options.includes(d.strict.when), 'the strict toggle follows one of the Phones options')
-  assert.equal(d.strict.when, 'Enroll phones in Intune')
-  const decision = CONTENT_STEP.slice(CONTENT_STEP.indexOf('function SingleDecision('), CONTENT_STEP.indexOf('export function Options('))
-  assert.match(decision, /const strictShown = strict !== null && \(typeof strict\.when !== 'string' \|\| answerParts\(option, options\)\?\.option\.text === strict\.when\)/)
-  assert.match(decision, /\{strict && strictShown && \(/, 'the Unmanaged phones block is drawn whatever Phones says')
-  assert.match(decision, /\.\.\.\(strict && strictShown && strictOn \?/, 'a hidden toggle is still saved')
-  assert.match(decision, /if \(strict && typeof strict\.when === 'string' && answerParts\(next, options\)\?\.option\.text !== strict\.when\) setStrictOn\(false\)/)
+test('the redundant enrollment checkbox is no longer offered', () => {
+  assert.equal(d.strict, undefined)
 })
 
 test('P0-8: a Save without the Unmanaged phones answer clears it from the plan record', () => {
   const f = fixture('demo')
   const at = f.snapshot.asOf
-  const strictKey = answerKey(DEVICES, d.strict.label)
-  const enrolled = applyStepDecisions(f.mapping, { [DEVICES]: { option: d.options[0], answers: { [d.question.label]: d.question.options[0], [d.strict.label]: d.strict.option }, at } })
-  assert.equal(enrolled.questionAnswers?.[strictKey], d.strict.option)
+  const strictKey = answerKey(DEVICES, 'Block phones')
+  const enrolled = applyStepDecisions(f.mapping, { [DEVICES]: { option: d.options[0], answers: { [d.question.label]: d.question.options[0], ['Block phones']: 'Block phones that are not enrolled' }, at } })
+  assert.equal(enrolled.questionAnswers?.[strictKey], 'Block phones that are not enrolled')
   assert.equal(devicePlanOf(enrolled)?.blockPhones, true)
+  const savedAgain = applyStepDecisions(enrolled, { [DEVICES]: { option: d.options[0], answers: { [d.question.label]: d.question.options[0] }, at } })
+  assert.equal(devicePlanOf(savedAgain)?.blockPhones, true, 'an unchanged save preserves the legacy restriction')
   // Phones moves to Protect company apps only: the toggle is hidden, and the Save carries no strict answer.
   const apps = applyStepDecisions(enrolled, { [DEVICES]: { option: d.options[1], answers: { [d.question.label]: d.question.options[0] }, at } })
   assert.equal(strictKey in (apps.questionAnswers ?? {}), false, 'the Unmanaged phones answer outlived the Phones answer it followed')
