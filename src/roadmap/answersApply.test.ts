@@ -139,7 +139,7 @@ test('each question\'s effect line is true when it shows, and never before', () 
   const before = applied(f, null)
   const m = applied(f, f.decisions ?? null)
   const countries = contentStepFor({ id: QUESTION_STEP.travel, goalId: '' }) as unknown as { decision: { question: { effect: unknown } } }
-  assert.match(String(effectLine(countries.decision.question.effect, answerOf(m, QUESTION_STEP.travel, 'question'))), /on the allowed list now/)
+  assert.match(String(effectLine(countries.decision.question.effect, answerOf(m, QUESTION_STEP.travel, 'question'))), /on your plan’s allowed list/)
   assert.equal(effectLine(countries.decision.question.effect, answerOf(before, QUESTION_STEP.travel, 'question')), null)
   const guests = contentStepFor({ id: QUESTION_STEP.partner, goalId: 'guests-mfa' }) as unknown as { decision: { question: { effect: unknown } } }
   assert.match(String(effectLine(guests.decision.question.effect, answerOf(m, QUESTION_STEP.partner, 'question'))), /Service provider type/)

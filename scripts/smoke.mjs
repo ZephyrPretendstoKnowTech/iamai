@@ -572,8 +572,8 @@ try {
   // The implementation control follows the capability: a strip only where there
   // is a choice, and never a one-tab tab set. A decision or check step with nothing
   // to implement by design draws no Implementation region at all (owner, 2026-09-11),
-  // and a planning preview offers no Copy.
-  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const region = st.querySelector('.implementation-section'); if (!region) return true; const strip = region.querySelector('.tabs.impl-tabs'); const empty = region.querySelector('.implementation-empty'); if (region.getAttribute('data-preview') === 'true' && region.querySelector('.preview-actions [aria-label="Copy implementation"]')) return false; if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !empty; return !!empty })()`))
+  // and available planning guidance remains copyable.
+  check('Plan: the implementation control matches the channels that exist', await evaluate(`(() => { const st = document.querySelector('main.page .step'); if (!st) return true; const region = st.querySelector('.implementation-section'); if (!region) return true; const strip = region.querySelector('.tabs.impl-tabs'); const empty = region.querySelector('.implementation-empty'); if (strip) return strip.querySelectorAll('[role=tab]').length >= 2 && !empty; return !!empty })()`))
   // The approved Plan pack's topbar is sticky, and it is the one app header.
   const stickyHeader = await evaluate(
     `(async () => { window.scrollTo(0, 800); await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); const hs = document.querySelectorAll('header.app'); const t = hs[0].getBoundingClientRect().top; window.scrollTo(0, 0); return { n: hs.length, top: Math.round(t), sticky: getComputedStyle(hs[0]).position } })()`,
@@ -953,16 +953,16 @@ try {
     await sleep(400)
   }
   check('Demo: a picker decision is saved', decided, decideNote || openNote)
-  // A rollout exception: Block the Admin Portals for Non-Admins, from its footer,
+  // A rollout exception: Require MFA for Guests, from its footer,
   // with the operator's reason recorded (the approved Plan design's dialog).
   await demoGo('plan')
   let skipped = false
   let skipNote = ''
-  if (await openRow('/Block the Admin Portals/')) {
+  if (await openRow('/Require MFA for Guests/')) {
     if (await clickText('/^Put this step back$/', 'main.page .step .step-footer')) {
       await sleep(400)
       await demoGo('plan')
-      await openRow('/Block the Admin Portals/')
+      await openRow('/Require MFA for Guests/')
     }
     skipNote = await evaluate(`[...document.querySelectorAll('main.page .step .step-footer button')].map((b) => b.textContent.trim()).join('|')`)
     if (await clickText('/^Defer this step$/', 'main.page .step .step-footer')) {
@@ -975,7 +975,7 @@ try {
   }
   // A deferred step's row reads Deferred (decision 3) and is drawn only while `Show deferred` is pressed (S3).
   await evaluate(`(() => { const b = [...document.querySelectorAll('main.page .plan-controls .focus')].find((x) => /Show deferred/.test(x.textContent || '')); if (b && b.getAttribute('aria-pressed') !== 'true') b.click() })()`)
-  check('Demo: a step is deferred', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Block the Admin Portals/.test(r.textContent) && ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Deferred')`, 4000)), skipNote || openNote)
+  check('Demo: a step is deferred', skipped && (await waitFor(`[...document.querySelectorAll('main.page .plan-row')].some((r) => /Require MFA for Guests/.test(r.textContent) && ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Deferred')`, 4000)), skipNote || openNote)
   // A start date, in the plan settings.
   await demoGo('plan')
   await clickText('/^Plan settings$/')
@@ -992,7 +992,7 @@ try {
     // The decision is looked for by key, not by position: the record also holds
     // the sample technician's own decisions (the emergency accounts), and which
     // one JSON writes first is not what this check is about.
-    typeof recordBefore === 'string' && /"stepDecisions":\{/.test(recordBefore) && /"s-prereq-service-accounts-group":/.test(recordBefore) && /"skips":\{[^}]*"s-goal-admin-portals-protected"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
+    typeof recordBefore === 'string' && /"stepDecisions":\{/.test(recordBefore) && /"s-prereq-service-accounts-group":/.test(recordBefore) && /"skips":\{[^}]*"s-goal-guests-mfa"/.test(recordBefore) && /"startDate":"2026-10-05/.test(recordBefore),
     String(recordBefore).slice(0, 200),
   )
   await demoGo('plan')
@@ -1022,12 +1022,13 @@ try {
   const demoPlanJson = await evaluate(`(async () => { const d = window.__dl[window.__dl.length - 1]; return window.__dl.length > ${dlBefore} && d && d.blob ? await d.blob.text() : null })()`)
   check(
     'Demo: Save plan file carries the tenant id, the decision, the skip and the start',
-    typeof demoPlanJson === 'string' && /"id":\s*"demo-sample-tenant"/.test(demoPlanJson) && /"s-prereq-service-accounts-group"/.test(demoPlanJson) && /"s-goal-admin-portals-protected"/.test(demoPlanJson) && /2026-10-05/.test(demoPlanJson),
+    typeof demoPlanJson === 'string' && /"id":\s*"demo-sample-tenant"/.test(demoPlanJson) && /"s-prereq-service-accounts-group"/.test(demoPlanJson) && /"s-goal-guests-mfa"/.test(demoPlanJson) && /2026-10-05/.test(demoPlanJson),
   )
   const alertsBefore = await evaluate(`window.__alerts.length`)
   const loaded =
     typeof demoPlanJson === 'string' &&
     (await evaluate(`(() => { const input = document.querySelector('main.page input[type=file]'); if (!input) return false; const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(demoPlanJson)}], 'plan.json', { type: 'application/json' })); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true })()`))
+  check('Demo: hidden admin-portals step is absent from the exported plan', typeof demoPlanJson === 'string' && !/\"id\":\s*\"s-goal-admin-portals-protected\"/.test(demoPlanJson))
   check(
     'Demo: Load a plan file takes the saved file back, with no tenant refusal',
     loaded && (await waitFor(`location.hash === '#/plan'`, 6000)) && (await evaluate(`window.__alerts.length`)) === alertsBefore,

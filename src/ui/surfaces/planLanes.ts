@@ -394,6 +394,20 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
   }
   for (const step of steps) {
     const reading = out.get(step.id)
+    // Reviewing an unread or unsupported configuration is available now; this
+    // does not clear the engine's blockers or enable generated write operations.
+    if (reading && step.id === PASSKEY_SETTINGS_STEP_ID && step.status !== 'done' && step.status !== 'skipped' && step.blockers.some(b => b.label.startsWith('passkey-settings-'))) {
+      reading.lane = 'Ready'
+      reading.substatus = 'Review'
+      reading.reason = null
+      reading.blockers = []
+    }
+    if (reading && step.goalId === 'guests-mfa' && step.action.unmatchedPair && step.status !== 'done' && step.status !== 'skipped') {
+      reading.lane = 'Ready'
+      reading.substatus = 'Review'
+      reading.reason = null
+      reading.blockers = []
+    }
     // Authentication-method configuration already exists in Entra, even when
     // disabled. This action changes its settings rather than creating an object.
     if (reading?.lane === 'Ready' && step.id === PASSKEY_SETTINGS_STEP_ID && reading.substatus === 'Create') reading.substatus = 'Correct'
@@ -401,5 +415,10 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     if (reading?.lane === 'Ready' && (step.manualReview || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
   }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
+  // Moving a review into Ready must keep lane positions unique and keep
+  // catalogue rows ahead of runtime-only cleanup rows.
+  for (const lane of LANE_ORDER) {
+    [...out.values()].filter(r => r.lane === lane).sort((a, b) => Number(b.fromEngine) - Number(a.fromEngine) || a.order - b.order).forEach((reading, order) => { reading.order = order })
+  }
   return out
 }
