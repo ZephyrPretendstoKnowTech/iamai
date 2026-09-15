@@ -358,7 +358,7 @@ test('messy: conflicts are detected and ordered first', () => {
   const { steps } = runFixture(byName('messy'))
   // The foundations and the validation blockers lead the whole plan
   // (validation-rules.md §2); the tenant's own conflicts lead everything after them.
-  const leads = (s: Step): boolean => s.id.startsWith('s-blocker-') || isEmergencyAccess(s)
+  const leads = (s: Step): boolean => s.id === 's-confirm-workloads' || s.id.startsWith('s-blocker-') || isEmergencyAccess(s)
   const open = steps.filter((s) => s.status !== 'done')
   assert.ok(open.every((s, i) => !leads(s) || open.slice(0, i).every(leads)), 'the foundations and blockers come first, together')
   const first = open.filter((s) => !leads(s)).slice(0, 3)

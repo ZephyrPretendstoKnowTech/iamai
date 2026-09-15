@@ -263,8 +263,8 @@ test('the capability is untouched: the same channels come back when the conditio
 test('the step gates the display and never the artifact', () => {
   // The gate is one boolean over one condition, applied to the channel list. The
   // JSON and the commands are still built by the modules that built them.
-  assert.match(CONTENT_STEP, /const deployNow = implementationIsCurrent\(step\)/, 'the step decides for itself when to deploy')
-  assert.match(CONTENT_STEP, /const channels = deployNow \? channelsFor\(/, 'the gate is not applied to the channel list')
+  assert.match(CONTENT_STEP, /const deployNow = cs\.kind !== 'policy' \|\| implementationIsCurrent\(step\)/, 'the step decides for itself when to deploy')
+  assert.match(CONTENT_STEP, /const channels = step\.workflowChoices \? \[\x27ai\x27 as Channel\] : deployNow \? channelsFor\(/, 'the gate is not applied to the channel list')
   assert.match(CONTENT_STEP, /: channels\.map\(\(ch\): Artifact => \(\{ id: ch,/,'the implementation region is not built from the gated channel list')
   assert.match(CONTENT_STEP, /<Implementation\n\s*artifacts=\{artifacts\}/, 'the implementation region is not handed the artifacts')
   // Nothing writes to the capability.

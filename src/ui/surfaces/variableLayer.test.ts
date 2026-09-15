@@ -86,7 +86,7 @@ test('a policy step expands its done-when from the shared lines, no empty sectio
   const cs = contentStepFor(tp) as { doneWhen: string[] }
   // Editorial batch C: after the shared lines, only the step's own human check, labelled as one.
   assert.equal(cs.doneWhen[0], '{policyDoneWhen}', 'token-protection defers to the shared policy lines')
-  assert.ok(cs.doneWhen.slice(1).every((l) => l.startsWith('Verify after the change: ')), `token-protection adds only human checks: ${cs.doneWhen.join(' | ')}`)
+  assert.deepEqual(cs.doneWhen.slice(1), ['The required supported Windows clients work, and unresolved compatibility issues are recorded.'], 'the client compatibility check remains explicit')
   const ctx: StepVarContext = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => run.input.names?.label(id) ?? id, signature: 'IT', operatorId: run.input.operatorUserId ?? null, now: f.snapshot.asOf }
   const ex = stepVars(tp, ctx) as Record<string, unknown>
   const shared = content.shared as Record<string, string[]>

@@ -108,7 +108,7 @@ export type PlanDecisions = {
  * field: the accounts derive from licences and sign-ins on every scan.
  */
 export const DECISION_STEPS = {
-  emergency: new Set([BREAK_GLASS_STEP_ID, blockerStepId('breakGlass')]),
+  emergency: new Set([BREAK_GLASS_STEP_ID, blockerStepId('breakGlass'), 's-ladder-break-glass-accounts']),
   exclusions: new Set([PREREQ_STEP_ID.exclusionsGroup, blockerStepId('exclusionGroup')]),
   countries: PREREQ_STEP_ID.allowedCountries,
   trustedLocation: PREREQ_STEP_ID.trustedLocation,
@@ -159,6 +159,18 @@ export function applyStepDecisions(mapping: MappingState, stepDecisions: Record<
     // it — unticked, or hidden because the option it follows was not chosen
     // (B10 P0-8, S-DD-1) — clears the stored answer.
     if (labels.strict && typeof d.answers?.[labels.strict] !== 'string') delete next.questionAnswers![answerKey(stepId, labels.strict)]
+    if (stepId === 's-confirm-workloads') {
+      next.workflowConfirmedAt = d.at
+      next.workflowAnswers = { ...(next.workflowAnswers ?? {}) }
+      next.facetOverrides = { ...next.facetOverrides }
+      for (const [key, value] of Object.entries(d.answers ?? {})) {
+        if (!['avd', 'copilot', 'azureDevOps', 'intune', 'sharepoint', 'workload', 'agents', 'azureManagement', 'inforcer'].includes(key) || !['yes', 'no', 'unsure'].includes(value)) continue
+        next.workflowAnswers[key] = value as 'yes' | 'no' | 'unsure'
+        if (value === 'unsure') delete next.facetOverrides[key]
+        else next.facetOverrides[key] = { on: value === 'yes', reason: value === 'yes' ? 'confirmed in use' : 'confirmed not in use' }
+      }
+      continue
+    }
     if (stepId === DECISION_STEPS.sourceReferences) {
       // The Baseline mappings (Plan settings): the baseline's own references only
       // a person can answer, one answer per source id. This tenant's object becomes that reference's confirmed record,

@@ -41,9 +41,14 @@ export function absolute(iso: string): string {
   return formatter('absolute', undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 }
 
+function dayOrInstant(iso: string, key: string, locale: string | undefined, options: Intl.DateTimeFormatOptions): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`))
+  return formatter(key, locale, options).format(new Date(iso))
+}
+
 /** "Sep 10, 2026" in the display time zone. */
 export function absoluteDate(iso: string): string {
-  return formatter('absoluteDate', undefined, { dateStyle: 'medium' }).format(new Date(iso))
+  return dayOrInstant(iso, 'absoluteDate', undefined, { dateStyle: 'medium' })
 }
 
 /**
@@ -52,12 +57,12 @@ export function absoluteDate(iso: string): string {
  * it never falls a day either side of the short form from the same instant.
  */
 export function longDate(iso: string): string {
-  return formatter('longDate', 'en', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(iso))
+  return dayOrInstant(iso, 'longDate', 'en', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
 /** "Jul 30": a day inside a range whose year is obvious. */
 export function monthDay(iso: string): string {
-  return formatter('monthDay', 'en', { month: 'short', day: 'numeric' }).format(new Date(iso))
+  return dayOrInstant(iso, 'monthDay', 'en', { month: 'short', day: 'numeric' })
 }
 
 /** "Jul 30 → Aug 29": the sign-in window on Connect, in the range form the plan uses. */

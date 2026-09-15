@@ -1,3 +1,4 @@
+import { schedulingWords, structuralWords } from '../../content/content.ts'
 // A1b (RUN-CONTEXT-A decision 1): the lane engine is the one producer of a
 // step's state on every Plan surface. The row's label, the opened step's badge,
 // its readiness bar and its rail derive from one lane reading (planBoard.ts
@@ -76,7 +77,7 @@ function boardOf(run: Run): { readings: Map<string, LaneReading>; views: Map<str
 const DAY = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/
 const FACTS = new Set([CONTRACT.lifecycle['report-only'], CONTRACT.lifecycle.enforced])
 /** The bar's content key for each Ready substatus, as stepContract.ts keys it. */
-const BAR_KEY: Record<string, string> = { Create: 'create', Correct: 'correct', Decision: 'needsDecision', Observing: 'review', 'Ready to enforce': 'readyToEnforce' }
+const BAR_KEY: Record<string, string> = { Create: 'create', Correct: 'correct', Decision: 'needsDecision', Review: 'manualReview', Observing: 'review', 'Ready to enforce': 'readyToEnforce' }
 
 test('the row, the badge, the bar and the rail derive from one lane reading on every step of every demo plan', () => {
   let checked = 0
@@ -126,12 +127,12 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       }
       // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
       const rail = railOf(c)
-      assert.ok(DAY.test(rail.metric) || rail.metric === WHEN.none, `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
-      if (c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, WHEN.none, `${where}: an undated step's rail is not the placeholder`)
+      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled', `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
+      if (c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
       const when = boardWhenOf(step, waveStartOf(step))
-      assert.ok(when === WHEN.none || DAY.test(when), `${where}: When reads "${when}"`)
-      if (step.status === 'done') assert.equal(when, WHEN.none, `${where}: a finished row is dated`)
+      assert.ok(['Not scheduled', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
+      if (step.status === 'done') assert.ok(when === 'Already in place' || DAY.test(when), `${where}: completion has neither evidence nor a date`)
       checked += 1
     }
   }

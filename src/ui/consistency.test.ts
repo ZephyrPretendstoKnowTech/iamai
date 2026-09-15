@@ -10,11 +10,13 @@ import { buildStrengthLookup } from '../coverage/strength.ts'
 import { buildViabilityInputs } from '../scoring/fromSnapshot.ts'
 import { scoreMfaViability, summarizeTenant } from '../scoring/mfaViability.ts'
 import { generateRoadmap } from '../roadmap/generate.ts'
+import { goalMapFor } from '../roadmap/goalMap.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { buildNameDirectory } from '../names.ts'
 
 const snapshot = fixtureSnapshot()
 const baseline = fixtureBaseline()
+const goalMap = goalMapFor(baseline.pkg.policies, new Map()).map
 const now = new Date().toISOString()
 
 // Scan page (MfaViabilityScreen) and Findings page compute readiness the same way.
@@ -26,6 +28,7 @@ const tenantPolicies = snapshot.config.caPolicies?.rows ?? []
 const strengths = buildStrengthLookup(snapshot.config.authStrengths?.rows ?? [])
 const report = computeCoverage({
   snapshot,
+  goalMap,
   tenantPolicies,
   baselinePolicies: baseline.pkg.policies,
   baselineUnusable: baseline.pkg.report.warnings ?? [],
@@ -41,6 +44,7 @@ const { steps } = generateRoadmap({
   planId: 'test-plan',
   coverage: report,
   snapshot,
+  goalMap,
   baseline: baseline.pkg,
   baselineAuthor: null,
   mapping,
@@ -65,8 +69,11 @@ test('goal counts: Findings tiles sum to the scored goals and match the Roadmap'
   const unknown = report.results.filter((r) => r.status === 'unknown').length
   assert.equal(enforced.length + partial + absent + unknown, scored.length, 'in place + partly + missing + could not tell = scored')
   const doneGoalSteps = steps.filter((s) => s.status === 'done' && s.kind === 'create')
-  assert.equal(doneGoalSteps.length, enforced.length, 'Roadmap steps already in place = Findings goals in place')
-  assert.ok(steps.length >= scored.length, 'every scored goal has a step')
+  // Coverage can also recognise tenant controls outside this uploaded baseline.
+  // A recognised policy is not necessarily a completed task: unresolved mappings
+  // and a required correction still need work. Every completed goal must nevertheless be covered.
+  for (const step of doneGoalSteps) assert.ok(enforced.some((r) => r.goal.id === step.goalId), `${step.goalId}: completion has no enforced coverage`)
+  for (const goalId of Object.keys(goalMap)) assert.ok(steps.some((s) => s.goalId === goalId), `${goalId}: a baseline goal has no plan step`)
 })
 
 test('percentages: the MFA-ready share reads the same on Findings and on the all-users step', () => {

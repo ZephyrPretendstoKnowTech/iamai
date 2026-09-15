@@ -49,7 +49,7 @@ test('pressing Start writes the start date and when to the plan file, and a load
   assert.equal(back.startDate, START, 'the anchored start travels')
   assert.equal(back.startedAt, '2026-09-01T09:30:00.000Z', 'when it was started travels')
   // A plan file saved before Start was pressed carries no startedAt.
-  const proposal = buildPlanFile({ ...file, planId: f.planId, snapshot: f.snapshot, operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' }, baselineSource: { kind: 'github', owner: 'o', repo: 'r', commit: 'c' }, mapping: f.mapping, steps: run.steps, checkpoints: [], schedule: { startDate: START } })
+  const proposal = buildPlanFile({ ...file, decisions: undefined, planId: f.planId, snapshot: f.snapshot, operator: { userId: f.operatorId, userPrincipalName: 'operator@example.test' }, baselineSource: { kind: 'github', owner: 'o', repo: 'r', commit: 'c' }, mapping: f.mapping, steps: run.steps, checkpoints: [], schedule: { startDate: START } })
   assert.equal(decisionsOf(parsePlanFile(JSON.stringify(proposal)).plan!.decisions, f.planId).startedAt, undefined)
 })
 

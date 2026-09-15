@@ -15,10 +15,7 @@
   "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
   "when": "Aug 31, 2026"
 }

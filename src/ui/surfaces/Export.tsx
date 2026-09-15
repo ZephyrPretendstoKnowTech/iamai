@@ -27,7 +27,8 @@ import type { PlanComputed } from './planData.ts'
 import { inventoryTables, readinessTable } from './inventoryTables.ts'
 import { notPeopleIds } from '../../derive/sets.ts'
 import { buildIcs } from '../../roadmap/ics.ts'
-import { buildPlanFile, makeCheckpoint, parsePlanFile } from '../../roadmap/plan.ts'
+import { buildPlanFile, makeCheckpoint, parsePlanFile, sameBaselineSource } from '../../roadmap/plan.ts'
+import { baselineContentHash } from '../../baseline/contentHash.ts'
 import type { Checkpoint } from '../../roadmap/plan.ts'
 import { decisionsOf } from '../../roadmap/progress.ts'
 import type { PlanDecisions } from '../../roadmap/progress.ts'
@@ -36,8 +37,7 @@ import { summarizeTenant } from '../../scoring/mfaViability.ts'
 import { facts } from '../../derive/facts.ts'
 import { announcementDraft, groundingBundle, promptPack, promptPackMarkdown } from '../../roadmap/prompts.ts'
 import type { PackItem } from '../../roadmap/prompts.ts'
-import { savePlanRecord } from '../../graph/collect/cache.ts'
-import { saveMappingState } from '../../mapping/store.ts'
+import { importPlanRecords } from '../../graph/collect/cache.ts'
 import { REDACTED, exportClipboard, exportDownload, exportPrint, unredactedFrom } from '../exportGuard.ts'
 import { GROUNDING } from '../../copy/comms.ts'
 import { absoluteDate, toCsv } from '../format.ts'
@@ -72,9 +72,9 @@ function pinOf(baseline: BaselineResult | null): string | null {
 }
 
 /** The plan record's baseline source: one fact, read from the baseline the plan used. */
-function planBaselineSource(baseline: BaselineResult | null): { kind: 'github'; owner: string; repo: string; commit: string } | { kind: 'upload'; fileName: string } {
+async function planBaselineSource(baseline: BaselineResult | null): Promise<import('../../roadmap/plan.ts').PlanFile['baseline']['source']> {
   const origin = baseline?.origin ?? null
-  if (origin !== null && origin.kind === 'upload') return { kind: 'upload', fileName: baseline?.source ?? '' }
+  if (origin !== null && origin.kind === 'upload') return { kind: 'upload', fileName: baseline?.source ?? '', contentHash: await baselineContentHash(origin.files) }
   return { kind: 'github', owner: origin?.owner ?? PINNED_BASELINE.owner, repo: origin?.repo ?? PINNED_BASELINE.repo, commit: origin?.commit ?? PINNED.commit }
 }
 
@@ -166,7 +166,7 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     })
   }
 
-  const savePlan = (): void => {
+  const savePlan = async (): Promise<void> => {
     if (!data.mapping) return
     const summary = summarizeTenant(viability)
     const exclusionGroups = [...data.groups.entries()].map(([groupId, g]) => ({ groupId, memberCount: g.memberCount, memberIds: g.memberIds }))
@@ -175,9 +175,9 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
     // package's own commit (pinned.json), never the index's file-list commit,
     // which is the previous pin and would name a source this plan never read.
     // An uploaded baseline is recorded as an upload, not attributed to the author.
-    const baselineSource = planBaselineSource(baseline)
+    const baselineSource = await planBaselineSource(baseline)
     // The saved checkpoints travel (each Cleanup row's Done is one, E3), then this save's own.
-    const file = buildPlanFile({ planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, confirmations: data.confirmations, startedAt: data.startedAt ?? undefined, signature: data.signature })
+    const file = buildPlanFile({ decisions: data.recordForExport ?? undefined, planId, snapshot, operator, baselineSource, mapping: data.mapping, steps, checkpoints: [...(data.checkpoints as Checkpoint[]), checkpoint], schedule: { startDate: data.startDate ?? schedule.start, band: data.band ?? undefined, freeze: data.freeze }, stepDecisions: data.stepDecisions, confirmations: data.confirmations, startedAt: data.startedAt ?? undefined, signature: data.signature })
     // The person's own working state, to load back on this tenant: names in full (the card says so).
     exportDownload(`iamai-plan-${snapshot.tenantId.slice(0, 8)}.json`, JSON.stringify(file, null, 2), 'application/json', unredactedFrom('plan-file'))
   }
@@ -216,8 +216,17 @@ export function Export({ scan, baseline, account }: { scan: { snapshot: TenantSn
       },
       plan.planId,
     )
-    await savePlanRecord(snapshot.tenantId, record)
-    if (plan.mappings && plan.mappings.tenantId === snapshot.tenantId) await saveMappingState(plan.mappings)
+    const currentSource = await planBaselineSource(baseline)
+    if (!sameBaselineSource(plan.baseline.source, currentSource)) {
+      window.alert?.(A.importBaselineMismatch)
+      return
+    }
+    try {
+      await importPlanRecords(snapshot.tenantId, record, plan.mappings as unknown as Record<string, unknown>)
+    } catch {
+      window.alert?.(A.importSaveFailed)
+      return
+    }
     window.location.hash = '#/plan'
   }
 

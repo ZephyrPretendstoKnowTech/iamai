@@ -595,9 +595,14 @@
       },
       "when": {
         "$comment": "The board's When column (planBoard.ts boardWhen): a date, or the placeholder (A1b). after and afterPrerequisites are the Up Next lane label's tail (laneLabelOf), never the column.",
-        "none": "—",
+        "none": "Not scheduled",
         "after": "After {step}",
-        "afterPrerequisites": "After prerequisites"
+        "afterPrerequisites": "After prerequisites",
+        "waiting": "After prerequisites",
+        "review": "After review",
+        "done": "Already in place",
+        "deferred": "Not scheduled",
+        "estimate": "Est. {date}"
       },
       "lanes": {
         "$comment": "The lane engine's five lanes as the Plan says them (A1b, decision 11): the tabs, the toggles, the row label, the badge, the bar and the rail all read these (planBoard.ts BOARD.lanes). A step the person said does not apply here reads doesntApply.",
@@ -1003,7 +1008,7 @@
     },
     "home": {
       "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
-      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
+      "metaDescription": "Check who could be affected by your Microsoft Entra security changes. IAMAI reviews your tenant and helps you plan the work before you deploy.",
       "brand": "IAMAI",
       "navHow": "How it works",
       "navSource": {
@@ -1011,82 +1016,81 @@
         "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
       },
       "eyebrow": "Microsoft identity security",
-      "h1": "Find the gaps. Catch the hidden risks. Plan a safer rollout.",
-      "siteLine": "IAMAI looks beyond whether a policy exists. It checks the details that can make a rollout succeed or fail: which sign-in methods people have, whether the available records show they’ve used them, and whether exclusions or external accounts need attention.",
+      "h1": "Know what needs attention before you change a policy.",
+      "siteLine": "A policy can look right and still cause problems. IAMAI checks who has the required sign-in methods, whether the available records show they use them, and which exclusions or outside accounts need a closer look. Then it helps you plan the changes.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
       "heroMeta": [
-        "Read-only",
-        "Runs in your browser",
-        "Source is public"
+        "Free public preview",
+        "You review and make the changes"
       ],
       "workLabel": "What it does",
-      "workHeading": "From a tenant scan to a dated plan you can carry out.",
-      "workLead": "Get a practical plan for what to address first, what to check, and how to move toward stronger protection. You stay in control of every change.",
+      "workHeading": "See what needs doing, and what needs to happen first.",
+      "workLead": "Start with the tenant you have. IAMAI compares it with your chosen baseline, shows the gaps it can assess, and puts the work in order.",
       "work": [
         {
-          "verb": "Reads",
-          "text": "A tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records."
+          "verb": "Check",
+          "text": "Review policies, accounts, groups and the sign-in evidence Microsoft makes available to this tenant."
         },
         {
-          "verb": "Compares",
-          "text": "What each baseline policy is for with what the tenant already has, so a control you built yourself counts as done."
+          "verb": "Understand",
+          "text": "See what already meets the baseline, what needs attention, and who a change could affect."
         },
         {
-          "verb": "Plans",
-          "text": "The difference as dated steps: report-only first where a policy supports it, who could be affected by each change, and the emails to send."
+          "verb": "Prepare",
+          "text": "Work through the prerequisites, review the instructions, and test changes before enforcing them."
         }
       ],
       "baselineLabel": "Default baseline",
       "baselineName": "Defense in Depth",
-      "baseline": "A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
-      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
-      "baselineNote": "IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.",
+      "baseline": "The default is Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
+      "baselineGoal": "It covers MFA, administrator access, devices, sessions and more. IAMAI helps you work through the parts that apply to your tenant and prepare for changes that could affect people’s access.",
+      "baselineNote": "You can inspect the baseline version IAMAI uses or load your own. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.",
       "catchesLabel": "What it catches",
-      "catchesHeading": "Problems worth finding before enforcement.",
+      "catchesHeading": "A few things worth checking before you deploy.",
       "catches": [
         {
-          "label": "Authentication",
-          "text": "An admin whose only sign-in method is a text message, about to be required to use a passkey."
+          "label": "Sign-in methods",
+          "text": "Someone has registered a strong method, but the available records do not show them using it."
         },
         {
           "label": "Emergency access",
-          "text": "An emergency access account inside the policy it exists to survive."
+          "text": "A proposed policy may reach the accounts you rely on to recover access."
         },
         {
-          "label": "Location",
-          "text": "A country rule that blocks the person who wrote it."
+          "label": "Exclusions",
+          "text": "Accounts in an exclusion group need a review of why they are still exempt."
         },
         {
-          "label": "Service accounts",
-          "text": "A service account that a legacy-authentication block stops at 2 a.m."
+          "label": "Outside accounts",
+          "text": "Guests may need different preparation or follow-up before a change applies to them."
         },
         {
-          "label": "Devices",
-          "text": "A meeting-room device that a session rule signs out every hour."
+          "label": "Shared accounts",
+          "text": "A meeting-room or service account may need attention before new sign-in requirements take effect."
         }
       ],
       "trustLabel": "What it does with your tenant",
-      "trustHeading": "Inspect it before you connect a tenant.",
+      "trustHeading": "Your tenant stays under your control.",
       "trust": [
         {
-          "title": "Read-only",
-          "body": "IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in."
+          "title": "IAMAI does not change your tenant",
+          "body": "You can review the permissions before connecting. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself."
         },
         {
-          "title": "Your plan is built in your browser",
-          "body": "IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data."
+          "title": "Your scan is processed on your device",
+          "body": "Tenant data is read from Microsoft and processed in your browser. IAMAI does not upload your scan to its own server. Downloaded plans and copied briefings can contain tenant information, so review them before sharing. The website host may also collect page-load information."
         },
         {
-          "title": "Source is public",
-          "body": "Read the code, the permissions and the limits, then decide whether to connect.",
-          "link": "github.com/ZephyrPretendstoKnowTech/iamai",
+          "title": "You can inspect the code",
+          "body": "The source and documented limits are public. Check how IAMAI works, report a problem, or suggest an improvement.",
+          "link": "View IAMAI on GitHub",
           "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
         }
       ],
       "aboutLabel": "About",
-      "aboutHeading": "Built from Microsoft identity work.",
-      "about": "Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not."
+      "aboutHeading": "Built by someone who does this work.",
+      "about": "I’m Lachlan Robinette. I work with Microsoft Entra security baselines across MSP-managed tenants. I built IAMAI to help with the checks and decisions that sit between a baseline and a successful rollout. It is still in public preview. If something is wrong or unclear, tell me at feedback@getiamai.com."
     },
     "app": {
       "$comment": "Words the app chrome and the surfaces show that no step or review page renders: the header, the scan progress, the print cover, the export alerts. Read by src/content/content.ts `app`; the review page never renders them.",
@@ -1141,7 +1145,12 @@
           "wordmark": "IAMAI",
           "name": "IAMAI Planner",
           "descriptor": "Microsoft Entra Planner"
-        }
+        },
+        "saveFailed": "Changes could not be saved in this browser. Keep this tab open and download your plan before leaving.",
+        "saveBackup": "Download a backup",
+        "evidenceContext": "{tenant} · Last successful scan: {date}",
+        "staleEvidence": "This scan is more than a week old. Scan again before acting on its findings.",
+        "partialEvidence": "Some configuration reads were unavailable. Check the affected steps before making changes."
       },
       "error": {
         "title": "This page hit an error",
@@ -1437,7 +1446,8 @@
               "observing": "Continue observation",
               "review": "Review the report-only results",
               "readyToEnforce": "Ready to enforce",
-              "none": "Nothing left to do"
+              "none": "Nothing left to do",
+              "manualReview": "Complete the review below"
             },
             "results": {
               "$comment": "A package readiness gate's result as its tile value (stepPackage.ts mergeReadiness). The protocol's words (protocol.ts READINESS_RESULTS) stay the package's; the page says these, so the retired Blocked never renders (B11 P1-7).",
@@ -1787,6 +1797,147 @@
         },
         "mfaReadinessAfterUnknown": {
           "mfa": "for per-person detail."
+        },
+        "recoveryTestAccounts": "I tested recovery with these accounts:",
+        "manualReviewRecorded": "You recorded this review on {date}.",
+        "manualReviewExplain": "IAMAI cannot verify the whole review. Confirm only after you have met the completion criteria above. Changes to the reviewed accounts or settings may reopen this step.",
+        "manualReviewConfirm": "I completed this review",
+        "manualReviewUndo": "Reopen this review",
+        "manualReviewScanFirst": "Complete the changes above and scan again. The account or setting checks must pass before you can record this review.",
+        "workflows": {
+          "title": "Confirm the services you use",
+          "why": "Your plan should cover the services this tenant uses. Activity helps IAMAI find them, but a quiet service may still need protection.",
+          "instructions": "Confirm which services this tenant uses. Choose Not sure if you need to check; IAMAI will keep the question open.",
+          "done": "You have confirmed which listed services are in use.",
+          "names": {
+            "sharepoint": "SharePoint and OneDrive",
+            "avd": "Azure Virtual Desktop",
+            "inforcer": "Inforcer",
+            "agents": "Agent identities",
+            "azureManagement": "Azure management",
+            "intune": "Intune",
+            "workload": "Directory synchronization",
+            "copilot": "Copilot",
+            "azureDevOps": "Azure DevOps"
+          },
+          "noSignal": "IAMAI has no reliable usage signal for this service.",
+          "answers": {
+            "yes": "In use",
+            "no": "Not in use",
+            "unsure": "Not sure"
+          },
+          "save": "Save service choices",
+          "notUsed": "You confirmed that {service} is not in use.",
+          "reviewTitle": "Review access protection for {service}",
+          "reviewWhy": "Check the baseline control against how you use {service}. IAMAI cannot verify this policy automatically.",
+          "source": "Baseline reference: {policy}. Use the selected baseline on Connect to inspect its full policy definition.",
+          "generic": "Identify what the policy protects, who it includes and excludes, and which access requirements it applies.",
+          "reviewInstructions": [
+            "Match every application, group, location and authentication strength in the baseline to the intended object in this tenant. Never reuse a baseline author’s tenant-specific IDs.",
+            "Check existing policies before making a change. Preserve emergency access and confirm the effect on the intended people or identities.",
+            "Where the policy supports report-only, use it first and review the results. Otherwise use the service’s supported test process before enabling it.",
+            "Confirm that the intended access works and unwanted access is blocked. Record the review below only after you have validated the control; IAMAI does not verify completion of this manual step."
+          ],
+          "reviewDone": "You have reviewed the policy for this tenant, made any necessary changes, and tested the intended access and restrictions.",
+          "policies": [
+            {
+              "pattern": "SharePoint",
+              "title": "Review SharePoint and OneDrive access outside trusted locations",
+              "why": "Check whether files should be accessible away from your trusted networks, including the effect on remote workers.",
+              "instructions": [
+                "Review the baseline’s SharePoint and OneDrive block policy. Confirm the trusted locations and the people or groups it exempts before deciding how it should apply here."
+              ]
+            },
+            {
+              "pattern": "inforcer",
+              "title": "Review MFA for Inforcer access",
+              "why": "If this tenant uses Inforcer, confirm that its sign-ins receive the MFA protection you intend.",
+              "instructions": [
+                "Review the Inforcer application targeted by the baseline and confirm it is the enterprise application used by this tenant. Check the included and excluded groups and whether an existing policy already requires MFA for the same sign-ins."
+              ]
+            },
+            {
+              "pattern": "AVD.*Exclude",
+              "title": "Review who can use Azure Virtual Desktop",
+              "why": "Only the people intended to use virtual desktops should be able to sign in to them.",
+              "instructions": [
+                "Review the AVD block policy and the group allowed to use it. Confirm the AVD application and the group that should be allowed through; a wrong exception can block legitimate desktop access."
+              ]
+            },
+            {
+              "pattern": "AVD.*NonTrusted",
+              "title": "Review where Azure Virtual Desktop can be used",
+              "why": "Confirm whether virtual desktop access should be limited to trusted networks.",
+              "instructions": [
+                "Review the AVD application block outside trusted locations. Confirm the network definitions and exemptions against how people connect to their desktops."
+              ]
+            },
+            {
+              "pattern": "WindowsAzureAD|BaselineScopes",
+              "title": "Review MFA for the baseline’s Azure application scope",
+              "why": "Confirm that the Azure application scope receives the intended authentication requirement without disrupting legitimate administration.",
+              "instructions": [
+                "Inspect the application scope, authentication strength and exceptions in this baseline policy. Confirm that every referenced application and strength is the intended object in this tenant. Check the full application scope, even when the name looks familiar."
+              ]
+            },
+            {
+              "pattern": "HighRiskAgent",
+              "title": "Review access from high-risk agent identities",
+              "why": "If agent identities are in use, review how high-risk identities should be restricted.",
+              "instructions": [
+                "Inspect the baseline’s agent-risk condition and blocked agent scope. Confirm that this tenant supports the identity type and policy condition, and use the supported agent testing process before enabling the restriction."
+              ]
+            },
+            {
+              "pattern": "NonTrustedAgents",
+              "title": "Review which agent identities are trusted",
+              "why": "Agent access should match the identities your organization has approved.",
+              "instructions": [
+                "Review how the baseline identifies trusted and untrusted agents. Resolve its identity selectors for this tenant and test both an approved and an unapproved agent before enabling the restriction."
+              ]
+            }
+          ],
+          "baselineContext": "Baseline source for manual review. This is the author’s definition, not a request ready to run against this tenant. Resolve its references and validate support before using it.",
+          "choiceContext": "Service choices recorded in IAMAI"
+        },
+        "impactLabels": {
+          "s-confirm-workloads": "Services in this tenant",
+          "s-ladder-legacy-auth-inventory": "Legacy sign-ins",
+          "s-ladder-app-passwords": "App passwords",
+          "s-ladder-guest-review": "Guest access",
+          "s-ladder-stale-accounts": "Inactive accounts",
+          "s-ladder-authenticator-over-sms": "Sign-in methods",
+          "s-ladder-admin-accounts-separate": "Administrator accounts",
+          "s-ladder-global-admin-count": "Global Administrators",
+          "s-prereq-per-user-mfa": "Per-user MFA",
+          "s-blocker-allowed-countries": "Allowed countries",
+          "s-prereq-allowed-countries": "Allowed countries",
+          "s-ladder-security-defaults": "Tenant sign-in protection",
+          "s-ladder-per-user-mfa-cleanup": "Per-user MFA",
+          "s-ladder-break-glass-accounts": "Emergency access accounts",
+          "s-prereq-break-glass": "Emergency access accounts",
+          "s-prereq-exclusion-group": "Policy exclusions",
+          "s-prereq-service-accounts-group": "Service accounts",
+          "s-prereq-device-plan": "Phones and computers",
+          "s-check-separate-admin-accounts": "Administrator accounts"
+        },
+        "impactDefault": "Tenant settings",
+        "impactPolicy": "Policy scope",
+        "summary": {
+          "ready": "Ready now",
+          "input": "Needs your input",
+          "observing": "Observing",
+          "completed": "Completed",
+          "finish": "Estimated finish",
+          "all": "Show the full plan",
+          "filter": "Showing {view}",
+          "finishUnknown": "Depends on open work"
+        },
+        "cleanupImpacts": {
+          "hardening": "Emergency account safeguards",
+          "naming": "Policy names",
+          "consolidation": "Overlapping policies",
+          "notAssessed": "Baseline policies"
         }
       },
       "readiness": {
@@ -1815,7 +1966,9 @@
         "copied": "Copied",
         "redactedLabel": "Include names and addresses (unredacted)",
         "promptScope": "About one step: {step}",
-        "promptWholePlan": "About the whole plan"
+        "promptWholePlan": "About the whole plan",
+        "importBaselineMismatch": "This plan uses a different baseline. Load the matching baseline on Connect before importing it. Your current plan has not been changed.",
+        "importSaveFailed": "The plan could not be saved. Your previous saved plan has not been replaced. Keep the backup file and try again."
       },
       "print": {
         "runningHeader": "IAMAI plan · {tenant} · {date}",
@@ -2061,9 +2214,9 @@
       },
       "dates": null,
       "doneWhen": [
-        "Every minimum safety check passes on the next scan.",
-        "Each hardening recommendation passes, or is deferred to Cleanup.",
-        "Verify after the change: record a successful recovery drill separately; a passing configuration check is not a drill."
+        "The next scan confirms that the selected accounts meet every required emergency-access check.",
+        "Any remaining hardening work is recorded in Cleanup with your deferral.",
+        "Record a successful recovery test for each account; a configuration scan cannot confirm that test for you."
       ],
       "ifWrong": null,
       "lockedOut": {
@@ -2196,7 +2349,7 @@
       "doneWhen": [
         "The exclusions group is confirmed and contains only the selected emergency access accounts.",
         "All {total} checks pass on the next scan.",
-        "Verify after the change: each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan."
+        "Each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2282,7 +2435,7 @@
       "dates": null,
       "doneWhen": [
         "Each listed account is disabled, blocked from sign-in, or shows a sign-in on the next scan.",
-        "Verify after the change: an account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
+        "An account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
       ],
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
       "comms": null,
@@ -2378,7 +2531,7 @@
       "dates": null,
       "doneWhen": [
         "A countries named location with exactly {countries} exists in the tenant.",
-        "Verify after the change: it determines location by IP address and leaves unknown countries or regions out."
+        "It determines location by IP address and leaves unknown countries or regions out."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2459,7 +2612,7 @@
       "dates": null,
       "doneWhen": [
         "A trusted IP named location exists in the tenant.",
-        "Verify after the change: its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them."
+        "Its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2535,7 +2688,7 @@
       "dates": null,
       "doneWhen": [
         "The group exists with exactly the confirmed accounts.",
-        "Verify after the change: each member's workload owner confirmed it runs unattended and no person signs in with it."
+        "Each member's workload owner confirmed it runs unattended and no person signs in with it."
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
@@ -2601,7 +2754,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the shared devices work from the approved network, and the person-policy exclusions IAMAI lists are in place."
+        "The shared devices work from the approved network, and the person-policy exclusions IAMAI lists are in place."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -2677,7 +2830,7 @@
       "dates": null,
       "doneWhen": [
         "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.",
-        "Verify after the change: test sign-in for representative users and admins right after the changeover."
+        "Test sign-in for representative users and admins right after the changeover."
       ],
       "ifWrong": "Turn security defaults back on from the same page; it takes effect within minutes.",
       "comms": null,
@@ -2730,7 +2883,7 @@
       "dates": null,
       "doneWhen": [
         "The tenant reports Migration complete and no account has per-user MFA set.",
-        "Verify after the change: the replacement Conditional Access policy is enabled and covers every account you changed."
+        "The replacement Conditional Access policy is enabled and covers every account you changed."
       ],
       "ifWrong": "Set Migration in progress again; per-user settings can be re-enabled per account.",
       "comms": null,
@@ -2787,7 +2940,7 @@
       "dates": null,
       "doneWhen": [
         "Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.",
-        "Verify after the change: an emergency access account still signs in with its key; configuration checks do not replace that test."
+        "An emergency access account still signs in with its key; configuration checks do not replace that test."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2863,7 +3016,7 @@
       "dates": null,
       "doneWhen": [
         "An authentication strength named \"{strengthName}\" exists with exactly the five combinations listed above, or an existing strength with the same combinations is selected and confirmed.",
-        "Verify after the change: every policy already using the strength still accepts the methods its users rely on."
+        "Every policy already using the strength still accepts the methods its users rely on."
       ],
       "ifWrong": "Delete the strength; no policy references it yet.",
       "comms": null,
@@ -3052,7 +3205,7 @@
       "dates": null,
       "doneWhen": [
         "Each trip is recorded with its traveller, countries and dates.",
-        "Verify after the change: the country change is in place for the approved dates, and each temporary country is removed when no approved trip or permanent requirement still needs it."
+        "The country change is in place for the approved dates, and each temporary country is removed when no approved trip or permanent requirement still needs it."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3101,7 +3254,7 @@
       "dates": null,
       "doneWhen": [
         "Both policies exclude the Service provider type on the next scan, where you chose to exclude service providers.",
-        "Verify after the change: the partner's approved access path still works."
+        "The partner's approved access path still works."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3150,7 +3303,7 @@
       "dates": null,
       "doneWhen": [
         "Every mail-sending device sends through OAuth or a connector, and the service-accounts group holds none of them.",
-        "Verify after the change: test messages from each device are delivered before its old exception is removed."
+        "Test messages from each device are delivered before its old exception is removed."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3197,7 +3350,7 @@
           "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
           "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
           "needsProof": "{n} people with a phishing-resistant method not yet proven on every platform they use; ask each to sign in with it from each one:",
-          "readinessUnknown": "{n} people whose methods or sign-in records could not be read; scan again before judging them:",
+          "readinessUnknown": "{n} people with incomplete method or sign-in data; scan again before assessing readiness:",
           "holdouts": "{n} people past the enroll-by date with nothing done; review each before the policy is enforced:"
         },
         "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
@@ -3235,7 +3388,7 @@
       "doneWhen": [
         "Readiness reaches 90% of active people Ready for phishing-resistant MFA, or {enrollBy} has passed and every holdout has a review outcome; the date alone is not proof of readiness.",
         "Every admin is Ready for phishing-resistant MFA.",
-        "Verify after the change: the registration campaign's settings match what your organization approved."
+        "The registration campaign's settings match what your organization approved."
       ],
       "ifWrong": null,
       "comms": {
@@ -3350,7 +3503,7 @@
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: representative users can satisfy MFA, including people who needed setup help."
+        "Representative users can satisfy MFA, including people who needed setup help."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -3445,7 +3598,7 @@
       "doneEnd": "The policy is enforced in {tenant} with the baseline's authentication strength and the exclusions group, and every admin holds a qualifying phishing-resistant method.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: each affected admin has signed in with an accepted method, and the role scope and authentication strength match the plan."
+        "Each affected admin has signed in with an accepted method, and the role scope and authentication strength match the plan."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -3650,7 +3803,7 @@
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and partner accounts addressed.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: representative guests on each external-user path can complete MFA, and approved partner trust behaves as expected."
+        "Representative guests on each external-user path can complete MFA, and approved partner trust behaves as expected."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -3755,7 +3908,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the intended registration and recovery paths work for remote users and new starters."
+        "The intended registration and recovery paths work for remote users and new starters."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -3859,7 +4012,7 @@
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: required applications and devices use a supported sign-in path; no events in the records does not prove there are none."
+        "Required applications and devices use a supported sign-in path; no events in the records does not prove there are none."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -3949,7 +4102,7 @@
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and any device code sign-in workflows accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: tools, shared devices and enrollment workflows that used device code have a tested alternative."
+        "Tools, shared devices and enrollment workflows that used device code have a tested alternative."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4022,7 +4175,7 @@
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: affected apps and devices can sign in directly where supported."
+        "Affected apps and devices can sign in directly where supported."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4094,7 +4247,7 @@
       "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from countries not in the allowed list, with the exclusions group applied and partner and travel exceptions addressed.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: blocked sign-ins in the records were reviewed, and legitimate travel and network routes are addressed."
+        "Blocked sign-ins in the records were reviewed, and legitimate travel and network routes are addressed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4191,7 +4344,7 @@
       "doneEnd": "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.",
       "doneWhen": [
         "{changeDoneWhen}",
-        "Verify after the change: representative admin browser sessions reauthenticate at the set frequency without losing work."
+        "Representative admin browser sessions reauthenticate at the set frequency without losing work."
       ],
       "ifWrong": "{changeIfWrong}",
       "comms": {
@@ -4306,7 +4459,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: from an unmanaged device, controlled browser tests show the intended restrictions for each service."
+        "From an unmanaged device, controlled browser tests show the intended restrictions for each service."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4405,7 +4558,7 @@
       "doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: required compliant or hybrid-joined device paths work outside trusted locations, including browser, server and enrollment workflows."
+        "Required compliant or hybrid-joined device paths work outside trusted locations, including browser, server and enrollment workflows."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4502,7 +4655,7 @@
       "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from unsupported device platforms, with the exclusions group applied and the baseline mapping resolved.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: required workflows on excluded or unidentified platforms have an approved, tested access path."
+        "Required workflows on excluded or unidentified platforms have an approved, tested access path."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4578,7 +4731,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the Intune app protection policies apply to the intended users, and supported apps pass controlled tests."
+        "The Intune app protection policies apply to the intended users, and supported apps pass controlled tests."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4660,7 +4813,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: people can satisfy MFA for Azure management, and automation that signs in as a user has a verified supported path."
+        "People can satisfy MFA for Azure management, and automation that signs in as a user has a verified supported path."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4739,7 +4892,7 @@
       "doneEnd": "The policy is enforced in {tenant}, requiring MFA to register a device, with the exclusions group applied and pilot validation complete.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the legacy device-registration MFA setting is No, and the registration or join workflows you rely on succeed."
+        "The legacy device-registration MFA setting is No, and the registration or join workflows you rely on succeed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4806,7 +4959,7 @@
       "doneEnd": "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the required supported Windows clients work, and unresolved compatibility issues are recorded."
+        "The required supported Windows clients work, and unresolved compatibility issues are recorded."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -4888,7 +5041,7 @@
       "doneEnd": "For a supported identity, a later scan confirms the intended policy and its enabled state. Creating the policy alone does not establish protection.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the expected sync workflow succeeds and the policy evaluates the intended token requests. Creating the policy alone does not establish protection."
+        "The expected sync workflow succeeds and the policy evaluates the intended token requests. Creating the policy alone does not establish protection."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4959,7 +5112,7 @@
       "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: representative browser sessions reauthenticate at the set frequency and stop persisting, without losing work."
+        "Representative browser sessions reauthenticate at the set frequency and stop persisting, without losing work."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5054,7 +5207,7 @@
       "doneEnd": "The policy is enforced in {tenant}, not in report-only, with its authentication context assigned, and the Privileged Identity Management role settings require that context on activation.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: a controlled activation of a selected role invokes the authentication context and succeeds with the expected method."
+        "A controlled activation of a selected role invokes the authentication context and succeeds with the expected method."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
@@ -5134,7 +5287,7 @@
       "doneEnd": "The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: the enrollment paths you use work, and user-driven enrollment asks for a fresh authentication."
+        "The enrollment paths you use work, and user-driven enrollment asks for a fresh authentication."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5215,7 +5368,7 @@
       "doneEnd": "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: available risky sign-ins were reviewed, and affected people can satisfy the selected requirement."
+        "Available risky sign-ins were reviewed, and affected people can satisfy the selected requirement."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5303,7 +5456,7 @@
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target, and the password-change remediation is confirmed to work for hybrid users if any exist.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: people rated at risk were reviewed, and the remediation and recovery paths they need work."
+        "People rated at risk were reviewed, and the remediation and recovery paths they need work."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5374,7 +5527,7 @@
       "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: people in scope have usable MFA methods, and available Medium-risk sign-ins were reviewed."
+        "People in scope have usable MFA methods, and available Medium-risk sign-ins were reviewed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5448,7 +5601,7 @@
       "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold, with password change as the remediation and the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: people in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."
+        "People in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5519,7 +5672,7 @@
       "dates": null,
       "doneWhen": [
         "No account with a directory role shows mail or Teams sign-ins in the records IAMAI reads.",
-        "Verify after the change: each new admin account holds the intended role under the same governance model and has a tested sign-in path before the everyday account loses the role."
+        "Each new admin account holds the intended role under the same governance model and has a tested sign-in path before the everyday account loses the role."
       ],
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
@@ -5570,7 +5723,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Verify after the change: each required job works from its expected network, including scheduled and infrequent ones."
+        "Each required job works from its expected network, including scheduled and infrequent ones."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5640,7 +5793,7 @@
       },
       "doneWhen": [
         "Security defaults report Enabled, and everyone who holds a role has registered a method.",
-        "Verify after the change: representative administrator and user sign-ins work."
+        "Representative administrator and user sign-ins work."
       ],
       "aiFocus": "Explain the selected protection model and observed setup gaps. Do not confuse enabling Security Defaults with customizing Conditional Access.",
       "skip": false,
@@ -5662,11 +5815,18 @@
       },
       "doneWhen": [
         "Two emergency accounts exist and each has signed in at least once.",
-        "Verify after the change: each account's authentication and administrative access were tested, and authorized staff can reach its credentials without a working sign-in to this tenant."
+        "Each account's authentication and administrative access were tested, and authorized staff can reach its credentials without a working sign-in to this tenant."
       ],
       "aiFocus": "Do not present a password and a past sign-in as complete emergency readiness. Distinguish Security Defaults from a CA design with exclusions.",
       "skip": false,
-      "scanControl": true
+      "scanControl": true,
+      "decision": {
+        "label": "Emergency access accounts",
+        "help": "Add every account that exists only for this purpose; two are needed. IAMAI nominated these from names, roles and exclusions; a nomination is not a choice, so no account is emergency access until you choose it here and save.",
+        "pickerRow": "{name} · {upn} · {signals}",
+        "save": "Save",
+        "multi": true
+      }
     },
     {
       "id": "s-ladder-legacy-auth-inventory",
@@ -5707,7 +5867,7 @@
       },
       "doneWhen": [
         "The reviewed applications no longer depend on app passwords, and the affected app passwords are removed.",
-        "Verify after the change: creating new app passwords is disabled where that applies."
+        "Creating new app passwords is disabled where that applies."
       ],
       "aiFocus": "Distinguish per-user credentials from tenant method-policy settings. Do not invent a complete app-password inventory from unavailable data.",
       "skip": false,
@@ -5731,7 +5891,7 @@
       },
       "doneWhen": [
         "The tenant reports Migration complete, and no account is left Enabled or Enforced for per-user MFA.",
-        "Verify after the change: every account whose per-user MFA was disabled is covered by enabled replacement protection."
+        "Every account whose per-user MFA was disabled is covered by enabled replacement protection."
       ],
       "aiFocus": "Explain why a completed methods migration is not permission to disable every user's MFA state.",
       "skip": false,
@@ -5753,7 +5913,7 @@
       },
       "doneWhen": [
         "Every directory role is held by an account with no mailbox, and no everyday account holds one.",
-        "Verify after the change: each new admin account has a tested sign-in and the admin access it needs."
+        "Each new admin account has a tested sign-in and the admin access it needs."
       ],
       "aiFocus": "Preserve eligibility versus permanent assignment. Do not treat historical productivity events as proof the migration is incomplete.",
       "skip": false,
@@ -5776,7 +5936,7 @@
       },
       "doneWhen": [
         "Between two and four accounts hold Global Administrator, the emergency accounts among them, and everyone else holds a narrower role.",
-        "Verify after the change: each retained assignment has a current reason; a count alone does not prove least privilege."
+        "Each retained assignment has a current reason; a count alone does not prove least privilege."
       ],
       "aiFocus": "Treat counts as review signals, not proof. Separate emergency accounts, eligible access and day-to-day administration.",
       "skip": false,
@@ -5820,7 +5980,7 @@
       },
       "doneWhen": [
         "No enabled account has gone 90 days without a sign-in, or each one that has is recorded as deliberately kept.",
-        "Verify after the change: each blocked account was confirmed as no longer needed."
+        "Each blocked account was confirmed as no longer needed."
       ],
       "aiFocus": "Do not conclude missing dates mean unused accounts or invent a deletion deadline.",
       "skip": false,
@@ -5842,7 +6002,7 @@
       },
       "doneWhen": [
         "Text message and voice call are off in the authentication methods policy, and everyone who used them has registered Authenticator or a passkey.",
-        "Verify after the change: each of them signed in with the replacement, and the agreed recovery path is preserved."
+        "Each of them signed in with the replacement, and the agreed recovery path is preserved."
       ],
       "aiFocus": "Distinguish stronger MFA from phishing-resistant MFA. Do not claim all Authenticator modes are phishing-resistant.",
       "skip": false,
@@ -5859,7 +6019,7 @@
       },
       "doneWhen": [
         "Every must-fix check on the trusted location passes on the next scan.",
-        "Verify after the change: its ranges match the approved decision."
+        "Its ranges match the approved decision."
       ],
       "aiFocus": "Explain the failed check, affected location and dependent policies. Trust does not mean every sign-in requirement is bypassed.",
       "skip": false,
@@ -5872,11 +6032,16 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
       "whatToDo": {
-        "lead": "Correct the allowed-countries findings: the list decides where the countries policy allows sign-ins. Review the dependent enabled policies before saving, and rescan afterward."
+        "lead": "Correct the allowed-countries findings: the list decides where the countries policy allows sign-ins. Review the dependent enabled policies before saving, and rescan afterward.",
+        "steps": [
+          "Open Entra admin center, then Conditional Access, then Named locations. Select the location used by your country restriction policy.",
+          "Compare its country list with the approved countries shown in this plan. Review policies already using the location before saving a change, because enabled policies use the new list immediately.",
+          "Correct the findings shown on this step, then scan again to check the result."
+        ]
       },
       "doneWhen": [
         "Every must-fix check on the allowed-countries list passes on the next scan.",
-        "Verify after the change: the named location matches the approved country decision."
+        "The named location matches the approved country decision."
       ],
       "aiFocus": "Separate approved scope, observed geography and unresolved travel needs.",
       "skip": false,
@@ -5893,7 +6058,7 @@
       },
       "doneWhen": [
         "Every must-fix check on the pilot group passes on the next scan.",
-        "Verify after the change: the pilot membership is the approved one."
+        "The pilot membership is the approved one."
       ],
       "aiFocus": "Explain why each membership or scope issue matters without implying a pilot guarantees a safe wider rollout.",
       "skip": false,
@@ -5910,7 +6075,7 @@
       },
       "doneWhen": [
         "Every must-fix check on the service accounts passes on the next scan.",
-        "Verify after the change: the confirmed service-account decisions are reflected in the plan."
+        "The confirmed service-account decisions are reflected in the plan."
       ],
       "aiFocus": "Distinguish user-based service accounts from workload identities and explain the actual affected policies.",
       "skip": false,
@@ -5927,7 +6092,7 @@
       },
       "doneWhen": [
         "Every must-fix check on the authentication strength passes on the next scan.",
-        "Verify after the change: the strength has the intended combinations."
+        "The strength has the intended combinations."
       ],
       "aiFocus": "Include the current and intended combinations, affected policies and TAP where present.",
       "skip": false,

@@ -18,11 +18,11 @@ export const CONTENT_ALIAS: Record<string, string> = {
   'block-downloads-unmanaged': 'unmanaged-browser',
 }
 
-type StepLike = { id: string; goalId: string }
+type StepLike = { id: string; goalId: string; guidance?: ContentStep }
 
 /** The content entry for a step: its id, its goal id, or an alias of either. */
 export function contentStepFor(step: StepLike): ContentStep | undefined {
-  return stepById[step.id] ?? stepById[step.goalId] ?? stepById[CONTENT_ALIAS[step.goalId]] ?? stepById[CONTENT_ALIAS[step.id]]
+  return step.guidance ?? stepById[step.id] ?? stepById[step.goalId] ?? stepById[CONTENT_ALIAS[step.goalId]] ?? stepById[CONTENT_ALIAS[step.id]]
 }
 
 /**

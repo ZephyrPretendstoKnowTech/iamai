@@ -8,49 +8,49 @@
     },
     {
       "id": "break-glass-accounts",
-      "name": "Create and validate break-glass accounts",
+      "name": "Create and test emergency access accounts",
       "description": "Dedicated emergency accounts provide another administrative route when normal access fails. Test the route before an incident makes it necessary."
     },
     {
       "id": "legacy-auth-inventory",
-      "name": "Inventory legacy authentication usage",
+      "name": "Review legacy authentication use",
       "description": "An inventory of older sign-in paths helps identify applications that need attention before authentication rules change.",
       "goalId": "block-legacy-auth"
     },
     {
       "id": "app-passwords",
-      "name": "Eliminate app passwords",
+      "name": "Retire app passwords",
       "description": "App passwords keep older applications dependent on a credential that does not complete an interactive MFA check. Replace that dependency before retiring the credential."
     },
     {
       "id": "per-user-mfa-cleanup",
-      "name": "Reconcile per-user MFA states",
+      "name": "Review per-user MFA settings",
       "description": "Consistent MFA management reduces conflicting settings and unexpected prompts. Keep enforcement in place throughout the transition."
     },
     {
       "id": "admin-accounts-separate",
-      "name": "Separate admin accounts from daily-driver accounts",
+      "name": "Use separate accounts for admin work",
       "description": "Separating admin work from everyday activity reduces the exposure of privileged access."
     },
     {
       "id": "global-admin-count",
-      "name": "Reduce Global Administrator count",
+      "name": "Review Global Administrator access",
       "description": "Global Administrator has broad authority. Reviewing why each assignment exists can uncover access that no longer needs that level of privilege."
     },
     {
       "id": "guest-review",
-      "name": "Review guest accounts and external state",
+      "name": "Review guest access",
       "description": "External access can outlast the project that needed it. Reviewing sponsors and current purpose helps identify guest access that should end.",
       "goalId": "guests-mfa"
     },
     {
       "id": "stale-accounts",
-      "name": "Disable dormant and never-signed-in accounts",
+      "name": "Review inactive accounts",
       "description": "Reviewing inactive-account candidates can uncover access that is no longer needed. Missing activity still needs an owner check."
     },
     {
       "id": "authenticator-over-sms",
-      "name": "Move users from SMS/voice to Authenticator",
+      "name": "Move to stronger sign-in methods",
       "description": "Moving from phone codes to stronger approved methods can reduce reliance on telephone-based authentication. Test the replacement before removing a method people still use.",
       "goalId": "mfa-all-users"
     }

@@ -1,3 +1,4 @@
+import { MANUAL_REVIEW_ID } from '../../roadmap/manualWork.ts'
 // A step opened in place: the one body the Plan draws for every step it has, and
 // the only one (task 011).
 //
@@ -34,7 +35,7 @@ import type { ReactNode } from 'react'
 import type { Step } from '../../roadmap/types.ts'
 import { isEmergencyAccess } from '../../roadmap/blockerSteps.ts'
 import type { StepDecision, StepDecisionInput } from '../../roadmap/decisions.ts'
-import { app, content } from '../../content/content.ts'
+import { app, content, workflowWords } from '../../content/content.ts'
 import { fillText, whole, SINGLE_CHOICE_SOURCES } from '../../content/render.ts'
 import { Button, Callout, Icon, Picker, TabList, onePanelProps } from '../components/index.ts'
 import type { PickerOption } from '../components/index.ts'
@@ -325,6 +326,7 @@ export function ContentStep({
             the action: IAMAI cannot choose, so nothing is offered to submit until
             a person has (Foundation C). */}
         <StepActionColumn rail={rail}>
+          {step.workflowChoices && <WorkflowDecision step={step} onDecide={onDecide} printing={printing} />}
           {decides && <Decision d={d} ex={ex} saved={decision} onDecide={onDecide} stepId={step.id} ctx={ctx} />}
         </StepActionColumn>
 
@@ -350,6 +352,13 @@ export function ContentStep({
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
+          {step.manualReview && <section className="step-section">
+            <p>{step.manualReview.confirmedAt ? fillText(app.plan.manualReviewRecorded, { date: absoluteDate(step.manualReview.confirmedAt) }) : app.plan.manualReviewExplain}</p>
+            {!step.manualReview.readyToConfirm && <p>{app.plan.manualReviewScanFirst}</p>}
+            {!printing && (step.manualReview.confirmedAt
+              ? <Button variant="secondary" onClick={() => onUnconfirm?.([MANUAL_REVIEW_ID])}>{app.plan.manualReviewUndo}</Button>
+              : <Button variant="secondary" disabled={!step.manualReview.readyToConfirm || !onConfirm} onClick={() => onConfirm?.({ [MANUAL_REVIEW_ID]: { basis: step.manualReview!.basis } })}>{app.plan.manualReviewConfirm}</Button>)}
+          </section>}
 
           {/* The printed plan is the whole step: the evidence and More stand on
               the page there, in the order they always printed. */}
@@ -1072,3 +1081,10 @@ function More({ cs, ex, step, contractWho, ifWrong, comms, onSkip, onUnskip, onD
   )
 }
 
+
+function WorkflowDecision({ step, onDecide, printing }: { step: Step; onDecide?: (d: StepDecisionInput) => void; printing: boolean }) {
+  const choices = step.workflowChoices ?? []
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const W = workflowWords
+  return <section className="workflow-choices"><p>{W.instructions}</p>{choices.map((c) => <label key={c.key} className="workflow-choice"><strong>{c.label}</strong><span className="reason">{c.evidence}</span>{printing ? <span>{(W.answers as Record<string, string>)[c.answer]}</span> : <select aria-label={c.label} value={draft[c.key] ?? c.answer} onChange={(e) => { const value = e.currentTarget.value; setDraft((d) => ({ ...d, [c.key]: value })) }}>{Object.entries(W.answers).map(([key, label]) => <option key={key} value={key}>{String(label)}</option>)}</select>}</label>)}{!printing && <Button variant="primary" onClick={() => { onDecide?.({ answers: Object.fromEntries(choices.map((c) => [c.key, draft[c.key] ?? c.answer])) }); setDraft({}) }}>{W.save}</Button>}</section>
+}

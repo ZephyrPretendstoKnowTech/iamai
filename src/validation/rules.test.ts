@@ -111,7 +111,7 @@ test('every rule says what it checks and why it matters, for the reference page'
 
 // ---- the harness -----------------------------------------------------------
 
-type Base = { snapshot: TenantSnapshot; state: MappingState; groups: GroupFacts[]; viability: MfaViability[]; drillDates: string[] }
+type Base = { snapshot: TenantSnapshot; state: MappingState; groups: GroupFacts[]; viability: MfaViability[]; drillDates: string[]; drillRecords: import('../roadmap/cleanupDone.ts').CleanupCheckpoint[] }
 
 function base(): Base {
   const f = fixture('small')
@@ -121,12 +121,13 @@ function base(): Base {
     groups: [...f.groups.entries()].map(([groupId, g]) => structuredClone({ groupId, ...g })),
     viability: [],
     // The healthy tenant's emergency accounts signed in ten days ago, on a recorded drill (E3).
+    drillRecords: f.mapping.breakGlassUserIds.map((id) => ({ cleanup: 'drill' as const, at: f.snapshot.asOf, date: f.snapshot.users.find((u) => u.id === id)!.lastSuccessfulSignIn!, accountIds: [id], timeZone: 'UTC' })),
     drillDates: [...new Set(f.mapping.breakGlassUserIds.map((id) => f.snapshot.users.find((u) => u.id === id)?.lastSuccessfulSignIn).filter((d): d is string => typeof d === 'string'))],
   }
 }
 
 function ctxOf(b: Base): ValidationContext {
-  return buildContext({ snapshot: b.snapshot, state: b.state, groupMembers: b.groups, viability: b.viability, drillDates: b.drillDates })
+  return buildContext({ snapshot: b.snapshot, state: b.state, groupMembers: b.groups, viability: b.viability, drillDates: b.drillDates, drillRecords: b.drillRecords })
 }
 
 function run(ruleId: string, target: unknown, b: Base): RuleResult {
@@ -257,7 +258,7 @@ const CASES: Record<string, Case> = {
       userAt(b, bgId(b)).assignedPlans = [{ servicePlanId: 'efb87545-963c-4e0d-99df-69c6916d9eb0', capabilityStatus: 'Enabled' }]
     },
   },
-  'bg.drilled': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = null } },
+  'bg.drilled': { target: bgId, fail: (b) => { b.drillRecords = [] } },
   // An absent answer is "not yet done", never unknown (prompt 46 item 21).
   'bg.credentialStorage': { target: bgId, unknown: 'never', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: null, signInMonitoring: true } } },
   'bg.signInMonitoring': { target: bgId, unknown: 'never', fail: (b) => { b.state.breakGlassAnswers = { credentialStorage: true, signInMonitoring: null } } },
@@ -269,7 +270,7 @@ const CASES: Record<string, Case> = {
   // line is the account having actually been used, so that is what the
   // "says something" case sets up.
   // A sign-in inside the drill window that no recorded drill matches (E3): the step asks who and why.
-  'bg.lastSignIn': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = '2026-08-03T02:00:00.000Z'; b.drillDates = [] } },
+  'bg.lastSignIn': { target: bgId, fail: (b) => { userAt(b, bgId(b)).lastSuccessfulSignIn = '2026-08-03T02:00:00.000Z'; b.drillDates = []; b.drillRecords = [] } },
   'bg.signInCountries': {
     target: bgId,
     fail: (b) => { b.snapshot.signInEvidence[bgId(b)] = { ...(b.snapshot.signInEvidence[bgId(b)] ?? {}), signInCount: 2, countries: ['AU'] } as never },

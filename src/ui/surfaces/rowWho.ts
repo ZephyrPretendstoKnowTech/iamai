@@ -3,7 +3,7 @@
 // strength policy, its lockout count when it is not zero ("3 people · 2 without a
 // passkey"). Pure.
 import type { Step } from '../../roadmap/types.ts'
-import { app } from '../../content/content.ts'
+import { app, structuralWords } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { IMPACT, whoLine } from '../../derive/whoLine.ts'
 import { reached } from '../../derive/population.ts'
@@ -12,6 +12,8 @@ import { REPORT_ONLY_GAP } from '../../coverage/verdict.ts'
 import { implementationPackageFor } from './stepPackage.ts'
 
 export function rowWho(step: Step): string {
+  const namedImpact = step.impactLabel ?? (structuralWords.impactLabels as Record<string, string>)[step.id]
+  if (namedImpact) return namedImpact
   // Who the row names is who the step's own policies name (derive/population.ts
   // reached), never the population the goal handed it. The gap beside it is the
   // goal's coverage and stays the goal's: "3 people · covers 1 of 4 active".
@@ -28,7 +30,7 @@ export function rowWho(step: Step): string {
   // An empty reach is a fact: a policy that reaches nobody has no user impact; a
   // step with no policy of its own says what it touches — its package's
   // `impact.fallbackLabel` — or the placeholder (U13).
-  const none = effectsOf(step) === null ? (implementationPackageFor(step)?.meta.impact?.fallbackLabel ?? IMPACT.none) : IMPACT.noUserImpact
+  const none = effectsOf(step) === null ? (implementationPackageFor(step)?.meta.impact?.fallbackLabel ?? structuralWords.impactDefault) : IMPACT.noUserImpact
   const head = whoLine(pop, gap === REPORT_ONLY_GAP ? null : gap, none)
   return step.lockout ? `${head} · ${fillText(app.plan.lockoutSuffix, { n: step.lockout })}` : head
 }

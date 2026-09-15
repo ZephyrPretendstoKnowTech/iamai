@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Up Next · After Create or Correct Exclusions Group",
   "bar": "After Create or Correct Exclusions Group",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -45,5 +45,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "After prerequisites"
 }

@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold · Not supported",
   "bar": "Not supported",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -41,5 +41,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "After prerequisites"
 }

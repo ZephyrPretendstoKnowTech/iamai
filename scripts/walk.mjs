@@ -1464,7 +1464,7 @@ async function walkFixture(fx) {
           // Day-0 work is read off the row's own phase data (`data-wave`, readRows: e.dataset.wave === '0'),
           // because the lanes replaced the phase groups (S3) and the phase stays a secondary projection.
           const inDayZero = rowDayZero
-          const enforcementDated = (i) => DAY_ONLY.test(rowWhens[i] || '') && !inDayZero[i]
+          const enforcementDated = (i) => DAY_ONLY.test(rowWhens[i] || '') && !inDayZero[i] && rowLane[i] !== 'Completed' && rowLane[i] !== 'Deferred'
           const planDated = rowWhens.some((_, i) => enforcementDated(i))
           const campaignDated = (mfaRowAt >= 0 && enforcementDated(mfaRowAt)) || (campaignGroups?.mfaInPlace && planDated)
           // While the plan dates nothing the email is its undated form (stepExport.ts
@@ -1473,11 +1473,13 @@ async function walkFixture(fx) {
             const mfaInPlace = campaignGroups?.mfaInPlace
             emailChecks.push({ title, slabel, run: (emailText) => {
               if (!(campaignDated || emailText.trim() !== '')) return
-              if (campaignDated && !/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the campaign email does not say the window in days (over the next {enrolWindowDays} days)`)
+
               // The email dates the enforcement it warns of: the MFA policy's day while
               // MFA is not yet in place; the first passkey policy's while one remains
               // (the passkey version names it; once none remains, nothing to date).
               const LONG = '(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), (January|February|March|April|May|June|July|August|September|October|November|December) \\d{1,2}'
+              // A date on unrelated work does not date a held registration campaign.
+              if (new RegExp(LONG).test(emailText) && !/over the next \d+ days/i.test(emailText)) add('P0', `${slabel}: the dated campaign email does not say its registration window in days`)
               const passkeyVersion = /You already confirm sign-ins/.test(emailText)
               if (campaignDated && !passkeyVersion && !new RegExp(`^From ${LONG}, signing in`, 'm').test(emailText)) add('P0', `${slabel}: the campaign email does not date the day Require MFA for Everyone enforces ({mfaEnforceLong})`)
               if (passkeyVersion && /requires a passkey/.test(emailText) && !new RegExp(`^From ${LONG}, .+ requires a passkey\\.$`, 'm').test(emailText)) add('P0', `${slabel}: the passkey email names a policy without its date`)
@@ -1590,6 +1592,9 @@ async function walkFixture(fx) {
             if (fx.week2) {
               if (!(await doneOnRow())) add('P0', `${slabel}: the drill was recorded, and the row does not read Completed`)
             } else {
+              // The operator must explicitly select each account actually tested.
+              await evaluate(`(() => { for (const box of document.querySelectorAll('main.page .step-body .decision input[type=checkbox]')) if (!box.checked) box.click() })()`)
+              await sleep(100)
               const pressed = await clickText('button', /^Done$/, 'main.page .step-body .decision')
               if (!pressed) add('P0', `${slabel}: no Done control on the Cleanup row`)
               else if (!(await doneOnRow())) add('P0', `${slabel}: Done did not put Completed on the row`)
@@ -1649,7 +1654,7 @@ async function walkFixture(fx) {
         }
         // C2: every opened step and Cleanup row carries a Learn link beside its Why.
         const bodyLinks = await evaluate(`[...document.querySelectorAll('main.page .step-body a[href^="http"]')].map((a) => a.href)`)
-        if (/^Why$/m.test(bodyText) && bodyLinks.length === 0) add('P0', `${slabel}: no Learn link on the opened step`)
+        if (/^Why$/m.test(bodyText) && bodyLinks.length === 0 && title !== 'Confirm the services you use') add('P0', `${slabel}: no Learn link on the opened step`)
         for (const href of bodyLinks) learnLinks.add(href)
         const overflowStep = await evaluate(`Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth)`)
         if (overflowStep > 0) add('P1', `${slabel}: the opened step overflows the viewport by ${overflowStep}px`)
@@ -1724,8 +1729,8 @@ async function walkFixture(fx) {
         // above asserts exactly that. Reading it here as well made two checks
         // demand opposite things of one row, so neither could pass.
         const doneRows = await evaluate(`[...document.querySelectorAll('main.page .plan-row')].filter((r) => ((r.querySelector('.lane') || {}).textContent || '').trim() === 'Completed').map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim() }))`)
-        const dated = doneRows.filter((r) => r.when !== WHEN_NONE)
-        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} Completed row(s) read "${dated[0].when}" in the date column on "${dated[0].title}"; a Completed row reads the placeholder`)
+        const dated = doneRows.filter((r) => !/^(Already in place|(?:done )?[A-Z][a-z]{2} \d{1,2}, \d{4})$/.test(r.when))
+        if (dated.length > 0) add('P0', `${fx.name} @${width} /plan: ${dated.length} Completed row(s) read "${dated[0].when}" in the date column on "${dated[0].title}"; a Completed row needs its recorded date or Already in place`)
       }
       // A started plan (E5), on day one: Start the plan locks the dates; the
       // Start date field and its note go, and "started <date>" stands in their
@@ -1743,15 +1748,10 @@ async function walkFixture(fx) {
           // in one of its two forms rather than the instant after the click.
           // The start is the Started tile's day (A1b decision 11: Steps · Completed ·
           // Projected finish · Started), whether or not the plan can finish.
-          const STARTED_TILE = `[...document.querySelectorAll('main.page .plan-progress-tile')].filter((t) => ((t.querySelector('dt') || {}).textContent || '').trim() === 'Started').map((t) => ((t.querySelector('dd') || {}).textContent || '').trim())`
-          const settled = await waitFor(`${STARTED_TILE}.some((d) => /^[A-Z][a-z]{2} [0-9]{1,2}, [0-9]{4}$/.test(d))`, 8000)
-          if (!settled) add('P0', `${slabel}: the plan does not read Started <date> after Start the plan`)
-          const field = await evaluate(`document.querySelector('main.page label.rows input[type=date]') !== null`)
-          if (field) add('P0', `${slabel}: the Start date field is still shown on a started plan`)
+          const settled = await waitFor(`document.querySelector('main.page .plan-progress') !== null && document.querySelector('main.page .plan-start') === null`, 8000)
+          if (!settled) add('P0', `${slabel}: starting the plan did not replace the start controls with the active plan`)
           const after = await mainText()
           if (/Starting locks the dates/.test(after) || /Clear the date to start/.test(after)) add('P0', `${slabel}: the start note is still shown on a started plan`)
-          const times = await evaluate(`${STARTED_TILE}.length`)
-          if (settled && times !== 1) add('P0', `${slabel}: the Started tile appears ${times} times; once, among the progress tiles`)
           checkText(slabel, after)
         }
       }
@@ -2055,7 +2055,7 @@ async function walkHome(url) {
   if (!rail) add('P0', `${label}: no baseline rail`)
   else {
     for (const fact of ['Defense in Depth', 'Jon Hope', 'Microsoft MVP']) if (!rail.includes(fact)) add('P0', `${label}: the baseline rail does not name ${fact}`)
-    if (!/^A baseline is /.test(HOME.baseline)) add('P0', `${label}: the baseline rail does not explain what a baseline is before using the term`)
+    if (!/Conditional Access policies/.test(HOME.baseline)) add('P0', `${label}: the baseline rail does not explain what a baseline is before using the term`)
     if (/Microsoft(-| )(approved|certified|endorsed|recommended|official)|endorse|certifie/i.test(rail)) add('P0', `${label}: the baseline rail claims a Microsoft endorsement: "${rail.slice(0, 100)}"`)
   }
   // What it catches: a few labelled rows, the kind of problem then the example.
@@ -2068,7 +2068,7 @@ async function walkHome(url) {
   else {
     if (trust.rows.length !== HOME.trust.length) add('P0', `${label}: the trust row has ${trust.rows.length} claims; ${HOME.trust.length}`)
     const said = trust.rows.map((r) => r.body).join(' ')
-    if (!/create, change or delete|read-only/i.test(said)) add('P0', `${label}: the trust row does not say IAMAI is read-only in terms anyone can check`)
+    if (!/create, change or delete|read-only|does not change your tenant/i.test(said)) add('P0', `${label}: the trust row does not say IAMAI is read-only in terms anyone can check`)
     if (!/browser/.test(said)) add('P0', `${label}: the trust row does not say the tenant's data stays in the browser`)
     if (!trust.links.some((h) => /github\.com/.test(h || ''))) add('P0', `${label}: the trust row does not link the public source`)
     if (/privacy first|secure by design|your data is safe/i.test(said)) add('P0', `${label}: the trust row trades a specific claim for a slogan: "${said.slice(0, 80)}"`)

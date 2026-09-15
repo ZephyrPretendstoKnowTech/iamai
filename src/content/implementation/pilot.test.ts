@@ -361,7 +361,7 @@ test('the viewer draws every package channel through the one Implementation regi
   // Every package channel goes through packageArtifact, which adds IAMAI's facts to AI Info (aiGrounding.ts).
   assert.match(step, /const produced: Artifact\[\] = \(\n\s*packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(\(a\) => packageArtifact\(a, grounding\)\)/)
   // Every channel is a tab (content review D2): the produced channel where there is one, the unavailable one otherwise.
-  assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.map\(\(t\) => produced\.find\(\(a\) => a\.id === t\.id\) \?\? unavailableArtifact\(t\.id as Channel\)\)/)
+  assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.filter\(\(t\) => supported\.has\(t\.id as Channel\)\)\.map/)
   // The projection, the readiness and the troubleshooting never throw through the step.
   for (const safe of ['projectSafely(', 'readinessSafely(', 'troubleshootingSafely(']) assert.ok(step.includes(safe), `ContentStep calls the package without ${safe}`)
   for (const unsafe of ['projectImplementation(', 'packageReadiness(', 'troubleshootingFor(']) assert.equal(step.includes(unsafe), false, `ContentStep calls ${unsafe} directly`)

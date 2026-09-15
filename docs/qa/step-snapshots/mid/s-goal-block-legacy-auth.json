@@ -5,7 +5,7 @@
   "fact": "Enforced",
   "badge": "Ready · Decision",
   "bar": "Needs a decision",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -29,5 +29,5 @@
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "Aug 28, 2026"
 }

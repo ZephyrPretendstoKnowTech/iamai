@@ -9,6 +9,7 @@
 //     waits on;
 //  4. the campaign email — the work the plan says to do today — vanished while
 //     nothing was dated.
+import { structuralWords } from '../../content/content.ts'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { curatedFixture, fixture } from '../../roadmap/fixtures/index.ts'
@@ -116,7 +117,7 @@ test('Step 5: the Impact column says who a step reaches, never the state, and no
       } else {
         const head = impact.split(' · ')[0]
         const fallback = implementationPackageFor(s)?.meta.impact?.fallbackLabel ?? null
-        assert.ok(/^\d+ (person|people)$/.test(head) || ['No user impact', '—', fallback].includes(head), `${where}: "${impact}"`)
+        assert.ok(/^\d+ (person|people)$/.test(head) || ['No user impact', structuralWords.impactDefault, s.impactLabel, ...Object.values(structuralWords.impactLabels), fallback].includes(head), `${where}: "${impact}"`)
       }
     }
   }

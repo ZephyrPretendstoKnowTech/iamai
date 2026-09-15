@@ -1,0 +1,26 @@
+{
+  "lane": "Up Next",
+  "substatus": null,
+  "reason": "after: Confirm the services you use",
+  "fact": null,
+  "badge": "Up Next · After Confirm the services you use",
+  "bar": "After Confirm the services you use",
+  "rail": "Not scheduled",
+  "headings": [
+    "Why",
+    "Readiness",
+    "Implementation",
+    "Done when"
+  ],
+  "tiles": [
+    {
+      "label": "Prerequisite · To do",
+      "state": "Confirm the services you use"
+    }
+  ],
+  "channels": [
+    "Entra",
+    "AI Info"
+  ],
+  "when": "After prerequisites"
+}

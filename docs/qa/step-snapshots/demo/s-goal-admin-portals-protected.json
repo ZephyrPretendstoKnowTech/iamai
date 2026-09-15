@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "On Hold · Baseline conflict",
   "bar": "Baseline conflict",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -31,8 +31,7 @@
     "Entra",
     "PowerShell",
     "JSON",
-    "AI Info",
-    "Email"
+    "AI Info"
   ],
-  "when": "—"
+  "when": "After prerequisites"
 }

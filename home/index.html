@@ -8,11 +8,11 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>IAMAI — Microsoft Entra Conditional Access planner</title>
-    <meta name="description" content="Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
+    <meta name="description" content="Check who could be affected by your Microsoft Entra security changes. IAMAI reviews your tenant and helps you plan the work before you deploy." />
     <!-- Root-relative: src/network.test.ts reads an absolute link href as a request. og:url carries the absolute address. -->
     <link rel="canonical" href="/" />
     <meta property="og:title" content="IAMAI — Microsoft Entra Conditional Access planner" />
-    <meta property="og:description" content="Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public." />
+    <meta property="og:description" content="Check who could be affected by your Microsoft Entra security changes. IAMAI reviews your tenant and helps you plan the work before you deploy." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://getiamai.com/" />
     <meta property="og:image" content="https://getiamai.com/og.png" />
@@ -20,8 +20,8 @@
     <!-- The Threshold app icon (task 029). One master, src/brand/logo/iamai-threshold-master.svg,
          derived by scripts/gen-brand.mjs into public/brand/ and published at the site root by
          scripts/assemble-site.mjs. What was here before was a placeholder drawn inline. -->
-    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
-    <link rel="alternate icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg?v=threshold-20260915" />
+    <link rel="alternate icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png?v=threshold-20260915" />
     <!-- The planner's tokens (home/theme.css, written by scripts/build-home.ts), then this page's few rules. -->
     <link rel="stylesheet" href="/theme.css" />
     <link rel="stylesheet" href="/home.css" />
@@ -52,16 +52,15 @@
            claims the trust section below spends the rest of the page proving. -->
       <div class="hero">
         <p class="eyebrow">Microsoft identity security</p>
-        <h1>Find the gaps. Catch the hidden risks. Plan a safer rollout.</h1>
-        <p class="site-line">IAMAI looks beyond whether a policy exists. It checks the details that can make a rollout succeed or fail: which sign-in methods people have, whether the available records show they’ve used them, and whether exclusions or external accounts need attention.</p>
+        <h1>Know what needs attention before you change a policy.</h1>
+        <p class="site-line">A policy can look right and still cause problems. IAMAI checks who has the required sign-in methods, whether the available records show they use them, and which exclusions or outside accounts need a closer look. Then it helps you plan the changes.</p>
         <p class="actions">
           <a class="btn btn-primary" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a>
           <a class="btn btn-secondary" href="/{{TOOL_PATH}}/?demo=1#/plan">Try it with sample data</a>
         </p>
         <p class="meta">
-          <span>Read-only</span>
-          <span>Runs in your browser</span>
-          <span>Source is public</span>
+          <span>Free public preview</span>
+          <span>You review and make the changes</span>
         </p>
       </div>
 
@@ -72,20 +71,20 @@
         <div class="product">
           <div>
             <p class="eyebrow">What it does</p>
-        <h2 id="work-heading">From a tenant scan to a dated plan you can carry out.</h2>
-            <p class="lead">Get a practical plan for what to address first, what to check, and how to move toward stronger protection. You stay in control of every change.</p>
+        <h2 id="work-heading">See what needs doing, and what needs to happen first.</h2>
+            <p class="lead">Start with the tenant you have. IAMAI compares it with your chosen baseline, shows the gaps it can assess, and puts the work in order.</p>
             <div class="steps">
-              <div class="step"><b>Reads</b><span>A tenant's policies, people, groups, devices, licences and the last 30 days of sign-in records.</span></div>
-              <div class="step"><b>Compares</b><span>What each baseline policy is for with what the tenant already has, so a control you built yourself counts as done.</span></div>
-              <div class="step"><b>Plans</b><span>The difference as dated steps: report-only first where a policy supports it, who could be affected by each change, and the emails to send.</span></div>
+              <div class="step"><b>Check</b><span>Review policies, accounts, groups and the sign-in evidence Microsoft makes available to this tenant.</span></div>
+              <div class="step"><b>Understand</b><span>See what already meets the baseline, what needs attention, and who a change could affect.</span></div>
+              <div class="step"><b>Prepare</b><span>Work through the prerequisites, review the instructions, and test changes before enforcing them.</span></div>
             </div>
           </div>
           <aside class="side">
             <p class="label">Default baseline</p>
             <strong>Defense in Depth</strong>
-            <p>A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.</p>
-            <p>Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.</p>
-            <p class="small">IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.</p>
+            <p>The default is Defense in Depth: Conditional Access policies, built by Jon Hope, a Microsoft MVP.</p>
+            <p>It covers MFA, administrator access, devices, sessions and more. IAMAI helps you work through the parts that apply to your tenant and prepare for changes that could affect people’s access.</p>
+            <p class="small">You can inspect the baseline version IAMAI uses or load your own. Where IAMAI cannot assess a control, the plan identifies the review you need to carry out.</p>
             <p class="small"><a class="enter" href="/{{TOOL_PATH}}/#/connect">Open IAMAI</a></p>
           </aside>
         </div>
@@ -93,30 +92,30 @@
 
       <section class="band" aria-labelledby="catches-heading">
         <p class="eyebrow">What it catches</p>
-        <h2 id="catches-heading">Problems worth finding before enforcement.</h2>
+        <h2 id="catches-heading">A few things worth checking before you deploy.</h2>
         <div class="catches">
-          <div class="catch"><b>Authentication</b><span>An admin whose only sign-in method is a text message, about to be required to use a passkey.</span></div>
-          <div class="catch"><b>Emergency access</b><span>An emergency access account inside the policy it exists to survive.</span></div>
-          <div class="catch"><b>Location</b><span>A country rule that blocks the person who wrote it.</span></div>
-          <div class="catch"><b>Service accounts</b><span>A service account that a legacy-authentication block stops at 2 a.m.</span></div>
-          <div class="catch"><b>Devices</b><span>A meeting-room device that a session rule signs out every hour.</span></div>
+          <div class="catch"><b>Sign-in methods</b><span>Someone has registered a strong method, but the available records do not show them using it.</span></div>
+          <div class="catch"><b>Emergency access</b><span>A proposed policy may reach the accounts you rely on to recover access.</span></div>
+          <div class="catch"><b>Exclusions</b><span>Accounts in an exclusion group need a review of why they are still exempt.</span></div>
+          <div class="catch"><b>Outside accounts</b><span>Guests may need different preparation or follow-up before a change applies to them.</span></div>
+          <div class="catch"><b>Shared accounts</b><span>A meeting-room or service account may need attention before new sign-in requirements take effect.</span></div>
         </div>
       </section>
 
       <section class="band" aria-labelledby="trust-heading">
         <p class="eyebrow">What it does with your tenant</p>
-        <h2 id="trust-heading">Inspect it before you connect a tenant.</h2>
+        <h2 id="trust-heading">Your tenant stays under your control.</h2>
         <div class="trust">
-          <span><strong>Read-only</strong> IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in.</span>
-          <span><strong>Your plan is built in your browser</strong> IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data.</span>
-          <span><strong>Source is public</strong> Read the code, the permissions and the limits, then decide whether to connect. <a class="lnk" href="https://github.com/ZephyrPretendstoKnowTech/iamai">github.com/ZephyrPretendstoKnowTech/iamai</a></span>
+          <span><strong>IAMAI does not change your tenant</strong> You can review the permissions before connecting. IAMAI reads the tenant to build the plan; you decide which changes to make and carry them out yourself.</span>
+          <span><strong>Your scan is processed on your device</strong> Tenant data is read from Microsoft and processed in your browser. IAMAI does not upload your scan to its own server. Downloaded plans and copied briefings can contain tenant information, so review them before sharing. The website host may also collect page-load information.</span>
+          <span><strong>You can inspect the code</strong> The source and documented limits are public. Check how IAMAI works, report a problem, or suggest an improvement. <a class="lnk" href="https://github.com/ZephyrPretendstoKnowTech/iamai">View IAMAI on GitHub</a></span>
         </div>
       </section>
 
       <section class="band" aria-labelledby="about-heading">
         <p class="eyebrow">About</p>
-        <h2 id="about-heading">Built from Microsoft identity work.</h2>
-        <div class="about"><p>Built by Lachlan Robinette. I work in identity security posture management, building and deploying Microsoft Entra security baselines at scale across MSP-managed tenants. These tools were built from that experience, and from the gaps the industry leaves for the person doing the work. If one of these tools is wrong, or unclear, I would rather hear about it than not.</p></div>
+        <h2 id="about-heading">Built by someone who does this work.</h2>
+        <div class="about"><p>I’m Lachlan Robinette. I work with Microsoft Entra security baselines across MSP-managed tenants. I built IAMAI to help with the checks and decisions that sit between a baseline and a successful rollout. It is still in public preview. If something is wrong or unclear, tell me at feedback@getiamai.com.</p></div>
       </section>
     </main>
 
