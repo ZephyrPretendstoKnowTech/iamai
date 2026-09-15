@@ -457,8 +457,9 @@ details > *:not(summary) {
 .infotip-btn {
   all: unset;
   cursor: pointer;
-  width: 14px;
-  height: 14px;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
   border: 1px solid var(--secondary-text);
   border-radius: 50%;
   color: var(--secondary-text);
@@ -477,6 +478,8 @@ details > *:not(summary) {
   border: 1px solid var(--line);
   padding: 8px 12px;
   width: 320px;
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
   font-size: var(--t-2);
   line-height: var(--lh-body);
   transition: opacity var(--motion) linear;
@@ -1609,21 +1612,26 @@ footer.app a {
   margin: 0;
 }
 .plan-progress-tile {
-  display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-rows: 1fr auto;
   gap: 10px;
   min-width: 0;
-  padding: 10px 13px;
+  padding: 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
   background: var(--secondary-surface);
 }
 .plan-progress-tile dt {
-  font-size: var(--t-1);
-  color: var(--quiet-text);
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  font-size: var(--t-2);
+  color: var(--secondary-text);
 }
 .plan-progress-tile dd {
+  grid-row: 1;
   margin: 0;
   font-size: var(--t-6);
   font-weight: var(--weight-strong);
@@ -2269,6 +2277,31 @@ footer.app a {
 .step-action-column .decision-select {
   width: 100%;
   max-width: 100%;
+}
+.step-action-column .decision > .dlabel:not(:first-child) {
+  margin-top: 20px;
+}
+.step-action-column .decision > .dlabel {
+  margin-bottom: 6px;
+  color: var(--primary-text);
+  font-weight: var(--weight-strong);
+}
+.step-action-column .decision > .reason {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+.step-action-column .decision > button {
+  margin-top: 16px;
+}
+.step-action-column .option-value {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  margin-top: 8px;
+}
+.step-action-column .option-value > .picker {
+  margin: 0;
+  width: 100%;
 }
 /* The heading over the column's first input (content review R6): its label, bold. */
 .step-action-column .action-heading {
@@ -3158,7 +3191,7 @@ footer.app a {
   border-bottom: 1px solid var(--quiet-text);
   padding: 0 8px;
 }
-.plan-settings label.rows {
+.plan-settings .rows {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3166,6 +3199,8 @@ footer.app a {
   border-bottom: 1px solid var(--line);
   padding: 10px 0;
 }
+.plan-settings .freeze-range > span { flex-basis: 100%; }
+.plan-settings .freeze-field { display: grid; gap: 4px; min-width: 0; flex: 1 1 160px; }
 .plan-settings .rows > * {
   border-bottom: 0;
   padding: 0;
@@ -4240,6 +4275,9 @@ td .not-person {
    shows the order a screen reader reads (U5). The action column keeps every word
    and control it had and trades its left rule for a top one. */
 @media (max-width: 900px) {
+  .step-body.has-rail .workflow-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .step-body.has-rail {
     grid-template-columns: 1fr;
     grid-template-rows: none;
@@ -4521,20 +4559,39 @@ th .th-sort:focus-visible,
 
 /* The existing plan style, with aligned values and useful controls. */
 .plan-progress-tile { position: relative; }
-.plan-progress-tile dd { min-height: 2.5em; font-size: var(--d-8); }
+.plan-progress-tile dd { min-height: 0; font-size: var(--d-8); }
 .plan-tile-control { font: inherit; color: inherit; border: 0; padding: 0; background: transparent; text-align: left; cursor: pointer; }
 .plan-tile-control::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius-control); }
 .plan-tile-control:hover::after { outline: 1px solid var(--brand-primary); }
 .plan-tile-control:focus-visible::after { outline: 2px solid var(--brand-primary); outline-offset: 3px; }
 .tenant-context { color: var(--quiet-text); font-size: var(--t-1); margin-bottom: 16px; }
 .tenant-context p { margin: 4px 0; }
-.workflow-choices { display: grid; gap: 12px; width: 100%; }
-.workflow-choice { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.workflow-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; width: 100%; }
+.workflow-choices > p, .workflow-choices > button { grid-column: 1 / -1; }
+.workflow-choices > button { justify-self: start; }
+.workflow-choice { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .workflow-choice .reason { grid-column: 1; }
-.workflow-choice select { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+.workflow-choice select { grid-column: 2; grid-row: 1 / 3; align-self: center; width: 100%; }
+/* A seven-question form needs the step's available width. Keep DOM and focus
+   order: evidence, milestone and choices, then implementation. */
+.step-body.has-rail:has(.workflow-choices) { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; gap: 0; }
+.step-body.has-rail:has(.workflow-choices) > .step-main-lead,
+.step-body.has-rail:has(.workflow-choices) > .step-action-column,
+.step-body.has-rail:has(.workflow-choices) > .step-main-rest { grid-column: auto; grid-row: auto; }
+.step-body:has(.workflow-choices) > .step-action-column { border-left: 0; border-top: 1px solid var(--line); padding: 20px 27px; }
 .progress-track { height: 6px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
 .progress-fill { height: 100%; background: var(--brand-primary); transition: width .25s ease; }
 .progress-indeterminate .progress-fill { width: 35%; animation: scan-progress 1.7s ease-in-out infinite alternate; }
 @keyframes scan-progress { from { transform: translateX(-100%); } to { transform: translateX(285%); } }
 @media (prefers-reduced-motion: reduce) { .progress-indeterminate .progress-fill { animation: none; width: 100%; } .progress-fill { transition: none; } }
-@media (max-width: 650px) { .plan-progress-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workflow-choice { grid-template-columns: 1fr; } .workflow-choice select { grid-column: 1; grid-row: auto; } }
+@media (max-width: 650px) {
+  .plan-progress-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-progress-tile:last-child { grid-column: 1 / -1; }
+  .plan-progress-tile:last-child .tile-year { display: inline; margin-left: 6px; }
+  .workflow-choice { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .workflow-choice select { grid-column: 1; grid-row: auto; }
+  .step-body:has(.workflow-choices) > .step-action-column { padding-inline: 18px; }
+  .plan-settings > .rows { flex-direction: column; align-items: stretch; }
+  .plan-settings .freeze-field { flex-basis: auto; }
+}
+@media (max-width: 380px) { header.app nav { column-gap: 8px; } }

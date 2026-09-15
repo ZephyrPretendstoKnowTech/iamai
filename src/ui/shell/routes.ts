@@ -86,6 +86,7 @@ export function resolveHash(hash: string): { route: Route; redirect: string | nu
   const oldShow = TODAY_SHOW.exec(h)
   if (oldShow) return { route: 'readiness', redirect: `#/readiness/${oldShow[1]}` }
   // The baseline-package how-to is an anchor on How (prompt 49 item 11).
+  if (h === 'how#package') return { route: 'how', redirect: null }
   if (h === 'package' || h === 'baseline/package') return { route: 'how', redirect: '#/how#package' }
   const to = REDIRECT[h]
   if (to) return { route: to, redirect: `#/${to}` }
