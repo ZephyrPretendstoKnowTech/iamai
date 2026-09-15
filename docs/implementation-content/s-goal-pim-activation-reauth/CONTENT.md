@@ -6,9 +6,11 @@ Do not parse headings for execution. Select blocks only by `META.json` block IDs
 Entra admin center → Entra ID → Conditional Access → Authentication context. Create or update the IAMAI-resolved context ID/name `{{authContext.target.id}}` / `{{authContext.target.displayName}}`, set description to `Fresh strong authentication for privileged role activation.`, and publish it. Do not choose a different context ID merely because it is free.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.policy.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
+Create this policy in Report-only. It will not enforce its access rule until you enable it. PIM role settings are not changed in this step.
+
 Entra admin center → Entra ID → Conditional Access → Policies → New policy.
 1. Name: `{{policy.target.displayName}}`.
-2. Users: Include All users; exclude IAMAI's canonical exclusion groups.
+2. Users: Include All users; exclude the resolved exclusion groups.
 3. Target resources → Authentication context: `{{authContext.target.displayName}}` (`{{authContext.target.id}}`).
 4. Conditions: no additional risk, location, platform, device, or authentication-flow condition.
 5. Grant: Grant access → Require authentication strength → IAMAI-resolved target strength.
@@ -17,47 +19,51 @@ Entra admin center → Entra ID → Conditional Access → Policies → New poli
 Save, read back, and rescan IAMAI. Do not configure PIM role settings yet.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the IAMAI-resolved authentication context or Conditional Access policy identified by the mismatch. For CA corrections, confirm the stable tenant policy ID before saving and keep its current state.
+Open the authentication context or Conditional Access policy IAMAI identified for this difference. For a policy correction, confirm the policy ID before saving and keep its current state.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.context","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set the resolved authentication context to the intended name/description and Published/available state. Keep its stable context ID unchanged.
+Set the resolved authentication context to the intended name/description and Published/available state. Keep its context ID unchanged.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.users","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set CA Users to All users with only IAMAI's canonical exclusion groups. Do not scope this activation policy to directory roles as a substitute for the authentication context.
+Set Users to All users with only the resolved exclusion groups. Do not scope this activation policy to directory roles as a substitute for the authentication context.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.context","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Target resources to the single IAMAI-resolved authentication context `{{authContext.target.displayName}}` (`{{authContext.target.id}}`). Remove noncanonical application/user-action/authentication-context targets.
+Set Target resources to the single IAMAI-resolved authentication context `{{authContext.target.displayName}}` (`{{authContext.target.id}}`). Remove any other application, user-action or authentication-context target.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.strength","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Under Grant, require the IAMAI-resolved baseline authentication strength. Do not substitute generic MFA and do not combine built-in MFA with the authentication-strength grant.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under Session, enable Sign-in frequency = **Every time** using primary and secondary authentication. Remove other noncanonical v1.0 session controls.
+Under Session, enable Sign-in frequency = **Every time** using primary and secondary authentication. Remove any other session control.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.remove-noncanonical","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove noncanonical risk, location, platform, device, authentication-flow, application, user-action, or other security-significant conditions. Preserve the dedicated authentication-context target.
+Remove the risk, location, platform, device, authentication-flow, application, user-action, or other conditions IAMAI identified as differences. Keep the dedicated authentication-context target.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.policy.report-only","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Set the CA policy to Report-only while material corrections are being validated. Do not point PIM at this context in this state.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save only the selected correction(s), read back by stable ID, and rescan IAMAI. PIM role settings remain unchanged until the CA policy is canonical and On.
+Save only the selected correction(s), read back the same policy ID, and rescan IAMAI. Leave PIM role settings unchanged until the policy matches the intended settings and is On.
 
-Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the CA policy in Report-only while reviewing its exact context target, strength, exclusions, and Every time session control. Use Conditional Access What If where useful. Do not configure the PIM role authentication-context rule yet: Microsoft's current guidance says the backup MFA mechanism is not triggered when the matching CA policy is Report-only.
+Keep the policy in Report-only while you review the evidence listed for this step: its authentication context target, authentication strength, exclusions, and Every time session control. Use Conditional Access What If where useful. Do not configure the PIM role authentication-context rule yet: Microsoft's current guidance says the backup MFA mechanism is not triggered when the matching Conditional Access policy is Report-only.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.enable-ca","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Open the canonical dedicated CA policy by stable ID. Confirm the authentication context is published, the strength/exclusions are resolved, and no readiness blocker remains. Change the CA policy from Report-only to **On** and read it back. Do not update PIM role settings unless this verification succeeds.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+Open the dedicated policy by its policy ID. Confirm the authentication context is published, the authentication strength and exclusions are resolved, and no readiness blocker remains. Change the policy from Report-only to **On**.
+
+Verify after the change: the policy reads back On. Update PIM role settings only after this check succeeds. The policy applies only when a sign-in requests this authentication context, such as a PIM activation configured to require it.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.pim.configure","channel":"entra","states":["pimSettingsPending"],"format":"markdown","kind":"template"}
-With the matching CA policy verified **On**: Entra ID → Identity governance → Privileged Identity Management → Microsoft Entra roles → Role settings. For each IAMAI-selected role, edit Activation settings and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting `{{authContext.target.displayName}}`. Change no unrelated approval, duration, justification, notification, or other activation settings.
+With the matching Conditional Access policy verified **On**: Entra ID → Identity governance → Privileged Identity Management → Microsoft Entra roles → Role settings. For each IAMAI-selected role, edit Activation settings and enable **On activation, require Microsoft Entra Conditional Access authentication context**, selecting `{{authContext.target.displayName}}`. Change no unrelated approval, duration, justification, notification, or other activation settings. This requirement applies when the role is activated; it does not control how the role is used after activation.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.verify-activation","channel":"entra","states":["verificationPending"],"format":"markdown","kind":"template"}
-Use a controlled eligible admin/test account to activate one selected role. Confirm the authentication-context flow invokes the expected Conditional Access requirement, then verify the role activated successfully. Remember Microsoft's 10-minute reauthentication window can allow a second activation soon afterward without another prompt. Rescan IAMAI.
+Verify after the change: use a controlled eligible admin or test account to activate one selected role. Confirm activation invokes the expected Conditional Access requirement, then confirm the role activated. Microsoft can reuse a recent reauthentication for another activation within its documented 10-minute window, so a second activation soon afterward may not prompt again. Rescan IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.context.upsert","channel":"json","states":["contextMissing","partial"],"format":"json-template","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/authenticationContextClassReferences/{authContext.target.id}"}
 {"displayName":"{{authContext.target.displayName}}","description":"Fresh strong authentication for privileged role activation.","isAvailable":true}
@@ -248,11 +254,8 @@ switch ($Mode) {
 @@IAMAI-BEGIN {"id":"ai.context","channel":"aiInfo","states":["contextMissing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. Prepare/publish only the dedicated authentication context.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+The dedicated authentication context is missing or not published. This state prepares and publishes that context only; the Conditional Access policy and PIM role settings come later.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -260,22 +263,20 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain how to create or update and publish the context with the resolved ID and name, then rescan IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. Create the dedicated CA policy in Report-only; do not change PIM yet.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+This state creates the dedicated Conditional Access policy in Report-only. PIM role settings are not changed yet.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -283,22 +284,20 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain the create action: the authentication context target, the resolved authentication strength, the exclusions and the Every time session control.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. Correct only IAMAI-classified context/CA mismatches.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+This state corrects the authentication context or the dedicated Conditional Access policy where IAMAI found differences. Correct only those differences, on the same policy ID.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -306,26 +305,24 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain each difference and its correction.
 
-The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. Validate the Report-only CA/context configuration without wiring PIM to it.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+The dedicated Conditional Access policy is in Report-only. PIM role settings must not point at the context yet.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -333,22 +330,20 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain which configuration checks remain before the policy is turned On.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.enforce-ca","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. Enable the canonical CA policy first.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+This state turns the dedicated Conditional Access policy On. PIM role settings change only after the policy reads back On.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -356,22 +351,20 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain the enable step and the read-back check that must succeed before PIM is configured.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.configure-pim","channel":"aiInfo","states":["pimSettingsPending"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. With CA confirmed On, update only the selected PIM authentication-context rules.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+The dedicated Conditional Access policy is On. This state updates only the authentication-context rule in the selected PIM role settings; other role settings stay unchanged.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -379,22 +372,20 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain the PIM change and the controlled activation test that follows.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationPending"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Require MFA at Every Role Activation**. Verify PIM rules and controlled role activation behavior.
-
-AUTHORITY
-The retained IAMAI baseline/package owns the desired semantics. Current Microsoft documentation owns current PIM/Conditional Access behavior. Do not invent tenant objects, eligible roles, evidence, or owner decisions.
+STATE
+The selected PIM role settings require the context. This state verifies the PIM rules and a controlled role activation.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -402,24 +393,21 @@ TENANT CONTEXT
 - Authentication strength: {{authStrength.target.displayName}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-SAFETY ORDER
-Authentication context → CA policy Report-only → validate → CA policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context CA policy is Report-only/disabled.
+SETUP ORDER
+Authentication context → Conditional Access policy in Report-only → validate → policy On → only then PIM role settings → controlled activation. Microsoft says PIM's backup MFA is not triggered when the matching context policy is Report-only or disabled.
 
-LIMIT
-`Every time` still has Microsoft's documented 10-minute reauthentication window across activations. Do not claim a literal prompt for every activation.
+LIMITS
+`Every time` still has Microsoft's documented 10-minute reauthentication window across activations, so a second activation soon afterward may not prompt again. The context applies at role activation; it does not control use of the role after activation.
 
-Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+NEXT STEP
+Explain how to run the controlled activation and read its result. Configuration checks alone do not show the activation experience.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"email.admins.pre-activation-change","channel":"email","states":["pimSettingsPending"],"format":"markdown","kind":"template","audience":"privileged-administrators","trigger":"before-pim-role-setting-activation","purpose":"pre-change-notice","recommendation":"recommended"}
-Subject: Admin role activation will require fresh strong authentication
+Subject: Planned change: Require MFA at Every Role Activation
 
 Admins,
 
-We're updating privileged-role activation in {{tenant.displayName}}. When you activate an eligible role, PIM will invoke a dedicated Conditional Access authentication context and require the approved strong authentication method for that context.
-
-You may be asked to authenticate again even if you're already signed in. Microsoft can reuse a successful reauthentication for another eligible activation within a short window, so a second activation might not always show another prompt.
-
-If activation cannot be completed, contact the identity/help-desk team before retrying repeatedly.
+We plan to require the approved authentication method when you activate an eligible admin role. You may need to authenticate again; a recent successful check may be reused for another activation.
 
 Thanks,
 IT
@@ -456,14 +444,14 @@ IT
     {
       "id": "ca",
       "label": "Conditional Access",
-      "gate": "Dedicated CA policy is canonical; it is Report-only while validating and On before PIM is wired to the context.",
+      "gate": "The dedicated policy matches the intended settings; it is Report-only while validating and On before PIM is wired to the context.",
       "results": [
         "Ready",
         "Review required",
         "Unknown",
         "Blocked"
       ],
-      "why": "Microsoft\u2019s PIM backup MFA does not apply when the matching context CA policy exists but is Report-only/disabled."
+      "why": "Microsoft\u2019s PIM backup MFA does not apply when the matching policy is Report-only or disabled. Verify the enabled policy before attaching the context to PIM. A controlled activation test is separate from configuration checks."
     },
     {
       "id": "pim",

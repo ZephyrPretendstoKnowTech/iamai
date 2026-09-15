@@ -28,47 +28,59 @@ try {
 @@IAMAI-BEGIN {"id":"ai.route","channel":"aiInfo","states":["routeDecisionRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-For {{tenant.displayName}}, compare the actual capabilities of {{mail.devices}} against the supported choices. Do not pick SMTP relay unless the relay prerequisites are proven; do not recommend Basic authentication as the target design.
+{{tenant.displayName}} has mail-sending devices or applications that need a supported route before legacy authentication is blocked: {{mail.devices}}. No route is chosen yet.
+
+Supported routes include SMTP AUTH client submission with OAuth, SMTP relay through an Exchange Online inbound connector (which needs a certificate or a static public IP address, and TCP 25) and Direct Send (internal recipients only). Keeping an account in a Conditional Access exception group does not keep Basic SMTP AUTH working once Exchange Online no longer accepts it.
+
+NEXT STEP: Explain which device facts decide the route (authentication and TLS support, recipient requirements, network identity), which are still missing, and which route fits. Do not recommend Basic authentication as the target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.migrate","channel":"aiInfo","states":["migrationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the chosen route {{mail.route}} for {{mail.devices}}. Identify only the remaining manual device/app and Exchange steps; never request or reproduce passwords.
+The chosen route is {{mail.route}} for {{mail.devices}}. Moving to it means configuring the device or application, setting up any Exchange Online connector the route needs, and proving delivery with test messages. Keep the existing route available until the replacement sends successfully.
+
+NEXT STEP: Explain the remaining device, application and Exchange Online steps for this route, and the test messages that will show delivery works. Never ask for or repeat a password.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.relay","channel":"aiInfo","states":["relayConnectorReady"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed certificate-authenticated relay connector. Confirm the certificate identity, accepted domain/sender requirements, TCP 25, and that an equivalent connector does not already exist.
+SMTP relay is the chosen route, and a certificate-based inbound connector is the next change. Creating the connector does not configure the device or prove delivery.
+
+NEXT STEP: Explain how to confirm the certificate name the connector will expect, the accepted domain and sender domains, that the device can reach the tenant's MX endpoint on TCP 25, and that no equivalent connector already exists.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Summarize what must be proven before the old service account can leave the exception group: successful mail delivery, recipient scope, message trace/device logs, and absence of the old password-based sign-in.
+This step is waiting for proof that the replacement route works. The old service account stays in the exception group until then.
+
+NEXT STEP: Explain the evidence needed before removing it: successful delivery to each required recipient type (including external recipients where needed), message trace or device logs, and no further sign-ins with the old password. Removal happens in the service-accounts group step, after checking that nothing else still uses the account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the blocker without inventing a mail route, IP address, certificate, or credential: {{dependencies.blockers}}.
+This mail-route step is on hold: {{dependencies.blockers}}. Do not assume a mail route, IP address, certificate or credential that the facts do not show.
+
+NEXT STEP: Explain what must be resolved before a route can be chosen or tested.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.owner","channel":"email","states":["routeDecisionRequired"],"format":"markdown","kind":"template","audience":"device-owner"}
-Subject: Confirm mail-sending device requirements
+Subject: Action needed: Set Up an SMTP Relay for Mail-Sending Devices
 
-We need the current sending method, whether the device can use OAuth/TLS, whether it sends only internally or to internet recipients, and whether its network has a static public IP or suitable TLS certificate. We will choose a supported route from those facts rather than weaken Conditional Access.
+Please send IT the device's current mail settings, supported authentication methods, recipient requirements and a suitable test window. Please also tell us whether its network has a static public IP address or a suitable TLS certificate. Do not send its password.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.device-owner","channel":"email","states":["migrationRequired"],"format":"markdown","kind":"template","audience":"device-owner"}
-Subject: Mail-device migration and test
+Subject: Action needed: Set Up an SMTP Relay for Mail-Sending Devices
 
-We are moving the listed device/application off its current password-dependent mail path. Please provide a test window and a recipient we can verify. We will keep the existing route available until the replacement sends successfully and is visible in logs.
+We plan to move the device or application off its current password-based way of sending mail. Please provide a test window and a recipient we can check. We will keep the existing route available until the replacement sends successfully and delivery is confirmed. Do not send its password.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["routeDecisionRequired","migrationRequired","relayConnectorReady","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"devices","label":"Mail-sending devices","result":{{json:mail.devices}},"line":"Each device needs a route based on actual capability."},{"id":"route","label":"Chosen route","result":{{json:mail.route}},"line":"OAuth and SMTP relay have different prerequisites."},{"id":"connector","label":"Relay connector","result":{{json:mail.connector.name}},"line":"Create one only when relay is chosen and identity is proven."}],"whyIamaiSaysThis":"Legacy-authentication enforcement must not strand a printer or application that still sends mail with a password."}
+{"tiles":[{"id":"devices","label":"Mail-sending devices","result":{{json:mail.devices}},"line":"Each device needs a route based on actual capability."},{"id":"route","label":"Chosen route","result":{{json:mail.route}},"line":"Confirm the device's capabilities, recipient needs and chosen route. An exception group cannot restore a service-side authentication method that is unavailable."},{"id":"connector","label":"Relay connector","result":{{json:mail.connector.name}},"line":"Create one only when relay is chosen and identity is proven."}],"whyIamaiSaysThis":"Legacy-authentication enforcement must not strand a printer or application that still sends mail with a password."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["migrationRequired","relayConnectorReady","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}

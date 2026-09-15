@@ -8,7 +8,7 @@
 // enforcement is offered while the escape hatch is unverified.
 //
 // Pure: no DOM, no network.
-import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, fallbackAction } from '../copy/validation.ts'
+import { ATTESTATION_DONE_WHEN, ATTESTATION_RULES, BLOCKER_STEP, BLOCKER_WHY, HOUSEKEEPING_ONLY_RULES, RULE_ACTION, SEVERITY, SUBJECT, SUBJECT_PLAIN, fallbackAction } from '../copy/validation.ts'
 import { ruleText } from '../validation/rules.ts'
 import type { RuleSubject } from '../validation/rules.ts'
 import type { SubjectReport } from '../validation/report.ts'
@@ -96,7 +96,7 @@ export function blockerSteps(reports: SubjectReport[]): Step[] {
       phase: 0,
       kind: 'prerequisite',
       title: name,
-      why: BLOCKER_STEP.why(name, n),
+      why: BLOCKER_STEP.why(name, n, BLOCKER_WHY[subject]),
       ...stateFields(),
       blockedBy: [],
       blockers: [],

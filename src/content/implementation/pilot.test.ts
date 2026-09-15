@@ -109,7 +109,7 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   assert.deepEqual(JSON.parse(by.json.text), { state: 'enabled' })
   assert.deepEqual(by.json.requests, [{ method: 'PATCH', endpoint: `/identity/conditionalAccess/policies/${PILOT_IDS.policy}` }])
   assert.match(by.aiInfo.text, new RegExp(`Policy ID: ${PILOT_IDS.policy}`))
-  assert.match(by.aiInfo.text, new RegExp(`Canonical exclusions: ${PILOT_IDS.exclusions}`))
+  assert.match(by.aiInfo.text, new RegExp(`Resolved exclusions: ${PILOT_IDS.exclusions}`))
   assert.equal(by.email.text, authored('email.users.pre-enforcement'), 'the Email is not the authored message exactly')
   assert.deepEqual(by.email.communication, { audience: 'affected-users', trigger: 'before-enforcement', purpose: 'pre-change-notice' })
 })
@@ -174,7 +174,7 @@ test('Partial selects correction modules from the engine’s changed fields, one
   assert.deepEqual(by.powershell.runs, [{ mode: 'Correct', corrections: ['Conditions', 'Grant'] }])
   assert.match(by.powershell.text, /Invoke-IAMAIStep -Mode 'Correct' -Corrections 'Conditions','Grant' -PolicyId/)
   // The selected module ids are what the package's own text names.
-  assert.match(by.aiInfo.text, /IAMAI mismatches: users\.exclusions-canonical, grant\.authentication-strength/)
+  assert.match(by.aiInfo.text, /Differences IAMAI found: users\.exclusions-canonical, grant\.authentication-strength/)
   for (const notDetected of ['entra.correct.users.include-all', 'entra.correct.target.register-or-join-devices', 'entra.correct.conditions.remove-noncanonical', 'entra.correct.lifecycle.report-only']) {
     assert.equal(by.entra.blocks.includes(notDetected), false, `${notDetected} shown for a field the engine did not report`)
   }
@@ -187,7 +187,7 @@ test('Partial selects correction modules from the engine’s changed fields, one
   // correction now says what saving does to a policy that is On instead.
   const live = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] })
   assert.equal(live.channels.find((c) => c.channel === 'entra')!.blocks.includes('entra.correct.lifecycle.report-only'), false)
-  assert.match(live.channels.find((c) => c.channel === 'entra')!.text, /if it is On, the correction applies to sign-ins as soon as you save/)
+  assert.match(live.channels.find((c) => c.channel === 'entra')!.text, /If it is On, the changed rule can affect access after you save\./)
   assert.equal('state' in JSON.parse(live.channels.find((c) => c.channel === 'json')!.text), false, 'the correction request writes no state')
   assert.deepEqual(live.channels.find((c) => c.channel === 'powershell')!.corrections, ['Grant'])
   const aloneAlone = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: undefined })

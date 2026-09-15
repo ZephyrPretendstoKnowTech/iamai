@@ -13,7 +13,8 @@ import { implementationPackageFor, memberBindings, packageBindings } from './ste
 import { stepContract } from './stepContract.ts'
 import { stepBodyOf } from './stepBody.ts'
 
-const NOT_OFFERED = 'Not offered here yet. The pinned baseline has no unmanaged-device session policy, so IAMAI has no name or stable identity for this companion.'
+// Editorial batch C: the companion is no longer named; the create says the baseline has one session policy.
+const NOT_OFFERED = 'The baseline has one session policy for this step: the browser policy below.'
 
 function opened() {
   const f = curatedFixture('demo-week2')
@@ -42,7 +43,7 @@ test('the session create is the pinned browser policy alone, and the unmanaged c
   assert.ok(entra.includes(NOT_OFFERED), entra)
   assert.ok(entra.includes('1. Name: `Core - Session - Non-persistent browser sessions`.'), entra)
   assert.doesNotMatch(entra, /device\.isCompliant|‹unmanaged/)
-  assert.ok(tab('ai').includes('Policy B is not created here.'))
+  assert.ok(tab('ai').includes('there is no second policy to create, correct or enable.'))
   const calls = tab('ps').split(String.fromCharCode(10)).filter((l) => l.startsWith('Invoke-IAMAIStep'))
   assert.equal(calls.length, 1, calls.join(' | '))
   assert.match(calls[0], /^Invoke-IAMAIStep -Mode 'CreateBrowser' -BrowserPolicyDisplayName 'Core - Session - Non-persistent browser sessions' /)

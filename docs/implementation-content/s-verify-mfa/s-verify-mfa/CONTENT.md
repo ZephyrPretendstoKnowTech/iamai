@@ -1,12 +1,12 @@
 @@IAMAI-BEGIN {"id":"entra.campaign","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-1. Go to Entra admin center → Security → Authentication methods → Registration campaign.
+1. Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.
 2. State: Enabled.
-3. Target: All users.
-4. Authentication method: Passkey (Microsoft Authenticator).
-5. Number of days allowed to snooze: 14 (or your organization's preference).
-6. Save.
+3. Target: All users, keeping any existing exclusions.
+4. Authentication method to set up: Microsoft Authenticator, the method this plan's campaign targets.
+5. Number of days allowed to snooze: the value your organization approved; IAMAI does not hold one. After the allowed snoozes, registration is required.
+6. Save, reopen the settings and rescan.
 
-Each user will see a prompt at their next sign-in asking them to register a passkey. They can snooze it, but it returns until they complete registration.
+Whether and when an included user sees a registration prompt depends on their eligibility for the selected method and on the snooze settings.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.walkthrough","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
@@ -14,10 +14,10 @@ After enabling the campaign, help each special-care person register in person:
 
 1. Book 10 minutes with each person listed under "People who need special care."
 2. Open aka.ms/mfasetup with them signed in.
-3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a one-time code to sign in and register.
-4. If they only have text or phone call: register the passkey first, then remove the phone number from their authentication methods so it's no longer a sign-in option.
+3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a time-limited passcode to sign in and register.
+4. If they only have text message or phone call: register the replacement method with them. Test the replacement method first. Retire an older method only through the approved method-policy change, after checking recovery needs.
 5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.
-6. Have each person sign in one more time after registration. IAMAI checks for the sign-in record on the next scan.
+6. Have each person sign in once more using the new method. IAMAI looks for that sign-in record on the next scan.
 
 Track progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.
 
@@ -26,28 +26,29 @@ Track progress on the MFA Readiness page — it shows who still needs setup and 
 
 @@IAMAI-BEGIN {"id":"entra.configure","channel":"entra","states":["setupRequired"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Authentication methods > Registration campaign > Edit**.
-2. Set State to **Enabled** (not Microsoft managed, because IAMAI is preserving an explicit Authenticator-targeted campaign).
+2. Set State to **Enabled** (not Microsoft managed, because the plan keeps an explicit Microsoft Authenticator campaign).
 3. Authentication method: **Microsoft Authenticator**.
 4. Target: **All users**, then apply only IAMAI-resolved exclusions if the tenant campaign should omit non-person populations.
 5. Set the IAMAI-resolved snooze duration to **{{campaign.snoozeDurationInDays}} day(s)**.
 6. Keep **Limited number of snoozes** enabled so registration is required after the allowed snoozes, where the tenant's current rollout exposes that control.
-7. Save, re-open the campaign, and verify the effective target before communicating the rollout.
+7. Save, reopen the campaign and verify the target before announcing the rollout. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.run-workflow","channel":"entra","states":["campaignRunning"],"format":"markdown","kind":"template"}
 1. Work the current special-care list: {{readiness.specialCare}}.
 2. For a person with no usable method, use the approved Temporary Access Pass/recovery workflow and register a supported method with them.
-3. For a registered-but-unproven person, have them complete a real MFA sign-in so IAMAI can observe proof.
-4. For admins still below the phishing-resistant target {{readiness.adminsNeedingPasskey}}, register and prove a passkey/security key; Authenticator push alone does not satisfy that admin requirement.
-5. Rescan IAMAI after each batch. Do not reconfigure the campaign just because the readiness list changed.
+3. For a registered-but-unproven person, have them sign in with the intended method so the next scan can record a successful use.
+4. For admins still below the phishing-resistant target {{readiness.adminsNeedingPasskey}}, register and test a passkey/security key; Authenticator push alone does not satisfy that admin requirement.
+5. Test the replacement method first. Retire an older method only through the approved method-policy change, after checking recovery needs.
+6. Rescan IAMAI after each batch. Do not reconfigure the campaign just because the readiness list changed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.holdouts","channel":"entra","states":["holdoutReview"],"format":"markdown","kind":"template"}
-Review every remaining holdout individually after the enrollment deadline. Confirm employment/account status, recovery method, and whether the person has been contacted. Do not add a Conditional Access exclusion merely because enrollment was not completed.
+Review every remaining holdout individually after the enrollment date. Confirm employment and account status, recovery method, and whether the person has been contacted, then record an explicit outcome for each person. The elapsed date is not proof of readiness. Do not add a Conditional Access exclusion merely because enrollment was not completed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify-ready","channel":"entra","states":["ready"],"format":"markdown","kind":"template"}
-Re-open the campaign and confirm it remains on the intended Authenticator target. Then use IAMAI's current MFA Readiness evidence—not the campaign setting—to confirm the rollout gate is met.
+Reopen the campaign and confirm it still targets Microsoft Authenticator with the intended snooze settings. Then use IAMAI's current MFA Readiness evidence, not the campaign setting, to confirm the readiness checks are met. Campaign settings do not show that people can sign in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.configure","channel":"json","states":["setupRequired"],"format":"json-template","kind":"template"}
@@ -76,55 +77,55 @@ $p.registrationEnforcement.authenticationMethodsRegistrationCampaign
 @@IAMAI-BEGIN {"id":"ai.configure","channel":"aiInfo","states":["setupRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed registration campaign for {{tenant.displayName}}. Preserve the explicit Microsoft Authenticator target, all-user campaign target, current exclusions {{campaign.excludeTargets}}, and IAMAI snooze duration {{campaign.snoozeDurationInDays}}. Do not switch to passkeys without a product/owner decision.
+The registration campaign for {{tenant.displayName}} needs to be configured. Intended campaign: State Enabled (not Microsoft managed); method Microsoft Authenticator; target All users; exclusions {{campaign.excludeTargets}}; snooze duration {{campaign.snoozeDurationInDays}} day(s), with registration required after the allowed snoozes where the tenant exposes that control. Switching the method to passkeys would change the saved plan and needs an owner decision. Microsoft is changing campaign behavior in a rollout expected to finish by the end of September 2026, so the portal may show different controls. Prompts depend on each user's eligibility and the snooze settings.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.running","channel":"aiInfo","states":["campaignRunning"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Summarize the current enrollment work from IAMAI readiness: {{readiness.activeCount}} active people, {{readiness.percent}} readiness, special care {{readiness.specialCare}}, admins needing passkey/security key {{readiness.adminsNeedingPasskey}}. Do not infer proof from registration alone.
+The campaign is running and enrollment work is in progress. Active people: {{readiness.activeCount}}. MFA readiness: {{readiness.percent}}. People who need hands-on help: {{readiness.specialCare}}. Admins who still need a passkey or security key: {{readiness.adminsNeedingPasskey}}. A registered method and a successful sign-in with it are different evidence. An older method is retired only through the approved method-policy change, after checking recovery needs.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.holdouts","channel":"aiInfo","states":["holdoutReview"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review remaining holdouts one by one. Recommend account-status/recovery/contact actions, not Conditional Access exclusions.
+The enrollment date has passed and some active people still lack a proven method. Each needs an individual review outcome covering account status, recovery method and whether they have been contacted. A Conditional Access exclusion is not the default resolution, and the elapsed date is not proof of readiness.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.ready","channel":"aiInfo","states":["ready"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Check that the campaign configuration and IAMAI readiness evidence are being treated separately. Campaign configuration is not proof that each person can authenticate.
+The remaining work is to confirm that the campaign is still configured as planned and that MFA Readiness evidence meets the step's checks. These are separate: campaign settings do not prove that each person can sign in with their method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the blocker without inventing a user method, readiness result, or campaign setting: {{dependencies.blockers}}.
+This step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.everyone","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template","audience":"all-users"}
-Subject: Set up Microsoft Authenticator before MFA enforcement
+Subject: Action needed: Create and Enforce the MFA Registration Campaign
 
-From {{campaign.mfaEnforceDate}}, sign-ins to {{tenant.displayName}} will require MFA. Please complete the Microsoft Authenticator setup when prompted. If you cannot register or no longer have access to your existing method, contact IT before the enforcement date so we can use the approved recovery process.
+Please complete the sign-in method setup requested by IT, then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins","channel":"email","states":["setupRequired"],"format":"markdown","kind":"template","audience":"administrators"}
-Subject: Admin sign-in requires a passkey or security key
+Subject: Action needed: Create and Enforce the MFA Registration Campaign
 
-The general campaign will help with Microsoft Authenticator, but admin sign-ins have a stronger requirement. If IAMAI lists you as needing action, register and prove a passkey or hardware security key before the admin-policy enforcement date.
+Admin sign-ins need a stronger method than the general setup request. If IT has asked you to, register a passkey or hardware security key for your admin sign-in, then sign in once using it. Contact IT if you cannot register or no longer have access to your existing method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.holdout","channel":"email","states":["holdoutReview"],"format":"markdown","kind":"template","audience":"rollout-administrators"}
-Subject: MFA enrollment holdout review
+Subject: Action needed: Create and Enforce the MFA Registration Campaign
 
-The enrollment deadline has passed and one or more active people still lack proven readiness. Review each remaining account for status, contact/recovery needs, and manager follow-up. Do not create a policy exclusion as the default resolution.
+The enrollment date has passed and some active people still have not shown a successful sign-in with a registered method. Please review each remaining account for its status, contact and recovery needs, and manager follow-up. A policy exclusion is not the default resolution.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["setupRequired","campaignRunning","holdoutReview","ready"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"active","label":"Active people","result":{{json:readiness.activeCount}},"line":"Campaign work is driven by the active-person population."},{"id":"readiness","label":"MFA readiness","result":{{json:readiness.percent}},"line":"Registered-only is not the same as proven."},{"id":"special","label":"Special care","result":{{json:readiness.specialCare}},"line":"People with no method or recovery risk need hands-on work."},{"id":"admins","label":"Admins needing passkey","result":{{json:readiness.adminsNeedingPasskey}},"line":"Authenticator campaign success does not replace phishing-resistant admin readiness."}],"whyIamaiSaysThis":"The campaign is a rollout tool; IAMAI's proof ledger is the readiness authority."}
+{"tiles":[{"id":"active","label":"Active people","result":{{json:readiness.activeCount}},"line":"Campaign work is driven by the active-person population."},{"id":"readiness","label":"MFA readiness","result":{{json:readiness.percent}},"line":"Work through missing methods, unproven methods and unreadable evidence separately. Campaign settings do not prove that people are ready."},{"id":"special","label":"Special care","result":{{json:readiness.specialCare}},"line":"People with no method or recovery risk need hands-on work."},{"id":"admins","label":"Admins needing passkey","result":{{json:readiness.adminsNeedingPasskey}},"line":"Authenticator campaign success does not replace phishing-resistant admin readiness."}],"whyIamaiSaysThis":"The campaign helps people register; MFA Readiness evidence, not the campaign settings, shows whether they are ready."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["setupRequired","campaignRunning","holdoutReview","ready"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"campaign-target-changed","classification":"documented","symptom":"The campaign begins nudging for passkeys instead of the IAMAI Authenticator rollout.","check":"Check whether the campaign is Microsoft managed and whether passkey (FIDO2) is enabled for included users.","fix":"If preserving the IAMAI contract, set the campaign to Enabled with Microsoft Authenticator explicitly; do not rely on changing Microsoft-managed defaults.","then":"Re-read the authentication methods policy.","sources":["ms-registration-campaign"]},{"id":"user-not-nudged","classification":"documented","symptom":"An included user does not see a registration nudge.","check":"Confirm they completed Entra MFA, are eligible for the targeted method, and aren't blocked from security-info registration by Conditional Access or another flow.","fix":"Resolve the eligibility/registration-path issue rather than adding a broad exclusion.","then":"Retry a qualifying sign-in.","sources":["ms-registration-campaign"]},{"id":"registered-not-proven","classification":"derived","symptom":"The campaign says configured but IAMAI still lists a person as not proven.","check":"Confirm a later sign-in record shows the method actually used successfully.","fix":"Have the person complete a real MFA sign-in with the registered method.","then":"Rescan IAMAI.","sources":["ms-combined-registration"]},{"id":"graph-property-rollout","classification":"documented","symptom":"The tenant UI/API behavior differs from the newest campaign documentation during September 2026.","check":"Confirm the tenant's currently exposed campaign controls and API response.","fix":"Preserve the intended Authenticator target and safe snooze behavior using only controls the tenant currently supports; do not switch target methods to make the request pass.","then":"Re-read effective settings and record the platform variance.","sources":["ms-registration-campaign","ms-authmethods-update"]}]}
+{"scenarios":[{"id":"campaign-target-changed","classification":"documented","symptom":"The campaign begins nudging for passkeys instead of the planned Microsoft Authenticator campaign.","check":"Check whether the campaign is Microsoft managed and whether passkey (FIDO2) is enabled for included users.","fix":"To keep the planned campaign, set it to Enabled with Microsoft Authenticator explicitly; do not rely on changing Microsoft-managed defaults.","then":"Re-read the authentication methods policy.","sources":["ms-registration-campaign"]},{"id":"user-not-nudged","classification":"documented","symptom":"An included user does not see a registration nudge.","check":"Confirm they completed Entra MFA, are eligible for the targeted method, and aren't blocked from security-info registration by Conditional Access or another flow.","fix":"Resolve the eligibility/registration-path issue rather than adding a broad exclusion.","then":"Retry a qualifying sign-in.","sources":["ms-registration-campaign"]},{"id":"registered-not-proven","classification":"derived","symptom":"The campaign says configured but IAMAI still lists a person as not proven.","check":"Confirm a later sign-in record shows the method actually used successfully.","fix":"Have the person complete a real MFA sign-in with the registered method.","then":"Rescan IAMAI.","sources":["ms-combined-registration"]},{"id":"graph-property-rollout","classification":"documented","symptom":"The tenant UI/API behavior differs from the newest campaign documentation during September 2026.","check":"Confirm the tenant's currently exposed campaign controls and API response.","fix":"Preserve the intended Authenticator target and safe snooze behavior using only controls the tenant currently supports; do not switch target methods to make the request pass.","then":"Re-read effective settings and record the platform variance.","sources":["ms-registration-campaign","ms-authmethods-update"]}]}
 @@IAMAI-END

@@ -47,15 +47,23 @@ test('session-lifetime: every projected explanation in every state describes the
     assert.ok(ai.length > 0, `${state}: no AI Info drawn`)
     // The whole briefing, not its first line: the target is the browser policy and says there is no second one.
     // The target names only the exclusions the resolved target has (consolidated batch item 2), never a mandatory shared-device set.
-    assert.match(ai, /Policy A \(browser\): All users; IAMAI's canonical exclusion groups and only the individual accounts the resolved target names; All resources; Browser; 12-hour/, state)
+    // Editorial batch C: the Policy A/B framing is gone; the intended policy is stated alone, and every state says it is the only one.
+    assert.match(ai, /All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours/, state)
     assert.doesNotMatch(ai, /shared-device exclusions|group\/shared-device/, state)
-    assert.match(ai, /This is the whole target: the pinned baseline has no unmanaged-device session policy/, state)
-    assert.match(ai, /Do not add a companion policy the pinned baseline does not contain/, state)
+    assert.match(ai, /The baseline has one session policy for this step/, state)
+    // A state that writes settings also says not to add a companion.
+    if (state === 'missing' || state === 'partial') assert.match(ai, /Do not add a companion policy, conditions or exclusions that the baseline does not contain/, state)
     // Every channel but the script, whose retained modes are execution and unchanged in this pass.
     for (const c of p.channels.filter((x) => x.channel !== 'powershell')) {
       assert.doesNotMatch(c.text, COMPANION, `${state}/${c.channel}: ${c.text.match(COMPANION)?.[0]}`)
     }
-    if (state === 'partial') assert.match(p.channels.find((c) => c.channel === 'entra')?.text ?? '', /read the browser policy back, and rescan IAMAI\. Do not turn it On until it matches the canonical target/)
+    // Editorial batch C: a correction keeps the policy's state, so "do not turn it On until…" is gone.
+    if (state === 'partial') {
+      const entra = p.channels.find((c) => c.channel === 'entra')?.text ?? ''
+      assert.match(entra, /read the policy back by its policy ID, and rescan IAMAI\./)
+      assert.match(entra, /If it is On, the changed rule can affect access after you save\./)
+      assert.doesNotMatch(entra, /Do not turn it On until/)
+    }
   }
 })
 
@@ -63,7 +71,9 @@ test('session-lifetime: the pre-enforcement Email describes browser sessions for
   const email = projectImplementation(PKG, 'readyToEnforce', base()).channels.find((c) => c.channel === 'email')
   assert.ok(email, 'the pre-enforcement Email is not drawn')
   assert.equal(email.communication?.audience, 'all-users')
-  assert.match(email.text, /ask you to sign in again about every 12 hours\. Apps outside the browser are not affected by this change\./)
+  // Editorial batch C: the register notice, without the unverified claim about apps outside the browser.
+  assert.match(email.text, /We plan to change browser sign-in to a 12-hour frequency and disable persistent browser sign-in\./)
+  assert.doesNotMatch(email.text, /Apps outside the browser are not affected/)
   assert.doesNotMatch(email.text, COMPANION)
   assert.doesNotMatch(email.text, /IT has separately checked/)
   for (const id of ['readiness.model', 'troubleshooting.model']) {
@@ -75,7 +85,7 @@ test('session-lifetime: the pre-enforcement Email describes browser sessions for
   // so the authored verification tiles and the package's own spec are read at the source.
   const source = readFileSync('docs/implementation-content/s-goal-session-lifetime/CONTENT.md', 'utf8')
   const models = source.slice(source.indexOf('@@IAMAI-BEGIN {"id":"readiness.model"'))
-  assert.match(models, /"gate": "The browser policy is canonical, in Report-only/)
+  assert.match(models, /"gate": "The browser policy matches the intended settings, is in Report-only/)
   assert.doesNotMatch(models, COMPANION, models.match(COMPANION)?.[0] ?? '')
   assert.doesNotMatch(models, /companion|device\.isCompliant/)
   const spec = readFileSync('docs/implementation-content/s-goal-session-lifetime/STEP.md', 'utf8')

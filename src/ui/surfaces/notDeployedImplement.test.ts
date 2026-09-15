@@ -184,7 +184,8 @@ test('004.5: nothing claims report-only evidence, readiness or enforcement befor
     c.doneWhen.some((l) => /report-only/i.test(l)),
     `Done when must name the report-only observation this case still owes: ${c.doneWhen.join(' | ')}`,
   )
-  assert.doesNotMatch(c.doneWhen.join(' | '), /changed settings|after the change/i)
+  // Editorial batch C: "Verify after the change:" labels a human check and claims nothing about settings.
+  assert.doesNotMatch(c.doneWhen.join(' | '), /changed settings|(?<!Verify )after the change/i)
   for (const line of c.doneWhen) assert.doesNotMatch(line, HOLE, `a hole in Done when: ${line}`)
   // The one date the plan has earned: the report-only deployment. The schedule
   // holds a planned enforcement day for its own waves, and no surface states it
@@ -303,7 +304,7 @@ test('004.10: the calendar entry and the prompt pack carry the same create-in-re
   assert.doesNotMatch(unfolded, /Update-Mg/)
   const prompt = stepContext(step, view)
   assert.match(prompt, /Report-only/)
-  assert.doesNotMatch(prompt, /changed settings|after the change/i)
+  assert.doesNotMatch(prompt, /changed settings|(?<!Verify )after the change/i)
 })
 
 // ---- 8. no enforcement is dated, on any surface, while the policy is absent ----

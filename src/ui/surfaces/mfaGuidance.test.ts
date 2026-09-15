@@ -312,10 +312,11 @@ test('the campaign step hands person-level setup to MFA Readiness and keeps its 
     // The handoff.
     assert.ok(lines.includes(GUIDE_POINTER), `${name}: the step points at MFA Readiness`)
     // The policy consequence and the counts that decide it are still there.
-    assert.ok(text.includes('Enforcement should change nothing for anyone'), `${name}: the consequence stands`)
+    // Editorial batch C: the step's Why is the register's.
+    assert.ok(text.includes('Registration alone can hide a rollout problem'), `${name}: the consequence stands`)
     assert.ok(/\d+ (?:people|person) with /.test(text), `${name}: the people the campaign has to reach, counted`)
     assert.ok(/Require Phishing-Resistant MFA for Admins waits on each/.test(text), `${name}: what waits on it`)
-    assert.ok(text.includes('Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.'), `${name}: and the admin completion gate`)
+    assert.ok(text.includes('Every admin is Ready for phishing-resistant MFA.'), `${name}: and the admin completion gate`)
     // The readiness the plan waits on, where this scan measured one at all.
     if (name !== 'messy') {
       assert.ok(/readiness \d+%/.test(text), `${name}: the readiness the plan waits on`)
@@ -452,7 +453,8 @@ test('the step content the guidance replaced is gone, and its meaning is not', (
   // What it must not have lost: the pass for somebody with no way in, the phone
   // number that comes off after, the admins' harder requirement, and the scan.
   assert.ok(/Temporary Access Pass/.test(steps), 'a person with no method still gets a way in')
-  assert.ok(/remove the phone number as a sign-in method/.test(steps), 'the phone number still comes off')
+  // Editorial batch C: an older method is retired only through the approved change, after recovery is checked.
+  assert.ok(/Retire an older method only through the approved method-policy change, after checking recovery needs/.test(steps), 'the phone number still comes off, safely')
   assert.ok(/hardware security key/.test(steps), "the admins' requirement stands")
   assert.ok(/the record shows it on the next scan/.test(steps), 'and the step still ends on the evidence')
 })

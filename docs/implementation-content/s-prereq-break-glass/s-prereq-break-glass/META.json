@@ -3,7 +3,7 @@
   "stepId": "s-prereq-break-glass",
   "title": "Create or Correct Emergency Access Accounts",
   "milestone": {
-    "actionText": "Create and verify two emergency accounts"
+    "actionText": "Complete the remaining emergency access checks."
   },
   "baseline": "jon-hope-pinned",
   "relationship": "prerequisite",

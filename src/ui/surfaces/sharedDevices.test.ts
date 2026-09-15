@@ -40,7 +40,7 @@ test('on a baseline with no shared-device policy, the step renders its instructi
   assert.ok(view.whatToDo.includes('Grant → Block access'))
   const people = ex.peoplePolicies as string[]
   assert.ok(people.length >= 2 && people.includes('Require MFA for Everyone'), JSON.stringify(people))
-  assert.ok(view.whatToDo.some((l) => l.startsWith('Then exclude the same accounts from every policy that prompts a person: ') && people.every((p) => l.includes(p))))
+  assert.ok(view.whatToDo.some((l) => l.startsWith('Separately, apply the resolved exclusions for these accounts to the policies that ask a person to act: ') && people.every((p) => l.includes(p))))
   // The rendered lines carry the same instructions.
   const lines = stepLines(step, ctx)
   for (const l of view.whatToDo) assert.ok(lines.includes(l), `rendered: ${l}`)

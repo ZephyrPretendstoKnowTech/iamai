@@ -200,7 +200,9 @@ test('D1: the Managed Device Done when names no shared-device exception', () => 
 
 test('D2: every step draws every implementation channel; one without content says so and offers nothing to copy', () => {
   const unavailable = fillText(CONTRACT.implementation.channelUnavailable, { address: 'feedback@getiamai.com' })
-  assert.equal(unavailable, 'Content could not be loaded — report this at feedback@getiamai.com')
+  // Editorial batch C: a channel with nothing for this action says so neutrally, and never sends a customer to the product's feedback address.
+  assert.equal(unavailable, 'This channel is not available for the current action. Review the other guidance and the requirements shown on this step.')
+  assert.doesNotMatch(unavailable, /feedback@|could not be loaded/)
   let steps = 0
   let missing = 0
   for (const name of ['demo', 'mid'] as const) {

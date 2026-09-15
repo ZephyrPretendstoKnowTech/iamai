@@ -84,7 +84,8 @@ test('(1) the campaign email is the passkey version once Require MFA for Everyon
   const campg = rg.steps.find((s) => s.id === 's-verify-mfa')!
   const exg = stepVars(campg, ctxFor(g, rg)) as Record<string, unknown>
   assert.equal(exg.mfaInPlace, undefined)
-  assert.match(commsFor(cs, exg, campg)!.body, /^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), .+ signing in to Fixture getiamai will ask you to confirm/)
+  // Editorial batch C: a planned day, never a promise that the date enforces by itself.
+  assert.match(commsFor(cs, exg, campg)!.body, /^Signing in to Fixture getiamai is planned to ask for an approved sign-in method from (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /)
 })
 
 test('(2) the pluraliser conjugates the verb with the count; step 15\'s Who line reads as one on GetIAMAI', () => {

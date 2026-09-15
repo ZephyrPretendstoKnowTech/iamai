@@ -24,7 +24,9 @@
   },
   "baselineAuthority": {
     "pinCommit": "8461e0f2fd10167bf034e7c20ed8ea293827d890",
-    "reviewedMembers": {"53a8df0b-4658-4835-ace2-100b5d287aac":"cbbc493d"},
+    "reviewedMembers": {
+      "53a8df0b-4658-4835-ace2-100b5d287aac": "cbbc493d"
+    },
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
     "memberStableId": "53a8df0b-4658-4835-ace2-100b5d287aac",
     "initialState": "enabledForReportingButNotEnforced",
@@ -41,15 +43,16 @@
     "grant": "tenant-resolved baseline authentication strength; available source evidence names Modern MFA + TAP but source-tenant IDs are not portable",
     "grantOperator": "OR",
     "signInFrequency": "everyTime",
-    "authoringCorrection": "B7: the channels mirror the Medium-risk package at the High threshold, keeping this member's own authentication-strength grant and Every-time session. The earlier plain-MFA first-enforcement variant waited on a saved decision the runtime never supplies (selectByBinding), so no channel projected; a decision never weakens a grant, so the package carries the baseline strength only."
+    "authoringCorrection": "The resolved grant follows the existing saved first-enforcement choice. The default remains the pinned authentication strength; the existing temporary MFA rung is reflected consistently in every output."
   },
   "requiredBindings": [
     "policy.target.displayName",
     "policy.target.excludeGroups",
     "policy.current.id",
     "policy.current.semanticMismatches",
-    "authStrength.target.id",
-    "authStrength.target.displayName"
+    "policy.target.grantControls",
+    "policy.target.grantJson",
+    "policy.target.grantWords"
   ],
   "optionalBindings": [
     "policy.current.removedExclusions",
@@ -67,8 +70,9 @@
       "requires": [
         "policy.target.displayName",
         "policy.target.excludeGroups",
-        "authStrength.target.id",
-        "authStrength.target.displayName"
+        "policy.target.grantControls",
+        "policy.target.grantJson",
+        "policy.target.grantWords"
       ],
       "entra": [
         "entra.create"
@@ -197,8 +201,9 @@
           ],
           "requires": [
             "policy.current.id",
-            "authStrength.target.id",
-            "authStrength.target.displayName"
+            "policy.target.grantControls",
+            "policy.target.grantJson",
+            "policy.target.grantWords"
           ],
           "entra": [
             "entra.correct.grant"
@@ -268,8 +273,9 @@
       "requires": [
         "policy.current.id",
         "policy.target.excludeGroups",
-        "authStrength.target.id",
-        "authStrength.target.displayName"
+        "policy.target.grantControls",
+        "policy.target.grantJson",
+        "policy.target.grantWords"
       ],
       "entra": [
         "entra.enforce"

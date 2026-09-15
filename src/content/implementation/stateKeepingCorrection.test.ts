@@ -108,7 +108,8 @@ for (const stepId of STAGED) {
 // states no effect, and never read AI Info. Every correction now has to say, in Entra and
 // in AI Info, what saving does to a policy that is On — the ten packages above and the two
 // (mfa-all-users, admins-phishing-resistant) whose corrections already kept the state.
-const EFFECT = /\bif (it|the policy) is On, [^.]*(as soon as (you save|it is saved)|saving applies it at once)/i
+// Editorial batch C: the shared correction sentence ("If it is On, the changed rule can affect access after you save.") states the effect too.
+const EFFECT = /\bif (it|the policy|a policy) is On, [^.]*(as soon as (you save|it is saved)|saving applies it at once|can affect access after you save)/i
 for (const stepId of [...STAGED, 's-goal-mfa-all-users', 's-goal-admins-phishing-resistant']) {
   for (const [changed, mode] of CORRECTIONS) {
     test(`${stepId}: a ${mode} correction says in Entra and in AI Info what saving does to a policy that is On`, () => {

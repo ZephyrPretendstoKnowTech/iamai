@@ -1,28 +1,28 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Under **Users**, apply the exact IAMAI-resolved pinned built-in role set and canonical exclusions.
+3. Under **Users**, include exactly the built-in directory roles resolved from the baseline, and apply the intended exclusions.
 4. Target **All resources** and **all client apps**; configure no additional conditions.
-5. Grant **Require authentication strength** and select the tenant-resolved baseline custom strength.
+5. Grant **Require authentication strength** and select the custom authentication strength resolved for this tenant.
 6. Leave session controls unconfigured.
 7. Set **Enable policy: Report-only**, create, re-open, verify, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This policy already exists. The correction adds the exclusions group and aligns the admin roles with the baseline.
+This policy already exists. Correct only the settings below, which IAMAI found different from the baseline.
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-3. Users → Include: select the directory roles the baseline targets (Global Administrator, Security Administrator, etc. — the full list is in the JSON channel).
-4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step.
-5. Target resources: All resources.
+3. Users → Include → Directory roles: select exactly the built-in roles in the resolved target (the includeRoles list in the JSON output) and clear any role it does not list. Custom roles and administrative-unit-scoped role assignments are not covered by this selection.
+4. Users → Exclude → Groups: add the exclusions group you confirmed in the Exclusions Group step. Remove any exclusion the resolved target does not list.
+5. Target resources: All resources. Client apps: All. Remove any other condition.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Set Grant to **Require authentication strength** and select the tenant-local baseline custom strength. Its ID is **{{authStrength.target.id}}**. Remove a non-canonical built-in MFA or different strength only from this policy. The baseline's custom strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not, so replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before.
+Set Grant to **Require authentication strength** and select the custom strength resolved for this tenant. Its ID is **{{authStrength.target.id}}**. Remove built-in MFA or any other strength from this policy's grant. This strength also accepts a Temporary Access Pass; Microsoft's built-in Phishing-resistant MFA strength does not. Replacing that built-in strength with this one lets administrators sign in with a Temporary Access Pass where they could not before, so review that effect before you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -30,21 +30,21 @@ Remove session controls from this policy. Admin session duration and persistence
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}**; never locate/update by display name alone.
+Rename the same policy (same policy ID) to **{{policy.target.displayName}}**. Find it by its policy ID, not by display name alone.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-6. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
+6. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
    This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 7. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in Report-only and review sign-ins for every affected administrator. Any admin who cannot satisfy the baseline custom strength is a readiness blocker, not a reason to weaken the grant.
+Keep the policy in Report-only while you review the evidence listed for this step. Review Report-only sign-in results for each affected administrator and check that each one can use a method the custom strength accepts. An admin who cannot is a readiness issue to fix, not a reason to weaken the grant. A Temporary Access Pass also satisfies this strength, but it is temporary: an admin relying on one still needs a lasting accepted method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Confirm the same policy remains canonical and Report-only, confirm affected admins have working accepted methods, then set **Enable policy: On**. Validate an intended admin plus emergency access and rescan.
+Verify the same policy and its prerequisites: it is still Report-only, its roles, exclusions, grant and session settings match the intended target, and affected admins have working accepted methods. Then set **Enable policy: On**. Verify after the change: an affected admin can sign in with an accepted method, and an emergency access account can still sign in. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -140,19 +140,21 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed administrator policy for {{tenant.displayName}} against the retained pin. Confirm the exact role scope, tenant-local custom strength, no session controls, and Report-only-first rollout. Do not substitute Microsoft's generic built-in strength.
+This state creates the administrator policy for {{tenant.displayName}} in Report-only. It targets the exact built-in directory roles in the baseline, with the intended exclusions, All resources and all client apps. It requires the tenant's custom authentication strength and has no session controls.
+
+That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk, but the accepted set as a whole is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's generic administrator template uses the built-in Phishing-resistant MFA strength; this baseline keeps the custom strength.
+
+Directory-role targeting does not reach custom roles or administrative-unit-scoped role assignments.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This policy requires admins to use a phishing-resistant method — passkey, hardware security key, or Windows Hello — every time they sign in.
+This policy requires administrators in the baseline's built-in directory roles to satisfy the tenant's custom authentication strength. That strength accepts Windows Hello for Business, passkeys and FIDO2 security keys, certificate-based multifactor authentication and Temporary Access Pass. Passkeys and security keys reduce phishing risk but do not make phishing impossible, and the accepted set is not exclusively phishing-resistant because it includes Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.
 
-Unlike the "MFA for Everyone" policy which accepts any MFA method (including phone call), this policy uses the baseline's authentication strength "Modern MFA + TAP", which accepts phishing-resistant methods and also a Temporary Access Pass. Microsoft's built-in Phishing-resistant MFA strength does not accept a Temporary Access Pass.
+Unlike the "MFA for Everyone" policy, which accepts any registered MFA method, this policy limits which methods count. Whether admins have an accepted method registered is shown on MFA Readiness, and the MFA Registration Campaign step helps them register one. The policy has no session controls, so it does not by itself require a new prompt at every sign-in.
 
-Whether your admins have a qualifying method registered is shown on MFA Readiness, not by this policy. The MFA Registration Campaign step helps them register one. This policy enforces the requirement; the campaign helps people meet it.
+The correction changes only the settings IAMAI found different from the baseline: the role list and exclusions, grant, session controls or name.
 
-The correction adds the exclusions group and ensures the admin role list matches the baseline's set of built-in privileged roles.
-
-The policy keeps its current state. If it is On, the correction applies as soon as you save. An admin the corrected role list newly includes must use a method this strength accepts at their next sign-in.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save. An admin newly included by the corrected role list will then need an accepted method to sign in.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -160,43 +162,43 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review administrator Report-only results and readiness. Admins not ready: {{admins.notReady}}. Evidence: {{evidence.reportOnly}}. Treat credential readiness as the fix; do not weaken policy scope.
+The administrator policy is in Report-only. Admins not ready: {{admins.notReady}}. Report-only evidence: {{evidence.reportOnly}}. An admin who cannot satisfy the strength needs an accepted method registered and tested; removing roles or weakening the grant would change the baseline. A Temporary Access Pass satisfies the strength but is temporary, so a sign-in with one does not show that the admin has a lasting accepted method.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Confirm the final enforcement gate for {{tenant.displayName}}: stable policy identity, exact pinned built-in role set, tenant-local baseline strength, no extra conditions/session controls, and all affected admins ready.
+The administrator policy for {{tenant.displayName}} is ready to enforce. Before it is set On, the same policy ID should still be Report-only with the exact baseline built-in role list, the tenant's custom strength, no extra conditions and no session controls, and each affected admin should have a working accepted method. After enforcement, an admin sign-in with an accepted method and an emergency access sign-in still need to be verified.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why administrator phishing-resistant enforcement is not actionable yet using only: {{dependencies.blockers}}. Do not invent role exclusions or a weaker grant.
+The administrator authentication-strength policy cannot proceed yet. Blockers: {{dependencies.blockers}}. Resolving them should not add role exclusions or weaken the grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing prerequisite for Conditional Access/authentication-strength enforcement and keep the step non-actionable until licensing is resolved.
+IAMAI did not find the licensing this step needs. Conditional Access and authentication strengths require Microsoft Entra ID P1 or higher. No policy change is available until licensing is resolved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
-Subject: Admin strong-auth validation is starting
+Subject: Action needed: Require Phishing-Resistant MFA for Admins
 
-We are placing the administrator strong-auth policy in Report-only first. Before enforcement, every administrator in scope must have a working passkey/security key, Windows Hello for Business, supported certificate, or approved Temporary Access Pass path that satisfies the baseline strength.
+We are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"administrators-in-scope"}
-Subject: Administrator strong authentication is ready to enforce
+Subject: Action needed: Require Phishing-Resistant MFA for Admins
 
-The administrator policy has finished its Report-only review and is ready to be turned on. Admin sign-ins in scope will need one of the baseline's accepted strong methods. If an admin is blocked, use the documented recovery/readiness path rather than adding a permanent exception.
+We are preparing stronger authentication for admin access. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}
-{"tiles":[{"id":"admins","label":"Admins in scope","result":{{json:admins.affected.count}},"line":"Scope comes from the exact pinned built-in role template set."},{"id":"notReady","label":"Admins not ready","result":{{json:admins.notReady}},"line":"Credential readiness gates enforcement; it does not weaken the grant."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"Client rollout is Report-only first."}],"baselineStrength":"Modern MFA + TAP, resolved by tenant-local strength ID and exact allowed combinations."}
+{"tiles":[{"id":"admins","label":"Admins in scope","result":{{json:admins.affected.count}},"line":"Review the selected built-in roles and each affected admin's ability to use an accepted method. The target strength also permits Temporary Access Pass."},{"id":"notReady","label":"Admins not ready","result":{{json:admins.notReady}},"line":"Check that each affected admin can satisfy the selected authentication strength."},{"id":"state","label":"Policy state","result":{{json:policy.current.state}},"line":"Client rollout is Report-only first."}],"baselineStrength":"Modern MFA + TAP, resolved by tenant-local strength ID and exact allowed combinations."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"admin-cannot-satisfy-strength","classification":"documented","symptom":"An intended administrator would be blocked by the strong-auth policy.","check":"Confirm the user has a method accepted by the baseline custom strength and can complete a strong sign-in.","fix":"Register/prove an accepted credential or use the approved TAP bootstrap path; do not add a permanent exclusion.","then":"Retest in Report-only and rescan.","sources":["ms-admin-phish"]},{"id":"wrong-strength-id","classification":"derived","symptom":"The policy references Jon's source-tenant strength ID or another tenant's ID.","check":"Resolve the local strength by exact baseline combinations and inspect the policy relationship.","fix":"Patch the same policy to the tenant-local strength ID.","then":"Re-read and rescan.","sources":["ms-auth-strength","ms-ca-update"]},{"id":"custom-role-not-covered","classification":"documented","symptom":"A privileged user with a custom or administrative-unit-scoped role is not affected by this role-targeted policy.","check":"Inspect the role type; Conditional Access directory-role assignment targets built-in roles.","fix":"Do not pretend this baseline member covers unsupported role types; surface the gap for separate product design if required.","then":"Keep the pinned policy unchanged.","sources":["ms-admin-phish","ms-ca-users"]},{"id":"session-control-crept-in","classification":"derived","symptom":"The admin strong-auth policy also carries sign-in frequency or persistence controls.","check":"Compare sessionControls to the pinned member.","fix":"Remove session controls from this policy; separate session steps own them.","then":"Re-read and rescan.","sources":["ms-ca-update"]}]}
+{"scenarios":[{"id":"admin-cannot-satisfy-strength","classification":"documented","symptom":"An intended administrator would be blocked by the strong-auth policy.","check":"Confirm the user has a method accepted by the baseline custom strength and can complete a strong sign-in.","fix":"Register/prove an accepted credential or use the approved TAP bootstrap path; do not add a permanent exclusion.","then":"Retest in Report-only and rescan.","sources":["ms-admin-phish"]},{"id":"wrong-strength-id","classification":"derived","symptom":"The policy references the baseline source tenant's strength ID or another tenant's ID.","check":"Resolve the local strength by exact baseline combinations and inspect the policy relationship.","fix":"Patch the same policy to the tenant-local strength ID.","then":"Re-read and rescan.","sources":["ms-auth-strength","ms-ca-update"]},{"id":"custom-role-not-covered","classification":"documented","symptom":"A privileged user with a custom or administrative-unit-scoped role is not affected by this role-targeted policy.","check":"Inspect the role type; Conditional Access directory-role assignment targets built-in roles.","fix":"This policy does not cover those role types. Record the gap and address it with a separate reviewed control if needed.","then":"Keep the baseline policy unchanged.","sources":["ms-admin-phish","ms-ca-users"]},{"id":"session-control-crept-in","classification":"derived","symptom":"The admin strong-auth policy also carries sign-in frequency or persistence controls.","check":"Compare sessionControls with the baseline member.","fix":"Remove session controls from this policy; separate session steps own them.","then":"Re-read and rescan.","sources":["ms-ca-update"]}]}
 @@IAMAI-END

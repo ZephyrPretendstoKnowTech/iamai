@@ -116,7 +116,7 @@ test('A5.2 the tenant reading against its resolved target: disabled is Missing, 
   assert.equal(passkeyReadingOf(withFido2(demo, legacy()).snapshot).state, 'inPlace')
   // The allow list is compared as a set: any case, any order.
   assert.equal(passkeyReadingOf(withFido2(demo, legacy(allow(ANDROID.toUpperCase(), IOS.toUpperCase()))).snapshot).state, 'inPlace')
-  assert.deepEqual(passkeyReadingOf(withFido2(demo, legacy({ includeTargets: [{ ...everyone, id: 'pilot-group' }] })).snapshot).differs, ['includeTargets'])
+  assert.deepEqual(passkeyReadingOf(withFido2(demo, legacy({ includeTargets: [{ ...everyone, id: 'pilot-group' }] })).snapshot).differs, [], 'an existing pilot scope is preserved')
   assert.equal(passkeyReadingOf(refused(demo).snapshot).state, 'unread')
   assert.equal(passkeyReadingOf(null).state, 'unread')
 })
@@ -248,7 +248,7 @@ test('B.6 groups and exclusions are kept: nobody excluded is newly included', ()
   const r = targetOf(resolved(legacy({ includeTargets: [{ ...everyone, id: 'staff' }], excludeTargets: [{ targetType: 'group', id: 'contractors' }] })))
   assert.deepEqual(r.target.excludeTargets, [{ targetType: 'group', id: 'contractors' }])
   const included = (r.target.includeTargets as { id: string }[]).map((t) => t.id)
-  assert.deepEqual(included, ['staff', 'all_users'])
+  assert.deepEqual(included, ['staff'], 'preserving hardware access must not enable a new population')
   assert.equal(included.includes('contractors'), false)
 })
 

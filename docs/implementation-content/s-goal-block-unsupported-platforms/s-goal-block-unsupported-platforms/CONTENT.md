@@ -1,40 +1,45 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the grant and session controls exactly as the target policy sets them.
-5. Set **Enable policy: Report-only** and create it.
-6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
+3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Do not use IDs from another tenant, and do not widen or narrow the population.
+4. Grant: **Block access**. Leave session controls unconfigured.
+5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions; **Target resources: All resources**; **Conditions > Device platforms**: include **Any device** and exclude **Android**, **iOS**, **Windows** and **macOS**. Linux and unidentified platforms stay in scope unless a reviewed decision changes the target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set Grant to **Block access**, as the intended target specifies, and remove any other grant control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Remove all session controls; the intended target for this policy has none.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}** only when name is the mismatch. Display name is never update identity.
+Rename the same policy to **{{policy.target.displayName}}** only when the name is the difference. IAMAI matches the policy by its ID, not its display name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.
+Save. Reopen the same policy ID, compare its settings with the intended target, and rescan. The policy keeps the state it had.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus this step's own readiness evidence. Do not treat a quiet dashboard as proof. Because platform detection uses user-agent data, review this together with the tenant device-compliance/app-protection posture.
+Keep the policy in Report-only while you review the evidence listed for this step. Review sign-ins from Linux and unidentified platforms, and events for the excluded platforms. The platform condition relies on information the client sends: it identifies a platform but does not show that the device is managed or compliant, so review it alongside the tenant's device-compliance and app-protection controls.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, every security-significant field is canonical, prerequisites are verified, and emergency access remains viable. Change **Enable policy** to **On**, test expected and emergency paths, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+- Reopen the policy by its ID. Confirm it is still **Report-only**, its settings match the intended target, and each required workflow on an affected platform has an approved, tested access path.
+- Change **Enable policy** to **On** and save.
+- Verify after the change: a sign-in from a supported platform still works, and emergency access still works.
+- Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -114,13 +119,13 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Block Unsupported Device Platforms** implementation for {{tenant.displayName}}. Confirm the canonical target matches the pinned IAMAI destination, is fully tenant-resolved, starts Report-only, and contains no invented IDs or decisions. Because platform detection uses user-agent data, review this together with the tenant device-compliance/app-protection posture.
+IAMAI did not find **Block Unsupported Device Platforms** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from any device platform except Android, iOS, Windows and macOS, for all users except the resolved exclusions, so Linux and unidentified platforms are blocked. That supported set is the baseline's choice, not a finding that other platforms are unsafe. Platform detection relies on information the client sends and is not a device-compliance check.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Block Unsupported Device Platforms**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.
+IAMAI found policy {{policy.current.id}} for **Block Unsupported Device Platforms**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks every device platform except Android, iOS, Windows and macOS, for all users except the resolved exclusions, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -128,51 +133,51 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Block Unsupported Device Platforms** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use this step's readiness conditions and do not recommend enforcement merely because no failures appeared.
+**Block Unsupported Device Platforms** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review Linux, unidentified and excluded-platform events together. A platform label does not establish device compliance, and no would-be blocks in the available records does not prove that no one uses an unsupported platform.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform the final pre-enforcement review for **Block Unsupported Device Platforms** in {{tenant.displayName}}. Confirm stable identity, canonical conditions/grant/session, prerequisite evidence, Report-only observation, and emergency-access safety.
+**Block Unsupported Device Platforms** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, Linux and unidentified-platform sign-ins have been reviewed, required workflows on those platforms have an approved path, and emergency access remains available. Once On, sign-ins from platforms outside the supported set are blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Block Unsupported Device Platforms** is not actionable using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent an exception, owner choice, or alternate baseline.
+**Block Unsupported Device Platforms** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing blocker for **Block Unsupported Device Platforms** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
+IAMAI marks **Block Unsupported Device Platforms** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Unsupported device-platform blocking entering validation
+Subject: Action needed: Block Unsupported Device Platforms
 
 Hi,
 
-We are validating a Conditional Access rule for {{tenant.displayName}} that blocks sign-ins from device platforms outside the approved set. If you use a Linux or otherwise unsupported device for legitimate work, contact IT before enforcement so the workflow can be reviewed.
+We are preparing to restrict access from platforms outside the approved set. If you use Linux or another platform for work, contact IT so we can review the requirement before the change.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Unsupported device-platform blocking ready to enforce
+Subject: Action needed: Block Unsupported Device Platforms
 
 Hi,
 
-The unsupported-device-platform policy for {{tenant.displayName}} is ready to enforce after Report-only review. Use an approved supported device for work access; unexpected blocks should be reported to IT rather than bypassed.
+We are preparing to restrict access from platforms outside the approved set. If you use Linux or another platform for work, contact IT so we can review the requirement before the change.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when the exact supported-platform decision is resolved, canonical exclusions are present, Report-only evidence for Linux/unknown platforms has been reviewed, and every legitimate affected workflow has an approved path.
+Review excluded and unidentified platform events. A platform label does not establish device compliance. Ready only when the supported-platform decision is resolved, the intended exclusions are present, Report-only evidence for Linux and unidentified platforms has been reviewed, and each legitimate affected workflow has an approved path.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-For an unexpected block, inspect the sign-in device-platform and client/user-agent evidence first. Do not add a user exclusion; confirm whether the platform is actually owner-approved and then update the canonical device-plan target if required.
+For an unexpected block, inspect the device platform and the client or user-agent details on the sign-in first. Do not add a user exclusion. Confirm whether the platform is approved, and change the intended device-platform target only through a reviewed decision.
 @@IAMAI-END

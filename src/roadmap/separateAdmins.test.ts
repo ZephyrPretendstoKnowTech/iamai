@@ -53,5 +53,7 @@ test('steps 15, 23 and 33 name the same people beside the step instead of assumi
     assert.ok(stepLines(s, ctx).some((l) => /^2 of them use the same account for mail or Teams; see Use Separate Accounts for Admin Work/.test(l)), `${goalId}: the line renders with the count`)
   }
   const email = (stepById['admins-phishing-resistant'] as unknown as { comms: { body: string } }).comms.body
-  assert.ok(email.includes('Everyday work on a separate account is unaffected.'), 'the admin email no longer assumes the account is separate')
+  // Editorial batch C: the email addresses the admin account itself and promises nothing about any other account.
+  assert.ok(email.includes('sign-ins by your admin account'), 'the admin email names the account the change applies to')
+  assert.doesNotMatch(email, /unaffected|separate account/i, 'the admin email no longer assumes the account is separate')
 })

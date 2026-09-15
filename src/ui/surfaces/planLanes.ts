@@ -29,6 +29,7 @@
 //
 // Pure: no DOM, no network.
 import data from '../../actionability/dependency-data.json' with { type: 'json' }
+import { campaignTargetsPasskeys } from '../../roadmap/campaign.ts'
 import type { Action, DependencyData, Edge, Milestone } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph, deriveLanes, nextActionOf } from '../../actionability/lanes.ts'
 import type { Blocker, ConditionState, EvidenceGate, HoldBlocker, Lane, ObservedBlocker, ObservedEdge, OwnerState, PrerequisiteState, StepObservation, Substatus, TenantState } from '../../actionability/lanes.ts'
@@ -243,7 +244,7 @@ function prerequisites(byId: ReadonlyMap<string, Step>, conds: Readonly<Record<s
  * not apply resolves its condition not-applicable, and that completes the step
  * (§8.2). The Security Defaults cutover is applicable while the scan's read put its
  * step on the plan; shared devices are applicable while the scan found any; the
- * registration campaign targets passkeys (product constant); a carve-out is
+ * registration campaign reads its selected method from the package; a carve-out is
  * applicable while its answer put the step on the plan, else the recorded answer
  * says, and an unrecorded one stays unresolved (§8.1: never silently satisfied).
  */
@@ -251,7 +252,10 @@ function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, St
   const owner = byId.get(ownedBy)
   if (owner?.doesntApply != null) return 'not-applicable'
   switch (name) {
-    case 'campaign-targets-passkey': return 'applicable'
+    case 'campaign-targets-passkey': {
+      const passkeys = campaignTargetsPasskeys()
+      return passkeys === null ? 'unresolved' : passkeys ? 'applicable' : 'not-applicable'
+    }
     case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
     case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
     // Owned by the policy it gates, so the owner being on the plan says nothing: the saved answer does.
