@@ -2,6 +2,8 @@
 Microsoft Entra admin center → Enterprise applications. Confirm **Microsoft Intune Enrollment** exists for application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`. If it is absent, create the service principal using the supported Microsoft Graph/Application Administrator path in this package, then rescan IAMAI before creating the CA policy. Do not substitute the Microsoft Intune admin-center app.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
+Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.
+
 1. Go to Entra admin center → Conditional Access → Policies → New policy.
 2. Name: {{policy.target.displayName}}.
 3. Users → Include: All users. Exclude → Groups: add the exclusions group.
@@ -13,37 +15,42 @@ Microsoft Entra admin center → Enterprise applications. Confirm **Microsoft In
 9. Create. Rescan in IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact IAMAI-resolved tenant Conditional Access policy by stable identity. Display name is context only; do not use it as update identity.
+Open the existing Conditional Access policy IAMAI resolved, using its policy ID. The display name is context only; do not use it to find the policy to update.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.users","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under Users, set Include to All users and make Exclude exactly the IAMAI-resolved canonical exclusions. Preserve the Intune Enrollment target and Every-time session control if IAMAI says they are already correct.
+Under Users, set Include to All users and make Exclude exactly the resolved exclusions. Leave the Intune Enrollment target and Every time session control unchanged if IAMAI found no difference there.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.target","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under Target resources, select Microsoft Intune Enrollment only. Remove any incorrect resource target. Preserve population/exclusions and the Every-time session control if already canonical.
+Under Target resources, select Microsoft Intune Enrollment only. Remove any other resource target. Leave users, exclusions and the Every time session control unchanged if IAMAI found no difference there.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove IAMAI-classified noncanonical risk, location, platform, device/filter, authentication-flow, or user-action conditions. Client apps remains All. Do not add device-based enrollment restrictions.
+Remove the risk, location, platform, device/filter, authentication-flow, or user-action conditions IAMAI identified as differences. Client apps remains All. Do not add device-based enrollment restrictions.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove the IAMAI-classified noncanonical Grant control so this retained baseline member has no grantControls. Do not change another policy that separately requires MFA for device registration/join.
+Remove the Grant control IAMAI identified so this policy has no grant; it sets only a session control. Do not change another policy that separately requires MFA for device registration/join.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Session → Sign-in frequency → Every time. Remove IAMAI-classified noncanonical session controls. Preserve all canonical assignments/conditions.
+Session → Sign-in frequency → Every time. Remove other session controls IAMAI identified as differences. Leave the intended assignments and conditions unchanged.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.lifecycle","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Set Enable policy to Report-only while corrections are being validated.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save only the selected corrections, read back the same stable policy, then rescan IAMAI. Do not apply correction modules for fields IAMAI already classifies as canonical.
+Save only the selected corrections, read back the same policy ID, then rescan IAMAI. Do not change fields where IAMAI found no difference.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the canonical policy in Report-only. Review that the intended user-driven enrollment paths actually target Microsoft Intune Enrollment and note any userless/self-deploying paths separately. Report-only can show policy applicability, but it cannot prove a fresh reauthentication prompt occurred. Rescan when evidence changes.
+Keep the policy in Report-only while you review the evidence listed for this step. Check that the user-driven enrollment paths you use reach Microsoft Intune Enrollment, and review userless/self-deploying paths separately. Report-only can show policy applicability, but it cannot prove a fresh reauthentication prompt occurred. Rescan when evidence changes.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-1. Open the exact stable policy and confirm it is still canonical and Report-only.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+1. Open the same policy ID and confirm it still matches the intended settings and is Report-only.
 2. Confirm the required user-driven and userless/self-deploying enrollment workflows have been reviewed.
 3. Change Enable policy to On and save.
-4. Perform a controlled user-driven Intune enrollment and confirm fresh reauthentication occurs.
+4. Verify after the change: complete a controlled user-driven Intune enrollment and confirm it asks for fresh authentication.
 5. Verify required userless/self-deploying flows still work, then rescan IAMAI.
 6. If enrollment fails unexpectedly, return this same policy to Report-only.
 @@IAMAI-END
@@ -69,6 +76,7 @@ Leave the canonical policy in Report-only. Review that the intended user-driven 
 {"state":"enabled"}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["resourceMissing","missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved and -EnrollmentWorkflowsValidated, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Require a Fresh Sign-in for Intune Enrollment
 [CmdletBinding()]
 param(
@@ -107,11 +115,8 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.prepare","channel":"aiInfo","states":["resourceMissing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Prepare the Microsoft Intune Enrollment service principal only when IAMAI says it is missing.
-
-AUTHORITY
-IAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.
+STATE
+IAMAI did not find the Microsoft Intune Enrollment service principal (application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`). The Conditional Access policy cannot target it until it exists. Do not substitute the Microsoft Intune admin-center application.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -121,29 +126,26 @@ TENANT CONTEXT
 - Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-All users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.
+INTENDED POLICY
+All users with the resolved exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c` only; client apps All; no other conditions; no grant; Sign-in frequency Every time; Report-only before On. This session-only policy does not add MFA or make a device compliant. Do not add MFA or device-compliance grants because Microsoft's separate enrollment-MFA guidance exists.
 
-SAFETY
-Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
+NEXT STEP
+Explain how to confirm or create the service principal, then rescan IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-This policy ensures that every time someone enrolls a device in Intune, they sign in fresh — no cached session, no token reuse. This prevents an attacker who has stolen a session token from enrolling their own device as "trusted."
+This state creates the policy in Report-only.
 
-This is a session-only policy: it doesn't require MFA (the MFA-for-everyone policy already handles that). It only requires that the sign-in happens at that moment, not from a stored session.
+The target is Microsoft Intune Enrollment only (application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`), not All resources. Users: All users; the exclusions group keeps emergency access accounts outside the policy.
 
-It targets Microsoft Intune Enrollment specifically, not all resources. This means it only fires during the enrollment flow — not during normal sign-ins, Teams calls, or email.
+Grant stays unconfigured. Session → Sign-in frequency is Every time, a session-only control. It does not add MFA or make a device compliant.
 
-The exclusions group ensures emergency access accounts are not affected.
+MFA must come from other applicable controls. The all-user MFA policy excludes the Intune Enrollment resource, so it does not supply MFA there.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Correct only IAMAI-classified mismatches on the existing policy.
-
-AUTHORITY
-IAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.
+STATE
+This state corrects the existing policy. Correct only the differences IAMAI found, on the same policy ID.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -153,20 +155,18 @@ TENANT CONTEXT
 - Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-All users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.
+INTENDED POLICY
+All users with the resolved exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c` only; client apps All; no other conditions; no grant; Sign-in frequency Every time. This session-only policy does not add MFA or make a device compliant. Do not add MFA or device-compliance grants because Microsoft's separate enrollment-MFA guidance exists.
 
-SAFETY
-Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Validate applicability/evidence while the policy remains non-enforcing.
-
-AUTHORITY
-IAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.
+STATE
+The policy is in Report-only. Report-only can show whether the policy applies to enrollment sign-ins, but it cannot prove that a fresh reauthentication prompt occurred.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -176,20 +176,17 @@ TENANT CONTEXT
 - Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-All users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.
+INTENDED POLICY
+All users with the resolved exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c` only; client apps All; no other conditions; no grant; Sign-in frequency Every time. This session-only policy does not add MFA or make a device compliant.
 
-SAFETY
-Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
+NEXT STEP
+Explain which user-driven and userless/self-deploying enrollment paths still need review, and what evidence is still missing.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement IAMAI step **Require a Fresh Sign-in for Intune Enrollment**. Enable only after workflow readiness, then test user-driven enrollment.
-
-AUTHORITY
-IAMAI tenant facts and saved decisions own tenant truth. The retained baseline owns the destination. Current Microsoft documentation owns portal/API behavior. Do not add MFA or device-compliance grants merely because Microsoft's separate enrollment-MFA recipe exists.
+STATE
+This state turns the reviewed policy On. The only change is the policy state from Report-only to On.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
@@ -199,26 +196,24 @@ TENANT CONTEXT
 - Workflow evidence: {{evidence.enrollmentWorkflows}} [omit if unavailable]
 - Blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-All users + canonical exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c`; client apps All; no unrelated conditions; no grant controls; sign-in frequency Every time; Report-only before On.
+INTENDED POLICY
+All users with the resolved exclusions; Microsoft Intune Enrollment app `d4ebce55-015a-49b5-a083-c84d1797ae8c` only; client apps All; no other conditions; no grant; Sign-in frequency Every time. This session-only policy does not add MFA or make a device compliant.
 
-SAFETY
-Use stable policy ID for updates. Keep unknown workflow behavior Unknown. Return checks/evidence and the smallest safe next action.
+NEXT STEP
+Explain the change and the tests afterwards: a controlled user-driven enrollment that asks for fresh authentication, and the userless/self-deploying flows that must still complete. If enrollment fails unexpectedly, the same policy returns to Report-only.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"email.users.pre-enforcement","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Subject: Fresh sign-in during device enrollment
+Subject: Planned change: Require a Fresh Sign-in for Intune Enrollment
 
 Hi,
 
-We are changing device enrollment so user-driven Intune enrollment asks for a fresh sign-in instead of relying on an older session. This applies when you enroll a work device; normal day-to-day sign-ins are not being changed by this policy.
-
-If you are setting up a device and enrollment asks you to sign in again, complete the prompt and continue. If enrollment loops or stops, contact IT/device support and tell them which enrollment method you were using.
+During user-driven work-device enrollment, you may be asked to authenticate again. Continue through the approved setup process and contact IT if it loops or stops.
 
 Thanks,
 IT
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["resourceMissing","missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"resource","label":"Intune Enrollment resource","gate":"Safe to configure","result":"{{resource.intuneEnrollment.exists}}","line":"Microsoft Intune Enrollment must exist before the CA policy can target it.","evidenceSource":"tenant configuration"},{"id":"exclusions","label":"Exclusions","gate":"Safe to configure","result":"IAMAI-resolved","line":"Use the canonical exclusion set; do not rediscover or broaden it during implementation.","evidenceSource":"IAMAI canonical tenant truth"},{"id":"workflows","label":"Enrollment workflows","gate":"Safe to enforce","result":"{{evidence.enrollmentWorkflows}}","line":"User-driven and userless/self-deploying enrollment paths must be distinguished before enforcement.","evidenceSource":"tenant evidence / human validation"},{"id":"prompt-proof","label":"Fresh sign-in proof","gate":"Post-enforcement proof","result":"Unknown until tested","line":"Report-only cannot prove the user saw the fresh reauthentication prompt.","evidenceSource":"controlled enrollment test"}],"whyIamaiSaysThis":"IAMAI separates canonical configuration from behavioral proof. Configuration can be verified before enforcement; the actual fresh-prompt experience requires a controlled user-driven enrollment after the policy is On."}
+{"tiles":[{"id":"resource","label":"Intune Enrollment resource","gate":"Safe to configure","result":"{{resource.intuneEnrollment.exists}}","line":"Microsoft Intune Enrollment must exist before the CA policy can target it.","evidenceSource":"tenant configuration"},{"id":"exclusions","label":"Exclusions","gate":"Safe to configure","result":"IAMAI-resolved","line":"Use the resolved exclusion set; do not rediscover or broaden it during implementation.","evidenceSource":"IAMAI canonical tenant truth"},{"id":"workflows","label":"Enrollment workflows","gate":"Safe to enforce","result":"{{evidence.enrollmentWorkflows}}","line":"Review user-driven and userless enrollment separately. A session setting does not prove that a prompt occurred.","evidenceSource":"tenant evidence / human validation"},{"id":"prompt-proof","label":"Fresh sign-in proof","gate":"Post-enforcement proof","result":"Unknown until tested","line":"Report-only cannot prove the user saw the fresh reauthentication prompt.","evidenceSource":"controlled enrollment test"}],"whyIamaiSaysThis":"IAMAI separates the intended configuration from behavioral proof. Configuration can be verified before enforcement; the actual fresh-prompt experience requires a controlled user-driven enrollment after the policy is On."}
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["resourceMissing","missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}
 {"scenarios":[{"id":"resource-not-found","states":["resourceMissing","missing"],"classification":"documented","symptom":"Microsoft Intune Enrollment cannot be selected or Graph cannot target it.","check":"Confirm a service principal exists for appId d4ebce55-015a-49b5-a083-c84d1797ae8c.","fix":"Create the Microsoft Intune Enrollment service principal through the supported Entra/Graph application-admin path, then rescan IAMAI.","doNot":"Do not substitute the Microsoft Intune admin-center application.","then":"Retry only after IAMAI resolves the resource.","sources":["ms-intune-enrollment-mfa","ms-sp-create-v1"]},{"id":"enrollment-loop","states":["readyToEnforce","inPlace"],"classification":"documented","symptom":"Enrollment repeatedly asks for authentication or cannot complete.","check":"Review overlapping CA policies, especially additional MFA/device grants and Every-time sign-in frequency.","fix":"Return this policy to Report-only while the overlap is resolved.","doNot":"Do not weaken unrelated security controls without identifying the conflicting policy.","then":"Retest the same enrollment path.","sources":["ms-session-lifetime"]},{"id":"wrong-intune-app","states":["partial"],"classification":"documented","symptom":"The policy affects Intune admin-center access instead of enrollment.","check":"Verify Target resources is Microsoft Intune Enrollment, not Microsoft Intune.","fix":"Correct the target application only.","then":"Read back and rescan.","sources":["ms-intune-ca-scenarios"]},{"id":"device-grant-added","states":["partial"],"classification":"documented","symptom":"Enrollment is blocked by a compliant-device/device-based requirement.","check":"Inspect Grant controls and other overlapping policies for device-based access rules on Microsoft Intune Enrollment.","fix":"Remove the noncanonical grant from this retained step and resolve any separate overlapping policy deliberately.","doNot":"Do not require a device to already be compliant in order to enroll it through this step.","then":"Return to Report-only and retest.","sources":["ms-intune-enrollment-mfa"]},{"id":"selfdeploy-no-prompt","states":["reportOnly","readyToEnforce","inPlace"],"classification":"documented","symptom":"A self-deploying Autopilot flow does not show the fresh user sign-in prompt.","check":"Confirm the deployment mode is self-deploying/userless.","fix":"Treat that as a different workflow; validate that it still completes rather than expecting user-driven prompt evidence.","then":"Use a user-driven enrollment to prove the fresh prompt.","sources":["ms-autopilot-selfdeploy"]},{"id":"graph-403","states":["resourceMissing","missing","partial","readyToEnforce"],"classification":"documented","symptom":"Graph/PowerShell returns 403.","check":"For CA writes verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and an allowed CA role. For service-principal creation verify Application.ReadWrite.All and an allowed application-admin role.","fix":"Reconnect with the least required scope/role for the selected operation.","then":"Retry the same bounded operation.","sources":["ms-ca-create-v1","ms-sp-create-v1"]}]}

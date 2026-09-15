@@ -41,6 +41,7 @@ import { memberKeyOf } from './observation.ts'
 import type { GoalMap } from './goalMap.ts'
 import type { StrengthLookup } from '../coverage/strength.ts'
 import type { CoverageReport, Goal, GoalResult } from '../coverage/types.ts'
+import { ownCandidate } from '../coverage/coverage.ts'
 import { resolvePopulation } from '../coverage/population.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import { proposeRings, ringContextIndexes } from './rings.ts'
@@ -283,6 +284,7 @@ const EXTRAS = STEP_EXTRAS
 export { idFor, stepIdForGoal, EXCLUSION_GROUP_STEP_ID, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID } from './stepIds.ts'
 import { idFor, BREAK_GLASS_STEP_ID, PREREQ_STEP_ID, SEPARATE_ADMIN_ACCOUNTS_STEP_ID } from './stepIds.ts'
 import { OPERATOR_PASSKEY_STEP_ID, PASSKEY_SETTINGS_STEP_ID, operatorPasskeyOf, passkeyReadingOf } from './passkeySettings.ts'
+import { SYNC_WORKLOAD_GOAL_ID, WORKLOAD_IDENTITY_BLOCKER, syncIdentitySupportOf } from './workloadIdentity.ts'
 
 type PopulationIndex = { active: Set<string>; admins: Set<string>; guests: Set<string> }
 function populationIndex(snapshot: TenantSnapshot, viability: MfaViability[]): PopulationIndex {
@@ -394,6 +396,34 @@ const CHANGED_SECTION: Partial<Record<GoalResult['reasons'][number]['kind'], Cha
   'guest-types-narrower': 'users',
   // 'conditions-narrower' has no section: an update does not carry conditions, so
   // a goal short only by a condition is partly in place with nothing to submit.
+}
+
+/**
+ * The exclusions an update takes off the tenant's policy (PolicyOperation.removes):
+ * the patch sends its users and applications sections whole, so an exclusion the
+ * tenant has there and the patch does not carry is gone once it is saved. The
+ * request is right to send the baseline's section; what was missing was saying so.
+ */
+function removedExclusions(current: RawPolicy, patch: RawPolicy): PolicyOperation['removes'] {
+  const cur = (current.conditions ?? {}) as RawPolicy
+  const next = (patch.conditions ?? {}) as RawPolicy
+  const gone = (from: unknown, to: unknown): string[] => {
+    const kept = new Set((Array.isArray(to) ? to : []).map((x) => String(x).toLowerCase()))
+    return (Array.isArray(from) ? from : []).map(String).filter((x) => !kept.has(x.toLowerCase()))
+  }
+  const ids: string[] = []
+  let guestsOrExternalUsers = false
+  // Only a section the patch writes replaces the tenant's values; one it leaves out keeps them.
+  const curUsers = cur.users as RawPolicy | undefined
+  const nextUsers = next.users as RawPolicy | undefined
+  if (curUsers && nextUsers) {
+    for (const key of ['excludeGroups', 'excludeUsers', 'excludeRoles']) ids.push(...gone(curUsers[key], nextUsers[key]))
+    guestsOrExternalUsers = curUsers.excludeGuestsOrExternalUsers != null && nextUsers.excludeGuestsOrExternalUsers == null
+  }
+  const curApps = cur.applications as RawPolicy | undefined
+  const nextApps = next.applications as RawPolicy | undefined
+  if (curApps && nextApps) ids.push(...gone(curApps.excludeApplications, nextApps.excludeApplications))
+  return guestsOrExternalUsers || ids.length > 0 ? { guestsOrExternalUsers, ids } : undefined
 }
 
 /**
@@ -555,7 +585,9 @@ export function buildCreateAction(
       // Without the tenant's policy there is no complete target, and the whole
       // step is unavailable rather than described from a partial body.
       const current = target.policy
+      const removes = current ? removedExclusions(current, patch) : undefined
       operations.push({
+        ...(removes ? { removes } : {}),
         sourceName: p.sourceName,
         memberKey,
         mode: 'update',
@@ -598,7 +630,11 @@ export { proposedPolicyName } from '../coverage/naming.ts'
 /** The sections a partly-covered goal's policy has to change (roadmap-v2.md §4.6). */
 function changedSections(result: GoalResult): Set<ChangedSection> {
   const sections = new Set(result.reasons.filter((r) => !r.expected).map((r) => CHANGED_SECTION[r.kind]).filter((x): x is ChangedSection => Boolean(x)))
-  if (result.floorRaised) sections.add('grantControls')
+  // A raised floor is raised where the goal asks: a stronger authentication for a
+  // grant goal, a shorter sign-in frequency for a session goal (classify.ts
+  // raiseFloor). A session raise listed as a grant change put "Grant controls" on
+  // a step whose body carries no grant.
+  if (result.floorRaised) sections.add(result.goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
   return sections
 }
 
@@ -1072,6 +1108,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     else if (passkey.state === 'unread') {
       s.blockers = [{ kind: 'evidence', label: 'passkey-settings-unread', binding: BLOCKED_REASON.methodsPolicyUnread, unverified: true }]
       setState(s, { condition: conditionFor(s.blockers) })
+    } else if (passkey.resolution?.kind === 'review') {
+      // No change can be built without overwriting something (owner approval,
+      // 2026-09-14): a profile-based policy, a block list that blocks Authenticator,
+      // or a read short of a setting. The step holds on that fact, like an unread
+      // policy, and is never completed by it.
+      const review = passkey.resolution.review
+      const binding = review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead
+      s.blockers = [{ kind: 'evidence', label: `passkey-settings-${review}`, binding, unverified: true }]
+      setState(s, { condition: conditionFor(s.blockers) })
     }
     steps.push(s)
   }
@@ -1355,6 +1400,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     let namingNote: { name: string; note: string | null } | null = null
     let existing: GoalResult['candidates'][number] | null = null
     let existingRaw: RawPolicy | null = null
+    let ambiguousTarget = false
 
     // A step is done if and only if its goal's verdict is inPlace (target-state
     // §8.2, prompt 46 item 9). Not the status, and never the plan's own idea of
@@ -1410,12 +1456,14 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       const groups = [...unread].map((g) => g.slice(0, 8))
       blockers.push({ kind: 'evidence', label: 'unverified-exclusion', binding: BLOCKED_REASON.unverifiedExclusion(groups.length > 0 ? groups.join(', ') : '?'), unverified: true })
       state = { ...state, condition: conditionFor(blockers) }
-    } else if (result.status === 'absent' && claimedPolicy() !== null && source && stepPolicies().length === 1) {
+    } else if (claimedPolicy() !== null && source && stepPolicies().length === 1 && (result.status === 'absent' || !result.candidates.some((c) => c.policyId === String(claimedPolicy()?.id)))) {
       // A live tenant policy carrying this step's plan tag, or the very name the
       // plan gives this goal's policy, is this goal's policy however far it has
       // drifted from the goal's signature (A3 of the drift audit). The step
       // corrects it — or says a person has to (roadmap/tracking.ts) — and never
-      // proposes "(2)" beside it.
+      // proposes "(2)" beside it. The same holds where other policies leave the
+      // goal partly delivered: the drifted policy is no candidate there either,
+      // and the step proposed its duplicate beside it (cycle 1, A1).
       kind = 'adjust'
       const claimed = claimedPolicy() as RawPolicy
       existingRaw = claimed
@@ -1450,12 +1498,34 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // that policy is the one to correct — not a report-only policy for a few of
       // the same people. Otherwise the weaker or report-only policy is.
       const onlyShort = !result.reasons.some((r) => r.kind === 'weaker-control' || r.kind === 'session-weaker' || r.kind === 'report-only')
-      existing =
-        (onlyShort ? result.candidates.find((c) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))) : undefined) ??
-        result.candidates.find((c) => c.contribution === 'weak') ??
-        result.candidates.find((c) => c.contribution === 'reportOnly') ??
-        result.candidates.find((c) => c.contribution !== 'disabled') ??
-        null
+      // Only the goal's own policy, whatever order the scan listed them in (C01).
+      // Another goal's policy is never the one this step corrects: correcting an
+      // admin-role policy for the all-users goal rewrites it to All users (and
+      // the admins step writes its own grant onto the same object), and
+      // correcting an all-users policy for an admin goal narrows it to the
+      // admins. With no policy of its own the step writes the goal's own policy.
+      // Within a tier, the pick does not depend on order either (review R1-F2): two
+      // of the goal's own policies nothing tells apart hold the step rather than
+      // hand it the first listed.
+      type Candidate = GoalResult['candidates'][number]
+      const tiers: ((c: Candidate) => boolean)[] = [
+        ...(onlyShort ? [(c: Candidate) => c.contribution === 'strong' && c.ownScope && (c.caveats.includes('exclusion-missing') || c.caveats.includes('conditions-narrower'))] : []),
+        (c) => c.ownScope && c.contribution === 'weak',
+        (c) => c.ownScope && c.contribution === 'reportOnly',
+        (c) => c.ownScope && c.contribution !== 'disabled',
+      ]
+      existing = null
+      for (const fits of tiers) {
+        const hit = ownCandidate(result.candidates, fits)
+        if (hit === 'ambiguous') {
+          ambiguousTarget = true
+          break
+        }
+        if (hit) {
+          existing = hit
+          break
+        }
+      }
       const existingId = existing?.policyId ?? null
       existingRaw = existingId !== null ? ((snapshot.config.caPolicies?.rows ?? []).find((p) => (p as RawPolicy).id === existingId) as RawPolicy | undefined) ?? null : null
       // No baseline policy stands for this goal, so the policy the step changes
@@ -1463,7 +1533,41 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
       // through the same boundary.
       const changing = source ? stepPolicies() : templatePolicy()
       const sections = changedSections(result)
-      if (changing.length < 2) {
+      // The applications the baseline's policy excludes and the tenant's does not
+      // (review R1-F3): the target resources are the baseline's, so the correction
+      // submits them and lists the change. The update used to keep the tenant's
+      // resources while the Entra steps and AI Info named the exclusion.
+      if (existingRaw && changing.length === 1) {
+        const excludedBy = (p: RawPolicy | undefined): unknown => ((p?.conditions as RawPolicy | undefined)?.applications as RawPolicy | undefined)?.excludeApplications
+        const wanted = excludedBy(changing[0].resolved.body as RawPolicy)
+        const had = excludedBy(existingRaw)
+        const present = new Set((Array.isArray(had) ? had : []).map((a) => String(a).toLowerCase()))
+        if (Array.isArray(wanted) && wanted.some((a) => !present.has(String(a).toLowerCase()))) sections.add('applications')
+      }
+      // A policy that already meets the goal's floor has no grant or session of its
+      // own to correct, and an enforced one no state: those reasons belong to
+      // another candidate (a session-only policy's "requires nothing", a report-only
+      // policy's state). Writing them onto this one would swap a tenant's stronger
+      // grant for the baseline's, under a correction that was about its users or
+      // its state (C01/C02). A report-only policy's own state is still its own.
+      if (existing?.contribution === 'strong' || existing?.meetsFloor === true) {
+        sections.delete('grantControls')
+        sections.delete('sessionControls')
+        if (existing.contribution === 'strong') sections.delete('state')
+      }
+      // The converse: the goal's own policy that falls short of the floor is corrected
+      // to the floor, even when none of its current people count (all of them excluded,
+      // or it is widened from a group). Widening it with its own grant kept put that
+      // grant — an admins group's "phishing-resistant OR compliant device" — on
+      // everyone, and the step claimed a correction that does not reach the floor (R1).
+      if (existing && existing.meetsFloor === false && existing.contribution !== 'disabled') {
+        sections.add(goal.implementations[0].floor.grant !== undefined ? 'grantControls' : 'sessionControls')
+      }
+      if (ambiguousTarget && changing.length < 2) {
+        // Several of the goal's own policies nothing tells apart: the step will not
+        // guess which one to rewrite, and it does not create a duplicate beside them.
+        action = { kind: 'adjust', summary: [], json: null, portalSteps: [], missing: [], unmatchedPair: true, ambiguousTarget: true }
+      } else if (changing.length < 2) {
         // One policy: the goal's coverage names the tenant policy it changes.
         const one = named(changing, existing?.policyName ?? proposedPolicyName(goal, naming))
         one[0] = { ...one[0], target: existing ? { policyId: existing.policyId, state: existing.state, policy: existingRaw } : null }
@@ -1919,6 +2023,21 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
             ? { proposed: existing.policyName, fromBaseline: source?.facts.name ?? null, note: null }
             : null,
     })
+
+    // The workload step restricts the identity that performs synchronization, and
+    // nothing the scan reads establishes that identity or that workload Conditional
+    // Access supports it (roadmap/workloadIdentity.ts): a sync role holder, a licence
+    // and a provisioning object do not. Unless support is established the step holds
+    // on that fact and is never completed by a policy that looks like its target; an
+    // existing policy is kept unchanged while the identity is confirmed.
+    if (goal.id === SYNC_WORKLOAD_GOAL_ID) {
+      const s = steps[steps.length - 1]
+      const identity = syncIdentitySupportOf(snapshot)
+      if (identity.support !== 'supported') {
+        s.blockers = [...s.blockers, { kind: 'evidence', label: WORKLOAD_IDENTITY_BLOCKER, binding: identity.support === 'unsupported' ? BLOCKED_REASON.workloadIdentityUnsupported : BLOCKED_REASON.workloadIdentityUnknown, unverified: true }]
+        setState(s, { ...(s.state.satisfied ? { satisfied: false, inPlace: false } : {}), condition: conditionFor(s.blockers) })
+      }
+    }
   }
 
   // The baseline's own references only a person can answer (resolvePolicy.ts

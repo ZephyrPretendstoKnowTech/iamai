@@ -2,7 +2,7 @@
 // baseline selection, driven by the references the chosen baseline uses.
 // Main-thread friendly — small, single-purpose calls.
 import { getGraphToken } from '../msal.ts'
-import { graphPaged, graphRequest, V1 } from './http.ts'
+import { GraphResponseShapeError, graphPaged, graphRequest, V1 } from './http.ts'
 import type { TokenSource } from './http.ts'
 import { loadGroupMembersCache, saveGroupMembersCache } from './cache.ts'
 import { presenceOfError } from './presence.ts'
@@ -172,13 +172,16 @@ export async function readGroup(
     const countBody = await graphRequest(tokens, `${V1}/groups/${groupId}/transitiveMembers/$count`, {
       headers: { ConsistencyLevel: 'eventual' },
     })
-    const memberCount = countBody.count ?? 0
+    // A count body without a number is an unread count, never zero members.
+    if (typeof countBody.count !== 'number') throw new GraphResponseShapeError('member count body without a number')
+    const memberCount = countBody.count
 
     let memberIds: string[]
     let sampled = false
     if (memberCount > GROUP_MEMBER_FULL_LIST_CEILING) {
       const firstPage = await graphRequest(tokens, `${V1}/groups/${groupId}/transitiveMembers?$select=id&$top=999`)
-      memberIds = (firstPage.value ?? []).map((m) => String((m as Record<string, unknown>).id ?? '')).filter(Boolean)
+      if (!Array.isArray(firstPage.value)) throw new GraphResponseShapeError('member page without a value array')
+      memberIds = firstPage.value.map((m) => String((m as Record<string, unknown>).id ?? '')).filter(Boolean)
       sampled = true
     } else {
       const rows = await graphPaged(tokens, `${V1}/groups/${groupId}/transitiveMembers?$select=id&$top=999`)

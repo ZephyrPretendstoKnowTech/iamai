@@ -4,54 +4,54 @@
     {
       "id": "security-defaults",
       "name": "Enable security defaults",
-      "description": "Microsoft's free baseline: MFA for admins, MFA registration for everyone, legacy authentication blocked. The starting point when there is no Conditional Access."
+      "description": "Security Defaults provides a set of identity protections when the organization is not using a custom Conditional Access design."
     },
     {
       "id": "break-glass-accounts",
       "name": "Create and validate break-glass accounts",
-      "description": "Two cloud-only emergency accounts, excluded from every policy and signed in on a schedule, so a mistaken policy still leaves a way back in."
+      "description": "Dedicated emergency accounts provide another administrative route when normal access fails. Test the route before an incident makes it necessary."
     },
     {
       "id": "legacy-auth-inventory",
       "name": "Inventory legacy authentication usage",
-      "description": "Find every sign-in that still uses basic authentication (POP, IMAP, SMTP, ActiveSync) before it can be blocked.",
+      "description": "An inventory of older sign-in paths helps identify applications that need attention before authentication rules change.",
       "goalId": "block-legacy-auth"
     },
     {
       "id": "app-passwords",
       "name": "Eliminate app passwords",
-      "description": "App passwords bypass MFA; move the apps that use them to modern authentication and turn the feature off."
+      "description": "App passwords keep older applications dependent on a credential that does not complete an interactive MFA check. Replace that dependency before retiring the credential."
     },
     {
       "id": "per-user-mfa-cleanup",
       "name": "Reconcile per-user MFA states",
-      "description": "Legacy per-user MFA fights with Conditional Access and security defaults; set every user to disabled there before policies take over."
+      "description": "Consistent MFA management reduces conflicting settings and unexpected prompts. Keep enforcement in place throughout the transition."
     },
     {
       "id": "admin-accounts-separate",
       "name": "Separate admin accounts from daily-driver accounts",
-      "description": "Admin roles on a mailbox-holding account make every phishing email a tenant-wide risk; give admins a second, role-only account."
+      "description": "Separating admin work from everyday activity reduces the exposure of privileged access."
     },
     {
       "id": "global-admin-count",
       "name": "Reduce Global Administrator count",
-      "description": "Two to four Global Administrators is Microsoft's guidance; everyone else gets the least role that does their job."
+      "description": "Global Administrator has broad authority. Reviewing why each assignment exists can uncover access that no longer needs that level of privilege."
     },
     {
       "id": "guest-review",
       "name": "Review guest accounts and external state",
-      "description": "Remove guests nobody sponsors and invitations never accepted; what remains is what guest policies protect.",
+      "description": "External access can outlast the project that needed it. Reviewing sponsors and current purpose helps identify guest access that should end.",
       "goalId": "guests-mfa"
     },
     {
       "id": "stale-accounts",
       "name": "Disable dormant and never-signed-in accounts",
-      "description": "An account nobody signs into is an account nobody watches; disable after 90 days of silence."
+      "description": "Reviewing inactive-account candidates can uncover access that is no longer needed. Missing activity still needs an owner check."
     },
     {
       "id": "authenticator-over-sms",
       "name": "Move users from SMS/voice to Authenticator",
-      "description": "Text and call codes are the weakest tier; the verification campaign moves people to Microsoft Authenticator or passkeys.",
+      "description": "Moving from phone codes to stronger approved methods can reduce reliance on telephone-based authentication. Test the replacement before removing a method people still use.",
       "goalId": "mfa-all-users"
     }
   ]

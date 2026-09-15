@@ -1,10 +1,10 @@
 {
-  "lane": "Up Next",
+  "lane": "On Hold",
   "substatus": null,
   "reason": "when 1 MFA grant on this policy exist (now 0)",
   "fact": null,
-  "badge": "Up Next · After Decide How Devices Are Managed",
-  "bar": "After Decide How Devices Are Managed",
+  "badge": "On Hold · After Create or Correct Exclusions Group",
+  "bar": "After Create or Correct Exclusions Group",
   "rail": "—",
   "headings": [
     "Why",
@@ -14,7 +14,7 @@
   ],
   "tiles": [
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Decide How Devices Are Managed"
     },
     {

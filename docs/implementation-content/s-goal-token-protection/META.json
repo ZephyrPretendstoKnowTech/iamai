@@ -53,6 +53,7 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "policy.current.displayName",
     "policy.current.state",
@@ -137,14 +138,6 @@
           "entra": ["entra.correct.session.token-protection"],
           "json": ["json.correct.session"],
           "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["Session"]}]
-        },
-        "lifecycle.report-only": {
-          "appliesWhen": "a semantically incorrect policy is not in Report-only while being corrected",
-          "select": {"equals": ["policy.current.state", "enabled"]},
-          "alongside": true,
-          "entra": ["entra.correct.lifecycle.report-only"],
-          "json": ["json.correct.report-only"],
-          "powershell": [{"block": "powershell.run", "mode": "Correct", "corrections": ["ReportOnly"]}]
         }
       },
       "sharedAfter": {"entra": ["entra.correct.save-verify"]},

@@ -1,0 +1,9 @@
+# Every correction cycle
+
+1. Inspect HEAD, status, prior cycle review, RESULTS and BLOCKED. Preserve any unfinished work and understand it before editing. On cycle one reproduce the critical policy case first. On later cycles prioritize the fresh review's actionable findings.
+2. Work through FINDINGS in risk order. Fix concrete causes and add meaningful regression fixtures. Do not spend a whole cycle rewriting the queue or calling routine work an owner decision. If one issue needs a real choice, document it and move to independent fixes.
+3. Run targeted tests after changes. Run full tests, typecheck and production build after a coherent batch. The final candidate also needs the browser walk, content matrix and cross-channel/export probes. Reuse inspected prior synthetic probes; keep logs outside the source tree. Record exact commands, exit codes, test totals, skipped checks and commit identifiers. Never describe an unrun test as passing.
+4. Run the independent acceptance harness copied under acceptance/ in this specification directory against the current clone; put results in the run's logs directory. It imports source modules with mocked fetch and writes results only to its output argument. Inspect compatibility if module interfaces changed; retain behavioral expectations. No tenant connection is necessary.
+5. Commit coherent local source/test changes and update RESULTS. Do not commit secrets, dependencies, builds or screenshots. Finish within the session budget, leaving enough time to describe what remains. The next session reviews; do not self-certify publication.
+
+Use remaining cycles to resolve failures, not to repeat completed tests without changes or new concerns. If all actionable work is finished, prepare a complete handoff for the reviewer. Missing verification that can be performed locally is actionable work.

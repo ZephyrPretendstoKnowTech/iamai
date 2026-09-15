@@ -16,6 +16,7 @@ import { fillText } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
+import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
@@ -30,7 +31,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepC
 import { laneViewFor } from './planBoard.ts'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, bindingLabel, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, reviewedPackageFor } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, previewNoteLines, reviewedPackageFor } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { projectSafely, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -59,7 +60,7 @@ const PACKAGE_CHANNEL: Record<OutputChannel, Channel> = { entra: 'portal', power
  * (content/implementation/invocation.ts), the request a JSON body is sent with —
  * and never a sentence written here.
  */
-function packageArtifact(a: ChannelArtifact): Artifact {
+function packageArtifact(a: ChannelArtifact, ground: ((own: string) => string) | null = null): Artifact {
   const W = CONTRACT.implementation
   const note =
     a.channel === 'powershell' && a.runs.length > 0
@@ -67,7 +68,12 @@ function packageArtifact(a: ChannelArtifact): Artifact {
       : a.channel === 'json' && a.requests.length > 0
         ? a.requests.map((r) => `${r.method} ${r.endpoint}`).join(' · ')
         : null
-  const text = artifactText(a, W.aiWarning)
+  // AI Info carries IAMAI's facts for the step after the package's own words (aiGrounding.ts),
+  // so the assistant it is handed to needs no screen. A package AI Info with no words of its
+  // own stays empty: the facts never stand in for a channel the package did not produce.
+  const own = artifactText(a, W.aiWarning)
+  const facts = a.channel === 'aiInfo' && ground !== null && own.trim() !== '' ? ground(own) : ''
+  const text = facts === '' ? own : aiBriefingText(own, facts)
   return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => text, note }
 }
 
@@ -258,6 +264,12 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // What kind of step this is, and "Resolution step" for one whose source
   // contradicts itself (stepContract.ts eyebrowOf).
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
+  // IAMAI's facts for this step (aiGrounding.ts): one grounding for a package's AI Info and
+  // for the step's own, so both hand an assistant the same facts.
+  // The request the briefing describes is the JSON channel the package projects, or previews, for this state.
+  const jsonChannel = (preview ?? projection)?.channels.find((a) => a.channel === 'json') ?? null
+  const groundingJson = jsonChannel ? { text: jsonChannel.text, requests: jsonChannel.requests, preview: preview !== null } : null
+  const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null, json: groundingJson }, own)
   const textOf = (ch: Channel): string =>
     ch === 'portal'
       ? portalLines.map((l, i) => `${i + 1}. ${l}`).join('\n')
@@ -265,7 +277,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
         ? powershellFor(stepOperations(step))
         : ch === 'json'
           ? policyJsonText(step)
-          : stepContext(step, (s) => stepExportView(s, ctx, laneView))
+          : ((facts) => (facts !== '' ? aiBriefingText('', facts) : stepContext(step, (s) => stepExportView(s, ctx, laneView))))(grounding(''))
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.
@@ -273,9 +285,11 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // (RUN-CONTEXT-B decision 12, U15): an account, a group or a setting is portal
   // work, and filtering here keeps the tabs, the viewer and Copy on one list.
   const machine = cs.kind === 'policy'
+  // A package channel whose every line waited on a value IAMAI does not hold (the AI
+  // Info shared warning aside) has no content: it is not drawn as a blank tab.
   const produced: Artifact[] = (
     packaged
-      ? ((preview ?? projection)?.channels ?? []).map(packageArtifact)
+      ? ((preview ?? projection)?.channels ?? []).map((a) => packageArtifact(a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
   // Every channel draws, always (content review D2): a channel with content shows
@@ -285,16 +299,9 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Why a preview's work cannot be copied: the values still to resolve, never the
   // blocker again. No Planned work banner draws it over the channels (U4); it is
   // the disabled Copy's reason (U18, B5).
-  const previewNote = preview
-    ? {
-        lines: [
-          // Nothing to fix and nothing holding it: what stands between the step and
-          // Copy is values IAMAI cannot fill, not prerequisites (correction batch 1).
-          contract.fix.length === 0 && !contract.state.held ? W.preview.textValues : W.preview.text,
-          ...(preview.hold && preview.hold.missingBindings.length > 0 ? [fillText(W.preview.values, { values: list([...new Set(preview.hold.missingBindings.map(bindingLabel))]) })] : []),
-        ],
-      }
-    : null
+  // The lead follows the step's intended next action, and the export reads the same
+  // lines (stepPackage.ts previewNoteLines).
+  const previewNote = preview ? { lines: previewNoteLines(step, contract, preview.hold) } : null
   // A channel the package could not finish on its own (project.ts `degraded`) is
   // not offered, and nothing stands in for it (S6, A1 §16.2): a line that only
   // says a channel is missing is not implementation content, and whatever really

@@ -1,45 +1,51 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure exactly this canonical scope: **Users: All users** with IAMAI-resolved exclusions; **Target resources: All resources**; **Conditions > Authentication flows: Device code flow**; client apps all.
+3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows: Device code flow**. **Client apps** remains All; Authentication flows is not inside Client apps.
 4. Grant/access control: **Block access**.
-5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.
-6. Set **Enable policy: Report-only** and create it.
-7. Re-open the created policy, compare it with the IAMAI target, then rescan.
+5. Leave session controls unconfigured; the intended target has none.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This policy already exists and is enforced. The correction adds the exclusions group.
+This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (or search by its ID in Plan settings).
 3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
-4. Verify all other settings match the baseline: Target resources = All resources, Conditions = Client apps: Authentication flows: Device code, Grant = Block access.
+4. Check the other settings and set any that differ from the baseline: Target resources = All resources. Conditions → Authentication flows → Device code flow. Client apps remains All. Grant → Block access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set Grant to **Block access**, as the intended target specifies. Do not keep a different grant control because it already exists; this step follows the baseline target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Remove all session controls from this policy; the intended target has none, and session behavior belongs to separate baseline steps.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same resolved policy to **{{policy.target.displayName}}**. Display name is never update identity; the stable tenant policy ID remains authoritative.
+Rename the same policy to **{{policy.target.displayName}}**. IAMAI matches the policy by its ID, not its display name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Do not change the policy state (leave it On).
+5. Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.
+   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review Conditional Access report-only results and the step-specific evidence. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.
+Keep the policy in Report-only while you review the evidence listed for this step. Review device-code use, including command-line tools, shared and meeting-room devices, and enrollment workflows. On each sign-in, check both **Authentication protocol** and **Original transfer method**: a session that began with device code can still be tracked after the original event. Microsoft documents that an authentication-flows policy targeting All resources also applies to Device Registration Service, and some Teams devices depend on device code flow. No events in the available records does not prove device code is unused.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only**, the conditions/grant/session controls are canonical, and the step-specific evidence is clear. Change **Enable policy** to **On**, test the expected sign-in path plus emergency access, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+- Reopen the policy by its ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and required device-code workflows have a tested alternative or separately approved handling.
+- Change **Enable policy** to **On** and save.
+- Verify after the change: required tools and devices sign in through their alternative path, and emergency access still works.
+- Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -66,9 +72,10 @@ Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only*
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId
 )
@@ -109,14 +116,6 @@ if($Mode -eq 'Create'){
  Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}
-}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}
-}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -142,61 +141,63 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Block Device Code Sign-in** implementation for {{tenant.displayName}}. Confirm the canonical target is complete, tenant-resolved, Report-only first, and contains no invented exclusions or source-tenant IDs.
+IAMAI did not find **Block Device Code Sign-in** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Because it targets All resources, it also applies to Device Registration Service, and some Teams devices, command-line tools and enrollment workflows use device code legitimately.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Block Device Code Sign-in**: {{policy.current.semanticMismatches}}. Explain only the smallest API-safe corrections. If an access-affecting change is needed while the policy is On, stage the same policy to Report-only first.
+IAMAI found policy {{policy.current.id}} for **Block Device Code Sign-in**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target blocks Conditions → Authentication flows → Device code flow for all users except the resolved exclusions, across all resources, with Client apps left at All and no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess the Report-only evidence for **Block Device Code Sign-in** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear.
+**Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Review both direct device-code sign-ins and sessions tracked by Original transfer method, including tools, shared devices, Teams devices and enrollment workflows. No events in the available records does not prove device code is unused.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform a final pre-enforcement review for **Block Device Code Sign-in** in {{tenant.displayName}}. Confirm the stable tenant policy is still Report-only, canonical, and safe to enable; do not redesign the baseline.
+**Block Device Code Sign-in** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, direct and transferred device-code activity has been reviewed, Teams-device and Device Registration Service impact is understood, and required workflows have a tested alternative or separately approved handling. Once On, device code sign-in is blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Block Device Code Sign-in** is not actionable yet using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent a bypass, new exclusion, or source resolution.
+**Block Device Code Sign-in** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain that **Block Device Code Sign-in** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
+IAMAI marks **Block Device Code Sign-in** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"technical-owners"}
-Subject: Device-code sign-in blocking entering validation
+Subject: Action needed: Block Device Code Sign-in
 
 Hi,
 
-We are validating a policy that blocks device-code sign-in in {{tenant.displayName}}. Technical owners should report any legitimate CLI, kiosk, Teams/shared-device, or input-constrained workflow that still relies on device code before enforcement.
+If you use a tool or device that asks you to enter a code on another device to sign in, please tell IT before the change. We will check whether it needs an alternative sign-in method.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"technical-owners"}
-Subject: Device-code sign-in will be blocked
+Subject: Action needed: Block Device Code Sign-in
 
 Hi,
 
-Device-code blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Known legitimate dependencies have been resolved. If a technical workflow fails, report the exact application/device and account; do not create a broad user exception.
+If you use a tool or device that asks you to enter a code on another device to sign in, please tell IT before the change. We will check whether it needs an alternative sign-in method.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when direct device-code activity and protocol-tracked activity are reviewed, Teams/shared-device/device-registration dependencies are understood, canonical exclusions are resolved, and no legitimate unresolved workflow remains.
+Review device-code use, including tools, shared devices and enrollment workflows, before enforcement. Ready only when direct device-code activity and protocol-tracked activity have been reviewed, Teams, shared-device and device-registration dependencies are understood, the intended exclusions are resolved, and no legitimate workflow remains unresolved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

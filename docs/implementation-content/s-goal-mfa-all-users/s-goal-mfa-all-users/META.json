@@ -54,6 +54,7 @@
     "policy.current.semanticMismatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "people.affected.count",
     "policy.current.displayName",
@@ -61,7 +62,8 @@
     "evidence.mfaReadiness",
     "evidence.reportOnly",
     "dependencies.blockers",
-    "signature"
+    "signature",
+    "policy.target.json"
   ],
   "projection": {
     "missing": {

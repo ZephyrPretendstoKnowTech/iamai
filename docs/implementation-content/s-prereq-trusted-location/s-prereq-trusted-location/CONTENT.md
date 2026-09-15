@@ -1,19 +1,19 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Go to Entra admin center → Conditional Access → Named locations → + IP ranges location.
-2. Name: {{location.target.displayName}} (or a name that describes your location).
-3. Add your office's public IP address(es). These are the IPs your internet traffic comes from — your ISP assigns them. If you're not sure, search "what is my IP" from a computer in the office.
-4. If you have a VPN, add its exit IP addresses too.
+2. Name: {{location.target.displayName}}.
+3. Confirm the public IP ranges with the network owner before adding them. An address seen in sign-ins, or from a "what is my IP" check, is not approval. Do not use private LAN ranges.
+4. Add only the approved public ranges, including VPN exits only where the network owner has approved that trust.
 5. Check "Mark as trusted location."
 6. Create.
-7. Rescan in IAMAI.
+7. Rescan in IAMAI and check that an expected sign-in from the approved network matches this location. If it does not, investigate instead of adding more addresses.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open stable named-location ID **{{location.current.id}}**. Correct only the mismatch IAMAI reports.
+Open the named location with ID **{{location.current.id}}**. Correct only the difference IAMAI reports. A change to a trusted location applies to the policies that use it as soon as you save, including policies that are already On.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.ranges","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Replace the IP-range list with exactly the confirmed target CIDRs. Preserve every confirmed range that should remain; remove only ranges the owner/network evidence says no longer belong.
+Replace the IP range list with exactly the approved public ranges. Keep every approved range that should remain; remove only ranges the network owner says no longer belong. Do not add a range because it appears in sign-in records.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.trusted","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -21,11 +21,13 @@ Set **Mark as trusted location** on for this exact object. Do not mark any other
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable object to **{{location.target.displayName}}**. Do not create a duplicate.
+Rename the same named location (same ID) to **{{location.target.displayName}}**. Do not create a duplicate.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial","verificationRequired"],"format":"markdown","kind":"template"}
-Verify the same stable object is an IP named location, contains exactly the confirmed public CIDRs, and is marked trusted. Rescan IAMAI; if expected sign-ins do not match, investigate egress reality rather than widening the range.
+Verify that the same named location (same ID) is an IP ranges location, contains exactly the approved public ranges and is marked trusted. Rescan IAMAI.
+
+Verify after the change: an expected sign-in from the approved network matches this location. If it does not, investigate how the network's traffic reaches the internet instead of widening the range.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template"}
@@ -79,21 +81,21 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review trusted-network evidence for {{tenant.displayName}}. Observed sign-in IP summary: {{evidence.signInIpSummary}}. Treat it only as evidence. Identify which public egress CIDRs still need network-owner confirmation and do not propose broader ranges.
+The trusted network for {{tenant.displayName}} is not approved yet. Observed sign-in IP summary: {{evidence.signInIpSummary}}. These addresses are review evidence, not approval: an unrelated office, a VPN or a shared provider address can appear in sign-ins. The network owner needs to confirm the exact public ranges, who controls them and whether they can change. A range broader than the approved ones would extend trust to other networks.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-applicable","channel":"aiInfo","states":["notApplicable"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-The owner has stated there is no office/VPN network that should be treated as trusted. Confirm downstream policies therefore should not depend on an invented location; do not create one from historical IPs.
+The owner recorded that no office or VPN network should be treated as trusted. No trusted location is planned for this tenant, and none should be created from historical sign-in addresses.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
-A trusted location tells Entra "sign-ins from these IP addresses are coming from our office." Several policies in the baseline use this: some relax their requirements inside the trusted network (like the managed-device policy, which only requires a managed device outside the office).
+A trusted location tells Microsoft Entra that sign-ins from these public IP addresses come from a network the organization controls. Some baseline policies apply differently inside a trusted network.
 
-If you have one office, add its public IP address. If you have multiple offices or a VPN, add all of them. The location should cover every IP address your people normally sign in from at work.
+Add only public IPv4 and IPv6 ranges the network owner approves, including VPN exits only where that trust is approved. An address seen in sign-ins is not automatically trusted: an unrelated office, a VPN or a shared provider address can appear there too.
 
-Don't add home IP addresses — those change and aren't controlled by the organization. The point of a trusted location is that the network itself is something you manage.
+Don't add home IP addresses. They change, and the organization does not control them.
 
 If nobody works from an office (fully remote, no VPN), you can mark this step as "Doesn't apply here."
 @@IAMAI-END
@@ -101,25 +103,25 @@ If nobody works from an office (fully remote, no VPN), you can mark this step as
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Compare {{location.current.id}} to the confirmed target. Correct only name/ranges/trusted status. Because Graph replaces the `ipRanges` collection, ensure every range that must remain is present in the submitted set.
+Named location {{location.current.id}} exists but differs from the intended settings in its name, IP ranges or trusted flag. Graph replaces the whole `ipRanges` collection on update, so the submitted set must include every approved range that should remain. A change applies to the policies that use this location as soon as it is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify stable ID, exact CIDR set and trusted flag. If sign-in evidence no longer matches, investigate public egress changes rather than widening trust.
+This step is waiting to confirm that the same named location (same ID) contains exactly the approved ranges and is marked trusted. If expected sign-ins no longer match, the network's public address may have changed; the fix is a newly approved range, not a wider one.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the unresolved trusted-network prerequisite: {{dependencies.blockers}}. Never guess public ranges.
+The trusted-network prerequisite is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Public ranges come only from the network owner's approval.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.network.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"network-owner"}
-Subject: Confirm public network ranges for Conditional Access
+Subject: Action needed: Define the Trusted Network
 
-Please confirm the public IPv4/IPv6 CIDR ranges that represent the office or VPN exits we are allowed to treat as trusted. Do not send private LAN ranges such as 10.x/172.16–31.x/192.168.x. If the public address is dynamic, note that as well so we do not create a trust boundary that silently goes stale.
+Please confirm the public IP ranges we may treat as trusted, who controls them, and whether they can change. Include VPN exits only where the organization approves that trust.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.review","channel":"readiness","states":["needsDecision"],"format":"json-template","kind":"referenceOnly"}
@@ -127,10 +129,10 @@ Please confirm the public IPv4/IPv6 CIDR ranges that represent the office or VPN
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"ranges","label":"Confirmed public CIDRs","result":"{{location.target.ipRanges}}","line":"Only owner/network-confirmed public egress belongs in trust."},{"id":"identity","label":"Named location","result":"{{location.current.id}}","line":"Downstream policy references must use one stable object."},{"id":"trusted","label":"Trusted flag","result":"{{location.current.isTrusted}}","line":"Trust changes policy and risk interpretation, so it must be explicit."}],"whyIamaiSaysThis":"A trusted network is a security boundary; broad or inferred IP space weakens every policy that consumes it."}
+{"tiles":[{"id":"ranges","label":"Confirmed public CIDRs","result":"{{location.target.ipRanges}}","line":"Use only public IP ranges approved by the network owner. An observed address is not automatically trusted."},{"id":"identity","label":"Named location","result":"{{location.current.id}}","line":"Policies that use the trusted network must reference this one named location."},{"id":"trusted","label":"Trusted flag","result":"{{location.current.isTrusted}}","line":"Trust changes policy and risk interpretation, so it must be explicit."}],"whyIamaiSaysThis":"A trusted network is a security boundary; broad or inferred IP space weakens every policy that uses it."}
 @@IAMAI-END
 
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"private-ip","classification":"documented","symptom":"A proposed range is a private intranet address rather than public egress.","check":"Compare with the public address Microsoft Entra sees at sign-in.","fix":"Use only the confirmed public egress CIDR.","then":"Rescan evidence after correction.","sources":["ms-network"]},{"id":"range-replaced","classification":"documented","symptom":"An update accidentally drops an existing valid range.","check":"Compare the submitted ipRanges collection with the pre-change and target sets.","fix":"PATCH the same object with the complete intended collection.","then":"Read back exact ranges.","sources":["ms-ip-update"]},{"id":"dynamic-egress","classification":"derived","symptom":"The trusted location stops matching office sign-ins.","check":"Confirm whether the ISP/VPN public egress changed.","fix":"Update to the newly confirmed CIDR; do not broaden to cover guessed future addresses.","then":"Verify sign-in evidence and rescan.","sources":["ms-network"]},{"id":"graph-403","classification":"documented","symptom":"Graph returns 403.","check":"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and Security Administrator or Conditional Access Administrator.","fix":"Reconnect with supported authorization.","then":"Retry the same stable object.","sources":["ms-ip-update"]}]}
+{"scenarios":[{"id":"private-ip","classification":"documented","symptom":"A proposed range is a private intranet address rather than public egress.","check":"Compare with the public address Microsoft Entra sees at sign-in.","fix":"Use only the confirmed public egress CIDR.","then":"Rescan evidence after correction.","sources":["ms-network"]},{"id":"range-replaced","classification":"documented","symptom":"An update accidentally drops an existing valid range.","check":"Compare the submitted ipRanges collection with the pre-change and target sets.","fix":"PATCH the same object with the complete intended collection.","then":"Read back exact ranges.","sources":["ms-ip-update"]},{"id":"dynamic-egress","classification":"derived","symptom":"The trusted location stops matching office sign-ins.","check":"Confirm whether the ISP/VPN public egress changed.","fix":"Update to the newly confirmed CIDR; do not broaden to cover guessed future addresses.","then":"Verify sign-in evidence and rescan.","sources":["ms-network"]},{"id":"graph-403","classification":"documented","symptom":"Graph returns 403.","check":"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and Security Administrator or Conditional Access Administrator.","fix":"Reconnect with supported authorization.","then":"Retry against the same named location.","sources":["ms-ip-update"]}]}
 @@IAMAI-END

@@ -95,7 +95,12 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   assert.deepEqual(by.powershell.blocks, ['powershell.run'])
   assert.deepEqual(by.powershell.runs, [{ mode: 'Enforce', corrections: [] }])
   assert.ok(by.powershell.text.startsWith('function Invoke-IAMAIStep {\n# IAMAI compact implementation script'))
-  assert.ok(by.powershell.text.includes(authored('powershell.run')), 'the authored script is not carried whole')
+  // Cycle 6 (review 5 queue 1): the script's line naming the exclusions a correction removes
+  // is omitted when nothing is removed, as here; every other authored line is carried.
+  const optional = /\[omit this line when unavailable\]/
+  assert.ok(authored('powershell.run').split('\n').some((l) => optional.test(l)), 'the premise: the script carries the optional removal line')
+  assert.ok(by.powershell.text.includes(authored('powershell.run').split('\n').filter((l) => !optional.test(l)).join('\n')), 'the authored script is not carried whole')
+  assert.doesNotMatch(by.powershell.text, /This change removes|\{\{/)
   assert.ok(
     by.powershell.text.endsWith(`Invoke-IAMAIStep -Mode 'Enforce' -PolicyId '${PILOT_IDS.policy}' -ExcludeGroupIds @('${PILOT_IDS.exclusions}') -AuthenticationStrengthId '${PILOT_IDS.strength}' -LegacyDeviceMfaToggleConfirmedNo -EnrollmentWorkflowsValidated -ExternalAuthenticationCompatibilityResolved`),
     by.powershell.text.slice(-300),
@@ -104,7 +109,7 @@ test('Ready to enforce projects all five channels, and the script is runnable as
   assert.deepEqual(JSON.parse(by.json.text), { state: 'enabled' })
   assert.deepEqual(by.json.requests, [{ method: 'PATCH', endpoint: `/identity/conditionalAccess/policies/${PILOT_IDS.policy}` }])
   assert.match(by.aiInfo.text, new RegExp(`Policy ID: ${PILOT_IDS.policy}`))
-  assert.match(by.aiInfo.text, new RegExp(`Canonical exclusions: ${PILOT_IDS.exclusions}`))
+  assert.match(by.aiInfo.text, new RegExp(`Resolved exclusions: ${PILOT_IDS.exclusions}`))
   assert.equal(by.email.text, authored('email.users.pre-enforcement'), 'the Email is not the authored message exactly')
   assert.deepEqual(by.email.communication, { audience: 'affected-users', trigger: 'before-enforcement', purpose: 'pre-change-notice' })
 })
@@ -169,7 +174,7 @@ test('Partial selects correction modules from the engine’s changed fields, one
   assert.deepEqual(by.powershell.runs, [{ mode: 'Correct', corrections: ['Conditions', 'Grant'] }])
   assert.match(by.powershell.text, /Invoke-IAMAIStep -Mode 'Correct' -Corrections 'Conditions','Grant' -PolicyId/)
   // The selected module ids are what the package's own text names.
-  assert.match(by.aiInfo.text, /IAMAI mismatches: users\.exclusions-canonical, grant\.authentication-strength/)
+  assert.match(by.aiInfo.text, /Differences IAMAI found: users\.exclusions-canonical, grant\.authentication-strength/)
   for (const notDetected of ['entra.correct.users.include-all', 'entra.correct.target.register-or-join-devices', 'entra.correct.conditions.remove-noncanonical', 'entra.correct.lifecycle.report-only']) {
     assert.equal(by.entra.blocks.includes(notDetected), false, `${notDetected} shown for a field the engine did not report`)
   }
@@ -177,11 +182,14 @@ test('Partial selects correction modules from the engine’s changed fields, one
   const shared = project('partial', { [CHANGED_FIELDS_BINDING]: ['conditions.users.includeUsers', 'conditions.users.excludeGroups'] })
   assert.deepEqual(shared.channels.find((c) => c.channel === 'json')!.blocks, ['json.correct.conditions'])
   assert.deepEqual(shared.channels.find((c) => c.channel === 'powershell')!.corrections, ['Conditions'])
-  // A live policy being corrected goes back to report-only alongside the correction, never on its own.
+  // Cycle 3 (C02, RUN-CONTEXT): a live policy being corrected keeps its state. It used to go back
+  // to report-only alongside every correction, taking enforcement off to fix a grant; the
+  // correction now says what saving does to a policy that is On instead.
   const live = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] })
-  assert.ok(live.channels.find((c) => c.channel === 'entra')!.blocks.includes('entra.correct.lifecycle.report-only'))
-  assert.deepEqual(JSON.parse(live.channels.find((c) => c.channel === 'json')!.text).state, 'enabledForReportingButNotEnforced')
-  assert.deepEqual(live.channels.find((c) => c.channel === 'powershell')!.corrections, ['Grant', 'ReportOnly'])
+  assert.equal(live.channels.find((c) => c.channel === 'entra')!.blocks.includes('entra.correct.lifecycle.report-only'), false)
+  assert.match(live.channels.find((c) => c.channel === 'entra')!.text, /If it is On, the changed rule can affect access after you save\./)
+  assert.equal('state' in JSON.parse(live.channels.find((c) => c.channel === 'json')!.text), false, 'the correction request writes no state')
+  assert.deepEqual(live.channels.find((c) => c.channel === 'powershell')!.corrections, ['Grant'])
   const aloneAlone = project('partial', { 'policy.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: undefined })
   assert.deepEqual(aloneAlone.channels, [], 'returning a policy to report-only was offered as a correction on its own')
   // A field no module covers holds the whole projection: no partial correction.
@@ -350,7 +358,8 @@ test('the viewer draws every package channel through the one Implementation regi
   assert.match(step, /if \(copyable\) copy\('implementation', active\?\.text\(\) \?\? ''\)/)
   assert.match(step, /<Implementation[\s\S]*?copy=\{copyArtifact\}/)
   assert.equal(step.split("{tab === 'ai' && (").length - 1, 2)
-  assert.match(step, /const produced: Artifact\[\] = \(\n\s*packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(packageArtifact\)/)
+  // Every package channel goes through packageArtifact, which adds IAMAI's facts to AI Info (aiGrounding.ts).
+  assert.match(step, /const produced: Artifact\[\] = \(\n\s*packaged\n\s*\? \(\(preview \?\? projection\)\?\.channels \?\? \[\]\)\.map\(\(a\) => packageArtifact\(a, grounding\)\)/)
   // Every channel is a tab (content review D2): the produced channel where there is one, the unavailable one otherwise.
   assert.match(step, /const artifacts: Artifact\[\] = CHANNEL_TABS\.map\(\(t\) => produced\.find\(\(a\) => a\.id === t\.id\) \?\? unavailableArtifact\(t\.id as Channel\)\)/)
   // The projection, the readiness and the troubleshooting never throw through the step.

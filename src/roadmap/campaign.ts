@@ -10,6 +10,16 @@
 //
 // Pure: no DOM, no network.
 import { REGISTRATION_MAX_WORKING_DAYS, REGISTRATION_PER_WORKING_DAY } from './constants.ts'
+import registry from '../content/implementation/registry.generated.json' with { type: 'json' }
+
+/** The selected campaign's method, not the separate admin passkey remediation. */
+export function campaignTargetsPasskeys(): boolean | null {
+  const packages = registry.packages as unknown as Record<string, { meta: { stepId?: string; baselineAuthority?: { targetCampaign?: { targetedAuthenticationMethod?: string } } } }>
+  const method = Object.values(packages).find((p) => p.meta.stepId === 's-verify-mfa')?.meta.baselineAuthority?.targetCampaign?.targetedAuthenticationMethod
+  if (method === 'microsoftAuthenticator') return false
+  if (method === 'fido2') return true
+  return null
+}
 
 export type RegistrationWindow = {
   /** Working days the window runs for; 0 when nobody needs setting up. */

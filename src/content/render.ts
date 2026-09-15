@@ -31,6 +31,7 @@ import { SUBJECT_PLAIN } from '../copy/validation.ts'
 // The consent rows Connect shows, generated from GRAPH_SCOPES and SCOPE_COPY: the
 // review page reads the permission authority rather than a copy of it.
 import { consentRows } from '../copy/permissions.ts'
+import { FEEDBACK_ADDRESS } from '../feedback.ts'
 
 const CONSENT = consentRows()
 
@@ -668,6 +669,7 @@ export function renderPages(): string {
     'Connect (signed in): the four tiles',
     `<p class="sub">${esc(cx.eyebrow)}</p><h2 class="h1">${esc(cx.h1)}</h2>` +
       p(cx.intro, {}) +
+      `<p class="sub"><b>${esc(cx.notice.title)}</b> ${fill(cx.notice.body, { feedback: FEEDBACK_ADDRESS })}</p>` +
       statusHtml() +
       tileHtml(1, cx.account.title, exT.tenant, p(cx.account.line, { upn: exT.upn, role: 'Global Administrator' }) + p(cx.account.note, {}, 'sub') + acts(cx.account.signInAnother, cx.account.signOut)) +
       tileHtml(

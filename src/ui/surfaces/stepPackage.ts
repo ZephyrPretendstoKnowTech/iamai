@@ -29,9 +29,11 @@ import { PINNED } from '../../baseline/pinned.ts'
 import type { CompiledPackage } from '../../content/implementation/protocol.ts'
 import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
-import type { Bindings, ChannelArtifact, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
-import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
+import type { Bindings, ChannelArtifact, Hold, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
+import { list } from '../../copy/statements.ts'
+import { NO_ACTION_STATES, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
+import { shared } from '../../content/content.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
 import { absoluteDate } from '../../copy/dates.ts'
 import { actionableExclusionsGroupId } from '../../mapping/safetyChoice.ts'
@@ -39,9 +41,12 @@ import { memberKeyOf } from '../../roadmap/observation.ts'
 import type { ContractReadiness, ReadinessTile, ReadinessTone, StepContract } from './stepContract.ts'
 import { CONTRACT } from './stepContract.ts'
 import { implementationIsCurrent } from '../../roadmap/nextSafeAction.ts'
+import { GATING_SUBJECTS, blockerStepId } from '../../roadmap/blockerSteps.ts'
 import { PASSKEY_SETTINGS_STEP_ID, passkeyBindings } from '../../roadmap/passkeySettings.ts'
-import { tenantNameOf } from './stepVars.ts'
+import { SYNC_WORKLOAD_GOAL_ID, syncIdentitySupportOf } from '../../roadmap/workloadIdentity.ts'
+import { stepVars, tenantNameOf } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
+import { portalNamesFor, stepPortalLines } from './stepPortal.ts'
 
 const PACKAGES = (registry as unknown as { packages: Record<string, CompiledPackage> }).packages
 
@@ -181,6 +186,26 @@ export function safeCorrectionOf(step: Step, snapshot: TenantSnapshot | null): b
   return owed
 }
 
+/**
+ * Whether the step waits on an emergency-access foundation (roadmap/blockerSteps.ts
+ * GATING_SUBJECTS): a step blocker on one, or the escape hatch it is held behind.
+ * Read at call time: blockerSteps.ts and lifecycle.ts import each other.
+ */
+function waitsOnEmergencyAccess(step: Step): boolean {
+  const gate = new Set(GATING_SUBJECTS.map(blockerStepId))
+  return step.action.escapeHatch != null || step.blockers.some((b) => b.kind === 'step' && gate.has(b.stepId))
+}
+
+/**
+ * The exclusions an update takes off the tenant's policy (PolicyOperation.removes), by
+ * name: guest or external users, then each object by the plan's name for it, the words
+ * the step's portal lines use (stepPortal.ts). A create removes nothing.
+ */
+export function removedExclusionNames(op: PolicyOperation | null, nameOf: (id: string) => string): string[] {
+  if (op?.mode !== 'update' || !op.removes) return []
+  return [...(op.removes.guestsOrExternalUsers ? [shared.changeRemovesGuests as string] : []), ...op.removes.ids.map((id) => nameOf(id))]
+}
+
 /** A multi-policy set with a member to create beside a member the tenant already has. */
 const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o) => o.mode === 'create') && ops.some((o) => o.mode === 'update')
 
@@ -195,10 +220,11 @@ const partlyDeployed = (ops: readonly PolicyOperation[]): boolean => ops.some((o
  *      even where Foundation A will not hand the whole policy over (U19);
  *   4a. an implementation Foundation A will not hand over: blocked;
  *   5. a correction owed — an update that changes material fields of the tenant's
- *      policy — partial, whatever the lifecycle and whatever holds the step: a
- *      report-only or an enforced policy that is not what the plan asked for is
- *      corrected before anything else is done to it, and hiding that behind its
- *      stage or its hold hid the correction (A1a; A3 B3);
+ *      policy — partial, whatever the lifecycle and whatever holds the step but
+ *      emergency access: a report-only or an enforced policy that is not what the
+ *      plan asked for is corrected before anything else is done to it, and hiding
+ *      that behind its stage or its hold hid the correction (A1a; A3 B3). Under an
+ *      emergency-access wait only 4's correction is handed over (review 4 N1);
  *   6. nothing to implement now — a blocker or a review — blocked. The one held
  *      step whose current action is the implementation is the owner's report-only
  *      preparation (nextSafeAction.ts implementationIsCurrent), and it continues;
@@ -224,8 +250,15 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
   // A correction owed — an update that changes material fields of the tenant's
   // policy — projects whatever holds the step (A1a; A3 B3 "creation vs
   // enforcement"): the correction is safe to plan and to run today, and
-  // enforcement stays behind its own gates.
-  if (!s.satisfied && correctionFieldsOf(step, snapshot).length > 0) return 'partial'
+  // enforcement stays behind its own gates. Not while the step waits on emergency
+  // access: on an enforced policy every correction but U19's (above) can lock
+  // someone out, and one that takes an exclusion off before the way back in is
+  // confirmed is what that wait exists to stop (correction batch 2; review 4 N1).
+  // A report-only policy's correction locks nobody out, but nextSafeAction holds
+  // every correction under this wait, and the screen does not hand over what the
+  // action withholds (review 5 R5-2). It is planned, not handed over, as
+  // nextSafeAction and the export already read it.
+  if (!s.satisfied && correctionFieldsOf(step, snapshot).length > 0 && !waitsOnEmergencyAccess(step)) return 'partial'
   // The next technical action is not the step's to take today (roadmap/nextSafeAction.ts).
   if (!implementationIsCurrent(step)) return 'blocked'
   if (s.satisfied) return 'inPlace'
@@ -265,6 +298,10 @@ export function packageStateOf(step: Step, c: StepContract, snapshot: TenantSnap
 export function plannedPackageStateOf(step: Step, c: StepContract, snapshot: TenantSnapshot | null): PackageState | null {
   const s = c.state
   if (s.setAside || s.satisfied || s.condition === 'baseline-conflict') return null
+  // A step that cannot tell which of the tenant's policies is its own plans no
+  // work: a create would be the duplicate its hold rules out, and a correction
+  // would name a policy it will not guess (review R2-N1).
+  if (step.action.ambiguousTarget === true) return null
   if (step.kind === 'create' || step.kind === 'adjust') {
     if (correctionFieldsOf(step, snapshot).length > 0 || partlyDeployed(plannedOperationsOf(step))) return 'partial'
     // An enforced policy the plan has not finished is planned as its correction,
@@ -307,6 +344,82 @@ export function planningPreview(pkg: CompiledPackage, step: Step, c: StepContrac
   if (planned === null) return null
   const preview = planSafely(pkg, planned, bindings, runtime, (binding) => fillText(CONTRACT.implementation.preview.value, { value: bindingLabel(binding) }))
   return preview.preview && preview.channels.length > 0 ? preview : null
+}
+
+/**
+ * One Conditional Access request the step's package hands over, or previews: the
+ * body its JSON channel carries, with the method and the policy it changes. It is
+ * the operation the step's Entra, JSON and PowerShell tabs describe.
+ */
+export type SelectedPolicyBody = { method: string; policyId: string | null; body: Record<string, unknown>; preview: boolean }
+
+const CA_POLICY_REQUEST = /\/identity\/conditionalAccess\/policies(?:\/([0-9a-fA-F-]{36}))?\/?$/
+
+/** A preview's bare stand-ins (`‹policy name›`) as JSON strings, so the planned body still reads; null where it does not parse. */
+function parseChannelJson(text: string, preview: boolean): unknown {
+  try {
+    return JSON.parse(preview ? text.replace(/(^|[\s:[,])(‹[^›"\n]*›)/g, (_m, lead: string, value: string) => `${lead}${JSON.stringify(value)}`) : text)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The Conditional Access request bodies the step's package selects for its current
+ * state (executable, or the planning preview where that is what the step shows), or
+ * null where the package projects no policy request.
+ *
+ * A package can author a request whose settings are not the resolved operation's
+ * (the Medium user-risk package excludes guests and sets no session control, where a
+ * stand-in baseline included both). The artifacts that describe the step — the
+ * export's portal lines, AI Info's intended result — read the selected body, so they
+ * never state a setting the JSON the operator copies does not send. Pure.
+ */
+export function selectedPolicyBodiesOf(step: Step, ctx: StepVarContext, c: StepContract): SelectedPolicyBody[] | null {
+  const pkg = implementationPackageFor(step)
+  const state = pkg ? packageStateOf(step, c, ctx.snapshot) : null
+  if (!pkg || state === null) return null
+  const bindings = packageBindings(step, ctx, c)
+  const { runtime } = packageRuntime(pkg, state, bindings, {})
+  const executed = projectSafely(pkg, state, bindings, runtime)
+  const projection = executed.hold === null && executed.channels.length > 0 ? executed : planningPreview(pkg, step, c, ctx.snapshot, bindings, runtime, executed)
+  const json = projection?.channels.find((a) => a.channel === 'json')
+  return projection && json ? policyBodiesOfChannel(json, projection.preview === true) : null
+}
+
+/** The Conditional Access request bodies one projected JSON channel carries (see selectedPolicyBodiesOf), or null. */
+export function policyBodiesOfChannel(json: Pick<ChannelArtifact, 'text' | 'requests'>, preview: boolean): SelectedPolicyBody[] | null {
+  if (json.requests.length !== 1) return null
+  const parsed = parseChannelJson(json.text, preview) as { requests?: unknown } | null
+  if (parsed === null || typeof parsed !== 'object') return null
+  const requests: { method: string; url: string; body: unknown }[] = Array.isArray(parsed.requests)
+    ? (parsed.requests as { method?: unknown; url?: unknown; body?: unknown }[]).map((r) => ({ method: String(r.method ?? ''), url: String(r.url ?? ''), body: r.body }))
+    : [{ method: json.requests[0].method, url: json.requests[0].endpoint, body: parsed }]
+  const out: SelectedPolicyBody[] = []
+  for (const r of requests) {
+    const m = CA_POLICY_REQUEST.exec(r.url)
+    if (!m || r.body === null || typeof r.body !== 'object') continue
+    out.push({ method: r.method.toUpperCase(), policyId: m[1] ?? null, body: r.body as Record<string, unknown>, preview })
+  }
+  return out.length > 0 ? out : null
+}
+
+/**
+ * Why a planning preview cannot be copied, as the screen's disabled Copy
+ * (stepBody.ts) and the export (stepExport.ts) both say it: one reading, so the two
+ * never disagree. The lead follows the step's intended next action
+ * (roadmap/nextSafeAction.ts implementationIsCurrent). Where the implementation is
+ * the current action — a report-only create an emergency-access wait does not hold
+ * (A3 B3: that wait holds enforcement) — only the values IAMAI cannot fill stand
+ * between it and Copy, and it is not called "not ready to run" under a "Ready ·
+ * Create" state. Otherwise the work waits on prerequisites. A preview still waiting
+ * on a check to confirm is never read as values alone.
+ */
+export function previewNoteLines(step: Step, c: StepContract, hold: Hold | null): string[] {
+  const W = CONTRACT.implementation.preview
+  const missing = hold?.missingBindings ?? []
+  const valuesOnly = (c.fix.length === 0 && !c.state.held) || (implementationIsCurrent(step) && missing.length > 0 && (hold?.pendingPrerequisites.length ?? 0) === 0)
+  return [valuesOnly ? W.textValues : W.text, ...(missing.length > 0 ? [fillText(W.values, { values: list([...new Set(missing.map(bindingLabel))]) })] : [])]
 }
 
 const REFERENCE_ROOTS = ['conditions', 'grantControls', 'sessionControls'] as const
@@ -371,10 +484,15 @@ type PolicyShape = { displayName?: unknown; conditions?: { users?: { excludeGrou
  *   names, the policy it tracks, the fields a correction changes
  *   (`policy.current.changedFields`).
  *
- * Not bound, because IAMAI does not hold them: evidence it never read, a choice
- * nobody made, and a value the package names in prose with no meaning IAMAI can
- * supply (`policy.target.mode`). Those stay unbound, and the package's own
- * contract decides what that means.
+ * - the target's location scope and grant in the words the step's own portal
+ *   lines say them (`policy.target.locationWords`, `policy.target.grantWords`), so
+ *   a package's portal steps name what the resolved target sets, never a mode it
+ *   does not settle (register-info-protected: MFA outside trusted locations is
+ *   neither of that package's two modes).
+ *
+ * Not bound, because IAMAI does not hold them: evidence it never read, and a
+ * choice nobody made. Those stay unbound, and the package's own contract decides
+ * what that means.
  */
 export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract): Bindings {
   const op = plannedOperationsOf(step)[0] ?? null
@@ -418,24 +536,63 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // groups: an empty list is the baseline's own "nobody", and a users field still
   // waiting on a reference binds nothing (`settled` above).
   if (Array.isArray(users?.excludeUsers)) put('policy.target.excludeUsers', users.excludeUsers.map(String))
+  // The same resolved accounts in the words a package's portal steps, AI Info and
+  // verification say them: each by name and id, or that the target excludes none.
+  // Bound only where the users field is settled, so an unresolved set says nothing.
+  if (Array.isArray(users?.excludeUsers)) {
+    const named = users.excludeUsers.map((raw) => {
+      const id = String(raw)
+      const name = ctx.nameOf?.(id)
+      return name && name !== id ? `${name} (${id})` : id
+    })
+    put('policy.target.excludeUsersSummary', named.length === 0 ? CONTRACT.implementation.excludeUsersNone : named.join(', '))
+  }
   if (Array.isArray(users?.includeUsers)) put('policy.target.includeUsers', users.includeUsers.map(String))
   else if (target === null && step.kind === 'prerequisite') putSome('policy.target.includeUsers', step.population.ids)
   put('policy.target.includeRoles', Array.isArray(users?.includeRoles) ? users.includeRoles.map(String) : undefined)
   putField('policy.target.conditions', settled('conditions') as Record<string, unknown> | null, 'conditions')
   putField('policy.target.grantControls', settled('grantControls') as Record<string, unknown> | null, 'grantControls')
+  if (out['policy.target.grantControls'] != null) put('policy.target.grantJson', JSON.stringify(out['policy.target.grantControls']))
   putField('policy.target.sessionControls', settled('sessionControls') as Record<string, unknown> | null, 'sessionControls')
+  // The whole target a policy script takes as one value (`-TargetPolicyJson`): the
+  // name and the three material roots bound above, and only where every one of them
+  // is bound — a target short of a field still waiting on a reference is not the target.
+  const roots = ['policy.target.conditions', 'policy.target.grantControls', 'policy.target.sessionControls']
+  if (whole && typeof out['policy.target.displayName'] === 'string' && roots.every((k) => Object.hasOwn(out, k))) {
+    out['policy.target.json'] = JSON.stringify({ displayName: out['policy.target.displayName'], conditions: out['policy.target.conditions'], grantControls: out['policy.target.grantControls'], sessionControls: out['policy.target.sessionControls'] })
+  }
+  // The location scope and grant as the step's portal lines (the screen's, print's
+  // and export's) word them, for a package that declares them: one source, so the
+  // package's portal steps and the export cannot name different controls. A field
+  // still waiting on a reference binds nothing, as above.
+  const declared = implementationPackageFor(step)?.meta
+  const declares = (key: string): boolean => [...(declared?.requiredBindings ?? []), ...((declared as { optionalBindings?: string[] } | undefined)?.optionalBindings ?? [])].includes(key)
+  if (declares('policy.target.locationWords') || declares('policy.target.grantWords')) {
+    const portal = stepPortalLines(step, portalNamesFor(ctx, stepVars(step, ctx) as Record<string, unknown>, step.title)) ?? []
+    const wordsAfter = (head: string): string | undefined => {
+      const found = portal.filter((l) => l.startsWith(head)).map((l) => l.slice(head.length))
+      return found.length > 0 ? found.join('; ') : undefined
+    }
+    if (settled('conditions') !== null) put('policy.target.locationWords', wordsAfter('Conditions → Locations → '))
+    if (settled('grantControls') !== null) put('policy.target.grantWords', wordsAfter('Grant → '))
+  }
   const strength = settled('grantControls')?.grantControls?.authenticationStrength?.id
   put('authStrength.target.id', typeof strength === 'string' ? strength : undefined)
   // The strength's name, where the tenant's scan or Microsoft's own list names it:
   // never an id standing in for a name.
   if (typeof strength === 'string') {
-    const rows = [...((ctx.snapshot?.config?.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown }[]), ...builtinStrengths.strengths]
+    const rows = [...((ctx.snapshot?.config?.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown; allowedCombinations?: unknown }[]), ...builtinStrengths.strengths]
     const named = rows.find((s) => typeof s.id === 'string' && s.id.toLowerCase() === strength.toLowerCase() && typeof s.displayName === 'string' && s.displayName.length > 0)
     put('authStrength.target.displayName', named?.displayName)
+    if (Array.isArray(named?.allowedCombinations) && named.allowedCombinations.every((x: unknown) => typeof x === 'string')) put('authStrength.target.allowedCombinations', named.allowedCombinations)
   }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)
   put('policy.current.state', step.tracking?.state)
+  // The exclusions the one update takes off the tenant's policy, by name, as the step's
+  // portal lines name them: the package's correction save, AI Info and script say so
+  // beside the change (review 5 queue 1). A set names each member's own (memberBindings).
+  if (plannedOperationsOf(step).length === 1) putSome('policy.current.removedExclusions', removedExclusionNames(op, ctx.nameOf))
   // An enforced policy whose update a hold emptied while it waits on the exclusions
   // group is still owed that group's exclusion: the one field its correction will
   // change (B10 P0-1), so the planning preview selects the correction's module.
@@ -479,9 +636,17 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
     put('emergency.target.userId', owed[0].id)
     put('emergency.target.upn', ctx.snapshot.users.find((u) => u.id === owed[0].id)?.userPrincipalName)
   }
-  for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot))) out[key] = value
+  for (const [key, value] of Object.entries(memberBindings(step, ctx.snapshot, ctx.nameOf))) out[key] = value
   // The passkey settings' pinned target and the tenant's Fido2 reading (A5): `passkey.target.*`, `passkey.current.*`.
   if (step.id === PASSKEY_SETTINGS_STEP_ID) for (const [key, value] of Object.entries(passkeyBindings(ctx.snapshot))) out[key] = value
+  // Why the workload restriction is not counted as protection: the sync identity's
+  // support is unknown, or known to be outside workload Conditional Access
+  // (roadmap/workloadIdentity.ts). Nothing is bound once support is established.
+  if (step.goalId === SYNC_WORKLOAD_GOAL_ID) {
+    const identity = syncIdentitySupportOf(ctx.snapshot)
+    const words = (CONTRACT.implementation as unknown as { workloadIdentity: { unknown: string; unsupported: string } }).workloadIdentity
+    put('workload.identity.detail', identity.support === 'unsupported' ? words.unsupported : identity.support === 'unknown' ? words.unknown : undefined)
+  }
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
   const mfa = registration?.status === 'ok' ? (registration.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
   put('tenant.deviceRegistration.multiFactorAuthConfiguration', typeof mfa === 'string' ? mfa : undefined)
@@ -499,7 +664,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
  * position or a display name, which is how a pair collapses into one policy. A
  * member with no stable id, or none the step resolves, binds nothing.
  */
-export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bindings {
+export function memberBindings(step: Step, snapshot: TenantSnapshot | null, nameOf?: (id: string) => string): Bindings {
   const pkg = implementationPackageFor(step)
   const members = pkg?.meta.baselineAuthority?.members ?? []
   if (!pkg || members.length === 0) return {}
@@ -507,6 +672,7 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
   const rows = (snapshot?.config?.caPolicies?.rows ?? []) as Record<string, unknown>[]
   const ops = plannedOperationsOf(step)
   const out: Record<string, unknown> = {}
+  const pair: Record<string, unknown>[] = []
   for (const m of members) {
     if (typeof m.memberStableId !== 'string' || m.memberStableId === '') continue
     const op = ops.find((o) => o.memberKey === memberKeyOf(m.memberStableId, 0))
@@ -515,6 +681,14 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
     const whole = (op.target ?? (op.mode === 'create' ? op.body : null)) as PolicyShape | null
     const name = (op.body as PolicyShape).displayName ?? whole?.displayName
     if (typeof name === 'string') out[`${prefix}.target.displayName`] = name
+    // A member whose target still waits on a reference is not whole (see incompleteFieldsOf).
+    if (whole && typeof name === 'string' && incompleteFieldsOf(step, op).size === 0) {
+      pair.push({ role: m.role, displayName: name, conditions: whole.conditions, grantControls: whole.grantControls ?? null, sessionControls: whole.sessionControls ?? null })
+      // The member's own material roots, for a request that sends each member whole
+      // (the guests pair's JSON batch), where the package declares them: only a member
+      // resolved whole binds them, so a batch is never built with a member partly waiting.
+      for (const root of ['conditions', 'grantControls', 'sessionControls'] as const) if (declared.includes(`${prefix}.target.${root}`)) out[`${prefix}.target.${root}`] = whole[root] ?? null
+    }
     // Users still waiting on a reference are not the target (see packageBindings).
     if (whole?.conditions?.users && !touches(incompleteFieldsOf(step, op), 'conditions.users')) out[`${prefix}.target.users`] = whole.conditions.users
     // Whether this member is created or corrected, and — for a correction — the
@@ -529,8 +703,16 @@ export function memberBindings(step: Step, snapshot: TenantSnapshot | null): Bin
       if (typeof row?.displayName === 'string') out[`${prefix}.current.displayName`] = row.displayName
       const changed = changedFieldsOf(op.body as Record<string, unknown>, row)
       if (changed.length > 0) out[`${prefix}.current.changedFields`] = changed
+      // The exclusions this member's own update takes off (see packageBindings).
+      const removed = nameOf ? removedExclusionNames(op, nameOf) : []
+      if (removed.length > 0) out[`${prefix}.current.removedExclusions`] = removed
     }
   }
+  // Every member's whole target, as a script that takes the set reads it
+  // (`policies.<family>.targets.json`): only when every member resolved whole, so a
+  // set is never handed over with a member missing or partly waiting.
+  const targets = declared.find((b) => /^policies\.[^.]+\.targets\.json$/.test(b))
+  if (targets && pair.length === members.length) out[targets] = JSON.stringify(pair)
   return out
 }
 

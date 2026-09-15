@@ -14,7 +14,7 @@ Hide implementation while the trusted-network result/mode is unresolved, canonic
 
 ## Prerequisites
 - Emergency access/canonical exclusions are resolved.
-- `policy.target.mode` is resolved by IAMAI; the package never chooses it.
+- The location scope and grant are read from the IAMAI-resolved target (`policy.target.locationWords`, `policy.target.grantWords`); the package never chooses a mode.
 - For `blockOutsideTrusted`, a trusted named location exists and is verified.
 - For `requireMfaEverywhere`, IAMAI has explicitly resolved that the trusted-network prerequisite does not apply.
 - Updates use the stable tenant policy ID.

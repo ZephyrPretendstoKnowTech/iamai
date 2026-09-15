@@ -17,8 +17,10 @@ import { stepVars } from './stepVars.ts'
 import type { StepVarContext } from './stepVars.ts'
 import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
-import { badgeLabel, factOf, stepContract } from './stepContract.ts'
-import type { LaneView } from './stepContract.ts'
+import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
+import type { LaneView, StepContract } from './stepContract.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf } from './stepPackage.ts'
+import { projectSafely } from '../../content/implementation/project.ts'
 import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
 import { awaitingDeployment, enforcementUnearned, forecastEnforcement } from '../../roadmap/forecast.ts'
@@ -126,6 +128,26 @@ export function ifWrongLineFor(step: Step, cs: Record<string, unknown>): string 
 }
 
 /**
+ * The screen's preview note (stepBody.ts `previewNote`), for an export that carries the
+ * walk-through of work the package can only preview because values IAMAI does not hold
+ * are missing. Without it the export read "Ready · Create" over a create the screen said
+ * could not be copied (review 7 queue 2). Only a values hold is read: the export has no
+ * owner confirmations, and a missing value holds whatever they satisfy. The lines are
+ * the screen's own (stepPackage.ts previewNoteLines), so a "Ready · Create" export is
+ * never over a note that says the create is not ready to run.
+ */
+function previewValueLines(step: Step, ctx: StepVarContext, contract: StepContract): string[] {
+  const pkg = implementationPackageFor(step)
+  const state = pkg ? packageStateOf(step, contract, ctx.snapshot) : null
+  if (!pkg || state === null) return []
+  const bindings = packageBindings(step, ctx, contract)
+  const { runtime } = packageRuntime(pkg, state, bindings, {})
+  const hold = planningPreview(pkg, step, contract, ctx.snapshot, bindings, runtime, projectSafely(pkg, state, bindings, runtime))?.hold ?? null
+  if (hold === null || hold.missingBindings.length === 0) return []
+  return previewNoteLines(step, contract, hold)
+}
+
+/**
  * The step as the screen says it, for an export.
  *
  * `lane` is the board's one state reading of the step (planBoard.ts laneViewOf,
@@ -170,7 +192,10 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   }
   const ex = stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
-  const portal = cs.kind === 'policy' ? stepPortalLines(step, names) : null
+  // The settings the lines state are the ones the step's package selects for its JSON
+  // (stepPackage.ts selectedPolicyBodiesOf), read only where the lines are handed over.
+  const selected = cs.kind === 'policy' && implementationOffered(step) && implementationIsCurrent(step) ? selectedPolicyBodiesOf(step, ctx, contract) : null
+  const portal = cs.kind === 'policy' ? stepPortalLines(step, names, selected) : null
   // The screen's rule, in the export: where no implementation is offered the
   // export carries the explanation, never the instructions
   // (roadmap/operations.ts). The reasons a policy cannot be implemented — an
@@ -209,9 +234,16 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   // print, the prompts, the grounding bundle): the next action stands alone.
   if (!held && typeof w.lead === 'string' && whole(w.lead, ex)) lines.push(fillText(w.lead, ex))
   if (!held && Array.isArray(w.before)) for (const l of w.before) if (whole(l, ex)) lines.push(fillText(l, ex))
-  if (portal && portal.length > 0) lines.push(...portal)
+  // The screen draws these lines only in the channel strip, and only while the
+  // implementation is the step's current action (stepBody.ts `deployNow`). An
+  // enforced block policy held on emergency access exported the correction that
+  // removes its direct break-glass exclusion under "Clear what this step is
+  // waiting on."; held, the export carries the action alone, as the screen does.
+  if (portal && portal.length > 0) {
+    if (implementationIsCurrent(step)) lines.push(...portal, ...previewValueLines(step, ctx, contract))
+  }
   else if (waiting) lines.push(waitingLine(step, String(ex.tenant ?? '')))
-  else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan.pairUnmatched), { tenant: String(ex.tenant ?? '') }))
+  else if (unmatched) lines.push(fillText(String((content.pages.app as Record<string, Record<string, string>>).plan[step.action.ambiguousTarget ? 'targetAmbiguous' : 'pairUnmatched']), { tenant: String(ex.tenant ?? '') }))
   // The conflict explanation belongs to the reviewed source policy the step's
   // own state names (roadmap/baselineConflict.ts), never to the goal's content
   // entry: the artifacts say the same thing the screen says about it, on

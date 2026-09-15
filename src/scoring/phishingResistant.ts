@@ -246,32 +246,36 @@ export type ReadinessInput = {
 const byClass = (a: MethodClass, b: MethodClass): number => CLASS_ORDER.indexOf(a) - CLASS_ORDER.indexOf(b)
 const byPlatform = (a: Platform | null, b: Platform | null): number => (a === null ? 1 : b === null ? -1 : PLATFORMS.indexOf(a) - PLATFORMS.indexOf(b))
 
+/** A method held now as chronology sees it: when it was created and its id, each null where the read did not say. */
+type HeldMethod = { created: string | null; key: string | null }
+
 /** The method classes held now: the method rows where they were read, else the registration report; null where neither was. */
-function inventory(input: ReadinessInput): { classes: Set<MethodClass>; created: Map<MethodClass, (string | null)[]> } | null {
-  const created = new Map<MethodClass, (string | null)[]>()
+function inventory(input: ReadinessInput): { classes: Set<MethodClass>; held: Map<MethodClass, HeldMethod[]> } | null {
+  const held = new Map<MethodClass, HeldMethod[]>()
   const classes = new Set<MethodClass>()
+  const unknown: HeldMethod = { created: null, key: null }
   if (Array.isArray(input.methods)) {
     for (const m of input.methods) {
       const c = classOfKind(m.kind)
       if (!c) continue
       classes.add(c)
-      created.set(c, [...(created.get(c) ?? []), m.createdDateTime ?? null])
+      held.set(c, [...(held.get(c) ?? []), { created: m.createdDateTime ?? null, key: m.id ?? null }])
     }
     // The method rows do not list certificates; the registration report does.
     if (input.registered?.includes('x509Certificate')) {
       classes.add('certificate')
-      created.set('certificate', [null])
+      held.set('certificate', [unknown])
     }
-    return { classes, created }
+    return { classes, held }
   }
   if (input.registered === null) return null
   for (const name of input.registered) {
     const c = classOfRegistered(name)
     if (!c) continue
     classes.add(c)
-    created.set(c, [null])
+    held.set(c, [unknown])
   }
-  return { classes, created }
+  return { classes, held }
 }
 
 /** The latest proof per class and platform. */
@@ -315,12 +319,21 @@ export function personReadiness(input: ReadinessInput): PersonReadiness {
   // Proof stands for a method held now: its class is held, and a method of that
   // class existed when the proof was made. A passkey registered after the last
   // passkey sign-in has not been seen working, whatever its predecessor did.
+  // Where the read gave no creation date, the chronology is unknown, and older
+  // proof is not carried onto a credential that may have replaced the one it
+  // proved: proof stands for it only from the records this scan read, or where
+  // an earlier scan saw this same credential (by id) at or before the proof.
+  const inWindow = new Set(current.map((p) => `${p.cls}|${p.os ?? ''}|${p.at}`))
   const stands = (p: ProofRecord): boolean => {
     if (!qualifying.includes(p.cls)) return false
-    const dates = inv.created.get(p.cls) ?? []
-    return dates.some((d) => d === null || d <= p.at)
+    const at = Date.parse(p.at)
+    return (inv.held.get(p.cls) ?? []).some((h) => {
+      const created = h.created === null ? Number.NaN : Date.parse(h.created)
+      if (Number.isFinite(created)) return created <= at
+      if (inWindow.has(`${p.cls}|${p.os ?? ''}|${p.at}`)) return true
+      return h.key !== null && (history?.methods ?? []).some((s) => s.key === h.key && s.cls === p.cls && Date.parse(s.firstSeen) <= at)
+    })
   }
-  const inWindow = new Set(current.map((p) => `${p.cls}|${p.os ?? ''}|${p.at}`))
   const proofs = latestProofs([...current, ...(history?.proofs ?? [])].filter(stands))
     .sort((a, b) => byClass(a.cls, b.cls) || byPlatform(a.os, b.os))
     .map((p) => ({ cls: p.cls, os: p.os, at: p.at, retained: !inWindow.has(`${p.cls}|${p.os ?? ''}|${p.at}`) }))

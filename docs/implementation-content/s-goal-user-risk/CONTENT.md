@@ -1,30 +1,32 @@
 @@IAMAI-BEGIN {"id":"entra.prerequisites","channel":"entra","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
-Before enforcement, resolve only the prerequisite that IAMAI says is unmet:
+Before enforcement, resolve only the prerequisite that IAMAI says is unmet. High user risk can require remediation. The required action can differ for password-based and passwordless users.
 - MFA registration: make sure each in-scope user has a registered method that can satisfy {{authStrength.target.displayName}}.
-- Hybrid password users: confirm password writeback is enabled and working before relying on secure password change.
+- Synchronized password users: confirm password writeback is enabled and working where their remediation includes a password change.
 - Guest/external users: Require risk remediation is not supported. Use the existing approved IAMAI scope/exclusion decision; do not invent a new exclusion here.
 - Active risk: investigate/remediate current risky users before turning on a new broad policy.
 SSPR may remain available for recovery, but do not treat SSPR enablement as the CA remediation prerequisite by itself.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
+Create this policy in Report-only. It will not enforce its access rule until you enable it.
+
 In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.
 1. Name: {{policy.target.displayName}}.
-2. Users: Include **All users**. Add only the IAMAI-resolved exclusions.
+2. Users: Include **All users**. Add only the resolved exclusions.
 3. Target resources: **All resources**; do not exclude applications.
 4. Conditions > User risk: **High** only.
-5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND.
+5. Grant: **Grant access > Require risk remediation**. When Entra adds authentication strength, select **{{authStrength.target.displayName}}**. Keep the relationship as AND. Do not use the Medium-risk policy's password-change grant here.
 6. Session: confirm **Sign-in frequency = Every time**.
 7. Enable policy: **Report-only**.
 8. Create, then rescan IAMAI. Do not turn it On in this create action.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact existing policy identified by IAMAI stable ID {{policy.current.id}}. Do not locate an update target by display name alone.
+Open the existing policy with policy ID {{policy.current.id}}. Do not find the policy to update by display name alone.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.users","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Users: Include **All users** and restore only the IAMAI-resolved canonical exclusions. Preserve no additional user/group exclusion unless IAMAI classifies it as canonical.
+Users: Include **All users** and exclude only the resolved exclusions. Remove any other user or group exclusion that is not part of the intended policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.target","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -36,15 +38,15 @@ Conditions > User risk: set **High** only. Do not add Sign-in risk to this polic
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove noncanonical effective location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk conditions. Keep the retained user-risk policy limited to its user, application, and High user-risk scope.
+Remove any location, platform, device/filter, authentication-flow, workload-risk, or sign-in-risk condition IAMAI identified as a difference. Keep this policy limited to its users, applications, and High user-risk scope.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Grant: select **Require risk remediation** with authentication strength **{{authStrength.target.displayName}}**. Do not combine `riskRemediation` with `passwordChange` or a separate MFA grant. Keep operator AND.
+Grant: select **Require risk remediation** with authentication strength **{{authStrength.target.displayName}}**. Do not combine `riskRemediation` with `passwordChange` or a separate MFA grant, and do not substitute the Medium-risk policy's password-change grant. Keep operator AND.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Session: set **Sign-in frequency = Every time**. This is mandatory with current Require risk remediation behavior and is part of the retained member.
+Session: set **Sign-in frequency = Every time**. Require risk remediation requires this setting, and the baseline policy includes it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.lifecycle","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -52,15 +54,23 @@ Set **Enable policy = Report-only** while correcting the policy unless IAMAI is 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save the bounded correction, read the policy back by stable ID, and rescan IAMAI. Do not combine unrelated mismatch fixes.
+Save the selected correction, read the same policy ID back, and rescan IAMAI. Do not combine unrelated fixes.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Verify the exact canonical shape by stable ID, investigate any currently risky users, and confirm MFA registration plus hybrid password-writeback readiness for the actual in-scope population. Confirm guest/external users are not depending on Require risk remediation. Report-only evidence informs impact; it does not prove a future remediation path will succeed.
+Keep the policy in Report-only while you review the evidence listed for this step. Read back the same policy ID and confirm its settings, investigate any currently risky users, and confirm MFA registration plus password-writeback readiness for synchronized password users in scope. Confirm guest/external users are not depending on Require risk remediation, which does not support them. High user risk can require remediation. The required action can differ for password-based and passwordless users. Report-only evidence shows likely impact; it does not prove a future remediation will succeed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Immediately before enforcement, re-read the exact policy by stable ID and confirm: canonical High user-risk scope, All resources, IAMAI-resolved exclusions, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, MFA registration readiness, hybrid writeback where applicable, guest/external handling, and no unresolved active-risk blocker. Then change only **Enable policy** from **Report-only** to **On**. Read back the state and monitor remediation/sign-in failures. If legitimate remediation fails, return the same policy to Report-only.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+Immediately before the change, read back the policy by its policy ID and confirm: High user risk only, All resources, the resolved exclusions, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, MFA registration readiness, password writeback where synchronized password users need it, guest/external handling, and no unresolved active-risk blocker. Then change only **Enable policy** from **Report-only** to **On**.
+
+Verify after the change: the policy reads back On, and remediation and sign-in failures are reviewed. If legitimate remediation fails, return the same policy to Report-only.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -88,6 +98,7 @@ Immediately before enforcement, re-read the exact policy by stable ID and confir
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"PolicyDisplayName":{"binding":"policy.target.displayName","modes":["Create"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","ReportOnly","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CorrectConditions","CorrectGrant","Verify"]},"AuthenticationStrengthId":{"binding":"authStrength.target.id","modes":["Create","CorrectConditions","CorrectGrant","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved and -MfaRegistrationValidated and -GuestExternalScopeValidated, an attestation this package declares no prerequisite for, so IAMAI cannot pass it, and -HybridUsersInScope is a tenant fact IAMAI does not bind"}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Remediate High-Risk Users
 [CmdletBinding()]
 param(
@@ -129,41 +140,49 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.prerequisites","channel":"aiInfo","states":["prerequisiteRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review only the unmet prerequisites for IAMAI step Remediate High-Risk Users in {{tenant.displayName}}. Do not reinterpret raw tenant data. Confirm from the supplied IAMAI facts whether MFA registration, hybrid password writeback, guest/external scope, or active-risk investigation blocks enforcement. Do not require SSPR solely because password change can occur during risk remediation. Return: blocker, evidence, safe next action, Microsoft-source rationale.
+This state for Remediate High-Risk Users in {{tenant.displayName}} is waiting on prerequisites. Check which of these the supplied facts show as unmet: MFA registration for the resolved authentication strength, password writeback for synchronized password users, guest/external scope (Require risk remediation does not support guest or external users), and investigation of current risky users. High user risk can require remediation. The required action can differ for password-based and passwordless users. SSPR can remain available for recovery, but it is not the prerequisite for Require risk remediation.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review IAMAI's proposed creation of the High user-risk Conditional Access policy for {{tenant.displayName}}. The target is All resources, High user risk only, Require risk remediation + {{authStrength.target.displayName}}, Every-time sign-in frequency, IAMAI-resolved exclusions, and Report-only lifecycle. Check for contradictions only; do not redesign the policy or invent tenant facts.
+This state creates the High user-risk Conditional Access policy for {{tenant.displayName}} in Report-only. Intended settings: All users with the resolved exclusions; All resources; High user risk only; Require risk remediation + {{authStrength.target.displayName}}; Sign-in frequency Every time.
+
+High user risk can require remediation. The required action can differ for password-based and passwordless users. Do not substitute the Medium-risk policy's password-change grant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review only these IAMAI-classified mismatches for the existing High user-risk policy: {{policy.current.semanticMismatches}}. Compare them to the canonical step. Preserve stable policy identity and unrelated settings outside the selected correction boundary. Do not replace riskRemediation with passwordChange/MFA or invent exclusions.
+This state corrects the existing High user-risk policy. Differences IAMAI found: {{policy.current.semanticMismatches}}. Correct the same policy ID and leave settings outside the selected correction unchanged. Keep Require risk remediation with the resolved authentication strength; do not replace it with password change or MFA, and do not add exclusions.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess whether the Report-only High user-risk policy is ready for enforcement using only IAMAI-provided evidence: at-risk users {{evidence.atRiskUsers}}, MFA registration {{evidence.mfaRegistration}}, hybrid writeback {{evidence.hybridWriteback}}, guest/external scope {{evidence.guestExternalScope}}, and risk investigation {{evidence.riskInvestigation}}. Unknown must remain Unknown.
+The High user-risk policy is in Report-only. IAMAI evidence: at-risk users {{evidence.atRiskUsers}}; MFA registration {{evidence.mfaRegistration}}; password writeback {{evidence.hybridWriteback}}; guest/external scope {{evidence.guestExternalScope}}; risk investigation {{evidence.riskInvestigation}}.
+
+NEXT STEP: explain which of these still block enforcement. Report-only results do not prove that a future remediation will succeed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform a final pre-enforcement review of IAMAI step Remediate High-Risk Users. Confirm the exact stable policy is canonical and Report-only, prerequisites are explicitly satisfied, and the only requested mutation is lifecycle to On. If any prerequisite is Unknown or Blocked, say do not enforce.
+This state enables the reviewed High user-risk policy. The only change is the policy's state from Report-only to On. Before enabling, check that the same policy ID still matches the intended settings and that MFA registration, password writeback, guest/external handling and risk investigation are resolved. If any of these is unknown or blocked, explain why enforcement should wait.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.users.pre-enforcement","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Subject: Extra verification may appear if Microsoft detects account risk
+Subject: Planned change: Remediate High-Risk Users
 
-Microsoft Entra will begin automatically responding when an account is rated high risk. Most people will see no change. If Microsoft detects a serious risk on your account, you may be asked to verify your identity again and, for password-based accounts, securely change your password. If you cannot complete the prompt, contact the help desk rather than retrying repeatedly.
+If Microsoft flags serious account risk, you may need to verify your identity again and complete the recovery steps shown. Contact IT if you cannot complete them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["prerequisiteRequired","missing","partial","reportOnly","readyToEnforce"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"license","label":"Risk licensing","gate":"Safe to configure","result":"IAMAI tenant truth","line":"High user-risk Conditional Access requires P2/qualifying ID Protection capability.","evidenceSource":"tenant licensing"},{"id":"mfa","label":"MFA registration","gate":"Safe to enforce","result":"{{evidence.mfaRegistration}}","line":"In-scope users must already have MFA registered before relying on self-remediation.","evidenceSource":"IAMAI authentication evidence"},{"id":"hybrid","label":"Hybrid writeback","gate":"Safe to enforce","result":"{{evidence.hybridWriteback}}","line":"Required when synchronized password users in scope must complete secure password change.","evidenceSource":"IAMAI hybrid/writeback evidence"},{"id":"guests","label":"Guest / external scope","gate":"Safe to enforce","result":"{{evidence.guestExternalScope}}","line":"Require risk remediation is not supported for guest/external users; scope must be deliberate.","evidenceSource":"IAMAI population evidence"},{"id":"active-risk","label":"Active risk reviewed","gate":"Safe to enforce","result":"{{evidence.riskInvestigation}}","line":"Current risky users should be investigated/remediated before broad enablement.","evidenceSource":"ID Protection / IAMAI evidence"}],"whyIamaiSaysThis":"IAMAI can verify the policy shape and known prerequisites. It cannot promise that a future risk event will use a particular remediation branch. SSPR is a separate recovery mechanism and is not treated as a universal gate for Require risk remediation."}
+{"tiles":[{"id":"license","label":"Risk licensing","gate":"Safe to configure","result":"IAMAI tenant truth","line":"High user-risk Conditional Access requires P2/qualifying ID Protection capability.","evidenceSource":"tenant licensing"},{"id":"mfa","label":"MFA registration","gate":"Safe to enforce","result":"{{evidence.mfaRegistration}}","line":"Check accepted methods, guest handling and password writeback where needed. A configured policy does not prove every user can complete remediation.","evidenceSource":"IAMAI authentication evidence"},{"id":"hybrid","label":"Hybrid writeback","gate":"Safe to enforce","result":"{{evidence.hybridWriteback}}","line":"Required when synchronized password users in scope must complete secure password change.","evidenceSource":"IAMAI hybrid/writeback evidence"},{"id":"guests","label":"Guest / external scope","gate":"Safe to enforce","result":"{{evidence.guestExternalScope}}","line":"Require risk remediation is not supported for guest/external users; scope must be deliberate.","evidenceSource":"IAMAI population evidence"},{"id":"active-risk","label":"Active risk reviewed","gate":"Safe to enforce","result":"{{evidence.riskInvestigation}}","line":"Current risky users should be investigated/remediated before broad enablement.","evidenceSource":"ID Protection / IAMAI evidence"}],"whyIamaiSaysThis":"IAMAI can verify the policy shape and known prerequisites. It cannot promise that a future risk event will use a particular remediation branch. SSPR is a separate recovery mechanism and is not treated as a universal gate for Require risk remediation."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["prerequisiteRequired","missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}

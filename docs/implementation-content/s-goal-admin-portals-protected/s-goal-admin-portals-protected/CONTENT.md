@@ -1,11 +1,13 @@
 @@IAMAI-BEGIN {"id":"ai.source-conflict","channel":"aiInfo","states":["sourceConflict","blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain this source conflict without proposing an implementation: {{sourceConflict.summary}}. Evidence: {{sourceConflict.evidence}}. The retained exported member targets All users without an administrator exclusion, while the documented intent says non-admin users. Do not choose a side or invent a role list.
+This step is on hold because the baseline sources disagree: {{sourceConflict.summary}}. Evidence: {{sourceConflict.evidence}}. The written intent says to block non-admin users, but the retained export targets All users without an administrator exclusion. Applying the export as written could block the administrators and approved workflows that need these portals. Applying the written intent needs an administrator scope that no reviewed source defines.
+
+NEXT STEP: Explain the difference, its impact, and what a reviewed baseline must settle before any implementation. Do not pick a side or invent a safe role list. Opening an admin portal does not by itself grant administrator rights, and a standard user can have legitimate reasons to visit one.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.conflict","channel":"readiness","states":["sourceConflict","blocked"],"format":"json-template","kind":"template"}
-{"tiles":[{"id":"status","label":"Baseline status","result":"Source conflict","line":{{json:sourceConflict.summary}}},{"id":"tenant","label":"Tenant impact","result":{{json:tenant.displayName}},"line":"No tenant change is authorized by this step while the source remains contradictory."}],"nextSafeAction":"Wait for a reviewed baseline that explicitly resolves administrator scope."}
+{"tiles":[{"id":"status","label":"Baseline status","result":"Source conflict","line":{{json:sourceConflict.summary}}},{"id":"tenant","label":"Tenant impact","result":{{json:tenant.displayName}},"line":"The written intent and exported policy disagree about who is excluded. Resolve that difference before using this policy. No tenant change is authorized by this step until then."}],"nextSafeAction":"Wait for a reviewed baseline that explicitly resolves administrator scope."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.conflict","channel":"troubleshooting","states":["sourceConflict","blocked"],"format":"json","kind":"referenceOnly"}

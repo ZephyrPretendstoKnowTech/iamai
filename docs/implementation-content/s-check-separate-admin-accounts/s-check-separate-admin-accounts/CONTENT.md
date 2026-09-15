@@ -1,16 +1,16 @@
 @@IAMAI-BEGIN {"id":"entra.separate","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-For each person who holds a directory role and uses that same account for mail or Teams:
+For each person IAMAI lists as holding a directory role on an account that also has mail or Teams sign-ins:
 1. Create a second, cloud-only account for the role: Entra admin center → Entra ID → Users → New user → Create new user. Name it so the purpose is obvious (adm- and their name), and assign no licence, so it has no mailbox.
-2. Register a passkey or security key on the admin account before its first use: sign in as it at https://aka.ms/mysecurityinfo. The admin policies require one.
-3. Move the directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.
-4. Sign in to an admin portal with the admin account and confirm the role works, then remove the role from the everyday account.
+2. Before the admin account is used for admin work, register an approved phishing-resistant method on it, such as a passkey or security key: sign in as the admin account at https://aka.ms/mysecurityinfo. If it has no method yet, use a Temporary Access Pass for that first sign-in. The admin policies require a method that meets their authentication strength.
+3. Add the same directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignments → the admin account. A role held through Privileged Identity Management stays eligible on the new account; do not make it permanent.
+4. Sign in to an admin portal with the admin account and complete the administrative task the role is needed for. Only then remove the role from the everyday account.
 5. Keep mail, Teams and files on the everyday account; open admin portals with the admin account only.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.separate","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the plan to separate admin work from everyday accounts. For each person who holds a directory role and uses the same account for mail or Teams: a second, cloud-only, unlicensed admin account; a passkey or security key registered on it before its first use; the directory role moved to it, where a role held through Privileged Identity Management stays eligible and never becomes permanent; the role removed from the everyday account only after the admin account has signed in and the role works; mail, Teams and files kept on the everyday account. Point out anything in this sequence that could lock an administrator out.
+IAMAI lists people who hold a directory role on an account that also has mail or Teams sign-ins. The planned sequence for each person: create a separate cloud-only, unlicensed admin account; register an approved phishing-resistant method on it, such as a passkey or security key; add the same role to it, keeping a Privileged Identity Management role eligible rather than permanent; test sign-in and the required administrative task; then remove the role from the everyday account. Mail, Teams and files stay on the everyday account. Removing the old role before the new account is tested can lock the administrator out.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create-and-stage","channel":"entra","states":["actionRequired"],"format":"markdown","kind":"template"}
@@ -19,22 +19,24 @@ For each affected person in {{admin.peopleToSeparate}}:
 2. Do not assign ordinary mail/Teams/files productivity use to the admin account.
 3. Inventory the everyday account's current directory role assignments and distinguish direct active assignments from PIM eligibility/activation.
 4. Reproduce only the intended role assignment on the new admin account under the **same governance model**. Do not turn PIM eligibility into a permanent assignment.
-5. Keep the old role assignment until the new account has a proven phishing-resistant sign-in and the role works.
+5. Keep the old role assignment until the new account's approved sign-in and required administrative task both work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.register-and-prove","channel":"entra","states":["credentialProofRequired"],"format":"markdown","kind":"template"}
-Register a passkey or hardware security key on the dedicated admin account, then sign out and complete a real admin-account sign-in using it. Do not remove the old role assignment until this proof succeeds.
+Register an approved phishing-resistant method on the dedicated admin account, such as a passkey or hardware security key. Sign out, then sign in to the admin account with that method. Keep the old role assignment until this sign-in succeeds and the admin account can complete the required administrative task.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.cutover","channel":"entra","states":["roleCutoverRequired"],"format":"markdown","kind":"template"}
 1. Verify the dedicated admin account has the intended role and can perform the required administrative task.
 2. Remove that role from the everyday account using the same role-governance surface that owns the assignment.
 3. Keep mail, Teams, files, and routine browsing on the everyday account.
-4. Re-read both principals' role assignments and rescan IAMAI.
+4. Check the role assignments on both accounts again and rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
-Confirm the dedicated admin account owns the intended privileged assignment and has phishing-resistant proof; confirm the daily-driver account no longer owns the migrated role and continues to carry only productivity access.
+Confirm the dedicated admin account holds the intended role under the same governance model (direct or PIM eligible), and the everyday account no longer holds the migrated role. Rescan IAMAI.
+
+Verify after the change: the administrator can sign in to the admin account with its registered method and complete the required task, and mail, Teams and files stay on the everyday account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["actionRequired","roleCutoverRequired","verificationRequired"],"format":"powershell","kind":"template"}
@@ -64,43 +66,45 @@ if($Mode -eq 'StageDirectAssignments'){
 @@IAMAI-BEGIN {"id":"ai.stage","channel":"aiInfo","states":["actionRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-For {{tenant.displayName}}, review the affected administrators {{admin.peopleToSeparate}}. Preserve least privilege and distinguish direct active role assignments {{admin.directRoleAssignments}} from PIM assignments {{admin.pimAssignments}}. Do not convert PIM eligibility into permanent access.
+Tenant: {{tenant.displayName}}. Administrators who need a separate admin account: {{admin.peopleToSeparate}}. Direct active role assignments: {{admin.directRoleAssignments}}. PIM assignments: {{admin.pimAssignments}}.
+
+This state stages the new admin account. Add only the intended roles, under the same governance model: a PIM-eligible role stays eligible and is not converted to permanent access. The old assignment stays in place until the new account's sign-in and required administrative task have been tested. The PowerShell output for this state copies direct active assignments only and removes nothing; PIM roles use the PIM workflow.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.prove","channel":"aiInfo","states":["credentialProofRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the proof still required on the new dedicated admin account before any old role assignment is removed. Require a successful phishing-resistant sign-in.
+The new admin account needs a tested sign-in before any old role assignment is removed: a successful sign-in with an approved phishing-resistant method, such as a passkey or security key, and a check that the account can complete the required administrative task.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.cutover","channel":"aiInfo","states":["roleCutoverRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the role cutover sequence. The new admin account must be tested first; the daily-driver role is removed only after equivalent intended access is proven.
+This state moves the role off the everyday account. First confirm the dedicated admin account holds the intended role and can complete the required administrative task. Then remove the role from the everyday account through the surface that owns the assignment: direct role assignment or PIM. The PowerShell output for this state reads both accounts' role assignments; it does not remove anything.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify separation: dedicated admin account holds intended role; everyday account no longer holds it; privileged and productivity workflows are distinct.
+This step is waiting to confirm the separation: the dedicated admin account holds the intended role, the everyday account no longer holds it, and mail, Teams and files stay on the everyday account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the blocker without inventing an admin account, role assignment, or governance model: {{dependencies.blockers}}.
+This step is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Resolve them before creating an admin account or changing role assignments.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admin","channel":"email","states":["actionRequired"],"format":"markdown","kind":"template","audience":"affected-administrators"}
-Subject: Separate admin account setup
+Subject: Planned change: Use Separate Accounts for Admin Work
 
-We are moving privileged work to a dedicated admin account while leaving mail, Teams, files, and normal browsing on your everyday account. We will add and test the new admin path first, including a passkey/security key sign-in, before removing the role from your everyday account.
+We plan to move admin work to a separate account. We will test its sign-in and permissions before removing the role from your everyday account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["actionRequired","credentialProofRequired","roleCutoverRequired","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"people","label":"Admins using daily accounts","result":{{json:admin.peopleToSeparate}},"line":"These people have privileged and productivity use on the same account."},{"id":"direct","label":"Direct role assignments","result":{{json:admin.directRoleAssignments}},"line":"Direct active assignments can be staged without changing their role definition/scope."},{"id":"pim","label":"PIM assignments","result":{{json:admin.pimAssignments}},"line":"PIM governance must stay PIM; do not convert it to permanent access."}],"whyIamaiSaysThis":"Microsoft recommends separating privileged administration from high-exposure productivity workflows."}
+{"tiles":[{"id":"people","label":"Admins using daily accounts","result":{{json:admin.peopleToSeparate}},"line":"These people have privileged and productivity use on the same account."},{"id":"direct","label":"Direct role assignments","result":{{json:admin.directRoleAssignments}},"line":"Keep the old role assignment until the new account's approved sign-in and required admin task both work."},{"id":"pim","label":"PIM assignments","result":{{json:admin.pimAssignments}},"line":"Keep PIM roles eligible on the new account; do not convert them to permanent assignments."}],"whyIamaiSaysThis":"Microsoft recommends separating privileged administration from high-exposure productivity workflows."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["actionRequired","credentialProofRequired","roleCutoverRequired","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"new-admin-cannot-sign-in","classification":"derived","symptom":"The dedicated admin account has a role but cannot complete the required phishing-resistant sign-in.","check":"Confirm passkey/security-key registration and applicable Conditional Access prerequisites.","fix":"Keep the old role assignment while correcting the new account's sign-in path; do not weaken the admin policy.","then":"Prove the new sign-in before cutover.","sources":["ms-privileged-accounts"]},{"id":"pim-became-permanent","classification":"derived","symptom":"A PIM-eligible role was recreated as a permanent direct assignment on the new account.","check":"Compare assignment governance on the old and new principals.","fix":"Restore the intended PIM eligibility/activation model and remove the unintended permanent path only after safe access is confirmed.","then":"Re-review role governance.","sources":["ms-zero-trust-privileged"]},{"id":"daily-account-still-privileged","classification":"derived","symptom":"The dedicated account works, but the everyday account still holds the migrated directory role.","check":"Read role assignments for both stable principal IDs.","fix":"After the new admin path is proven, remove the old assignment using the correct direct/PIM governance surface.","then":"Rescan IAMAI and watch subsequent admin sign-ins.","sources":["ms-identity-best-practices"]}]}
+{"scenarios":[{"id":"new-admin-cannot-sign-in","classification":"derived","symptom":"The dedicated admin account has a role but cannot complete the required phishing-resistant sign-in.","check":"Confirm passkey/security-key registration and applicable Conditional Access prerequisites.","fix":"Keep the old role assignment while correcting the new account's sign-in path; do not weaken the admin policy.","then":"Prove the new sign-in before cutover.","sources":["ms-privileged-accounts"]},{"id":"pim-became-permanent","classification":"derived","symptom":"A PIM-eligible role was recreated as a permanent direct assignment on the new account.","check":"Compare assignment governance on the old and new principals.","fix":"Restore the intended PIM eligibility/activation model and remove the unintended permanent path only after safe access is confirmed.","then":"Re-review role governance.","sources":["ms-zero-trust-privileged"]},{"id":"daily-account-still-privileged","classification":"derived","symptom":"The dedicated account works, but the everyday account still holds the migrated directory role.","check":"Read role assignments for both accounts by object ID.","fix":"After the new admin path is proven, remove the old assignment using the correct direct/PIM governance surface.","then":"Rescan IAMAI and watch subsequent admin sign-ins.","sources":["ms-identity-best-practices"]}]}
 @@IAMAI-END

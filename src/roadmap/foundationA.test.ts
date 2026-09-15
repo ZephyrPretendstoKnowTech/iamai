@@ -499,10 +499,17 @@ test('what the records are counted over is the deployed policy’s scope, whatev
 })
 
 test('a deployed policy broader than the goal it delivers is tracked over the policy', () => {
-  // demo-week2's guests goal lists one guest. The policy the tenant deployed for
-  // it targets All users, so the records are counted over everyone it reaches —
-  // which is the whole point of asking the policy rather than the goal.
-  const f = fixtures.find((x) => x.name === 'demo-week2') as Fixture
+  // demo-week2's guests goal lists one guest. Without a guests policy of its own,
+  // the policy the tenant deployed for it targets All users, so the records are
+  // counted over everyone it reaches — which is the whole point of asking the
+  // policy rather than the goal. (The tenant's own guests policy is taken out:
+  // where it is there, it is the guests goal's policy and tracking follows it,
+  // whatever order the scan listed the policies in — C01.)
+  const base = fixtures.find((x) => x.name === 'demo-week2') as Fixture
+  const ca = base.snapshot.config.caPolicies!
+  const guestsOnly = (p: unknown): boolean => ((p as { conditions?: { users?: { includeUsers?: string[] } } }).conditions?.users?.includeUsers ?? []).includes('GuestsOrExternalUsers')
+  assert.ok(ca.rows.some(guestsOnly), 'the demo tenant has a guests policy to take out')
+  const f: Fixture = { ...base, snapshot: { ...base.snapshot, config: { ...base.snapshot.config, caPolicies: { ...ca, rows: ca.rows.filter((p) => !guestsOnly(p)) } } } }
   const r = runFixture(f)
   const step = r.steps.find((x) => x.id === 's-goal-guests-mfa') as Step
   assert.ok(step.tracking, 'it has a matched policy')

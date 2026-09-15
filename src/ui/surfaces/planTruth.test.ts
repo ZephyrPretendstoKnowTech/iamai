@@ -160,5 +160,6 @@ test('Step 5: while the plan dates nothing the campaign email is written without
   const g = plans()[2]
   const camp = g.r.steps.find((s) => s.id === 's-verify-mfa')!
   const dated = commsFor(contentStepFor(camp) as Record<string, unknown>, stepVars(camp, g.ctx(camp)) as Record<string, unknown>, camp)
-  assert.match(dated?.body ?? '', /^From (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), /)
+  // Editorial batch C: the planned day sits mid-sentence ("… from Monday, September 7.").
+  assert.match(dated?.body ?? '', /\bfrom (Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), [A-Z][a-z]+ \d{1,2}\b/)
 })

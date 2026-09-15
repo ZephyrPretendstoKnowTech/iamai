@@ -387,7 +387,8 @@ test('005.6: What to do is keep it in report-only, on the screen and in every ar
   assert.equal(m.kind, 'observe')
   assert.equal(c.milestone.kind, 'observe')
   assert.equal(c.whatToDo.kind, 'observe')
-  assert.match(c.whatToDo.text, /report-only/i)
+  // Editorial batch C: the shared observation label, then its earliest review date.
+  assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\. Review from /)
   assert.match(c.whatToDo.text, new RegExp(absoluteDate(readyWhen(step)!.date)))
   assert.doesNotMatch(c.whatToDo.text, DOING)
   // Nothing is presented as a blocker, because nothing is one.
@@ -574,7 +575,7 @@ test('005.10: with the records gone the step claims no clean window, no full obs
   }
   assert.doesNotMatch(rowWhen(step), /ready now/i, 'and the row does not call it ready')
   assert.match(c.doneWhen.join(' | '), new RegExp(`0 of ${t.activeInScope} active people`), 'the people it has seen is a true zero and stays')
-  assert.match(c.doneWhen.join(' | '), /zero failures and every active person in scope seen/, 'while the gate it still has to clear is stated as the gate')
+  assert.match(c.doneWhen.join(' | '), /checked for failures and for every active person in scope/, 'while the gate it still has to clear is stated as the gate')
   assert.doesNotMatch(v.whatToDo.join(' | '), /Enable policy/i, 'and the enforcement is still withheld')
   assert.equal(jsonOffered(step), false)
 })
@@ -722,7 +723,7 @@ test('005.13: a healthy Report-only policy with an email to send states no enfor
   const said = [...stepLines(step, ctx), v.dates ?? '', ...v.whatToDo, ...v.doneWhen, rowWhen(step), stepContext(step, view), step.comms ?? ''].join(' | ')
   assert.ok(!said.includes(forecastDay), `the projected enforcement day is stated: ${said}`)
   assert.ok(said.includes(review), 'and the review milestone is')
-  assert.match(v.whatToDo.join(' | '), /report-only/i)
+  assert.match(v.whatToDo.join(' | '), /Continue observation and collect the missing evidence\./)
   assert.doesNotMatch(v.whatToDo.join(' | '), DOING)
   // Including the prompt pack's draft announcement, which is the plan's, not
   // this step's: with no dated draft left on it, it cannot be the one picked.
@@ -751,7 +752,7 @@ test('005.14: the screen renders its What-to-do instructions from the one select
   // carries the same one line: the screen and the artifacts cannot disagree.
   const v = view(step)
   assert.deepEqual(v.whatToDo, [c.whatToDo.text])
-  assert.match(c.whatToDo.text, /report-only/i)
+  assert.match(c.whatToDo.text, /^Continue observation and collect the missing evidence\./)
   assert.doesNotMatch(c.whatToDo.text, DOING)
   // The screen has no second reading of the content to fall back on: the JSX
   // renders `instructions`, and the `whatToDo.before` / `whatToDo.steps` arrays

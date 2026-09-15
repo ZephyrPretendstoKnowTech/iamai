@@ -68,6 +68,8 @@ export function scriptParameters(script: string): { name: string; mandatory: boo
   const out: { name: string; mandatory: boolean }[] = []
   let prev = 0
   for (const m of block.matchAll(/\$([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    // `[Parameter(Mandatory=$true)]`: PowerShell's constants are values in an attribute, not parameters.
+    if (/^(true|false|null)$/i.test(m[1])) continue
     const attributes = block.slice(prev, m.index)
     out.push({ name: m[1], mandatory: /Parameter\s*\([^)]*Mandatory/i.test(attributes) })
     prev = (m.index ?? 0) + m[0].length
@@ -98,9 +100,33 @@ export function invocationErrors(at: string, spec: unknown, script: string, voca
   return errors
 }
 
-/** A PowerShell literal: single-quoted text, an @() array of them, or a bare number. */
-function literal(v: unknown): string {
-  const text = (x: unknown): string => `'${String(x).replaceAll("'", "''")}'`
+/**
+ * A PowerShell literal: single-quoted text, an @() array of them, or a bare number,
+ * written in ASCII alone. Scripts leave by Copy; saved without a BOM and run in Windows
+ * PowerShell 5.1 they are read in the ANSI code page, where the UTF-8 bytes of "Ñ", "В"
+ * or "€" include 0x91/0x92/0x82, which read as U+2018/U+2019/U+201A, and PowerShell ends
+ * a single-quoted string at those as well as at U+0027. So every character above U+007E
+ * leaves the quotes: a JSON value (a `.json` binding) carries it as a `\uXXXX` escape,
+ * which ConvertFrom-Json reads back as the same character, and other text as `[char]`,
+ * in a parenthesised concatenation that evaluates to the same string. A control character
+ * (a tab or line break) in text leaves the quotes as `[char]` too, so the call stays one
+ * ASCII line; JSON.stringify already escapes controls in a JSON value. U+0027 is doubled.
+ * Invocations use no double-quoted strings.
+ */
+const NOT_ASCII = /[\u007f-\uffff]/g
+const OUTSIDE_QUOTES = /([\u0000-\u001f\u007f-\uffff])/
+function literal(v: unknown, json = false): string {
+  const quoted = (s: string): string => `'${s.replace(/'/g, "''")}'`
+  const text = (x: unknown): string => {
+    const s = String(x)
+    if (json) return quoted(s.replace(NOT_ASCII, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`))
+    if (!OUTSIDE_QUOTES.test(s)) return quoted(s)
+    const parts = s.split(OUTSIDE_QUOTES).filter((p) => p !== '')
+    const terms = parts.map((p) => (p.length === 1 && OUTSIDE_QUOTES.test(p) ? `[char]0x${p.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}` : quoted(p)))
+    // [char] + string would convert the string to a char, so the concatenation starts with a string.
+    if (terms[0].startsWith('[char]')) terms.unshift("''")
+    return `(${terms.join(' + ')})`
+  }
   if (Array.isArray(v)) return `@(${v.map(text).join(', ')})`
   if (typeof v === 'number') return String(v)
   return text(v)
@@ -112,12 +138,12 @@ function literal(v: unknown): string {
  * refuses the whole artifact, exactly as a missing required binding refuses a
  * block; a switch is passed only for a satisfied prerequisite.
  */
-export function renderInvocation(script: string, spec: InvocationSpec, runs: ScriptRun[], bindings: Bindings, satisfied: ReadonlySet<string>): { text: string; calls: string[] } | { missing: string[] } {
+export function renderInvocation(script: string, spec: InvocationSpec, runs: ScriptRun[], bindings: Bindings, satisfied: ReadonlySet<string>, standIns: ReadonlySet<string> = new Set(), emptyOk: ReadonlySet<string> = new Set()): { text: string; calls: string[] } | { missing: string[] } {
   const fn = spec.function ?? DEFAULT_FUNCTION
   const missing = new Set<string>()
   const calls = runs.map((run) => {
     const args = [`-${spec.modeParameter} ${literal(run.mode)}`]
-    if (run.corrections.length > 0 && spec.correctionsParameter) args.push(`-${spec.correctionsParameter} ${run.corrections.map(literal).join(',')}`)
+    if (run.corrections.length > 0 && spec.correctionsParameter) args.push(`-${spec.correctionsParameter} ${run.corrections.map((c) => literal(c)).join(',')}`)
     for (const [name, p] of Object.entries(spec.parameters)) {
       if (!p.modes.includes(run.mode)) continue
       if (p.switch) {
@@ -125,11 +151,13 @@ export function renderInvocation(script: string, spec: InvocationSpec, runs: Scr
         continue
       }
       const value = p.binding ? bindings[p.binding] : undefined
-      if (!present(value)) {
+      // A resolved empty list the package declares a value (`resolvedEmptyBindings`) is passed as @().
+      if (!present(value) && !(p.binding !== undefined && emptyOk.has(p.binding) && Array.isArray(value))) {
         if (p.binding) missing.add(p.binding)
         continue
       }
-      args.push(`-${name} ${literal(value)}`)
+      // A preview's stand-in ("‹policy conditions›") is drawn as it reads; a preview is never copied.
+      args.push(`-${name} ${standIns.has(p.binding!) ? `'${String(value).replace(/'/g, "''")}'` : literal(value, p.binding!.endsWith('.json'))}`)
     }
     return `${fn} ${args.join(' ')}`
   })

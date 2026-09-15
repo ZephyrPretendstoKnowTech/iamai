@@ -32,6 +32,7 @@ type Words = {
   h1: string
   intro: string
   next: string
+  notice: { title: string; body: string }
   status: { ready: string; readyText: string; next: string }
   signIn: {
     title: string

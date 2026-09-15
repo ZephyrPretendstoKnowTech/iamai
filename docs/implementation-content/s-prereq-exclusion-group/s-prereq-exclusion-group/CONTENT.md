@@ -1,6 +1,6 @@
 @@IAMAI-BEGIN {"id":"entra.create-group","channel":"entra","states":["groupMissing"],"format":"markdown","kind":"template"}
 If confirming an existing group (like "Breakglass Exclusion"):
-Click Save above — IAMAI records the group's ID and uses it in every policy.
+Click Save above. IAMAI records the group's ID for the plan; saving does not change any policy. Each policy that must exclude the group is corrected separately.
 
 If creating a new group:
 1. Go to Entra admin center → Groups → All groups → New group.
@@ -9,42 +9,42 @@ If creating a new group:
 4. Name: Core - Exclusions (or your preferred name).
 5. Members: add only the emergency access accounts you selected in the Emergency Access step.
 6. Create.
-7. Rescan in IAMAI so it picks up the new group's ID.
+7. Rescan in IAMAI so it picks up the new group's ID. Then add the group to each policy IAMAI identifies.
 
-Important: this group should contain only emergency access accounts. Do not add regular users or service accounts — they would bypass every policy in the plan.
+Important: this group should contain only emergency access accounts. Do not add regular users or service accounts; they would be excluded from every policy that excludes this group.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open-group","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact canonical exclusions group by stable identity. Correct only the mismatch IAMAI reports. Do not switch to a different candidate group by name.
+Open the confirmed exclusions group by its object ID. Correct only the difference IAMAI reports. Do not switch to a different group because of its name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.type","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-The canonical emergency exclusions object must be an assigned, non-mail-enabled security group. If the selected object is dynamic or an incompatible group type, do not silently convert or replace it. Return to owner resolution if a new canonical group must be chosen/created, then rescan.
+The exclusions group must be an assigned, non-mail-enabled security group. If the selected group is dynamic or another group type, do not convert or replace it here. Ask the owner to choose or create the right group, confirm it in this step, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.add-member","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Members**, add only the IAMAI-resolved owner-confirmed emergency account that is missing. Verify the account's stable object identity before saving.
+Under **Members**, add only the missing emergency account IAMAI identifies from the owner-confirmed set. Check the account's object ID before saving.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.remove-member","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Members**, remove only the member IAMAI explicitly identifies as outside the canonical owner-confirmed emergency set. Do not remove an account merely because its display name looks unusual.
+Under **Members**, remove only the member IAMAI identifies as outside the owner-confirmed emergency account set. Do not remove an account only because its display name looks unusual.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.policy-exclusion","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact Conditional Access policy IAMAI identifies. Under **Users or workload identities → Exclude → Users and groups**, add the canonical exclusions group. Preserve every other assignment, condition, grant, session control, lifecycle state, application scope, and existing approved exclusion. Do not add individual emergency user IDs as substitutes.
+Open the Conditional Access policy IAMAI identifies. Under **Users or workload identities → Exclude → Users and groups**, add the confirmed exclusions group. Keep every other assignment, condition, grant, session control, resource scope and approved exclusion. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Do not add individual emergency accounts instead of the group.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.verify-rescan","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Read the group/policy state back, confirm the bounded change only, then rescan IAMAI. If the group was newly created, do not patch policies until IAMAI has learned its stable ID.
+Read the group and policy back, confirm that only the intended change was made, then rescan IAMAI. If the group was newly created, do not change policies until IAMAI has picked up its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
-Verify:
-1. The exact canonical group is an assigned security group and is not mail-enabled.
+Verify after the change:
+1. The confirmed group is an assigned security group and is not mail-enabled.
 2. Direct membership matches the owner-confirmed emergency account set.
-3. Every IAMAI-identified blocking/restrictive Conditional Access policy contains the exact group ID under Users/Groups exclusions before it is enabled.
+3. Every blocking or restrictive Conditional Access policy IAMAI identifies excludes the group's ID under Users → Exclude before that policy is enabled.
 4. No unrelated member or policy exclusion changed.
-5. Report-only policies are not described as currently blocking; the safety gate is that the exclusion must be correct before enforcement.
+5. A Report-only policy does not block sign-ins yet; its exclusion must be correct before it is enabled.
 6. Rescan IAMAI.
 @@IAMAI-END
 
@@ -208,37 +208,43 @@ switch ($Mode) {
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["groupMissing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review IAMAI's proposed canonical exclusions group for {{tenant.displayName}}. It must be one assigned, non-mail-enabled security group with only the owner-confirmed emergency members. After creation, require a rescan before policy patching so the stable group ID becomes tenant truth. Do not choose an alternate candidate or broaden membership.
+State: no confirmed exclusions group exists in {{tenant.displayName}} yet. The next action creates one assigned, non-mail-enabled security group containing only the owner-confirmed emergency access accounts, or confirms an existing group that already meets that description.
+
+Creating or selecting the group does not change any policy. After creation, a rescan gives IAMAI the group's object ID; each policy that must exclude the group is then updated separately.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review only the IAMAI-resolved exclusion mismatch. Group: {{group.current.id}}. Current members: {{group.current.members}}. Policy needing exclusion: {{policy.current.displayName}} ({{policy.current.id}}). Preserve all unrelated policy semantics. If removing a member through Graph, the request must end in `/$ref`; never delete the directory object itself.
+State: the exclusions group or a policy's reference to it differs from the intended result. Group: {{group.current.id}}. Current members: {{group.current.members}}. Policy needing the exclusion: {{policy.current.displayName}} ({{policy.current.id}}). The correction changes only that difference and keeps the policy's other settings and approved exclusions. If removing a member through Graph, the request must end in `/$ref`; never delete the directory object itself.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify the canonical group and affected policies after the bounded change. Group type evidence: {{group.evidence.type}}. Missing policy exclusions: {{policy.evidence.missingExclusions}}. Confirm stable IDs, exact canonical membership, and preservation of unrelated policy conditions. Report-only is not current lockout; enforcement remains gated until the exclusion is present.
+State: the exclusions group and the policies that should exclude it need verification. Group type evidence: {{group.evidence.type}}. Policies still missing the exclusion: {{policy.evidence.missingExclusions}}.
+
+Check the group's object ID, that its direct members are exactly the owner-confirmed emergency accounts, and that each policy's other conditions are unchanged. A Report-only policy does not block sign-ins yet; its exclusion must be present before it is enabled.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["needsDecision","blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why IAMAI cannot safely act on the exclusions group in {{tenant.displayName}}: {{dependencies.blockers}}. Candidate groups and unreadable membership are not authority. Do not create, replace, remove members, or patch policies until the canonical stable identity and owner-confirmed member set are known.
+State: IAMAI cannot act on the exclusions group in {{tenant.displayName}} yet. Known blockers or decisions: {{dependencies.blockers}}. A group with a likely name, or one whose membership could not be read, is not a confirmed exclusions group. No group or policy change is offered until the group's object ID and the owner-confirmed emergency accounts are known.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.admins.exclusion-change","channel":"email","states":["verificationRequired"],"format":"markdown","kind":"template","audience":"administrators"}
-Subject: Emergency access exclusion boundary updated
+Subject: Action needed: Create or Correct Exclusions Group
 
-The tenant's canonical emergency-access exclusions group or its Conditional Access references were updated. Please verify that only the approved emergency accounts are members and that the intended blocking/restrictive policies exclude the group before enforcement. No credentials or recovery secrets should be shared in this message.
+We plan to update the emergency access group or its policy references. Please check that only the selected emergency accounts are members and that the required policies exclude the group. No credentials or recovery secrets should be shared in this message.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["needsDecision","groupMissing","partial","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"identity","label":"Canonical group","gate":"Safe to change","result":"{{group.current.id}}","line":"One stable owner-confirmed exclusions group must be resolved before corrections use it.","evidenceSource":"IAMAI group identity"},{"id":"type","label":"Assigned security group","gate":"Safe to use","result":"{{group.evidence.type}}","line":"Dynamic or mail-enabled group semantics are not the emergency exclusion contract.","evidenceSource":"IAMAI group facts"},{"id":"members","label":"Emergency members","gate":"Safe to enforce","result":"{{group.current.members}}","line":"Direct membership must match the owner-confirmed emergency account set.","evidenceSource":"IAMAI membership facts"},{"id":"policies","label":"Policy exclusions","gate":"Safe to enforce","result":"{{policy.evidence.missingExclusions}}","line":"Every identified blocking/restrictive policy must exclude the canonical group before it is enabled.","evidenceSource":"IAMAI policy facts"}],"whyIamaiSaysThis":"The exclusions group is a security boundary: stable identity, exact membership, and exact policy references must all agree before lockout-sensitive enforcement."}
+{"tiles":[{"id":"identity","label":"Canonical group","gate":"Safe to change","result":"{{group.current.id}}","line":"One owner-confirmed exclusions group must be identified by its object ID before corrections use it.","evidenceSource":"IAMAI group identity"},{"id":"type","label":"Assigned security group","gate":"Safe to use","result":"{{group.evidence.type}}","line":"The exclusions group must be an assigned security group that is not mail-enabled.","evidenceSource":"IAMAI group facts"},{"id":"members","label":"Emergency members","gate":"Safe to enforce","result":"{{group.current.members}}","line":"Direct membership must match the owner-confirmed emergency account set.","evidenceSource":"IAMAI membership facts"},{"id":"policies","label":"Policy exclusions","gate":"Safe to enforce","result":"{{policy.evidence.missingExclusions}}","line":"Confirm the group, check its direct members, and review which policies actually exclude it. Selecting a group does not update those policies.","evidenceSource":"IAMAI policy facts"}],"whyIamaiSaysThis":"One reviewed group keeps emergency access exclusions consistent. Its object ID, its direct members and each policy's reference to it must all be correct before a policy that could lock people out is enabled."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["groupMissing","partial","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"duplicate-name","classification":"derived","symptom":"Create finds a group with the proposed display name.","check":"Resolve whether that stable group is the owner-confirmed canonical group.","fix":"Do not create a duplicate by name; return to identity resolution.","then":"Resume after the stable group ID is known.","sources":["ms-group-create"]},{"id":"dynamic-group","classification":"documented","symptom":"The selected group uses DynamicMembership.","check":"Inspect groupTypes and membershipRule.","fix":"Do not use dynamic membership for the canonical emergency exclusions contract; resolve/create the approved assigned security group.","then":"Rescan before policy changes.","sources":["ms-group-create","ms-emergency"]},{"id":"unexpected-member","classification":"derived","symptom":"A non-approved account is excluded from all policies through group membership.","check":"Compare direct member IDs with the saved canonical emergency set.","fix":"Remove only the explicitly resolved unexpected membership reference.","then":"Verify the group and rescan.","sources":["ms-group-remove"]},{"id":"dangerous-delete-shape","classification":"documented","symptom":"A removal request omits `/$ref`.","check":"Inspect the Graph URI before execution.","fix":"Use DELETE `/groups/{group-id}/members/{member-id}/$ref` exactly.","then":"Verify the directory object still exists and group membership is correct.","sources":["ms-group-remove"]},{"id":"policy-patch-too-broad","classification":"derived","symptom":"Adding one exclusion would replace other policy conditions.","check":"Compare the proposed PATCH body to the complete current `conditions` object.","fix":"Use the full current conditions as the mutation boundary and change only `users.excludeGroups`.","then":"Read the same policy back and compare unrelated fields.","sources":["ms-ca-update"]},{"id":"report-only-lockout-claim","classification":"documented","symptom":"IAMAI says a missing exclusion is already blocking an emergency account while the policy is Report-only.","check":"Confirm lifecycle state.","fix":"Correct the wording/readiness state; ensure the exclusion is present before enabling the policy.","then":"Re-evaluate at enforcement readiness.","sources":["ms-emergency"]},{"id":"graph-403","classification":"documented","symptom":"Graph or PowerShell returns 403.","check":"Verify group permissions for group operations and Policy.Read.All + Policy.ReadWrite.ConditionalAccess plus supported CA/Security admin role for policy updates.","fix":"Reconnect with only the permissions required for the intended operation.","then":"Retry the same bounded action.","sources":["ms-group-create","ms-group-add","ms-ca-update"]}]}
+{"scenarios":[{"id":"duplicate-name","classification":"derived","symptom":"Create finds a group with the proposed display name.","check":"Check whether that group is the owner-confirmed exclusions group.","fix":"Do not create a duplicate by name; confirm which group is the exclusions group first.","then":"Resume after the stable group ID is known.","sources":["ms-group-create"]},{"id":"dynamic-group","classification":"documented","symptom":"The selected group uses DynamicMembership.","check":"Inspect groupTypes and membershipRule.","fix":"Do not use dynamic membership for the exclusions group; select or create the approved assigned security group.","then":"Rescan before policy changes.","sources":["ms-group-create","ms-emergency"]},{"id":"unexpected-member","classification":"derived","symptom":"A non-approved account is excluded, through group membership, from every policy that excludes this group.","check":"Compare direct member IDs with the saved emergency account set.","fix":"Remove only the explicitly resolved unexpected membership reference.","then":"Verify the group and rescan.","sources":["ms-group-remove"]},{"id":"dangerous-delete-shape","classification":"documented","symptom":"A removal request omits `/$ref`.","check":"Inspect the Graph URI before execution.","fix":"Use DELETE `/groups/{group-id}/members/{member-id}/$ref` exactly.","then":"Verify the directory object still exists and group membership is correct.","sources":["ms-group-remove"]},{"id":"policy-patch-too-broad","classification":"derived","symptom":"Adding one exclusion would replace other policy conditions.","check":"Compare the proposed PATCH body to the complete current `conditions` object.","fix":"Use the full current conditions as the mutation boundary and change only `users.excludeGroups`.","then":"Read the same policy back and compare unrelated fields.","sources":["ms-ca-update"]},{"id":"report-only-lockout-claim","classification":"documented","symptom":"IAMAI says a missing exclusion is already blocking an emergency account while the policy is Report-only.","check":"Confirm lifecycle state.","fix":"Correct the wording/readiness state; ensure the exclusion is present before enabling the policy.","then":"Re-evaluate at enforcement readiness.","sources":["ms-emergency"]},{"id":"graph-403","classification":"documented","symptom":"Graph or PowerShell returns 403.","check":"Verify group permissions for group operations and Policy.Read.All + Policy.ReadWrite.ConditionalAccess plus supported CA/Security admin role for policy updates.","fix":"Reconnect with only the permissions required for the intended operation.","then":"Retry the same bounded action.","sources":["ms-group-create","ms-group-add","ms-ca-update"]}]}
 @@IAMAI-END

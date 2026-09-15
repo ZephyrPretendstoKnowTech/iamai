@@ -1,0 +1,1917 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "id": "s-prereq-break-glass",
+      "title": "Create or Correct Emergency Access Accounts",
+      "source": "docs/design/content.json: steps[id=s-prereq-break-glass]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-break-glass/s-prereq-break-glass",
+      "packageBlocksChanged": [
+        "entra.create-or-correct",
+        "entra.correct.open",
+        "entra.correct.identity",
+        "entra.correct.enabled",
+        "entra.correct.exclusion-membership",
+        "entra.correct.auth",
+        "entra.correct.custody",
+        "entra.correct.monitoring",
+        "entra.correct.rescan",
+        "entra.verify-human",
+        "ai.decision",
+        "ai.implement",
+        "ai.correct",
+        "ai.verify",
+        "ai.blocked",
+        "email.admins.drill",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": []
+    },
+    {
+      "id": "s-prereq-exclusion-group",
+      "title": "Create or Correct Exclusions Group",
+      "source": "docs/design/content.json: steps[id=s-prereq-exclusion-group]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-exclusion-group/s-prereq-exclusion-group",
+      "packageBlocksChanged": [
+        "entra.create-group",
+        "entra.correct.open-group",
+        "entra.correct.type",
+        "entra.correct.add-member",
+        "entra.correct.remove-member",
+        "entra.correct.policy-exclusion",
+        "entra.correct.verify-rescan",
+        "entra.verify",
+        "ai.create",
+        "ai.correct",
+        "ai.verify",
+        "ai.blocked",
+        "email.admins.exclusion-change",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-check-dormant-accounts",
+      "title": "Disable or Confirm Dormant Accounts",
+      "source": "docs/design/content.json: steps[id=s-check-dormant-accounts]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-check-dormant-accounts/s-check-dormant-accounts",
+      "packageBlocksChanged": [
+        "entra.dormant",
+        "ai.dormant",
+        "entra.disable",
+        "entra.verify",
+        "ai.review",
+        "ai.disable",
+        "ai.keep",
+        "ai.verify",
+        "ai.blocked",
+        "email.owner.confirm",
+        "readiness.review",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-prereq-allowed-countries",
+      "title": "Create or Correct Allowed Countries Location",
+      "source": "docs/design/content.json: steps[id=s-prereq-allowed-countries]",
+      "contentFieldsChanged": [
+        "why",
+        "decision",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-allowed-countries/s-prereq-allowed-countries",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.countries",
+        "entra.correct.unknown",
+        "entra.correct.name",
+        "entra.correct.lookup",
+        "entra.verify",
+        "ai.decision",
+        "ai.create",
+        "ai.correct",
+        "ai.verify",
+        "ai.blocked",
+        "email.users.travel-confirmation",
+        "readiness.review",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-prereq-trusted-location",
+      "title": "Define the Trusted Network",
+      "source": "docs/design/content.json: steps[id=s-prereq-trusted-location]",
+      "contentFieldsChanged": [
+        "why",
+        "decision",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-trusted-location/s-prereq-trusted-location",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.ranges",
+        "entra.correct.name",
+        "entra.verify",
+        "ai.decision",
+        "ai.not-applicable",
+        "ai.create",
+        "ai.correct",
+        "ai.verify",
+        "ai.blocked",
+        "email.network.confirm",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-prereq-service-accounts-group",
+      "title": "Create or Correct Service Accounts Group",
+      "source": "docs/design/content.json: steps[id=s-prereq-service-accounts-group]",
+      "contentFieldsChanged": [
+        "why",
+        "decision",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-service-accounts-group/s-prereq-service-accounts-group",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.add",
+        "entra.correct.remove",
+        "entra.correct.type",
+        "entra.verify",
+        "ai.decision",
+        "ai.not-applicable",
+        "ai.create",
+        "ai.correct",
+        "ai.verify",
+        "ai.blocked",
+        "email.owners.confirm",
+        "readiness.review",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-shared-devices",
+      "title": "Give Shared Devices Their Own Policy",
+      "source": "docs/design/content.json: steps[id=s-shared-devices]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "more",
+        "whatToDo",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-shared-devices",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.population",
+        "entra.correct.apps",
+        "entra.people-exclusions",
+        "entra.verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.decision",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "email.confirm",
+        "email.change",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-prereq-security-defaults",
+      "title": "Turn Off Security Defaults",
+      "source": "docs/design/content.json: steps[id=s-prereq-security-defaults]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-security-defaults/s-prereq-security-defaults",
+      "packageBlocksChanged": [
+        "entra.disable",
+        "entra.verify",
+        "ai.blocked",
+        "ai.disable",
+        "ai.verify",
+        "email.cutover",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-prereq-per-user-mfa",
+      "title": "Finish Moving Off Per-User MFA",
+      "source": "docs/design/content.json: steps[id=s-prereq-per-user-mfa]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-per-user-mfa/s-prereq-per-user-mfa",
+      "packageBlocksChanged": [
+        "entra.migrate",
+        "entra.disable",
+        "entra.verify",
+        "ai.blocked",
+        "ai.migrate",
+        "ai.disable",
+        "ai.verify",
+        "email.cutover",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-prereq-passkey-settings",
+      "title": "Set Up Passkeys to Match the Baseline",
+      "source": "docs/design/content.json: steps[id=s-prereq-passkey-settings]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "whatToDo",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-passkey-settings/s-prereq-passkey-settings",
+      "packageBlocksChanged": [
+        "entra.configure-fido2",
+        "entra.configure-authenticator",
+        "entra.configure-tap",
+        "entra.verify",
+        "powershell.run",
+        "ai.apply",
+        "ai.verify",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing absence of an email output retained."
+      ]
+    },
+    {
+      "id": "s-prereq-auth-strength",
+      "title": "Create the Baseline's Authentication Strength",
+      "source": "docs/design/content.json: steps[id=s-prereq-auth-strength]",
+      "contentFieldsChanged": [
+        "why",
+        "decision",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-auth-strength/s-prereq-auth-strength",
+      "packageBlocksChanged": [
+        "entra.correct.open",
+        "entra.correct.metadata",
+        "entra.correct.combinations",
+        "entra.verify",
+        "ai.create",
+        "ai.correct",
+        "ai.verify",
+        "ai.blocked",
+        "ai.source-conflict",
+        "email.admin-change",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-ladder-operator-passkey",
+      "title": "Register Your Own Passkey",
+      "source": "docs/design/content.json: steps[id=s-ladder-operator-passkey]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-ladder-operator-passkey/s-ladder-operator-passkey",
+      "packageBlocksChanged": [
+        "entra.prove",
+        "ai.register",
+        "ai.verify",
+        "ai.blocked",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing absence of an email output retained."
+      ]
+    },
+    {
+      "id": "s-prereq-device-plan",
+      "title": "Decide How Devices Are Managed",
+      "source": "docs/design/content.json: steps[id=s-prereq-device-plan]",
+      "contentFieldsChanged": [
+        "why",
+        "decision",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-prereq-device-plan/s-prereq-device-plan",
+      "packageBlocksChanged": [
+        "ai.decision-context",
+        "ai.decision-recorded",
+        "ai.blocked",
+        "email.decision-request",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": []
+    },
+    {
+      "id": "s-question-travel",
+      "title": "Add a Travel Notice and Exclusion",
+      "source": "docs/design/content.json: steps[id=s-question-travel]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-question-travel/s-question-travel",
+      "packageBlocksChanged": [
+        "entra.apply",
+        "entra.remove",
+        "ai.approval",
+        "ai.apply",
+        "ai.active",
+        "ai.remove",
+        "ai.blocked",
+        "email.approval-request",
+        "email.traveler-notice",
+        "email.removal-check",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-question-partner",
+      "title": "Exclude the Partner or MSP Accounts",
+      "source": "docs/design/content.json: steps[id=s-question-partner]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-question-partner/s-question-partner",
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-question-mail-devices",
+      "title": "Set Up an SMTP Relay for Mail-Sending Devices",
+      "source": "docs/design/content.json: steps[id=s-question-mail-devices]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-question-mail-devices/s-question-mail-devices",
+      "packageBlocksChanged": [
+        "ai.route",
+        "ai.migrate",
+        "ai.relay",
+        "ai.verify",
+        "ai.blocked",
+        "email.owner",
+        "email.device-owner",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-verify-mfa",
+      "title": "Create and Enforce the MFA Registration Campaign",
+      "source": "docs/design/content.json: steps[id=s-verify-mfa]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "whatToDo",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-verify-mfa/s-verify-mfa",
+      "packageBlocksChanged": [
+        "entra.campaign",
+        "ai.walkthrough",
+        "entra.configure",
+        "entra.run-workflow",
+        "entra.holdouts",
+        "entra.verify-ready",
+        "ai.configure",
+        "ai.running",
+        "ai.holdouts",
+        "ai.ready",
+        "ai.blocked",
+        "email.everyone",
+        "email.admins",
+        "email.holdout",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "mfa-all-users",
+      "title": "Require MFA for Everyone",
+      "source": "docs/design/content.json: steps[id=mfa-all-users]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-mfa-all-users/s-goal-mfa-all-users",
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "admins-phishing-resistant",
+      "title": "Require Phishing-Resistant MFA for Admins",
+      "source": "docs/design/content.json: steps[id=admins-phishing-resistant]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-admins-phishing-resistant/s-goal-admins-phishing-resistant",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-open",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "admin-portals-protected",
+      "title": "Block the Admin Portals for Non-Admins",
+      "source": "docs/design/content.json: steps[id=admin-portals-protected]",
+      "contentFieldsChanged": [
+        "why",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-admin-portals-protected/s-goal-admin-portals-protected",
+      "packageBlocksChanged": [
+        "ai.source-conflict",
+        "readiness.conflict"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing absence of an email output retained."
+      ]
+    },
+    {
+      "id": "guests-mfa",
+      "title": "Require MFA for Guests",
+      "source": "docs/design/content.json: steps[id=guests-mfa]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "comms",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-guests-mfa/s-goal-guests-mfa",
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "register-info-protected",
+      "title": "Protect Sign-in Method Registration",
+      "source": "docs/design/content.json: steps[id=register-info-protected]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-register-info-protected/s-goal-register-info-protected",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "block-legacy-auth",
+      "title": "Block Legacy Authentication",
+      "source": "docs/design/content.json: steps[id=block-legacy-auth]",
+      "contentFieldsChanged": [
+        "why",
+        "decision",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-block-legacy-auth/s-goal-block-legacy-auth",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "block-device-code",
+      "title": "Block Device Code Sign-in",
+      "source": "docs/design/content.json: steps[id=block-device-code]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-block-device-code/s-goal-block-device-code",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "block-auth-transfer",
+      "title": "Block Authentication Transfer",
+      "source": "docs/design/content.json: steps[id=block-auth-transfer]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-block-auth-transfer/s-goal-block-auth-transfer",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "geo-restriction",
+      "title": "Block Sign-ins From Countries Not Allowed",
+      "source": "docs/design/content.json: steps[id=geo-restriction]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-geo-restriction/s-goal-geo-restriction",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "admin-session",
+      "title": "Shorten Admin Sessions",
+      "source": "docs/design/content.json: steps[id=admin-session]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-admin-session/s-goal-admin-session",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "unmanaged-browser",
+      "title": "Limit Unmanaged Devices in the Browser",
+      "source": "docs/design/content.json: steps[id=unmanaged-browser]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-unmanaged-browser/s-goal-unmanaged-browser",
+      "packageBlocksChanged": [
+        "entra.sharepoint-prerequisite",
+        "entra.create-set",
+        "entra.correct-set",
+        "entra.observe",
+        "entra.enforce",
+        "entra.not-licensed",
+        "json.policy-a-conditions",
+        "json.policy-b-conditions",
+        "ai.prerequisite",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "require-managed-device",
+      "title": "Require a Managed Device Outside the Office",
+      "source": "docs/design/content.json: steps[id=require-managed-device]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-require-managed-device/s-goal-require-managed-device",
+      "packageBlocksChanged": [
+        "entra.intune-prerequisite",
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "block-unsupported-platforms",
+      "title": "Block Unsupported Device Platforms",
+      "source": "docs/design/content.json: steps[id=block-unsupported-platforms]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-block-unsupported-platforms/s-goal-block-unsupported-platforms",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "mobile-app-protection",
+      "title": "Require App Protection on Phones",
+      "source": "docs/design/content.json: steps[id=mobile-app-protection]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-mobile-app-protection/s-goal-mobile-app-protection",
+      "packageBlocksChanged": [
+        "entra.intune-prerequisite",
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model",
+        "ai.prerequisite"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "azure-management-mfa",
+      "title": "Require MFA for Azure Management",
+      "source": "docs/design/content.json: steps[id=azure-management-mfa]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-azure-management-mfa/s-goal-azure-management-mfa",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct-conditions",
+        "entra.correct-grant",
+        "entra.correct-session",
+        "entra.correct-name",
+        "entra.correct-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "ai.blocked",
+        "ai.not-licensed",
+        "email.rollout",
+        "email.enforce",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "device-registration-mfa",
+      "title": "Require MFA to Register a Device",
+      "source": "docs/design/content.json: steps[id=device-registration-mfa]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-device-registration-mfa",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.users.include-all",
+        "entra.correct.users.exclusions-canonical",
+        "entra.correct.target.register-or-join-devices",
+        "entra.correct.conditions.remove-noncanonical",
+        "entra.correct.grant.authentication-strength",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "token-protection",
+      "title": "Require Token Protection on Windows",
+      "source": "docs/design/content.json: steps[id=token-protection]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-token-protection",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.users.include-all",
+        "entra.correct.users.exclusions-canonical",
+        "entra.correct.target.resources-pinned",
+        "entra.correct.conditions.mobile-desktop-clients",
+        "entra.correct.conditions.remove-noncanonical",
+        "entra.correct.grant.none",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "workload-identity-block",
+      "title": "Restrict the Entra Connect Sync Account to Its Address",
+      "source": "docs/design/content.json: steps[id=workload-identity-block]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "more",
+        "whatToDo",
+        "doneEnd",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-workload-identity-block",
+      "packageBlocksChanged": [
+        "entra.policy.create",
+        "ai.location-create",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.admins.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "approved-methodology-override",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cloud Sync methodology overrides the draft: a role or licence is not evidence of a supported calling identity. Unknown support remains on hold.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "session-lifetime",
+      "title": "Limit How Long Sessions Last",
+      "source": "docs/design/content.json: steps[id=session-lifetime]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-session-lifetime",
+      "packageBlocksChanged": [
+        "entra.create-set",
+        "entra.correct.open",
+        "entra.correct.browser.missing",
+        "entra.correct.browser.conditions",
+        "entra.correct.browser.session",
+        "entra.correct.browser.grant-none",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "pim-activation-reauth",
+      "title": "Require MFA at Every Role Activation",
+      "source": "docs/design/content.json: steps[id=pim-activation-reauth]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "comms",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-pim-activation-reauth",
+      "packageBlocksChanged": [
+        "entra.policy.create",
+        "entra.correct.open",
+        "entra.correct.context",
+        "entra.correct.policy.users",
+        "entra.correct.policy.context",
+        "entra.correct.policy.session",
+        "entra.correct.policy.remove-noncanonical",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enable-ca",
+        "entra.pim.configure",
+        "entra.verify-activation",
+        "ai.context",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce-ca",
+        "ai.configure-pim",
+        "ai.verify",
+        "email.admins.pre-activation-change",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "intune-enrollment-reauth",
+      "title": "Require a Fresh Sign-in for Intune Enrollment",
+      "source": "docs/design/content.json: steps[id=intune-enrollment-reauth]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-intune-enrollment-reauth",
+      "packageBlocksChanged": [
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.users",
+        "entra.correct.target",
+        "entra.correct.conditions",
+        "entra.correct.grant",
+        "entra.correct.session",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.prepare",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "sign-in-risk",
+      "title": "Challenge High-Risk Sign-ins",
+      "source": "docs/design/content.json: steps[id=sign-in-risk]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneEnd",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-sign-in-risk",
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "user-risk",
+      "title": "Remediate High-Risk Users",
+      "source": "docs/design/content.json: steps[id=user-risk]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "whatToDo",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-user-risk",
+      "packageBlocksChanged": [
+        "entra.prerequisites",
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.users",
+        "entra.correct.conditions",
+        "entra.correct.grant",
+        "entra.correct.session",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.prerequisites",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "sign-in-risk-medium",
+      "title": "Challenge Medium-Risk Sign-ins",
+      "source": "docs/design/content.json: steps[id=sign-in-risk-medium]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-sign-in-risk-medium",
+      "packageBlocksChanged": [
+        "entra.correct.open",
+        "entra.correct.users",
+        "entra.correct.target",
+        "entra.correct.risk",
+        "entra.correct.conditions",
+        "entra.correct.grant",
+        "entra.correct.session",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "user-risk-medium",
+      "title": "Reset Passwords for Medium-Risk Users",
+      "source": "docs/design/content.json: steps[id=user-risk-medium]",
+      "contentFieldsChanged": [
+        "why",
+        "who",
+        "whatToDo",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-user-risk-medium",
+      "packageBlocksChanged": [
+        "entra.prerequisites",
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.risk",
+        "entra.correct.conditions",
+        "entra.correct.grant",
+        "entra.correct.session",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.overlap-review",
+        "entra.enforce",
+        "ai.prerequisites",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.users.pre-enforcement",
+        "readiness.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-check-separate-admin-accounts",
+      "title": "Use Separate Accounts for Admin Work",
+      "source": "docs/design/content.json: steps[id=s-check-separate-admin-accounts]",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-check-separate-admin-accounts/s-check-separate-admin-accounts",
+      "packageBlocksChanged": [
+        "entra.separate",
+        "ai.separate",
+        "entra.create-and-stage",
+        "entra.register-and-prove",
+        "entra.cutover",
+        "entra.verify",
+        "ai.stage",
+        "ai.prove",
+        "ai.cutover",
+        "ai.verify",
+        "ai.blocked",
+        "email.admin",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": []
+    },
+    {
+      "id": "service-accounts-trusted-network",
+      "title": "Restrict Service Accounts to the Trusted Network",
+      "source": "docs/design/content.json: steps[id=service-accounts-trusted-network]",
+      "contentFieldsChanged": [
+        "why",
+        "doneWhen",
+        "more",
+        "aiFocus"
+      ],
+      "package": "docs/implementation-content/s-goal-service-accounts-trusted-network",
+      "packageBlocksChanged": [
+        "entra.prerequisites",
+        "entra.create",
+        "entra.correct.open",
+        "entra.correct.users",
+        "entra.correct.target",
+        "entra.correct.network",
+        "entra.correct.conditions",
+        "entra.correct.session",
+        "entra.correct.save-verify",
+        "entra.observe",
+        "entra.enforce",
+        "ai.prerequisites",
+        "ai.create",
+        "ai.correct",
+        "ai.observe",
+        "ai.enforce",
+        "email.owners.pre-enforcement",
+        "readiness.model",
+        "troubleshooting.model"
+      ],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added."
+      ]
+    },
+    {
+      "id": "s-ladder-security-defaults",
+      "title": "Enable security defaults",
+      "source": "docs/design/content.json: steps[id=s-ladder-security-defaults]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-break-glass-accounts",
+      "title": "Create and validate break-glass accounts",
+      "source": "docs/design/content.json: steps[id=s-ladder-break-glass-accounts]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-legacy-auth-inventory",
+      "title": "Inventory legacy authentication usage",
+      "source": "docs/design/content.json: steps[id=s-ladder-legacy-auth-inventory]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-app-passwords",
+      "title": "Eliminate app passwords",
+      "source": "docs/design/content.json: steps[id=s-ladder-app-passwords]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-per-user-mfa-cleanup",
+      "title": "Reconcile per-user MFA states",
+      "source": "docs/design/content.json: steps[id=s-ladder-per-user-mfa-cleanup]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-admin-accounts-separate",
+      "title": "Separate admin accounts from daily-driver accounts",
+      "source": "docs/design/content.json: steps[id=s-ladder-admin-accounts-separate]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-global-admin-count",
+      "title": "Reduce Global Administrator count",
+      "source": "docs/design/content.json: steps[id=s-ladder-global-admin-count]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-guest-review",
+      "title": "Review guest accounts and external state",
+      "source": "docs/design/content.json: steps[id=s-ladder-guest-review]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-stale-accounts",
+      "title": "Disable dormant and never-signed-in accounts",
+      "source": "docs/design/content.json: steps[id=s-ladder-stale-accounts]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-ladder-authenticator-over-sms",
+      "title": "Move users from SMS/voice to Authenticator",
+      "source": "docs/design/content.json: steps[id=s-ladder-authenticator-over-sms]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-blocker-trusted-location",
+      "title": "s-blocker-trusted-location",
+      "source": "docs/design/content.json: steps[id=s-blocker-trusted-location]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-blocker-allowed-countries",
+      "title": "Fix the allowed-countries list before it is used",
+      "source": "docs/design/content.json: steps[id=s-blocker-allowed-countries]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-blocker-pilot-group",
+      "title": "s-blocker-pilot-group",
+      "source": "docs/design/content.json: steps[id=s-blocker-pilot-group]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-blocker-service-account",
+      "title": "s-blocker-service-account",
+      "source": "docs/design/content.json: steps[id=s-blocker-service-account]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "s-blocker-auth-strength",
+      "title": "s-blocker-auth-strength",
+      "source": "docs/design/content.json: steps[id=s-blocker-auth-strength]",
+      "contentFieldsChanged": [
+        "whatToDo",
+        "doneWhen",
+        "aiFocus"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "applied",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "cleanup-alerting",
+      "title": "Alert on Emergency Account Sign-ins",
+      "source": "docs/design/content.json: cleanup.alerting",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "existing-surface-support-retained",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cleanup source copy updated. No new AI, readiness, milestone or email surface was introduced; existing renderer/package support bounds what is displayed.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "cleanup-hardening",
+      "title": "Harden Emergency Access",
+      "source": "docs/design/content.json: cleanup.hardening",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "existing-surface-support-retained",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cleanup source copy updated. No new AI, readiness, milestone or email surface was introduced; existing renderer/package support bounds what is displayed.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "cleanup-naming",
+      "title": "Rename Policies Off the Naming Convention",
+      "source": "docs/design/content.json: cleanup.naming",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "existing-surface-support-retained",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cleanup source copy updated. No new AI, readiness, milestone or email surface was introduced; existing renderer/package support bounds what is displayed.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "cleanup-consolidation",
+      "title": "Consolidate Overlapping Policies",
+      "source": "docs/design/content.json: cleanup.consolidation",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen"
+      ],
+      "package": null,
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "existing-surface-support-retained",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cleanup source copy updated. No new AI, readiness, milestone or email surface was introduced; existing renderer/package support bounds what is displayed.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "cleanup-notAssessed",
+      "title": "Review Baseline Policies IAMAI Did Not Assess",
+      "source": "docs/design/content.json: cleanup.notAssessed",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen"
+      ],
+      "package": "docs/implementation-content/cleanup-notAssessed",
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "existing-surface-support-retained",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cleanup source copy updated. No new AI, readiness, milestone or email surface was introduced; existing renderer/package support bounds what is displayed.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    },
+    {
+      "id": "cleanup-drill",
+      "title": "Run the Emergency Access Drill",
+      "source": "docs/design/content.json: cleanup.drill",
+      "contentFieldsChanged": [
+        "why",
+        "whatToDo",
+        "doneWhen"
+      ],
+      "package": "docs/implementation-content/cleanup-drill",
+      "packageBlocksChanged": [],
+      "why": "register-applied",
+      "aiFocus": "existing-surface-support-retained",
+      "verification": "Source/compiled registry review and shared regression suite. Browser coverage is synthetic-fixture dependent; this row is not a claim of a live-tenant execution.",
+      "exceptions": [
+        "Cleanup source copy updated. No new AI, readiness, milestone or email surface was introduced; existing renderer/package support bounds what is displayed.",
+        "Existing shared milestone/state contract retained; no per-step UI surface added.",
+        "Existing email copy retained where the current package does not consume the draft register email."
+      ]
+    }
+  ]
+}

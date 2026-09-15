@@ -56,14 +56,15 @@ test("the manager's nobody-here-used-it clause applies only when the records sho
   const ctx = ctxFor(f, r)
   const dc = r.steps.find((x) => x.goalId === 'block-device-code')!
   const up = r.steps.find((x) => x.goalId === 'block-unsupported-platforms')!
-  assert.match(managerText(stepById['block-device-code'] as unknown as Record<string, unknown>, stepVars(dc, ctx) as Record<string, unknown>)!, /Nobody here used it since /)
-  assert.doesNotMatch(managerText(stepById['block-unsupported-platforms'] as unknown as Record<string, unknown>, stepVars(up, ctx) as Record<string, unknown>)!, /Nobody here/)
+  // Editorial batch C: the clause reads "No use appears in the records since", the evidence it has, not a claim about everyone.
+  assert.match(managerText(stepById['block-device-code'] as unknown as Record<string, unknown>, stepVars(dc, ctx) as Record<string, unknown>)!, /No use appears in the records since /)
+  assert.doesNotMatch(managerText(stepById['block-unsupported-platforms'] as unknown as Record<string, unknown>, stepVars(up, ctx) as Record<string, unknown>)!, /No use appears in the records|Nobody here/)
   // The none line stands in for the usage line, and never beside it.
   const dcLines = stepLines(dc, ctx)
-  assert.ok(dcLines.some((l) => /^No device-code sign-ins since /.test(l)))
+  assert.ok(dcLines.some((l) => /^No device-code sign-ins in the records since .+; that does not prove nothing uses it\.$/.test(l)), dcLines.filter((l) => /device-code/.test(l)).join(' | '))
   const upLines = stepLines(up, ctx)
   assert.ok(upLines.some((l) => /^1 sign-in since .+ carried no platform \(Outlook Mobile\) by /.test(l)), upLines.filter((l) => /platform/.test(l)).join(' | '))
-  assert.ok(!upLines.some((l) => /^Every sign-in since/.test(l)))
+  assert.ok(!upLines.some((l) => /^Every sign-in (in the records )?since/.test(l)))
 })
 
 test('a step the plan cannot write reports no zero and announces nothing; on a baseline it can write, both lines are there', () => {
@@ -83,10 +84,11 @@ test('a step the plan cannot write reports no zero and announces nothing; on a b
   const cSession = cr.steps.find((x) => x.goalId === 'admin-session')!
   assert.equal(unavailableReason(cAt), null)
   assert.equal(unavailableReason(cSession), null)
-  assert.match(managerText(stepById['block-auth-transfer'] as unknown as Record<string, unknown>, stepVars(cAt, cctx) as Record<string, unknown>)!, /Nobody here used it since /)
+  assert.match(managerText(stepById['block-auth-transfer'] as unknown as Record<string, unknown>, stepVars(cAt, cctx) as Record<string, unknown>)!, /No use appears in the records since /)
   const cEmail = commsFor(stepById['admin-session'] as unknown as Record<string, unknown>, stepVars(cSession, cctx) as Record<string, unknown>, cSession)
   assert.ok(cEmail, 'a step with an enforcement day writes its email')
-  assert.match(cEmail.body, /expire after (\d+ hours|an hour|a day|a week|\d+ days) and never persist/)
+  // Editorial batch C: a planned sign-in frequency and no persistent browser sign-in, not a hard expiry.
+  assert.match(cEmail.body, /a sign-in frequency of (\d+ hours|an hour|a day|a week|\d+ days), and no persistent browser sign-in/)
 
   // On the baseline as it ships, where both steps wait on a source group nothing
   // settles: there is no policy to run, so nothing was measured against one and

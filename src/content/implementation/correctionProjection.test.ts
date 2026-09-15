@@ -118,12 +118,16 @@ test('a real enforced policy missing its exclusions projects an executable corre
   const next = nextSafeAction(step)
   assert.deepEqual([next.kind, next.executable], ['correct', false])
   assert.ok(step.blockedBy.includes('s-prereq-break-glass'), JSON.stringify(step.blockedBy))
-  // A1a (task 6; A3 B3 "creation vs enforcement"): the package state projects the safe
-  // correction — the exclusions the policy is missing — whatever holds the step; the
-  // emergency gate holds enforcement, and this policy is already enforced. It used to
-  // read `blocked` here (correction batch 2), which hid the one change that makes the
-  // tenant safer behind the gate meant to keep it safe.
-  assert.equal(packageStateOf(step, c, f.snapshot), 'partial')
+  // Review 4 N1 (cycle 5): A1a task 6 had this read `partial` whatever held the step,
+  // and the screen then handed over an executable PATCH whose excluded groups drop the
+  // tenant's direct exclusion while the export and nextSafeAction held it. The
+  // correction replaces the excluded groups rather than only adding to them (not U19),
+  // so under the emergency-access wait it is planned, not handed over, as correction
+  // batch 2 read it. An add-only correction under the same wait stays `partial`
+  // (packageState.test.ts).
+  assert.equal(step.blockers.some((b) => b.kind === 'step' && b.stepId === 's-prereq-break-glass'), true, 'the premise: the step waits on emergency access')
+  assert.equal(packageStateOf(step, c, f.snapshot), 'blocked')
+  assert.equal(plannedPackageStateOf(step, c, f.snapshot), 'partial', 'the held correction is still planned')
 })
 
 test('an enforced policy that excludes one extra person, with emergency access sorted, is a Partial whose correction executes now and Copy copies exactly it (correction batch 2.1)', () => {
@@ -219,9 +223,12 @@ test('a two-policy set corrects only the member that differs, creates only the m
   const missing = blocksOf({ ...set, 'policies.session.unmanaged.operation': 'create', 'policies.session.unmanaged.current.id': undefined, 'policies.session.unmanaged.current.state': undefined })
   assert.ok(missing.blocks.has('json.unmanaged.create') && missing.blocks.has('mode:CreateUnmanaged'), [...missing.blocks].join(', '))
   assert.equal([...missing.blocks].some((b) => /browser\.create|CreateBrowser|mode:Create$|entra\.create-set/.test(b)), false, `the healthy member was created again: ${[...missing.blocks].join(', ')}`)
-  // A live member that differs goes back to report-only beside its correction; its report-only sibling does not.
+  // Cycle 3 (C02, RUN-CONTEXT): a live member that differs keeps its state. It used to go back to
+  // report-only beside its correction; now only its correction is drawn, and saving it is described.
   const live = blocksOf({ ...set, 'policies.session.browser.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.session.browser.current.changedFields': ['conditions.users.excludeGroups'] })
-  assert.ok(live.blocks.has('entra.correct.browser.lifecycle') && !live.blocks.has('entra.correct.unmanaged.lifecycle'), [...live.blocks].join(', '))
+  assert.ok(live.blocks.has('entra.correct.browser.conditions'), [...live.blocks].join(', '))
+  assert.equal([...live.blocks].some((b) => /lifecycle|report-only|ReportOnly/.test(b)), false, `a correction moved a live policy to report-only: ${[...live.blocks].join(', ')}`)
+  assert.match(live.p.channels.find((c) => c.channel === 'entra')?.text ?? '', /If it is On, the changed rule can affect access after you save\./)
   // A change the set reports that no member accounts for belongs to nobody IAMAI can name: it holds.
   const stray = projectSafely(pkg, 'partial', { ...set, [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] }, runtime)
   assert.deepEqual(stray.hold?.unknownMismatches, ['grantControls.builtInControls'])

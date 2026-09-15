@@ -15,8 +15,9 @@
 // Every kind of hold the legacy roadmap/holds.ts knows has a counterpart here
 // (A1a): a conflict and a decision are the step's condition; a review is drift; a
 // readiness threshold, the report-only window and named evidence are evidence
-// gates on enforcement, never holds (a started policy behind one reads
-// Ready · Observing, and its report-only creation is not gated); an unwritable
+// gates on enforcement (a started policy behind one waits On Hold, or reads
+// Ready · Observing where the gate can be reviewed now, and its report-only
+// creation is not gated); an unwritable
 // policy is an observed blocker; a prerequisite is a step edge.
 //
 // The schedule is not an input. A step's phase, its wave and its dates are a
@@ -28,6 +29,7 @@
 //
 // Pure: no DOM, no network.
 import data from '../../actionability/dependency-data.json' with { type: 'json' }
+import { campaignTargetsPasskeys } from '../../roadmap/campaign.ts'
 import type { Action, DependencyData, Edge, Milestone } from '../../actionability/parseDependencyDoc.ts'
 import { buildGraph, deriveLanes, nextActionOf } from '../../actionability/lanes.ts'
 import type { Blocker, ConditionState, EvidenceGate, HoldBlocker, Lane, ObservedBlocker, ObservedEdge, OwnerState, PrerequisiteState, StepObservation, Substatus, TenantState } from '../../actionability/lanes.ts'
@@ -153,7 +155,10 @@ export function observe(step: Step, byId: ReadonlyMap<string, Step> = new Map())
   // (derive/readyWhen.ts), and the window's length is the gate's time part.
   if (policy && exists && open) {
     const ready = readyWhen(step)
-    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null })
+    // The window closed over records that were read: what they show can be reviewed now,
+    // though it has not cleared the gate (time alone never does).
+    const reviewable = ready !== null && ready.kind === 'since' && ready.read && ready.failures !== null
+    gates.push({ id: 'evidence:observation', satisfied: lifecycle === 'ready-to-enforce' || lifecycle === 'enforced', minDays: observationWindowDays(step), reason: ready ? readyBasis(ready) : null, ...(reviewable ? { reviewable } : {}) })
   }
   // A policy the plan cannot write as it stands (the legacy `unavailable` hold). A missing
   // object is Action.missing below, the baseline conflict is the condition above, an unmet
@@ -239,7 +244,7 @@ function prerequisites(byId: ReadonlyMap<string, Step>, conds: Readonly<Record<s
  * not apply resolves its condition not-applicable, and that completes the step
  * (§8.2). The Security Defaults cutover is applicable while the scan's read put its
  * step on the plan; shared devices are applicable while the scan found any; the
- * registration campaign targets passkeys (product constant); a carve-out is
+ * registration campaign reads its selected method from the package; a carve-out is
  * applicable while its answer put the step on the plan, else the recorded answer
  * says, and an unrecorded one stays unresolved (§8.1: never silently satisfied).
  */
@@ -247,7 +252,10 @@ function conditionOf(name: string, ownedBy: string, byId: ReadonlyMap<string, St
   const owner = byId.get(ownedBy)
   if (owner?.doesntApply != null) return 'not-applicable'
   switch (name) {
-    case 'campaign-targets-passkey': return 'applicable'
+    case 'campaign-targets-passkey': {
+      const passkeys = campaignTargetsPasskeys()
+      return passkeys === null ? 'unresolved' : passkeys ? 'applicable' : 'not-applicable'
+    }
     case 'sd-enabled': return owner !== undefined && owner.status !== 'done' ? 'applicable' : 'not-applicable'
     case 'shared-devices-exist': return owner !== undefined ? 'applicable' : 'not-applicable'
     // Owned by the policy it gates, so the owner being on the plan says nothing: the saved answer does.
@@ -310,7 +318,8 @@ function fallbackOf(s: PlanState): Pick<LaneReading, 'lane' | 'substatus'> {
     case 'attention':
       return { lane: 'Ready', substatus: 'Correct' }
     case 'reportOnly':
-      return { lane: 'Ready', substatus: 'Observing' }
+      // Collecting its evidence: a wait, not an action (owner's status contract).
+      return { lane: 'On Hold', substatus: null }
     case 'readyToEnforce':
       return { lane: 'Ready', substatus: 'Ready to enforce' }
     default:
@@ -338,7 +347,9 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     for (const r of list) {
       if (!known.has(r.id)) continue
       const blockers = r.result.blockers.map(hold).filter((b): b is HoldBlocker => b !== null)
-      out.set(r.id, { lane, substatus: r.result.substatus, reason: r.result.reason ? hold(r.result.reason) : null, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true })
+      // An open evidence gate is the reason a report-only policy waits On Hold, and the board says so.
+      const reason = r.result.reason === null ? null : lane === 'On Hold' ? (r.result.reason as HoldBlocker) : hold(r.result.reason)
+      out.set(r.id, { lane, substatus: r.result.substatus, reason, blockers, gates: r.result.gates, order: counts[lane]++, fromEngine: true })
     }
   }
   place('Ready', groups.ready)

@@ -1,62 +1,74 @@
 @@IAMAI-BEGIN {"id":"entra.create-pair","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create the two IAMAI-resolved guest policies separately, both **Report-only**:
+Create the two guest policies separately, both in **Report-only**. They will not enforce their access rules until you enable them. The policies cover different external-user types; use each policy's resolved users and exclusions.
 
-1. **{{policies.guests.strong.target.displayName}}** — use the complete resolved strong-member users object, All resources, all client apps, no extra conditions, and the tenant-local baseline authentication strength.
-2. **{{policies.guests.mixed.target.displayName}}** — use the complete resolved mixed-member users object, All resources, all client apps, no extra conditions, and built-in MFA.
+1. **{{policies.guests.strong.target.displayName}}** — use this policy's resolved users and exclusions, All resources, all client apps, no extra conditions, and the authentication strength resolved for this tenant.
+2. **{{policies.guests.mixed.target.displayName}}** — use this policy's resolved users and exclusions, All resources, all client apps, no extra conditions, and built-in MFA (**Require multifactor authentication**).
 
-If one creation fails, leave the one already created in Report-only. Do not enable either policy until both are canonical and validated.
+If one creation fails, leave the policy already created in Report-only. Do not enable either policy until both match their intended targets and have been validated.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-pair","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This step manages two Conditional Access policies that work together:
+This step manages two separate Conditional Access policies. The policies cover different external-user types. Apply each policy's resolved users and exclusions; the split is not simply trusted partners versus everyone else.
 
-**Policy 1: {{policies.guests.strong.current.displayName}} (strong tier)**
-For trusted partners — requires the authentication strength "Modern MFA + TAP."
+**Policy 1: {{policies.guests.strong.current.displayName}}** requires the authentication strength in the resolved target.
 
-**Policy 2: {{policies.guests.mixed.current.displayName}} (mixed tier)**
-For all other guests — requires standard MFA (any second factor).
+**Policy 2: {{policies.guests.mixed.current.displayName}}** requires built-in multifactor authentication.
 
-Corrections:
+Correct every setting that differs from each policy's resolved target, not only its exclusions. The JSON output for this correction shows each policy's complete target.
 
 1. Go to Entra admin center → Conditional Access → Policies.
-2. Open the strong-tier policy (find it by ID in Plan settings).
-3. Users → Exclude → Groups: add the exclusions group.
-4. Verify: the Grant requires the authentication strength "Modern MFA + TAP."
-5. Save.
-6. Open the mixed-tier policy (find it by ID in Plan settings).
-7. Users → Exclude → Groups: add the exclusions group.
-8. Verify: the Grant requires "Require multifactor authentication."
-9. Save.
-10. Rescan in IAMAI.
+2. Open {{policies.guests.strong.current.displayName}} (find it by ID in Plan settings).
+3. Name: set it to **{{policies.guests.strong.target.displayName}}**.
+4. Users → Include → Guest or external users: select exactly the external-user types and external Microsoft Entra organizations in this policy's resolved target. Users → Exclude: match the resolved target's excluded guest types, users, groups and roles, including the exclusions group. Remove any exclusion the target does not list.
+5. Target resources: All resources. Client apps: All. Remove any other condition.
+6. Grant: **Grant access → Require authentication strength**, and select the authentication strength in the resolved target. Remove any other grant control.
+7. Session: remove any session control the resolved target does not include.
+8. Save. Leave **Enable policy** as it is: if the policy is On, the changed rule can affect access after you save.
+   This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+9. Open {{policies.guests.mixed.current.displayName}} (find it by ID in Plan settings).
+10. Name: set it to **{{policies.guests.mixed.target.displayName}}**.
+11. Users → Include → Guest or external users: select exactly the external-user types and external Microsoft Entra organizations in this policy's resolved target. Users → Exclude: match the resolved target's excluded guest types, users, groups and roles, including the exclusions group. Remove any exclusion the target does not list.
+12. Target resources: All resources. Client apps: All. Remove any other condition.
+13. Grant: **Grant access → Require multifactor authentication**. Remove any authentication strength or other grant control.
+14. Session: remove any session control the resolved target does not include.
+15. Save. Leave **Enable policy** as it is: if the policy is On, the changed rule can affect access after you save.
+    This change removes {{policies.guests.mixed.current.removedExclusions}} from the exclusions of {{policies.guests.mixed.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+16. Rescan in IAMAI.
 
-Do not merge these two policies into one. They serve different guest populations with different MFA requirements.
+Do not merge these two policies into one. Each covers different external-user types with a different MFA requirement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.partner-trust","channel":"entra","states":["partnerTrustRequired"],"format":"markdown","kind":"template"}
-For each **owner-approved ordinary B2B partner tenant** in the resolved trust patch set, open **External Identities > Cross-tenant access settings > Organizational settings > [partner] > Inbound access > Trust settings** and enable **Trust multifactor authentication from Microsoft Entra tenants** only as approved. Preserve existing device trust choices. Do not apply this step to GDAP/service-provider sign-ins.
+For each **approved ordinary B2B partner tenant** in the resolved trust list, open **External Identities > Cross-tenant access settings > Organizational settings > [partner] > Inbound access > Trust settings** and enable **Trust multifactor authentication from Microsoft Entra tenants** only as approved. Keep existing device trust choices. Do not apply this to GDAP or service-provider sign-ins. Verify after the change: reopen each partner's trust settings, check that device trust is unchanged, and test a representative partner sign-in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Review Report-only results for both guest policies. Test representative external identity types/home tenants. Confirm stronger-tier users can satisfy the tenant-local strength and mixed-tier users can satisfy MFA. Keep both policies Report-only until the pair is ready.
+Keep both policies in Report-only while you review the evidence listed for this step. Review Report-only results for both policies, and test representative guest access for each external-user type and home organization in scope. Guests covered by the strength policy need a method that strength accepts; guests covered by the MFA policy need to complete MFA. One successful guest sign-in does not prove that other identity providers or home organizations work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce-pair","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open both exact policies, confirm both are canonical and Report-only and any required partner trust is already correct, then enable both in one controlled change window. Validate representative guest access and rescan IAMAI.
+Reopen both policies by their policy IDs. Verify each still matches its intended target, both are Report-only, and any approved partner trust is already in place. Enable both in the same planned change window. Verify after the change: representative guests on both policy paths can sign in. Then rescan in IAMAI.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.target-pair","channel":"json","states":["missing","partial"],"format":"json-template","kind":"template"}
-{"kind":"conditionalAccessPolicyPair","policies":[{"role":"strong","displayName":{{json:policies.guests.strong.target.displayName}},"state":"enabledForReportingButNotEnforced","conditions":{"applications":{"includeApplications":["All"],"excludeApplications":[],"includeUserActions":[],"includeAuthenticationContextClassReferences":[]},"clientAppTypes":["all"],"servicePrincipalRiskLevels":[],"signInRiskLevels":[],"userRiskLevels":[],"users":{{json:policies.guests.strong.target.users}}},"grantControls":{"operator":"OR","builtInControls":[],"customAuthenticationFactors":[],"termsOfUse":[],"authenticationStrength":{"id":{{json:authStrength.target.id}}}},"sessionControls":null},{"role":"mixed","displayName":{{json:policies.guests.mixed.target.displayName}},"state":"enabledForReportingButNotEnforced","conditions":{"applications":{"includeApplications":["All"],"excludeApplications":[],"includeUserActions":[],"includeAuthenticationContextClassReferences":[]},"clientAppTypes":["all"],"servicePrincipalRiskLevels":[],"signInRiskLevels":[],"userRiskLevels":[],"users":{{json:policies.guests.mixed.target.users}}},"grantControls":{"operator":"OR","builtInControls":["mfa"],"customAuthenticationFactors":[],"termsOfUse":[]},"sessionControls":null}]}
+@@IAMAI-BEGIN {"id":"json.create-pair","channel":"json","states":["missing"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/$batch"}
+{"requests":[{"id":"strong","method":"POST","url":"/identity/conditionalAccess/policies","headers":{"Content-Type":"application/json"},"body":{"displayName":{{json:policies.guests.strong.target.displayName}},"state":"enabledForReportingButNotEnforced","conditions":{{json:policies.guests.strong.target.conditions}},"grantControls":{{json:policies.guests.strong.target.grantControls}},"sessionControls":{{json:policies.guests.strong.target.sessionControls}}}},{"id":"mixed","method":"POST","url":"/identity/conditionalAccess/policies","headers":{"Content-Type":"application/json"},"body":{"displayName":{{json:policies.guests.mixed.target.displayName}},"state":"enabledForReportingButNotEnforced","conditions":{{json:policies.guests.mixed.target.conditions}},"grantControls":{{json:policies.guests.mixed.target.grantControls}},"sessionControls":{{json:policies.guests.mixed.target.sessionControls}}}}]}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.partner-trust","channel":"json","states":["partnerTrustRequired"],"format":"json-template","kind":"template"}
 {"kind":"resolvedCrossTenantInboundTrustPatchSet","partners":{{json:partnerTrust.resolvedPatches}},"rule":"Each item must contain tenantId and the complete resolved inboundTrust object so existing compliant-device/hybrid-join trust values are preserved. Do not use this for GDAP."}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"json.enforce-pair","channel":"json","states":["readyToEnforce"],"format":"json","kind":"template"}
-{"state":"enabled","applyTo":"both canonical guest policy IDs in one controlled change window"}
+@@IAMAI-BEGIN {"id":"json.correct-pair","channel":"json","states":["partial"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/$batch"}
+{"requests":[{"id":"strong","method":"PATCH","url":"/identity/conditionalAccess/policies/{policies.guests.strong.current.id}","headers":{"Content-Type":"application/json"},"body":{"displayName":{{json:policies.guests.strong.target.displayName}},"conditions":{{json:policies.guests.strong.target.conditions}},"grantControls":{{json:policies.guests.strong.target.grantControls}},"sessionControls":{{json:policies.guests.strong.target.sessionControls}}}},{"id":"mixed","method":"PATCH","url":"/identity/conditionalAccess/policies/{policies.guests.mixed.current.id}","headers":{"Content-Type":"application/json"},"body":{"displayName":{{json:policies.guests.mixed.target.displayName}},"conditions":{{json:policies.guests.mixed.target.conditions}},"grantControls":{{json:policies.guests.mixed.target.grantControls}},"sessionControls":{{json:policies.guests.mixed.target.sessionControls}}}}]}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"json.enforce-pair","channel":"json","states":["readyToEnforce"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/$batch"}
+{"requests":[{"id":"strong","method":"PATCH","url":"/identity/conditionalAccess/policies/{policies.guests.strong.current.id}","headers":{"Content-Type":"application/json"},"body":{"state":"enabled"}},{"id":"mixed","method":"PATCH","url":"/identity/conditionalAccess/policies/{policies.guests.mixed.current.id}","headers":{"Content-Type":"application/json"},"body":{"state":"enabled"}}]}
+@@IAMAI-END
+
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPoliciesJson":{"binding":"policies.guests.targets.json","modes":["CreateMissing","CorrectPair","Observe","EnforcePair","Verify"]},"StrongPolicyId":{"binding":"policies.guests.strong.current.id","modes":["CorrectPair","Observe","EnforcePair","Verify"]},"MixedPolicyId":{"binding":"policies.guests.mixed.current.id","modes":["CorrectPair","Observe","EnforcePair","Verify"]}},"withheldModes":{"ApplyPartnerTrust":"ApplyPartnerTrust reads the owner-approved partner trust patches as JSON text, and IAMAI holds them as objects, not as the JSON text the parameter takes."}}}
+# This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
+# This change removes {{policies.guests.mixed.current.removedExclusions}} from the exclusions of {{policies.guests.mixed.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
  [Parameter(Mandatory=$true)][ValidateSet('CreateMissing','CorrectPair','ApplyPartnerTrust','Observe','EnforcePair','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPoliciesJson,
@@ -125,67 +137,70 @@ foreach($t in @($strong,$mixed)){
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the two guest policy targets for {{tenant.displayName}}. Confirm the pinned external-user type split, canonical partner/service-provider overlays, tenant-local strength on the strong member, built-in MFA on the mixed member, and Report-only-first deployment. Do not collapse the pair.
+This state creates two guest MFA policies for {{tenant.displayName}}, both in Report-only. They cover different external-user types from the baseline, adjusted only through saved partner or service-provider decisions: one requires the tenant's resolved authentication strength and the other requires built-in MFA. The split is by external-user type, not simply trusted partners versus everyone else. Microsoft does not accept authentication strengths for every external identity provider, so check which guests each policy covers. Inbound MFA trust for B2B partners and GDAP service-provider access are handled differently. The JSON output creates both policies in one Graph batch, which can create one policy and fail on the other.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Guest policy mismatches: {{policies.guests.semanticMismatches}}. Explain the smallest corrections to the exact strong/mixed policy identities without changing the saved partner/service-provider decision or merging the policies.
+Differences IAMAI found on the guest policies: {{policies.guests.semanticMismatches}}. The correction updates each policy by its own policy ID to its complete resolved target: name, users and exclusions, conditions, grant and session controls. It keeps the saved partner and service-provider decisions and keeps the two policies separate. The JSON output sends both updates in one Graph batch; one policy can update while the other fails. Keep each policy's current state. If a policy is On, the changed rule can affect access after you save.
+
+This change removes {{policies.guests.strong.current.removedExclusions}} from the exclusions of {{policies.guests.strong.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+This change removes {{policies.guests.mixed.current.removedExclusions}} from the exclusions of {{policies.guests.mixed.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.partner-trust","channel":"aiInfo","states":["partnerTrustRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review these owner-approved ordinary-B2B inbound MFA trust patches: {{partnerTrust.resolvedPatches}}. Confirm they preserve existing device-trust values and are not being applied to GDAP/service-provider access.
+This state applies approved inbound MFA trust for specific ordinary B2B partner tenants: {{partnerTrust.resolvedPatches}}. Each change keeps that partner's existing device trust settings. GDAP service-provider access is handled differently and is not changed here.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review Report-only guest evidence for both policy members: {{evidence.reportOnly}}. Distinguish external identity type/home-tenant behavior from policy misconfiguration before recommending enforcement.
+Both guest policies are in Report-only. Evidence: {{evidence.reportOnly}}. A guest's result can depend on their external-user type, home organization and identity provider as well as on the policy settings. One successful guest sign-in does not prove that other identity providers or home organizations will work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Confirm both guest policy members in {{tenant.displayName}} are canonical, Report-only, and validated across representative guest types, with any ordinary-B2B inbound MFA trust already owner-approved and correct.
+Both guest policies in {{tenant.displayName}} are ready to enforce. Before they are set On, each should still match its intended target and be Report-only, representative guest access should be tested on both policy paths, and any approved partner MFA trust should already be in place. The JSON output enables both in one Graph batch; one policy can be enabled while the other fails, so both results need checking.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why guest MFA is not actionable yet using only these blockers/decisions: {{dependencies.blockers}}. Do not invent partner trust, service-provider exclusions, or external tenant IDs.
+Guest MFA cannot proceed yet. Blockers and pending decisions: {{dependencies.blockers}}. Partner trust, service-provider exclusions and external tenant IDs come only from saved decisions and the scan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the Conditional Access licensing prerequisite and leave the guest MFA package non-actionable until licensing is resolved.
+IAMAI did not find the licensing this step needs. Conditional Access requires Microsoft Entra ID P1 or higher. No guest policy change is available until licensing is resolved.
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template"}
-Subject: Guest MFA validation is starting
+@@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"client-contact","trigger":"before-report-only","purpose":"set expectations for guest MFA"}
+Subject: Action needed: Require MFA for Guests
 
-We are preparing guest and external-user MFA policies in Report-only first. External users may see different authentication behavior depending on their home tenant and identity type. No enforcement change is being made until representative guest access is validated.
+We are preparing MFA checks for guest access. Please tell IT about the guest accounts and partner organizations that need access so we can test the relevant sign-in paths before the change.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.partner-trust","channel":"email","states":["partnerTrustRequired"],"format":"markdown","kind":"template","audience":"client-contact"}
-Subject: Confirm partner MFA trust change
+Subject: Action needed: Require MFA for Guests
 
-We are ready to trust MFA claims from the specifically approved partner tenant for ordinary B2B access. This change does not create a blanket external-user exception and does not apply to GDAP. Existing device-trust settings will be preserved.
+We plan to trust MFA completed in the approved partner organization's Microsoft Entra tenant for ordinary B2B access. Please confirm that this partner trust is approved. The change does not create a general exception for external users, does not apply to GDAP, and keeps existing device trust settings.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"help-desk"}
-Subject: Guest MFA policies are ready to enforce
+Subject: Prepare support: Guest MFA
 
-The guest MFA policy pair has completed validation and is ready to be enabled. After enforcement, external users in scope must satisfy the MFA requirement appropriate to their guest policy path. Support should troubleshoot the external identity/home-tenant path rather than add permanent guest exclusions.
+We are preparing MFA checks for guest access. Please coordinate representative sign-in tests with the affected partner organizations, record any trust or method problems, and confirm the support contact before enforcement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce"],"format":"json-template","kind":"template"}
-{"tiles":[{"id":"guests","label":"Guest/external users","result":{{json:guests.affected.count}},"line":"Guest coverage is measured independently from internal All-users coverage."},{"id":"partnerTier","label":"Partner tier","result":{{json:guests.partnerTierSummary}},"line":"Saved partner decisions drive any trust/Service provider overlay."},{"id":"serviceProvider","label":"Service provider handling","result":{{json:guests.serviceProviderDecision}},"line":"GDAP and ordinary B2B trust are not interchangeable."},{"id":"states","label":"Policy pair state","result":{{json:policyPair.current.states}},"line":"Both members must be canonical before either is enforced."}],"baselineMembers":["f25f94e0-98b6-41be-b9d6-68cb781004a4","e0fabad3-bd0f-42e4-a901-51ef7ab8889c"]}
+{"tiles":[{"id":"guests","label":"Guest/external users","result":{{json:guests.affected.count}},"line":"Check each policy's external-user types, accepted methods and any separately approved partner trust. Review representative guest access for both paths."},{"id":"partnerTier","label":"Partner tier","result":{{json:guests.partnerTierSummary}},"line":"Saved partner decisions set any partner MFA trust and service-provider handling."},{"id":"serviceProvider","label":"Service provider handling","result":{{json:guests.serviceProviderDecision}},"line":"GDAP and ordinary B2B trust are not interchangeable."},{"id":"states","label":"Policy pair state","result":{{json:policyPair.current.states}},"line":"Both policies must match their intended targets before either is enforced."}],"baselineMembers":["f25f94e0-98b6-41be-b9d6-68cb781004a4","e0fabad3-bd0f-42e4-a901-51ef7ab8889c"]}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","partnerTrustRequired","reportOnly","readyToEnforce","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"guest-strength-not-supported","classification":"documented","symptom":"An external user cannot satisfy the authentication-strength guest member.","check":"Identify the external identity provider/type and whether authentication strength is supported for that path.","fix":"Do not weaken the strong member ad hoc. Confirm the user belongs in the correct pinned guest member and use the canonical mixed-MFA path only where the baseline assigns that type.","then":"Retest and rescan.","sources":["ms-guest-strength","ms-external-ca"]},{"id":"partner-mfa-double-prompt","classification":"documented","symptom":"An ordinary B2B partner user is prompted for MFA again in the resource tenant despite completing MFA at home.","check":"Confirm the partner-specific inbound trust decision and isMfaAccepted state.","fix":"If and only if the owner-approved partner tier requires it, correct the partner-specific inbound MFA trust while preserving other trust fields.","then":"Retest the B2B sign-in.","sources":["ms-cross-tenant","ms-cross-tenant-update"]},{"id":"gdap-trust-confusion","classification":"documented","symptom":"Someone proposes enabling ordinary inbound MFA trust to fix a GDAP technician sign-in.","check":"Confirm the sign-in is GDAP/service-provider access.","fix":"Do not change ordinary inbound trust for GDAP; Microsoft states GDAP MFA is always required in the home tenant and always trusted in the resource tenant.","then":"Troubleshoot the provider tenant/GDAP relationship instead.","sources":["ms-cross-tenant"]},{"id":"guest-pair-collapsed","classification":"derived","symptom":"One broad guest policy has replaced the two retained baseline members.","check":"Compare stable goal-map members and their distinct grants/user-type scopes.","fix":"Restore the two canonical policy members in Report-only; do not delete the broad replacement until overlap is reviewed.","then":"Validate the pair and rescan.","sources":["ms-external-users-graph","ms-ca-update"]}]}
+{"scenarios":[{"id":"guest-strength-not-supported","classification":"documented","symptom":"An external user cannot satisfy the authentication-strength guest member.","check":"Identify the external identity provider/type and whether authentication strength is supported for that path.","fix":"Do not weaken the strength policy for one user. Confirm which guest policy covers the user's external-user type, and use the built-in MFA policy only where the baseline assigns that type.","then":"Retest and rescan.","sources":["ms-guest-strength","ms-external-ca"]},{"id":"partner-mfa-double-prompt","classification":"documented","symptom":"An ordinary B2B partner user is prompted for MFA again in the resource tenant despite completing MFA at home.","check":"Confirm the partner-specific inbound trust decision and isMfaAccepted state.","fix":"If and only if the owner-approved partner tier requires it, correct the partner-specific inbound MFA trust while preserving other trust fields.","then":"Retest the B2B sign-in.","sources":["ms-cross-tenant","ms-cross-tenant-update"]},{"id":"gdap-trust-confusion","classification":"documented","symptom":"Someone proposes enabling ordinary inbound MFA trust to fix a GDAP technician sign-in.","check":"Confirm the sign-in is GDAP/service-provider access.","fix":"Do not change ordinary inbound trust for GDAP; Microsoft states GDAP MFA is always required in the home tenant and always trusted in the resource tenant.","then":"Troubleshoot the provider tenant/GDAP relationship instead.","sources":["ms-cross-tenant"]},{"id":"guest-pair-collapsed","classification":"derived","symptom":"One broad guest policy has replaced the two retained baseline members.","check":"Compare stable goal-map members and their distinct grants/user-type scopes.","fix":"Restore the two baseline guest policies in Report-only; do not delete the broad replacement until overlap is reviewed.","then":"Validate the pair and rescan.","sources":["ms-external-users-graph","ms-ca-update"]}]}
 @@IAMAI-END

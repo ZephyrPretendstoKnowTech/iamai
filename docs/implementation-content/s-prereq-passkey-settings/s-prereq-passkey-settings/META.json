@@ -29,7 +29,7 @@
     "productContract": "Enable the passkey, Microsoft Authenticator, and Temporary Access Pass capabilities needed for the IAMAI baseline without invalidating already-approved security keys.",
     "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027.",
     "passkeyTarget": {
-      "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12): the product's passkey target, deviating from the pinned baseline. The AAGUIDs are copied from the Microsoft Learn page in verifiedSources (ms-authenticator-passkey), never from memory. roadmap/passkeySettings.ts reads this object; stepPackage.ts binds it as passkey.target.fido2Configuration.",
+      "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12), superseded in part by the owner's approval of 2026-09-14: support Microsoft Authenticator passkeys while preserving existing approved hardware keys and profile configurations. This object supplies the approved Authenticator AAGUIDs (copied from the Microsoft Learn page in verifiedSources, ms-authenticator-passkey, never from memory) and the product settings; roadmap/passkeySettings.ts resolves each tenant's target from its own configuration (existing allowed models, groups and exclusions retained) and binds it as passkey.target.fido2Configuration. The whole object is the target only for a methods policy with no Fido2 entry.",
       "fido2Configuration": {
         "@odata.type": "#microsoft.graph.fido2AuthenticationMethodConfiguration",
         "id": "Fido2",
@@ -70,7 +70,9 @@
     "passkey.target.allowedAaguids",
     "dependencies.blockers",
     "tenant.displayName",
-    "passkey.profileOptInApproved"
+    "passkey.profileOptInApproved",
+    "passkey.target.summary",
+    "passkey.review.detail"
   ],
   "projection": {
     "needsDecision": {
@@ -91,9 +93,7 @@
         "entra.configure-tap"
       ],
       "json": [
-        "json.fido2",
-        "json.authenticator",
-        "json.tap"
+        "json.fido2"
       ],
       "powershell": [
         {

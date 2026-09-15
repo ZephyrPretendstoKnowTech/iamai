@@ -84,9 +84,20 @@ export const NO_ACTION_STATES: ReadonlySet<PackageState> = new Set<PackageState>
 /** The authored marker on a line that disappears when its optional value is unavailable, in either of the library's spellings ("when" and "if"). */
 const OMIT = /\s*\[omit (?:this line )?(?:when|if) unavailable\]/g
 
+/**
+ * A tenant's free text on one line. A directory or policy name is stored as read,
+ * and a line break in one, put into a sentence, a list item or a script's `#`
+ * comment, ends that line: the rest of the name became code in a handed-over
+ * script (review 6 R6-1). Line breaks and other control characters read as one
+ * space; a tab stays. `{{json:x}}` values are JSON-encoded instead and keep theirs.
+ */
+export function oneLine(text: string): string {
+  return text.replace(/[\u0000-\u0008\u000a-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ')
+}
+
 function formatValue(v: unknown): string {
-  if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(', ')
-  if (typeof v === 'string') return v
+  if (Array.isArray(v)) return v.map((x) => (typeof x === 'string' ? oneLine(x) : JSON.stringify(x))).join(', ')
+  if (typeof v === 'string') return oneLine(v)
   if (typeof v === 'number' || typeof v === 'boolean') return String(v)
   return JSON.stringify(v)
 }
@@ -97,10 +108,23 @@ function formatValue(v: unknown): string {
  * and that null is the baseline's own value, not a value IAMAI lacks (correction
  * batch 1). A key IAMAI never set is not held.
  */
-export function bound(bindings: Bindings, key: string): boolean {
+export function bound(bindings: Bindings, key: string, emptyOk: ReadonlySet<string> = NO_EMPTY): boolean {
   if (!Object.hasOwn(bindings, key)) return false
   const v = bindings[key]
-  return v === null || present(v)
+  return v === null || present(v) || (emptyOk.has(key) && Array.isArray(v))
+}
+
+const NO_EMPTY: ReadonlySet<string> = new Set()
+
+/**
+ * The bindings a package declares a resolved empty list is a value for
+ * (`resolvedEmptyBindings`): the authoritative target sets the list, and it is
+ * empty — the session policy's excluded accounts, where the pinned target excludes
+ * nobody. A key IAMAI did not bind is still missing, a non-list is not a value, and
+ * no other required binding becomes optional.
+ */
+export function resolvedEmptyOf(pkg: { meta: Record<string, unknown> }): ReadonlySet<string> {
+  return new Set(asStrings(pkg.meta.resolvedEmptyBindings))
 }
 
 /**
@@ -117,13 +141,13 @@ export const UNRESOLVED = /\{\{(?:json:)?[A-Za-z0-9_.-]+\}\}|\[omit (?:this line
  * marker and all; a missing required value refuses the block rather than printing
  * a placeholder.
  */
-export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>): { text: string } | { missing: string[] } {
+export function bindText(text: string, bindings: Bindings, required: ReadonlySet<string>, emptyOk: ReadonlySet<string> = NO_EMPTY): { text: string } | { missing: string[] } {
   const missing = new Set<string>()
   const out: string[] = []
   for (const line of text.split('\n')) {
     const used = [...line.matchAll(BINDING)].map((m) => ({ json: m[1] !== undefined, key: m[2] }))
     // A whole JSON value may be null; a word in a sentence may not.
-    const absent = used.filter((u) => (u.json ? !bound(bindings, u.key) : !present(bindings[u.key]))).map((u) => u.key)
+    const absent = used.filter((u) => (u.json ? !bound(bindings, u.key, emptyOk) : !present(bindings[u.key]))).map((u) => u.key)
     if (absent.length > 0) {
       for (const b of absent) if (required.has(b)) missing.add(b)
       continue
@@ -154,6 +178,95 @@ const CHANGE_METHODS: ReadonlySet<string> = new Set(['PATCH', 'PUT', 'DELETE'])
 
 /** An endpoint template that names the object it addresses (`/policies/{policy.current.id}`). */
 const ENDPOINT_IDENTITY = /\{[A-Za-z0-9_.-]+\}/
+
+/**
+ * An endpoint whose object Microsoft names itself: an authentication method's
+ * configuration is addressed by the method's fixed id
+ * (`/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/fido2`),
+ * not by a tenant value IAMAI binds. Nothing else is exempt from naming its target.
+ */
+const FIXED_IDENTITY = /^https:\/\/graph\.microsoft\.com\/v1\.0\/policies\/authenticationMethodsPolicy\/authenticationMethodConfigurations\/[A-Za-z0-9]+$/
+
+/** Graph's JSON batch endpoint: the requests it sends travel inside its body. */
+const BATCH_ENDPOINT = /^https:\/\/graph\.microsoft\.com\/v1\.0\/\$batch$/
+/** The one collection a batch sub-request may create a policy in. */
+const CA_POLICIES = '/identity/conditionalAccess/policies'
+/** A batch sub-request that changes a policy names one member's own bound id: `…/policies/{policies.<family>.<role>.current.id}`. */
+const MEMBER_POLICY_URL = /^\/identity\/conditionalAccess\/policies\/\{(policies\.[A-Za-z0-9_-]+\.([A-Za-z0-9_-]+)\.current\.id)\}$/
+/** A sub-request url in a JSON block's template that names an identity to bind. */
+const BATCH_URL_IDENTITY = /"url":"[^"]*\{([A-Za-z0-9_.-]+)\}"/g
+const POLICY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The endpoint-identity guard, reaching into a Graph JSON batch. Every sub-request
+ * is one of the package's pinned members, once, by its role. A POST creates in
+ * the policies collection. A PATCH addresses that same member's own policy id,
+ * bound from a value IAMAI holds: a missing one withholds the channel on it; a
+ * value that is not an id, or one another sub-request already targets, is
+ * refused. Any other method, url or a body naming an id is refused. The bound ids
+ * replace the url templates; `text` is null where nothing needed binding. Graph
+ * runs a batch's requests independently: it is not atomic.
+ */
+function batchRequests(parsed: unknown, pkg: CompiledPackage, b: Bindings, standIns: Readonly<Record<string, string>>): { text: string | null } | { missing: string[] } | { invalid: string[] } {
+  const requests = (parsed as { requests?: unknown } | null)?.requests
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed) || Object.keys(parsed).length !== 1 || !Array.isArray(requests) || requests.length === 0) return { invalid: ['a $batch body that is not one list of requests'] }
+  const roles = new Set((pkg.meta.baselineAuthority?.members ?? []).map((m) => m.role))
+  const invalid: string[] = []
+  const missing: string[] = []
+  const seen = new Set<string>()
+  const targets = new Set<string>()
+  let rebound = false
+  for (const r of requests as unknown[]) {
+    const q = (r !== null && typeof r === 'object' && !Array.isArray(r) ? r : {}) as Record<string, unknown>
+    const role = typeof q.id === 'string' ? q.id : ''
+    const method = typeof q.method === 'string' ? q.method : ''
+    const url = typeof q.url === 'string' ? q.url : ''
+    const body = q.body
+    if (!roles.has(role) || seen.has(role)) {
+      invalid.push(`a $batch request ${JSON.stringify(role)} that is not one pinned member, once`)
+      continue
+    }
+    seen.add(role)
+    if (body === null || typeof body !== 'object' || Array.isArray(body) || Object.hasOwn(body, 'id')) {
+      invalid.push(`${role}: a $batch request whose body is not a policy body`)
+      continue
+    }
+    if (method === 'POST') {
+      if (url !== CA_POLICIES) invalid.push(`${role}: a POST to ${JSON.stringify(url)}, not the policies collection`)
+      continue
+    }
+    if (method !== 'PATCH') {
+      invalid.push(`${role}: a ${JSON.stringify(method)} request in a $batch`)
+      continue
+    }
+    const m = MEMBER_POLICY_URL.exec(url)
+    if (!m || m[2] !== role) {
+      invalid.push(`${role}: a PATCH whose url does not name the ${role} member's own policy id`)
+      continue
+    }
+    if (!present(b[m[1]])) {
+      missing.push(m[1])
+      continue
+    }
+    const id = formatValue(b[m[1]])
+    if (!Object.hasOwn(standIns, m[1]) && !POLICY_ID.test(id)) {
+      invalid.push(`${role}: ${m[1]} is not a policy id`)
+      continue
+    }
+    // A GUID names one object in any casing: two spellings of it are one target.
+    const target = id.toLowerCase()
+    if (targets.has(target)) {
+      invalid.push(`${role}: a PATCH to a policy another request in the batch already targets`)
+      continue
+    }
+    targets.add(target)
+    q.url = `${CA_POLICIES}/${id}`
+    rebound = true
+  }
+  if (invalid.length > 0) return { invalid }
+  if (missing.length > 0) return { missing }
+  return { text: rebound ? JSON.stringify(parsed) : null }
+}
 
 /** A projection list with each block once: a block several mismatches share is one correction, its script corrections merged. */
 function dedupe(refs: ProjectionRef[]): ProjectionRef[] {
@@ -249,7 +362,7 @@ export function projectPlanned(pkg: CompiledPackage, state: PackageState, bindin
  * blocks name is not this step's to resolve, and listing it said "Values still to
  * resolve" about values the step never uses (correction batch 1).
  */
-function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn: ReadonlySet<string>, requires: ReadonlySet<string>, bindings: Bindings, placeholder: (binding: string) => string): Record<string, string> {
+function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn: ReadonlySet<string>, requires: ReadonlySet<string>, bindings: Bindings, placeholder: (binding: string) => string, runModes: ReadonlyMap<string, ReadonlySet<string>> = new Map()): Record<string, string> {
   const required = new Set(pkg.meta.requiredBindings ?? [])
   const keys = new Set<string>(requires)
   for (const id of drawn) {
@@ -257,13 +370,45 @@ function planningValues(pkg: CompiledPackage, p: Record<string, unknown>, drawn:
     if (!block) continue
     for (const m of block.text.matchAll(BINDING)) if (required.has(m[2])) keys.add(m[2])
     if (typeof block.meta.endpoint === 'string') for (const m of block.meta.endpoint.matchAll(/\{([A-Za-z0-9_.-]+)\}/g)) keys.add(m[1])
-    for (const param of Object.values((block.meta.invocation?.parameters ?? {}) as Record<string, { binding?: unknown }>)) if (typeof param?.binding === 'string') keys.add(param.binding)
+    // A batch sub-request's own url identity (batchRequests) is this step's value too.
+    if (isJsonFormat(block)) for (const m of block.text.matchAll(BATCH_URL_IDENTITY)) keys.add(m[1])
+    // A script parameter is this step's value only in a mode the preview runs: a create
+    // never passes the policy id its corrections take (cycle 7, session-lifetime).
+    const modes = runModes.get(id)
+    for (const param of Object.values((block.meta.invocation?.parameters ?? {}) as Record<string, { binding?: unknown; modes?: unknown }>)) {
+      if (typeof param?.binding !== 'string') continue
+      if (modes && Array.isArray(param.modes) && !param.modes.some((m) => modes.has(String(m)))) continue
+      keys.add(param.binding)
+    }
   }
   // The engine's facts about a correction and the selected-module binding are IAMAI's to supply, never a value to resolve.
   const own = mismatchBindingOf(p)
   const out: Record<string, string> = {}
-  for (const k of keys) if (!bound(bindings, k) && k !== CHANGED_FIELDS_BINDING && k !== own && !k.endsWith('.semanticMismatches')) out[k] = placeholder(k)
+  const emptyOk = resolvedEmptyOf(pkg as unknown as { meta: Record<string, unknown> })
+  for (const k of keys) if (!bound(bindings, k, emptyOk) && k !== CHANGED_FIELDS_BINDING && k !== own && !k.endsWith('.semanticMismatches')) out[k] = placeholder(k)
   return out
+}
+
+const isJsonFormat = (block: Block): boolean => block.meta.format === 'json' || block.meta.format === 'json-template'
+
+/** The JSON string a planning preview's unresolved whole JSON value stands as while its body is parsed and merged. */
+const standInToken = (key: string): string => JSON.stringify(`@@iamai-stand-in:${key}@@`)
+const STAND_IN_TOKEN = /"@@iamai-stand-in:([A-Za-z0-9_.-]+)@@"/g
+
+/**
+ * A JSON block's `{{json:x}}` values IAMAI does not hold yet, as tokens: the body
+ * still parses and merges as one request, and the stand-in is put back bare
+ * (`unmaskStandIns`). Bound as a quoted string, `"conditions": "‹policy
+ * conditions›"` read as a typed Graph body with a string where Graph takes an
+ * object or a list; bare, the preview is visibly a template with a value to
+ * resolve, which is what it is (C06).
+ */
+function maskStandIns(text: string, standIns: Readonly<Record<string, string>>): string {
+  return text.replace(/\{\{json:([A-Za-z0-9_.-]+)\}\}/g, (m, key: string) => (Object.hasOwn(standIns, key) ? standInToken(key) : m))
+}
+
+function unmaskStandIns(text: string, standIns: Readonly<Record<string, string>>): string {
+  return text.replace(STAND_IN_TOKEN, (m, key: string) => (Object.hasOwn(standIns, key) ? standIns[key] : m))
 }
 
 function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, runtime: RuntimeContext, placeholder: ((binding: string) => string) | null): Projection {
@@ -272,6 +417,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
   const hold = emptyHold()
   const p = pkg.meta.projection[state] as Record<string, unknown> | undefined
   if (!p) return { state, hold: { ...hold, noProjection: true }, channels: [] }
+  const emptyOk = resolvedEmptyOf(pkg as unknown as { meta: Record<string, unknown> })
 
   // The next transition's prerequisites, before anything is built: an artifact
   // that performs a transition a person has not cleared is not offered. A
@@ -302,11 +448,13 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
     for (const ch of OUTPUT_ORDER) refs.set(ch, refsOf(p[ch]))
   }
   const drawn = new Set([...refs.values()].flat().map((r) => r.block))
-  const standIns = planning ? planningValues(pkg, p, drawn, requires, bindings, placeholder) : {}
+  const runModes = new Map<string, Set<string>>()
+  for (const r of [...refs.values()].flat()) if (typeof r.mode === 'string') runModes.set(r.block, new Set([...(runModes.get(r.block) ?? []), r.mode]))
+  const standIns = planning ? planningValues(pkg, p, drawn, requires, bindings, placeholder, runModes) : {}
   let b: Bindings = planning ? { ...bindings, ...standIns } : bindings
   if (selection !== null) b = { ...b, [selection.binding]: selection.selected }
   // What the state as a whole requires holds every channel: none of them is the work without it.
-  hold.missingBindings = [...requires].filter((r) => !present(b[r]))
+  hold.missingBindings = [...requires].filter((r) => !present(b[r]) && !(emptyOk.has(r) && Array.isArray(b[r])))
   if (hold.missingBindings.length > 0) return { state, hold, channels: [] }
 
   const required = new Set(pkg.meta.requiredBindings ?? [])
@@ -331,7 +479,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
         bad.push(`${id}: no such block`)
         continue
       }
-      const bound = bindText(block.text, b, required)
+      const bound = bindText(planning && isJsonFormat(block) ? maskStandIns(block.text, standIns) : block.text, b, required, emptyOk)
       if ('missing' in bound) {
         miss.push(...bound.missing)
         continue
@@ -346,7 +494,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: a deployable script with no invocation`)
           continue
         }
-        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied)
+        const rendered = renderInvocation(bound.text, block.meta.invocation, ownRuns, b, runtime.satisfied, new Set(Object.keys(standIns)), emptyOk)
         if ('missing' in rendered) {
           miss.push(...rendered.missing)
           continue
@@ -371,7 +519,7 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: a JSON body with no request (method and endpoint)`)
           continue
         }
-        if (CHANGE_METHODS.has(method) && !ENDPOINT_IDENTITY.test(endpoint)) {
+        if (CHANGE_METHODS.has(method) && !ENDPOINT_IDENTITY.test(endpoint) && !FIXED_IDENTITY.test(endpoint)) {
           bad.push(`${id}: a ${method} whose endpoint names no target identifier`)
           continue
         }
@@ -384,13 +532,27 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
           bad.push(`${id}: bound JSON does not parse`)
           continue
         }
+        let text = bound.text
+        // A Graph JSON batch carries its requests inside the body, where the guard above does not reach.
+        if (ch === 'json' && BATCH_ENDPOINT.test(String(block.meta.endpoint ?? ''))) {
+          const batch = batchRequests(parsed, pkg, b, standIns)
+          if ('missing' in batch) {
+            miss.push(...batch.missing)
+            continue
+          }
+          if ('invalid' in batch) {
+            bad.push(...batch.invalid.map((x) => `${id}: ${x}`))
+            continue
+          }
+          if (batch.text !== null) text = batch.text
+        }
         if (typeof block.meta.endpoint === 'string') {
           const ep = bindEndpoint(block.meta.endpoint, b)
           if ('missing' in ep) {
             miss.push(...ep.missing)
             continue
           }
-          bodies.push({ method: String(block.meta.method ?? ''), endpoint: ep.endpoint, body: (parsed ?? {}) as Record<string, unknown>, text: bound.text })
+          bodies.push({ method: String(block.meta.method ?? ''), endpoint: ep.endpoint, body: (parsed ?? {}) as Record<string, unknown>, text })
           continue
         }
       }
@@ -438,11 +600,11 @@ function build(pkg: CompiledPackage, state: PackageState, bindings: Bindings, ru
     const bears = blockIds.some((id) => {
       const bl = pkg.blocks[id]
       // A binding the block names but IAMAI does not hold dropped its line, and carries nothing.
-      return bl !== undefined && ([...bl.text.matchAll(BINDING)].some((m) => bound(b, m[2])) || (typeof bl.meta.endpoint === 'string' && /\{[A-Za-z0-9_.-]+\}/.test(bl.meta.endpoint)) || bl.meta.invocation !== undefined)
+      return bl !== undefined && ([...bl.text.matchAll(BINDING)].some((m) => bound(b, m[2], emptyOk)) || (typeof bl.meta.endpoint === 'string' && /\{[A-Za-z0-9_.-]+\}/.test(bl.meta.endpoint)) || (isJsonFormat(bl) && [...bl.text.matchAll(BATCH_URL_IDENTITY)].length > 0) || bl.meta.invocation !== undefined)
     })
     if (bears) bearing.add(ch)
     const corrections = [...new Set(runs.flatMap((r) => r.corrections))]
-    channels.push({ channel: ch, blocks: blockIds, format: String(pkg.blocks[blockIds[0]]?.meta.format ?? 'markdown'), text: texts.join('\n\n'), requests, mode: runs[0]?.mode ?? null, corrections, runs, communication })
+    channels.push({ channel: ch, blocks: blockIds, format: String(pkg.blocks[blockIds[0]]?.meta.format ?? 'markdown'), text: planning ? unmaskStandIns(texts.join('\n\n'), standIns) : texts.join('\n\n'), requests, mode: runs[0]?.mode ?? null, corrections, runs, communication })
   }
   // A channel that carries none of IAMAI's values — a parameterised script
   // template, a note — is this tenant's work only beside one that does. Where

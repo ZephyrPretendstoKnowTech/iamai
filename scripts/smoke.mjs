@@ -275,7 +275,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (signed out): the heading, the sign-in tile with the consent sentence, Sign in with Microsoft and Try it with sample data', /Strengthen identity security without guessing what will break/.test(t) && /Sign in\s+no tenant connected/.test(t) && /every sign-in after that can be Global Reader/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
+  check('Connect (signed out): the heading, the sign-in tile with the consent sentence, Sign in with Microsoft and Try it with sample data', /Strengthen identity security with evidence about who could be affected/.test(t) && /Sign in\s+no tenant connected/.test(t) && /every sign-in after that can be Global Reader/.test(t) && /Sign in with Microsoft/.test(t) && /Try it with sample data/.test(t) && !/Built for|What it catches|Connect a tenant/.test(t))
 
   // The consent disclosure, generated from the scope list and the registry (prompt 34 part 1), on the signed-out page (target-state §3).
   await send('Page.navigate', { url: `${BASE}&state=signedOut#/connect` })
@@ -296,7 +296,7 @@ try {
   await send('Page.navigate', { url: `${BASE}&state=noScan#/connect` })
   await sleep(1200)
   t = await text()
-  check('Connect (no scan): Scan tenant and the ten-minute line', /Scan tenant/.test(t) && /About ten minutes\. Reads the tenant into this browser; nothing is sent anywhere\./.test(t))
+  check('Connect (no scan): Scan tenant and the ten-minute line', /Scan tenant/.test(t) && /About ten minutes\. The scan is processed in this browser; nothing is uploaded to IAMAI\./.test(t))
   check('Connect (no scan): nothing about a plan yet', !/Open the plan/.test(t))
   await send('Page.navigate', { url: `${BASE}&state=scanning#/connect` })
   await sleep(1200)

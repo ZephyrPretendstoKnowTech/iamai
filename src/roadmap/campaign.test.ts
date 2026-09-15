@@ -13,6 +13,11 @@ import { generateRoadmap } from './generate.ts'
 import { emptyMappingState } from '../mapping/types.ts'
 import { scheduleRationale } from '../copy/statements.ts'
 import type { TenantSnapshot } from '../graph/collect/types.ts'
+import { campaignTargetsPasskeys } from './campaign.ts'
+
+test('the Authenticator registration campaign is not misidentified as a passkey campaign', () => {
+  assert.equal(campaignTargetsPasskeys(), false)
+})
 
 function plan(snapshot: TenantSnapshot) {
   const baseline = fixtureBaseline()

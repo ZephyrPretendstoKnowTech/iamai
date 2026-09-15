@@ -1,45 +1,46 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure exactly this canonical scope: **Users: All users** with IAMAI-resolved exclusions; **Target resources: All resources**; **Conditions > Authentication flows: Authentication transfer**; client apps all.
-4. Grant/access control: **Block access**.
-5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.
-6. Set **Enable policy: Report-only** and create it.
+3. Configure this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Authentication flows: Authentication transfer**; client apps remains All.
+4. Grant: **Block access**.
+5. Leave session controls unconfigured; the intended target has none.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
 7. Re-open the created policy, compare it with the IAMAI target, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This policy already exists and is enforced. The correction adds the exclusions group.
+This policy already exists. The correction sets its users, exclusions, target resources and conditions to the intended target on the same policy.
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
-3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
-4. Verify: Target resources = All resources, Conditions = Client apps: Authentication flows: Authentication transfer, Grant = Block access.
+3. Users → Include: All users. Exclude: the exclusions IAMAI resolved, including the exclusions group you confirmed in the Exclusions Group step.
+4. Target resources: All resources. Conditions → Authentication flows → Authentication transfer. Client apps remains All. Grant → Block access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Under **Grant**, select **Block access** and clear any other control. Do not keep a different control because it already exists; this step follows the baseline target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. If it is **On**, move it to **Report-only** first. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Under **Session**, clear every control; the intended target has none. Session behavior belongs to separate baseline steps.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same resolved policy to **{{policy.target.displayName}}**. Display name is never update identity; the stable tenant policy ID remains authoritative.
+Rename the same policy to **{{policy.target.displayName}}**. The display name does not identify the policy for updates; IAMAI uses the same policy ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Do not change the policy state (leave it On).
-6. Rescan in IAMAI to confirm the correction.
+5. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+6. Rescan in IAMAI to confirm the correction. Verify after the change: affected users can sign in directly on the destination device where the app supports it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review Conditional Access report-only results and the step-specific evidence. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.
+Keep the policy in **Report-only** while you review the evidence listed for this step. Review observed authentication transfers and the apps involved, and test the direct sign-in alternative on the affected devices. A quiet report does not show that nobody depends on the flow.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only**, the conditions/grant/session controls are canonical, and the step-specific evidence is clear. Change **Enable policy** to **On**, test the expected sign-in path plus emergency access, then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and the step's evidence has been reviewed. Change **Enable policy** to **On** and save. Verify after the change: affected users can sign in directly on the destination device, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -66,9 +67,10 @@ Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only*
 {"state":"enabled"}
 @@IAMAI-END
 
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"template"}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"TargetPolicyJson":{"binding":"policy.target.json","modes":["Create","CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]},"PolicyId":{"binding":"policy.current.id","modes":["CorrectConditions","CorrectGrant","CorrectSession","CorrectName","Observe","Enforce"]}}}}
+# This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 param(
- [Parameter(Mandatory=$true)][ValidateSet('Create','StageForCorrection','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
+ [Parameter(Mandatory=$true)][ValidateSet('Create','CorrectConditions','CorrectGrant','CorrectSession','CorrectName','Observe','Enforce','Verify')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$TargetPolicyJson,
  [string]$PolicyId
 )
@@ -109,14 +111,6 @@ if($Mode -eq 'Create'){
  Write-Host "Created $PolicyId in Report-only."
 }else{GuidOk $PolicyId 'PolicyId'}
 $uri="$G/identity/conditionalAccess/policies/$PolicyId"
-if($Mode -eq 'StageForCorrection'){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){IG PATCH $uri @{state='enabledForReportingButNotEnforced'}|Out-Null; Write-Host 'Moved policy to Report-only before semantic correction.'}
-}
-if($Mode -in @('CorrectConditions','CorrectGrant','CorrectSession')){
- $pre=IG GET $uri
- if([string]$pre.state -eq 'enabled'){throw 'Refusing access-affecting correction while policy is On. Run StageForCorrection first, then correct and revalidate.'}
-}
 if($Mode -eq 'CorrectConditions'){IG PATCH $uri @{conditions=$target.conditions}|Out-Null}
 if($Mode -eq 'CorrectGrant'){IG PATCH $uri @{grantControls=$target.grantControls}|Out-Null}
 if($Mode -eq 'CorrectSession'){IG PATCH $uri @{sessionControls=$target.sessionControls}|Out-Null}
@@ -142,63 +136,71 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Block Authentication Transfer** implementation for {{tenant.displayName}}. Confirm the canonical target is complete, tenant-resolved, Report-only first, and contains no invented exclusions or source-tenant IDs.
+State: **Block Authentication Transfer** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions IAMAI resolved, All resources, Conditions → Authentication flows → Authentication transfer, Block access, and no session controls. It does not block anything until it is enabled.
+
+Authentication transfer moves a signed-in state from one device to another, for example from a desktop app to a mobile app, without a new sign-in on the second device. This policy blocks that flow only; direct sign-in on the destination device stays available where the app supports it.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This policy blocks authentication transfer — the flow where a QR code or link moves an authenticated session from one device to another without re-authenticating.
+This policy blocks authentication transfer: the flow that moves a signed-in state from one device to another, for example by scanning a QR code shown in a desktop app, without a new sign-in on the second device. It blocks this flow only; it does not block every QR-code sign-in or other forms of token theft.
 
-Attackers use this in phishing: they get a victim to scan a code that transfers the victim's session to the attacker's device. Blocking the flow stops this attack entirely.
+The policy already exists in the tenant. The correction changes only the settings IAMAI found different from the intended target: {{policy.current.semanticMismatches}}. Intended: All users with the exclusions IAMAI resolved, including the exclusions group; All resources; Authentication flows → Authentication transfer; Block access; no session controls.
 
-The correction on this step adds the exclusions group so emergency access accounts can still use authentication transfer if needed in an emergency.
+Accounts excluded from this policy are not blocked by it. That does not guarantee them access through other policies.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess the Report-only evidence for **Block Authentication Transfer** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear.
+State: **Block Authentication Transfer** is in Report-only in {{tenant.displayName}}. It records what it would block but blocks nothing yet. Report-only evidence: {{evidence.reportOnly}}.
+
+Look for sign-ins that used authentication transfer and the apps involved. Few or no records do not show that nobody depends on the flow; direct sign-in on the destination device should be tested for the affected workflows before enforcement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform a final pre-enforcement review for **Block Authentication Transfer** in {{tenant.displayName}}. Confirm the stable tenant policy is still Report-only, canonical, and safe to enable; do not redesign the baseline.
+State: **Block Authentication Transfer** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, and direct sign-in should have been tested for the affected workflows. After enabling, test direct sign-in and emergency access, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Block Authentication Transfer** is not actionable yet using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent a bypass, new exclusion, or source resolution.
+State: **Block Authentication Transfer** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved before the policy is created or changed; an added exclusion does not resolve them.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain that **Block Authentication Transfer** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
+State: **Block Authentication Transfer** needs Microsoft Entra Conditional Access licensing that this scan did not confirm. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Authentication-transfer blocking entering validation
+Subject: Planned change: Block Authentication Transfer
 
 Hi,
 
-We are validating a policy that blocks authentication transfer in {{tenant.displayName}}. This removes QR-based transfer of an authenticated session from a PC to a mobile app; users can still sign in directly on the mobile device and satisfy its normal policies.
+We are preparing to block the sign-in transfer shortcut between devices. Where supported, sign in directly on the destination device. Tell IT if a required app cannot do that.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Authentication transfer will be blocked
+Subject: Planned change: Block Authentication Transfer
 
 Hi,
 
-Authentication-transfer blocking for {{tenant.displayName}} is ready to enforce after Report-only review. If the QR transfer shortcut stops working, sign in directly on the mobile device. Report unexpected impact to IT rather than requesting an exception.
+We are preparing to block the sign-in transfer shortcut between devices. Where supported, sign in directly on the destination device. Tell IT if a required app cannot do that.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when canonical exclusions are resolved, Report-only authentication-transfer activity is understood, and representative users can use the supported direct-sign-in path on the target device.
+Review observed transfers and test the direct sign-in alternative for affected devices. The intended exclusions must be resolved first.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}

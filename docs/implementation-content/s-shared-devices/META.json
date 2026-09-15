@@ -39,6 +39,7 @@
     "peoplePolicies.resolvedPatches"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "shared.confirmedAccounts",
     "shared.deviceEvidence",
     "policy.current.displayName",
@@ -65,8 +66,7 @@
         "entra.people-exclusions"
       ],
       "json": [
-        "json.create",
-        "json.people-patches"
+        "json.create"
       ],
       "powershell": [
         {
@@ -156,42 +156,12 @@
             }
           ]
         },
-        "lifecycle.report-only": {
-          "select": {
-            "equals": [
-              "policy.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "entra": [
-            "entra.correct.lifecycle"
-          ],
-          "json": [
-            "json.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "ReportOnly"
-            }
-          ]
-        },
         "people-policy-exclusions": {
           "select": {
             "present": "peoplePolicies.resolvedPatches"
           },
           "entra": [
             "entra.people-exclusions"
-          ],
-          "json": [
-            "json.people-patches"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "PeopleExclusions"
-            }
           ]
         }
       },
