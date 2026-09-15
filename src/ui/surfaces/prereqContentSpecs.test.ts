@@ -96,7 +96,7 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
   assert.equal(cs.why, 'Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.')
   assert.deepEqual(cs.doneWhen, [
     'Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.',
-    'An emergency access account still signs in with its key; configuration checks do not replace that test.',
+    'Existing approved keys still work. Test new emergency-account keys in Create or Correct Emergency Access Accounts.',
   ])
   // Ready now with nothing unresolved: no filler under the bar (R2), and the clear tile (R5).
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)

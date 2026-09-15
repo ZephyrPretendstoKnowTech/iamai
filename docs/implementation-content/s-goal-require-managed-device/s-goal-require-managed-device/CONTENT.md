@@ -31,7 +31,7 @@ Rename the same policy to **{{policy.target.displayName}}** only when the name i
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by its ID, compare the corrected settings with IAMAI's intended target, and rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Verify after the change: a compliant or hybrid-joined work device in the saved scope can still sign in from outside the trusted locations.
+Re-open the same policy by its ID, compare the corrected settings with IAMAI's intended target, and rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Verify after the change: a compliant work device on the selected platforms can still sign in from outside the trusted locations. Hybrid join alone does not satisfy a compliance requirement.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END

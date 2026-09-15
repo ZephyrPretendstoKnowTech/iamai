@@ -181,9 +181,8 @@ export function ContentStep({
   const body = stepBodyOf(step, ctx, { lane, blockers, prerequisiteLabel, confirmations, baselineCommit })
   const { cs, ex, laneView, contract, title, d, reason, conflictWords, pkg, pkgBindings, pkgRuntime, pkgReadiness, scenarios, packaged, whoInline, whoHeld, lead, showWho, whoFull, hasEvidence, readiness, allTiles, decides, instructed, rail, eyebrow, artifacts, previewNote, notes, showImplementation, empty, sourceLine, learnUrl } = body
   const copied1500 = (id: string) => (ok: boolean): void => {
-    if (!ok) return
-    setCopied(id)
-    setTimeout(() => setCopied(null), 1500)
+    setCopied(ok ? id : 'copy-failed')
+    setTimeout(() => setCopied(null), ok ? 1500 : 6000)
   }
   // The copy boxes under More (the email, the help-desk and manager text) are
   // text a person forwards, and leave the app redacted.
@@ -356,6 +355,12 @@ export function ContentStep({
               copied={copied}
             />
           )}
+
+          {step.baselineReviewSource?.json && <details className="step-section baseline-definition" open={printing || undefined}>
+            <summary>{workflowWords.definitionTitle}</summary>
+            <p>{workflowWords.definitionNote}</p>
+            <pre className="mono">{step.baselineReviewSource.json}</pre>
+          </details>}
 
           {/* Every step has a completion, and it is concrete (stepContract.ts doneWhenOf). */}
           <DoneWhen heading={HEAD.doneWhen} lines={contract.doneWhen} />
@@ -618,6 +623,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
                 <Icon name="external-link" size={14} />
               </button>
             </div>
+            {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {body('preview-text')}
           </div>
           {/* The expanded viewer (S6): the same channel the preview shows, the
@@ -643,6 +649,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
                 <Callout kind="warning">{W.aiWarning}</Callout>
               </div>
             )}
+            {copied === 'copy-failed' && <p role="status">{W.copyFailed}</p>}
             {active?.note && <p className="impl-dialog-note">{active.note}</p>}
             <div {...onePanelProps(dialogBase, tab)}>{body('dialog-code')}</div>
           </StepDialog>

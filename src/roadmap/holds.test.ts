@@ -256,7 +256,7 @@ test('Step 4: the row, the group, the step, the print and the calendar read one 
   for (const read of ['undatedRows(', 'phaseRows(', 'floorRows(', 'planFinish(', 'planWeeks(finish, schedule)', 'finish.held']) assert.ok(print.includes(read), `the print no longer reads ${read}`)
   // The screen draws lanes (S3, planLanes.ts) and reads the same length and the same hold; its rows' dates read the same scheduling result (planBoard.ts boardWhenOf).
   const screen = readFileSync('src/ui/surfaces/Plan.tsx', 'utf8')
-  for (const read of ['laneReadings(', 'boardWhenOf(step, waveStart)', 'planWeeks(finish, c.schedule)', 'finish.held', 'laneViewOf(reading, titleOf)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
+  for (const read of ['laneReadings(', 'boardWhenOf(step, waveStart, laneView)', 'planWeeks(finish, c.schedule)', 'finish.held', 'laneViewOf(reading, titleOf)']) assert.ok(screen.includes(read), `the Plan no longer reads ${read}`)
 })
 
 // ---- the finish ----
@@ -345,7 +345,7 @@ test('Step 4 correction 1: a step sequenced after a scheduled prerequisite is da
   for (const q of plans()) {
     for (const s of q.r.steps.filter(open)) {
       const board = boardWhenOf(s)
-      assert.ok(['Not scheduled', 'After prerequisites', 'After review'].includes(board) || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
+      assert.ok(['Not scheduled', 'Review now', 'After prerequisites', 'After review'].includes(board) || YEAR.test(board), `${q.f.name}/${s.id}: the board reads "${board}", neither a day nor the placeholder`)
       if (waiting(s)) assert.doesNotMatch(board, /\d{4}/, `${q.f.name}/${s.id}: a step the schedule cannot date reads a day`)
       else if (!rowWhenWraps(s) && rowWhen(s) !== '' && rowWhen(s) !== 'now') assert.match(board, YEAR, `${q.f.name}/${s.id}: a dated row reads the placeholder`)
     }

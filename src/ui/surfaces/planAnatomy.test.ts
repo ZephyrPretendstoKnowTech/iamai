@@ -237,7 +237,7 @@ test('the metadata and timing zones are handed existing facts, and no new one is
   // board's own reading of it (planBoard.ts `boardWhenOf`), which shows a day or
   // the placeholder (A1b). It takes the VALUE and chooses what to show; it
   // computes no date, and every other surface still calls `rowWhen` directly.
-  assert.match(PLAN, /const when = boardWhenOf\(step, waveStart\)/, 'the timing zone no longer reads the one when authority')
+  assert.match(PLAN, /const when = boardWhenOf\(step, waveStart, laneView\)/, 'the timing zone no longer reads the one when authority')
   assert.match(PLAN, /when=\{when\}/, 'the row is no longer handed the board’s timing value')
   // The row is handed no reason: its lane label is its reason (RUN-CONTEXT-B decision 10).
   assert.equal(PLAN.includes('boardReasonOf'), false, 'the row is handed a reason line again')

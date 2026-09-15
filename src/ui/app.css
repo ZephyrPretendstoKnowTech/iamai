@@ -4610,3 +4610,10 @@ th .th-sort:focus-visible,
 
 .plan-progress-tile dt { justify-content: center; text-align: center; }
 .plan-progress-tile dd { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+
+/* Optional technical reference stays readable without dominating the help page. */
+.how-reference { margin-block: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius-panel); }
+.how-reference > summary { font-weight: var(--weight-strong); cursor: pointer; }
+.how-reference[open] > summary { margin-bottom: 1rem; }
+.baseline-definition pre { max-height: 28rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media print { .baseline-definition pre { max-height: none; overflow: visible; } }

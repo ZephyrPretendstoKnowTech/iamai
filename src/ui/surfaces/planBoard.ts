@@ -335,7 +335,7 @@ const READY_ON_PREFIX = WHEN_WORDS.readyOn.split('{')[0]
  * keeps its date; a held step has no scheduled day and reads the placeholder.
  * The board infers nothing about holds from a step's lane or the group it sits in.
  */
-export function boardWhenOf(step: Step, waveStart: string | null = null): string {
+export function boardWhenOf(step: Step, waveStart: string | null = null, lane: LaneView = laneViewFor(step)): string {
   if (step.status === 'skipped') return schedulingWords.deferred
   if (step.status === 'done') {
     const at = step.manualReview?.confirmedAt ?? step.history.filter((h) => h.to === 'done').at(-1)?.at
@@ -351,7 +351,10 @@ export function boardWhenOf(step: Step, waveStart: string | null = null): string
     dated: !words,
     day: day ? dayLabel(day) : null,
   })
-  if (result === WHEN.none || result === '—' || result === '–') return step.blockedBy.length > 0 ? schedulingWords.waiting : step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none
+  if (result === WHEN.none || result === '—' || result === '–') {
+    if (lane.lane === 'Ready' && lane.substatus === 'Review') return schedulingWords.reviewNow
+    return step.blockedBy.length > 0 ? schedulingWords.waiting : step.state.condition === 'needs-decision' ? schedulingWords.review : schedulingWords.none
+  }
   return step.manualReview || step.workflowChoices ? fillText(schedulingWords.estimate, { date: result }) : result
 }
 

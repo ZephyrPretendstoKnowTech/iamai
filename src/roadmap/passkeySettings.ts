@@ -202,6 +202,7 @@ type PasskeyWords = {
   off: string
   unknown: string
   none: string
+  allUsers: string
   current: string
   restriction: Record<PasskeyRestriction, string>
   target: { unrestricted: string; allow: string; allowPresent: string; block: string; common: string }
@@ -212,7 +213,7 @@ const words = (): PasskeyWords => (app.plan as unknown as { stepContract: { impl
 const onOff = (v: unknown, W: PasskeyWords): string => (v === true ? W.on : v === false ? W.off : W.unknown)
 const idsOf = (v: unknown, W: PasskeyWords): string => {
   const ids = Array.isArray(v) ? v.map((t) => String((t as { id?: unknown } | null)?.id ?? '')).filter((id) => id !== '') : []
-  return ids.length > 0 ? ids.join(', ') : W.none
+  return ids.length > 0 ? ids.map(id => id.toLowerCase() === 'all_users' ? W.allUsers : id).join(', ') : W.none
 }
 
 /** What the scan read, in words. */

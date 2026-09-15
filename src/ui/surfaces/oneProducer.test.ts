@@ -127,11 +127,11 @@ test('the row, the badge, the bar and the rail derive from one lane reading on e
       }
       // The rail: a day the plan schedules, or the placeholder (content review R1); never another word.
       const rail = railOf(c)
-      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled' || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
-      if (lane.lane !== 'Completed' && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
+      assert.ok(DAY.test(rail.metric) || rail.metric === 'Not scheduled' || (lane.lane === 'Ready' && lane.substatus === 'Review' && rail.metric === 'Review now') || (lane.lane === 'Completed' && rail.metric === 'Completed'), `${where}: the rail says "${rail.metric}" beside a row reading "${lane.label}"`)
+      if (lane.lane !== 'Completed' && !(lane.lane === 'Ready' && lane.substatus === 'Review') && c.milestone.at === null && !(c.schedule && c.schedule.at !== null && (c.schedule.class === 'scheduled' || c.schedule.class === 'observing')) && !(c.scheduledOn && lane.lane === 'Ready')) assert.equal(rail.metric, 'Not scheduled', `${where}: an undated step's rail is not the placeholder`)
       // The When column: a day or the placeholder.
-      const when = boardWhenOf(step, waveStartOf(step))
-      assert.ok(['Not scheduled', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
+      const when = boardWhenOf(step, waveStartOf(step), lane)
+      assert.ok(['Not scheduled', 'Review now', 'After prerequisites', 'After review', 'Already in place'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when), `${where}: When reads "${when}"`)
       if (step.status === 'done') assert.ok(when === 'Already in place' || DAY.test(when), `${where}: completion has neither evidence nor a date`)
       checked += 1
     }

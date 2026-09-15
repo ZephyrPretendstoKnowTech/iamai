@@ -2327,7 +2327,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   }
   if (canUseConditionalAccess && devicePlan?.phones === 'none') steps.push(prereq('s-ladder-phone-access-restriction'))
   if (canUseConditionalAccess) addWorkflowSteps(steps, input.coverage.organisation.notAssessed, snapshot, mapping, input.manualConfirmations, input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id))
-  applyManualReviews(steps, snapshot, input.manualConfirmations)
+  applyManualReviews(steps, snapshot, input.manualConfirmations, mapping)
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,

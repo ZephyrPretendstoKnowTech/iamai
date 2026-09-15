@@ -31,9 +31,8 @@ export function doneWhenTemplates(step: Step, doneWhen: unknown[]): unknown[] {
   // failures, everyone in scope seen — are replaced, never stated as something to
   // wait for. The lines after the gates stay.
   const configured = stepEvidenceStrategy(step) === 'configuration'
-  const gatesFor = configured ? (step.state.lifecycle === 'ready-to-enforce' ? [...shared.policyDoneWhenConfiguration, ...shared.policyDoneWhenEnforced] : shared.policyDoneWhenConfiguration) : null
-  const policy = gatesFor
-    ? [...gatesFor, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)]
+  const policy = configured
+    ? shared.policyDoneWhenConfiguration
     : readyWhen(step)
       ? [...tracked, ...shared.policyDoneWhen.slice(shared.policyDoneWhenTracked.length)]
       : shared.policyDoneWhen
