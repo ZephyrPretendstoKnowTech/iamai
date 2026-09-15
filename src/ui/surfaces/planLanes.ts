@@ -390,7 +390,11 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     r.reason = reason
     r.blockers = [...r.blockers, reason]
   }
-  for (const step of steps) { const reading = out.get(step.id); if (reading?.lane === 'Ready' && step.manualReview) reading.substatus = 'Review' }
+  for (const step of steps) {
+    const reading = out.get(step.id)
+    // Account checks ask for a review, not creation of a policy or object.
+    if (reading?.lane === 'Ready' && (step.manualReview || (reading.substatus === 'Create' && step.kind === 'check'))) reading.substatus = 'Review'
+  }
   for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
   return out
 }

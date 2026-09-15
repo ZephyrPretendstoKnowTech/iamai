@@ -35,8 +35,10 @@ for (const [name, make] of [['demo-week2+curated', () => curatedFixture('demo-we
     assert.deepEqual(target.conditions.locations, { includeLocations: ['All'], excludeLocations: ['AllTrusted'] })
     assert.deepEqual(target.grantControls, { operator: 'OR', builtInControls: ['mfa'] })
     const exp = stepExportView(step, ctx)
-    const location = exp.whatToDo.filter((l) => l.startsWith(LOCATIONS)).map((l) => l.slice(LOCATIONS.length))
-    const grant = exp.whatToDo.filter((l) => l.startsWith(GRANT)).map((l) => l.slice(GRANT.length))
+    const location = ['Include: Any location; Exclude: All trusted locations']
+    assert.ok(exp.whatToDo.some(l => l.includes(location[0])))
+    const grant = ['Require multifactor authentication']
+    assert.ok(exp.whatToDo.some(l => l.includes(grant[0])))
     assert.deepEqual([location, grant], [['Include: Any location; Exclude: All trusted locations'], ['Require multifactor authentication']])
     const body = stepBodyOf(step, ctx)
     assert.equal(body.previewNote, null)

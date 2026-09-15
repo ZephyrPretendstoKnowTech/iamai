@@ -18,6 +18,7 @@
 // on the step (S6), and a block the author scoped with a `baselineCommit`
 // condition stays scoped to its own pin. The step's one source line is the date
 // the package's Microsoft sources were last checked (`packageSourceLine`).
+import { emergencyPasskeyCompatibility } from '../../roadmap/passkeyCompatibility.ts'
 import registry from '../../content/implementation/registry.generated.json' with { type: 'json' }
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 import type { PolicyOperation, Step } from '../../roadmap/types.ts'
@@ -650,6 +651,21 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   const registration = ctx.snapshot?.config?.deviceRegistrationPolicy
   const mfa = registration?.status === 'ok' ? (registration.rows?.[0] as { multiFactorAuthConfiguration?: unknown } | undefined)?.multiFactorAuthConfiguration : undefined
   put('tenant.deviceRegistration.multiFactorAuthConfiguration', typeof mfa === 'string' ? mfa : undefined)
+  if (step.id === 's-prereq-device-plan') {
+    const W = shared.deviceBriefing as Record<string, string>
+    const devices = ctx.snapshot.devices
+    const deviceRead = ctx.snapshot.sources.devices?.status === 'ok'
+    put('device.evidence.summary', deviceRead ? fillText(W.evidence, { n: devices.length, managed: devices.filter(d => d.isManaged === true).length, compliant: devices.filter(d => d.isCompliant === true).length, hybrid: devices.filter(d => d.trustType === 'ServerAd').length }) : W.unread)
+    put('device.phones.summary', fillText(W.phones, { n: ctx.snapshot.scenarioEvidence?.phoneSignIns?.people.length ?? 'unknown' }))
+    put('device.computers.summary', fillText(W.computers, { n: ctx.snapshot.scenarioEvidence?.unjoinedComputers?.people.length ?? 'unknown' }))
+    put('device.intune.summary', fillText(W.intune, { state: ctx.snapshot.capabilities.intune?.enabled ? 'available' : 'not confirmed' }))
+    put('dependencies.downstreamSteps', 'Require a Managed Device Outside the Office; app protection; device preparation')
+  }
+  if (step.id === 's-prereq-break-glass' || step.id === PASSKEY_SETTINGS_STEP_ID) {
+    const W = shared.passkeyCompatibility as Record<string, string>
+    const rows = emergencyPasskeyCompatibility(ctx.snapshot, ctx.mapping.breakGlassUserIds, ctx.groups)
+    put('emergency.passkey.compatibility', rows.length ? rows.map(row => `${ctx.nameOf(row.accountId)}: ${W[row.reason]}`).join('\n') : W.noAccounts)
+  }
   put('tenant.displayName', tenantNameOf(ctx.snapshot))
   put('people.affected.count', stepPopulation(step)?.active)
   put('dependencies.blockers', c.fix.length > 0 ? c.fix.map((f) => f.text) : undefined)

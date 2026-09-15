@@ -32,7 +32,7 @@ export function addWorkflowSteps(steps: Step[], policies: NotAssessed[], snapsho
   const answer = (key: string): string => mapping.workflowAnswers?.[key] ?? (mapping.facetOverrides[key] ? mapping.facetOverrides[key].on ? 'yes' : 'no' : 'unsure')
   if (keys.length) {
     const step = base(WORKFLOW_STEP, W.title, W.why)
-    step.workflowChoices = keys.map((key) => ({ key, label: (W.names as Record<string, string>)[key] ?? key, evidence: detected[key as Facet]?.reason ?? W.noSignal, answer: answer(key) }))
+    step.workflowChoices = keys.map((key) => ({ key, label: (W.names as Record<string, string>)[key] ?? key, evidence: detected[key as Facet]?.evidence ?? detected[key as Facet]?.reason ?? W.noSignal, answer: answer(key), suggested: !Object.hasOwn(mapping.workflowAnswers ?? {}, key) && !mapping.facetOverrides[key] && detected[key as Facet]?.observedUsage === true })).sort((a, b) => Number(b.suggested) - Number(a.suggested))
     const complete = keys.every((key) => answer(key) !== 'unsure')
     setState(step, { satisfied: complete, inPlace: complete, condition: complete ? 'healthy' : 'needs-decision' })
     if (complete && mapping.workflowConfirmedAt && Date.parse(mapping.workflowConfirmedAt) <= Date.now()) step.history = [{ at: mapping.workflowConfirmedAt, from: 'blocked', to: 'done', note: W.done }]

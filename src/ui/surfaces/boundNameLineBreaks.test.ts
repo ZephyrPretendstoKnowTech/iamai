@@ -90,7 +90,7 @@ test('a removed exclusion named with a line break stays one comment line in the 
     assert.deepEqual([psLines[k - 1], psLines[k + 1]], ['function Invoke-IAMAIStep {', 'param('], ps.slice(0, 500))
     assert.doesNotMatch(ps, /^\s*Remove-MgGroup/m)
     const entra = tab('portal')
-    assert.ok(entra.includes(`   ${said}`), entra)
+    assert.ok(entra.startsWith(said), entra)
     assert.doesNotMatch(entra, /^\s*Remove-MgGroup/m)
     assert.ok(tab('ai').includes(said))
     const exported = stepExportView(step, ctx).whatToDo.filter((l) => l.includes('This change removes'))

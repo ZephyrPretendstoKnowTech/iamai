@@ -92,7 +92,7 @@ export const PROMPTS = {
     mfaGuide: (tenant: string) => `Write MFA setup instructions for ${tenant} users, for iPhone and Android, at a reading level a non-technical person can follow, using Microsoft Authenticator and https://aka.ms/mfasetup.`,
     kb: (tenant: string) => `Turn the step below into a help-desk knowledge base article for ${tenant} with symptoms, cause, and fix.`,
     changeRequest: (tenant: string) => `Write a change request from the record below, for ${tenant}, in the usual shape: summary, scope, risk, rollback, verification, dates.`,
-    explain: 'Explain this step to someone new to Conditional Access, then quiz them on it with five questions.',
+    explain: 'Explain this plan to the administrator carrying out the work. Start with the actions available now, the decisions still needed, and the checks required before enforcement. Distinguish observed facts from estimates and unknowns.',
     pushback: (tenant: string) => `A stakeholder at ${tenant} says no to the change below. Write three responses that address the risk without being pushy, each under 100 words.`,
     translate: (language: string) => `Translate this announcement into ${language}, keeping the dates, times and instructions exact.`,
     summarise: (tenant: string) => `Summarise this plan for a non-technical business owner of ${tenant} in five sentences.`,

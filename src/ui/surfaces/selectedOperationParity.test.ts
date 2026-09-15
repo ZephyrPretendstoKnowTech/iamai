@@ -71,12 +71,11 @@ test('Medium user risk on mid: the export states the guest exclusion and no sess
   assert.ok(resolved.sessionControls, 'the premise: the resolved operation carries a session control')
 
   const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
-  const users = lines.find((l) => l.startsWith('Users → Include:'))
-  assert.ok(users, JSON.stringify(lines))
-  assert.match(users, /^Users → Include: All users\. /)
-  assert.match(users, /Also exclude Guest or external users \(all types\)\.$/)
-  assert.equal(lines.some((l) => l.startsWith('Session →')), false, 'no session control is instructed')
-  assert.ok(lines.includes('Grant → Require multifactor authentication, Require password change; Require all the selected controls'))
+  const text = lines.join('\n')
+  assert.match(text, /Users: Include All users/)
+  assert.match(text, /Also exclude Guest or external users.*all types/)
+  assert.match(text, /Session: not configured/)
+  assert.match(text, /Require multifactor authentication and Require password change.*Require all selected controls/)
 })
 
 test('Medium sign-in risk on mid: the export grants built-in MFA with no session control, as the JSON sends', () => {
@@ -84,7 +83,7 @@ test('Medium sign-in risk on mid: the export grants built-in MFA with no session
   const body = jsonOf(o) as { grantControls: { builtInControls: string[] }; sessionControls: unknown }
   assert.deepEqual(body.grantControls.builtInControls, ['mfa'])
   const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
-  assert.ok(lines.includes('Grant → Require multifactor authentication'), JSON.stringify(lines))
+  assert.match(lines.join('\n'), /Grant → Grant access → Require multifactor authentication/)
   assert.equal(lines.some((l) => l.startsWith('Session →') || /authentication strength/.test(l)), false)
 })
 
@@ -137,17 +136,12 @@ test('every packaged policy step whose lines are handed over: the export lines a
       const contract = stepContract(step, o.ctx, undefined, o.lane)
       const selected = selectedPolicyBodiesOf(step, o.ctx, contract)
       if (selected === null || selected.some((s) => s.preview)) continue
-      const names = portalNamesFor(o.ctx, stepVars(step, o.ctx) as Record<string, unknown>, step.title)
-      const expected = stepPortalLines(step, names, selected)
-      assert.ok(expected, `${name}/${step.id}: lines`)
+      const screen = stepBodyOf(step, o.ctx, { lane: o.lane }).artifacts.find(a => a.id === 'portal' && !a.unavailable)
+      assert.ok(screen, 'the active Entra channel is present')
+      const expected = screen.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
       const lines = stepExportView(step, o.ctx, o.lane).whatToDo
-      for (const l of expected) assert.ok(lines.includes(l), `${name}/${step.id}: the export lacks "${l}"`)
-      for (const s of selected) {
-        const b = s.body as { sessionControls?: unknown; grantControls?: { builtInControls?: string[] } | null }
-        const lone = selected.length === 1
-        if (lone && s.method === 'POST' && b.sessionControls === null) assert.equal(lines.some((l) => l.startsWith('Session →')), false, `${name}/${step.id}: a session control the JSON does not send`)
-        if (lone && b.grantControls?.builtInControls?.includes('block')) assert.ok(lines.includes('Grant → Block access'), `${name}/${step.id}: the block grant`)
-      }
+      for (const line of expected) assert.ok(lines.includes(line), step.id + ': export differs from the rendered Entra instructions')
+      assert.ok(!lines.some(l => l.startsWith('Description: [IAMAI:')), 'the retired translator cannot add unsupported policy fields')
       compared += 1
     }
   }

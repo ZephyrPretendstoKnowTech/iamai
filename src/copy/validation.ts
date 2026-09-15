@@ -181,7 +181,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'An account disabled for safety is not an escape hatch when it is needed.',
   },
   'bg.excludedFromAllPolicies': {
-    what: 'The account is excluded from every enabled and report-only Conditional Access policy, Microsoft-managed ones included.',
+    what: 'The account is excluded from every enabled Conditional Access policy. Report-only and Microsoft-managed policies have separate checks.',
     why: 'The account exists to survive a policy that goes wrong; a policy it is inside can lock it out with everyone else.',
   },
   'bg.notInDynamicScope': {
@@ -197,7 +197,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
     why: 'One lost or wiped phone must not take out the whole escape hatch.',
   },
   'bg.notPersonal': {
-    what: "The account is not somebody's day-to-day account: no department, no job title, no office, not the signed-in operator.",
+    what: "Review whether this is a dedicated recovery account when personal profile fields are populated or the account is signed in to IAMAI. These signals do not prove daily use.",
     why: 'A person leaves, is compromised, or is on a plane. The emergency account has to belong to the organisation rather than to somebody.',
   },
   // ---- break-glass, warnings ----
@@ -207,7 +207,7 @@ export const RULE_TEXT: Record<string, { what: string; why: string }> = {
   },
   'bg.microsoftManaged': {
     what: 'The account is excluded from the policies Microsoft manages.',
-    why: 'Microsoft creates these in report-only and turns them on itself, no less than thirty days later and sometimes sooner. A policy nobody in the organisation created can catch the emergency account.',
+    why: 'Microsoft-managed policies can change state on their announced schedule. Check the policy notice and exclusions before enforcement; use the schedule shown for this tenant.',
   },
   'bg.phishingResistant': {
     what: 'At least one phishing-resistant method (a security key, a passkey or Windows Hello for Business) is registered.',
@@ -334,8 +334,8 @@ export const FINDING = {
   bgSharedDevice: (device: string, who: string[]): string =>
     `the Authenticator device "${device}" is also registered by ${list(who)}: the same device name usually means the same phone`,
   bgDynamic: (group: string, rule: string): string => `swept into the dynamic group ${group} by its rule (${rule})`,
-  bgPersonal: (facts: string[]): string => `looks like a person's own account: ${list(facts)}`,
-  bgPersonalOperator: 'this is the account signed in to IAMAI right now',
+  bgPersonal: (facts: string[]): string => `review whether this is a dedicated recovery account: ${list(facts)}. Profile fields alone do not establish daily use`,
+  bgPersonalOperator: 'this account is signed in to IAMAI now. Confirm this is a controlled recovery test rather than daily administration',
   bgSmsOnly: 'a code by text or call is the only method registered',
   bgNoPhishingResistant: 'no phishing-resistant method registered: a security key or passkey is the stronger choice',
   bgSameMethodType: (kind: string): string => `every emergency account relies on ${kind} alone`,

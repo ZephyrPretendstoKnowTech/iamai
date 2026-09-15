@@ -9,6 +9,8 @@
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 This policy already exists. The correction changes only the settings IAMAI found different from the intended target, on the same policy.
 
 1. Go to Entra admin center → Conditional Access → Policies.
@@ -35,7 +37,6 @@ Rename the same policy to **{{policy.target.displayName}}**. The display name do
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 6. Save. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
-   This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 7. Rescan in IAMAI to confirm the correction. Verify after the change: an ordinary user in scope can complete MFA, and emergency access still works.
 @@IAMAI-END
 

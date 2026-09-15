@@ -15,6 +15,8 @@ Create this policy in Report-only. It will not enforce its access rule until you
 9. Create. Rescan in IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the existing Conditional Access policy IAMAI resolved, using its policy ID. The display name is context only; do not use it to find the policy to update.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.users","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -40,7 +42,6 @@ Save only the selected corrections, read back the same policy ID, then rescan IA
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Keep the policy in Report-only while you review the evidence listed for this step. Check that the user-driven enrollment paths you use reach Microsoft Intune Enrollment, and review userless/self-deploying paths separately. Report-only can show policy applicability, but it cannot prove a fresh reauthentication prompt occurred. Rescan when evidence changes.

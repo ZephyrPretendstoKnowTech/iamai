@@ -36,6 +36,9 @@ export type AuthMethodSummary = {
   deviceTag?: string
   platform?: string
   model?: string
+  aaGuid?: string
+  attestationLevel?: string
+  passkeyType?: string
   phoneType?: 'mobile' | 'alternateMobile' | 'office'
   isUsable?: boolean
 }

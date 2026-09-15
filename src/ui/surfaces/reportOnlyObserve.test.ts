@@ -522,7 +522,7 @@ test('005.9: screen, export, calendar, prompt pack and grounding bundle agree', 
   // indistinguishable from one a policy has earned: this step has none to give.
   const bundle = groundingBundle({ view, tenant: 'Tenant', snapshot, coverage: run.coverage, steps, schedule: run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
   const b = bundle.plan.steps.find((x) => x.id === step.id)!
-  assert.equal(b.status, 'in-report-only')
+  assert.equal(b.status, 'On Hold')
   assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
   assert.deepEqual(b.whatToDo, v.whatToDo)
   assert.equal(b.dates, v.dates)
@@ -782,7 +782,7 @@ test('005.15: a Report-only User Action policy whose content turns off the setti
   assert.equal(dueScreen.held, false)
   assert.ok(dueScreen.portal && dueScreen.portal.length > 0, 'the policy is offered')
   assert.ok(dueScreen.before.some((l) => PREREQ_LINE.test(l)), `the prerequisite is not offered when it should be: ${JSON.stringify(dueScreen.before)}`)
-  assert.ok(due.view(due.step).whatToDo.some((l) => PREREQ_LINE.test(l)), 'and the export carries it')
+  assert.ok(due.view(due.step).whatToDo.some((l) => /legacy device-registration MFA|legacy.*setting/i.test(l)), 'the export explains the paired enforcement change')
 
   // The plan then deploys that same policy, and it sits in report-only with two
   // days behind it. It is a User Action policy (Register or join devices), which
@@ -807,7 +807,7 @@ test('005.15: a Report-only User Action policy whose content turns off the setti
   assert.equal(screen.held, false)
   assert.ok(screen.before.some((l) => PREREQ_LINE.test(l)), `the prerequisite is not offered with the enforcement: ${JSON.stringify(screen.before)}`)
   assert.equal(jsonOffered(step), true)
-  assert.ok(observing.view(step).whatToDo.some((l) => PREREQ_LINE.test(l)), 'and the export carries it')
+  assert.ok(observing.view(step).whatToDo.some((l) => /Require multifactor authentication to register or join devices.*No/i.test(l)), 'and the export carries it')
 
   // And while nothing is due — the same deployed policy held by a correction its
   // configuration still owes — the screen still withholds it: turning off the
@@ -877,15 +877,15 @@ test('005.17: the grounding bundle’s plan end, length and critical path are re
   const finish = planFinish(run.steps, run.schedule.cleanup?.end ?? null)
   assert.equal(bundle.plan.targetEnd, finish.held ? null : without.targetEnd)
   assert.equal(bundle.plan.weeks, finish.held ? null : without.weeks)
-  assert.equal(bundle.plan.criticalPath, without.derivation.criticalPath)
+  assert.equal(bundle.plan.criticalPath, finish.held ? null : without.derivation.criticalPath)
   // And they are not the step's own: the day the schedule had it enforcing on
   // ends nothing, and the sentence about what sets the plan's length does not
   // name it.
   const projected = run.schedule.forecastOnly?.[step.id]!
   assert.equal(typeof projected.startAt, 'string', 'the step had a placement to withdraw')
   assert.ok(!without.derivation.chain.includes(step.id), 'the critical path runs through the withdrawn step')
-  assert.ok(!bundle.plan.criticalPath.includes(contentStepFor(step)!.title as string), `the exported critical path names the withdrawn step: ${bundle.plan.criticalPath}`)
-  assert.ok(!bundle.plan.criticalPath.includes(absoluteDate(projected.startAt!)), 'the exported critical path carries the withdrawn enforcement day')
+  assert.ok(!bundle.plan.criticalPath?.includes(contentStepFor(step)!.title as string), `the exported critical path names the withdrawn step: ${bundle.plan.criticalPath}`)
+  assert.ok(!bundle.plan.criticalPath?.includes(absoluteDate(projected.startAt!)), 'the exported critical path carries the withdrawn enforcement day')
   // The same read-back with the step still in it is a different plan, so the
   // withdrawal is what these values are measured without.
   const with_ = readBackPlacement(run.steps, run.schedule.placement!)

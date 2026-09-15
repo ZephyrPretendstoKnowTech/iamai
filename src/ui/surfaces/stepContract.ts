@@ -753,12 +753,13 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   // Emergency access in place with its hardening deferred is not fully resilient,
   // and Done when does not say it is (owner, 2026-09-11).
   if (step.state.satisfied && step.emergency?.deferredAt) return [CONTRACT.hardening.doneDeferred]
-  if (step.state.satisfied) return [fillText(CONTRACT.doneSatisfied, { tenant })]
+  if (step.state.satisfied && step.state.condition !== 'needs-decision') return [fillText(CONTRACT.doneSatisfied, { tenant })]
   // The step's own gates, with the shared policy/change placeholders expanded and
   // any line with a hole dropped (§8.7); they are the finish where there is one.
   const own = doneWhenTemplates(step, (cs?.doneWhen ?? []) as unknown[])
     .filter((x) => whole(x, ex))
     .map((x) => fillText(x, ex))
+  if (step.state.condition === 'needs-decision') return cs?.kind !== 'policy' && own.length > 0 ? own : [CONTRACT.doneDecision]
   if (reason !== null) {
     // A held policy still finishes where every policy finishes: what clears the
     // hold comes first, then the control's end state (the approved design's held
@@ -781,7 +782,6 @@ function doneWhenOf(step: Step, reason: UnavailableReason | null, cs: Record<str
   const review = heldForReview(step) ? [CONTRACT.doneReview] : []
   if (own.length > 0) return [...review, ...own]
   if (review.length > 0) return review
-  if (step.state.condition === 'needs-decision') return [CONTRACT.doneDecision]
   if (fix.length > 0) return [CONTRACT.doneBlocked]
   if (step.kind === 'verify' || step.kind === 'check') return [CONTRACT.doneVerify]
   return [fillText(CONTRACT.doneDeploy, { tenant })]
@@ -1468,7 +1468,7 @@ export function railOf(c: StepContract, actionText: string | null = null): { met
   if (m.at !== null) return { metric: absoluteDate(m.at), sub }
   // Work the Plan schedules in a phase, with no dated milestone of its own, reads
   // the day its row's When reads.
-  if (s === null && c.scheduledOn && l?.lane === 'Ready' && (l.substatus === 'Create' || l.substatus === null)) return { metric: absoluteDate(c.scheduledOn), sub }
+  if (c.scheduledOn && l?.lane === 'Ready') return { metric: absoluteDate(c.scheduledOn), sub }
   return { metric: NO_DATE, sub }
 }
 

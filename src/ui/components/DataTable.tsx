@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { Button } from './Button.tsx'
 import { EmptyState } from './EmptyState.tsx'
 import { toCsv } from '../format.ts'
-import { REDACTED, exportDownload } from '../exportGuard.ts'
+import { REDACTED, exportDownload, unredactedFrom } from '../exportGuard.ts'
+import { shared } from '../../content/content.ts'
 import { COMPONENTS } from '../../copy/components.ts'
 
 const T = COMPONENTS.table
@@ -114,7 +115,7 @@ export function DataTable<T>({
         sorted.map((r) => cols.map((c) => c.csv!(r))),
       ),
       'text/csv',
-      REDACTED,
+      unredactedFrom('inventory-csv'),
     )
   }
 
@@ -225,7 +226,7 @@ export function DataTable<T>({
           </>
         )}
         {csvName && (
-          <Button size="sm" icon="download" onClick={exportCsv}>
+          <Button size="sm" icon="download" title={String(shared.csvNotice)} onClick={exportCsv}>
             {T.exportCsv}
           </Button>
         )}

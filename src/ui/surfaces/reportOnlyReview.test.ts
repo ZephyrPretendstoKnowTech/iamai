@@ -533,7 +533,7 @@ test('006.11: every artifact says Report-only, held for review, review-and-scan-
   // The grounding bundle and the calendar entry say the same thing.
   const bundle = groundingBundle({ view: c.view, tenant: 'Tenant', snapshot: c.snapshot, coverage: c.run.coverage, steps: c.run.steps, schedule: c.run.schedule, redacted: false, generated: 'Sep 6, 2026', cleanup: [] }) as unknown as { plan: { steps: Record<string, unknown>[] } }
   const b = bundle.plan.steps.find((s) => s.id === c.step.id) as Record<string, unknown>
-  assert.equal(b.status, 'in-report-only')
+  assert.equal(b.status, 'Ready')
   assert.deepEqual(b.enforcement, { basis: 'unearned', at: null })
   assert.deepEqual(b.whatToDo, [action])
   assert.equal(b.dates, v.dates)

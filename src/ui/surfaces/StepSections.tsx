@@ -78,7 +78,7 @@ export function PlanRow({ lane, tone, chip = null, wave = null, title, who, when
       }}
     >
       <span className="plan-row-status">
-        <span className={`lane lane-${tone}`}>{lane}</span>
+        <span className={`lane lane-${tone}`}>{compactLane(lane)}</span>
         {chip && <Status tone={tone}>{chip}</Status>}
       </span>
       {/* The pack's `.row-title`: the title. Why the row is where it is, is the
@@ -147,7 +147,7 @@ export function StepHead({ eyebrow = null, title, sub = null, badge, tone, fact 
         </div>
         <span className="step-head-state">
           <Status tone={tone} pill>
-            {badge}
+            {compactLane(badge)}
           </Status>
           {fact && (
             <Status tone={tone} pill title={fact}>
@@ -368,7 +368,7 @@ function Tile({ tile: t, open, autoOpen = false, extra, onConfirm, onOpenMapping
           {MARK[t.tone]}
         </span>
       )}
-      <span className="key-label">{t.label}</span>
+      <span className="key-label">{t.label !== t.value ? t.label : null}</span>
       <strong>{t.value}</strong>
       {more && <Icon name="chevron" size={14} className="tile-chevron" />}
     </>
@@ -692,3 +692,6 @@ export function DoneWhen({ heading, lines }: { heading: string; lines: string[] 
     </StepSection>
   )
 }
+
+/** Keep prerequisite titles in the opened readiness detail, not in the narrow state cell. */
+function compactLane(label: string): string { return label.startsWith('Up Next ·') ? 'Up Next' : label.startsWith('On Hold · After ') ? 'On Hold' : label }

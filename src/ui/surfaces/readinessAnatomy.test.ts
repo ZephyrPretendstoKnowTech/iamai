@@ -116,8 +116,8 @@ test('the worklist has the reference\'s six zones in its order, with separate Me
   assert.match(SURFACE, /<strong className="person-name">[\s\S]{0,120}<span className="person-upn tenant-object">/)
   // The CSV is the same six cells in the same order.
   const t = readinessTable(fixture('demo').snapshot, fixture('demo').mapping)
-  assert.deepEqual(t.header, W.columns)
-  for (const row of t.rows) assert.equal(row.length, W.columns.length)
+  assert.deepEqual(t.header, [W.columns[0], 'Sign-in name', ...W.columns.slice(1)])
+  for (const row of t.rows) assert.equal(row.length, W.columns.length + 1)
 })
 
 test('the Role column is understated: a word, and no colour of its own', () => {

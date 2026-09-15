@@ -5,7 +5,7 @@
 // plan regenerates from the answers: a policy naming an unanswered reference is
 // On Hold with a `sourceMapping` blocker, and returns to its lane once mapped.
 // Nothing here guesses a meaning.
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
 import type { GroupMembers } from '../../coverage/population.ts'
@@ -21,7 +21,8 @@ import { optionsOf } from './stepQuestion.ts'
 import { Options } from './ContentStep.tsx'
 import { MAPPING_WORDS, mappingRowsOf } from './baselineMappings.ts'
 
-export function BaselineMappings({ steps, snapshot, mapping, nameOf, groups, saved, onDecide }: {
+export function BaselineMappings({ steps, snapshot, mapping, nameOf, groups, saved, onDecide, openRequest = 0 }: {
+  openRequest?: number
   steps: readonly Step[]
   snapshot: TenantSnapshot
   mapping: MappingState
@@ -30,6 +31,8 @@ export function BaselineMappings({ steps, snapshot, mapping, nameOf, groups, sav
   saved: StepDecision | null
   onDecide: (decision: StepDecisionInput) => void
 }) {
+  const [expanded, setExpanded] = useState(openRequest > 0)
+  useEffect(() => { if (openRequest > 0) setExpanded(true) }, [openRequest])
   const w = MAPPING_WORDS
   const ex = {}
   const rows = mappingRowsOf(steps, { snapshot, mapping, nameOf })
@@ -47,7 +50,8 @@ export function BaselineMappings({ steps, snapshot, mapping, nameOf, groups, sav
   }
   return (
     <section className="baseline-mappings" aria-labelledby={`${base}-h`}>
-      <h4 id={`${base}-h`}>{w.h4}</h4>
+      <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)}>
+      <summary id={`${base}-h`}>{w.h4} · {fillText(w.pendingCount, { n: rows.filter(r => r.answer === 'pending').length })}</summary>
       <p className="reason">{w.intro}</p>
       {rows.length === 0 && <p className="reason">{w.empty}</p>}
       {rows.map((r) => {
@@ -57,7 +61,7 @@ export function BaselineMappings({ steps, snapshot, mapping, nameOf, groups, sav
             <div className="dlabel" id={labelId}>{r.label}</div>
             <p className="reason mapping-status">{r.roleWord ? `${r.status} · ${r.roleWord}` : r.status}</p>
             {r.roleLine && <p className="reason">{r.roleLine}</p>}
-            <p className="reason">{fillText(w.usedBy, { policies: list(r.policies) })}</p>
+            <details><summary>{fillText(w.usedBy, { n: r.policies.length })}</summary><ul>{r.policies.map((policy) => <li key={policy}>{policy}</li>)}</ul></details>
             <Options key={`${r.id}:${saved?.answers?.[r.id] ?? ''}`} name={answerKey(BASELINE_MAPPINGS_KEY, r.id)} labelledBy={labelId} options={options} answer={answers[r.id] ?? null} onAnswer={(a) => setAnswers((prev) => ({ ...prev, [r.id]: a }))} ex={ex} universe={universeOf(r.kind)} nameOf={nameOf} single />
             {r.omitLine && <p className="reason">{r.omitLine}</p>}
             <p className="reason">{r.answerLine}</p>
@@ -80,6 +84,7 @@ export function BaselineMappings({ steps, snapshot, mapping, nameOf, groups, sav
           </Button>
         </p>
       )}
+      </details>
     </section>
   )
 }

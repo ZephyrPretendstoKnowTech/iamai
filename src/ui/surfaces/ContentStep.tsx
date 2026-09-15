@@ -301,6 +301,13 @@ export function ContentStep({
           >
             <MfaHandoff step={step} snapshot={ctx.snapshot} mapping={ctx.mapping} />
           </ReadinessSection>
+          {typeof pkgBindings?.['emergency.passkey.compatibility'] === 'string' && (
+            <details className="step-section">
+              <summary>{(content.shared.passkeyCompatibility as Record<string, string>).heading}</summary>
+              <ul>{String(pkgBindings['emergency.passkey.compatibility']).split('\n').map((line, i) => <li key={i}>{line}</li>)}</ul>
+              <a href="#/plan#s-prereq-passkey-settings">Configure Passkey Authentication</a>
+            </details>
+          )}
 
           {/* The baseline defines this policy two ways (roadmap/baselineConflict.ts):
               the approved design's danger attention, under Readiness. The words
@@ -561,7 +568,7 @@ function Implementation({ artifacts, drawnBy, preview, notes, title, empty, sour
       <pre className={`${cls} mono`}>{active.text()}</pre>
     )
   const support = (active?.note ?? null) !== null || source !== null || onTroubleshooting !== null || learn !== null
-  const copyable = preview === null && active !== null && active.unavailable !== true
+  const copyable = active !== null && active.unavailable !== true && (preview === null || active.id === 'ai' || active.id === 'email')
   // A planning preview is not executable: Copy stays where it is, disabled, and
   // says why in the preview's own lines (stepBody.ts previewNote), inline and in
   // the viewer (RUN-CONTEXT-B decision 4, U18). aria-disabled keeps the reason
@@ -760,7 +767,7 @@ function ReasonForm({ body, label, placeholder, cancel, confirm, multiline = fal
 }
 
 function Decision(props: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
-  return <SingleDecision {...props} />
+  return <div className="decision-form"><SingleDecision {...props} /></div>
 }
 
 function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<string, any>; ex: Ex; saved: StepDecision | null; onDecide?: (decision: StepDecisionInput) => void; stepId: string; ctx: StepVarContext }) {
@@ -820,13 +827,20 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
     if (strict && typeof strict.when === 'string' && answerParts(next, options)?.option.text !== strict.when) setStrictOn(false)
   }
   const base = useId()
-  const save = (): void =>
+  const complete = (value: string | null, choices: QuestionOption[]): boolean => {
+    const parsed = answerParts(value, choices)
+    return parsed !== null && (parsed.option.needs === null || parsed.picked.length > 0)
+  }
+  const canSave = (options.length === 0 || complete(option, options)) && (!question || complete(answer, question.options)) && (!single || chips.length > 0)
+  const save = (): void => {
+    if (!canSave) return
     onDecide?.({
       ...(hasPicker ? { picked: chips.map((c) => c.id) } : {}),
       ...(option !== null ? { option } : {}),
       ...(question && answer !== null ? { answers: { [question.label]: answer } } : {}),
       ...(strict && strictShown && strictOn ? { answers: { ...(question && answer !== null ? { [question.label]: answer } : {}), [strict.label]: strict.option } } : {}),
     })
+  }
   // Each effect line shows once its answer applied (answers.ts effectLine): the
   // applied mapping holds the stored answer, so the line is true when it shows.
   const decisionAnswer = answerOf(ctx.mapping, stepId, 'decision')
@@ -871,7 +885,7 @@ function SingleDecision({ d, ex, saved, onDecide, stepId, ctx }: { d: Record<str
             </div>
           </>
         )}
-        <Button variant="secondary" onClick={save}>{d.save || 'Save'}</Button>
+        <Button variant="secondary" disabled={!canSave} onClick={save}>{d.save || 'Save'}</Button>
       </div>
     </>
   )
@@ -1086,5 +1100,6 @@ function WorkflowDecision({ step, onDecide, printing }: { step: Step; onDecide?:
   const choices = step.workflowChoices ?? []
   const [draft, setDraft] = useState<Record<string, string>>({})
   const W = workflowWords
-  return <section className="workflow-choices"><p>{W.instructions}</p>{choices.map((c) => <label key={c.key} className="workflow-choice"><strong>{c.label}</strong><span className="reason">{c.evidence}</span>{printing ? <span>{(W.answers as Record<string, string>)[c.answer]}</span> : <select aria-label={c.label} value={draft[c.key] ?? c.answer} onChange={(e) => { const value = e.currentTarget.value; setDraft((d) => ({ ...d, [c.key]: value })) }}>{Object.entries(W.answers).map(([key, label]) => <option key={key} value={key}>{String(label)}</option>)}</select>}</label>)}{!printing && <Button variant="primary" onClick={() => { onDecide?.({ answers: Object.fromEntries(choices.map((c) => [c.key, draft[c.key] ?? c.answer])) }); setDraft({}) }}>{W.save}</Button>}</section>
+  const choiceOf = (c: typeof choices[number]) => draft[c.key] ?? (c.suggested ? "yes" : c.answer)
+  return <section className="workflow-choices"><p>{W.instructions}</p>{choices.map((c) => <label key={c.key} className="workflow-choice"><strong>{c.label}</strong><span className="reason">{c.suggested ? `${W.detected}. ${c.evidence}` : c.evidence}</span>{printing ? <span>{(W.answers as Record<string, string>)[c.answer]}</span> : <select aria-label={c.label} value={choiceOf(c)} onChange={(e) => { const value = e.currentTarget.value; setDraft((d) => ({ ...d, [c.key]: value })) }}>{Object.entries(W.answers).map(([key, label]) => <option key={key} value={key}>{String(label)}</option>)}</select>}</label>)}{!printing && <Button variant="primary" onClick={() => { onDecide?.({ answers: Object.fromEntries(choices.map((c) => [c.key, choiceOf(c)])) }); setDraft({}) }}>{W.save}</Button>}</section>
 }

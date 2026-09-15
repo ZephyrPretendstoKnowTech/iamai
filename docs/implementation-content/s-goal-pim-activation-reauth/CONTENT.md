@@ -19,6 +19,8 @@ Entra admin center → Entra ID → Conditional Access → Policies → New poli
 Save, read back, and rescan IAMAI. Do not configure PIM role settings yet.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the authentication context or Conditional Access policy IAMAI identified for this difference. For a policy correction, confirm the policy ID before saving and keep its current state.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.context","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -47,7 +49,6 @@ Save only the selected correction(s), read back the same policy ID, and rescan I
 
 Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
 Keep the policy in Report-only while you review the evidence listed for this step: its authentication context target, authentication strength, exclusions, and Every time session control. Use Conditional Access What If where useful. Do not configure the PIM role authentication-context rule yet: Microsoft's current guidance says the backup MFA mechanism is not triggered when the matching Conditional Access policy is Report-only.

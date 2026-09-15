@@ -1,3 +1,4 @@
+import { stepBodyOf } from './stepBody.ts'
 // The canonical Plan case: Ready to enforce (task 007).
 //
 // Task 005 proved a healthy policy in report-only does not advance early and
@@ -752,7 +753,9 @@ test('007.6: Portal opens the existing policy by name, and JSON, PowerShell and 
   assert.ok(ps.includes(json), 'the PowerShell body is the JSON tab’s body')
   // The screen's own What to do is the same set of lines the export carries.
   assert.deepEqual(instructionsOf(c.step, c.ctx).portal, portal)
-  assert.deepEqual(c.view(c.step).whatToDo.slice(1), portal)
+  const actual = stepBodyOf(c.step, c.ctx).artifacts.find(a => a.id === 'portal' && !a.unavailable)!
+  const rendered = actual.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  assert.deepEqual(c.view(c.step).whatToDo.slice(-rendered.length), rendered)
 })
 
 // ---- 7. the rollback is the inverse of what was submitted ----

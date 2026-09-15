@@ -34,6 +34,8 @@ Microsoft reference: https://learn.microsoft.com/en-us/entra/identity/conditiona
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
+This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+
 Open the IAMAI-resolved named location and/or workload Conditional Access policy by their stable tenant IDs. Do not create replacements.
 @@IAMAI-END
 
@@ -80,7 +82,6 @@ Save the same object(s), read them back, and rescan IAMAI. Do not enforce until 
 
 Keep the policy's current state: if it is On, the correction applies to the sync service principal's token requests as soon as you save. A request from outside the approved named location is then blocked, so confirm the sync server's current egress address is in that location first.
 
-This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}

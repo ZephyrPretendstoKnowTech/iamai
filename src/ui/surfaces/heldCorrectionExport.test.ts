@@ -22,7 +22,7 @@ import { stepExportView } from './stepExport.ts'
 import { stepBodyOf } from './stepBody.ts'
 import { packageStateOf, plannedOperationsOf, plannedPackageStateOf, safeCorrectionOf } from './stepPackage.ts'
 
-const PORTAL = /^Entra admin center → /
+const PORTAL = /Conditional Access (?:→|>) Policies/
 
 function exportsOf(f: Fixture, ids: readonly string[]) {
   const r = runFixture(f, {}, null, f.snapshot.asOf)

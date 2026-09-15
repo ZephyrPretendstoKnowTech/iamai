@@ -14,7 +14,7 @@ export type Facet =
   | 'agents'
   | 'azureManagement'
 
-export type FacetState = { on: boolean; reason: string; source: 'auto' | 'override' }
+export type FacetState = { on: boolean; reason: string; source: 'auto' | 'override'; observedUsage?: boolean; evidence?: string }
 export type FacetOverrides = Partial<Record<Facet, { on: boolean; reason: string }>>
 
 // The single facet table: detection (usage) and ad-hoc inference (classify.ts).
@@ -27,7 +27,7 @@ export const FACET_APPS: Partial<Record<Facet, { ids: string[]; namePattern: Reg
   azureManagement: { ids: ['797f4846-ba00-4fd7-ba43-dac1f8f63013'], namePattern: /azure (service management|portal)/i },
 }
 
-type UsageRow = { appId?: string; appDisplayName?: string }
+type UsageRow = { appId?: string; appDisplayName?: string; signInCount?: number; successfulSignInCount?: number; failedSignInCount?: number; lastSignInDateTime?: string; lastSignInActivity?: { lastSignInDateTime?: string } }
 
 function seenInUsage(snapshot: TenantSnapshot, ids: string[], namePattern: RegExp): boolean {
   const rows: UsageRow[] = [
@@ -37,8 +37,10 @@ function seenInUsage(snapshot: TenantSnapshot, ids: string[], namePattern: RegEx
   const idSet = new Set(ids.map((i) => i.toLowerCase()))
   return rows.some(
     (r) =>
-      (typeof r.appId === 'string' && idSet.has(r.appId.toLowerCase())) ||
-      (typeof r.appDisplayName === 'string' && namePattern.test(r.appDisplayName)),
+      ((typeof r.appId === 'string' && idSet.has(r.appId.toLowerCase())) ||
+      (typeof r.appDisplayName === 'string' && namePattern.test(r.appDisplayName))) &&
+      ([r.signInCount, r.successfulSignInCount, r.failedSignInCount].some((n) => typeof n === 'number' && n > 0) ||
+      Number.isFinite(Date.parse(r.lastSignInDateTime ?? r.lastSignInActivity?.lastSignInDateTime ?? ''))),
   )
 }
 
@@ -51,6 +53,7 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
   for (const [facet, spec] of Object.entries(FACET_APPS) as [Facet, NonNullable<(typeof FACET_APPS)[Facet]>][]) {
     const seen = seenInUsage(snapshot, spec.ids, spec.namePattern)
     auto(facet, true, seen ? 'sign-in activity observed' : `no sign-in activity for ${app.inventory.workloadNames[facet] ?? facet}`)
+    out[facet].observedUsage = seen
   }
   auto(
     'intune',
@@ -70,10 +73,11 @@ export function detectFacets(snapshot: TenantSnapshot, overrides: FacetOverrides
     syncAccount && workloadLicensed,
     !syncAccount
       ? 'no directory synchronization account found; sync identity support not assessed'
-      : workloadLicensed
-        ? 'Workload Identities Premium present'
-        : 'no Workload Identities Premium licence',
+      : !workloadLicensed ? 'no Workload Identities Premium licence'
+      : 'Directory Synchronization Accounts role found; confirm the sync service and identity type',
   )
+  out.workload.observedUsage = syncAccount
+  if (syncAccount) out.workload.evidence = 'Directory Synchronization Accounts role found; confirm the sync service and identity type'
   return out
 }
 
