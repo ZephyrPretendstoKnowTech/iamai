@@ -259,7 +259,7 @@
         "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
         "prepareGated": "Create the policy in report-only now; it is not turned on until emergency access is sorted.",
         "prepareScheduledGated": "Create the policy in report-only on {date}; it is not turned on until emergency access is sorted.",
-        "prepare": "Follow the Implementation instructions, then scan to check the result.",
+        "prepare": "Make the object this step names.",
         "deploy": "Create the policy in Report-only.",
         "correct": "Correct the identified settings, then rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save.",
         "review": "Keep the policy in Report-only, find out what changed on it and why, then rescan.",
