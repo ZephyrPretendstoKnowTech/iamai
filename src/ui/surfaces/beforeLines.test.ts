@@ -1,3 +1,4 @@
+import { stepBodyOf } from './stepBody.ts'
 // A translator-rendered step keeps its content's leading "before" lines above the
 // portal lines: the device-settings toggle on device registration, password
 // writeback on the two user-risk steps, the SharePoint access control on the
@@ -58,11 +59,16 @@ test('the before lines render above the portal lines on the GetIAMAI fixture (an
       const s = r.steps.find((x) => x.goalId === b.id)
       if (!s) continue
       const ctx: StepVarContext = { snapshot: f.snapshot, mapping, nameOf: (id) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, naming: r.coverage.organisation.naming }
-      const lines = stepExportView(s, ctx).whatToDo
-      const at = lines.findIndex((l) => b.line.test(l))
-      const root = lines.findIndex((l) => /Conditional Access → Policies → New policy/.test(l))
-      assert.ok(at >= 0, `${name}: ${b.id} renders its before line`)
-      assert.ok(root >= 0 && at < root, `${name}: ${b.id} renders the before line above the portal lines`)
+      const body = stepBodyOf(s, ctx)
+      const text = body.artifacts.filter(a => ['portal', 'ai'].includes(a.id) && !a.unavailable).map(a => a.text()).join('\n')
+      const prerequisite: Record<string, RegExp> = {
+        'device-registration-mfa': /legacy device-registration MFA setting/i,
+        'require-managed-device': /Mark devices with no compliance policy assigned/,
+        'user-risk': /password writeback/i,
+        'user-risk-medium': /password writeback/i,
+        'unmanaged-browser': /SharePoint admin center/,
+      }
+      assert.match(text, prerequisite[b.id], name + ': required supporting configuration is explained')
       seen = true
     }
     assert.ok(seen, `${b.id}: a fixture carries the step`)

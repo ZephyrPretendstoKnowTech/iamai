@@ -9,6 +9,7 @@
 // Pure: no DOM, no network. The heavy per-scenario lists come from the roadmap
 // Step the engine already computed (population, names, dates, naming); the
 // content variables are a view over that, not a re-derivation.
+import { operationsOf } from '../../roadmap/operations.ts'
 import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import type { MappingState } from '../../mapping/types.ts'
@@ -393,6 +394,12 @@ export function stepVars(step: Step, ctx: StepVarContext): Record<string, unknow
     v.exampleName = 'Emergency Access'
   }
 
+  if (step.goalId === 'register-info-protected') {
+    const ops = operationsOf(step).length ? operationsOf(step) : step.action.resolution?.policies ?? []
+    const scopes = ops.map(op => ((op.target ?? op.body) as { conditions?: { users?: { excludeUsers?: string[]; includeUsers?: string[]; includeGuestsOrExternalUsers?: unknown; excludeGuestsOrExternalUsers?: unknown } } }).conditions?.users)
+    const W = shared.registrationScope as Record<string, string>
+    v.registrationGuestScope = scopes.length === 0 || scopes.some(s => !s) ? W.unknown : scopes.every(s => s?.excludeUsers?.includes('GuestsOrExternalUsers')) ? W.excluded : scopes.some(s => s?.excludeGuestsOrExternalUsers) ? W.partial : scopes.some(s => s?.includeUsers?.includes('All') || s?.includeUsers?.includes('GuestsOrExternalUsers') || s?.includeGuestsOrExternalUsers) ? W.included : W.targeted
+  }
   return v
 }
 

@@ -58,7 +58,7 @@ test('an option that needs a value renders the accounts picker: the legacy block
   assert.deepEqual(options.map((o) => o.needs), [null, 'devices'], 'None is a radio; Yes needs the devices')
   assert.equal(valueSource(`s-goal-${legacy.id}`), 'accounts', 'the devices come from the accounts picker')
   const answer = answerText(options[1], ['u-1', 'u-2'])
-  assert.equal(answer, 'Yes: add: u-1, u-2; the service-accounts group carries them')
+  assert.equal(answer, 'Temporary exception accounts: u-1, u-2')
   assert.deepEqual(answerParts(answer, options), { option: options[1], picked: ['u-1', 'u-2'] })
   assert.deepEqual(answerParts('None', options), { option: options[0], picked: [] })
 })

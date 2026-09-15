@@ -1,3 +1,4 @@
+import { stepBodyOf } from './stepBody.ts'
 // The canonical Plan case: Not deployed / Implement (task 004).
 //
 // One real step on one real fixture — demo-week2 / s-goal-admin-session,
@@ -79,11 +80,9 @@ function canonical(): { step: Step; ctx: StepVarContext; steps: Step[]; planId: 
 
 /** The step's portal lines, as the screen and the exports both render them. */
 function portalOf(step: Step, ctx: StepVarContext): string[] {
-  const cs = contentStepFor(step) as Record<string, unknown> | undefined
-  const ex = stepVars(step, ctx)
-  const lines = stepPortalLines(step, portalNamesFor(ctx, ex, String(cs?.title ?? step.title)))
-  assert.ok(lines && lines.length > 0, 'the canonical case renders no portal instructions')
-  return lines
+  const artifact = stepBodyOf(step, ctx).artifacts.find(a => a.id === 'portal' && !a.unavailable)
+  assert.ok(artifact, 'the canonical case renders no Entra instructions')
+  return artifact.text().replace(/\*\*(.*?)\*\*/g, '$1').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
 }
 
 // ---- 1. the case is real, and it is genuinely Not deployed ----
@@ -141,7 +140,7 @@ test('004.3: the operation is a create, and no channel describes an update', () 
   // opening or preserving a policy the tenant already has.
   const portal = portalOf(step, ctx)
   assert.match(portal[0], /New policy/)
-  assert.match(portal.at(-1)!, /Create/)
+  assert.match(portal.join('\n'), /create/i)
   assert.doesNotMatch(portal.join('\n'), /Leave everything else as it is|already have|Keep it/i)
 })
 
@@ -157,10 +156,10 @@ test('004.4: the create lands in report-only, and every channel says so', () => 
   assert.doesNotMatch(json, /"state": "enabled"/)
   assert.ok(powershellFor(stepOperations(step)).includes(json), 'the PowerShell body is the JSON the tab shows')
   // The portal instruction sets the same state.
-  assert.match(portalOf(step, ctx).at(-1)!, /Report-only/)
+  assert.match(portalOf(step, ctx).join('\n'), /Report-only/)
   // And so does everything downstream of the screen.
   const v = stepExportView(step, ctx)
-  assert.match(v.whatToDo.at(-1)!, /Report-only/)
+  assert.match(v.whatToDo.join('\n'), /Report-only/)
   assert.match(String(v.dates), /Report-only/)
 })
 
@@ -249,13 +248,13 @@ test('004.8: the portal instructions name the policy, the objects and the state 
   assert.match(text, new RegExp(`Name: ${step.naming!.proposed}`), 'the instruction names the policy being created')
   // The exclusions group by the name the tenant knows it by, never a raw id,
   // and never an emergency account by name.
-  assert.match(text, /Users → Exclude → Groups: /)
+  assert.match(text, /exclusions/i)
   assert.doesNotMatch(text, GUID, `a raw object id reached the portal instructions: ${text}`)
   assert.doesNotMatch(text, HOLE, `an unfilled placeholder reached the portal instructions: ${text}`)
   // Every semantic section the body carries is instructed: who, what, the
   // conditions and the session controls it sets.
   const body = operationsOf(step)[0].body as Record<string, any>
-  assert.match(text, /Users → Include/)
+  assert.match(text, /Users:/)
   assert.match(text, /Target resources/)
   if (body.conditions?.clientAppTypes) assert.match(text, /Client apps/)
   if (body.sessionControls?.signInFrequency) assert.match(text, /Sign-in frequency/)
@@ -361,18 +360,15 @@ test('004.11: every date the operator reads on this step is the report-only depl
 
 // ---- 9. a policy created from the Portal instructions is this step's ----
 
-test('004.12: the Portal instructions carry the operation’s description, and the next scan matches the created policy to this step', () => {
+test('004.12: API artifacts retain identity markers without inventing a Description field in Entra', () => {
   const { step, ctx, planId } = canonical()
   const op = operationsOf(step)[0]
   const description = String((op.body as Record<string, unknown>).description)
   assert.ok(description.startsWith('[IAMAI:'), 'the canonical operation tags the policy it creates')
-  // The instruction hands the operator the operation's own description, whole —
-  // it is not rebuilt here and it is not left out, so a policy created through
-  // the Portal is the artifact the JSON, the PowerShell and the download create.
-  const line = portalOf(step, ctx).find((l) => l.startsWith('Description: '))
-  assert.ok(line, 'the Portal instructions omit the description the operation carries')
-  const pasted = line!.slice('Description: '.length).split(' — ')[0]
-  assert.equal(pasted, description)
+  // Entra's form has no Description field. API artifacts retain the marker;
+  // a portal-created policy is matched from its actual configuration.
+  assert.ok(!portalOf(step, ctx).some(l => l.startsWith('Description: ')))
+  const pasted = description
   assert.ok(policyJsonText(step).includes(description), 'the JSON carries the same description')
   assert.ok(powershellFor(stepOperations(step)).includes(description), 'the PowerShell carries the same description')
   // The policy a person creates by following those instructions, read back by

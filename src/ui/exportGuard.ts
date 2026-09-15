@@ -17,6 +17,7 @@
 import { redactIdentifiers } from '../redact.ts'
 import { isDemo } from './demoMode.ts'
 import { app } from '../content/content.ts'
+import { foldIcsLine } from '../roadmap/ics.ts'
 
 /**
  * The surfaces allowed to export without redaction. Each value names a place in
@@ -40,7 +41,7 @@ import { app } from '../content/content.ts'
  *   invalid artifact. AI Info carries its tenant-context warning above the same
  *   preview (ui/surfaces/ContentStep.tsx `Implementation`).
  */
-export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact'
+export type UnredactedSurface = 'grounding-bundle' | 'print-document' | 'plan-file' | 'implementation-artifact' | 'inventory-csv'
 
 export type Disposition = { redact: true } | { redact: false; surface: UnredactedSurface }
 
@@ -63,7 +64,11 @@ export function watermarkDemoFile(name: string, content: string): string {
     // JSON arrays cannot carry a comment without changing their schema.
     return JSON.stringify(value, null, 2)
   }
-  if (/\.ics$/i.test(name)) return content.replace(/BEGIN:VCALENDAR\r?\n/, `BEGIN:VCALENDAR\r\nX-IAMAI-DEMO:${notice}\r\n`).replace(/SUMMARY:/g, 'SUMMARY:[DEMO] ')
+  if (/\.ics$/i.test(name)) {
+    // Labels change line lengths. Unfold first, then fold complete logical lines in UTF-8 octets.
+    const labelled = content.replace(/\r?\n[ \t]/g, '').replace(/BEGIN:VCALENDAR\r?\n/, `BEGIN:VCALENDAR\r\nX-IAMAI-DEMO:${notice}\r\n`).replace(/^SUMMARY:/gm, 'SUMMARY:[DEMO] ')
+    return labelled.split(/\r?\n/).map(foldIcsLine).join('\r\n')
+  }
   if (/\.csv$/i.test(name)) {
     let quoted = false
     let out = '"IAMAI data",'

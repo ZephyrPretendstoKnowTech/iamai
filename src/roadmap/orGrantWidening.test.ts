@@ -90,8 +90,8 @@ for (const [label, grant] of WAYS_ROUND) {
         assert.deepEqual(grantTarget.grantControls, body.grantControls, 'the CorrectGrant call submits the listed grant')
         assert.doesNotMatch(art.json ?? '', /compliantDevice/)
         const exported = stepExportView(step, ctx).whatToDo.join('\n')
-        assert.match(exported, /Grant → Require multifactor authentication/)
-        assert.match(exported, /open "Policy A"/)
+        assert.match(exported, /Under Grant, select Require multifactor authentication and clear any other control/)
+        assert.match(exported, /Open the policy named Policy A/)
       })
     }
   }

@@ -80,7 +80,7 @@ test('P1-1: the Decision tile reads Decision, explains the ask, and names the on
   const decision = devices.readiness.tiles.find((t) => t.key === 'decision')!
   assert.equal(decision.value, 'Decision')
   // Editorial batch C: the help also says the inventory informs the choice and does not make it.
-  assert.equal(decision.note, 'Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one. Current inventory informs the choice; it does not make it for you.')
+  assert.equal(decision.note, 'Choose a policy for phones and for computers. Open AI Info for the technical differences and the device evidence from this scan.')
   const f = oneGroup()
   const group = bodiesOf(f).get(EXCLUSIONS)!
   assert.equal(group.contract.state.condition, 'needs-decision', 'the premise: the question is open')

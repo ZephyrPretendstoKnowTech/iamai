@@ -125,7 +125,7 @@ test('A5.3 on the demo the step reads Ready · Create, the campaign waits on it,
   const demo = fixture('demo')
   const { r, label } = plan(demo)
   assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Create')
-  assert.equal(label(CAMPAIGN), 'Up Next · After Set Up Passkeys to Match the Baseline')
+  assert.equal(label(CAMPAIGN), 'Up Next · After Configure Passkey Authentication')
   const { state, bindings } = packageOf(demo, r)
   // An object step reaches `missing` only (states.ts RUNTIME_REACH); the package's one projection is `missingOrPartial`.
   assert.equal(state, 'missing')
@@ -144,7 +144,7 @@ test('A5.4 the method off is Missing and still Ready · Create; the campaign sti
   const { r, label } = plan(f)
   assert.equal(label(PASSKEY_SETTINGS_STEP_ID), 'Ready · Create')
   assert.equal(packageOf(f, r).state, 'missing')
-  assert.match(label(CAMPAIGN) ?? '', /^Up Next · After Set Up Passkeys/)
+  assert.match(label(CAMPAIGN) ?? '', /^Up Next · After Configure Passkey Authentication/)
 })
 
 test('A5.5 every field matching completes the step and releases the campaign from it', () => {
@@ -173,7 +173,7 @@ test('A5.7 the operator passkey step: generated where the operator\'s methods we
   assert.deepEqual(operatorPasskeyOf(small.snapshot), { operatorId, holds: false })
   const { r, label } = plan(small)
   assert.deepEqual(r.steps.find((s) => s.id === OPERATOR_PASSKEY_STEP_ID)?.population.ids, [operatorId])
-  assert.equal(label(OPERATOR_PASSKEY_STEP_ID), 'Up Next · After Set Up Passkeys to Match the Baseline')
+  assert.equal(label(OPERATOR_PASSKEY_STEP_ID), 'Up Next · After Configure Passkey Authentication')
 
   const withMethods = (methods: Fixture['snapshot']['authMethods'][string]): Fixture => ({ ...small, snapshot: { ...small.snapshot, authMethods: { ...small.snapshot.authMethods, [operatorId]: methods } } })
   for (const methods of [[{ kind: 'passkey' as const }], [{ kind: 'fido2' as const }], 'unknown' as const]) {
@@ -286,7 +286,7 @@ test('B.9 one resolved target in every channel: the bound request, the Entra wal
   const entra = body.artifacts.find((a) => a.id === 'portal')!.text()
   const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
   assert.doesNotMatch(ai, /Passkey \(FIDO2\) → Enable: On; Target: All users/, 'fallback facts must not widen the resolved passkey population')
-  assert.match(ai, /Target: keep the existing target groups and exclusions/)
+  assert.match(ai, /keep the target groups and exclusions shown in the resolved configuration/)
   assert.deepEqual((target.includeTargets as { id: string }[]).map(t => t.id), [staff])
   for (const text of [entra, ai]) {
     assert.match(text, /Enable Microsoft Authenticator passkeys while preserving/)

@@ -146,7 +146,7 @@ test('s-goal-block-legacy-auth: Entra is a portal walkthrough, AI Info reads for
   assert.equal(words.doneEnd, 'The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.')
   // The shared readiness sentence and the stored answers stay (BLOCKED.md).
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
-  assert.deepEqual(words.decision?.options, ['None', 'Yes: add: {devices}; the service-accounts group carries them'])
+  assert.deepEqual(words.decision?.options, ['None', 'Temporary exception accounts: {devices}'])
 })
 
 test('s-prereq-trusted-location: the milestone says what to add, Entra is plain steps with the name bound, AI Info explains the location, and Done when names the object', () => {

@@ -222,6 +222,11 @@ export function searchText(r: ReadinessRow): string {
 }
 
 /** A row as its CSV writes it, in the columns' order after the name: role, methods, proof, readiness, action. */
+export function proofLabel(line: ProofText): string {
+  const labels = (pages.readiness as unknown as { proof: { marks: Record<ProofMark, string> } }).proof.marks
+  return `${labels[line.mark]}: ${line.text}`
+}
+
 export function rowCells(r: ReadinessRow): string[] {
-  return [roleWord(r), methodsCell(r).main, proofLines(r).map((l) => l.text).join('; '), readinessWord(r), actionOf(r)?.text ?? '']
+  return [roleWord(r), methodsCell(r).main, proofLines(r).map(proofLabel).join('; '), readinessWord(r), actionOf(r)?.text ?? '']
 }

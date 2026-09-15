@@ -201,7 +201,7 @@ test('D1: the Managed Device Done when names no shared-device exception', () => 
 test('D2: steps keep supported channels across actions and omit permanently unsupported formats', () => {
   const unavailable = fillText(CONTRACT.implementation.channelUnavailable, { address: 'feedback@getiamai.com' })
   // Editorial batch C: a channel with nothing for this action says so neutrally, and never sends a customer to the product's feedback address.
-  assert.equal(unavailable, 'This channel is not available for the current action. Review the other guidance and the requirements shown on this step.')
+  assert.equal(unavailable, 'This format has no output for the current action. Use the available guidance and readiness checks on this step.')
   assert.doesNotMatch(unavailable, /feedback@|could not be loaded/)
   let steps = 0
   let missing = 0
@@ -220,7 +220,7 @@ test('D2: steps keep supported channels across actions and omit permanently unsu
   }
   assert.ok(steps > 20 && missing > 0, `steps ${steps}, channels without content ${missing}`)
   const src = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
-  assert.match(src, /const copyable = preview === null && active !== null && active\.unavailable !== true/, 'a channel with no content can be copied')
+  assert.match(src, /const copyable = active !== null && active\.unavailable !== true/, 'a channel with no content can be copied')
   assert.doesNotMatch(src, /artifacts\.length === 0 \?/, 'the region still swaps its channels for a box')
 })
 

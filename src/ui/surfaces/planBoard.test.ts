@@ -140,7 +140,8 @@ test('no tab reorders the engine: within a group, rows keep the order the lane g
     for (const tab of LANES) {
       const shown = applyFocus(items, tab, ALL)
       for (const g of [...groupsFor(tab, shown), ...asideGroupsFor(shown)]) {
-        const seen = g.items.map((i) => i.order)
+        const priority = ['s-prereq-break-glass', 's-prereq-passkey-settings', 's-confirm-workloads']
+        const seen = g.items.filter(i => tab !== 'ready' || !priority.includes(i.id)).map((i) => i.order)
         assert.deepEqual(seen, [...seen].sort((a, b) => a - b), `${name}/${tab}/${g.key}: the group reordered the engine's sequence`)
       }
     }

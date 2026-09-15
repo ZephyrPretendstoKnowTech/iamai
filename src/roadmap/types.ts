@@ -333,7 +333,7 @@ export type Step = {
   impactLabel?: string
   guidance?: import('../content/content.ts').ContentStep
   baselineReviewSource?: { name: string; json: string | null; reason: string }
-  workflowChoices?: { key: string; label: string; evidence: string; answer: string }[]
+  workflowChoices?: { key: string; label: string; evidence: string; answer: string; suggested?: boolean }[]
 
   manualReview?: { basis: string; confirmedAt: string | null; readyToConfirm: boolean }
   id: string
