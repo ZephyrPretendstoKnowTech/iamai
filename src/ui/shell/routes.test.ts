@@ -4,6 +4,16 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isAuthResponseHash, resolveHash } from './routes.ts'
 
+test('baseline help links and their legacy redirects land on How without bouncing to Connect', () => {
+  const destination = { route: 'how', redirect: null }
+  assert.deepEqual(resolveHash('#/how#package'), destination)
+  for (const legacy of ['#/package', '#/baseline/package']) {
+    const first = resolveHash(legacy)
+    assert.equal(first.route, 'how')
+    assert.deepEqual(resolveHash(first.redirect!), destination)
+  }
+})
+
 test('an auth response in the fragment is home, and is never rewritten', () => {
   const responses = [
     '#code=0.AXkA…&client_info=eyJ1aWQi…&state=eyJpZCI6…&session_state=abc',

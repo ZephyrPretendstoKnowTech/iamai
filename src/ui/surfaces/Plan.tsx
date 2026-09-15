@@ -296,10 +296,9 @@ export function Plan({ scan: lastScan, baseline, account }: {
         <dl className="plan-progress-tiles" aria-label={PP.progress.label}>
           {progressTiles.map((t) => (
             <div key={t.key} className="plan-progress-tile" title={t.tip}>
-              <dt>{t.label}</dt>
+              <dt>{t.label}{t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}</dt>
               <dd>
                 {t.select ? <button type="button" className="plan-tile-control" aria-label={`${t.label}: ${t.value}`} onClick={t.select}>{tileValue(t.value)}</button> : tileValue(t.value)}
-                {t.tip && <InfoTip title={app.plan.constraintTip} text={t.tip} />}
                 {t.sub?.map((line) => (
                   <small key={line}>{line}</small>
                 ))}
@@ -675,15 +674,19 @@ function Settings({ data, steps, snapshot, nameOf, onClose }: { data: ReturnType
         <span>{PP.settings.workdays}</span>
         <span>{workdays}</span>
       </div>
-      <label className="rows">
+      <div className="rows freeze-range" role="group" aria-label={PP.settings.freeze}>
         <span>{PP.settings.freeze}</span>
-        <span>{PP.settings.freezeFrom}</span>
-        <input type="date" value={freezeDays.from} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('from', e.currentTarget.value)} />
-        <span>{PP.settings.freezeTo}</span>
-        <input type="date" value={freezeDays.to} min={freezeDays.from || undefined} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('to', e.currentTarget.value)} />
-      </label>
-      {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
-      <p className="reason">{PP.settings.freezeNote}</p>
+        <label className="freeze-field">
+          <span>{PP.settings.freezeFrom}</span>
+          <input type="date" aria-label={`${PP.settings.freeze} ${PP.settings.freezeFrom}`} aria-describedby={freezeInput.reason ? 'plan-freeze-note plan-freeze-error' : 'plan-freeze-note'} value={freezeDays.from} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('from', e.currentTarget.value)} />
+        </label>
+        <label className="freeze-field">
+          <span>{PP.settings.freezeTo}</span>
+          <input type="date" aria-label={`${PP.settings.freeze} ${PP.settings.freezeTo}`} aria-describedby={freezeInput.reason ? 'plan-freeze-note plan-freeze-error' : 'plan-freeze-note'} value={freezeDays.to} min={freezeDays.from || undefined} aria-invalid={freezeInput.reason !== null || undefined} onChange={(e) => setFreezeDay('to', e.currentTarget.value)} />
+        </label>
+      </div>
+      {freezeInput.reason !== null && <p className="reason plan-freeze-invalid" id="plan-freeze-error" role="alert">{freezeInput.reason === 'needsTo' ? PP.settings.freezeNeedsTo : PP.settings.freezeOrder}</p>}
+      <p className="reason" id="plan-freeze-note">{PP.settings.freezeNote}</p>
       <label className="rows">
         <span>{PP.settings.timezone}</span>
         <select value={zone} onChange={(e) => data.setTimeZone(e.currentTarget.value || null)}>
