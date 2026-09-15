@@ -13,14 +13,15 @@ The 65-entry editorial pass is complete within the existing UI and package suppo
 - Corrected exclusion wording, emergency-credential custody guidance, admin policy state wording, optional AI paragraphs, dormant-account milestone copy, and helpdesk/partner email audiences.
 - Corrected the source-only unmanaged-browser correction payload to include its name and cleared grant consistently with PowerShell. No inactive baseline member was activated.
 
-Code commit: 6d2b9bf3585e9902e751fc7f27407d9789145760
+Main editorial code commit: 6d2b9bf3585e9902e751fc7f27407d9789145760
 
 ## Validation
 
 | Check | Result |
 | --- | --- |
-| Local full regression suite before the final High-Risk wording follow-up | 2,814 passed, 0 failed, 2 skipped (2,816 total) |
+| Local full regression suite before the final High-Risk and passkey wording follow-ups | 2,814 passed, 0 failed, 2 skipped (2,816 total) |
 | Final High-Risk channel/content regression check | 10 passed, 0 failed; includes saved-MFA observation/correction/enforcement guidance |
+| Final passkey resolver/content regression check | 22 passed, 0 failed |
 | Type check | Passed |
 | Final production site build | Passed; existing bundle-size warning remains |
 | Acceptance suite | 28 passed, 0 failed, 0 harness errors |
@@ -30,7 +31,9 @@ Code commit: 6d2b9bf3585e9902e751fc7f27407d9789145760
 | Offline browser walk | 0 P0, 513 P1, 9 P2; external requests blocked and external-link probes excluded |
 | Manual browser review | Desktop and 390-pixel mobile demo checked; no horizontal overflow; AI briefing and implementation tabs remain usable |
 
-The offline walk preceded the final High-Risk wording follow-up. That follow-up has a focused regression check; GitHub's full required CI and production walk must pass on the release commit before publication is considered complete. Parse checks validate syntax, not tenant execution or permissions.
+The offline walk preceded the final High-Risk and passkey wording follow-ups. Those follow-ups have focused regression checks; GitHub's full required CI and production walk must pass on the release commit before publication is considered complete. Parse checks validate syntax, not tenant execution or permissions.
+
+The final passkey completion sentence was corrected to say existing target groups, matching the preservation resolver. No passkey operation changed in that wording follow-up.
 
 ## Remaining warnings and V1.1 work
 
