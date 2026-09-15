@@ -704,7 +704,10 @@
         "manualCorrection": "until the policy is corrected by hand",
         "unverifiedExclusion": "until the group {group} can be read",
         "methodsPolicyUnread": "until the authentication methods policy can be read",
-        "emergency": "until emergency access is provably out of scope"
+        "emergency": "until emergency access is provably out of scope",
+        "passkeyProfiles": "until the passkey profile settings are reviewed",
+        "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",
+        "passkeyPartialRead": "until every passkey setting the change needs can be read"
       },
       "gapSuffix": {
         "admin-session": "sessions expire {current}, the baseline wants {wanted}",
@@ -1687,7 +1690,32 @@
             "sourceChecked": "Source checked {date}",
             "learn": "Microsoft Learn",
             "troubleshooting": "Troubleshooting",
-            "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
+            "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values",
+            "passkey": {
+              "$comment": "The passkey settings step in words (roadmap/passkeySettings.ts, owner approval 2026-09-14): what the scan read, the change IAMAI resolved from it, and why no change is offered where it cannot be built without overwriting something. Bound into the passkey package as passkey.current.summary, passkey.target.summary and passkey.review.detail.",
+              "on": "on",
+              "off": "off",
+              "unknown": "not read",
+              "none": "none",
+              "current": "Passkey (FIDO2) is {state}. Key restrictions: {restriction}. Attestation: {attestation}. Self-service registration: {selfService}. Included: {includes}. Excluded: {excludes}.",
+              "restriction": {
+                "unrestricted": "not enforced",
+                "allow": "allow list of {n} models",
+                "block": "block list of {n} models"
+              },
+              "target": {
+                "unrestricted": "Keep key restrictions off, so every model that can register today still can, including Microsoft Authenticator.",
+                "allow": "Keep the allow list and its existing allowed models ({retained}); add Microsoft Authenticator ({added}).",
+                "allowPresent": "Keep the allow list and its existing allowed models ({retained}); Microsoft Authenticator is already allowed.",
+                "block": "Keep the block list as it is ({blocked}); it does not block Microsoft Authenticator.",
+                "common": "Turn Passkey (FIDO2) on for All users while keeping the existing groups and exclusions, allow self-service registration, and enforce attestation for new registrations."
+              },
+              "review": {
+                "profiles": "This tenant uses passkey profiles. IAMAI does not read profile settings, so it cannot tell which groups can use Microsoft Authenticator passkeys. Review each profile and its group assignments in the Entra admin center and keep them unchanged; IAMAI does not write the older global settings over a profile-based policy.",
+                "blockListConflict": "The key restriction block list blocks Microsoft Authenticator ({aaguids}). IAMAI does not remove a block list entry. Find out why it was blocked before allowing Authenticator passkeys.",
+                "partialRead": "The scan did not return every passkey setting this change is built from ({fields}). IAMAI cannot build an update that preserves the current configuration, so none is offered."
+              }
+            }
           },
           "railTransition": {
             "$comment": "The rail's sub-line under a day the plan schedules (roadmap/stepSchedule.ts transition): what that day is for. Preparation, verification and review read the milestone's own words instead.",

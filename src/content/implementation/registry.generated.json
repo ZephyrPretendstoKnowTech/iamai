@@ -20651,7 +20651,9 @@
           "passkey.target.allowedAaguids",
           "dependencies.blockers",
           "tenant.displayName",
-          "passkey.profileOptInApproved"
+          "passkey.profileOptInApproved",
+          "passkey.target.summary",
+          "passkey.review.detail"
         ],
         "projection": {
           "needsDecision": {
@@ -20753,7 +20755,7 @@
           "productContract": "Enable the passkey, Microsoft Authenticator, and Temporary Access Pass capabilities needed for the IAMAI baseline without invalidating already-approved security keys.",
           "microsoftCurrent": "Microsoft now directs tenants to passkey profiles. Opt-in is irreversible; profile settings support attestation, device-bound/synced types, and AAGUID restrictions. Legacy global FIDO2 attestation/key-restriction properties are deprecated for removal in October 2027.",
           "passkeyTarget": {
-            "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12): the product's passkey target, deviating from the pinned baseline. The AAGUIDs are copied from the Microsoft Learn page in verifiedSources (ms-authenticator-passkey), never from memory. roadmap/passkeySettings.ts reads this object; stepPackage.ts binds it as passkey.target.fido2Configuration.",
+            "$comment": "Decision 9 (RUN-CONTEXT-A, 2026-09-12), superseded in part by the owner's approval of 2026-09-14: support Microsoft Authenticator passkeys while preserving existing approved hardware keys and profile configurations. This object supplies the approved Authenticator AAGUIDs (copied from the Microsoft Learn page in verifiedSources, ms-authenticator-passkey, never from memory) and the product settings; roadmap/passkeySettings.ts resolves each tenant's target from its own configuration (existing allowed models, groups and exclusions retained) and binds it as passkey.target.fido2Configuration. The whole object is the target only for a methods policy with no Fido2 entry.",
             "fido2Configuration": {
               "@odata.type": "#microsoft.graph.fido2AuthenticationMethodConfiguration",
               "id": "Fido2",
@@ -20807,7 +20809,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "1. Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Set Enable to Yes. Target: All users.\n3. Under Allowed passkeys, enable Enforce key restrictions. Set Restriction type to Allow. Once saved, a key already registered with any other AAGUID can no longer be used to sign in.\n4. Add the Microsoft Authenticator AAGUIDs:\n   — iOS: 90a3ccdf-635c-4729-a248-9b709135078f\n   — Android: de1e552d-db1d-4423-a619-566b625cdc84\n5. Enable Enforce attestation. It applies to new registrations; a passkey already registered without attestation can still sign in.\n6. Save.\n"
+          "text": "Enable Microsoft Authenticator passkeys while preserving the tenant's existing approved hardware-key access and profile assignments. Review any conflicting restrictions before saving. A registered key is not automatically approved, and configuration checks do not replace an emergency sign-in test.\n\nSettings IAMAI read: {{passkey.current.summary}} [omit this line when unavailable]\n\nResolved change: {{passkey.target.summary}} [omit this line when unavailable]\n\n{{passkey.review.detail}} [omit this line when unavailable]\n\n1. Go to Entra admin center → Security → Authentication methods → Policies → Passkey (FIDO2).\n2. Compare the page with the settings IAMAI read. If anything differs, stop and rescan before saving.\n3. Apply the resolved change. Keep every existing allowed model, target group and exclusion: removing an allowed model stops that model's existing keys from signing in.\n4. Enforcing attestation applies to new registrations only. A passkey already registered without attestation can still sign in, but an authenticator that cannot provide attestation cannot register afterwards.\n5. Save, reopen the page to confirm the saved settings, then rescan.\n"
         },
         "entra.configure-authenticator": {
           "meta": {
@@ -20820,7 +20822,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Then configure the supporting methods:\n\n7. Open Microsoft Authenticator in the same Authentication methods list.\n8. Set Enable to Yes. Target: All users.\n9. Save.\n"
+          "text": "Then check the supporting methods:\n\n6. Open Microsoft Authenticator in the same Authentication methods list.\n7. Set Enable to Yes. Target: All users, keeping any existing exclusions.\n8. Save.\n"
         },
         "entra.configure-tap": {
           "meta": {
@@ -20833,7 +20835,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "10. Open Temporary Access Pass in the same list.\n11. Set Enable to Yes. Target: All users. Set a lifetime and one-time-use policy that fits your organization.\n12. Save.\n"
+          "text": "9. Open Temporary Access Pass in the same list.\n10. Set Enable to Yes for the people who may need a pass to register their first passkey. IAMAI holds no Temporary Access Pass target, so keep the tenant's current lifetime and one-time-use settings unless your security team has approved different values.\n11. Save.\n"
         },
         "entra.verify": {
           "meta": {
@@ -20845,7 +20847,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "Re-open Passkey (FIDO2), Microsoft Authenticator, and Temporary Access Pass. Compare the full configuration to IAMAI's canonical target, then rescan. Registration/sign-in proof occurs in later human/campaign steps.\n"
+          "text": "Reopen Passkey (FIDO2), Microsoft Authenticator and Temporary Access Pass. Compare them with the resolved change, then rescan. A matching configuration is not proof that people can register or sign in: that evidence comes from the registration campaign and an emergency access sign-in test.\n"
         },
         "json.fido2": {
           "meta": {
@@ -20907,7 +20909,7 @@
               }
             }
           },
-          "text": "param([Parameter(Mandatory=$true)][ValidateSet('Apply','Verify')][string]$Mode,[string]$Fido2Json,[string]$AuthenticatorJson,[string]$TapJson,[switch]$ProfileOptInApproved)\n$ErrorActionPreference='Stop';$G='https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 50) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Apply'){\n foreach($pair in @(@('fido2',$Fido2Json),@('microsoftAuthenticator',$AuthenticatorJson),@('temporaryAccessPass',$TapJson))){\n   if([string]::IsNullOrWhiteSpace($pair[1])){throw \"Complete resolved JSON required for $($pair[0]).\"}\n }\n $f=$Fido2Json|ConvertFrom-Json\n if($null -ne $f.passkeyProfiles -and -not $ProfileOptInApproved){throw 'Passkey profile use requires recorded owner approval when this is the tenant opt-in transition.'}\n IG PATCH \"$G/fido2\" $f|Out-Null\n IG PATCH \"$G/microsoftAuthenticator\" ($AuthenticatorJson|ConvertFrom-Json)|Out-Null\n IG PATCH \"$G/temporaryAccessPass\" ($TapJson|ConvertFrom-Json)|Out-Null\n}\n[pscustomobject]@{Fido2=(IG GET \"$G/fido2\");MicrosoftAuthenticator=(IG GET \"$G/microsoftAuthenticator\");TemporaryAccessPass=(IG GET \"$G/temporaryAccessPass\")}\n"
+          "text": "param([Parameter(Mandatory=$true)][ValidateSet('Apply','Verify')][string]$Mode,[string]$Fido2Json,[string]$ScannedFido2Json,[string]$AuthenticatorJson,[string]$TapJson,[switch]$ProfileOptInApproved)\n$ErrorActionPreference='Stop';$G='https://graph.microsoft.com/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations'\nfunction IG($m,$u,$b=$null){if($null -eq $b){return Invoke-MgGraphRequest -Method $m -Uri $u -OutputType PSObject};Invoke-MgGraphRequest -Method $m -Uri $u -Body ($b|ConvertTo-Json -Depth 50) -ContentType 'application/json' -OutputType PSObject}\nif($Mode -eq 'Apply'){\n foreach($pair in @(@('fido2',$Fido2Json),@('scanned fido2',$ScannedFido2Json),@('microsoftAuthenticator',$AuthenticatorJson),@('temporaryAccessPass',$TapJson))){\n   if([string]::IsNullOrWhiteSpace($pair[1])){throw \"Complete resolved JSON required for $($pair[0]).\"}\n }\n $f=$Fido2Json|ConvertFrom-Json\n if($null -ne $f.passkeyProfiles -and -not $ProfileOptInApproved){throw 'Passkey profile use requires recorded owner approval when this is the tenant opt-in transition.'}\n # Never overwrite a change made since the scan: every field the update sends must still read as IAMAI scanned it.\n $now=IG GET \"$G/fido2\";$was=$ScannedFido2Json|ConvertFrom-Json\n foreach($k in @('state','isAttestationEnforced','isSelfServiceRegistrationAllowed','keyRestrictions','includeTargets','excludeTargets')){\n   if((ConvertTo-Json -InputObject $now.$k -Depth 20 -Compress) -ne (ConvertTo-Json -InputObject $was.$k -Depth 20 -Compress)){throw \"Passkey (FIDO2) $k changed since the scan. Rescan IAMAI before applying.\"}\n }\n IG PATCH \"$G/fido2\" $f|Out-Null\n IG PATCH \"$G/microsoftAuthenticator\" ($AuthenticatorJson|ConvertFrom-Json)|Out-Null\n IG PATCH \"$G/temporaryAccessPass\" ($TapJson|ConvertFrom-Json)|Out-Null\n}\n[pscustomobject]@{Fido2=(IG GET \"$G/fido2\");MicrosoftAuthenticator=(IG GET \"$G/microsoftAuthenticator\");TemporaryAccessPass=(IG GET \"$G/temporaryAccessPass\")}\n"
         },
         "ai.decision": {
           "meta": {
@@ -20932,7 +20934,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nPasskey (FIDO2) is the phishing-resistant sign-in method this baseline targets. These settings control which passkey providers are accepted tenant-wide.\n\nThe two AAGUIDs above are the Microsoft Authenticator app on iOS and Android. Enforcing attestation and restricting to these AAGUIDs means only Authenticator passkeys are accepted — not third-party security keys or browser-based passkeys.\n\nKey restrictions apply at sign-in as well as registration, so a passkey or security key someone already registered from another provider stops working for sign-in once these settings are saved. Enforcing attestation affects new registrations only.\n\nTemporary Access Pass is enabled so admins can issue a one-time code to users who need to register their first passkey but have no existing method to sign in with.\n\nAfter saving these settings, the MFA Registration Campaign step guides each person through registering their passkey.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nEnable Microsoft Authenticator passkeys while preserving the tenant's existing approved hardware-key access and profile assignments. Review any conflicting restrictions before saving. A registered key is not automatically approved, and configuration checks do not replace an emergency sign-in test.\n\nSettings IAMAI read: {{passkey.current.summary}} [omit this line when unavailable]\n\nResolved change: {{passkey.target.summary}} [omit this line when unavailable]\n\n{{passkey.review.detail}} [omit this line when unavailable]\n\nExplain which existing allowed models the change retains, which Microsoft Authenticator models it adds, and any restriction that conflicts. Existing allowed models are retained configuration, not proof that every registered key was approved. A key restriction applies at sign-in as well as registration; attestation applies to new registrations. Temporary Access Pass settings are not part of IAMAI's resolved change. Do not suggest converting an unrestricted policy into an allow list, opting in to passkey profiles, or enabling synced passkeys.\n"
         },
         "ai.verify": {
           "meta": {
@@ -20944,7 +20946,7 @@
             "format": "markdown",
             "kind": "template"
           },
-          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nCheck the read-back configuration for drift. Do not claim readiness for a person until registration/sign-in proof exists.\n"
+          "text": "**Contains tenant context. Review before sharing with an external AI service.**\n\nCompare the read-back Passkey (FIDO2) settings with the resolved change: existing allowed models, groups and exclusions retained, and Microsoft Authenticator allowed. A matching configuration does not show that anyone can sign in; the registration campaign and an emergency access sign-in test provide that evidence.\n"
         },
         "ai.blocked": {
           "meta": {

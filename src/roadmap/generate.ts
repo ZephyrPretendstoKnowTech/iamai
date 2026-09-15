@@ -1107,6 +1107,15 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     else if (passkey.state === 'unread') {
       s.blockers = [{ kind: 'evidence', label: 'passkey-settings-unread', binding: BLOCKED_REASON.methodsPolicyUnread, unverified: true }]
       setState(s, { condition: conditionFor(s.blockers) })
+    } else if (passkey.resolution?.kind === 'review') {
+      // No change can be built without overwriting something (owner approval,
+      // 2026-09-14): a profile-based policy, a block list that blocks Authenticator,
+      // or a read short of a setting. The step holds on that fact, like an unread
+      // policy, and is never completed by it.
+      const review = passkey.resolution.review
+      const binding = review === 'profiles' ? BLOCKED_REASON.passkeyProfiles : review === 'blockListConflict' ? BLOCKED_REASON.passkeyBlockConflict : BLOCKED_REASON.passkeyPartialRead
+      s.blockers = [{ kind: 'evidence', label: `passkey-settings-${review}`, binding, unverified: true }]
+      setState(s, { condition: conditionFor(s.blockers) })
     }
     steps.push(s)
   }
