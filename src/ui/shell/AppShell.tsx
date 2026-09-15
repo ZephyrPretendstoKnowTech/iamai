@@ -17,7 +17,7 @@ import { fillText } from '../../content/render.ts'
 import { app, pages, planner } from '../../content/content.ts'
 import { exitDemoUrl, isDemo } from '../demoMode.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
-import { absoluteDate, absolute, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
+import { absoluteDate, absoluteLocal, scanAgeDays, STALE_SCAN_DAYS } from '../../copy/dates.ts'
 import { lowerFirst } from '../../copy/statements.ts'
 import { Button } from '../components/index.ts'
 import { BrandMark } from '../components/Mark.tsx'
@@ -330,7 +330,7 @@ export function AppShell({
             {fillText(SHELL.printHeader, { tenant: tenantName ?? account.username, date: absoluteDate(new Date().toISOString()), by: account.username })}
           </div>
         )}
-        {snapshot && route !== 'connect' && <div className="tenant-context"><p>{fillText(SHELL.evidenceContext, { tenant: tenantName ?? account?.username ?? '', date: absolute(snapshot.asOf) })}</p>{scanAgeDays(snapshot.asOf) >= STALE_SCAN_DAYS && <p className="reason">{SHELL.staleEvidence}</p>}{Object.values(snapshot.config).some((s) => s.status === 'error') && <p className="reason">{SHELL.partialEvidence}</p>}</div>}
+        {snapshot && route !== 'connect' && <div className="tenant-context"><p>{fillText(SHELL.evidenceContext, { tenant: tenantName ?? account?.username ?? '', date: absoluteLocal(snapshot.asOf) })}</p>{scanAgeDays(snapshot.asOf) >= STALE_SCAN_DAYS && <p className="reason">{SHELL.staleEvidence}</p>}{Object.values(snapshot.config).some((s) => s.status === 'error') && <p className="reason">{SHELL.partialEvidence}</p>}</div>}
         {children}
       </main>
       <Footer />

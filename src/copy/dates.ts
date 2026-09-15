@@ -46,6 +46,13 @@ function dayOrInstant(iso: string, key: string, locale: string | undefined, opti
   return formatter(key, locale, options).format(new Date(iso))
 }
 
+// Scan context belongs to the browser session, independently of the plan's
+// scheduling zone. Loading a plan must not change an already displayed scan.
+const localTimestamp = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+export function absoluteLocal(iso: string): string {
+  return localTimestamp.format(new Date(iso))
+}
+
 /** "Sep 10, 2026" in the display time zone. */
 export function absoluteDate(iso: string): string {
   return dayOrInstant(iso, 'absoluteDate', undefined, { dateStyle: 'medium' })
