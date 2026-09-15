@@ -2786,7 +2786,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Passkey (FIDO2) matches the resolved change on the next scan: on for All users, with the existing allowed models, groups and exclusions retained and Microsoft Authenticator allowed.",
+        "Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.",
         "Verify after the change: an emergency access account still signs in with its key; configuration checks do not replace that test."
       ],
       "ifWrong": null,
