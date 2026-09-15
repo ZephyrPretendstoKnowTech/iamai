@@ -1,7 +1,7 @@
 {
   "lane": "Ready",
   "substatus": "Decision",
-  "reason": "after: Confirm the services you use",
+  "reason": "after: Confirm the Services You Use",
   "fact": null,
   "badge": "Ready · Decision",
   "bar": "Needs a decision",

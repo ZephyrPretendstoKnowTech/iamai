@@ -1,3 +1,4 @@
+import { customerPlanSteps } from './customerPlanSteps.ts'
 // The plan, computed and persisted, for the Plan surface (prompt 48 Part 2).
 // The same pipeline the Roadmap page used — coverage, generate, merge the
 // saved progress, track from evidence, annotate — behind one hook so Plan.tsx
@@ -317,7 +318,10 @@ export function usePlanData(
       // The operator's deferral of the emergency-access hardening, where one is recorded (validation/emergencyTiers.ts).
       hardeningDeferral: saved?.confirmations?.[BREAK_GLASS_STEP_ID]?.[HARDENING_DEFERRAL_ID] ?? null,
     })
-    const { steps, schedule } = result
+    const { schedule } = result
+    // Temporarily withheld from all customer plan surfaces, including Export.
+    // Keep the underlying baseline assessment and execution safeguards intact.
+    const steps = customerPlanSteps(result.steps)
     // The one decision a regeneration cannot know, and the one observation (the
     // scan that first saw each policy in report-only); everything else is derived.
     applySkips(steps, saved?.skips ?? null)

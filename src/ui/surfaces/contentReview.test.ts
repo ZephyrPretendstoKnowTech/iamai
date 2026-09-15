@@ -113,7 +113,7 @@ test('R5: a step with nothing unresolved reads "✓ Clear — No blockers. Ready
 test('R6: the action column heads its first input with the input label, bold', () => {
   const step = readFileSync('src/ui/surfaces/ContentStep.tsx', 'utf8')
   const decision = step.slice(step.indexOf('function SingleDecision'), step.indexOf('export function Options'))
-  assert.match(decision, /<h5 className="dlabel action-heading" id=\{`\$\{base\}-decision`\}>\{d\.label\}<\/h5>/, 'no heading over the decision')
+  assert.match(decision, /<h5 className="dlabel action-heading" id=\{`\$\{base\}-decision`\}>\{d\.heading \?\? d\.label\}<\/h5>/, 'no heading over the decision')
   const heading = decision.indexOf('<h5 className="dlabel action-heading"')
   assert.ok(heading < decision.indexOf('<Picker ') && heading < decision.indexOf('<Options '), 'the heading is not above the first input')
   const css = readFileSync('src/ui/app.css', 'utf8')
