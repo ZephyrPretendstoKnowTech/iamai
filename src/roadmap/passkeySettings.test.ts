@@ -276,7 +276,8 @@ test('B.8 an allowed model nobody registered is retained, and a registered model
 })
 
 test('B.9 one resolved target in every channel: the bound request, the Entra walkthrough and AI Info say the same models', () => {
-  const f = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false, ...allow(HARDWARE) }))
+  const staff = '00000000-0000-4000-8000-000000000123'
+  const f = withFido2(fixture('demo'), legacy({ isAttestationEnforced: false, includeTargets: [{ ...everyone, id: staff }], ...allow(HARDWARE) }))
   const r = runFixture(f)
   const { step, ctx, bindings } = packageOf(f, r)
   const target = targetOf(passkeyReadingOf(f.snapshot).resolution).target
@@ -284,6 +285,9 @@ test('B.9 one resolved target in every channel: the bound request, the Entra wal
   const body = stepBodyOf(step, ctx)
   const entra = body.artifacts.find((a) => a.id === 'portal')!.text()
   const ai = body.artifacts.find((a) => a.id === 'ai')!.text()
+  assert.doesNotMatch(ai, /Passkey \(FIDO2\) → Enable: On; Target: All users/, 'fallback facts must not widen the resolved passkey population')
+  assert.match(ai, /Target: keep the existing target groups and exclusions/)
+  assert.deepEqual((target.includeTargets as { id: string }[]).map(t => t.id), [staff])
   for (const text of [entra, ai]) {
     assert.match(text, /Enable Microsoft Authenticator passkeys while preserving/)
     assert.ok(text.includes(`Keep the allow list and its existing allowed models (${HARDWARE}); add Microsoft Authenticator (${PASSKEY_TARGET_AAGUIDS.join(', ')}).`), text)
