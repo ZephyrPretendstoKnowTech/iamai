@@ -121,8 +121,8 @@ export const CHANNEL_TABS: TabItem[] = [
  * with the one line that says its content could not be loaded and where to
  * report it, and nothing to copy. No channel is ever suppressed.
  */
-function unavailableArtifact(id: Channel): Artifact {
-  const text = fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })
+function unavailableArtifact(id: Channel, reason: string): Artifact {
+  const text = reason || fillText(CONTRACT.implementation.channelUnavailable, { address: FEEDBACK_ADDRESS })
   return { id, form: 'markdown', lines: [], text: () => text, note: null, unavailable: true }
 }
 
@@ -202,10 +202,11 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // new evidence is not also offering the deployment (stepContract.ts
   // `implementationIsCurrent`). The same channels come back when the condition
   // does, from the same call, with nothing regenerated.
-  const deployNow = implementationIsCurrent(step)
-  const hasPortal = portal !== null && portal.length + before.length > 0
-  const channels = deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
-  const portalLines = hasPortal ? [...before, ...(portal ?? [])] : []
+  const deployNow = cs.kind !== 'policy' || implementationIsCurrent(step)
+  const manualLines = cs.kind !== 'policy' ? instructions.steps.filter((l): l is string => typeof l === 'string').map((l) => fillText(l, ex)).filter((l) => !/\{[^}]+\}/.test(l)) : []
+  const hasPortal = (portal !== null && portal.length + before.length > 0) || manualLines.length > 0
+  const channels = step.workflowChoices ? ['ai' as Channel] : deployNow ? channelsFor(hasPortal, contract.implementation.offered) : []
+  const portalLines = hasPortal ? [...before, ...(portal ?? manualLines)] : []
   const hasSteps = instructions.steps.length > 0
   // The step's implementation-content package, where one is active
   // (stepPackage.ts): IAMAI's state and bindings in, the package's own blocks
@@ -292,9 +293,10 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
       ? ((preview ?? projection)?.channels ?? []).map((a) => packageArtifact(a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
-  // Every channel draws, always (content review D2): a channel with content shows
-  // it, and one without says its content could not be loaded. None is suppressed.
-  const artifacts: Artifact[] = CHANNEL_TABS.map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel))
+  // Keep every channel supported somewhere in this step's lifecycle. A temporarily
+  // unavailable channel explains the next action; a permanently unsupported format has no tab.
+  const supported = new Set<Channel>(pkg ? Object.values(pkg.blocks).map((b) => PACKAGE_CHANNEL[b.meta.channel as OutputChannel]).filter((ch): ch is Channel => Boolean(ch) && (machine || (ch !== 'ps' && ch !== 'json'))) : machine ? ['portal', 'ps', 'json', 'ai'] : channels)
+  const artifacts: Artifact[] = CHANNEL_TABS.filter((t) => supported.has(t.id as Channel)).map((t) => produced.find((a) => a.id === t.id) ?? unavailableArtifact(t.id as Channel, contract.whatToDo.text))
   const W = CONTRACT.implementation
   // Why a preview's work cannot be copied: the values still to resolve, never the
   // blocker again. No Planned work banner draws it over the channels (U4); it is
@@ -315,7 +317,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // Every step draws its Implementation region, a decision, a question and a check
   // included (content review D2, which replaces the owner's 2026-09-11 rule that a
   // step with nothing to implement by design draws none).
-  const showImplementation = true
+  const showImplementation = artifacts.length > 0
   // A held projection says why, by the reason it holds: a check to confirm first,
   // a difference no correction covers, content the runtime could not project, or
   // a value IAMAI does not hold. None of them is ever offered an artifact.

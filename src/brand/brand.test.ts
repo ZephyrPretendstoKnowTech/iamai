@@ -526,7 +526,7 @@ test('brand: every document the manifest names exists', () => {
 test('brand: the served pages ask for the brand icon, and it is published', () => {
   for (const doc of ['index.html', 'home/index.html']) {
     const html = read(doc)
-    assert.match(html, /rel="icon" type="image\/svg\+xml" href="\/brand\/favicon\.svg"/, `${doc} must use the brand icon`)
+    assert.match(html, /rel="icon" type="image\/svg\+xml" href="\/brand\/favicon\.svg(?:\?v=[a-z0-9-]+)?"/, `${doc} must use the brand icon`)
     assert.doesNotMatch(html, /rel="icon"[^>]*data:image/, `${doc} must not carry an inline placeholder icon`)
   }
   // home/index.html is generated: the generator has to be the one that says it.

@@ -1602,16 +1602,17 @@ footer.app a {
 }
 .plan-progress-tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   flex: 1 1 520px;
-  max-width: 680px;
+  max-width: none;
   margin: 0;
 }
 .plan-progress-tile {
   display: flex;
   flex-direction: column-reverse;
-  gap: 2px;
+  justify-content: flex-end;
+  gap: 10px;
   min-width: 0;
   padding: 10px 13px;
   border: 1px solid var(--line);
@@ -4517,3 +4518,23 @@ th .th-sort:focus-visible,
     outline-offset: 1px;
   }
 }
+
+/* The existing plan style, with aligned values and useful controls. */
+.plan-progress-tile { position: relative; }
+.plan-progress-tile dd { min-height: 2.5em; font-size: var(--d-8); }
+.plan-tile-control { font: inherit; color: inherit; border: 0; padding: 0; background: transparent; text-align: left; cursor: pointer; }
+.plan-tile-control::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius-control); }
+.plan-tile-control:hover::after { outline: 1px solid var(--brand-primary); }
+.plan-tile-control:focus-visible::after { outline: 2px solid var(--brand-primary); outline-offset: 3px; }
+.tenant-context { color: var(--quiet-text); font-size: var(--t-1); margin-bottom: 16px; }
+.tenant-context p { margin: 4px 0; }
+.workflow-choices { display: grid; gap: 12px; width: 100%; }
+.workflow-choice { display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.workflow-choice .reason { grid-column: 1; }
+.workflow-choice select { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+.progress-track { height: 6px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+.progress-fill { height: 100%; background: var(--brand-primary); transition: width .25s ease; }
+.progress-indeterminate .progress-fill { width: 35%; animation: scan-progress 1.7s ease-in-out infinite alternate; }
+@keyframes scan-progress { from { transform: translateX(-100%); } to { transform: translateX(285%); } }
+@media (prefers-reduced-motion: reduce) { .progress-indeterminate .progress-fill { animation: none; width: 100%; } .progress-fill { transition: none; } }
+@media (max-width: 650px) { .plan-progress-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workflow-choice { grid-template-columns: 1fr; } .workflow-choice select { grid-column: 1; grid-row: auto; } }

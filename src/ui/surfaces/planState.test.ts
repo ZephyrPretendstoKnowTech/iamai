@@ -96,7 +96,7 @@ test('a dated row’s rail is the day the plan schedules, and its When column re
       const rail = railOf(stepContract(step, ctx, undefined, lane))
       // Every dated row's rail is its day, a decision's included (content review R1).
       assert.equal(rail.metric, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row reads ${label} and the rail ${rail.metric}`)
-      assert.equal(label, absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row's day is not the scheduled day`)
+      assert.equal(label.replace(/^Est\. /, ''), absoluteDate(step.scheduled.at), `${run.f.name}/${step.id}: the row's day is not the scheduled day`)
       checked += 1
     }
   }
@@ -115,7 +115,7 @@ test('an undated row reads the placeholder and so does its rail: the reason live
       const lane = laneViewOf(reading, titleOf)
       const c = stepContract(step, ctx, undefined, lane)
       if (c.milestone.at !== null) continue
-      assert.equal(railOf(c).metric, WHEN.none, `${run.f.name}/${step.id}: the row reads the placeholder and the rail says "${railOf(c).metric}"`)
+      assert.equal(railOf(c).metric, 'Not scheduled', `${run.f.name}/${step.id}: the row reads the placeholder and the rail says "${railOf(c).metric}"`)
       checked += 1
     }
   }
@@ -153,7 +153,7 @@ test('deferred hardening is delivered work: Completed on every surface, never Al
   const readiness = readinessOf(bg, c)
   assert.equal(readiness.bar.key, 'completed')
   assert.equal(readiness.bar.main, CONTRACT.lifecycle['in-place'])
-  assert.equal(railOf(c).metric, WHEN.none)
+  assert.equal(railOf(c).metric, 'Not scheduled')
   const slots = [...readiness.tiles, ...readiness.satisfied].filter((t) => t.key.startsWith('slot:'))
   assert.ok(slots.some((t) => t.value === CONTRACT.hardening.tiles.deferred), 'no account slot says the hardening is deferred to Cleanup')
   assert.deepEqual(c.doneWhen, [CONTRACT.hardening.doneDeferred], 'Done when claims full resilience')

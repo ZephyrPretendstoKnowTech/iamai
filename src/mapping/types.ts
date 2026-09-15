@@ -54,6 +54,8 @@ export type MappingRecord = {
 }
 
 export type MappingState = {
+  workflowConfirmedAt?: string
+  workflowAnswers?: Record<string, 'yes' | 'no' | 'unsure'>
   tenantId: string
   records: Record<string, MappingRecord>
   variantChoices: Record<string, string> // intentKey → chosen policy name

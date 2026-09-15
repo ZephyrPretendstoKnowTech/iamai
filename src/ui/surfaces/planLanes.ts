@@ -1,3 +1,4 @@
+import { WORKFLOW_STEP } from '../../roadmap/workflows.ts'
 // The Plan's lanes: the actionability engine (src/actionability) read over the
 // plan as this scan left it (S3).
 //
@@ -366,14 +367,30 @@ export function laneReadings(steps: readonly Step[], rows: readonly LaneRowInput
     // an engine row (S4): the row carries the blocker as its reason, so the board
     // reads "Baseline references an unmapped group" here too.
     const mapping = reading.lane === 'On Hold' ? (observe(s, byId).blockers ?? []).find((b) => b.kind === 'sourceMapping') : undefined
-    const reason: HoldBlocker | null = mapping ? { kind: 'sourceMapping', id: mapping.id, milestone: null, condition: null, abnormal: true, ordinal: 0, ...(mapping.role ? { role: mapping.role } : {}) } : null
+    const dependency = s.blockedBy.map((id) => byId.get(id)).find((d) => d && d.status !== 'done')
+    const prerequisite: HoldBlocker | null = dependency ? { kind: 'step', id: dependency.id, milestone: null, condition: null, abnormal: false, ordinal: 0 } : null
+    const reason: HoldBlocker | null = mapping ? { kind: 'sourceMapping', id: mapping.id, milestone: null, condition: null, abnormal: true, ordinal: 0, ...(mapping.role ? { role: mapping.role } : {}) } : prerequisite
+    if (dependency && !mapping && reading.lane !== 'Completed' && reading.lane !== 'Deferred') { reading.lane = (out.get(dependency.id) ?? fallbackOf(planStateOf(dependency, isHeld(dependency)))).lane === 'Ready' ? 'Up Next' : 'On Hold'; reading.substatus = null }
     rest.push({ id: s.id, reading: { ...reading, reason, blockers: reason ? [reason] : [], gates: [] } })
   }
   for (const r of rows) {
     if (out.has(r.id)) continue
-    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null, blockers: [], gates: [] } : { lane: 'Ready', substatus: 'Create', reason: null, blockers: [], gates: [] } })
+    rest.push({ id: r.id, reading: r.complete ? { lane: 'Completed', substatus: null, reason: null, blockers: [], gates: [] } : { lane: 'Ready', substatus: 'Review', reason: null, blockers: [], gates: [] } })
   }
   rest.sort((a, b) => a.id.localeCompare(b.id))
   for (const { id, reading } of rest) out.set(id, { ...reading, order: counts[reading.lane]++, fromEngine: false })
+  // The static dependency catalogue predates the workload confirmation. Carry its runtime edge into the same reading.
+  for (const step of steps.filter((s) => s.blockedBy.includes(WORKFLOW_STEP))) {
+    const r = out.get(step.id)
+    const dep = out.get(WORKFLOW_STEP)
+    if (!r || !dep || dep.lane === 'Completed' || r.lane === 'Completed' || r.lane === 'Deferred' || (r.lane === 'On Hold' && r.reason !== null)) continue
+    const reason: HoldBlocker = { kind: 'step', id: WORKFLOW_STEP, milestone: null, condition: null, abnormal: false, ordinal: 0 }
+    r.lane = dep.lane === 'Ready' ? 'Up Next' : 'On Hold'
+    r.substatus = null
+    r.reason = reason
+    r.blockers = [...r.blockers, reason]
+  }
+  for (const step of steps) { const reading = out.get(step.id); if (reading?.lane === 'Ready' && step.manualReview) reading.substatus = 'Review' }
+  for (const row of rows) { const reading = out.get(row.id); if (reading?.lane === 'Ready') reading.substatus = 'Review' }
   return out
 }

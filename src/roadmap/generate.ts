@@ -1,3 +1,5 @@
+import { addWorkflowSteps } from './workflows.ts'
+import { applyManualReviews } from './manualWork.ts'
 // Step generation (roadmap.md §1–§6; 2026-08-27 redesign: collapsed phase 0,
 // per-tenant impact, safe-today lane, handle-with-care gating, comms drafts,
 // operator self-safety, Learn links, auto-scheduling). Pure.
@@ -260,6 +262,9 @@ export type RoadmapInput = {
    * row's completion date, and every drill date, which exempts the matching
    * emergency sign-ins from the recent-sign-in check.
    */
+  manualConfirmations?: Record<string, Record<string, import('./decisions.ts').OwnerConfirmation>>
+  /** Wall clock for manual records; snapshot time remains the evidence clock. */
+  reviewNow?: string
   cleanupRecord?: CleanupRecord
   /**
    * The operator's deferral of the emergency-access hardening (owner,
@@ -795,7 +800,7 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
   // A policy that excluded such a group would carry the exclusions group's
   // promise while keeping none of it.
   const groupFacts = [...(input.groupMembers?.entries() ?? [])].map(([groupId, g]) => ({ groupId, ...g }))
-  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, drillDates: input.cleanupRecord?.drills ?? [] })
+  const validationCtx = buildContext({ snapshot, state: mapping, groupMembers: groupFacts, viability, drillDates: input.cleanupRecord?.drills ?? [], drillRecords: input.cleanupRecord?.records ?? [] })
   const exclusionGroupReport =
     exclusions.actionableId === null ? null : reportFor('exclusionGroup', [groupFacts.find((g) => g.groupId === exclusions.actionableId) ?? null], validationCtx)
   const policyUsableExclusionsGroupId = exclusionGroupPolicySafety(exclusionGroupReport).safe ? exclusions.actionableId : null
@@ -2320,6 +2325,8 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     s.skipReason = reason
     setState(s, { setAside: true })
   }
+  if (canUseConditionalAccess) addWorkflowSteps(steps, input.coverage.organisation.notAssessed, snapshot, mapping, input.manualConfirmations, input.coverage.results.filter((r) => r.status !== 'licence-limited').map((r) => r.goal.id))
+  applyManualReviews(steps, snapshot, input.manualConfirmations)
   const schedule = buildSchedule(steps, startIso, activeTotal, input.band ?? null, {
     freeze: input.changeFreeze ?? null,
     rhythm,
@@ -2339,9 +2346,11 @@ export function generateRoadmap(input: RoadmapInput): RoadmapResult {
     emergencyAccountIds: mapping.breakGlassUserIds,
     emergencyAccounts: mapping.breakGlassUserIds.map(nameOf),
     emergencyAccountUpns: mapping.breakGlassUserIds.map((id) => userById.get(id)?.userPrincipalName ?? nameOf(id)),
-    organisation: input.coverage.organisation,
+    organisation: { ...input.coverage.organisation, notAssessed: [] },
     superseded: supersededPolicies(steps),
     done: input.cleanupRecord?.done ?? {},
+    records: input.cleanupRecord?.records ?? [],
+    now: input.reviewNow ?? snapshot.asOf,
     // Deferred emergency-access hardening stays in view until it passes (owner, 2026-09-11).
     hardening: bgStep?.emergency?.deferredAt ? deferredHardeningLines(bgStep, nameOf) : [],
   })

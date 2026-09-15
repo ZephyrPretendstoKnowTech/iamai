@@ -5,7 +5,7 @@
   "fact": null,
   "badge": "Completed",
   "bar": "In place",
-  "rail": "—",
+  "rail": "Not scheduled",
   "headings": [
     "Why",
     "Readiness",
@@ -15,10 +15,8 @@
   "tiles": [],
   "channels": [
     "Entra",
-    "PowerShell",
-    "JSON",
     "AI Info",
     "Email"
   ],
-  "when": "—"
+  "when": "Already in place"
 }

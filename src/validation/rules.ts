@@ -25,7 +25,7 @@ import { FINDING as F, NEED_LABEL, RULE_CITATION, RULE_TEXT, UNKNOWN } from '../
 import type { Citation } from '../copy/validation.ts'
 import { absoluteDate, relative } from '../copy/dates.ts'
 import { BREAK_GLASS_DRILL_DAYS } from '../roadmap/constants.ts'
-import { isRecordedDrill } from '../roadmap/cleanupDone.ts'
+import { isRecordedDrill, latestRecoveryTest } from '../roadmap/cleanupDone.ts'
 
 // ---- the model -------------------------------------------------------------
 
@@ -123,6 +123,7 @@ export type ValidationContext = {
   answers: { credentialStorage: boolean | null; signInMonitoring: boolean | null }
   /** Every emergency access drill the plan recorded (the Cleanup drill row's Done): a sign-in on one of these days is the drill. */
   drillDates: string[]
+  drillRecords?: import('../roadmap/cleanupDone.ts').CleanupCheckpoint[]
 }
 
 export type ValidationRule<S = string> = {
@@ -521,11 +522,12 @@ const bgDrilled: ValidationRule = {
   evaluate: (id, ctx) => {
     const u = userOf(ctx, id)
     if (!u) return unknown(UNKNOWN.needs([NEED_LABEL.users]))
-    if (u.lastSuccessfulSignIn === null) return fail(F.bgNeverSignedIn)
-    const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(u.lastSuccessfulSignIn)) / 86_400_000)
+    const testedAt = latestRecoveryTest(id, ctx.drillRecords ?? [], ctx.snapshot.asOf)
+    if (!testedAt) return fail(F.bgNoRecordedDrill)
+    const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(testedAt)) / 86_400_000)
     return days > BREAK_GLASS_DRILL_DAYS
-      ? fail(F.bgDrillDue(absoluteDate(u.lastSuccessfulSignIn), BREAK_GLASS_DRILL_DAYS))
-      : pass(F.bgDrilled(absoluteDate(u.lastSuccessfulSignIn), BREAK_GLASS_DRILL_DAYS))
+      ? fail(F.bgDrillDue(absoluteDate(testedAt), BREAK_GLASS_DRILL_DAYS))
+      : pass(F.bgDrilled(absoluteDate(testedAt), BREAK_GLASS_DRILL_DAYS))
   },
 }
 
@@ -582,7 +584,7 @@ const bgLastSignIn: ValidationRule = {
   evaluate: (id, ctx) => {
     const at = userOf(ctx, id)?.lastSuccessfulSignIn ?? null
     if (at === null) return pass()
-    if (isRecordedDrill(at, ctx.drillDates)) return pass(F.bgLastSignInDrill(absoluteDate(at)))
+    if (isRecordedDrill(at, ctx.drillDates, id, ctx.drillRecords ?? [])) return pass(F.bgLastSignInDrill(absoluteDate(at)))
     const days = Math.floor((Date.parse(ctx.snapshot.asOf) - Date.parse(at)) / 86_400_000)
     if (days <= BREAK_GLASS_DRILL_DAYS) return fail(F.bgLastSignInUnrecorded(absoluteDate(at)), { ago: relative(at, Date.parse(ctx.snapshot.asOf)) })
     return pass(F.bgLastSignIn(absoluteDate(at)))

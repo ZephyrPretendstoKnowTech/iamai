@@ -1,3 +1,4 @@
+import { validCompletionDate } from '../../roadmap/cleanupDone.ts'
 // A Cleanup row's body (target-state §5; prompt 52 Part 3): Why, What to do and
 // Done when from content.cleanup, filled with the tenant's lists, shared by the
 // Plan (opened in place) and the print (every step in full). A line with a hole
@@ -38,13 +39,14 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
   onScan?: () => void
   onClose?: () => void
   /** Done: record the date (YYYY-MM-DD) in the plan's checkpoints. */
-  onDone?: (date: string) => void
+  onDone?: (date: string, accountIds?: string[]) => void
   /** The not-assessed row's notes by policy name, and the control that writes one (null clears it). */
   notes?: NotAssessedNotes
   onNote?: (policy: string, reason: string | null) => void
   tenant?: string
 }) {
   const entry = cleanupEntry(row.kind)
+  const [tested, setTested] = useState<string[]>([])
   const [date, setDate] = useState(todayDate)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   if (!entry) return null
@@ -97,9 +99,10 @@ export function CleanupBody({ phase, row, status, onScan, onClose, onDone, notes
       <DoneWhen heading={HEAD.doneWhen} lines={doneWhen.map((l) => fillText(l, ex))} />
       {onDone && (
         <div className="decision">
+          {row.kind === 'drill' && <fieldset><legend>{A.recoveryTestAccounts}</legend>{phase.accountIds.map((id, i) => <label key={id} className="option-value"><input type="checkbox" checked={tested.includes(id)} onChange={(e) => { const checked = e.currentTarget.checked; setTested((ids) => checked ? [...ids, id] : ids.filter((x) => x !== id)) }} />{row.lists.emergencyAccounts?.[i] ?? id}</label>)}</fieldset>}
           <div className="dlabel">{A.cleanupDoneOn}</div>
-          <input type="date" aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-          <Button variant="secondary" disabled={!/^\d{4}-\d{2}-\d{2}$/.test(date)} onClick={() => onDone(date)}>{A.cleanupDone}</Button>
+          <input type="date" max={todayDate()} aria-label={A.cleanupDoneOn} value={date} onChange={(e) => setDate(e.currentTarget.value)} />
+          <Button variant="secondary" disabled={!validCompletionDate(date, todayDate()) || (row.kind === 'drill' && tested.length === 0)} onClick={() => onDone(date, tested)}>{A.cleanupDone}</Button>
           {row.done && <p className="reason">{cleanupWhen(row)}</p>}
         </div>
       )}

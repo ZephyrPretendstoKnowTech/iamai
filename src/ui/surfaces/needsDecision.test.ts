@@ -229,7 +229,7 @@ test('needs decision: the state, the word, the next milestone, the action and th
   assert.equal(contract.whatToDo.kind, 'decide')
   // The step's own completion (S-EG-5, B8), not the shared decision sentence.
   // Editorial batch C: the register's completion, and the policy references as a human check each policy step confirms.
-  assert.deepEqual(contract.doneWhen, ['The exclusions group is confirmed and contains only the selected emergency access accounts.', 'Verify after the change: each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan.'])
+  assert.deepEqual(contract.doneWhen, ['The exclusions group is confirmed and contains only the selected emergency access accounts.', 'Each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan.'])
   // The question is the step's What to do, not something to fix (owner, 2026-09-11).
   assert.deepEqual(contract.fix.map((x) => x.text), [])
   // The collapsed row says the same, without the step being opened.

@@ -23,7 +23,7 @@ test('the demo has a Cleanup phase: dated after the last enforcement, one workin
   const kinds: string[] = c.rows.map((x) => x.kind)
   assert.deepEqual(kinds, ORDER.filter((k) => kinds.includes(k)), 'rows keep the §5 order')
   assert.ok(kinds.includes('alerting') && kinds.includes('drill'), 'the emergency accounts give alerting and the drill')
-  assert.ok(kinds.includes('notAssessed'), 'the pinned baseline carries policies IAMAI does not assess')
+  assert.equal(kinds.includes('notAssessed'), false, 'individual workflow reviews replace the catch-all')
   assert.ok(c.start > r.schedule.targetEnd, 'Cleanup starts after the last enforcement window')
   const ctx = r.schedule.rhythm ? { rhythm: r.schedule.rhythm } : undefined
   for (const [i, row] of c.rows.entries()) {
