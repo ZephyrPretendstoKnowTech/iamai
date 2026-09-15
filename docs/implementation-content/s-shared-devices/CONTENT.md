@@ -179,7 +179,7 @@ Review and test a dedicated access policy for the shared-device accounts listed 
 Proposed policy name: **{{policy.target.displayName}}**. [omit this line when unavailable]
 Shared-device account IDs: {{policy.target.includeUsers}}. [omit this line when unavailable]
 
-1. Confirm each account belongs to a room system or shared device and identify its owner. Do not assume every account without interactive sign-ins is a shared device.
+1. Confirm each account belongs to a room system or shared device and identify its owner. Missing interactive sign-ins alone do not identify a shared-device account.
 2. Agree the public office or VPN network ranges with the network owner. Confirm the named location in Define the Trusted Network. If no network can be trusted, resolve the device's access design before creating a location-based exception.
 3. In Entra admin center → Conditional Access → Policies, inspect any existing policy for these accounts before creating another. For a new dedicated policy, include only the confirmed shared-device accounts, target All resources, include Any location and exclude only the approved trusted location. Grant: Block access. Start in Report-only.
 4. Review the other policies that apply to these accounts. Add only the exceptions the device needs for supported operation; do not place shared devices in the emergency-access exclusions group.

@@ -1562,13 +1562,13 @@ async function walkFixture(fx) {
             // The rungs' people are the step's Readiness evidence (read into
             // bodyText above) and the printed plan's More; the email is the printed
             // plan's (emailChecks).
-            const whensDated = rowWhens.some((w) => /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(w || ''))
             emailChecks.push({ title, slabel, run: (emailText, rungPeople) => {
               const devices = / · phone(?![a-z])/.test(rungPeople) || / · phone(?![a-z])/.test(bodyText)
               if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
-              // The device sentence is the email's, and the email is written only once the plan dates an enforcement.
-              const emailWritten = emailText.trim() !== '' || whensDated
-              if (week2 && emailWritten && !/nothing to enroll/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
+              // Check the actual printed email when offered. A date on another row
+              // does not make this held campaign's auxiliary email available.
+              const emailWritten = emailText.trim() !== ''
+              if (week2 && emailWritten && (!/use supported work apps/.test(emailText) || !/company app-protection instructions/.test(emailText) || !/hybrid join alone does not meet it/.test(emailText))) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
               if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
             } })
           }
