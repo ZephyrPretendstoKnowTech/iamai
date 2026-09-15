@@ -1,54 +1,15 @@
-# Publishes the site to GitHub Pages from a clean checkout (prompt 35 §1).
-#
-#   getiamai.com/           the home page (generated, home/)
-#   getiamai.com/planner/   the planner (the Vite bundle)
-#
-# One repository, one workflow, one domain, one source: `main`. scripts/toolPath.ts
-# names the folder and is the single constant: vite.config.ts derives its base and
-# outDir from it, and scripts/assemble-site.mjs reads the same value when it lays
-# out dist/. This workflow sets no folder name of its own — a deployment variable
-# that has to be remembered publishes the wrong path when it is forgotten.
-# Routing is hash-based and the baseline index fetches by absolute URL, so
-# nothing else changes with the path.
-#
-# There is no preview path and no second branch: the retired night-1 preview
-# (/next/) was removed with task 016, so nothing but reviewed `main` can reach
-# the live site. Production is gated walk → build → deploy: build needs walk, and
-# deploy needs build, so a P0 in the walk stops the publication.
-#
-# The gate is only worth as much as the commit it judges. Every job checks out
-# `${{ github.sha }}` — the run's own immutable commit — and never the movable
-# `main` ref, so the artifact that is published is built from the exact commit
-# the walk passed. Checking out `main` in the build let a later push overtake an
-# older run and be published on the strength of an earlier commit's walk.
-# Publication is additionally fenced to `main` itself, so a workflow_dispatch on
-# any other ref walks that ref and stops there.
+# Called after the exact main commit passes ci; reuse its immutable build.
+# Manual releases start through ci.yml on main, with the same validation gates.
 name: deploy-pages
-
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
+  workflow_call:
 permissions:
   contents: read
   pages: write
   id-token: write
-
-# Only the publication is superseded by a newer push. The walk is this
-# repository's authoritative validation of an exact commit, so it never carries a
-# cancelling concurrency group: a cancelled walk reads as a red commit that was
-# never actually judged, and the overnight runner cannot tell that apart from a
-# real P0. The `pages` group therefore sits on the deploy job alone, where
-# GitHub requires it and where superseding costs nothing but a stale publish.
-
 jobs:
-  # The walk (scripts/walk.mjs) on the pushed commit: every surface of the demo
-  # and the mock fixtures in headless Chrome, against the surface contracts and
-  # the invariants. It exits 1 on a P0, so a P0 stops the build and the deploy.
-  # Sessions never run it; this job is where it runs. The report and the
-  # captures are kept as a run artifact for reading a failure.
   walk:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -59,133 +20,26 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      # The walk names its report by short SHA; this is the same commit in full,
-      # so a report filename can be tied to a commit without guessing.
-      - name: Commit under test
-        run: |
-          echo "checked out : $(git rev-parse HEAD)"
-          echo "short       : $(git rev-parse --short=7 HEAD)"
-          echo "github.sha  : ${{ github.sha }}"
-          echo "ref         : ${{ github.ref }}"
-          echo "subject     : $(git log -1 --pretty=%s)"
       - run: npm ci
-      # ubuntu-latest ships Google Chrome; the script finds it on its own.
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-${{ github.sha }}
+      - name: Verify validated artifact
+        run: node scripts/release-artifact.mjs verify "$GITHUB_SHA"
       - run: npm run walk
         env:
           CHROME: /usr/bin/google-chrome
-      # What failed, in one screen. A walk P0 is a deterministic assertion about a
-      # fact on screen, and both a human opening this run and the overnight
-      # runner reading the log need to see it without downloading the artifact.
-      # Anything that is not a P0 list is a job that fell over before the walk
-      # could judge anything, and this says that instead of guessing.
-      - name: What failed
-        if: failure()
-        run: |
-          sha="$(git rev-parse --short=7 HEAD)"
-          findings="walk/$sha/findings.json"
-          {
-            echo "### deploy-pages — what failed"
-            echo ""
-            if [ -f "$findings" ]; then
-              echo "WALK_RESULT: P0 assertions on $sha"
-              echo ""
-              echo '```'
-              node -e '
-                const f = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
-                const p0 = (f.findings && f.findings.P0) || []
-                console.log(`walk ${f.sha}: ${p0.length} P0, ${((f.findings||{}).P1||[]).length} P1`)
-                for (const line of p0) console.log(`P0: ${line}`)
-                if (!p0.length) console.log("no P0 recorded; the walk job failed before or after its findings")
-              ' "$findings"
-              echo '```'
-            else
-              echo "WALK_RESULT: the walk produced no findings file for $sha"
-              echo ""
-              echo "The job failed before the walk could judge the surfaces (browser startup, install, or the runner itself)."
-            fi
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-      # This run's report beside its captures (walk/<sha>/); the committed reports stay out.
-      - if: always()
-        run: cp "docs/reports/walk-$(git rev-parse --short=7 HEAD).md" walk/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: walk-${{ github.sha }}
+          name: walk-${{ github.sha }}-${{ github.run_attempt }}
           path: walk/
           if-no-files-found: ignore
-  build:
-    needs: walk
-    # Only `main` publishes. The walk runs on whatever ref dispatched it; a
-    # dispatch from anywhere else stops at the walk rather than laying its
-    # bundle over the live site.
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      # The run's own commit, not the branch tip as it stands now. `main` moves
-      # while a run is in flight; this SHA is the one the walk judged.
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      # What is actually being published, and the proof that it is what was
-      # walked. Both jobs check out ${{ github.sha }}, so this is the same commit
-      # the walk judged; the guard fails the build rather than publishing a
-      # bundle whose provenance cannot be stated.
-      - name: Commit being published
-        run: |
-          head="$(git rev-parse HEAD)"
-          if [ "$head" != "${{ github.sha }}" ]; then
-            echo "BUILD_RESULT: checked out $head, but this run walked ${{ github.sha }}"
-            exit 1
-          fi
-          {
-            echo "publishing      : $head  ($(git log -1 --pretty=%s))"
-            echo "walked SHA      : ${{ github.sha }}"
-            echo "pushed ref      : ${{ github.ref }}"
-          } | tee "$RUNNER_TEMP/published.txt"
-          {
-            echo "### deploy-pages — what is being published"
-            echo '```'
-            cat "$RUNNER_TEMP/published.txt"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-      - run: npm ci
-      # Deterministic only: EXTERNAL_HEALTH is unset, so the Learn-link probe
-      # skips itself here. A Microsoft Learn outage used to be able to fail this
-      # step and block the deploy of a site that was perfectly good.
-      - id: test
-        run: npm test
-      - id: site
-        run: npm run build:site
-      # Which deterministic assertion failed, named rather than inferred from the
-      # log. A failure with none of these named is the job falling over before it
-      # asserted anything, which is a different thing and says so.
-      - name: What failed
-        if: failure()
-        env:
-          TEST_OUTCOME: ${{ steps.test.outcome }}
-          SITE_OUTCOME: ${{ steps.site.outcome }}
-        run: |
-          named=0
-          {
-            echo "### deploy-pages — what failed"
-            echo ""
-            if [ "$TEST_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — npm test"; fi
-            if [ "$SITE_OUTCOME" = "failure" ]; then named=1; echo "BUILD_RESULT: deterministic assertion failed — npm run build:site"; fi
-            if [ "$named" = "0" ]; then echo "BUILD_RESULT: no named assertion failed; the job fell over before it asserted anything"; fi
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+          retention-days: 7
   deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
+    needs: walk
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    # The one place a newer push may take over: an older publication in flight is
-    # cancelled here, after its commit has already been walked and built.
     concurrency:
       group: pages
       cancel-in-progress: true
@@ -193,5 +47,22 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-${{ github.sha }}
+      - name: Verify exact build before publication
+        run: node scripts/release-artifact.mjs verify "$GITHUB_SHA"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages-${{ github.run_attempt }}
+          path: dist
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}

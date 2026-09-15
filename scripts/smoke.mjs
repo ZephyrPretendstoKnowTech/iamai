@@ -603,8 +603,9 @@ try {
   if (handoff) {
     const wanted = Number((handoff.text.match(/^(\d+)/) ?? [])[1] ?? NaN)
     await send('Page.navigate', { url: `${BASE}${handoff.href}` })
-    await sleep(1400)
-    await waitFor(`/MFA Readiness/.test(document.body.innerText)`)
+    const scopeLoaded = await waitFor(`location.hash === ${JSON.stringify(handoff.href)} && /Filtered to the \\d+ (people|person)\\b/.test(document.querySelector('main.page')?.innerText ?? '')`)
+    check('MFA Readiness: the scoped destination finishes loading', scopeLoaded,
+      scopeLoaded ? '' : await evaluate(`location.href + ' | ' + (document.querySelector('main.page')?.innerText ?? 'No main content').slice(0, 300)`))
     const scoped = await evaluate(`document.querySelectorAll('main.page table.datatable tbody tr').length`)
     const t2 = await text()
     // The count bends its noun (pluralise): one person, or n people.

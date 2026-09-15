@@ -215,37 +215,29 @@ test('How credits CA Policy Analyzer and the baseline without claiming an endors
 // the walk. The gate holds only if the commit the build publishes is the commit
 // the walk judged, so every job pins the run's own SHA rather than the movable
 // `main` ref, and nothing but `main` gets past the walk.
-test('the deploy workflow gates production on the walk and publishes main alone', () => {
+test('the deploy workflow publishes the validated main artifact only after the walk', () => {
+  const ci = read('.github/workflows/ci.yml')
   const wf = read('.github/workflows/deploy-pages.yml')
-  // The header comment records that the preview was retired; the configuration
-  // must not bring any of it back, so this reads the workflow without its prose.
-  const config = wf
-    .split('\n')
-    .filter((l) => !/^\s*#/.test(l))
-    .join('\n')
-  assert.doesNotMatch(config, /night-1|\/next\/|TOOL_PATH_PREFIX/, 'the retired preview machinery is back')
-  assert.match(wf, /^  build:\n    needs: walk$/m, 'build needs walk')
-  assert.match(wf, /^  deploy:\n    needs: build$/m, 'deploy needs build')
-  assert.match(wf, /branches: \[main\]/, 'only main triggers a publication')
-  assert.match(wf, /npm run walk/, 'the walk runs')
-  // One immutable commit for the whole run. A checkout of `main` would let a
-  // push that lands during an older run's walk be built and published on that
-  // older walk's verdict, so no job may name a movable ref.
-  assert.doesNotMatch(config, /ref: +main\s*$/m, 'no job checks out the movable main ref')
+  const config = wf.split('\n').filter(l => !/^\s*#/.test(l)).join('\n')
+  assert.match(ci, /branches: \[main\]/)
+  assert.match(ci, /pull_request:/)
+  assert.match(ci, /name: ci\n    needs: \[checks, browser\]/, 'both independently retryable jobs remain required')
+  assert.match(ci, /test "\$CHECKS" = success && test "\$BROWSER" = success/)
+  assert.match(ci, /release:\n    needs: ci/)
+  assert.match(ci, /if: github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request'\n    uses: \.\/\.github\/workflows\/deploy-pages.yml/)
+  assert.match(config, /workflow_call:/, 'publication is called by validated CI')
+  assert.match(config, /deploy:\n    needs: walk/, 'a walk failure blocks publication')
+  assert.match(config, /npm run walk/)
+  assert.doesNotMatch(config, /night-1|\/next\/|TOOL_PATH_PREFIX|ref: +main\s*$/m)
   const checkouts = config.match(/uses: actions\/checkout@/g) ?? []
-  const pinned = config.match(/ref: \$\{\{ github\.sha \}\}/g) ?? []
-  assert.ok(checkouts.length >= 2, 'the walk and the build each check the source out')
-  assert.equal(pinned.length, checkouts.length, 'every checkout is pinned to the SHA of this run')
-  // And the build proves it before it publishes anything.
-  assert.match(config, /git rev-parse HEAD[^]*?!= "\$\{\{ github\.sha \}\}"[^]*?exit 1/, 'the build refuses a checkout that is not the walked commit')
-  // A workflow_dispatch from another ref may walk that ref; it may not publish.
-  const mainOnly = /^ {2}(?:build|deploy):\n(?: {4}\S[^]*?)?^ {4}if: github\.ref == 'refs\/heads\/main'$/gm
-  assert.equal((config.match(mainOnly) ?? []).length, 2, 'build and deploy run for main alone')
-  // The tool path has no environment override any longer, so no deployment
-  // variable can publish the bundle somewhere else.
-  assert.doesNotMatch(read('scripts/toolPath.ts'), /process\.env/, 'the published path is a constant')
+  assert.equal((config.match(/ref: \$\{\{ github\.sha \}\}/g) ?? []).length, checkouts.length)
+  assert.equal(checkouts.length, 2)
+  assert.equal((config.match(/if: github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request'/g) ?? []).length, 2)
+  assert.equal((config.match(/name: site-\$\{\{ github\.sha \}\}/g) ?? []).length, 2)
+  assert.equal((config.match(/node scripts\/release-artifact.mjs verify "\$GITHUB_SHA"/g) ?? []).length, 2)
+  assert.doesNotMatch(config, /npm test|npm run build:site/, 'deployment reuses the validated build')
+  assert.doesNotMatch(read('scripts/toolPath.ts'), /process\.env/)
 })
-
 test('dependabot is configured for the one npm project at the root, weekly', () => {
   const path = '.github/dependabot.yml'
   assert.ok(existsSync(path), 'the dependabot config exists')

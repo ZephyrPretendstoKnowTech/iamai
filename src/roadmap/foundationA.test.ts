@@ -748,8 +748,8 @@ test('nothing but the operation decides what an open policy does', () => {
   for (const { f, r } of runs) {
     for (const s of openPolicies(r.steps)) {
       assert.equal(familyReading(s), null, `${f.name} ${s.id}: the family answers for no open policy`)
+      const asGenerated = readingOf(s, f, r, r.steps)
       for (const { why, step } of perturbations(s)) {
-        const asGenerated = readingOf(s, f, r, r.steps)
         const moved = readingOf(step, f, r, r.steps)
         if (moved !== asGenerated) failures.push(`${f.name} ${s.id}: ${why} moved the reading\n  was ${asGenerated}\n  now ${moved}`)
       }
@@ -777,13 +777,13 @@ test('nothing but the operation decides what an open policy tells people or offe
     // half — a whole content render per step — so they are not walked twice.
     for (const s of openPolicies(r.steps)) {
       let seenFamily = false
+      const asGenerated = wordsOf(s)
       for (const { why, step, words } of perturbations(s)) {
         if (words === true) continue
         if (why.startsWith('family ')) {
           if (seenFamily) continue
           seenFamily = true
         }
-        const asGenerated = wordsOf(s)
         const moved = wordsOf(step)
         if (moved !== asGenerated) failures.push(`${f.name} ${s.id}: ${why} moved the words\n  was ${asGenerated.slice(0, 400)}\n  now ${moved.slice(0, 400)}`)
       }

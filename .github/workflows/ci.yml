@@ -1,188 +1,109 @@
-# Regression net for every prompt (prompt 20 §10): the typecheck, unit tests, the
-# build, and the headless first-run smoke test against the synthetic tenant.
-#
-# Everything here is deterministic: it runs against this checkout, the synthetic
-# tenant and localhost, so a red `ci` means IAMAI itself probably has a defect.
-# Checks that can only pass when a third party answers — Microsoft Learn serving
-# every link the content cites, login.microsoftonline.com serving the authority
-# metadata — are not here. They live in external-health.yml, which is not a
-# required check, so an outage on someone else's estate cannot redden this one.
-# The one network call this job does make is `npm ci` against the npm registry,
-# which is how the code gets here at all.
-#
-# Each step is teed to a log and, on failure only, the logs are kept as an
-# artifact. Nothing is uploaded when the job is green: a passing run's evidence
-# is that it passed.
+# One validation per PR update, then the exact merged main commit.
 name: ci
-
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
-
-# The job reads the checkout and writes nothing back to the repository.
+  workflow_dispatch:
 permissions:
   contents: read
-
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  # The job is the status check main requires ("ci", the repository rule), so it carries that name.
-  ci:
-    name: ci
+  checks:
+    name: Type and unit checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # The whole history: the change-scope step below reads every commit the
-      # push or the pull request brings, not only the one checked out.
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-
-      # Which commit this actually is, before anything can fail. On a
-      # pull_request the ref checked out is GitHub's merge commit, which exists
-      # nowhere in the branch, so the head SHA is printed beside it — a reader
-      # chasing a failure needs the one they can check out.
-      - name: Commit under test
-        run: |
-          {
-            echo "checked out : $(git rev-parse HEAD)"
-            echo "github.sha  : ${{ github.sha }}"
-            echo "event       : ${{ github.event_name }}"
-            echo "ref         : ${{ github.ref }}"
-            # An `x && echo` here would leave the group's status at 1 on a push,
-            # where the value is empty; an if is unambiguous under `bash -e`.
-            if [ -n "${{ github.event.pull_request.head.sha }}" ]; then
-              echo "PR head SHA : ${{ github.event.pull_request.head.sha }}"
-            fi
-            echo "subject     : $(git log -1 --pretty=%s)"
-          } | tee "$RUNNER_TEMP/commit.txt"
-          {
-            echo "### ci — commit under test"
-            echo '```'
-            cat "$RUNNER_TEMP/commit.txt"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # pipefail on every teed step, or tee's success would mask the failure and
-      # turn a red check green. This is the one thing here that could change
-      # pass/fail semantics, so it is explicit on each.
-      - name: Install
-        id: install
-        run: set -o pipefail; npm ci 2>&1 | tee "$RUNNER_TEMP/1-install.log"
-
-      # The change-scope lock on the per-step snapshots (A3,
-      # scripts/check-change-scope.mjs): over the commits this run brings, a
-      # package edit may change only its own step's snapshots and a src/ edit may
-      # change snapshots only under [snapshots]. The range is what the event
-      # brought — the pushed commits, or the pull request's commits over its base;
-      # a first push of a branch (no `before`) checks the one commit checked out.
+      - run: npm ci
       - name: Change scope
-        id: scope
-        run: |
-          set -o pipefail
-          range="HEAD^..HEAD"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            range="origin/${{ github.base_ref }}..HEAD"
-          elif [ -n "${{ github.event.before }}" ] && git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
-            range="${{ github.event.before }}..HEAD"
-          fi
-          node scripts/check-change-scope.mjs --range "$range" 2>&1 | tee "$RUNNER_TEMP/1b-scope.log"
-
-      # The types are the first deterministic thing that can be wrong, and were
-      # the one check CI never ran: sessions run `npx tsc --noEmit` (CLAUDE.md)
-      # but nothing enforced it on push.
-      - name: Typecheck
-        id: typecheck
-        run: set -o pipefail; npx tsc --noEmit 2>&1 | tee "$RUNNER_TEMP/2-typecheck.log"
-
-      - name: Unit tests
-        id: test
-        run: set -o pipefail; npm test 2>&1 | tee "$RUNNER_TEMP/3-test.log"
-
-      - name: Build
-        id: build
-        run: set -o pipefail; npm run build:site 2>&1 | tee "$RUNNER_TEMP/4-build.log"
-
-      # ubuntu-latest ships Google Chrome; the scripts find it on their own.
-      # EXTERNAL_HEALTH is unset, so the one smoke check that needs Microsoft's
-      # login authority to answer is printed as skipped rather than asserted.
-      # smoke exits 1 for a failed check and 2 when it never got as far as
-      # checking; the summary below reads that back.
-      - name: Smoke
-        id: smoke
-        run: set -o pipefail; npm run smoke 2>&1 | tee "$RUNNER_TEMP/5-smoke.log"
         env:
-          CHROME: /usr/bin/google-chrome
-
-      # Failure only. Says which step fell over and, for the two that can fail
-      # for a reason that is not the product, which kind of failure it was.
-      - name: What failed
-        if: failure()
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          {
-            echo "### ci failed"
-            echo
-            echo "| Step | Result |"
-            echo "| --- | --- |"
-            echo "| Install | ${{ steps.install.outcome }} |"
-            echo "| Change scope | ${{ steps.scope.outcome }} |"
-            echo "| Typecheck | ${{ steps.typecheck.outcome }} |"
-            echo "| Unit tests | ${{ steps.test.outcome }} |"
-            echo "| Build | ${{ steps.build.outcome }} |"
-            echo "| Smoke | ${{ steps.smoke.outcome }} |"
-            echo
-            if [ "${{ steps.smoke.outcome }}" = "failure" ] && [ -f "$RUNNER_TEMP/5-smoke.log" ]; then
-              if grep -q '^smoke: harness' "$RUNNER_TEMP/5-smoke.log"; then
-                echo "**The smoke never got as far as checking** — the dev server or Chrome did not"
-                echo "start. This is the runner, not the product."
-                echo '```'
-                grep -A20 '^smoke: harness' "$RUNNER_TEMP/5-smoke.log" | head -30
-                echo '```'
-              else
-                echo "**Smoke checks failed** — the harness ran and the product answered wrongly."
-                echo '```'
-                grep '^  FAIL \|^FAIL ' "$RUNNER_TEMP/5-smoke.log" | head -30
-                echo '```'
-              fi
-            fi
-            if [ "${{ steps.scope.outcome }}" = "failure" ] && [ -f "$RUNNER_TEMP/1b-scope.log" ]; then
-              echo "**A snapshot changed out of scope** — regenerate with \`node scripts/step-snapshots.mjs\`; a commit that also changes src/ says [snapshots]."
-              echo '```'
-              cat "$RUNNER_TEMP/1b-scope.log" | head -30
-              echo '```'
-            fi
-            if [ "${{ steps.test.outcome }}" = "failure" ] && [ -f "$RUNNER_TEMP/3-test.log" ]; then
-              echo "**Failing tests**"
-              echo '```'
-              # node --test picks its reporter by tty, so match the spec marker
-              # and TAP's. Captured into a variable first: `grep | head` reports
-              # head's status, so a `||` fallback after the pipe would never fire.
-              failing=$(grep -E '^not ok |✖ ' "$RUNNER_TEMP/3-test.log" | head -30 || true)
-              if [ -n "$failing" ]; then
-                echo "$failing"
-              else
-                grep -E '^ℹ (tests|pass|fail) ' "$RUNNER_TEMP/3-test.log" | head -5 || echo "(see the step log)"
-              fi
-              echo '```'
-            fi
-            echo
-            echo "Full logs are on this run as the \`ci-failure\` artifact."
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      # Failure only, and short-lived: enough to diagnose a red run, not a
-      # permanent store. npm's own debug log is included because an `npm ci`
-      # that fell over is almost always the registry or the runner, not us.
-      - name: Keep the failure logs
+          range="HEAD^..HEAD"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            range="origin/$BASE_REF..HEAD"
+          elif [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE..HEAD"
+          fi
+          node scripts/check-change-scope.mjs --range "$range"
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Unit tests
+        run: set -o pipefail; npm test 2>&1 | tee "$RUNNER_TEMP/unit.log"
+      - uses: actions/upload-artifact@v4
         if: failure()
-        uses: actions/upload-artifact@v4
         with:
-          name: ci-failure-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/*.log
-            ${{ runner.temp }}/commit.txt
-            ~/.npm/_logs/*.log
+          name: unit-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/unit.log
           if-no-files-found: ignore
           retention-days: 7
+  browser:
+    name: Build and browser checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: npm run build:site
+      - name: Smoke
+        run: set -o pipefail; npm run smoke 2>&1 | tee "$RUNNER_TEMP/smoke.log"
+        env:
+          CHROME: /usr/bin/google-chrome
+      - name: Record artifact provenance
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: node scripts/release-artifact.mjs create "$GITHUB_SHA"
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          name: site-${{ github.sha }}
+          overwrite: true
+          path: |
+            dist/
+            release-proof.json
+          include-hidden-files: true
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/smoke.log
+          if-no-files-found: ignore
+          retention-days: 7
+  ci:
+    name: ci
+    needs: [checks, browser]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require both validation jobs
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          BROWSER: ${{ needs.browser.result }}
+        run: test "$CHECKS" = success && test "$BROWSER" = success
+  release:
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    uses: ./.github/workflows/deploy-pages.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
