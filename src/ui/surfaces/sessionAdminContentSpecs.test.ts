@@ -156,7 +156,7 @@ test('s-prereq-trusted-location: the milestone says what to add, Entra is plain 
   // Editorial batch C: only ranges the network owner approved; an observed address is not trusted, and the ranges are a human check.
   assert.equal(words.decision?.help, 'Use only public IP ranges the network owner approved. An observed address is not automatically trusted.')
   assert.deepEqual(words.doneWhen, ['A trusted IP named location exists in the tenant.', 'Its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them.'])
-  assert.ok(content.includes('"clearNote": "No blockers. Ready to proceed."'), 'the Clear readiness line is not the plain one')
+  assert.ok(content.includes('"clearNote": "No unresolved checks."'), 'the Clear readiness line is not the plain one')
   const entra = packageOf(TRUSTED).blocks['entra.create'].text
   assert.deepEqual(authoredParts(entra), [
     {

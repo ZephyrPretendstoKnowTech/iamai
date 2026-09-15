@@ -211,7 +211,7 @@ export function Plan({ scan: lastScan, baseline, account }: {
     // roadmap/holds.ts says the step is held. The phase is a secondary
     // projection: the date reads it, the lane never does.
     const waveStart = waveStartOf(step)
-    const when = boardWhenOf(step, waveStart)
+    const when = boardWhenOf(step, waveStart, laneView)
     renderById.set(step.id, () => <Row key={step.id} step={step} lane={laneView} blockers={readinessBlockersOf(reading, titleOf)} prerequisiteLabel={prerequisiteLabel} onOpenMappings={openSettings} when={when} waveStart={waveStart} open={open === step.id} onToggle={() => openStep(step.id)} onScan={onScan} schedule={c.schedule} tenantName={tenantName} nameOf={nameOf} signature={data.signature} onSkip={data.onSkip} onUnskip={data.onUnskip} onDoesntApply={data.setNotApplicable} onTick={data.tickAnswer} computed={c} snapshot={scan.snapshot} mapping={data.mapping} operatorId={operatorId} dates={dates} groups={data.groups} directory={data.directory} decision={data.stepDecisions[step.id] ?? null} onDecide={(d) => data.onDecide(step.id, d)} confirmations={data.confirmations[step.id] ?? NO_CONFIRMATIONS} onConfirm={(c) => data.onConfirm(step.id, c)} onUnconfirm={(ids) => data.onUnconfirm(step.id, ids)} />)
   }
 
@@ -531,7 +531,7 @@ function CleanupRow({ phase, row, answers, open, onToggle, onScan, onDone, notes
     <>
       {/* The one row shape the Plan draws (StepSections.tsx PlanRow), not one per kind of row. */}
       {/* A completed row's When is the placeholder, as every finished row's is (planBoard.ts boardWhen). */}
-      <PlanRow lane={lane.label} tone={lane.tone} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed')} open={open} onToggle={onToggle} />
+      <PlanRow lane={lane.label} tone={lane.tone} title={entry.title} who={who} when={cleanupWhen(row, undated, lane.lane === 'Completed', lane.lane === 'Ready' && lane.substatus === 'Review')} open={open} onToggle={onToggle} />
       {open && <CleanupBody phase={phase} row={row} status={status} onScan={() => (onScan ? onScan(returnToStep(`cleanup-${row.kind}`)) : (window.location.hash = '#/connect'))} onClose={onToggle} onDone={onDone} notes={notes} onNote={onNote} tenant={tenant} />}
     </>
   )

@@ -3,6 +3,7 @@
   "version": 1.3,
   "shared": {
     "signatureDefault": "IT",
+    "policySettingsForAction": "Settings for This Action",
     "adaptLine": "Paste this into your own assistant to match your voice.",
     "deviation": {
       "line": "{line} · your choice; the baseline's version: {baseline}",
@@ -81,7 +82,7 @@
     "methodGuides": {
       "$comment": "The one source of MFA remediation guidance (task 014). MFA Readiness's person panel, its copy-for-the-help-desk box, the campaign step's pointer and the campaign email all read from here; nothing writes a second version. A guide's steps may name a shared line as \"@key\" into `common`, so a sentence two platforms share is written once (src/content/methodGuides.ts resolves them). Which guide applies to a person is decided by the evidence, not here.",
       "target": "The target is phishing-resistant MFA the person has been seen signing in with: a passkey, Windows Hello for Business or a certificate.",
-      "prereq": "Passkey (FIDO2) has to be on in the tenant first; Set Up Passkeys to Match the Baseline turns it on.",
+      "prereq": "Passkey (FIDO2) has to be on in the tenant first; Configure Passkey Authentication turns it on.",
       "pointer": "Person-by-person setup steps are on MFA Readiness; work its Needs setup and Needs proof lists there.",
       "userInstruction": "Install Microsoft Authenticator, go to https://aka.ms/mfasetup, choose Add sign-in method, then Passkey, and follow the prompts on your phone.",
       "guest": "A guest cannot be issued a Temporary Access Pass; they register from their own tenant or with their own phone.",
@@ -162,7 +163,7 @@
             "A record that only says MFA happened names no method, so it proves nothing about this one."
           ],
           "then": [
-            "If the sign-in is refused, Passkey (FIDO2) may not be on yet; Set Up Passkeys to Match the Baseline turns it on."
+            "If the sign-in is refused, Passkey (FIDO2) may not be on yet; Configure Passkey Authentication turns it on."
           ],
           "learn": {
             "url": "https://learn.microsoft.com/entra/identity/authentication/howto-authentication-methods-activity"
@@ -349,8 +350,8 @@
       }
     },
     "policyDoneWhenConfiguration": [
-      "The policy settings match the plan.",
-      "Verify after the change: test the actual workflow; report-only results alone may not establish its behavior."
+      "A later scan confirms the intended policy settings and enabled state.",
+      "Test the actual workflow with representative users, including registration or recovery where applicable. Report-only results do not prove that these user actions work."
     ],
     "deviceBriefing": {
       "evidence": "{n} devices in the directory: {managed} marked managed, {compliant} compliant and {hybrid} hybrid joined. Directory inventory does not prove that every device people use is covered.",
@@ -642,6 +643,7 @@
         "afterPrerequisites": "After prerequisites",
         "waiting": "After prerequisites",
         "review": "After review",
+        "reviewNow": "Review now",
         "done": "Already in place",
         "deferred": "Not scheduled",
         "estimate": "Est. {date}"
@@ -1028,7 +1030,7 @@
         "doesntApply": "{n} do not apply here",
         "notLicensed": "{n} baseline controls need a licence the tenant does not hold; nothing in the plan waits on them."
       },
-      "tip": "Save the plan file to keep the plan; the sign-in session lasts about a day and the plan does not depend on it."
+      "tip": "Save a plan file after recording decisions or completing work. It preserves those records independently of your sign-in session."
     },
     "footer": {
       "links": [
@@ -1396,7 +1398,7 @@
           "doneMissing": "Every object this policy names exists in {tenant}.",
           "doneMissingDecision": "Every group of the author's this policy names has an answer: what stands for it in {tenant}, or none needed.",
           "doneMissingUnreadable": "IAMAI can say what the group the source policy leaves out means for {tenant}.",
-          "donePair": "Each half of the pair carries the name this step proposes and a scan matches both.",
+          "donePair": "Both guest policies are enabled with the intended settings, and representative guest sign-ins meet the required MFA method. Resolving the policy names is preparation for that work.",
           "doneTarget": "One policy in {tenant} stands out as this goal's own, and a scan finds it.",
           "doneEscapeHatch": "{steps} passes its checks, so the way back in to {tenant} is verified.",
           "doneEmergency": "Every emergency access account is provably out of scope of this policy.",
@@ -1478,7 +1480,7 @@
               "review": "Review",
               "mapping": "Baseline mapping",
               "clear": "Clear",
-              "clearNote": "No blockers. Ready to proceed.",
+              "clearNote": "No unresolved checks.",
               "moreBlocking": "Blocking items still closed: {n}",
               "satisfied": "{n} satisfied",
               "detail": "Why",
@@ -1793,13 +1795,15 @@
                 "profiles": "This tenant uses passkey profiles. IAMAI does not read profile settings, so it cannot tell which groups can use Microsoft Authenticator passkeys. Review each profile and its group assignments in the Entra admin center and keep them unchanged; IAMAI does not write the older global settings over a profile-based policy.",
                 "blockListConflict": "The key restriction block list blocks Microsoft Authenticator ({aaguids}). IAMAI does not remove a block list entry. Find out why it was blocked before allowing Authenticator passkeys.",
                 "partialRead": "The scan did not return every passkey setting this change is built from ({fields}). IAMAI cannot build an update that preserves the current configuration, so none is offered."
-              }
+              },
+              "allUsers": "All users"
             },
             "workloadIdentity": {
               "$comment": "The workload (Cloud Sync) step in words (roadmap/workloadIdentity.ts, owner-approved methodology 2026-09-14): why a network restriction is not counted as protection for the sync process. Bound into the workload package as workload.identity.detail.",
               "unknown": "IAMAI has not established that this identity supports workload Conditional Access. Confirm support before relying on the proposed restriction.",
               "unsupported": "This identity type is outside Microsoft's supported scope for workload Conditional Access. This policy cannot be counted as verified protection for the sync process."
-            }
+            },
+            "copyFailed": "Copy failed. Select the text and copy it manually."
           },
           "railTransition": {
             "$comment": "The rail's sub-line under a day the plan schedules (roadmap/stepSchedule.ts transition): what that day is for. Preparation, verification and review read the milestone's own words instead.",
@@ -1891,7 +1895,7 @@
           "notUsed": "You confirmed that {service} is not in use.",
           "reviewTitle": "Review access protection for {service}",
           "reviewWhy": "Check the baseline control against how you use {service}. IAMAI cannot verify this policy automatically.",
-          "source": "Baseline reference: {policy}. Use the selected baseline on Connect to inspect its full policy definition.",
+          "source": "Baseline reference: {policy}. Open View Baseline Definition below to inspect the original settings.",
           "generic": "Identify what the policy protects, who it includes and excludes, and which access requirements it applies.",
           "reviewInstructions": [
             "Match every application, group, location and authentication strength in the baseline to the intended object in this tenant. Never reuse a baseline author’s tenant-specific IDs.",
@@ -1903,7 +1907,7 @@
           "policies": [
             {
               "pattern": "SharePoint",
-              "title": "Review SharePoint and OneDrive access outside trusted locations",
+              "title": "Review SharePoint and OneDrive Access outside Trusted Locations",
               "why": "Check whether files should be accessible away from your trusted networks, including the effect on remote workers.",
               "instructions": [
                 "Review the baseline’s SharePoint and OneDrive block policy. Confirm the trusted locations and the people or groups it exempts before deciding how it should apply here."
@@ -1911,7 +1915,7 @@
             },
             {
               "pattern": "inforcer",
-              "title": "Review MFA for Inforcer access",
+              "title": "Review MFA for Inforcer Access",
               "why": "If this tenant uses Inforcer, confirm that its sign-ins receive the MFA protection you intend.",
               "instructions": [
                 "Review the Inforcer application targeted by the baseline and confirm it is the enterprise application used by this tenant. Check the included and excluded groups and whether an existing policy already requires MFA for the same sign-ins."
@@ -1919,7 +1923,7 @@
             },
             {
               "pattern": "AVD.*Exclude",
-              "title": "Review who can use Azure Virtual Desktop",
+              "title": "Review Who Can Use Azure Virtual Desktop",
               "why": "Only the people intended to use virtual desktops should be able to sign in to them.",
               "instructions": [
                 "Review the AVD block policy and the group allowed to use it. Confirm the AVD application and the group that should be allowed through; a wrong exception can block legitimate desktop access."
@@ -1927,7 +1931,7 @@
             },
             {
               "pattern": "AVD.*NonTrusted",
-              "title": "Review where Azure Virtual Desktop can be used",
+              "title": "Review Where Azure Virtual Desktop Can Be Used",
               "why": "Confirm whether virtual desktop access should be limited to trusted networks.",
               "instructions": [
                 "Review the AVD application block outside trusted locations. Confirm the network definitions and exemptions against how people connect to their desktops."
@@ -1935,7 +1939,7 @@
             },
             {
               "pattern": "WindowsAzureAD|BaselineScopes",
-              "title": "Review MFA for the baseline’s Azure application scope",
+              "title": "Review MFA for the Baseline’s Azure Application Scope",
               "why": "Confirm that the Azure application scope receives the intended authentication requirement without disrupting legitimate administration.",
               "instructions": [
                 "Inspect the application scope, authentication strength and exceptions in this baseline policy. Confirm that every referenced application and strength is the intended object in this tenant. Check the full application scope, even when the name looks familiar."
@@ -1943,7 +1947,7 @@
             },
             {
               "pattern": "HighRiskAgent",
-              "title": "Review access from high-risk agent identities",
+              "title": "Review Access from High-risk Agent Identities",
               "why": "If agent identities are in use, review how high-risk identities should be restricted.",
               "instructions": [
                 "Inspect the baseline’s agent-risk condition and blocked agent scope. Confirm that this tenant supports the identity type and policy condition, and use the supported agent testing process before enabling the restriction."
@@ -1951,7 +1955,7 @@
             },
             {
               "pattern": "NonTrustedAgents",
-              "title": "Review which agent identities are trusted",
+              "title": "Review Which Agent Identities Are Trusted",
               "why": "Agent access should match the identities your organization has approved.",
               "instructions": [
                 "Review how the baseline identifies trusted and untrusted agents. Resolve its identity selectors for this tenant and test both an approved and an unapproved agent before enabling the restriction."
@@ -1962,7 +1966,9 @@
           "choiceContext": "Service choices recorded in IAMAI",
           "detected": "Detected in the scan",
           "unanswered": "{n} services still need an answer",
-          "suggestionContext": "Suggested In use from scan evidence; not saved yet"
+          "suggestionContext": "Suggested In use from scan evidence; not saved yet",
+          "definitionTitle": "View Baseline Definition",
+          "definitionNote": "These are the original baseline settings, not a policy prepared for your tenant. Match its groups, locations and other tenant-specific references before implementing it."
         },
         "impactLabels": {
           "s-confirm-workloads": "Services in this tenant",
@@ -2044,7 +2050,7 @@
           "baseline": "Baseline",
           "dates": "Plan dates",
           "prepared": "Prepared with IAMAI by {by}",
-          "readOnly": "IAMAI reads the tenant and never writes to it. Every change in this document is carried out by a person, in the portal, in the order given; every impact stated here is predicted from the scan and confirmed in report-only before enforcement."
+          "readOnly": "IAMAI reads the tenant and never writes to it. A person carries out the changes using the instructions provided. Impact is estimated from the scan; validate it with policy results and the workflow tests each step requires."
         },
         "posture": {
           "$comment": "The cover's posture lines (A1c): the finished goals under the Completed lane's own word, never In place.",
@@ -2064,7 +2070,7 @@
         },
         "verificationWindow": "Registration and verification window · {days} days",
         "observation": "Observation window · {days} days",
-        "observationText": "Every new policy collects report-only evidence at the same time.",
+        "observationText": "Policies that support report-only can collect evidence at the same time. User-action policies also need direct workflow tests.",
         "$commentVerificationNote": "The verification window row’s third column (task 042; Step 7). The count is derive/facts.ts notReady: the active people who are not Ready for phishing-resistant MFA (Needs proof, Needs setup, Unknown), the same people MFA Readiness and the MFA gate count.",
         "verificationNote": "{n} of {active} active people are not Ready yet.",
         "verificationNoteReady": "Every active person is Ready."
@@ -2078,11 +2084,11 @@
         "packages": "Baseline packages",
         "limits": "Limits",
         "limitsList": [
-          "IAMAI approximates how Microsoft evaluates a sign-in; report-only is the truth. Some conditions, like device filters and token state, it cannot reproduce.",
+          "IAMAI cannot reproduce every Microsoft access decision. Review Microsoft's policy results and test the actual workflow, especially registration, recovery and device-dependent access.",
           "Without Entra ID P1 there is no impact analysis; the plan is licence, then security defaults, then Conditional Access.",
           "Sign-in history shows behaviour under today's policy; it cannot see who would register MFA when first prompted.",
           "There is no server: no scheduled re-scans, no alerts, no state shared across devices.",
-          "A sign-in session lasts about a day; the plan file never depends on it, so save the plan to keep it."
+          "Save a plan file to keep your decisions and progress independently of your sign-in session."
         ],
         "lanes": {
           "0": "On every load: configuration",
@@ -2896,7 +2902,7 @@
         "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.",
         "Test sign-in for representative users and admins right after the changeover."
       ],
-      "ifWrong": "Turn security defaults back on from the same page; it takes effect within minutes.",
+      "ifWrong": "If the changeover fails, use your tested emergency access and the agreed rollback procedure. Re-enabling Security Defaults may require changing active Conditional Access policies first; coordinate the rollback to avoid a protection gap.",
       "comms": null,
       "doesntApply": false,
       "skip": false,
@@ -2978,7 +2984,13 @@
     },
     {
       "id": "s-prereq-passkey-settings",
-      "preparation": ["Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).", "Review the included and excluded groups. The emergency accounts must be eligible to register and use their chosen security keys; an excluded group takes precedence over inclusion.", "If passkey profiles are enabled, review the profile assigned to those accounts. Confirm that it allows device-bound security keys and their models. Preserve existing working profiles and assignments.", "If key restrictions are enabled, compare the hardware vendor’s model identifier (AAGUID) with the allowed or blocked models. Resolve a conflict before registering the emergency keys.", "Rescan after reviewing or correcting the settings. IAMAI will not generate an update from settings it could not fully assess. Test the emergency sign-in separately before relying on it."],
+      "preparation": [
+        "Open Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2).",
+        "Review the included and excluded groups. The emergency accounts must be eligible to register and use their chosen security keys; an excluded group takes precedence over inclusion.",
+        "If passkey profiles are enabled, review the profile assigned to those accounts. Confirm that it allows device-bound security keys and their models. Preserve existing working profiles and assignments.",
+        "If key restrictions are enabled, compare the hardware vendor’s model identifier (AAGUID) with the allowed or blocked models. Resolve a conflict before registering the emergency keys.",
+        "Rescan after reviewing or correcting the settings. IAMAI will not generate an update from settings it could not fully assess. Test the emergency sign-in separately before relying on it."
+      ],
       "kind": "object",
       "title": "Configure Passkey Authentication",
       "changeLine": null,
@@ -3005,7 +3017,7 @@
       "dates": null,
       "doneWhen": [
         "Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.",
-        "An emergency access account still signs in with its key; configuration checks do not replace that test."
+        "Existing approved keys still work. Test new emergency-account keys in Create or Correct Emergency Access Accounts."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3124,7 +3136,7 @@
         "steps": [
           "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone). Keep your existing sign-in methods until the new one works.",
           "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
-          "If the passkey is refused, check the error, the Passkey (FIDO2) settings in Set Up Passkeys to Match the Baseline, and whether the device supports the method."
+          "If the passkey is refused, check the error, the Passkey (FIDO2) settings in Configure Passkey Authentication, and whether the device supports the method."
         ]
       },
       "dates": null,
@@ -3139,7 +3151,7 @@
       "more": {
         "risks": [
           {
-            "text": "A key registered on a shared machine, or left in the laptop, is not a second factor.",
+            "text": "Keep a hardware security key under your control and protect its PIN. Do not share a personal passkey or its unlock method.",
             "applies": "always"
           }
         ],
@@ -3241,7 +3253,7 @@
     {
       "id": "s-question-travel",
       "kind": "check",
-      "title": "Add a Travel Notice and Exclusion",
+      "title": "Arrange Access Before Travel",
       "changeLine": null,
       "why": "Travel can make a legitimate sign-in look outside the business's allowed locations. Arrange the destination and dates before departure so access can be checked in time.",
       "learn": {
@@ -3254,7 +3266,7 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Send the countries policy's email: it tells people to say before a trip.",
+          "Ask people to tell IT their destination and travel dates before they leave. Use the email template in Block Sign-ins From Countries Not Allowed.",
           "For each trip, add the country to the allowed list for its dates on Create or Correct Allowed Countries Location; never a user exclusion. The change applies to everyone the countries policy covers.",
           "Log each trip with its dates and an owner who removes the country when it ends: the named location does not expire on its own. Check other active trips before removing a country."
         ]
@@ -3338,7 +3350,7 @@
     {
       "id": "s-question-mail-devices",
       "kind": "check",
-      "title": "Set Up an SMTP Relay for Mail-Sending Devices",
+      "title": "Update How Devices Send Email",
       "changeLine": null,
       "why": "Printers and applications may depend on a mail-sending method that will stop working under stronger sign-in controls. Check each device's capabilities and test its replacement route first.",
       "learn": {
@@ -3354,12 +3366,12 @@
         "steps": [
           "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
           "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of Block Legacy Authentication. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
-          "Move each device to SMTP AUTH with OAuth, or to a connector in Exchange Online (Exchange admin center → Mail flow → Connectors → From your organization's email server), send test messages, then take its account out of the group."
+          "Choose a supported route: SMTP AUTH with OAuth, an Exchange Online connector, or Direct Send for internal recipients only. Confirm the device and network meet that route's requirements, send test messages, then remove its old account exception."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Every mail-sending device sends through OAuth or a connector, and the service-accounts group holds none of them.",
+        "Every listed device sends through its approved replacement route, and its old account exception has been removed.",
         "Test messages from each device are delivered before its old exception is removed."
       ],
       "ifWrong": null,
@@ -3822,7 +3834,11 @@
     },
     {
       "id": "guests-mfa",
-      "preparation": ["Review the Readiness section to see which guest-policy settings or prerequisites need attention.", "Answer the IT Provider Access question. This choice controls whether the service-provider external-user type is included; it does not configure partner MFA trust.", "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."],
+      "preparation": [
+        "Review the Readiness section to see which guest-policy settings or prerequisites need attention.",
+        "Answer the IT Provider Access question. This choice controls whether the service-provider external-user type is included; it does not configure partner MFA trust.",
+        "Review the two guest policies separately: their target organizations, guest types and authentication requirements may differ. Use the generated correction or creation instructions once the required scope and references are resolved."
+      ],
       "kind": "policy",
       "title": "Require MFA for Guests",
       "changeLine": null,
@@ -4612,10 +4628,10 @@
         ]
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.",
+      "doneEnd": "The policy is enforced in {tenant}, requiring a compliant device on the selected platforms outside the trusted network, with the approved exclusions applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Required compliant or hybrid-joined device paths work outside trusted locations, including browser, server and enrollment workflows."
+        "Devices on the selected platforms meet the compliance requirement, and the expected access works outside trusted locations."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {

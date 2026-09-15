@@ -198,13 +198,13 @@ export const PACKAGE = {
     'Optional extras, listed below: named locations and authentication strengths.',
   ],
   waysTitle: 'Three ways to make one',
-  way1Title: '1. Entra admin center',
+  way1Title: 'Entra admin center',
   way1: [
     'Entra admin center → Protection → Conditional Access → Policies.',
     'Open a policy, then choose Edit → the "…" menu at the top right → "JSON view".',
     'Click "Download" (or copy the text into a file). Repeat per policy, or use the Overview page\'s "Export" for all policies at once.',
   ],
-  way2Title: '2. PowerShell (Microsoft Graph SDK)',
+  way2Title: 'PowerShell (Microsoft Graph SDK)',
   way2Intro: 'Sign in with a read-only scope, then export each set to a folder:',
   way2Commands: [
     'New-Item -ItemType Directory -Path .\\package -Force | Out-Null',
@@ -213,7 +213,7 @@ export const PACKAGE = {
     'Get-MgIdentityConditionalAccessNamedLocation -All | ConvertTo-Json -Depth 10 | Set-Content .\\package\\namedLocations.json',
     'Get-MgPolicyAuthenticationStrengthPolicy -All | ConvertTo-Json -Depth 10 | Set-Content .\\package\\authenticationStrengths.json',
   ],
-  way3Title: '3. Exports from other tools',
+  way3Title: 'Exports from other tools',
   way3: 'Exports from idPowerToys, CA Policy Copier, DCToolbox, CIPP, or any public GitHub repository of policy JSON load as they are. IAMAI reads the Graph shape all of them produce.',
   bestTitle: 'What to include for best results',
   best: [

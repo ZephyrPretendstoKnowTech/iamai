@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { normalizeProjection, packageWarnings, parseBlocks, validatePackage, withholdInvalid } from './protocol.ts'
 import type { CompiledPackage, PackageMeta } from './protocol.ts'
 import { CHANGED_FIELDS_BINDING } from './protocol.ts'
-import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, bindText, packageReadiness, projectImplementation, projectSafely, readinessSafely, troubleshootingFor, troubleshootingSafely } from './project.ts'
+import { NO_ACTION_STATES, NO_RUNTIME, UNRESOLVED, bindText, projectPlanned, packageReadiness, projectImplementation, projectSafely, readinessSafely, troubleshootingFor, troubleshootingSafely } from './project.ts'
 import { packageSourceLine } from '../../ui/surfaces/stepPackage.ts'
 
 const block = (meta: Record<string, unknown>, body = 'Text.'): string => `@@IAMAI-BEGIN ${JSON.stringify(meta)}\n${body}\n@@IAMAI-END\n`
@@ -273,4 +273,16 @@ test('an optional line’s omit marker is resolved in either spelling: the marke
     assert.deepEqual(bindText(text, { 'tenant.displayName': 'Contoso' }, new Set()), { text: '- Tenant: Contoso\n- Next.' }, marker)
     assert.deepEqual(bindText(text, {}, new Set()), { text: '- Next.' }, marker)
   }
+})
+
+
+test('numbered Entra preview instructions retain unresolved optional settings', () => {
+  const pkg = compile({ optionalBindings: ['scope.group'], projection: { missing: { entra: 'e.create' } } },
+    block({ id: 'e.create', channel: 'entra', states: ['missing'], format: 'markdown' }, '1. Open the policy.\n2. Select group {{scope.group}}.\n3. Save.'))
+  const preview = projectPlanned(pkg, 'missing', {}, NO_RUNTIME, key => `<resolve ${key}>`)
+  const text = preview.channels.find(a => a.channel === 'entra')?.text ?? ''
+  assert.match(text, /1\. Open/)
+  assert.match(text, /2\. Select group <resolve scope.group>/)
+  assert.match(text, /3\. Save/)
+  assert.ok(preview.hold?.missingBindings.includes('scope.group'))
 })

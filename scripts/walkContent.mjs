@@ -96,7 +96,7 @@ export const ACCEPTANCE = [
   { item: '11', step: 's-prereq-auth-strength', path: 'ifWrong', must: 'Delete the strength; no policy references it yet.' },
   // 12 says "or" (E7): a passkey or a security key is enough; either is phishing-resistant.
   { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone).', mustNot: 'security key (survives a lost phone) and a passkey' },
-  { item: '12', step: 's-ladder-operator-passkey', path: 'more.risks', must: 'A key registered on a shared machine, or left in the laptop, is not a second factor.' },
+  { item: '12', step: 's-ladder-operator-passkey', path: 'more.risks', must: 'Keep a hardware security key under your control and protect its PIN.' },
   // 13's date and window are the engine's (E7): the day Require MFA for Everyone enforces, and the campaign's window.
   { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone is planned for {mfaEnforce}', mustNot: '{firstEnforce}' },
   { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'from {mfaEnforceLong}.', mustNot: '{firstEnforceLong}' },

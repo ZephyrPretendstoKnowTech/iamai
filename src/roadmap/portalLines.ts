@@ -64,7 +64,7 @@ export type PortalMode = 'new' | 'change'
  * The sections an update's request body carries. An update lists these and only
  * these; every other setting on the policy is left as it is.
  */
-export type PortalSection = 'users' | 'applications' | 'grant' | 'session' | 'state'
+export type PortalSection = 'users' | 'applications' | 'conditions' | 'grant' | 'session' | 'state'
 
 /** The registration step's fallback: require MFA instead of Block when the tenant has no trusted network. */
 export type GrantOverride = 'mfa'
@@ -282,6 +282,7 @@ export function portalLines(f: PolicyFacts, ctx: PortalContext, opts: { mode?: P
       const res = resourcesLine(f, ctx)
       if (res) out.push(res)
     }
+    if (only.has('conditions')) out.push(...conditionLines(f, ctx))
     if (only.has('grant')) {
       const grant = grantLine(f, ctx, opts.grantOverride)
       if (grant) out.push(grant)

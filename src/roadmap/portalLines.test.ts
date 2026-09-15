@@ -130,3 +130,12 @@ test('the registration fallback swaps Block access for Require multifactor authe
   assert.ok(withMfa.includes('Grant → Require multifactor authentication'))
   assert.ok(!withMfa.includes('Grant → Block access'))
 })
+
+test('correction instructions retain location and device conditions from the submitted body', () => {
+  const p = { id:null, displayName:'Device and location correction', placeholders:{}, conditions:{ users:{includeUsers:['All']}, applications:{includeApplications:['All']}, locations:{includeLocations:['All'],excludeLocations:['AllTrusted']}, platforms:{includePlatforms:['windows'],excludePlatforms:[]} }, grantControls:{operator:'OR',builtInControls:['compliantDevice']}, sessionControls:null } as unknown as Pol
+  const lines=portalLines(policyFacts(p,EMPTY),contextFor(p),{mode:'change',only:new Set(['conditions','grant'])})
+  assert.ok(lines.some(line=>line.includes('Locations')&&line.includes('All trusted locations')))
+  assert.ok(lines.some(line=>line.includes('Device platforms')&&line.includes('Windows')))
+  assert.ok(lines.some(line=>line.includes('marked as compliant')))
+  assert.ok(!lines.some(line=>line.startsWith('Users →')||line.startsWith('Enable policy:')),'fields outside this correction are not instructed')
+})

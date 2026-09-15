@@ -68,7 +68,8 @@ export function How() {
     <section className="surface how">
       <h1>{C.h1}</h1>
 
-      <h2>{C.permissions}</h2>
+      <details className="how-reference">
+      <summary>{C.permissions}</summary>
       <DataTable
         panel
         rows={permissions}
@@ -85,7 +86,9 @@ export function How() {
         ]}
       />
 
-      <h2>{C.reads}</h2>
+      </details>
+      <details className="how-reference">
+      <summary>{C.reads}</summary>
       {lanes.map((lane) => (
         <DataTable
             panel
@@ -108,7 +111,9 @@ export function How() {
           />
       ))}
 
-      <h2>{C.checks}</h2>
+      </details>
+      <details className="how-reference">
+      <summary>{C.checks}</summary>
       <p className="reason">{C.checksIntro}</p>
       {subjects.map((subject) => (
         <DataTable
@@ -143,6 +148,8 @@ export function How() {
             ]}
           />
       ))}
+
+      </details>
 
       <h2 id="package" ref={packageHeading} tabIndex={-1}>{C.packages}</h2>
       <p className="reason">{PACKAGE.does}</p>

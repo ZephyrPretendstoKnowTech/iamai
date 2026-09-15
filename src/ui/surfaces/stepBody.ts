@@ -31,7 +31,7 @@ import type { ImplementationEmpty, LaneView, PrerequisiteBlocker } from './stepC
 import { laneViewFor } from './planBoard.ts'
 import { HEAD } from './stepHeadings.ts'
 import { whoBlocks, whoLeadLine } from './whoBlocks.ts'
-import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, previewNoteLines, reviewedPackageFor } from './stepPackage.ts'
+import { BASELINE_COMMIT, artifactText, implementationPackageFor, mergeReadiness, packageBindings, packageDrawsImplementation, packageReviewFor, packageRuntime, packageSourceLine, packageStateOf, planningPreview, previewNoteLines, reviewedPackageFor, entraWithSettings } from './stepPackage.ts'
 import { list } from '../../copy/statements.ts'
 import { projectSafely, projectExplanation, readinessSafely, troubleshootingSafely } from '../../content/implementation/project.ts'
 import type { ChannelArtifact, OutputChannel, OwnerConfirmation, TroubleshootingScenario } from '../../content/implementation/project.ts'
@@ -286,11 +286,12 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   // (RUN-CONTEXT-B decision 12, U15): an account, a group or a setting is portal
   // work, and filtering here keeps the tabs, the viewer and Copy on one list.
   const machine = cs.kind === 'policy'
+  const shownProjection = preview ?? projection
   // A package channel whose every line waited on a value IAMAI does not hold (the AI
   // Info shared warning aside) has no content: it is not drawn as a blank tab.
   const produced: Artifact[] = (
     packaged
-      ? ((preview ?? projection)?.channels ?? []).map((a) => packageArtifact(a, grounding)).filter((a) => a.text().trim() !== '')
+      ? (shownProjection?.channels ?? []).map((a) => packageArtifact(a.channel === 'entra' && machine && shownProjection ? { ...a, text: entraWithSettings(a.text, step, ctx, contract, shownProjection) } : a, grounding)).filter((a) => a.text().trim() !== '')
       : channels.map((ch): Artifact => ({ id: ch, form: ch === 'portal' ? 'list' : 'code', lines: ch === 'portal' ? portalLines : [], text: () => textOf(ch), note: null }))
   ).filter((a) => machine || (a.id !== 'ps' && a.id !== 'json'))
   // Keep every channel supported somewhere in this step's lifecycle. A temporarily
@@ -303,7 +304,10 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   }
   // An explanatory-only package must not replace a supporting step's existing
   // portal instructions with an unavailable placeholder.
-  if (!machine && pkgState === 'missing' && projection?.hold === null && projection.channels.every(a => a.channel === 'aiInfo' || a.channel === 'email') && supported.has('portal') && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+  if (!machine && !step.workflowChoices && portalLines.length > 0 && !produced.some(a => a.id === 'portal')) {
+    supported.add('portal')
+    produced.push({ id: 'portal', form: 'list', lines: portalLines, text: () => portalLines.map((line, index) => `${index + 1}. ${line}`).join('\n'), note: null })
+  }
   // Every step can explain its purpose, facts, decisions and remaining work,
   // even when no executable change can be offered yet.
   supported.add('ai')

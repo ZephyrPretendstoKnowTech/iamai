@@ -101,10 +101,10 @@ test('R4: tile marks follow one rule — ! blocking, ✓ satisfied, none informa
   assert.equal(src.includes("'…'"), false, 'a tile still draws the … mark')
 })
 
-test('R5: a step with nothing unresolved reads "✓ Clear — No blockers. Ready to proceed."', () => {
+test('R5: a step with nothing unresolved reads "✓ Clear — No unresolved checks."', () => {
   const tiles = CONTRACT.readiness.tiles as Record<string, string>
   assert.equal(tiles.clear, 'Clear')
-  assert.equal(tiles.clearNote, 'No blockers. Ready to proceed.')
+  assert.equal(tiles.clearNote, 'No unresolved checks.')
   const src = readFileSync('src/ui/surfaces/StepSections.tsx', 'utf8')
   assert.match(src, /<strong>\{W\.tiles\.clear\}<\/strong>\s*<span>\{W\.tiles\.clearNote\}<\/span>/, 'the clear line does not read the content key')
   assert.equal(readFileSync('docs/design/content.json', 'utf8').includes('Nothing outstanding changes the next action'), false, 'the engineer-speak is still in content')
@@ -183,7 +183,7 @@ test('U-P1: a header tile date reads the day on one line and the year under it, 
 
 test('D1: the Managed Device Done when names no shared-device exception', () => {
   const content = readFileSync('docs/design/content.json', 'utf8')
-  assert.ok(content.includes('"doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied."'), 'the Managed Device end state is not the decided sentence')
+  assert.ok(content.includes('"doneEnd": "The policy is enforced in {tenant}, requiring a compliant device on the selected platforms outside the trusted network, with the approved exclusions applied."'), 'the Managed Device end state is not the decided sentence')
   assert.equal(/shared-device exception/i.test(content), false, 'an orphaned shared-device exception is still in content')
   // Every opened step's Done when, as the fixtures draw it.
   let lines = 0
