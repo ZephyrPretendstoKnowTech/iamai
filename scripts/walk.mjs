@@ -1362,8 +1362,8 @@ async function walkFixture(fx) {
           const week2 = fx.week2 === true
           if (/Allowed Countries Location/.test(title)) {
             if (week2 && !/New Zealand/.test(bodyText)) add('P0', `${slabel}: the travellers answer (Regularly: add: NZ) did not put New Zealand on the allowed list`)
-            if (week2 && !/on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line is missing although its answer applied`)
-            if (!week2 && /on the allowed list now/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
+            if (week2 && !/The selected countries are on your plan.s allowed list/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line is missing although its answer applied`)
+            if (!week2 && /The selected countries are on your plan.s allowed list/.test(bodyText)) add('P0', `${slabel}: the travellers question's effect line shows before any answer`)
           }
           if (/^Require MFA for Guests$/.test(title) || /Countries Not Allowed/.test(title)) {
             if (week2 && !cannotWriteYet && !/Service provider users/.test(bodyText)) add('P0', `${slabel}: the partner answer (exclude service providers) is not on the opened policy step`)
