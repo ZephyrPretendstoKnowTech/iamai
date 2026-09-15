@@ -16,7 +16,7 @@ import { fillText } from '../../content/render.ts'
 import { baselineConflictWords } from '../../roadmap/baselineConflict.ts'
 import { unavailableReason } from '../../roadmap/operations.ts'
 import { stepContext } from '../../roadmap/prompts.ts'
-import { aiGroundingText } from './aiGrounding.ts'
+import { aiBriefingText, aiGroundingText } from './aiGrounding.ts'
 import type { TabItem } from '../components/index.ts'
 import { powershellFor } from './stepPowerShell.ts'
 import { policyJsonText, stepOperations } from './stepJson.ts'
@@ -73,7 +73,7 @@ function packageArtifact(a: ChannelArtifact, ground: ((own: string) => string) |
   // own stays empty: the facts never stand in for a channel the package did not produce.
   const own = artifactText(a, W.aiWarning)
   const facts = a.channel === 'aiInfo' && ground !== null && own.trim() !== '' ? ground(own) : ''
-  const text = facts === '' ? own : `${own.replace(/\s+$/, '')}\n\n${facts}`
+  const text = facts === '' ? own : aiBriefingText(own, facts)
   return { id: PACKAGE_CHANNEL[a.channel], form: a.format === 'markdown' ? 'markdown' : 'code', lines: [], text: () => text, note }
 }
 
@@ -266,7 +266,10 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
   const eyebrow = eyebrowOf(contract, typeof cs.kind === 'string' ? cs.kind : null)
   // IAMAI's facts for this step (aiGrounding.ts): one grounding for a package's AI Info and
   // for the step's own, so both hand an assistant the same facts.
-  const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null }, own)
+  // The request the briefing describes is the JSON channel the package projects, or previews, for this state.
+  const jsonChannel = (preview ?? projection)?.channels.find((a) => a.channel === 'json') ?? null
+  const groundingJson = jsonChannel ? { text: jsonChannel.text, requests: jsonChannel.requests, preview: preview !== null } : null
+  const grounding = (own: string): string => aiGroundingText({ step, ctx, contract, lane: laneView, cs, ex: ex as Record<string, unknown>, bindings: pkgBindings as Record<string, unknown> | null, json: groundingJson }, own)
   const textOf = (ch: Channel): string =>
     ch === 'portal'
       ? portalLines.map((l, i) => `${i + 1}. ${l}`).join('\n')
@@ -274,7 +277,7 @@ export function stepBodyOf(step: Step, ctx: StepVarContext, o: StepBodyOptions =
         ? powershellFor(stepOperations(step))
         : ch === 'json'
           ? policyJsonText(step)
-          : grounding('') || stepContext(step, (s) => stepExportView(s, ctx, laneView))
+          : ((facts) => (facts !== '' ? aiBriefingText('', facts) : stepContext(step, (s) => stepExportView(s, ctx, laneView))))(grounding(''))
   // The channels the Implementation region draws: the package's projected
   // channels where a package is active, and otherwise the ones this step always
   // had. Never both.

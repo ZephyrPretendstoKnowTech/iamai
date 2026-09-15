@@ -17,8 +17,9 @@ import { setDisplayTimeZone } from '../../copy/dates.ts'
 import { laneReadings } from './planLanes.ts'
 import { laneViewFor, laneViewOf } from './planBoard.ts'
 import { stepBodyOf } from './stepBody.ts'
-import { stepContract } from './stepContract.ts'
+import { CONTRACT, stepContract } from './stepContract.ts'
 import type { LaneView } from './stepContract.ts'
+import { pinnedPackage } from '../../baseline/pinned.ts'
 import { stepExportView } from './stepExport.ts'
 import { implementationIsCurrent } from './stepContract.ts'
 import { implementationOffered } from './stepJson.ts'
@@ -85,6 +86,45 @@ test('Medium sign-in risk on mid: the export grants built-in MFA with no session
   const lines = stepExportView(o.step, o.ctx, o.lane).whatToDo
   assert.ok(lines.includes('Grant → Require multifactor authentication'), JSON.stringify(lines))
   assert.equal(lines.some((l) => l.startsWith('Session →') || /authentication strength/.test(l)), false)
+})
+
+type Briefing = { opening: string[]; heading: string; sections: Record<string, string>; proposed: string; previewValues: string }
+const BRIEFING = CONTRACT.implementation.aiFacts as unknown as Briefing
+const aiOf = (o: Opened): string => {
+  const a = stepBodyOf(o.step, o.ctx, { lane: o.lane }).artifacts.find((x) => x.id === 'ai')
+  assert.ok(a && !a.unavailable, 'AI Info is drawn')
+  return a.text()
+}
+
+test('Medium user risk on mid: AI Info opens with the shared request and states, in six sections, the settings the JSON sends', () => {
+  const ai = aiOf(opened('mid', 's-goal-user-risk-medium'))
+  assert.ok(ai.startsWith(BRIEFING.opening.join('\n\n')), 'the shared opening leads')
+  const facts = ai.slice(ai.indexOf(BRIEFING.heading))
+  const at = Object.values(BRIEFING.sections).map((h) => facts.indexOf(`\n\n${h}\n`))
+  assert.ok(at.every((n) => n > 0), `a section is missing: ${JSON.stringify(at)}`)
+  assert.deepEqual([...at].sort((a, b) => a - b), at, 'the sections are in order')
+  assert.match(facts, /^Users → Include: All users\. .*Also exclude Guest or external users \(all types\)\.$/m)
+  assert.doesNotMatch(ai, /Every time|Guest or external users → all types/)
+  assert.match(facts, /^Request: POST https:\/\/graph\.microsoft\.com\/v1\.0\/identity\/conditionalAccess\/policies$/m)
+})
+
+test('a held step whose reference is unresolved: AI Info proposes the settings, says they are not handed over, and names what the scan could not settle', () => {
+  setDisplayTimeZone('UTC')
+  const f = { ...fixture('mid'), baseline: pinnedPackage() }
+  const r = runFixture(f, {}, null, f.snapshot.asOf)
+  const step = r.steps.find((s) => s.id === 's-goal-user-risk-medium')
+  assert.ok(step)
+  const titleOf = (id: string): string | null => r.steps.find((s) => s.id === id)?.title ?? null
+  const reading = laneReadings(r.steps).get(step.id)
+  const lane = reading ? laneViewOf(reading, titleOf) : laneViewFor(step, r.steps, titleOf)
+  const ctx = { snapshot: f.snapshot, mapping: f.mapping, nameOf: (id: string) => r.input.names!.label(id), signature: 'IT', operatorId: f.operatorId, now: f.snapshot.asOf, groups: f.groups, directory: r.input.directory, naming: r.coverage.organisation.naming, reportOnlyAt: null } as StepVarContext
+  assert.equal(implementationOffered(step), false, 'the premise: the step waits on a baseline mapping')
+  const ai = aiOf({ step, ctx, lane })
+  const facts = ai.slice(ai.indexOf(BRIEFING.heading))
+  assert.ok(facts.includes(BRIEFING.proposed), 'the settings are proposed, not handed over')
+  assert.match(facts, /^Not available in this scan: conditions\.users$/m)
+  assert.ok(facts.includes(BRIEFING.previewValues), 'the unresolved preview values are named as unresolved')
+  assert.match(facts, /Also exclude Guest or external users \(all types\)\./)
 })
 
 test('every packaged policy step whose lines are handed over: the export lines are the translation of the body its JSON sends', () => {
