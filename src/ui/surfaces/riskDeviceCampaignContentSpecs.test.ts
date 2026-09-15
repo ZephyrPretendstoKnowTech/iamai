@@ -40,12 +40,14 @@ function bodyOf(name: FixtureName, stepId: string): StepBody {
 }
 /** The text one channel tab draws. */
 const drawn = (b: StepBody, id: string): string => b.artifacts.find((a) => a.id === id)!.text()
-/** AI Info's own words: the package's text, before the IAMAI facts every AI Info carries after it (aiGrounding.ts), which must follow. */
+/** AI Info's own words: the package's text, after the shared opening and before the IAMAI facts every AI Info carries (aiGrounding.ts), which must frame it. */
 const ownAi = (b: StepBody): string => {
   const text = drawn(b, 'ai')
+  const opening = `${(CONTRACT.implementation.aiFacts as unknown as { opening: string[] }).opening.join('\n\n')}\n\n`
+  assert.ok(text.startsWith(opening), 'the AI Info does not open with the shared briefing request')
   const at = text.indexOf(`\n\n${CONTRACT.implementation.aiFacts.heading}\n\n`)
   assert.ok(at > 0, 'the AI Info carries no IAMAI facts after its own words')
-  return text.slice(0, at)
+  return text.slice(opening.length, at)
 }
 
 test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming the exclusions group step, and AI Info explains the policy for a tech', () => {

@@ -1450,7 +1450,7 @@
             "ai": "AI Info",
             "aiWarning": "Contains tenant context. Review before sharing with an external AI service.",
             "aiFacts": {
-              "$comment": "The grounding every AI Info carries after the package's own instructions (stepBody.ts, aiGrounding.ts): IAMAI's facts for this step, so an assistant needs no screen. Observations and plan, never confirmation that a change was made.",
+              "$comment": "The briefing every AI Info carries (stepBody.ts, aiGrounding.ts): the shared opening, the package's own words for the state, then IAMAI's facts for the step in six sections, so an assistant needs no screen. Observations, saved choices, proposals and unknowns are kept apart; never confirmation that a change was made.",
               "heading": "IAMAI FACTS FOR THIS STEP",
               "boundary": "What follows is what IAMAI observed in this tenant's latest scan and what its plan proposes. It does not confirm that any change has been made.",
               "observed": "Observed",
@@ -1460,7 +1460,7 @@
               "currentState": "Current state",
               "changedFields": "Fields that differ from the target",
               "removedExclusions": "Exclusions the correction removes",
-              "target": "Intended target",
+              "target": "Names and IDs in the intended target",
               "targetName": "Policy name",
               "includeUsers": "Included people",
               "includeRoles": "Included roles",
@@ -1470,8 +1470,29 @@
               "grant": "Grant",
               "strength": "Authentication strength",
               "accounts": "Accounts IAMAI observed",
-              "more": "{n} more not listed here",
-              "none": "none"
+              "more": "{n} more accounts are not included in this excerpt.",
+              "none": "None.",
+              "opening": [
+                "Help me understand and carry out this IAMAI step. Explain its purpose, who it affects, how the tenant's observed state compares with the intended result, and what remains to do. Use the facts below; distinguish observations, saved decisions, proposed changes and unknowns.",
+                "Explain the next available action first, then the settings and checks needed to complete it. Point out any conflict between the instructions and the supplied policy data. If Microsoft behavior needs clarification, use current Microsoft documentation and cite the relevant page. Do not invent tenant values, approvals, completed checks or changes. Ask only for information that affects the next action.",
+                "You may explain alternatives and their tradeoffs. Clearly identify any alternative that changes the selected baseline or saved decision, and do not present it as the current plan. Do not execute a tenant change from this briefing."
+              ],
+              "sections": {
+                "purpose": "Step and purpose",
+                "scope": "Tenant and scope",
+                "observed": "What IAMAI observed",
+                "intended": "Intended result",
+                "remains": "What remains",
+                "implementation": "Implementation and verification"
+              },
+              "tenant": "Tenant",
+              "scanned": "Latest scan",
+              "proposed": "IAMAI proposes these settings. The step cannot hand them over yet; What remains says why.",
+              "previewValues": "Values shown as ‹…› are not resolved yet. Do not run this output.",
+              "unresolvedFields": "Not available in this scan: {fields}",
+              "request": "Request",
+              "focus": "Focus for this step",
+              "unavailable": "Not available in this scan."
             },
             "excludeUsersNone": "none: the resolved target excludes no individual accounts",
             "copy": "Copy implementation",
