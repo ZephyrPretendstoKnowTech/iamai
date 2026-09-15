@@ -1568,7 +1568,7 @@ async function walkFixture(fx) {
               if (week2 && !devices) add('P0', `${slabel}: the campaign carries no device line per person after the device decision`)
               // The device sentence is the email's, and the email is written only once the plan dates an enforcement.
               const emailWritten = emailText.trim() !== '' || whensDated
-              if (week2 && emailWritten && !/nothing to enroll/.test(emailText)) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
+              if (week2 && emailWritten && (!/use supported work apps/.test(emailText) || !/company app-protection instructions/.test(emailText) || !/hybrid join alone does not meet it/.test(emailText))) add('P0', `${slabel}: the campaign's email carries no device sentence after the device decision`)
               if (!week2 && devices) add('P0', `${slabel}: the campaign carries device lines before the device decision`)
             } })
           }
