@@ -80,7 +80,7 @@ test('an enforced policy held for correction: the briefing names the tenant poli
 test('an observation step: the briefing carries its report-only window, the evidence so far, its state and the resolved exclusions, and invents no findings', () => {
   const o = opened('demo-week2', 's-goal-intune-enrollment-reauth')
   const { facts } = split(o.ai)
-  assert.match(facts, /On Hold · Observing/)
+  assert.match(facts, /On Hold · Tenant fact/)
   assert.match(facts, /in report-only since Aug 25, 2026, the window closes Sep 1, 2026/)
   assert.match(facts, /18 of 30 active people seen in 3 days/)
   assert.match(facts, new RegExp(`^${F.currentState}: ${CONTRACT.lifecycle['report-only']}$`, 'm'))

@@ -384,7 +384,7 @@ const INVENTORY: string[] = [
   'blocker · prerequisite · no-lifecycle · healthy · set-aside · do:restore · no-track · no-implementation · no-found · no-fix · one-policy · who-none', // large/s-blocker-allowed-countries
   'check · check · no-lifecycle · needs-decision · open · do:decide · no-track · no-implementation · no-found · no-fix · one-policy · who-known', // large/s-prereq-device-plan
   'policy · adjust · report-only · blocked · open · do:observe · track · implementation · found · fix · one-policy · who-known', // large/s-goal-require-managed-device (A4: held on a readiness gate, still observing)
-  'policy · adjust · report-only · blocked · open · do:observe · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth (A4: the demo's Ready · Observing row)
+  'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · no-found · fix · one-policy · who-known', // demo-week2/s-goal-intune-enrollment-reauth (session-loop design review cannot be resolved by observing)
   'policy · adjust · report-only · blocked · open · do:resolve · track · no-implementation · found · fix · one-policy · who-unknown', // messy/s-goal-admins-phishing-resistant
   'policy · create · enforced · healthy · satisfied · do:preserve · track · no-implementation · found · no-fix · one-policy · who-known', // midflight/s-goal-block-legacy-auth
   'policy · create · no-lifecycle · baseline-conflict · open · do:resolve · no-track · no-implementation · no-found · no-fix · one-policy · who-unknown', // demo/s-goal-admin-portals-protected
@@ -650,7 +650,7 @@ test('§5b a preserved goal draws the pack’s In-place variant: no change neede
   const preserved = sweep().filter((v) => v.c.whatToDo.kind === 'preserve' && !v.c.state.setAside && v.c.state.condition === 'healthy' && (v.step.unsavedInputs ?? []).length === 0)
   assert.ok(preserved.length > 0, 'no preserved goal in the sweep')
   for (const v of preserved) {
-    assert.equal(railOf(v.c).metric, WHEN.none, `${v.where}: a preserved goal’s rail is not the placeholder (content review R1)`)
+    assert.equal(railOf(v.c).metric, 'Completed', `${v.where}: a completed goal must not show an unscheduled next action`)
     assert.ok(v.c.track.every((t) => t.reached), `${v.where}: a preserved goal is drawn mid-rollout`)
     assert.equal(v.c.implementation.offered, false, `${v.where}: a preserved goal offers an implementation`)
   }

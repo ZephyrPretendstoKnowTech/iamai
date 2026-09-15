@@ -1734,6 +1734,7 @@
         "verificationRequired",
         "inPlace",
         "blocked",
+        "missing",
         "needsDecision"
       ],
       "correctionModules": 0,
@@ -1774,7 +1775,8 @@
         "verificationRequired",
         "inPlace",
         "notApplicable",
-        "blocked"
+        "blocked",
+        "missing"
       ],
       "correctionModules": 0,
       "requiredBindings": 4,
@@ -1839,7 +1841,7 @@
       "status": "SELF-VERIFIED",
       "validationResult": "parts-withheld",
       "sourceFiles": 3,
-      "contentBlocks": 28,
+      "contentBlocks": 29,
       "outputs": {
         "entra": true,
         "json": true,
@@ -6466,7 +6468,7 @@
     "packageCount": 46,
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
-    "contentBlocks": 962,
+    "contentBlocks": 963,
     "uniqueBindings": 289,
     "bindingsRequiredByAtLeastOneProjection": 101,
     "bindingsOptionalInAtLeastOnePackage": 192,

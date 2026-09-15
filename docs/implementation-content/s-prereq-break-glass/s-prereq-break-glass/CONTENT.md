@@ -12,7 +12,7 @@ Use the emergency accounts you selected.
 9. Confirm monitoring exists for emergency-account use.
 10. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access. A passing configuration check does not prove the recovery path works.
 
-The JSON and PowerShell outputs perform only the permanent Global Administrator assignment and exclusions-group membership for a selected account's user ID. They do not create accounts, register methods or store credentials. Complete the sign-in and other manual checks separately.
+Complete account creation, method registration and credential storage in the appropriate Microsoft tools. IAMAI does not make these changes or store the credentials.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
