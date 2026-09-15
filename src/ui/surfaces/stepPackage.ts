@@ -552,6 +552,7 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   put('policy.target.includeRoles', Array.isArray(users?.includeRoles) ? users.includeRoles.map(String) : undefined)
   putField('policy.target.conditions', settled('conditions') as Record<string, unknown> | null, 'conditions')
   putField('policy.target.grantControls', settled('grantControls') as Record<string, unknown> | null, 'grantControls')
+  if (out['policy.target.grantControls'] != null) put('policy.target.grantJson', JSON.stringify(out['policy.target.grantControls']))
   putField('policy.target.sessionControls', settled('sessionControls') as Record<string, unknown> | null, 'sessionControls')
   // The whole target a policy script takes as one value (`-TargetPolicyJson`): the
   // name and the three material roots bound above, and only where every one of them
@@ -580,9 +581,10 @@ export function packageBindings(step: Step, ctx: StepVarContext, c: StepContract
   // The strength's name, where the tenant's scan or Microsoft's own list names it:
   // never an id standing in for a name.
   if (typeof strength === 'string') {
-    const rows = [...((ctx.snapshot?.config?.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown }[]), ...builtinStrengths.strengths]
+    const rows = [...((ctx.snapshot?.config?.authStrengths?.rows ?? []) as { id?: unknown; displayName?: unknown; allowedCombinations?: unknown }[]), ...builtinStrengths.strengths]
     const named = rows.find((s) => typeof s.id === 'string' && s.id.toLowerCase() === strength.toLowerCase() && typeof s.displayName === 'string' && s.displayName.length > 0)
     put('authStrength.target.displayName', named?.displayName)
+    if (Array.isArray(named?.allowedCombinations) && named.allowedCombinations.every((x: unknown) => typeof x === 'string')) put('authStrength.target.allowedCombinations', named.allowedCombinations)
   }
   put('policy.current.id', op?.mode === 'update' ? op.policyId : step.tracking?.policyId)
   put('policy.current.displayName', step.tracking?.policyName)

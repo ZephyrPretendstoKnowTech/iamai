@@ -24,16 +24,18 @@ const bindings = (): Record<string, unknown> => ({
 })
 const by = (p: Projection, channel: string) => p.channels.find((c) => c.channel === channel)
 const callsOf = (text: string): string[] => text.split('\n').filter((l) => l.startsWith('Invoke-IAMAIStep '))
-const NO_POLICY_B = /pinned baseline has no unmanaged-device session policy/
+// Editorial batch C: the Policy A/B framing is gone; AI Info says the baseline has one session policy.
+const ONE_POLICY = /The baseline has one session policy for this step\./
+const POLICY_B = /Policy B|both component policies|unmanaged-device policy is limited/
 
 test('session-lifetime report-only: the browser policy alone, verified by its own id, with no unmanaged id asked for', () => {
   const p = projectImplementation(PKG, 'reportOnly', bindings())
   assert.equal(p.hold, null, JSON.stringify(p.hold))
   assert.deepEqual(p.degraded ?? [], [])
   const entra = by(p, 'entra')?.text ?? ''
-  assert.match(entra, /browser policy \(Policy A\) in Report-only/)
-  assert.match(entra, NO_POLICY_B)
-  assert.doesNotMatch(entra, /both component policies|unmanaged-device policy is limited/)
+  assert.match(entra, /^Keep the policy in Report-only while you review the evidence listed for this step\./)
+  assert.match(entra, /confirm the policy applies to browser sign-ins with a 12-hour sign-in frequency and Never persistent/)
+  assert.doesNotMatch(entra, POLICY_B)
   const ps = by(p, 'powershell')
   assert.ok(ps, JSON.stringify(p.degraded))
   const calls = callsOf(ps.text)
@@ -44,7 +46,9 @@ test('session-lifetime report-only: the browser policy alone, verified by its ow
   // The branch the call runs reads the browser policy alone.
   const branch = /'VerifyBrowser' \{[\s\S]*?\n {2}\}/.exec(ps.text)?.[0] ?? ''
   assert.ok(branch.includes('Get-Policy $BrowserPolicyId') && !branch.includes('Unmanaged'), branch)
-  assert.match(by(p, 'aiInfo')?.text ?? '', /Review the browser policy \(Policy A\)/)
+  const ai = by(p, 'aiInfo')?.text ?? ''
+  assert.match(ai, /The browser session policy is in Report-only\./)
+  assert.match(ai, ONE_POLICY)
 })
 
 test('session-lifetime ready to enforce: the browser policy is turned on by its own id; nothing names a Policy B to turn on; Enforce stays withheld', () => {
@@ -55,12 +59,15 @@ test('session-lifetime ready to enforce: the browser policy is turned on by its 
   assert.deepEqual(json.requests, [{ method: 'PATCH', endpoint: `https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/${ID(3)}` }])
   assert.deepEqual(JSON.parse(json.text), { state: 'enabled' })
   const entra = by(p, 'entra')?.text ?? ''
-  assert.match(entra, /browser policy \(Policy A\)/)
-  assert.match(entra, NO_POLICY_B)
-  assert.doesNotMatch(entra, /Policy A and Policy B/)
+  assert.match(entra, /Open the browser policy by its policy ID\./)
+  assert.match(entra, /Change it from Report-only to \*\*On\*\*/)
+  assert.doesNotMatch(entra, POLICY_B)
   assert.equal(by(p, 'powershell'), undefined, 'the withheld Enforce run was drawn')
   assert.match(PKG.blocks['powershell.run'].meta.invocation?.withheldModes?.Enforce ?? '', /ReadinessApproved[\s\S]*unmanaged-device companion/)
-  assert.match(by(p, 'aiInfo')?.text ?? '', /Enable the browser policy \(Policy A\)/)
+  const ai = by(p, 'aiInfo')?.text ?? ''
+  assert.match(ai, /This state enables the reviewed browser session policy\. The only change is its state from Report-only to On\./)
+  assert.match(ai, ONE_POLICY)
+  assert.doesNotMatch(ai, POLICY_B)
   assert.doesNotMatch(by(p, 'email')?.text ?? '', /managed\/compliant/)
 })
 

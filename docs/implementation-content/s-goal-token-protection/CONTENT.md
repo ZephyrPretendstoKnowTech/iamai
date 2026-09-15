@@ -1,11 +1,11 @@
 # IAMAI renderable content — Require Token Protection on Windows
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-IAMAI will use the canonical policy name and approved exclusions already resolved for this tenant.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. Token protection applies only to the resources, platform and client apps selected below; it does not cover browser sessions or devices on other platforms.
 
 1. In Microsoft Entra admin center, go to **Entra ID > Conditional Access > Policies > New policy**.
 2. Name the policy **{{policy.target.displayName}}**.
-3. Under **Users or workload identities**, include **All users** and exclude the IAMAI-resolved canonical exception groups.
+3. Under **Users or workload identities**, include **All users** and exclude the resolved exclusion groups.
 4. Under **Target resources > Resources > Select resources**, select only **Office 365 Exchange Online**, **Office 365 SharePoint Online**, **Microsoft Teams Services**, **Azure Virtual Desktop**, and **Windows 365**. Do not select the Office 365 application suite.
 5. Under **Conditions > Device platforms**, include **Windows** only.
 6. Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Leave Browser unselected.
@@ -18,19 +18,19 @@ Microsoft reference: https://learn.microsoft.com/en-us/entra/identity/conditiona
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the IAMAI-resolved existing Conditional Access policy **{{policy.current.displayName}}** by its stable tenant policy identity. Do not create a replacement.
+Open the existing Conditional Access policy **{{policy.current.displayName}}** by its policy ID. Do not create a replacement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.users.include-all","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Users or workload identities > Include**, set the population to **All users**. Preserve the canonical exclusions.
+Under **Users or workload identities > Include**, set the population to **All users**. Keep the intended exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.users.exclusions-canonical","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Users or workload identities > Exclude**, make the exclusion set match IAMAI's canonical target exactly. Do not add a new exception merely because an unsupported client appears; resolve that workflow deliberately first.
+Under **Users or workload identities > Exclude**, make the exclusion set match the intended exclusions exactly. Do not add a new exception merely because an unsupported client appears; resolve that workflow deliberately first.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.target.resources-pinned","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Target resources > Resources**, select exactly Exchange Online, SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop, and Windows 365. Remove noncanonical resource targets. Do not replace this set with the Office 365 application suite.
+Under **Target resources > Resources**, select exactly Exchange Online, SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop, and Windows 365. Remove any other resource target. Do not replace this set with the Office 365 application suite.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.windows-platform","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -38,7 +38,7 @@ Under **Conditions > Device platforms**, include **Windows** only.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.mobile-desktop-clients","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Remove Browser or other noncanonical client-app selections.
+Under **Conditions > Client apps**, select only **Mobile apps and desktop clients**. Remove Browser or any other client-app selection.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.cloudpc-device-filter","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -46,11 +46,11 @@ Under **Conditions > Filter for devices**, set the filter to **Exclude filtered 
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.conditions.remove-noncanonical","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Remove risk, location, user-action, authentication-flow, or other conditions that IAMAI has classified as noncanonical for this retained token-protection policy. Leave the Windows platform, Mobile apps and desktop clients, and retained CloudPC device filter in place.
+Remove the risk, location, user-action, authentication-flow, or other conditions that IAMAI identified as differences for this token protection policy. Leave the Windows platform, Mobile apps and desktop clients, and the baseline CloudPC device filter in place.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.grant.none","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Under **Access controls > Grant**, remove the noncanonical grant requirement. This retained policy is a session-control policy; its canonical grant control is empty.
+Under **Access controls > Grant**, remove the grant requirement. This policy uses only a session control; its intended grant is empty.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.session.token-protection","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -62,15 +62,15 @@ Set **Enable policy** to **Report-only** while correcting or revalidating this p
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected semantic mismatch(es).
+Save the same policy, read its settings back, and rescan IAMAI. Continue to observation only after IAMAI no longer reports the corrected difference(s).
 
-Keep the policy's current state: if it is On, the correction applies to sign-ins as soon as you save.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-The policy is already in Report-only. Do not recreate it.
+Keep the policy in Report-only while you review the evidence listed for this step. Do not recreate it.
 
 1. Go to **Entra ID > Monitoring & health > Sign-in logs** and review both interactive and non-interactive sign-ins that exercise the targeted Windows native applications.
 2. Open relevant events and review the **Report-only** Conditional Access result for this policy.
@@ -83,12 +83,12 @@ Microsoft reference: https://learn.microsoft.com/en-us/entra/identity/conditiona
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-IAMAI has reached the enforcement state; do not rebuild the policy.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan. Do not rebuild the policy.
 
-1. Open the exact IAMAI-resolved policy.
+1. Open the policy IAMAI resolved.
 2. Confirm the compatibility review still reflects the Windows clients and device workflows that matter now.
 3. Change **Enable policy** from **Report-only** to **On** and save.
-4. Test a supported Windows registered-device/native-client path and a deliberately selected exception path if one exists.
+4. Verify after the change: a supported Windows native client on a registered device still reaches the targeted resources, and any deliberately selected exception path still works.
 5. If a required workflow fails, return this same policy to Report-only before troubleshooting.
 6. Rescan IAMAI.
 @@IAMAI-END
@@ -368,42 +368,40 @@ switch ($Mode) {
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-You are helping implement one IAMAI Plan step. Do not redesign the baseline or infer tenant facts.
-
-GOAL
-Create the retained Windows Token Protection Conditional Access policy in Report-only.
-
-AUTHORITY
-IAMAI owns tenant-specific truth. Jon Hope's retained pin owns the target. Current Microsoft documentation owns supported behavior. The JSON/PowerShell mutation uses Graph beta only because `secureSignInSession` is not exposed in the current v1.0 session-controls schema.
+STATE
+This state creates the Windows token protection Conditional Access policy in Report-only.
 
 TENANT CONTEXT
 Target policy: {{policy.target.displayName}}
-Canonical exclusions: {{policy.target.excludeGroups}}
+Resolved exclusions: {{policy.target.excludeGroups}}
 
-TARGET STATE
-All users; canonical exclusions; exactly the retained Exchange Online, SharePoint Online, Teams Services, Azure Virtual Desktop and Windows 365 resources; Windows; Mobile apps and desktop clients; retained CloudPC exclusion filter; no grant; Token Protection session control; Report-only.
+INTENDED POLICY
+All users; the resolved exclusions; exactly the baseline Exchange Online, SharePoint Online, Teams Services, Azure Virtual Desktop and Windows 365 resources; Windows; Mobile apps and desktop clients; the baseline CloudPC exclusion filter; no grant; Require token protection for sign-in sessions; Report-only.
+
+SCOPE LIMIT
+Token protection applies only to supported Windows native clients for these resources. It does not protect browser sessions, other platforms, or every token.
+
+API NOTE
+The JSON and PowerShell outputs use Microsoft Graph beta only because `secureSignInSession` is not exposed in the current v1.0 session-controls schema.
 
 DO NOT CHANGE
-Do not substitute the Office 365 suite, add Browser, add Windows Cloud Login, remove the retained device filter, or invent exception groups.
+Do not substitute the Office 365 suite, add Browser, add Windows Cloud Login, remove the device filter, or invent exception groups.
 
 VERIFICATION
 Read back the created policy, then use interactive and non-interactive sign-in evidence before recommending enforcement.
 
-YOUR ROLE
-Return the smallest safe Create action and call out the beta API limitation without changing the approved target.
+NEXT STEP
+Explain the create action and the beta API limitation without changing the intended settings.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-Token protection binds each sign-in token to the device it was created on. If an attacker steals the token (from memory, from a browser export, or from disk) and tries to replay it on their own machine, Entra rejects it because the device doesn't match.
+This state corrects the existing token protection policy. Correct only the differences IAMAI found, on the same policy ID.
 
-This is one of the strongest protections against token theft, which is the attack that bypasses MFA entirely — the attacker doesn't need the user's password or second factor, just a copy of the session token.
+Token protection makes supported sign-in session tokens harder to reuse on another device. In this policy it applies only to Exchange Online, SharePoint Online, Microsoft Teams Services, Azure Virtual Desktop and Windows 365, for Windows mobile apps and desktop clients, with Microsoft Entra joined Cloud PCs excluded by the device filter. It does not cover browser sessions, other platforms, or every token.
 
-Current limitation: token protection only works on Windows devices running supported apps. Non-Windows devices (Mac, iOS, Android) and some web apps don't support it yet. This doesn't mean those devices are unprotected — other policies (MFA, device compliance) still apply. It means the token binding doesn't fire there.
+Keep the intended resources, Windows platform, client-app scope, CloudPC filter and resolved exclusions. The JSON and PowerShell outputs use Microsoft Graph beta because `secureSignInSession` is not exposed in the v1.0 session-controls schema.
 
-The correction on this step adds the exclusions group so emergency access accounts are not affected.
-
-The policy keeps its current state. If it is On, each correction applies to sign-ins as soon as it is saved.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -411,11 +409,8 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help evaluate whether the existing Token Protection policy is ready to enforce. Do not repeat creation steps.
-
-CURRENT STATE
-The policy is in Report-only.
+STATE
+The policy is in Report-only. Do not recreate it.
 
 EVIDENCE IAMAI HAS
 Windows registration evidence: {{evidence.windowsRegistration}}
@@ -424,40 +419,36 @@ Token Protection compatibility evidence: {{evidence.tokenProtectionCompatibility
 MICROSOFT RULES
 Review both interactive and non-interactive sign-ins. `tokenProtectionStatusDetails` can show Bound/Unbound plus status codes such as 1002, 1003, 1006 and 1008. Unsupported clients or registration types may be blocked when enforcement begins.
 
-KNOWN UNKNOWNS
-Anything IAMAI has not observed remains Unknown. Microsoft does not prescribe one fixed observation duration; cover normal application use.
+OBSERVATION PERIOD
+Microsoft does not prescribe one fixed observation duration; the evidence should cover normal application use.
 
-YOUR ROLE
-Identify what evidence still blocks enforcement and the smallest safe next validation action.
+NEXT STEP
+Explain which compatibility evidence still blocks enforcement, for interactive and non-interactive sign-ins, and which Windows client or device workflows still need testing.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help perform the final enforcement transition for the already-correct Token Protection policy.
-
-CURRENT STATE
-IAMAI has classified the step Ready to enforce.
+STATE
+IAMAI shows this step Ready to enforce.
 
 IMPLEMENTATION
-Change only the existing policy lifecycle from Report-only to On. Then run a controlled supported Windows native-client validation and rescan IAMAI.
+Change only the existing policy's state from Report-only to On. Then run a controlled validation with supported Windows native clients and rescan IAMAI.
+
+SCOPE LIMIT
+Token protection applies only to the listed resources on supported Windows native clients. It does not protect browser sessions.
 
 ROLLBACK / SAFE RECOVERY
-If a required workflow fails, return the same stable policy to Report-only first. Diagnose the unsupported client/device path before changing exclusions or filters.
+If a required workflow fails, return the same policy to Report-only first. Diagnose the unsupported client/device path before changing exclusions or filters.
 
-YOUR ROLE
-Keep the action limited to enforcement and validation; do not rebuild or redesign the policy.
+NEXT STEP
+Explain the enforcement change and the client tests to run afterwards. The change is limited to the policy state.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.users.pre-enforcement","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-windows-users","trigger":"before-enforcement","purpose":"pre-change-notice","recommendation":"recommended"}
-Subject: A security change is coming to Microsoft 365 on Windows
+Subject: Planned change: Require Token Protection on Windows
 
-We're enabling an additional sign-in protection for supported Microsoft 365 apps on Windows. It binds supported sign-in tokens to the computer that received them, which makes a copied token much harder to reuse from another device.
-
-For most people using current Microsoft apps on a registered work or school device, there should be no visible change. If your Windows device is not registered correctly or an older/unsupported app is being used, you might be asked to sign in again or see access blocked.
-
-If that happens, contact your normal IT support channel and include the app you were using and the time of the sign-in attempt.
+We are preparing extra sign-in protection for supported apps on Windows. If an app is blocked after the change, contact IT with the app, device and time of the attempt.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision","sourceConflict","notLicensed"],"format":"json","kind":"referenceOnly"}
@@ -467,7 +458,7 @@ If that happens, contact your normal IT support channel and include the app you 
       "id": "exceptions",
       "gate": "Approved exceptions",
       "resultSource": "tenant-evidence",
-      "readyWhen": "IAMAI has resolved the complete canonical exclusions for this policy.",
+      "readyWhen": "IAMAI has resolved the complete intended exclusions for this policy.",
       "blockedWhen": "A required service/shared-device exception is unresolved.",
       "line": "Use only the approved exclusion set; do not create ad-hoc exceptions during rollout."
     },
@@ -485,7 +476,7 @@ If that happens, contact your normal IT support channel and include the app you 
       "resultSource": "tenant-or-human-evidence",
       "readyWhen": "Normal supported app use is represented and required incompatible clients/workflows are resolved.",
       "unknownWhen": "Compatibility evidence does not cover normal application use.",
-      "line": "Token protection blocks unsupported protected flows instead of downgrading them."
+      "line": "Review supported Windows clients and token-protection evidence for normal interactive and background use."
     },
     {
       "id": "report-only-evidence",
@@ -496,10 +487,10 @@ If that happens, contact your normal IT support channel and include the app you 
       "line": "Review Token Protection - Sign In Session status before enforcement."
     }
   ],
-  "safeNow": "Create or correct the retained policy in Report-only when canonical bindings are available.",
+  "safeNow": "Create the policy in Report-only, or correct the existing policy, when the resolved values are available.",
   "safeToEnforce": "Only after exception, registration, compatibility, and Report-only evidence gates are Ready.",
   "whyIamaiSaysThis": {
-    "confirmed": ["Baseline target and policy shape come from the retained pin."],
+    "confirmed": ["Baseline target and policy settings come from the baseline."],
     "stillNeedsAttention": ["Compatibility and unsupported-device workflows remain human/evidence gates when IAMAI cannot prove them."],
     "unknown": ["Unobserved clients or registration methods remain Unknown."],
     "whyItMatters": "Microsoft documents that unsupported clients and device-registration types can be blocked by Token Protection.",

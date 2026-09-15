@@ -45,16 +45,19 @@ function bodiesOf(f: Fixture): Map<string, StepBody> {
 }
 
 test('s-prereq-break-glass: Why names the tenant, Entra names the group and where keys go', () => {
-  assert.equal(stepOf('s-prereq-break-glass').why, 'Emergency access accounts are how you keep access to your tenant if a Conditional Access change locks everyone out.')
+  // Editorial batch C: the register Why, and custody the authorized staff can reach without this tenant.
+  assert.equal(stepOf('s-prereq-break-glass').why, 'Emergency access accounts give your team another way into the tenant when normal administrator sign-in fails. Checking their roles, authentication and exclusions helps uncover recovery routes that exist on paper but would fail when needed.')
   const entra = blocksOf('s-prereq-break-glass')['entra.create-or-correct'].text
-  assert.match(entra, /^6\. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step\.$/m)
-  assert.match(entra, /^8\. Store credentials and recovery keys in your organization's secure custody process \(e\.g\. a safe or vault\)\. Do not store them in IAMAI\.$/m)
+  assert.match(entra, /^6\. Add the account to the exclusions group you chose in the Create or Correct Exclusions Group step, and verify that it is a member\.$/m)
+  assert.match(entra, /^8\. Store credentials and recovery keys [^\n]*where authorized staff can retrieve them without this tenant \(for example, a safe or an independent vault\)\. Do not store them in IAMAI\.$/m)
+  assert.match(entra, /^10\. Verify after the change: run a controlled drill for each account that tests sign-in and administrative access\. A passing configuration check does not prove the recovery path works\.$/m)
   assert.doesNotMatch(entra, /IAMAI-resolved|outside IAMAI/)
 })
 
 test('s-prereq-exclusion-group: Why says what the group does, a match says what Save confirms, the note links its partner, and Entra has two paths', () => {
   const cs = stepOf(EXCLUSIONS)
-  assert.equal(cs.why, 'One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members are a backup way in: one to check and test, not a guarantee.')
+  // Editorial batch C: the register Why.
+  assert.equal(cs.why, 'One reviewed group keeps emergency access exclusions consistent. Checking its members can also reveal ordinary accounts that are bypassing controls intended to protect them.')
   // The pre-filled match: a ✓ badge, and one line saying what Save confirms.
   assert.equal(app.picker.matched, '✓ Matched by IAMAI')
   assert.equal(matchedNoteOf(cs.decision?.matchedNote, [{ name: 'Breakglass Exclusion', badge: app.picker.matched }], app.picker.matched), 'IAMAI found "Breakglass Exclusion" in your tenant. Confirm this is the group every policy should exclude, then Save.')
@@ -64,11 +67,12 @@ test('s-prereq-exclusion-group: Why says what the group does, a match says what 
   assert.deepEqual(partnerLinkOf(stepById[EXCLUSIONS] as never), { label: 'Open Create or Correct Emergency Access Accounts', href: '#/plan/s-prereq-break-glass' })
   assert.match(CONTENT_STEP, /const partnerLink = partnerLinkOf\(cs\)/)
   const entra = blocksOf(EXCLUSIONS)['entra.create-group'].text
-  assert.match(entra, /^If confirming an existing group \(like "Breakglass Exclusion"\):\nClick Save above — IAMAI records the group's ID and uses it in every policy\.\n\nIf creating a new group:\n1\. Go to Entra admin center → Groups → All groups → New group\.$/m)
+  // Editorial batch C (channel correction): saving records the group's ID and changes no policy; each policy is corrected separately.
+  assert.match(entra, /^If confirming an existing group \(like "Breakglass Exclusion"\):\nClick Save above\. IAMAI records the group's ID for the plan; saving does not change any policy\. Each policy that must exclude the group is corrected separately\.\n\nIf creating a new group:\n1\. Go to Entra admin center → Groups → All groups → New group\.$/m)
   assert.match(entra, /^4\. Name: Core - Exclusions \(or your preferred name\)\.$/m)
-  assert.match(entra, /^7\. Rescan in IAMAI so it picks up the new group's ID\.$/m)
-  assert.match(entra, /^Important: this group should contain only emergency access accounts\. Do not add regular users or service accounts — they would bypass every policy in the plan\.$/m)
-  assert.doesNotMatch(entra, /owner-confirmed|canonical|tenant truth|similarly named/)
+  assert.match(entra, /^7\. Rescan in IAMAI so it picks up the new group's ID\. Then add the group to each policy IAMAI identifies\.$/m)
+  assert.match(entra, /^Important: this group should contain only emergency access accounts\. Do not add regular users or service accounts; they would be excluded from every policy that excludes this group\.$/m)
+  assert.doesNotMatch(entra, /owner-confirmed|canonical|tenant truth|similarly named|uses it in every policy/)
 })
 
 test('authored Markdown: a numbered list starts where it is written, and an indented line stays inside its item', () => {
@@ -88,8 +92,12 @@ test('authored Markdown: a numbered list starts where it is written, and an inde
 
 test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile are clear, Entra is one numbered procedure, AI Info explains it, and Done when is one line', () => {
   const cs = stepOf(PASSKEYS)
-  assert.equal(cs.why, "This step configures which passkey providers your tenant accepts. If these settings are wrong, people register passkeys that won't work with the baseline's MFA policies, and they'll have to re-register.")
-  assert.deepEqual(cs.doneWhen, ['Passkey (FIDO2), Microsoft Authenticator, and Temporary Access Pass are all enabled for all users. The passkey allow-list includes the Authenticator iOS and Android AAGUIDs, and attestation is enforced.'])
+  // Editorial batch C: the register Why, and the resolved change on the next scan with the emergency sign-in as a human check.
+  assert.equal(cs.why, 'Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.')
+  assert.deepEqual(cs.doneWhen, [
+    'Passkey (FIDO2) matches the resolved change on the next scan: on for All users, with the existing allowed models, groups and exclusions retained and Microsoft Authenticator allowed.',
+    'Verify after the change: an emergency access account still signs in with its key; configuration checks do not replace that test.',
+  ])
   // Ready now with nothing unresolved: no filler under the bar (R2), and the clear tile (R5).
   const body = bodiesOf(fixture('demo')).get(PASSKEYS)
   assert.ok(body, 'the demo plan has the passkey step')
@@ -127,10 +135,14 @@ test('s-prereq-passkey-settings: Why says what the step sets, the bar and tile a
 
 test('s-prereq-auth-strength: Why explains a strength, the action says what to do, Entra lists the five methods inside step 4, AI Info explains them, and Done when says methods', () => {
   const cs = stepOf('s-prereq-auth-strength')
-  assert.equal(cs.why, 'Several policies in the baseline require a specific set of authentication methods (called an "authentication strength"). This step creates that strength so those policies can reference it.')
+  // Editorial batch C: the register Why; the help checks the policies already using the strength; Done when counts combinations and adds its human check.
+  assert.equal(cs.why, 'An authentication strength defines the methods a policy accepts. Creating the right one keeps related policies consistent and makes any temporary sign-in options explicit.')
   // The line the action column draws under the milestone date (stepExport.ts decisionLine: the help while the decision is open).
-  assert.equal(cs.decision?.help, 'Create or select the authentication strength.')
-  assert.deepEqual(cs.doneWhen, ['An authentication strength named "{strengthName}" exists with exactly the five methods listed above, or an existing strength with the same methods is selected and confirmed.'])
+  assert.equal(cs.decision?.help, 'Check the five allowed combinations and every policy already using this strength before changing it.')
+  assert.deepEqual(cs.doneWhen, [
+    'An authentication strength named "{strengthName}" exists with exactly the five combinations listed above, or an existing strength with the same combinations is selected and confirmed.',
+    'Verify after the change: every policy already using the strength still accepts the methods its users rely on.',
+  ])
   const b = blocksOf('s-prereq-auth-strength')
   assert.deepEqual(authoredParts(b['entra.create'].text), [
     {
@@ -146,9 +158,11 @@ test('s-prereq-auth-strength: Why explains a strength, the action says what to d
     },
   ])
   const ai = b['ai.create'].text
-  assert.match(ai, /^An authentication strength is a named set of methods that a Conditional Access policy can require\. Instead of just "require MFA" \(which accepts any second factor including phone call\), this strength says "require one of these five specific methods\."$/m)
-  assert.match(ai, /^The five methods are all phishing-resistant or temporary:\n— Windows Hello for Business: biometric or PIN bound to the device\n— Passkeys \(FIDO2\): a hardware key or Authenticator passkey\n— Certificate-based authentication: a smart card or certificate\n— Temporary Access Pass: a one-time code for bootstrapping \(so a user with no method can sign in once to register\)$/m)
-  assert.match(ai, /^Phone call, SMS, and the Authenticator push notification are deliberately excluded\. They're not phishing-resistant\.$/m)
-  assert.match(ai, /^Multiple policies in the plan will reference this strength by name\. Create it once; they all share it\.$/m)
-  assert.doesNotMatch(ai, /pinned five|source-tenant|\{\{/)
+  // Editorial batch C (factual fix): five combinations with both Temporary Access Pass options, TAP is not phishing-resistant,
+  // the strength differs from Microsoft's built-in one, and policies reference it by object ID, not by name.
+  assert.match(ai, /^An authentication strength is a named set of sign-in methods that a Conditional Access policy can require\. The grant "Require multifactor authentication" accepts any second factor the tenant allows, including phone call and text message\. This custom strength accepts only five combinations:\n— Windows Hello for Business: a biometric or PIN bound to the device\n— Passkeys \(FIDO2\): a security key or a passkey in Microsoft Authenticator\n— Certificate-based authentication \(multifactor\): a smart card or certificate\n— Temporary Access Pass \(one-time use\)\n— Temporary Access Pass \(multi-use\)$/m)
+  assert.match(ai, /^The first three are phishing-resistant\. A Temporary Access Pass is a time-limited passcode an administrator issues, for example so a person with no usable method can sign in and register one\. Because both Temporary Access Pass options are accepted, this strength is not the same as Microsoft's built-in Phishing-resistant MFA strength\.$/m)
+  assert.match(ai, /^Phone call, text message and Authenticator push notifications are not accepted\.$/m)
+  assert.match(ai, /^Several baseline policies use this strength\. Create it once in this tenant; those policies reference it by its object ID\.$/m)
+  assert.doesNotMatch(ai, /pinned five|source-tenant|\{\{|all phishing-resistant or temporary|by name/)
 })

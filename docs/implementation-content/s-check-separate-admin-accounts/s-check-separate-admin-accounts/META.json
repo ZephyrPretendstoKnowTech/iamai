@@ -185,7 +185,7 @@
   "stepId": "s-check-separate-admin-accounts",
   "title": "Use Separate Accounts for Admin Work",
   "milestone": {
-    "actionText": "Verify admin accounts are separated"
+    "actionText": "Test the new admin account, then move the role."
   },
   "baseline": "jon-hope-pinned",
   "packagePath": "docs/implementation-content/s-check-separate-admin-accounts/",

@@ -71,23 +71,23 @@ test('s-goal-sign-in-risk-medium: Entra is one numbered portal procedure naming 
     },
   ])
   assert.doesNotMatch(entra, /canonical|retained baseline member/)
+  // Editorial batch C: no fixed detection-to-severity examples, and enforcement waits on evidence, not only time.
   assert.equal(ownAi(b), [
-    'This policy requires MFA when Microsoft detects a medium-risk sign-in — for example, a sign-in from an unfamiliar location, a new device, or credentials found in a leaked database.',
-    'It starts in Report-only so you can observe which sign-ins would be challenged without blocking anyone. After the observation window, IAMAI will prompt you to enforce it.',
-    'The exclusions group is excluded so emergency access accounts are never blocked by this policy.',
+    'This state creates a policy that requires built-in MFA when Microsoft Entra ID Protection rates a sign-in Medium risk. Microsoft sets the risk level from its detections, so do not assume that a particular event, such as an unfamiliar location, always produces a Medium rating. Sign-in risk conditions require Microsoft Entra ID P2.',
+    'The policy has no session controls, and High sign-in risk is covered by a separate policy. It is created in Report-only, which records what would happen without prompting anyone. Moving to enforcement depends on reviewing the available Medium-risk sign-ins and MFA readiness, not only on time passing.',
+    'The exclusions group is excluded, so accounts in that group, such as emergency access accounts, are not subject to this policy.',
   ].join('\n\n'))
   // The PowerShell script and the JSON body are unchanged, and the shared readiness sentence stays (BLOCKED.md).
   assert.match(packageOf(MEDIUM).blocks['powershell.run'].text, /^# IAMAI compact implementation script — Challenge Medium-Risk Sign-ins$/m)
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
-  // Why and Done when are unchanged.
+  // Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('sign-in-risk-medium')
-  assert.equal(words.why, 'Medium risk is where most real attacks land: a new country, a new device, a password that appears on a list.')
+  assert.equal(words.why, 'This rule adds MFA when Microsoft rates a sign-in medium risk. It provides a separate response from the High-risk rule without changing ordinary sign-ins that are outside its scope.')
   assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.")
 })
 
 test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the strength, and AI Info explains why high risk needs the strength and Every time', () => {
   const HIGH = 's-goal-sign-in-risk'
-  const STRENGTH = '{{authStrength.target.displayName}}'
   assert.deepEqual(authoredParts(packageOf(HIGH).blocks['entra.create'].text), [
     {
       kind: 'list', ordered: true, start: 1, items: [
@@ -96,52 +96,58 @@ test('s-goal-sign-in-risk: Entra is one numbered portal procedure naming the str
         ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
         ['Target resources: All resources.'],
         ['Conditions → Sign-in risk: check High only (not Medium).'],
-        [`Grant → Grant access → Require authentication strength → select "${STRENGTH}" (the strength you created in the Authentication Strength step).`],
+        ['Grant: {{policy.target.grantWords}}. Use only the controls listed here.'],
         ['Session → Sign-in frequency: Every time.'],
         ['Enable policy: Report-only.'],
         ['Create. Rescan in IAMAI.'],
       ],
     },
   ])
+  // Editorial batch C (channel correction): the strength is not called phishing-resistant-only, Temporary Access Pass is
+  // named when accepted, a saved first-enforcement grant is stated from IAMAI's facts, and Every time promises no more than it does.
   assert.equal(packageOf(HIGH).blocks['ai.create'].text, [
-    'This policy responds to high-risk sign-ins detected by Microsoft Entra ID Protection. High risk means Microsoft is fairly confident the sign-in is compromised — for example, credentials confirmed in a breach database, or traffic from a known attack infrastructure.',
-    `Unlike the medium-risk policy (which requires standard MFA), this one requires the authentication strength "${STRENGTH}" — only phishing-resistant methods. The reasoning: if the risk is high, a phished code or push approval might be exactly how the attacker got in.`,
-    `The "Every time" sign-in frequency forces re-authentication on every high-risk sign-in, even if the user has a valid session. This ensures the attacker can't ride an existing session.`,
-    'The exclusions group ensures emergency access accounts are not blocked during a high-risk event.',
+    'This state creates a policy that applies when Microsoft Entra ID Protection rates a sign-in High risk. Microsoft sets the risk level from its detections, so do not assume a particular detection always produces a High rating. Sign-in risk conditions require Microsoft Entra ID P2.',
+    `Selected grant: {{policy.target.grantWords}}. Every time sign-in frequency also applies. When an authentication strength is selected, explain its accepted methods rather than calling every strength phishing-resistant.\nAccepted method combinations: {{authStrength.target.allowedCombinations}} [omit this line when unavailable]`,
+    "The outputs follow the saved first-enforcement choice. If that choice is built-in MFA, explain that the baseline authentication strength remains a later hardening goal; do not describe it as already applied.",
+    'Every time sign-in frequency asks for fresh authentication each time the policy applies instead of relying on an earlier sign-in. It reduces reliance on an existing session but does not guarantee that an attacker cannot use one.',
+    'The Medium-risk policy stays separate and uses built-in MFA. The exclusions group is excluded, so accounts in that group, such as emergency access accounts, are not subject to this policy.',
   ].join('\n\n') + '\n')
   // Opened on a P2 tenant with nothing deployed, both channels draw with the tenant's names.
   const b = bodyOf('huge', HIGH)
   const entra = drawn(b, 'portal')
   assert.match(entra, /^2\. Name: Core - Require - Sign-in risk\.$/m)
-  assert.match(entra, /^6\. Grant → Grant access → Require authentication strength → select "[^"{}]+" \(the strength you created in the Authentication Strength step\)\.$/m)
+  assert.match(entra, /^6\. Grant: .+Use only the controls listed here\.$/m)
   assert.doesNotMatch(entra, /canonical|\{\{/)
-  assert.match(drawn(b, 'ai'), /^Unlike the medium-risk policy \(which requires standard MFA\), this one requires the authentication strength "[^"{}]+"/m)
-  // The shared readiness sentence stays (BLOCKED.md); Why and Done when are unchanged.
+  assert.match(drawn(b, 'ai'), /^Selected grant: [^{}]+/m)
+  assert.doesNotMatch(drawn(b, 'ai'), /\[omit |\{\{|only phishing-resistant methods/)
+  // The shared readiness sentence stays (BLOCKED.md); the held end state is unchanged.
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
   const words = stepWords('sign-in-risk')
-  assert.equal(words.why, 'Microsoft sees leaked-credential lists and impossible travel before you do; this lets that signal act.')
-  assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the high-risk threshold, with the baseline's authentication strength as the grant control and the exclusions group applied.")
+  assert.equal(words.why, 'A risk-based rule can ask for stronger verification when Microsoft flags a sign-in as suspicious. Review the selected requirement so people have a working way to meet it.')
+  assert.equal(words.doneEnd, "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.")
 })
 
 test('s-goal-require-managed-device: the threshold says what it measures, Entra is one numbered create procedure, and the undated milestone reads —', () => {
   const DEVICE = 's-goal-require-managed-device'
   assert.equal(CONTRACT.readinessValue.device, '{value} of devices compliant')
+  // Editorial batch C: the exclusions resolved from the device plan, the location include and exclude, the current
+  // portal names for the OR grant, and the shared Create sentence.
   assert.deepEqual(authoredParts(packageOf(DEVICE).blocks['entra.create'].text), [
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies → New policy.'],
         ['Name: {{policy.target.displayName}}.'],
-        ['Users → Include: All users. Exclude → Groups: add the exclusions group.'],
+        ['Users → Include: All users. Exclude → Groups: add the exclusions group, plus any other exclusions IAMAI resolved from the saved device plan.'],
         ['Target resources: All resources.'],
-        ['Conditions → Locations: Exclude → trusted locations (the network you defined in the Trusted Network step).'],
-        ['Grant → Grant access → Require device to be marked as compliant OR Require hybrid Azure AD joined device.'],
+        ['Conditions → Locations: Include → Any location. Exclude → the resolved trusted locations (the network you defined in the Trusted Network step).'],
+        ['Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.'],
         ['Session: leave empty.'],
-        ['Enable policy: Report-only.'],
+        ['Enable policy: Report-only. It will not enforce its access rule until you enable it.'],
         ['Create. Rescan in IAMAI.'],
       ],
     },
   ])
-  assert.doesNotMatch(packageOf(DEVICE).blocks['entra.create'].text, /canonical|STEP\.md|IAMAI-resolved/)
+  assert.doesNotMatch(packageOf(DEVICE).blocks['entra.create'].text, /canonical|STEP\.md|IAMAI-resolved|hybrid Azure AD/)
   // On the demo the step is On Hold with nothing deployed: it draws the create procedure after the Intune prerequisite.
   const b = bodyOf('demo', DEVICE)
   assert.equal(b.readiness.tiles.find((t) => t.key === 'gate')?.value, '27% of devices compliant')
@@ -149,15 +155,18 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   assert.equal(b.rail.metric, '—')
   const create = authoredParts(drawn(b, 'portal')).find((p) => p.kind === 'list')
   assert.ok(create && create.kind === 'list' && create.items[1][0] === 'Name: Core - Require - Compliant device for Office 365.', 'the create procedure names the demo policy')
-  // The numbered readiness explanation stays shared (BLOCKED.md); Why and Done when are unchanged.
+  // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('require-managed-device')
-  assert.equal(words.why, 'Company data on a device you manage can be protected, updated and wiped; on any other device, outside the office, it cannot.')
+  assert.equal(words.why, "Device checks help limit access from computers and phones that do not meet the business's chosen requirements. Reviewing real sign-ins can reveal managed devices whose apps are not sending the expected device information.")
   assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.')
 })
 
 test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that explains the target and the missing grant, AI Info reads for a tech, and Done when names the outcome', () => {
   const INTUNE = 's-goal-intune-enrollment-reauth'
+  // Editorial batch C: the shared Create sentence and what this policy does and does not do lead the procedure.
   assert.deepEqual(authoredParts(packageOf(INTUNE).blocks['entra.create'].text), [
+    { kind: 'line', text: 'Create this policy in Report-only. It will not enforce its access rule until you enable it. This policy targets Microsoft Intune Enrollment only and sets Sign-in frequency to Every time. It does not add MFA or make the device compliant.' },
+    { kind: 'break' },
     {
       kind: 'list', ordered: true, start: 1, items: [
         ['Go to Entra admin center → Conditional Access → Policies → New policy.'],
@@ -172,13 +181,16 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
       ],
     },
   ])
+  // Editorial batch C (channel correction): the target is Intune Enrollment only, Grant stays unconfigured, and the
+  // all-user MFA policy excludes Intune Enrollment, so it does not supply MFA there (pinned baseline).
   const AI = [
-    'This policy ensures that every time someone enrolls a device in Intune, they sign in fresh — no cached session, no token reuse. This prevents an attacker who has stolen a session token from enrolling their own device as "trusted."',
-    "This is a session-only policy: it doesn't require MFA (the MFA-for-everyone policy already handles that). It only requires that the sign-in happens at that moment, not from a stored session.",
-    'It targets Microsoft Intune Enrollment specifically, not all resources. This means it only fires during the enrollment flow — not during normal sign-ins, Teams calls, or email.',
-    'The exclusions group ensures emergency access accounts are not affected.',
+    'This state creates the policy in Report-only.',
+    'The target is Microsoft Intune Enrollment only (application ID `d4ebce55-015a-49b5-a083-c84d1797ae8c`), not All resources. Users: All users; the exclusions group keeps emergency access accounts outside the policy.',
+    'Grant stays unconfigured. Session → Sign-in frequency is Every time, a session-only control. It does not add MFA or make a device compliant.',
+    'MFA must come from other applicable controls. The all-user MFA policy excludes the Intune Enrollment resource, so it does not supply MFA there.',
   ].join('\n\n')
   assert.equal(packageOf(INTUNE).blocks['ai.create'].text, AI + '\n')
+  assert.doesNotMatch(AI, /already handles that|as "trusted"/)
   // On the demo nothing is deployed yet: both channels draw the create state with the demo's names.
   const b = bodyOf('demo', INTUNE)
   const entra = drawn(b, 'portal')
@@ -187,7 +199,7 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
   assert.equal(ownAi(b), AI)
   const words = stepWords('intune-enrollment-reauth')
   assert.equal(words.doneEnd, 'The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.')
-  assert.equal(words.why, 'Enrollment makes a device trusted; it should never ride on a session someone else could be holding, so it asks for a fresh sign-in every time.')
+  assert.equal(words.why, 'A fresh authentication check during user-driven enrollment reduces reliance on an older sign-in session. Test the enrollment methods your organization uses so setup can still finish.')
   // The shared readiness sentence stays (BLOCKED.md).
   assert.equal(CONTRACT.fixConfirmExclusions, CONFIRM)
 })
@@ -195,7 +207,8 @@ test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that expl
 test('s-verify-mfa: Why is two sentences, the special-care tile is short, the input says who belongs in it, Entra adds the snooze, and AI Info is the in-person walkthrough', () => {
   const CAMPAIGN = 's-verify-mfa'
   const words = stepWords(CAMPAIGN)
-  assert.equal(words.why, "Enforcement should change nothing for anyone. That's only true once every person has registered a phishing-resistant method and used it to sign in at least once.")
+  // Editorial batch C: the register Why.
+  assert.equal(words.why, 'Registration alone can hide a rollout problem: someone may have a method but never have used it successfully. This step helps people set up a suitable method and prove it works before access depends on it.')
   // The input keeps its label, which is its answer's key; the help under the milestone is short, and who qualifies sits between the label and the chips.
   const WHO = 'Admins, anyone with no sign-in method, and anyone who only has text or phone call. These people need in-person walkthrough to set up their passkey.'
   assert.equal(words.decision?.label, 'People who need special care')
@@ -209,33 +222,38 @@ test('s-verify-mfa: Why is two sentences, the special-care tile is short, the in
   const b = bodyOf('demo', CAMPAIGN)
   assert.deepEqual(b.readiness.tiles.find((t) => t.key === 'unsaved:People who need special care'), { key: 'unsaved:People who need special care', label: 'Special care', tone: 'warn', value: 'Confirm who needs hands-on help', note: WHO })
   for (const t of b.readiness.tiles.filter((t) => t.key.includes('step:'))) assert.match(t.label, /^Prerequisite · (To do|Waiting)$/)
+  // Editorial batch C: the method the campaign's JSON targets (Microsoft Authenticator), no snooze value IAMAI does not
+  // hold, a read-back before the rescan, and no promise that every user is prompted until they register.
   assert.deepEqual(authoredParts(drawn(b, 'portal')), [
     {
       kind: 'list', ordered: true, start: 1, items: [
-        ['Go to Entra admin center → Security → Authentication methods → Registration campaign.'],
+        ['Go to Entra admin center → Entra ID → Authentication methods → Registration campaign → Edit.'],
         ['State: Enabled.'],
-        ['Target: All users.'],
-        ['Authentication method: Passkey (Microsoft Authenticator).'],
-        ["Number of days allowed to snooze: 14 (or your organization's preference)."],
-        ['Save.'],
+        ['Target: All users, keeping any existing exclusions.'],
+        ["Authentication method to set up: Microsoft Authenticator, the method this plan's campaign targets."],
+        ['Number of days allowed to snooze: the value your organization approved; IAMAI does not hold one. After the allowed snoozes, registration is required.'],
+        ['Save, reopen the settings and rescan.'],
       ],
     },
     { kind: 'break' },
-    { kind: 'line', text: 'Each user will see a prompt at their next sign-in asking them to register a passkey. They can snooze it, but it returns until they complete registration.' },
+    { kind: 'line', text: 'Whether and when an included user sees a registration prompt depends on their eligibility for the selected method and on the snooze settings.' },
   ])
+  assert.doesNotMatch(drawn(b, 'portal'), /Passkey \(Microsoft Authenticator\)|14 \(or|returns until/)
+  // Editorial batch C: a Temporary Access Pass is time-limited, and an older method is retired only through an approved change.
   assert.equal(ownAi(b), [
     'After enabling the campaign, help each special-care person register in person:',
     [
       '1. Book 10 minutes with each person listed under "People who need special care."',
       '2. Open aka.ms/mfasetup with them signed in.',
-      '3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a one-time code to sign in and register.',
-      "4. If they only have text or phone call: register the passkey first, then remove the phone number from their authentication methods so it's no longer a sign-in option.",
+      '3. If they have no method at all: issue a Temporary Access Pass first (Entra admin center → Users → [user] → Authentication methods → Add → Temporary Access Pass). This gives them a time-limited passcode to sign in and register.',
+      '4. If they only have text message or phone call: register the replacement method with them. Test the replacement method first. Retire an older method only through the approved method-policy change, after checking recovery needs.',
       '5. Admins: register a passkey or a hardware security key — either counts as phishing-resistant.',
-      '6. Have each person sign in one more time after registration. IAMAI checks for the sign-in record on the next scan.',
+      '6. Have each person sign in once more using the new method. IAMAI looks for that sign-in record on the next scan.',
     ].join('\n'),
     'Track progress on the MFA Readiness page — it shows who still needs setup and who still needs a verified sign-in.',
     '[MFA Readiness →](#/readiness)',
   ].join('\n\n'))
-  // Done when is unchanged.
-  assert.ok(b.contract.doneWhen.includes('Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.'))
+  // Editorial batch C: the admin gate stands alone, and the campaign's settings are a human check.
+  assert.ok(b.contract.doneWhen.includes('Every admin is Ready for phishing-resistant MFA.'), b.contract.doneWhen.join(' | '))
+  assert.ok(b.contract.doneWhen.includes("Verify after the change: the registration campaign's settings match what your organization approved."), b.contract.doneWhen.join(' | '))
 })

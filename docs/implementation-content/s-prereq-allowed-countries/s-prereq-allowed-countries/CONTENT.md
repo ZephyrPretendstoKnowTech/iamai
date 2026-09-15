@@ -4,31 +4,31 @@
 3. Use **Determine location by IP address**.
 4. Select exactly the owner-approved countries supplied by IAMAI.
 5. Leave **Include unknown countries/regions** off.
-6. Create the location, then rescan IAMAI so its stable ID becomes tenant truth.
+6. Create the location, then rescan IAMAI so the policies that need it can reference its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact IAMAI-resolved named location by stable ID **{{location.current.id}}**. Correct only the reported mismatch.
+Open the named location IAMAI resolved, ID **{{location.current.id}}**. Before changing it, check the Conditional Access policies that use it: a change applies to them as soon as you save, including policies that are already On. Correct only the difference IAMAI reports.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.countries","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Replace the country selection with the exact owner-approved set. Do not preserve extra countries merely because they appeared in historical sign-ins.
+Replace the country selection with exactly the approved set. Sign-in history is not approval: do not keep an extra country only because it appears in past sign-ins.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.unknown","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Turn **Include unknown countries/regions** off. Unknown mapping must remain outside the approved-country list.
+Turn **Include unknown countries/regions** off, so sign-ins whose country cannot be determined stay outside the approved list.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable named-location object to **{{location.target.displayName}}**. Do not create a duplicate solely for naming.
+Rename the same named location (same ID) to **{{location.target.displayName}}**. Do not create a duplicate solely for naming.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct.lookup","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-The selected location does not use IAMAI's canonical IP-based country lookup. Current Graph v1.0 update documentation does not list `countryLookupMethod` as writable. Do not invent an API patch or delete a referenced object. Resolve a safe replacement/migration plan, update downstream references deliberately, then rescan.
+The selected location does not determine country by IP address, which the intended location uses. The Microsoft Graph v1.0 update documentation does not list `countryLookupMethod` as writable, so IAMAI offers no API change for this difference. Do not delete a location that policies still reference. If the lookup method cannot be changed, plan a replacement location that uses IP-based lookup, update the policies that reference the old one, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["partial","verificationRequired"],"format":"markdown","kind":"template"}
-Verify the exact stable location is a Countries location, contains exactly the approved country set, determines country by IP address, and does not include unknown countries/regions. Then rescan IAMAI.
+Verify that the same named location (same ID) is a Countries location, determines location by IP address, contains exactly the approved countries and does not include unknown countries/regions. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.create","channel":"json","states":["missing"],"format":"json-template","kind":"template"}
@@ -83,48 +83,48 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.decision","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Help review the country decision for {{tenant.displayName}}. Observed sign-in countries: {{evidence.signInCountries}}. Do not convert observation into approval. Identify missing travel/remote-work context and keep the action blocked until the owner-approved country set is explicit.
+The allowed-country list for {{tenant.displayName}} is waiting for an owner decision. Countries seen in sign-ins: {{evidence.signInCountries}}. Sign-in history and the operator's current location help the review but do not approve a country. Regular remote work, planned travel and network routes may be missing from this history. The named location is not created or changed until the approved list is saved.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review creation of one IP-based country named location called {{location.target.displayName}} using the explicit owner-approved country set. Unknown countries remain excluded. Require a rescan after creation so the stable ID is used downstream.
+The named location does not exist yet. The planned change creates one Countries named location called {{location.target.displayName}} that determines location by IP address, contains only the approved countries and leaves unknown countries/regions out. A rescan after creation lets the policies that need it reference its object ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Compare stable location {{location.current.id}} with the canonical target. Correct only name/country/unknown-country mismatches that are safely writable. If `countryLookupMethod` is not `clientIpAddress`, flag migration review rather than inventing a v1.0 PATCH.
+Named location {{location.current.id}} exists but differs from the intended settings. Its name, country list and unknown-countries setting can be corrected on the same object. A different lookup method (`countryLookupMethod` other than `clientIpAddress`) is not writable through the Graph v1.0 update, so it needs a replacement location and an update to the policies that reference it. A change to this location applies to every policy that uses it as soon as it is saved, including policies that are already On.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify exact country set, stable ID, IP lookup, and unknown-country behavior before the geographic policy consumes this object.
+This step is waiting to confirm the named location before the country policy uses it: the same ID, exactly the approved countries, IP-based lookup and unknown countries/regions left out.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the unresolved prerequisite: {{dependencies.blockers}}. Do not create a country location from observed sign-ins alone.
+This prerequisite is blocked. Blockers IAMAI recorded: {{dependencies.blockers}}. Countries observed in sign-ins are not enough to create the location.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.users.travel-confirmation","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"client-contact"}
-Subject: Confirm countries where staff need to sign in
+Subject: Action needed: Create or Correct Allowed Countries Location
 
-We are preparing the approved-country list used by the tenant's geographic sign-in controls. Please confirm every country where staff legitimately work or travel. Historical sign-ins are being used only as review evidence; they will not automatically add a country. Temporary travel should follow the agreed travel-notice process before the downstream blocking policy is enforced.
+Please confirm the countries where staff need access, including regular remote work and planned travel. We will review sign-in history alongside your answer.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.review","channel":"readiness","states":["needsDecision"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"observed","label":"Observed countries","result":"{{evidence.signInCountries}}","line":"Observed geography is evidence for review, not automatic approval."},{"id":"decision","label":"Approved country set","result":"not saved","line":"An owner decision is required before IAMAI creates or changes the location."}],"whyIamaiSaysThis":"Geographic blocking cannot safely derive its allow-list from history alone."}
+{"tiles":[{"id":"observed","label":"Observed countries","result":"{{evidence.signInCountries}}","line":"Observed geography is evidence for review, not automatic approval."},{"id":"decision","label":"Approved country set","result":"not saved","line":"An owner decision is required before the location is created or changed."}],"whyIamaiSaysThis":"Geographic blocking cannot safely derive its allow-list from history alone."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"decision","label":"Approved countries","result":"{{location.target.countryCodes}}","line":"The saved owner-approved set defines the target."},{"id":"identity","label":"Named location","result":"{{location.current.id}}","line":"Downstream policy references must use one stable object."},{"id":"lookup","label":"Country lookup","result":"{{location.current.lookupMethod}}","line":"IAMAI's canonical location uses client IP."}],"whyIamaiSaysThis":"Geographic blocking is only safe when the allow-list is deliberate and the downstream policy references the exact reviewed object."}
+{"tiles":[{"id":"decision","label":"Approved countries","result":"{{location.target.countryCodes}}","line":"Use the saved business decision. Sign-in history helps review the list but does not approve a country."},{"id":"identity","label":"Named location","result":"{{location.current.id}}","line":"The country policy must reference this one named location."},{"id":"lookup","label":"Country lookup","result":"{{location.current.lookupMethod}}","line":"The intended location determines country by IP address."}],"whyIamaiSaysThis":"Geographic blocking is only safe when the allow-list is deliberate and the country policy references the reviewed named location."}
 @@IAMAI-END
 
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"duplicate-name","classification":"derived","symptom":"Create finds a country location with the proposed name.","check":"Resolve whether it is the canonical stable object.","fix":"Do not duplicate; bind the correct stable ID or return to owner resolution.","then":"Correct that object if appropriate.","sources":["ms-location-create"]},{"id":"wrong-lookup","classification":"documented","symptom":"The current country location uses Authenticator GPS instead of client IP.","check":"Read countryLookupMethod.","fix":"Do not invent an update property not documented by the v1.0 update API; plan safe replacement/reference migration.","then":"Rescan after the canonical object is resolved.","sources":["ms-country-resource","ms-country-update"]},{"id":"country-mismatch","classification":"derived","symptom":"The location includes an unapproved country or omits an approved one.","check":"Compare exact ISO country-code sets.","fix":"PATCH the same stable object with the approved set and unknown countries off.","then":"Read back and rescan.","sources":["ms-country-update"]},{"id":"graph-403","classification":"documented","symptom":"Graph returns 403.","check":"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and Security Administrator or Conditional Access Administrator.","fix":"Reconnect with supported authorization.","then":"Retry the same stable object.","sources":["ms-country-update"]}]}
+{"scenarios":[{"id":"duplicate-name","classification":"derived","symptom":"Create finds a country location with the proposed name.","check":"Check whether it is the intended named location.","fix":"Do not duplicate; use the intended location's ID or return to owner review.","then":"Correct that object if appropriate.","sources":["ms-location-create"]},{"id":"wrong-lookup","classification":"documented","symptom":"The current country location uses Authenticator GPS instead of client IP.","check":"Read countryLookupMethod.","fix":"Do not invent an update property not documented by the v1.0 update API; plan a replacement location and update the policies that reference it.","then":"Rescan after the intended location is resolved.","sources":["ms-country-resource","ms-country-update"]},{"id":"country-mismatch","classification":"derived","symptom":"The location includes an unapproved country or omits an approved one.","check":"Compare exact ISO country-code sets.","fix":"PATCH the same named location with the approved set and unknown countries off.","then":"Read back and rescan.","sources":["ms-country-update"]},{"id":"graph-403","classification":"documented","symptom":"Graph returns 403.","check":"Verify Policy.Read.All + Policy.ReadWrite.ConditionalAccess and Security Administrator or Conditional Access Administrator.","fix":"Reconnect with supported authorization.","then":"Retry against the same named location.","sources":["ms-country-update"]}]}
 @@IAMAI-END

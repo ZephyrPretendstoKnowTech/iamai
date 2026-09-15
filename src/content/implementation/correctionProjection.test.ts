@@ -228,7 +228,7 @@ test('a two-policy set corrects only the member that differs, creates only the m
   const live = blocksOf({ ...set, 'policies.session.browser.current.state': 'enabled', [CHANGED_FIELDS_BINDING]: ['conditions.users.excludeGroups'], 'policies.session.browser.current.changedFields': ['conditions.users.excludeGroups'] })
   assert.ok(live.blocks.has('entra.correct.browser.conditions'), [...live.blocks].join(', '))
   assert.equal([...live.blocks].some((b) => /lifecycle|report-only|ReportOnly/.test(b)), false, `a correction moved a live policy to report-only: ${[...live.blocks].join(', ')}`)
-  assert.match(live.p.channels.find((c) => c.channel === 'entra')?.text ?? '', /if it is On, its correction applies to sign-ins as soon as you save/)
+  assert.match(live.p.channels.find((c) => c.channel === 'entra')?.text ?? '', /If it is On, the changed rule can affect access after you save\./)
   // A change the set reports that no member accounts for belongs to nobody IAMAI can name: it holds.
   const stray = projectSafely(pkg, 'partial', { ...set, [CHANGED_FIELDS_BINDING]: ['grantControls.builtInControls'] }, runtime)
   assert.deepEqual(stray.hold?.unknownMismatches, ['grantControls.builtInControls'])

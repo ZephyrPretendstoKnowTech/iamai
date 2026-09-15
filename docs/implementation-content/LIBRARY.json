@@ -1007,7 +1007,7 @@
         "notLicensed"
       ],
       "correctionModules": 6,
-      "requiredBindings": 6,
+      "requiredBindings": 7,
       "optionalBindings": 9,
       "verifiedSourceCount": 9,
       "packageSpecificMicrosoftSources": 9,
@@ -1266,7 +1266,7 @@
       ],
       "correctionModules": 6,
       "requiredBindings": 8,
-      "optionalBindings": 10,
+      "optionalBindings": 11,
       "verifiedSourceCount": 7,
       "packageSpecificMicrosoftSources": 7,
       "sharedPrimitivesReused": 4,
@@ -1539,7 +1539,7 @@
       ],
       "correctionModules": 0,
       "requiredBindings": 3,
-      "optionalBindings": 7,
+      "optionalBindings": 9,
       "verifiedSourceCount": 5,
       "packageSpecificMicrosoftSources": 5,
       "sharedPrimitivesReused": 0,
@@ -1785,7 +1785,7 @@
       "betaDependencies": 0,
       "unresolvedIssues": 0,
       "family": "supporting",
-      "strictValidationErrors": 10,
+      "strictValidationErrors": 9,
       "registered": true,
       "provenance": "workflow-check",
       "review": "current"
@@ -2231,7 +2231,6 @@
       "binding": "authStrength.target.displayName",
       "requiredBy": [
         "s-goal-device-registration-mfa",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "optionalBy": [
@@ -2240,7 +2239,6 @@
       "packages": [
         "s-goal-device-registration-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "type": "string",
@@ -2256,7 +2254,6 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "optionalBy": [],
@@ -2265,7 +2262,6 @@
         "s-goal-device-registration-mfa",
         "s-goal-guests-mfa",
         "s-goal-pim-activation-reauth",
-        "s-goal-sign-in-risk",
         "s-goal-user-risk"
       ],
       "type": "string",
@@ -4225,6 +4221,18 @@
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     },
     {
+      "binding": "passkey.review.detail",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
       "binding": "passkey.target.allowedAaguids",
       "requiredBy": [],
       "optionalBy": [
@@ -4250,6 +4258,18 @@
     },
     {
       "binding": "passkey.target.profileSummary",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-prereq-passkey-settings"
+      ],
+      "packages": [
+        "s-prereq-passkey-settings"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "passkey.target.summary",
       "requiredBy": [],
       "optionalBy": [
         "s-prereq-passkey-settings"
@@ -5332,7 +5352,8 @@
         "s-goal-geo-restriction",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
-        "s-goal-require-managed-device"
+        "s-goal-require-managed-device",
+        "s-goal-sign-in-risk"
       ],
       "optionalBy": [],
       "packages": [
@@ -5345,7 +5366,20 @@
         "s-goal-geo-restriction",
         "s-goal-mobile-app-protection",
         "s-goal-register-info-protected",
-        "s-goal-require-managed-device"
+        "s-goal-require-managed-device",
+        "s-goal-sign-in-risk"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
+    },
+    {
+      "binding": "policy.target.grantJson",
+      "requiredBy": [
+        "s-goal-sign-in-risk"
+      ],
+      "optionalBy": [],
+      "packages": [
+        "s-goal-sign-in-risk"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -5353,11 +5387,13 @@
     {
       "binding": "policy.target.grantWords",
       "requiredBy": [
-        "s-goal-register-info-protected"
+        "s-goal-register-info-protected",
+        "s-goal-sign-in-risk"
       ],
       "optionalBy": [],
       "packages": [
-        "s-goal-register-info-protected"
+        "s-goal-register-info-protected",
+        "s-goal-sign-in-risk"
       ],
       "knownIAMAIInput": null,
       "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
@@ -6131,6 +6167,18 @@
       "sensitivity": "tenant-context",
       "knownIAMAIInput": true,
       "definitionStatus": "CARRIED-FORWARD"
+    },
+    {
+      "binding": "workload.identity.detail",
+      "requiredBy": [],
+      "optionalBy": [
+        "s-goal-workload-identity-block"
+      ],
+      "packages": [
+        "s-goal-workload-identity-block"
+      ],
+      "knownIAMAIInput": null,
+      "definitionStatus": "PENDING-HOLISTIC-INTEGRATION-REVIEW"
     }
   ],
   "issues": [
@@ -6419,14 +6467,14 @@
     "selfVerifiedPackages": 46,
     "packagesWithOpenIssues": 8,
     "contentBlocks": 962,
-    "uniqueBindings": 285,
-    "bindingsRequiredByAtLeastOneProjection": 100,
-    "bindingsOptionalInAtLeastOnePackage": 189,
+    "uniqueBindings": 289,
+    "bindingsRequiredByAtLeastOneProjection": 101,
+    "bindingsOptionalInAtLeastOnePackage": 192,
     "bindingDefinitionsCarriedForward": 45,
-    "bindingDefinitionsPendingHolisticReview": 240,
+    "bindingDefinitionsPendingHolisticReview": 244,
     "knownIAMAIInputTrue": 43,
     "knownIAMAIInputFalse": 2,
-    "knownIAMAIInputUnreviewed": 240,
+    "knownIAMAIInputUnreviewed": 244,
     "verifiedSourceRecords": 267,
     "microsoftSourceRecords": 265,
     "surfaces": [

@@ -20,6 +20,7 @@ import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
 import { answerKey, questionLabels } from './answers.ts'
 import { plainMfaFirst } from './deviations.ts'
+import { stepBodyOf } from '../ui/surfaces/stepBody.ts'
 import { stepIdForGoal } from './stepIds.ts'
 import { listCountVars, whole } from '../content/render.ts'
 import { personReadiness } from '../scoring/phishingResistant.ts'
@@ -120,4 +121,11 @@ test('step 35 offers the plain-MFA rung as the first enforcement while anyone ha
   const json = JSON.parse(withAnswer.steps.find((x) => x.goalId === 'sign-in-risk')!.action.json!) as { grantControls: { builtInControls: string[]; authenticationStrength?: unknown } }
   assert.deepEqual(json.grantControls.builtInControls, ['mfa'])
   assert.equal(json.grantControls.authenticationStrength, undefined, 'the strength is deferred in the JSON too')
+  const drawn = stepBodyOf(sAfter, ctxFor(f, rAfter, { mapping }))
+  const artifact = (id: string) => drawn.artifacts.find(a => a.id === id)!
+  assert.equal(artifact('json').unavailable, undefined)
+  assert.deepEqual(JSON.parse(artifact('json').text()).grantControls, json.grantControls, 'the opened JSON follows the saved engine choice')
+  assert.match(artifact('portal').text(), /Grant: Require multifactor authentication/)
+  assert.match(artifact('ai').text(), /Selected grant: Require multifactor authentication/)
+  assert.ok(artifact('ps').text().includes(`-GrantControlsJson '${JSON.stringify(json.grantControls)}'`))
 })

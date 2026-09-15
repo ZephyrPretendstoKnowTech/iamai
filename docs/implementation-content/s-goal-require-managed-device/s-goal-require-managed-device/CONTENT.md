@@ -1,47 +1,47 @@
 @@IAMAI-BEGIN {"id":"entra.intune-prerequisite","channel":"entra","states":["missing","partial","reportOnly"],"format":"markdown","kind":"template"}
-Before changing/enforcing CA, verify the actual Intune prerequisite: **Endpoint security > Device compliance > Compliance policy settings > Mark devices with no compliance policy assigned as = Not compliant**. For every IAMAI-resolved in-scope compliance policy, verify the source-required **Mark device non-compliant** grace action is 3 days. Do not change unknown policies by name guessing. Record `{{intune.compliance.prerequisiteState}}`, then continue only when IAMAI classifies the prerequisite as satisfied.
+Before you create, correct or enforce this policy, verify the Intune prerequisite: **Endpoint security > Device compliance > Compliance policy settings > Mark devices with no compliance policy assigned as = Not compliant**. For each in-scope compliance policy IAMAI identifies, verify that the baseline's **Mark device noncompliant** action uses a 3-day grace period where it applies. Do not change a compliance policy you identified only by its name. Prerequisite state IAMAI reports: `{{intune.compliance.prerequisiteState}}`. Continue only when IAMAI shows the prerequisite as satisfied.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Go to Entra admin center → Conditional Access → Policies → New policy.
 2. Name: {{policy.target.displayName}}.
-3. Users → Include: All users. Exclude → Groups: add the exclusions group.
+3. Users → Include: All users. Exclude → Groups: add the exclusions group, plus any other exclusions IAMAI resolved from the saved device plan.
 4. Target resources: All resources.
-5. Conditions → Locations: Exclude → trusted locations (the network you defined in the Trusted Network step).
-6. Grant → Grant access → Require device to be marked as compliant OR Require hybrid Azure AD joined device.
+5. Conditions → Locations: Include → Any location. Exclude → the resolved trusted locations (the network you defined in the Trusted Network step).
+6. Grant → Grant access → select Require device to be marked as compliant and Require Microsoft Entra hybrid joined device → For multiple controls: Require one of the selected controls.
 7. Session: leave empty.
-8. Enable policy: Report-only.
+8. Enable policy: Report-only. It will not enforce its access rule until you enable it.
 9. Create. Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, its grant applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set the users and conditions to the intended target: Users → Include: All users, excluding the exclusions group and any other exclusions IAMAI resolved from the saved device plan. Target resources: All resources. Locations → Include: Any location; Exclude: the resolved trusted locations. Correct this policy rather than creating a replacement.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Under **Grant**, select **Require device to be marked as compliant** and **Require Microsoft Entra hybrid joined device**, with **Require one of the selected controls**. Clear any other control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open the policy with ID **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set **Session** to the intended target and clear any control it does not include; the baseline sets no session controls.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}** only when name is the mismatch. Display name is never update identity.
+Rename the same policy to **{{policy.target.displayName}}** only when the name is the difference. The display name does not identify the policy for updates; IAMAI uses the same policy ID.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.
+Re-open the same policy by its ID, compare the corrected settings with IAMAI's intended target, and rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Verify after the change: a compliant or hybrid-joined work device in the saved scope can still sign in from outside the trusted locations.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus this step's own readiness evidence. Do not treat a quiet dashboard as proof.
+Keep the policy in **Report-only** while you review the evidence listed for this step. Review report-only results for sign-ins from outside the trusted locations. Where a managed device's sign-in is missing device information, investigate the app, browser and device state before changing exclusions. Test real browser, server and enrollment workflows. A quiet report is not proof that every device path will work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, every security-significant field is canonical, prerequisites are verified, and emergency access remains viable. Change **Enable policy** to **On**, test expected and emergency paths, then rescan IAMAI.
+Re-open the policy by the same policy ID. Confirm it is still Report-only, its settings match the intended target, and IAMAI shows the Intune prerequisite as satisfied. Change **Enable policy** to **On** and save. Verify after the change: compliant and hybrid-joined work devices in the saved scope can sign in from outside the trusted locations, and emergency access still works. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -119,13 +119,17 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Require a Managed Device Outside the Office** implementation for {{tenant.displayName}}. Confirm the canonical target matches the pinned IAMAI destination, is fully tenant-resolved, starts Report-only, and contains no invented IDs or decisions.
+State: **Require a Managed Device Outside the Office** does not exist in {{tenant.displayName}} yet. The next action creates it in Report-only: All users with the exclusions resolved from the saved device plan, All resources, Any location except the resolved trusted locations, and Grant: Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device. Either device state satisfies the grant. It does not block anything until it is enabled.
+
+The Intune prerequisite comes first: devices with no compliance policy assigned are to be marked Not compliant.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Require a Managed Device Outside the Office**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.
+State: policy {{policy.current.id}} exists, but these settings differ from the intended target for **Require a Managed Device Outside the Office**: {{policy.current.semanticMismatches}}. The correction changes only those settings, on the same policy ID. The intended grant stays Require device to be marked as compliant OR Require Microsoft Entra hybrid joined device.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -133,51 +137,53 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Require a Managed Device Outside the Office** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use this step's readiness conditions and do not recommend enforcement merely because no failures appeared.
+State: **Require a Managed Device Outside the Office** is in Report-only in {{tenant.displayName}}. It records what it would block but blocks nothing yet. Report-only evidence: {{evidence.reportOnly}}.
+
+A sign-in with no device information is different from a noncompliant device: the device may be managed while the app or browser does not send its device state. Few or no failures do not show that every required device path will work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform the final pre-enforcement review for **Require a Managed Device Outside the Office** in {{tenant.displayName}}. Confirm stable identity, canonical conditions/grant/session, prerequisite evidence, Report-only observation, and emergency-access safety.
+State: **Require a Managed Device Outside the Office** is in Report-only in {{tenant.displayName}} and the next action is to enable it. Before setting it to On, the same policy ID should still be Report-only, its settings should match the intended target, the Intune prerequisite should be satisfied, and the report-only evidence should have been reviewed. After enabling, test the required compliant and hybrid-joined device paths outside the trusted locations, and emergency access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Require a Managed Device Outside the Office** is not actionable using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent an exception, owner choice, or alternate baseline.
+State: **Require a Managed Device Outside the Office** cannot proceed yet. Known blockers or decisions: {{dependencies.blockers}}. These must be resolved, including any unsaved device-plan choice, before the policy is created or changed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing blocker for **Require a Managed Device Outside the Office** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
+State: **Require a Managed Device Outside the Office** needs licensing that this scan did not confirm for {{tenant.displayName}}. No implementation is offered until licensing is resolved. The licensing gap does not change the baseline goal.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Managed-device access entering validation
+Subject: Planned change: Require a Managed Device Outside the Office
 
 Hi,
 
-We are validating managed-device access for {{tenant.displayName}} outside trusted locations. Before enforcement, IT is confirming that in-scope work devices have real compliance or approved hybrid-join status and that the device-management decision matches how the business works.
+Outside the approved trusted network, work access will need a device that meets the selected device requirements. Contact IT if your work device is blocked so we can check its status and sign-in details.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Managed-device access ready to enforce
+Subject: Planned change: Require a Managed Device Outside the Office
 
 Hi,
 
-The managed-device policy for {{tenant.displayName}} is ready to enforce after Intune and Report-only validation. Outside trusted locations, use an approved compliant or intentionally supported hybrid-joined work device. Report legitimate-device failures to IT for compliance troubleshooting rather than requesting a bypass.
+Outside the approved trusted network, work access will need a device that meets the selected device requirements. Contact IT if your work device is blocked so we can check its status and sign-in details.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when the saved device-plan decision is resolved, the real Intune compliance prerequisite is satisfied for in-scope paths, trusted-location/exclusions are canonical, Report-only evidence is reviewed, and the CA grant remains compliantDevice OR domainJoinedDevice.
+Check the saved platform scope, compliance requirements and hybrid-join path. Investigate missing device claims before changing exclusions. The grant stays compliantDevice OR domainJoinedDevice.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-For a blocked work device, inspect Intune policy assignment, compliance reason/check-in, browser/device account claims, and hybrid-join status before touching CA exclusions. For servers/Autopilot or personal-device impact, compare the event to the saved device-plan scope and canonical target.
+For a blocked work device, inspect Intune policy assignment, compliance reason/check-in, browser/device account claims, and hybrid-join status before touching CA exclusions. For servers/Autopilot or personal-device impact, compare the event to the saved device-plan scope and intended target.
 @@IAMAI-END

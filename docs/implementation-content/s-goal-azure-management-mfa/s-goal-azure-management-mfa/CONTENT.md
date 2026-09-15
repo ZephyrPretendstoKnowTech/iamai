@@ -1,40 +1,45 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the grant and session controls exactly as the target policy sets them.
-5. Set **Enable policy: Report-only** and create it.
-6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
+3. Apply the intended conditions IAMAI resolved for this tenant: **Users: All users** with the resolved exclusions, including the service-accounts group; **Target resources**: **Windows Azure Service Management API** only. Do not use IDs from another tenant, and do not widen or narrow the population.
+4. Grant: **Require multifactor authentication**. Leave session controls unconfigured.
+5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open the exact policy by stable tenant ID **{{policy.current.id}}**. Keep its current state: if it is On, its grant applies to the corrected users and conditions as soon as you save. Replace the complete Conditions object with IAMAI's canonical target; do not create a replacement policy.
+Open the existing policy with ID **{{policy.current.id}}**; do not create a replacement policy. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set its conditions to the intended target: **Users: All users** with the resolved exclusions, including the service-accounts group; **Target resources**: **Windows Azure Service Management API** only. Do not exclude a person's account to keep a script working.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set Grant to **Require multifactor authentication**, as the intended target specifies, and remove any other grant control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Remove all session controls; the intended target for this policy has none.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}** only when name is the mismatch. Display name is never update identity.
+Rename the same policy to **{{policy.target.displayName}}** only when the name is the difference. IAMAI matches the policy by its ID, not its display name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Re-open the same policy by stable ID, compare the corrected object to IAMAI's canonical target, and rescan. The policy keeps the state it had.
+Save. Reopen the same policy ID, compare its settings with the intended target, and rescan. The policy keeps the state it had.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus this step's own readiness evidence. Do not treat a quiet dashboard as proof. Distinguish human interactive management from scripts/service accounts and do not use a human-user exclusion as an automation fix.
+Keep the policy in Report-only while you review the evidence listed for this step. Review Azure portal, Azure CLI and Azure PowerShell sign-ins, and separate people from scripts that sign in with a person's account. Move user-based automation to a workload identity such as a service principal or managed identity; do not exclude a person's account as an automation fix. Exclusions from this policy do not override Microsoft's separate MFA requirements for Azure management.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, every security-significant field is canonical, prerequisites are verified, and emergency access remains viable. Change **Enable policy** to **On**, test expected and emergency paths, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+- Reopen the policy by its ID. Confirm it is still **Report-only**, its settings match the intended target, and required automation has a supported path.
+- Change **Enable policy** to **On** and save.
+- Verify after the change: a person can complete MFA when opening the Azure portal, required automation still runs, and emergency access still works.
+- Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -114,13 +119,13 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Require MFA for Azure Management** implementation for {{tenant.displayName}}. Confirm the canonical target matches the pinned IAMAI destination, is fully tenant-resolved, starts Report-only, and contains no invented IDs or decisions. Distinguish human interactive management from scripts/service accounts and do not use a human-user exclusion as an automation fix.
+IAMAI did not find **Require MFA for Azure Management** in {{tenant.displayName}}. The next action is to create it in Report-only. It requires multifactor authentication for sign-ins to Windows Azure Service Management API (797f4846-ba00-4fd7-ba43-dac1f8f63013), which covers Azure portal, Azure CLI and Azure PowerShell access, for all users except the resolved exclusions and service-accounts group. Scripts that sign in with a person's account are affected; workload identities are not targeted by this policy. Microsoft's own MFA requirements for Azure management apply separately from this policy and its exclusions.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Policy {{policy.current.id}} has these mismatches for **Require MFA for Azure Management**: {{policy.current.semanticMismatches}}. Recommend only the smallest API-safe corrections to reach the canonical target. Keep the policy's current state: if it is On, each correction applies to sign-ins as soon as it is saved.
+IAMAI found policy {{policy.current.id}} for **Require MFA for Azure Management**, but it differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy ID. The intended target requires MFA for Windows Azure Service Management API only, for all users except the resolved exclusions and service-accounts group, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -128,51 +133,51 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Require MFA for Azure Management** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use this step's readiness conditions and do not recommend enforcement merely because no failures appeared.
+**Require MFA for Azure Management** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Separate people managing Azure from scripts or tools that sign in with a person's account; those need a supported workload identity rather than an exclusion. No would-be failures in the available records does not prove that every infrequent script has run.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform the final pre-enforcement review for **Require MFA for Azure Management** in {{tenant.displayName}}. Confirm stable identity, canonical conditions/grant/session, prerequisite evidence, Report-only observation, and emergency-access safety.
+**Require MFA for Azure Management** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, Report-only results for Azure portal, CLI and PowerShell sign-ins have been reviewed, user-based automation has a supported path, and emergency access remains available. Once On, people must satisfy MFA for the Azure management sign-ins the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Require MFA for Azure Management** is not actionable using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent an exception, owner choice, or alternate baseline.
+**Require MFA for Azure Management** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing blocker for **Require MFA for Azure Management** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
+IAMAI marks **Require MFA for Azure Management** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place. Microsoft's separate MFA requirements for Azure management do not depend on this policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"azure-administrators"}
-Subject: Azure management MFA entering validation
+Subject: Action needed: Require MFA for Azure Management
 
 Hello,
 
-We are validating MFA for Azure management access in {{tenant.displayName}}. Azure portal, CLI, and PowerShell management sessions using a person’s account will require MFA. Any scripts still signing in as a person need to be moved to an approved workload identity before enforcement.
+We are preparing MFA controls for Azure management. Please tell IT about scripts or tools that sign in using a person's account so we can review them before the change.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"azure-administrators"}
-Subject: Azure management MFA ready to enforce
+Subject: Action needed: Require MFA for Azure Management
 
 Hello,
 
-Azure management MFA for {{tenant.displayName}} is ready to enforce after Report-only review. Human Azure management sessions must satisfy MFA; automation should use its approved workload identity.
+We are preparing MFA controls for Azure management. Please tell IT about scripts or tools that sign in using a person's account so we can review them before the change.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when the canonical service-account/exclusion objects are resolved, user-based Azure automation has a safe path, Windows Azure Service Management API is the only target resource, and Report-only Azure portal/CLI/PowerShell evidence is reviewed.
+Review Azure management use and any user-based scripts. Custom-policy exclusions do not override Microsoft's separate requirements. Ready only when the intended exclusions and service-accounts group are resolved, user-based Azure automation has a supported path, Windows Azure Service Management API is the only target resource, and Report-only evidence for Azure portal, CLI and PowerShell sign-ins has been reviewed.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-For an unexpected prompt or block, identify whether the sign-in is a human Azure portal/CLI/PowerShell session or automation. Human access should satisfy MFA; automation should move to a service principal/managed identity rather than gain a user bypass.
+For an unexpected prompt or block, identify whether the sign-in is a person using the Azure portal, CLI or PowerShell, or automation using a person's account. People should satisfy MFA; automation should move to a service principal or managed identity rather than receive a user exclusion. Microsoft's separate MFA requirements for Azure management can prompt even where this policy does not apply.
 @@IAMAI-END

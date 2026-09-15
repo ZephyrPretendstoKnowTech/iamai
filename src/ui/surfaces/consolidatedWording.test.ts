@@ -37,12 +37,13 @@ test('the method disclosure says IAMAI saves the details its checks need, withou
 
 test('registration guidance separates reading the settings back from testing the registration workflow', () => {
   const blocks = PACKAGES['s-goal-register-info-protected'].blocks
-  assert.match(blocks['entra.observe'].text, /Check its settings by reading the policy back by stable tenant ID; that confirms the configuration, not the registration experience\./)
+  assert.match(blocks['entra.observe'].text, /Check its settings by reading the policy back by the same policy ID; that confirms the configuration, not the registration experience\./)
   assert.match(blocks['entra.observe'].text, /Report-only results may not show sign-in method registration attempts, so validate the actual registration steps with a controlled test account before enforcement\./)
   assert.match(blocks['ai.observe'].text, /treat a settings read-back as a check of the configuration and a controlled registration test as the check of the workflow/)
   assert.doesNotMatch(blocks['email.rollout'].text, /validate the actual registration workflows in Report-only/)
-  assert.match(blocks['email.rollout'].text, /report-only records alone may not show how registration behaves/)
-  assert.match(blocks['email.enforce'].text, /^Subject: [^\n]*\n\nHi,\n\nWe plan to turn on the sign-in method registration protection/)
+  // Editorial batch C: both Emails carry the register's planned-change notice.
+  assert.match(blocks['email.rollout'].text, /We are preparing a change to how sign-in methods are registered\./)
+  assert.match(blocks['email.enforce'].text, /^Subject: Planned change: [^\n]*\n\nHi,\n\nWe are preparing a change to how sign-in methods are registered\./)
 })
 
 test('no Email describes planned or unverified work as complete, and the guest creation Email keeps its reader and trigger', () => {
@@ -58,5 +59,8 @@ test('no Email describes planned or unverified work as complete, and the guest c
   assert.ok(emails > 40, `emails read: ${emails}`)
   const guests = PACKAGES['s-goal-guests-mfa'].blocks['email.rollout']
   assert.deepEqual([guests.meta.audience, guests.meta.communicationTrigger], ['client-contact', 'before-report-only'])
-  assert.match(PACKAGES['s-goal-guests-mfa'].blocks['email.enforce'].text, /has finished its Report-only review and is ready to be turned on/)
+  // Editorial batch C: the enforcement Email no longer claims the review is finished; it asks for what to test.
+  const guestsEnforce = PACKAGES['s-goal-guests-mfa'].blocks['email.enforce'].text
+  assert.doesNotMatch(guestsEnforce, /has finished its Report-only review|is ready to be turned on/)
+  assert.match(guestsEnforce, /^Subject: Prepare support: Guest MFA\n\nWe are preparing MFA checks for guest access\./)
 })

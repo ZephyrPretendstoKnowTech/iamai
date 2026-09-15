@@ -220,6 +220,14 @@ const EXAMPLE_SUPPRESSED_OR_APP_ONLY = [
   // The passkey settings holds (roadmap/passkeySettings.ts, owner approval 2026-09-14):
   // a profile-based policy, a block list that blocks Authenticator, a partial read.
   // The example's methods policy is a complete read with key restrictions off.
+  // The configuration gate's human check (editorial batch C): the example's steps are
+  // evaluated from sign-in records, so no step renders the configuration gate.
+  '.shared.policyDoneWhenConfiguration[1]',
+  // The device-code and authentication-transfer usage lines (editorial batch C): the
+  // example lists nobody. They only read as rendered before because a fragment matched
+  // the old none line, which now says the records are not proof of no use.
+  '.steps[23].who.evidence[0]',
+  '.steps[24].who.evidence[0]',
   '.pages.plan.blocked.passkeyBlockConflict',
   '.pages.plan.blocked.passkeyPartialRead',
   '.pages.plan.blocked.passkeyProfiles',

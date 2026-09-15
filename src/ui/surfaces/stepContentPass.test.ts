@@ -55,10 +55,11 @@ test('the Impact and milestone words the step docs name are what the Plan reads 
     's-prereq-allowed-countries': 'Country restrictions',
     's-prereq-device-plan': 'Device policies',
   }
+  // Editorial batch C: the milestone words are the copy register's.
   const milestone: Record<string, string> = {
-    's-prereq-break-glass': 'Create and verify two emergency accounts',
-    's-prereq-device-plan': 'Decide phones and computers',
-    's-check-separate-admin-accounts': 'Verify admin accounts are separated',
+    's-prereq-break-glass': 'Complete the remaining emergency access checks.',
+    's-prereq-device-plan': 'Save the phone and computer choices.',
+    's-check-separate-admin-accounts': 'Test the new admin account, then move the role.',
   }
   for (const [id, label] of Object.entries(impact)) assert.equal(PACKAGES[id]?.meta.impact?.fallbackLabel, label, id)
   for (const [id, text] of Object.entries(milestone)) assert.equal(PACKAGES[id]?.meta.milestone?.actionText, text, id)
@@ -86,8 +87,9 @@ test('a held policy finishes on its own end state where its content entry states
 
 test('the campaign and the exclusions group finish on what their step docs say', () => {
   const byId = (id: string) => content.steps.find((s) => s.id === id)
-  assert.ok(byId('s-verify-mfa')?.doneWhen?.includes('Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.'))
-  const target = 'The exclusions group is confirmed, has the emergency access accounts as its only members, and IAMAI has recorded its ID for every policy in the plan.'
+  // Editorial batch C: the campaign's own settings check is a human check; the admin readiness gate stays.
+  assert.ok(byId('s-verify-mfa')?.doneWhen?.includes('Every admin is Ready for phishing-resistant MFA.'))
+  const target = 'The exclusions group is confirmed and contains only the selected emergency access accounts.'
   assert.equal(byId('s-prereq-exclusion-group')?.doneWhen?.[0], target)
   let read = 0
   for (const name of FIXTURES) {

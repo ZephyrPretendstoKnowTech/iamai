@@ -57,14 +57,14 @@ export const ACCEPTANCE = [
   { item: 'C2', cleanup: 'notAssessed', path: 'learn.url', must: 'https://github.com/Jhope188/ConditionalAccessPolicies' },
   // C4: a manager line never asserts "nobody here used it" unconditionally; the
   // clause returns under the engine's `applies` when the evidence count is zero.
-  { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'Without this, one pasted code signs an attacker in.', mustNot: /nobody here/i },
-  { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Without this, a captured QR code is a captured account.', mustNot: /nobody here/i },
-  { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Without this, a stolen password works from anywhere in the world.', mustNot: /nobody signed in/i },
+  { item: 'C4', step: 'block-device-code', path: 'more.manager', must: 'A sign-in flow often abused in phishing is turned off.', mustNot: /nobody here/i },
+  { item: 'C4', step: 'block-auth-transfer', path: 'more.manager', must: 'Signing in by transferring a session from another device is turned off', mustNot: /nobody here/i },
+  { item: 'C4', step: 'geo-restriction', path: 'more.manager', must: 'Sign-ins from countries outside the approved list are blocked', mustNot: /nobody signed in/i },
   // C7: the security-defaults switch is dated to the day Require MFA for Everyone
   // enforces, with the legacy block and the admin MFA policy the same day, and
   // the step says so (report-only policies can exist with security defaults on).
   { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'Report-only policies can exist while security defaults are on; an enforced one cannot. On the day Require MFA for Everyone enforces, and not before:', mustNot: '{firstPolicy}' },
-  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'then Block Legacy Authentication and Require Phishing-Resistant MFA for Admins the same day.' },
+  { item: 'C7', step: 's-prereq-security-defaults', path: 'whatToDo', must: 'enable Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins in the same change window' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'doneWhen', must: 'Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.' },
   { item: 'C7', step: 's-prereq-security-defaults', path: 'more.helpDesk', must: 'Prompts on the switch day are the new MFA policy; anyone without a method gets a Temporary Access Pass.' },
   // Per step, 1–10.
@@ -76,40 +76,40 @@ export const ACCEPTANCE = [
   { item: '2', step: 's-prereq-exclusion-group', path: 'whatToDo.checkFixes.no-admin-members', must: 'besides the emergency accounts' },
   { item: '3', step: 's-check-dormant-accounts', path: 'title', must: 'Disable or Confirm Dormant Accounts', mustNot: 'Address Problematic Accounts' },
   { item: '3', step: 's-check-dormant-accounts', path: 'who', must: 'Last sign-in dates need Entra ID P1; without it every account here reads no sign-in on record.' },
-  { item: '4', step: 's-prereq-allowed-countries', path: 'decision.help', must: 'Remove one nobody should work from.', mustNot: /add one people (will )?travel to/ },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'a single office is usually /32; use the small block only if your ISP assigned one', mustNot: '/32 or a /24' },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'IPv6: /128 for one address, or the /64 your ISP delegated; never wider.' },
-  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: "or take it from the sign-in log's IP column filtered to the office" },
+  { item: '4', step: 's-prereq-allowed-countries', path: 'decision.help', must: 'Keep only the countries the business approved, then save.', mustNot: /add one people (will )?travel to/ },
+  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'as narrow as the network owner\'s allocation; never 0.0.0.0/0.', mustNot: '/32 or a /24' },
+  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: 'Ask the network owner for the approved public IPv4 and IPv6 ranges' },
+  { item: '5', step: 's-prereq-trusted-location', path: 'whatToDo.steps', must: "being seen does not approve them" },
   { item: '5', step: 's-prereq-trusted-location', path: 'more.risks', must: 'A trusted location also lowers Identity Protection risk scores, so keep the ranges tight.' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'ifWrong', must: 'Remove the account from the group; the policies apply again on its next sign-in.' },
   { item: '6', step: 's-prereq-service-accounts-group', path: 'more.risks', must: 'see Restrict Service Accounts to the Trusted Network' },
   { item: '7', step: 's-shared-devices', path: 'whatToDo.steps', must: 'Exclude: {trustedLocation}', mustNot: 'Require device to be marked as compliant' },
-  { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'allows them only from the trusted network', mustNot: 'requires a compliant device' },
+  { item: '7', step: 's-shared-devices', path: 'doneWhen', must: 'the shared devices work from the approved network', mustNot: 'requires a compliant device' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.lead', must: 'On the day Require MFA for Everyone enforces, and not before:' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'more.risks', must: 'Disabling per-user MFA before the policy enforces removes MFA for that person.' },
   { item: '9', step: 's-prereq-per-user-mfa', path: 'whatToDo.steps', must: 'Manage migration → Migration complete.' },
-  { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Enforce attestation: Yes, so only the key models on the list can register.' },
+  { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Enforce attestation: Yes; it applies to new registrations only.' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'whatToDo.steps', must: 'Microsoft Authenticator → Enable: On, All users, for push and codes', mustNot: 'so passkeys in the app can be registered' },
   { item: '10', step: 's-prereq-passkey-settings', path: 'more.risks', must: 'Synced passkeys (iCloud Keychain, Google Password Manager) fail attestation and cannot register under these settings.' },
   // Per step, 11–20.
-  { item: '11', step: 's-prereq-auth-strength', path: 'whatToDo.steps', must: 'with a Temporary Access Pass for first sign-ins', mustNot: 'with a one-time pass for first sign-ins' },
+  { item: '11', step: 's-prereq-auth-strength', path: 'whatToDo.steps', must: 'plus Temporary Access Pass (one-time and multi-use) for first sign-ins', mustNot: 'with a one-time pass for first sign-ins' },
   { item: '11', step: 's-prereq-auth-strength', path: 'ifWrong', must: 'Delete the strength; no policy references it yet.' },
   // 12 says "or" (E7): a passkey or a security key is enough; either is phishing-resistant.
-  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone); either is phishing-resistant.', mustNot: 'security key (survives a lost phone) and a passkey' },
+  { item: '12', step: 's-ladder-operator-passkey', path: 'whatToDo.steps', must: 'Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone).', mustNot: 'security key (survives a lost phone) and a passkey' },
   { item: '12', step: 's-ladder-operator-passkey', path: 'more.risks', must: 'A key registered on a shared machine, or left in the laptop, is not a second factor.' },
   // 13's date and window are the engine's (E7): the day Require MFA for Everyone enforces, and the campaign's window.
-  { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone enforces on {mfaEnforce}', mustNot: '{firstEnforce}' },
-  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'From {mfaEnforceLong},', mustNot: '{firstEnforceLong}' },
-  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
+  { item: '13', step: 's-verify-mfa', path: 'who.timeline', must: 'Require MFA for Everyone is planned for {mfaEnforce}', mustNot: '{firstEnforce}' },
+  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'from {mfaEnforceLong}.', mustNot: '{firstEnforceLong}' },
+  { item: '13', step: 's-verify-mfa', path: 'comms.body', must: 'Over the next {enrolWindowDays} days', mustNot: 'over the next two weeks' },
   { item: '13', step: 's-verify-mfa', path: 'whatToDo.steps', must: 'Admins: a passkey or a hardware security key; either is phishing-resistant.', mustNot: 'a hardware security key as well' },
-  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Authentication methods → Registration campaign → Enabled, Target: All users, snooze limit 3' },
-  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users.', mustNot: 'a passkey and a security key' },
-  { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'a security key, and a text message or call, which is why the campaign removes phone numbers', mustNot: 'requires one the moment a sign-in looks wrong' },
-  { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'because the admin and risk policies require one, and a passkey cannot be phished' },
+  { item: '13', step: 's-verify-mfa', path: 'whatToDo.generic', must: 'Registration campaign: set the method and snooze settings to the values your organization approved for this tenant' },
+  { item: '13', step: 's-verify-mfa', path: 'doneWhen', must: 'Every admin is Ready for phishing-resistant MFA.', mustNot: 'a passkey and a security key' },
+  { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'This policy uses Require multifactor authentication.', mustNot: 'requires one the moment a sign-in looks wrong' },
+  { item: '14', step: 'mfa-all-users', path: 'who.evidence', must: 'Stronger method requirements belong to the separate policies that select an authentication strength.' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', must: 'Limit How Long Sessions Last', mustNot: 'End Browser Sessions When the Browser Closes' },
   { item: '15', step: 'admins-phishing-resistant', path: 'who.evidence', mustNot: '{list:adminsWith}' },
-  { item: '15', step: 'admins-phishing-resistant', path: 'comms.body', must: 'sign-ins by your admin account at {tenant} need a passkey or a security key', mustNot: 'admin sign-ins at {tenant}' },
-  { item: '16', step: 'admin-portals-protected', path: 'more.risks', must: 'Anyone with an Azure RBAC role but no directory role, most developers, is blocked from the Azure portal and CLI' },
+  { item: '15', step: 'admins-phishing-resistant', path: 'comms.body', must: 'sign-ins by your admin account at {tenant} will need a passkey or a security key', mustNot: 'admin sign-ins at {tenant}' },
+  { item: '16', step: 'admin-portals-protected', path: 'more.risks', must: 'Anyone with an Azure RBAC role but no directory role is blocked from the Azure portal and CLI' },
   // Run 1B: the baseline defines this policy two ways, so the step states the
   // conflict and promises no enforcement — the who line no longer says who is
   // spared, and the announcement is gone with the implementation.
@@ -124,60 +124,60 @@ export const ACCEPTANCE = [
   { item: '16', step: 'admin-portals-protected', path: 'whatToDoReference.steps', must: 'Microsoft Purview Platform, Windows Cloud Login, My Staff' },
   { item: '18', step: 'register-info-protected', path: 'more.helpDesk', must: 'over a screen-share, if your VPN exit is in the trusted network, or when they are next in', mustNot: 'while they are on the VPN' },
   { item: '18', step: 'register-info-protected', path: 'more.risks', must: 'New starters register in the office, or with you over a screen-share.' },
-  { item: '19', step: 'block-legacy-auth', path: 'why', must: 'Legacy protocols skip MFA; this also moves everyone off the built-in phone mail apps (ActiveSync), even with modern sign-in.', mustNot: 'the door attackers try first' },
-  { item: '19', step: 'block-legacy-auth', path: 'more.risks', must: 'The built-in Mail app on iPhone or Android stops syncing until Outlook is installed.', mustNot: 'by IMAP or ActiveSync stops syncing' },
+  { item: '19', step: 'block-legacy-auth', path: 'why', must: 'Older authentication paths can prevent MFA from protecting a sign-in.', mustNot: 'the door attackers try first' },
+  { item: '19', step: 'block-legacy-auth', path: 'more.risks', must: 'A mail app that still uses Exchange ActiveSync or basic authentication stops syncing until it moves to a supported client.', mustNot: 'by IMAP or ActiveSync stops syncing' },
   { item: '20', step: 'block-device-code', path: 'more.helpDesk', must: 'An admin using az login on a box with no browser: sign in from a browser on your own device; device code is off.' },
   // Per step, 21–30.
-  { item: '21', step: 'block-auth-transfer', path: 'why', must: 'which is exactly what an attacker who gets someone to scan a code wants', mustNot: 'an attacker with a screenshot' },
+  { item: '21', step: 'block-auth-transfer', path: 'why', must: 'Blocking it removes a transfer path the business may not need', mustNot: 'an attacker with a screenshot' },
   { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit.", mustNot: 'egress address to the trusted location' },
   { item: '22', step: 'geo-restriction', path: 'more.helpDesk', must: "log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates" },
-  { item: '23', step: 'admin-session', path: 'comms.body', must: 'expire after {wantedLong} and never persist. If your admin account is also your everyday account, that applies to everything you do with it.', mustNot: 'will not stay signed in when you close the browser' },
+  { item: '23', step: 'admin-session', path: 'comms.body', must: 'If your admin account is also your everyday account, that applies to everything you do with it.', mustNot: 'will not stay signed in when you close the browser' },
   { item: '23', step: 'admin-session', path: 'more.helpDesk', must: 'Prompts every few minutes: the browser is not signed in to a registered device; sign in to the device account.' },
   { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy A: Windows browsers on unmanaged devices.' },
   { item: '24', step: 'unmanaged-browser', path: 'who.evidence', must: 'Policy B: other platforms outside the office.' },
   // 25's clause is the engine's (E7): {personalDevicesClause} from shared.engine.personalDevices.
   { item: '25', step: 'require-managed-device', path: 'comms.body', must: 'Personal devices {personalDevicesClause}.', mustNot: 'can still use the browser with limits' },
-  { item: '26', step: 'block-unsupported-platforms', path: 'why', must: 'Linux, and any platform Entra cannot identify, is blocked; that is where the device rules leak.' },
+  { item: '26', step: 'block-unsupported-platforms', path: 'why', must: 'Limiting access to the selected platforms reduces the device types the business needs to support.' },
   { item: '26', step: 'block-unsupported-platforms', path: 'more.risks', must: '{certificatePrompt} This policy has one.', mustNot: 'this policy can prompt iOS and macOS users' },
-  { item: '27', step: 'mobile-app-protection', path: 'why', must: 'App protection needs Intune Plan 1 (in Business Premium, E3, E5).' },
+  { item: '27', step: 'mobile-app-protection', path: 'why', must: 'App protection can keep work data under company controls inside supported apps' },
   { item: '27', step: 'mobile-app-protection', path: 'licence', must: 'Intune Plan 1' },
   { item: '27', step: 'mobile-app-protection', path: 'comms.body', must: 'mail, files, Teams and any other app that uses your work account', mustNot: 'mail and files on your phone' },
-  { item: '28', step: 'azure-management-mfa', path: 'who.evidence', must: 'Microsoft enforces MFA for Azure sign-ins itself; this policy adds the exclusions-group discipline and covers the tools that rollout has not reached.' },
+  { item: '28', step: 'azure-management-mfa', path: 'who.evidence', must: 'Microsoft runs its own MFA requirement for Azure management sign-ins; this custom policy does not change or exempt anyone from that requirement.' },
   { item: '28', step: 'azure-management-mfa', path: 'who.evidence', must: 'Require MFA for Everyone already prompts here; this policy keeps Azure covered if that one is ever scoped down.' },
   { item: '28', step: 'azure-management-mfa', path: 'comms.body', must: 'anything that manages Azure at {tenant}' },
   // 29's device-settings toggle, 36's and 38's password writeback and 24's SharePoint
   // line are the content's own "before" lines (whatToDo.before), which the product
   // keeps above the translator's portal lines; the reference no longer carries them.
-  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it).' },
+  { item: '29', step: 'device-registration-mfa', path: 'whatToDo.before', must: 'Devices → Device settings → Require Multifactor Authentication to register or join devices: No in the same change; this policy replaces it.' },
   { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', mustNot: 'Require Multifactor Authentication to register or join devices' },
   { item: '29', step: 'device-registration-mfa', path: 'whatToDoReference.steps', must: 'Do not add device-state conditions to this policy; a first join has no device to check.' },
   { item: '30', step: 'token-protection', path: 'more.risks', must: 'meeting-room devices (already outside this policy once Give Shared Devices Their Own Policy is in place)' },
-  { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in, this is why.' },
+  { item: '30', step: 'token-protection', path: 'comms.body', must: 'If Outlook keeps asking you to sign in after the change' },
   // Per step, 31–38, and the Cleanup rows. 31 is C6's wording.
-  { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'asks you to sign in again about every 12 hours. Apps outside the browser are not affected by this change.' },
+  { item: '32', step: 'session-lifetime', path: 'comms.body', must: 'Apps outside the browser are not affected by this change.' },
   { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'their browser sessions stop persisting and re-authenticate every 12 hours' },
   { item: '32', step: 'session-lifetime', path: 'more.helpDesk', must: 'Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account.', mustNot: 'check the device clock' },
   { item: '32', step: 'session-lifetime', path: 'who.evidence', must: 'When several session policies apply, the shortest wins.' },
-  { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'asks for your passkey or security key each time', mustNot: 'confirm with MFA each time' },
+  { item: '33', step: 'pim-activation-reauth', path: 'comms.body', must: 'when you activate an eligible admin role', mustNot: 'confirm with MFA each time' },
   { item: '33', step: 'pim-activation-reauth', path: 'who.evidence', must: '{n} of them are not yet Ready for phishing-resistant MFA: {list:eligibleWithout}' },
-  { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'PIM for Groups and Azure resource roles can use the same authentication context.' },
-  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'People see two prompts when they set up a device: one to join, one to enroll.', mustNot: 'one extra prompt' },
-  { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'A person with only Authenticator approval is not prompted but stopped, until they get a Temporary Access Pass' },
+  { item: '33', step: 'pim-activation-reauth', path: 'why', must: 'Role activation is a useful point to verify the person requesting privileged access.' },
+  { item: '34', step: 'intune-enrollment-reauth', path: 'more.manager', must: 'User-driven enrollment asks for a fresh authentication', mustNot: 'one extra prompt' },
+  { item: '35', step: 'sign-in-risk', path: 'more.risks', must: 'a person with only Authenticator approval cannot satisfy it until they register an accepted method' },
   { item: '35', step: 'sign-in-risk', path: 'who.evidence', must: '{list:pushOnlyUsers}' },
-  { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Every risky sign-in in the report-only days was reviewed.' },
-  { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Hybrid tenants: enable password writeback in Entra Connect, or the change fails.' },
+  { item: '35', step: 'sign-in-risk', path: 'doneWhen', must: 'Verify after the change: available risky sign-ins were reviewed' },
+  { item: '36', step: 'user-risk', path: 'whatToDo.before', must: 'Synchronized users who remediate with a password change need password writeback in Entra Connect.' },
   { item: '36', step: 'user-risk', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
-  { item: '36', step: 'user-risk', path: 'doneWhen', must: 'Every user rated at risk in the report-only days was reviewed.' },
-  { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'The second rung after Challenge High-Risk Sign-ins: medium risk gets plain MFA, high risk the phishing-resistant strength.' },
-  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Supersedes Remediate High-Risk Users once enforced; set that one to Off in Consolidate Overlapping Policies.' },
-  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'Self-service password reset must be enabled or the change loops; {sspr}.' },
-  { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'enable password writeback in Entra Connect' },
+  { item: '36', step: 'user-risk', path: 'doneWhen', must: 'Verify after the change: people rated at risk were reviewed' },
+  { item: '37', step: 'sign-in-risk-medium', path: 'who.evidence', must: 'A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA' },
+  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.' },
+  { item: '38', step: 'user-risk-medium', path: 'who.evidence', must: 'People in scope need a registered MFA method to complete the secure password change' },
+  { item: '38', step: 'user-risk-medium', path: 'whatToDo.before', must: 'need password writeback in Entra Connect' },
   { item: '38', step: 'user-risk-medium', path: 'whatToDoReference.steps', mustNot: 'password writeback' },
   { item: '24', step: 'unmanaged-browser', path: 'whatToDo.before', must: 'SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save.' },
   { item: '25', step: 'require-managed-device', path: 'whatToDo.before', must: 'Before this policy: Intune → Devices → Compliance → Compliance policy settings' },
-  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Log Analytics ingestion is billed; a small tenant's sign-in logs cost a few dollars a month." },
-  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: 'Defender XDR or your SIEM can take the same rule.' },
-  { item: 'cleanup', cleanup: 'notAssessed', path: 'why', must: '(device filters, authentication contexts, workload identities, agent policies)' },
+  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: "Review ingestion, retention and cost for the monitoring service you use." },
+  { item: 'cleanup', cleanup: 'alerting', path: 'whatToDo', must: 'the SIEM you already use' },
+  { item: 'cleanup', cleanup: 'notAssessed', path: 'why', must: 'Some baseline policies use settings IAMAI cannot fully assess.' },
 ]
 
 /** Every Learn URL the content carries (steps and cleanup rows), for the link check. */
@@ -262,12 +262,12 @@ export function contentFindings(content, pinned = null, contracts = null) {
     }
     const userRisk = stepById['user-risk']
     const [userRiskPolicy] = pinnedPolicyFor(pinned, 'user-risk')
-    if (userRisk && userRiskPolicy && !userRiskPolicy.conditions?.users?.excludeGuestsOrExternalUsers && !/Guests rated high risk are blocked, not remediated/.test(textAt(userRisk, 'who'))) add('P0', `content user-risk: the baseline's policy includes guests, who cannot change a password here, and the evidence does not say so (C6)`)
+    if (userRisk && userRiskPolicy && !userRiskPolicy.conditions?.users?.excludeGuestsOrExternalUsers && !/guests rated high risk[^.]*cannot remediate in this tenant/i.test(textAt(userRisk, 'who'))) add('P0', `content user-risk: the baseline's policy includes guests, who cannot remediate here, and the evidence does not say so (C6)`)
     const workload = stepById['workload-identity-block']
     const [workloadPolicy] = pinnedPolicyFor(pinned, 'workload-identity-block')
     if (workload && workloadPolicy && (workloadPolicy.conditions?.clientApplications?.includeServicePrincipals ?? []).length > 0) {
       if (!/Cloud Sync's provisioning service principal/.test(textAt(workload, 'who'))) add('P0', `content workload-identity-block: the baseline's policy targets a service principal (Cloud Sync's provisioning service principal) and the Who line does not say so (C6)`)
-      if (!/Classic Entra Connect syncs with a user account/.test(`${workload.why}\n${textAt(workload, 'who')}`)) add('P0', `content workload-identity-block: classic Entra Connect's user account is not named as outside this policy (C6)`)
+      if (!/does not establish support for workload Conditional Access/.test(textAt(workload, 'who'))) add('P0', `content workload-identity-block: the Who line does not say a sync account or provisioning configuration establishes no workload Conditional Access support (C6)`)
     }
   }
 

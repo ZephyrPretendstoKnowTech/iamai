@@ -1185,12 +1185,14 @@ function stateTile(step: Step, c: StepContract): ReadinessTile | null {
   if (s.condition === 'review-required') return { key: 'evidence', label: CONTRACT.foundLabel.observation, tone: 'warn', value: CONTRACT.condition['review-required'], note: step.state.observation?.note ?? c.milestone.gatedBy }
   // The value is the substatus's own word (U11); the note is what to decide (B10 P1-1).
   if (s.condition === 'needs-decision') return { key: 'decision', label: t.decision, tone: 'warn', value: t.decisionValue, note: c.decisionNote }
-  if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? null }
+  // A tile's detail says what its value is evidence of, where the contract carries no finding of its own (editorial batch C).
+  const notes = t as unknown as { coverageNote: string; observationNote: string; observationDateNote: string }
+  if (s.satisfied) return { key: 'coverage', label: t.coverage, tone: 'good', value: s.stage, note: c.found.find((f) => f.key === 'in-place')?.text ?? notes.coverageNote }
   // The threshold is on the action only while it is unmet (roadmap/types.ts
   // `readinessGate`), so its mark is never a tick.
   const gate = step.action.readinessGate
   if (gate && step.status !== 'done' && step.status !== 'skipped') return { key: 'gate', label: t.gate, tone: 'warn', value: readinessValueOf(gate), note: readinessSentence(step, gate) }
-  if (c.milestone.kind === 'observe') return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: null }
+  if (c.milestone.kind === 'observe') return { key: 'observation', label: t.observation, tone: 'wait', value: c.milestone.at ? fillText(t.observationUntil, { date: absoluteDate(c.milestone.at) }) : s.stage, note: c.milestone.at ? notes.observationDateNote : notes.observationNote }
   return null
 }
 
@@ -1239,7 +1241,8 @@ function emergencyTiles(step: Step, c: StepContract): ReadinessTile[] {
 function peopleTile(c: StepContract): ReadinessTile | null {
   if (c.who === null) return null
   const t = R().tiles
-  return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: null } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
+  const peopleNote = (t as unknown as { peopleNote: string }).peopleNote
+  return c.who.known ? { key: 'people', label: t.people, tone: 'info', value: c.who.text, note: peopleNote } : { key: 'people', label: t.people, tone: 'warn', value: t.peopleUnknown, note: c.who.text }
 }
 
 /** A step prerequisite's link: the step it names, opened on the Plan. */

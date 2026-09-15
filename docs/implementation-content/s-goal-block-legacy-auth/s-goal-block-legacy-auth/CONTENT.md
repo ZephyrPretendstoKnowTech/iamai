@@ -1,32 +1,32 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Configure exactly this canonical scope: **Users: All users** with the IAMAI-resolved exclusions; **Target resources: All resources**; **Conditions > Client apps: Exchange ActiveSync clients and Other clients only**.
+3. Configure exactly this intended scope: **Users: All users** with the exclusions IAMAI resolved; **Target resources: All resources**; **Conditions > Client apps: Exchange ActiveSync clients and Other clients only**.
 4. Grant/access control: **Block access**.
-5. Leave session controls unconfigured; this package's canonical `sessionControls` target is null.
-6. Set **Enable policy: Report-only** and create it.
-7. Re-open the created policy, compare it with the IAMAI target, then rescan.
+5. Leave session controls unconfigured; the intended target has none.
+6. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+7. Reopen the created policy, compare it with the intended target shown in IAMAI, then rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-1. In Entra admin center → Protection → Conditional Access → Policies, find the existing policy named for legacy authentication blocking.
-2. Keep its current state: if it is On, the block applies to the corrected users and conditions as soon as you save.
-3. Under Conditions → Client apps, confirm only "Exchange ActiveSync clients" and "Other clients" are checked.
-4. Under Users → Include, confirm "All users" is selected.
-5. Under Users → Exclude, confirm the exclusions group from the Create or Correct Exclusions Group step is listed.
-6. Under Grant, confirm "Block access" is selected.
+1. In Entra admin center → Protection → Conditional Access → Policies, open the existing legacy authentication blocking policy with ID **{{policy.current.id}}**.
+2. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+3. Under Conditions → Client apps, make sure only "Exchange ActiveSync clients" and "Other clients" are checked.
+4. Under Users → Include, make sure "All users" is selected. Under Target resources, make sure "All resources" is selected.
+5. Under Users → Exclude, make sure the exclusions IAMAI resolved are listed, including the exclusions group from the Create or Correct Exclusions Group step.
+6. Under Grant, make sure "Block access" is selected.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected block applies to sign-ins as soon as you save. Replace the complete Grant controls with the IAMAI-resolved canonical grant. Do not preserve a stronger/weaker control merely because it already exists; this step follows the resolved baseline target.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Set Grant to **Block access**, as the intended target specifies. Do not keep a different grant control because it already exists; this step follows the baseline target.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Remove non-canonical session controls from this policy; session behavior belongs to separate baseline goals unless explicitly present in the resolved target.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Remove all session controls from this policy; the intended target has none, and session behavior belongs to separate baseline steps.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same resolved policy to **{{policy.target.displayName}}**. Display name is never update identity; the stable tenant policy ID remains authoritative.
+Rename the same policy to **{{policy.target.displayName}}**. IAMAI matches the policy by its ID, not its display name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
@@ -36,11 +36,16 @@ Rename the same resolved policy to **{{policy.target.displayName}}**. Display na
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review Conditional Access report-only results and the step-specific evidence. Do not infer safety from a quiet dashboard; investigate relevant sign-ins and known dependencies before enforcement.
+Keep the policy in Report-only while you review the evidence listed for this step. Review sign-ins from Exchange ActiveSync clients and Other clients, and ask owners about infrequent jobs such as scanners, printers and scheduled scripts. No events in the available records does not prove there are no dependencies. An app's name alone does not show whether it uses legacy authentication; check the client app recorded on each sign-in.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still **Report-only**, the conditions/grant/session controls are canonical, and the step-specific evidence is clear. Change **Enable policy** to **On**, test the expected sign-in path plus emergency access, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+- Reopen the policy by its ID. Confirm it is still **Report-only**, its conditions, grant and session controls match the intended target, and known legacy dependencies have a supported path.
+- Change **Enable policy** to **On** and save.
+- Verify after the change: required applications and devices sign in through their supported path, and emergency access still works.
+- Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -136,11 +141,11 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Block Legacy Authentication** implementation for {{tenant.displayName}}. Confirm the canonical target is complete, tenant-resolved, Report-only first, and contains no invented exclusions or source-tenant IDs.
+IAMAI did not find **Block Legacy Authentication** in {{tenant.displayName}}. The next action is to create it in Report-only. It blocks sign-ins to all resources from the client-app categories Exchange ActiveSync clients and Other clients, for all users except the resolved exclusions, with no session controls. A mail app or protocol name alone does not show which category a sign-in falls into; the client app recorded on the sign-in does.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This tenant already has a legacy-authentication-blocking policy, but it does not match the baseline. The corrections are to the policy's conditions (which client apps and users it covers). Correct the conditions to match the baseline target without changing the policy's state: if the policy is On, the corrected block applies to sign-ins as soon as it is saved.
+Policy {{policy.current.id}} for **Block Legacy Authentication** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy. The intended target blocks Exchange ActiveSync clients and Other clients for all users except the resolved exclusions, across all resources, with no session controls. Keep the policy's current state. If it is On, the changed rule can affect access after you save.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -148,51 +153,51 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess the Report-only evidence for **Block Legacy Authentication** in {{tenant.displayName}}: {{evidence.reportOnly}}. Do not recommend enforcement unless the step-specific dependencies are actually clear.
+**Block Legacy Authentication** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. Would-be blocks can include mail clients, printers, scanners and scheduled jobs that still use older authentication. No events in the available records does not prove there are no dependencies, because some jobs run infrequently.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform a final pre-enforcement review for **Block Legacy Authentication** in {{tenant.displayName}}. Confirm the stable tenant policy is still Report-only, canonical, and safe to enable; do not redesign the baseline.
+**Block Legacy Authentication** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still matches the intended target, legacy sign-ins from the observation period have been reviewed, owners of infrequent jobs have been asked, and required applications and devices have a supported sign-in path. Once On, Exchange ActiveSync clients and Other clients are blocked for everyone the policy covers.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Block Legacy Authentication** is not actionable yet using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent a bypass, new exclusion, or source resolution.
+**Block Legacy Authentication** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain that **Block Legacy Authentication** requires the applicable Microsoft Entra Conditional Access licensing. Keep implementation non-actionable until licensing is resolved; do not weaken the goal.
+IAMAI marks **Block Legacy Authentication** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Legacy sign-in blocking entering validation
+Subject: Action needed: Block Legacy Authentication
 
 Hi,
 
-We are validating a policy that blocks legacy sign-in methods in {{tenant.displayName}}. If you own an older mail client, printer, scanner, script, or application that still signs in this way, contact IT before enforcement so it can be moved to a supported path.
+Please tell IT about older mail clients, printers or applications that still use an account password to connect. We will check a supported replacement before blocking the old sign-in path.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"affected-users"}
-Subject: Legacy authentication will be blocked
+Subject: Action needed: Block Legacy Authentication
 
 Hi,
 
-Legacy authentication blocking for {{tenant.displayName}} is ready to enforce after Report-only review. Before the change, any known service or device that still uses legacy sign-in should move to a supported path. If something legitimate stops working, report the application/device and account rather than requesting a permanent user bypass.
+Please tell IT about older mail clients, printers or applications that still use an account password to connect. We will check a supported replacement before blocking the old sign-in path.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when canonical exclusions and service/mail-device decisions are resolved, recent legacy usage is reviewed, and Report-only results show no unexplained legitimate dependency.
+Review observed use and ask owners about infrequent jobs. No events in the available records does not prove there are no dependencies. Ready only when the intended exclusions and the service-account and mail-device decisions are resolved, recent legacy use has been reviewed, and Report-only results show no unexplained legitimate dependency.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
-For a block, inspect the sign-in log's client app/protocol and the account involved. Determine whether it is a person, service account, or mail-sending device. Remediate the authentication path first; only IAMAI-approved canonical exclusions belong in the policy.
+For a block, inspect the client app and protocol recorded on the sign-in and the account involved. Determine whether it is a person, a service account or a mail-sending device. Fix the authentication path first; only the intended exclusions IAMAI resolved belong in the policy.
 @@IAMAI-END

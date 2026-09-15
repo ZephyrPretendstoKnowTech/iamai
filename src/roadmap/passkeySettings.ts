@@ -14,7 +14,7 @@
 // - an unrestricted policy stays unrestricted, and a block list stays as it is
 //   unless it blocks an approved Authenticator model: that conflict is reviewed,
 //   never overridden;
-// - include targets keep every group and gain All users where it is missing;
+// - include targets keep their existing scope; no new population is added;
 //   exclude targets are sent exactly as read, so nobody excluded is newly included;
 // - a policy using passkey profiles, or a read missing a setting the target is
 //   built from, is not changed from here: IAMAI does not read profile settings,
@@ -147,7 +147,6 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null): Passke
     return true
   })
   const added = restriction === 'allow' ? PASSKEY_TARGET_AAGUIDS.filter((a) => !seen.has(a)) : []
-  const everyone = includes.some((t) => String(t?.id ?? '').toLowerCase() === 'all_users')
   const target: Fido2Configuration = {
     '@odata.type': PASSKEY_TARGET['@odata.type'],
     id: 'Fido2',
@@ -155,7 +154,7 @@ export function resolvePasskeyTarget(current: Fido2Configuration | null): Passke
     isSelfServiceRegistrationAllowed: PASSKEY_TARGET.isSelfServiceRegistrationAllowed,
     isAttestationEnforced: PASSKEY_TARGET.isAttestationEnforced,
     keyRestrictions: { isEnforced: kr.isEnforced, enforcementType: kr.enforcementType, aaGuids: restriction === 'allow' ? [...distinct, ...added] : [...models] },
-    includeTargets: [...structuredClone(includes), ...(everyone ? [] : [{ targetType: 'group', id: 'all_users', isRegistrationRequired: false, allowedPasskeyProfiles: [] }])],
+    includeTargets: structuredClone(includes),
     ...(Array.isArray(current.excludeTargets) ? { excludeTargets: structuredClone(current.excludeTargets) } : {}),
   }
   return { kind: 'target', target, restriction, retained: restriction === 'allow' ? distinct : [], added }

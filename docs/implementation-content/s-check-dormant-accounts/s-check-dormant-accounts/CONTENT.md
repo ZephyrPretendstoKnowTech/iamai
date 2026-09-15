@@ -1,22 +1,22 @@
 @@IAMAI-BEGIN {"id":"entra.dormant","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-For each account IAMAI lists, one of three outcomes:
-1. Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.
-2. Or confirm it is in use and have the owner sign in once; it leaves this list on the next scan.
-3. Or, if it is a shared mailbox or a resource that should never sign in, block sign-in the same way; it then stays listed under Inventory and nowhere else.
+Review each account IAMAI lists with its owner before changing it. An old or missing sign-in record is a reason to investigate, not proof that the account is unused. Record one outcome for each account:
+1. No longer needed: disable sign-in. Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Do not delete the account or remove mailbox data.
+2. Still needed: confirm its purpose and owner, and verify legitimate use. If the owner signs in, the account leaves this list on the next scan.
+3. Shared mailbox or resource account: confirm whether direct sign-in should be blocked. If so, block sign-in the same way; it then stays listed under Inventory and nowhere else.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.dormant","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the dormant accounts IAMAI lists: enabled accounts with no sign-in for 90 days, or none on record. For each, help decide between disabling it, confirming it is in use and having the owner sign in once, or blocking sign-in for a shared mailbox or a resource that should never sign in. Do not delete accounts, remove licences or change mailboxes, and do not treat a missing sign-in date as proof that nobody uses the account.
+IAMAI lists enabled accounts with no sign-in recorded in the last 90 days, or none on record. They are review candidates: a missing or old record can mean the account is unused, that its activity predates the retained history, or that activity data could not be read. For each account the outcomes are: keep it for a confirmed purpose and owner; disable sign-in once the owner confirms it is no longer needed; or block direct sign-in for a shared mailbox or resource account that should never sign in. This step does not delete accounts, remove licences or change mailbox data.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["disableConfirmed"],"format":"markdown","kind":"template"}
-Disable only the explicitly approved dormant account.
+Disable sign-in only for the account whose owner approved it.
 
 1. Open **Entra admin center → Entra ID → Users → All users**.
 2. Open the exact account IAMAI resolved: **{{account.current.displayName}}**.
-3. Reconfirm the saved disposition is **disable** and the stable object ID is **{{account.current.id}}**.
+3. Reconfirm the saved disposition is **disable** and the object ID is **{{account.current.id}}**.
 4. Under **Account status**, edit the account and clear **Account enabled**.
 5. Save.
 6. Do not delete the user, remove licenses, alter mailbox content, or revoke sessions as part of this step.
@@ -24,7 +24,9 @@ Disable only the explicitly approved dormant account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
-Open the same stable user object and confirm **Account enabled** is off. If IAMAI still shows the account as enabled, wait for directory read-back and rescan; do not create or disable another account as a workaround.
+Open the same user (object ID unchanged) and confirm **Account enabled** is off. If IAMAI still shows the account as enabled, allow time for the directory change to appear and rescan; do not create or disable another account as a workaround.
+
+Verify after the change: the owner confirms that nothing still relying on this account has lost access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["disableConfirmed","verificationRequired"],"format":"powershell","kind":"template"}
@@ -66,48 +68,48 @@ switch($Mode){
 @@IAMAI-BEGIN {"id":"ai.review","channel":"aiInfo","states":["needsDecision"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess this dormant-account candidate without deciding for the owner. Account: {{account.current.displayName}} ({{account.current.id}}). Activity: {{account.evidence.activitySummary}}. Separate evidence from unknowns and identify what a manager/account owner must confirm before disabling it.
+This account is a dormant-account candidate waiting for its owner's decision. Account: {{account.current.displayName}} ({{account.current.id}}). Recorded activity: {{account.evidence.activitySummary}}. An old or missing sign-in record is not proof that the account is unused. Before anything changes, the owner must confirm its purpose, or confirm that its sign-in can be disabled.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.disable","channel":"aiInfo","states":["disableConfirmed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-The saved owner disposition for {{account.current.displayName}} is {{account.decision.disposition}}. Review the bounded action: set `accountEnabled=false` on stable ID {{account.current.id}} only. Do not propose deletion, license removal, mailbox changes, or bulk cleanup.
+The owner's saved decision for {{account.current.displayName}} is {{account.decision.disposition}}. The planned change is one setting on one account: Account enabled off (`accountEnabled=false`) on object ID {{account.current.id}}. It does not delete the account, remove licences, change mailbox data or clean up other accounts.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.keep","channel":"aiInfo","states":["keepConfirmed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-The owner has confirmed {{account.current.displayName}} is still needed. Explain why IAMAI should preserve that disposition and avoid presenting a disable action solely because old activity evidence still matches the dormant-candidate rule.
+The owner confirmed that {{account.current.displayName}} is still needed. That keep decision stands even if the account's activity still matches the dormant-account rule. It records a confirmed purpose; it is not evidence of a recent successful sign-in. No disable action is planned for this account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify the same stable account after the bounded change. Account-enabled evidence: {{account.current.accountEnabled}}. Confirm no unrelated user properties were intentionally changed and recommend a rescan.
+This step is waiting to confirm that sign-in is disabled on the same account. Account enabled, as last read: {{account.current.accountEnabled}}. Only the Account enabled setting should have changed. Verify after the change: the owner confirms that nothing still relying on this account has lost access.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why IAMAI cannot safely resolve this dormant-account candidate: {{dependencies.blockers}}. Do not infer a disable decision from missing sign-in data.
+IAMAI cannot resolve this dormant-account candidate yet. Blockers: {{dependencies.blockers}}. Missing sign-in data does not support disabling the account.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.owner.confirm","channel":"email","states":["needsDecision"],"format":"markdown","kind":"template","audience":"account-owner"}
-Subject: Confirm whether this account is still needed
+Subject: Action needed: Disable or Confirm Dormant Accounts
 
-IAMAI identified {{account.current.displayName}} as an account that may no longer be in use. Before any change is made, please confirm whether this account is still required. If it is needed, tell us what it is used for. If it is no longer needed, confirm that its sign-in can be disabled. No account will be deleted as part of this step.
+Please confirm whether {{account.current.displayName}} is still needed and what it is used for. If it is no longer needed, confirm that we can disable sign-in. This review does not delete the account or its mailbox.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.review","channel":"readiness","states":["needsDecision"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"identity","label":"Account","result":"{{account.current.displayName}}","line":"Stable user ID {{account.current.id}} identifies the candidate."},{"id":"activity","label":"Activity evidence","result":"{{account.evidence.activitySummary}}","line":"Activity identifies a review candidate; it does not authorize disabling."}],"whyIamaiSaysThis":"A dormant candidate remains a human decision until an authorized owner confirms its disposition."}
+{"tiles":[{"id":"identity","label":"Account","result":"{{account.current.displayName}}","line":"User object ID {{account.current.id}} identifies the candidate."},{"id":"activity","label":"Activity evidence","result":"{{account.evidence.activitySummary}}","line":"Confirm the account's purpose and owner before disabling sign-in. Missing activity remains unknown."}],"whyIamaiSaysThis":"This account stays a review candidate until its owner confirms whether to keep it or disable sign-in."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["disableConfirmed","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"identity","label":"Account","result":"{{account.current.displayName}}","line":"Stable user ID {{account.current.id}} remains the mutation identity."},{"id":"decision","label":"Owner disposition","result":"{{account.decision.disposition}}","line":"Disable is allowed only after an explicit per-account decision."},{"id":"state","label":"Account enabled","result":"{{account.current.accountEnabled}}","line":"Verification must read back the same user object."}],"whyIamaiSaysThis":"The only tenant mutation in this step is the explicitly approved account-enabled change."}
+{"tiles":[{"id":"identity","label":"Account","result":"{{account.current.displayName}}","line":"The change applies only to user object ID {{account.current.id}}."},{"id":"decision","label":"Owner disposition","result":"{{account.decision.disposition}}","line":"Disabling sign-in is allowed only after an explicit decision for this account."},{"id":"state","label":"Account enabled","result":"{{account.current.accountEnabled}}","line":"Verification reads back the same user object."}],"whyIamaiSaysThis":"The only tenant change in this step is turning off Account enabled for an account whose owner approved it."}
 @@IAMAI-END
 
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["needsDecision","disableConfirmed","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}
-{"scenarios":[{"id":"blank-signin","classification":"documented","symptom":"The account has no last sign-in timestamp.","check":"Determine whether the account never signed in, activity predates retained history, or the required activity data could not be read.","fix":"Keep the account in review; obtain owner context before any disable action.","then":"Save an explicit disposition and rescan.","sources":["ms-inactive","ms-signinactivity"]},{"id":"failed-attempt-newer","classification":"documented","symptom":"lastSignInDateTime is recent but actual use is unclear.","check":"Compare with lastSuccessfulSignInDateTime; lastSignInDateTime includes failed interactive attempts.","fix":"Use successful access plus owner context for the decision.","then":"Do not change the account until disposition is explicit.","sources":["ms-signinactivity"]},{"id":"wrong-user-risk","classification":"derived","symptom":"The proposed action targets a display name rather than the saved stable ID.","check":"Resolve the exact user ID and UPN.","fix":"Abort the mutation and target only the saved stable ID.","then":"Re-read the user before retrying.","sources":["ms-user-update"]},{"id":"graph-403","classification":"documented","symptom":"PowerShell returns 403 while changing accountEnabled.","check":"Verify User.EnableDisableAccount.All plus User.Read.All and an administrator role appropriate to the target user.","fix":"Reconnect with the required authorization; do not broaden the operation.","then":"Retry the same single-user action.","sources":["ms-user-update"]}]}
+{"scenarios":[{"id":"blank-signin","classification":"documented","symptom":"The account has no last sign-in timestamp.","check":"Determine whether the account never signed in, activity predates retained history, or the required activity data could not be read.","fix":"Keep the account in review; obtain owner context before any disable action.","then":"Save an explicit disposition and rescan.","sources":["ms-inactive","ms-signinactivity"]},{"id":"failed-attempt-newer","classification":"documented","symptom":"lastSignInDateTime is recent but actual use is unclear.","check":"Compare with lastSuccessfulSignInDateTime; lastSignInDateTime includes failed interactive attempts.","fix":"Use successful access plus owner context for the decision.","then":"Do not change the account until disposition is explicit.","sources":["ms-signinactivity"]},{"id":"wrong-user-risk","classification":"derived","symptom":"The proposed action targets a display name rather than the saved object ID.","check":"Resolve the exact user ID and UPN.","fix":"Stop the change and target only the saved object ID.","then":"Re-read the user before retrying.","sources":["ms-user-update"]},{"id":"graph-403","classification":"documented","symptom":"PowerShell returns 403 while changing accountEnabled.","check":"Verify User.EnableDisableAccount.All plus User.Read.All and an administrator role appropriate to the target user.","fix":"Reconnect with the required authorization; do not broaden the operation.","then":"Retry the same single-user action.","sources":["ms-user-update"]}]}
 @@IAMAI-END

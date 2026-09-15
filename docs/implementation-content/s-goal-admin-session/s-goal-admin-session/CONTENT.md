@@ -1,45 +1,50 @@
 @@IAMAI-BEGIN {"id":"entra.create","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
 1. Open **Entra ID > Conditional Access > Policies > New policy**.
 2. Name: **{{policy.target.displayName}}**.
-3. Apply the IAMAI-resolved canonical conditions exactly; do not substitute source-tenant IDs or broaden/narrow the population.
-4. Configure the grant and session controls exactly as the target policy sets them.
-5. Set **Enable policy: Report-only** and create it.
-6. Re-open the policy, compare all security-significant fields with IAMAI, and rescan.
+3. Apply the intended conditions IAMAI resolved for this tenant exactly: **Users**: the resolved admin roles, with the resolved exclusions; **Target resources: All resources**; **Conditions > Client apps: Browser**. Do not use IDs from another tenant, and do not widen or narrow the role list.
+4. Session → Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Leave Grant unconfigured.
+5. Set **Enable policy: Report-only** and create it. It will not enforce its access rule until you enable it.
+6. Reopen the policy, compare its settings with the intended target shown in IAMAI, and rescan.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-This policy already exists. The correction adds the exclusions group.
+This policy already exists. The correction sets its conditions to the intended target, including the exclusions group.
 
 1. Go to Entra admin center → Conditional Access → Policies.
 2. Open the policy named {{policy.current.displayName}} (or find it by ID in Plan settings).
 3. Users → Exclude → Groups → add the exclusions group you confirmed in the Exclusions Group step.
-4. Verify the session controls match the baseline: Sign-in frequency enabled, set to the baseline's interval. Persistent browser session: set to Never persistent.
+4. Check the other conditions and set any that differ from the baseline: Users → Include: the resolved admin roles; Target resources: All resources; Client apps: Browser. Also check the session controls: Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Grant stays unconfigured.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-grant","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected grant applies to sign-ins as soon as you save. Replace Grant controls with the canonical target, including no grant at all when the target has none.
+Open **{{policy.current.id}}**. Keep the policy's current state. If it is On, the changed rule can affect access after you save. Leave Grant unconfigured: remove any grant control, because the intended target has none.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open **{{policy.current.id}}**. Keep its current state: if it is On, the corrected session controls apply to new sign-ins as soon as you save. Replace Session controls with the complete canonical target; remove non-canonical controls rather than leaving accidental extras.
+Open **{{policy.current.id}}**. Keep its current state. If it is On, the changed rule can affect access after you save. Session → Sign-in frequency: 4 hours. Persistent browser session: Never persistent. Leave Grant unconfigured. Remove any other session controls.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-name","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Rename the same stable policy to **{{policy.target.displayName}}** only when name is the mismatch. Display name is never update identity.
+Rename the same policy to **{{policy.target.displayName}}** only when the name is the difference. IAMAI matches the policy by its ID, not its display name.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.correct-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-5. Save. Leave **Enable policy** as it is: if the policy is On, these changes apply to sign-ins as soon as you save.
+5. Save. Leave **Enable policy** as it is. If the policy is On, the changed rule can affect access after you save.
    This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 6. Rescan in IAMAI to confirm the correction.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave the policy in **Report-only**. Review the report-only results plus this step's own readiness evidence. Do not treat a quiet dashboard as proof.
+Keep the policy in Report-only while you review the evidence listed for this step. Report-only results show which admin browser sign-ins the policy would apply to. Session controls are not applied in Report-only, so these results do not show how often admins would be asked to sign in again. Check other session policies that apply to the same admins.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Re-open the exact policy by stable tenant ID. Confirm it is still Report-only, every security-significant field is canonical, prerequisites are verified, and emergency access remains viable. Change **Enable policy** to **On**, test expected and emergency paths, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+- Reopen the policy by its ID. Confirm it is still **Report-only**, and that its role scope, Browser client apps, session settings and unconfigured Grant match the intended target.
+- Change **Enable policy** to **On** and save.
+- Verify after the change: with a test admin account in a browser, check that the sign-in is not kept as a persistent browser session and that authentication is requested again after the four-hour interval. Check that normal admin work remains practical and emergency access still works.
+- Rescan in IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.target-policy","channel":"json","states":["missing"],"format":"json-template","kind":"template","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
@@ -117,19 +122,17 @@ $actual=IG GET $uri
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the proposed **Shorten Admin Sessions** implementation for {{tenant.displayName}}. Confirm the canonical target matches the pinned IAMAI destination, is fully tenant-resolved, starts Report-only, and contains no invented IDs or decisions.
+IAMAI did not find **Shorten Admin Sessions** in {{tenant.displayName}}. The next action is to create it in Report-only. It applies to the resolved admin roles, all resources and Browser client apps only, with Sign-in frequency set to 4 hours, Persistent browser session set to Never persistent, and no grant control.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
-This policy shortens how long an admin's session stays valid. After the sign-in frequency interval, the admin is prompted to re-authenticate.
+Policy {{policy.current.id}} for **Shorten Admin Sessions** differs from the intended target: {{policy.current.semanticMismatches}}. The next action is to correct those settings on the same policy.
 
-This protects against token theft: even if an attacker steals an admin's session token, it expires quickly. Combined with phishing-resistant MFA, re-authentication requires a passkey the attacker doesn't have.
+The intended target applies to the resolved admin roles, all resources and Browser client apps. It sets Sign-in frequency to 4 hours and Persistent browser session to Never persistent, with no grant control. After the interval, an admin using a browser is asked to authenticate again; this is not a hard lifetime for every token or application session.
 
-The correction on this step changes only what IAMAI found different from the baseline. The exclusions group in the target keeps emergency access accounts out of the session limit.
+The exclusions group in the target keeps emergency access accounts out of this policy.
 
-The persistent browser session control ensures admin sessions are not remembered across browser closures.
-
-The policy keeps its current state. If it is On, the correction applies as soon as you save: members of the exclusions group leave the session limit. An admin the corrected policy newly includes is asked to sign in again once the interval passes.
+Keep the policy's current state. If it is On, the changed rule can affect access after you save. Accounts the correction newly includes are asked to authenticate again once the interval passes; accounts it newly excludes stop receiving these session limits.
 
 This change removes {{policy.current.removedExclusions}} from the policy's exclusions. If the policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
@@ -137,49 +140,49 @@ This change removes {{policy.current.removedExclusions}} from the policy's exclu
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Assess Report-only evidence for **Shorten Admin Sessions** in {{tenant.displayName}}: {{evidence.reportOnly}}. Use this step's readiness conditions and do not recommend enforcement merely because no failures appeared.
+**Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}. Report-only evidence: {{evidence.reportOnly}}. These results show which admin browser sign-ins the policy would apply to; they do not show the re-authentication experience, which needs a controlled test after enforcement. Other session policies that apply to the same admins can change the result.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Perform the final pre-enforcement review for **Shorten Admin Sessions** in {{tenant.displayName}}. Confirm stable identity, canonical conditions/grant/session, prerequisite evidence, Report-only observation, and emergency-access safety.
+**Shorten Admin Sessions** is in Report-only in {{tenant.displayName}}, and the next action is enforcement. Before setting it to On, confirm the same policy ID still has the intended role scope, Browser client apps, Sign-in frequency of 4 hours, Persistent browser session of Never persistent and no grant control, and that emergency access remains excluded. After enforcement, check representative admin browser behavior.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked","needsDecision","sourceConflict"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why **Shorten Admin Sessions** is not actionable using only these known blockers/decisions: {{dependencies.blockers}}. Do not invent an exception, owner choice, or alternate baseline.
+**Shorten Admin Sessions** cannot proceed yet. Known blockers and decisions: {{dependencies.blockers}}. Resolve these before creating or changing the policy.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.not-licensed","channel":"aiInfo","states":["notLicensed"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain the licensing blocker for **Shorten Admin Sessions** in {{tenant.displayName}} using IAMAI's known license facts. Do not weaken the baseline to avoid the requirement.
+IAMAI marks **Shorten Admin Sessions** as not licensed in {{tenant.displayName}}. Conditional Access policies require Microsoft Entra ID P1 or higher, so this policy cannot be created or changed until that license is in place.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.rollout","channel":"email","states":["missing"],"format":"markdown","kind":"template","audience":"privileged-administrators"}
-Subject: Shorter admin sessions entering validation
+Subject: Planned change: Shorten Admin Sessions
 
 Admins,
 
-We are validating shorter browser sessions for privileged accounts in {{tenant.displayName}}. The baseline target is a four-hour sign-in frequency with browser sessions that never persist. This does not replace the separate strong-authentication requirement.
+We plan to shorten admin browser sessions to a four-hour sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.enforce","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"privileged-administrators"}
-Subject: Shorter admin sessions ready to enforce
+Subject: Planned change: Shorten Admin Sessions
 
 Admins,
 
-The four-hour, non-persistent privileged browser-session policy for {{tenant.displayName}} is ready to enforce after validation. Expect more frequent sign-in during admin work; report abnormal prompt loops to IT.
+We plan to shorten admin browser sessions to a four-hour sign-in frequency and stop persistent browser sign-in. Contact IT if repeated prompts interrupt normal admin work.
 
 {{signature}}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["missing","partial","reportOnly","readyToEnforce","inPlace","blocked","needsDecision"],"format":"markdown","kind":"template"}
-Ready only when the exact IAMAI-resolved role set/exclusions match the pinned target, the policy is Browser + All resources, grant is null, sign-in frequency is four hours, persistence is Never, and Report-only/controlled testing shows acceptable behavior.
+Check the four-hour frequency, non-persistent browser setting and affected admin workflows. Ready only when the admin roles and exclusions IAMAI resolved match the baseline target, the policy targets Browser client apps and All resources, Grant is unconfigured, Sign-in frequency is 4 hours, Persistent browser session is Never persistent, and Report-only results or a controlled test show acceptable behavior.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["missing","partial","reportOnly","readyToEnforce","inPlace"],"format":"markdown","kind":"template"}
