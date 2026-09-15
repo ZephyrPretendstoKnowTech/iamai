@@ -480,7 +480,7 @@ test('006.9: the Step Contract states the stage, the condition, what changed, wh
   assert.equal(contract.whatToDo.kind, 'resolve')
   assert.match(contract.whatToDo.text, /report-only/i)
   assert.match(contract.whatToDo.text, /changed/i)
-  assert.match(contract.whatToDo.text, /scan again/i)
+  assert.match(contract.whatToDo.text, /rescan|scan again/i)
   assert.doesNotMatch(contract.whatToDo.text, DOING, `What to do tells the operator to change the tenant: ${contract.whatToDo.text}`)
   // Done when leads with the review, and keeps the step's own gates behind it.
   assert.ok(contract.doneWhen.length > 1)

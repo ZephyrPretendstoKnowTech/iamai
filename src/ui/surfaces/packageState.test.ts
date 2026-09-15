@@ -9,8 +9,9 @@ import type { Step } from '../../roadmap/types.ts'
 import type { TenantSnapshot } from '../../graph/collect/types.ts'
 import { stepContract } from './stepContract.ts'
 import type { StepVarContext } from './stepVars.ts'
-import { correctionFieldsOf, packageStateOf } from './stepPackage.ts'
+import { correctionFieldsOf, packageStateOf, safeCorrectionOf } from './stepPackage.ts'
 import { PILOT_IDS, PILOT_STEP_ID, pilotStepAt } from '../../testing/pilotFixture.ts'
+import { nextSafeAction } from '../../roadmap/nextSafeAction.ts'
 
 const f = fixture('small')
 const run = runFixture(f)
@@ -103,4 +104,32 @@ test('A3 B3, creation vs enforcement: a report-only policy owing a safe correcti
   assert.equal(stateOf(reviewed, snapshot), 'partial', 'a review names the correction, it does not hide it')
   const unwritable = { ...held, action: { ...held.action, unmatchedPair: true } } as unknown as Step
   assert.equal(stateOf(unwritable, snapshot), 'blocked', 'Foundation A still comes first')
+})
+
+test('review 4 N1: under an emergency-access wait only the add-only correction (U19) is handed over; one that takes an exclusion off is planned', () => {
+  const gated = (step: Step): Step => ({ ...step, blockers: [{ kind: 'step', stepId: 's-prereq-break-glass' }], blockedBy: ['s-prereq-break-glass'], state: { ...step.state, condition: 'blocked' }, status: 'blocked' }) as unknown as Step
+  // The tenant's policy excludes e099 and the plan's exclusions are another group: saving removes e099.
+  const { step, snapshot } = owingACorrection('enforced')
+  assert.deepEqual(correctionFieldsOf(step, snapshot), ['conditions.users.excludeGroups'], 'the premise: a correction is owed')
+  assert.equal(stateOf(step, snapshot), 'partial', 'control: with nothing holding it the correction is handed over')
+  assert.equal(stateOf(gated(step), snapshot), 'blocked', 'a correction removing an exclusion was handed over before emergency access is confirmed')
+  const hatch = { ...step, action: { ...step.action, escapeHatch: { stepId: 's-prereq-break-glass' } }, state: { ...step.state, condition: 'blocked' }, status: 'blocked' } as unknown as Step
+  assert.equal(stateOf(hatch, snapshot), 'blocked', 'the escape hatch is the same wait')
+  // Control: the same wait with an update that keeps e099 and adds the exclusions group (U19) stays Partial.
+  const op = step.action.resolution!.policies[0] as unknown as { body: { conditions: { users: Record<string, unknown> } }; target: { conditions: { users: Record<string, unknown> } } }
+  const keep = ['00000000-0000-4000-8000-00000000e099', ...(op.body.conditions.users.excludeGroups as string[])]
+  const users = { ...op.body.conditions.users, excludeGroups: keep }
+  const addOnly = { ...op, body: { conditions: { users } }, target: { ...op.target, conditions: { ...op.target.conditions, users } } }
+  const adding = gated({ ...step, action: { ...step.action, resolution: { ...step.action.resolution!, policies: [addOnly] } } } as unknown as Step)
+  assert.equal(safeCorrectionOf(adding, snapshot), true, 'the premise: the control adds and never takes away')
+  assert.equal(stateOf(adding, snapshot), 'partial', 'the add-only correction was hidden behind the wait')
+})
+
+test('review 5 R5-2: a report-only policy under the same wait is planned too, because the next safe action holds its correction', () => {
+  const gated = (step: Step): Step => ({ ...step, blockers: [{ kind: 'step', stepId: 's-prereq-break-glass' }], blockedBy: ['s-prereq-break-glass'], state: { ...step.state, condition: 'blocked' }, status: 'blocked' }) as unknown as Step
+  const { step, snapshot } = owingACorrection('report-only')
+  assert.equal(stateOf(step, snapshot), 'partial', 'control: with nothing holding it the correction is handed over')
+  const held = gated(step)
+  assert.equal(nextSafeAction(held).executable, false, 'the premise: the next safe action holds the correction')
+  assert.equal(stateOf(held, snapshot), 'blocked', 'the screen handed over a correction the next safe action holds')
 })

@@ -264,7 +264,7 @@ test('tile 3, scanning: one line with the elapsed time, Stop (tertiary), no stat
   beatsOf(r)
   assert.equal(r.state, 'not started')
   assert.equal(r.tone, null)
-  assert.equal(r.note, 'About ten minutes. Reads the tenant into this browser; nothing is sent anywhere.')
+  assert.equal(r.note, 'About ten minutes. The scan is processed in this browser; nothing is uploaded to IAMAI.')
   assert.deepEqual(r.actions, [{ label: 'Scan tenant', weight: 'primary' }])
   scanOnlyItsOwn(r)
 })

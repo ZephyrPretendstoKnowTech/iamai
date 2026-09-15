@@ -193,9 +193,17 @@ export type CandidateContribution = {
    * The policy targets this goal's own scope, not a broader all-users match
    * that belongs to another goal (walk-51 item 15): the guests goal's existing
    * coverage names "Guests MFA", not the all-users MFA policy that also happens
-   * to cover them.
+   * to cover them. Conversely, an all-users goal's own policy is not one assigned
+   * only to directory roles or only to guests, and no goal's own policy lacks the
+   * kind of control (grant, block, session) the goal asks for (C01).
    */
   ownScope: boolean
+  /** The policy's grant and session meet the goal's floor, whatever its state: a report-only policy can already ask for enough. */
+  meetsFloor?: boolean
+  /** The policy's assignments reach the goal's whole population class (classify.ts populationReach). */
+  reachesWhole?: boolean
+  /** The policy is assigned to All users, whatever it carves out. */
+  assignedToAll?: boolean
 }
 
 /**

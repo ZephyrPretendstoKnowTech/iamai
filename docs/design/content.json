@@ -35,20 +35,21 @@
     "moreLabel": "More",
     "andMore": "and {n} more · Export CSV",
     "policyDoneWhen": [
-      "The policy has been in report-only for {reportOnlyDays} days with no failures.",
-      "Every active person in scope signed in at least once during those days.",
-      "After enforcement, sign-in failures stay under 5% of the people affected for 72 hours."
+      "The required report-only period of {reportOnlyDays} days is complete, with no failures on this policy in the sign-in records.",
+      "The available records show every active person in scope signing in during those days.",
+      "A later scan confirms the intended policy settings and enabled state.",
+      "Verify after the change: review sign-in failures for the people affected, and resolve any legitimate access problem you find."
     ],
     "changeDoneWhen": [
-      "The changed settings match the baseline on the next scan.",
-      "No new sign-in failures on this policy in the week after the change."
+      "A later scan confirms the intended settings on the same policy.",
+      "Verify after the change: review affected sign-ins and complete the step-specific checks."
     ],
     "policyDoneWhenTracked": [
       "Time: in report-only since {reportOnly}, {timeGate}.",
-      "Evidence: zero failures and every active person in scope seen in the sign-in records since {reportOnly}; today {evidenceGate}."
+      "Evidence: the sign-in records since {reportOnly} are checked for failures and for every active person in scope; today {evidenceGate}."
     ],
     "policyDoneWhenEnforced": [
-      "A later scan finds the policy enabled: until one does it is ready to enforce, not enforced."
+      "Until a later scan finds the policy enabled, it is ready to enforce, not enforced."
     ],
     "policyIfWrong": "Set the policy back to report-only, or delete it; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
     "enforceIfWrong": "Set the policy back to report-only; nothing else in the tenant changes. If you are locked out, see Create or Correct Emergency Access Accounts.",
@@ -58,15 +59,17 @@
     "datesDeploy": "Report-only from {reportOnly} · Enforcement is dated once the policy has been watched in report-only",
     "datesObserve": "Report-only since {reportOnly} · Review {readyOn} · Enforcement is dated once the observation window closes and the sign-in records are clear and complete",
     "datesReview": "Report-only since {reportOnly} · Held until the change somebody made to the policy has been looked at · No enforcement date while it is held",
-    "commsForecastNote": "That date is our target, not a commitment: we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
+    "commsForecastNote": "That date is our target, not a commitment: where the policy supports it, we run the change in report-only first, watch who it would have affected, and confirm the date with you before anything changes.",
     "portalRoot": "Entra admin center → Entra ID → Conditional Access → Policies → New policy",
     "portalOpen": "Entra admin center → Entra ID → Conditional Access → Policies → open \"{policy}\"",
     "descriptionLine": "Description: {description} — paste this exactly; it is how IAMAI recognises the policy it planned when it next reads the tenant.",
     "changeUntouched": "Change only the settings listed above; leave every other setting on this policy as it is.",
+    "changeRemoves": "This change removes {removed} from the policy's exclusions. If the policy is On, it applies to them as soon as you save.",
+    "changeRemovesGuests": "guest or external users",
     "enableLine": "Enable policy: On → Save",
     "exclusionsLine": "Users → Exclude → Groups: {exclusionsGroup}. Never exclude the emergency accounts directly; they are members of this group.",
     "reportOnlyLine": "Enable policy: Report-only → Create",
-    "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) retires the old ones once this one is enforced.",
+    "existingCoverage": "{tenant} already covers this with {list:existingPolicies}. This step creates the baseline's version; Consolidate Overlapping Policies (Cleanup) reviews whether the older ones can be retired once it is enforced.",
     "syncRoleNote": "Also exclude the Directory Synchronization Accounts role: Entra Connect signs in with it and cannot answer a prompt.",
     "certificatePrompt": "In report-only, a policy with a device condition can prompt iOS and macOS users to pick a certificate from the day it is created.",
     "strengthName": "Modern MFA + TAP",
@@ -176,7 +179,7 @@
       "critical": {
         "sentence": "The plan is {weeks} weeks because {reason}; everything else fits inside it.",
         "sentenceDone": "Nothing is left to schedule.",
-        "verificationOnly": "MFA registration for {people} people takes {weeks} weeks and nothing is enforced yet",
+        "verificationOnly": "MFA registration for {people} people takes {weeks} weeks and no enforcement is left to schedule",
         "verification": "MFA registration for {people} people takes {weeks} weeks, then {step} rolls through {rings} rings of {soak} days each",
         "chain": "{step} waits for {waitsFor}, then rolls through {rings} rings of {soak} days each",
         "rings": "{step} rolls through {rings} rings of {soak} days each",
@@ -246,24 +249,27 @@
       },
       "milestone": {
         "$comment": "The single next thing on a step (roadmap/lifecycle.ts nextMilestone). One whole sentence each, because the Step Contract renders it as the step's What to do where nothing overrules the lifecycle (src/ui/surfaces/stepContract.ts); the state word and the date live beside it.",
-        "setAside": "This step is deferred.",
+        "setAside": "No action scheduled while this step is deferred.",
         "conflict": "This step is on hold until the baseline author resolves a contradiction. There is nothing for you to do.",
-        "decide": "Answer the question this step is waiting on.",
+        "decide": "Confirm and save the required decision.",
         "resolve": "Clear what this step is waiting on.",
         "prepareHeld": "Create the policy in report-only now; turning it on waits for {measure} to reach {threshold}.",
         "prepareHeldOther": "Create the policy in report-only now; it is not turned on while this step is held.",
         "prepareScheduled": "Create the policy in report-only on {date}; turning it on waits for {measure} to reach {threshold}.",
         "prepareScheduledOther": "Create the policy in report-only on {date}; it is not turned on while this step is held.",
+        "prepareGated": "Create the policy in report-only now; it is not turned on until emergency access is sorted.",
+        "prepareScheduledGated": "Create the policy in report-only on {date}; it is not turned on until emergency access is sorted.",
         "prepare": "Make the object this step names.",
-        "deploy": "Create the policy in report-only.",
-        "review": "Leave it in report-only, find out what changed on the policy and why, then scan again.",
+        "deploy": "Create the policy in Report-only.",
+        "correct": "Correct the identified settings, then rescan. Keep the policy's current state. If it is On, the changed rule can affect access after you save.",
+        "review": "Keep the policy in Report-only, find out what changed on it and why, then rescan.",
         "correctManual": "Correct the policy in the Entra admin center ({fields}), then scan again.",
-        "observe": "Leave it in report-only and watch it.",
-        "observeUntil": "Leave it in report-only until {date}.",
-        "observeRecords": "Leave it in report-only until the sign-in records are clear and complete.",
-        "enforce": "Turn the policy on.",
-        "verify": "Check it did what it should.",
-        "preserve": "Keep what is already doing this.",
+        "observe": "Continue observation and collect the missing evidence.",
+        "observeUntil": "Continue observation and collect the missing evidence. Review from {date}.",
+        "observeRecords": "Continue observation and collect the missing evidence.",
+        "enforce": "Enable the reviewed policy, then verify the result.",
+        "verify": "Verify the change and rescan.",
+        "preserve": "No change needed.",
         "none": "Nothing left to do."
       },
       "baselineConflict": {
@@ -343,7 +349,8 @@
       }
     },
     "policyDoneWhenConfiguration": [
-      "The policy is in report-only with the configuration the plan asked for. Microsoft does not evaluate this user action in report-only, so no sign-in records are waited for."
+      "The policy settings match the plan.",
+      "Verify after the change: test the actual workflow; report-only results alone may not establish its behavior."
     ]
   },
   "phases": {
@@ -356,8 +363,8 @@
   "pages": {
     "connect": {
       "eyebrow": "Setup",
-      "h1": "Strengthen identity security without guessing what will break.",
-      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps without locking anyone out. It is read-only and runs in this browser.",
+      "h1": "Strengthen identity security with evidence about who could be affected.",
+      "intro": "IAMAI reads a Microsoft Entra tenant, compares it with a reviewed identity-security baseline, and writes a dated plan to help you close the gaps and see who each change affects. It is read-only and runs in this browser.",
       "status": {
         "$comment": "Task 032: the approved pack's status strip above the staged flow (docs/design/approved/connect-v3.html). It is a projection of the same progression the stages already carry — the stage with the next action, or nothing left to do — never a second reading of readiness. The quiet half is the current stage's own state line, so the strip and the step cannot disagree.",
         "ready": "Ready to plan",
@@ -407,7 +414,7 @@
         "loading": "loading {source}…",
         "none": "none loaded",
         "what": "A baseline is the identity-security standard IAMAI plans your tenant towards: a published set of Conditional Access policies to measure it against. The default is Defense in Depth, built and maintained by Jon Hope, a Microsoft MVP, at ConditionalAccess.Tech.",
-        "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+        "goal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
         "updated": "Updated by its author on {date} · {n} policies changed · review",
         "updatedPartial": "Updated by its author on {date} · IAMAI could not read every change · review",
         "incomplete": "IAMAI could not read every changed file in the author's repository, so this review is incomplete. Nothing changes here until you take an update.",
@@ -520,7 +527,7 @@
         },
         "ready": {
           "state": "not started",
-          "note": "About ten minutes. Reads the tenant into this browser; nothing is sent anywhere.",
+          "note": "About ten minutes. The scan is processed in this browser; nothing is uploaded to IAMAI.",
           "start": "Scan tenant"
         },
         "scanning": {
@@ -558,6 +565,11 @@
           "weeksEstimate": "estimated rollout",
           "open": "Open the sample plan"
         }
+      },
+      "notice": {
+        "$comment": "Owner decision (corrective pass, 2026-09-13): one compact public-beta notice on Connect, above the setup controls before and after sign-in. {feedback} is the feedback address, drawn as a mail link. No acknowledgement, nothing recorded.",
+        "title": "Public beta — review before applying",
+        "body": "IAMAI’s recommendations and implementation guidance are still being validated. Check every instruction, JSON payload and PowerShell script against your tenant and current Microsoft documentation before applying it. IAMAI reads your tenant; changes happen only when you apply them yourself. Report incorrect or contradictory guidance to {feedback}."
       },
       "next": "Next"
     },
@@ -602,6 +614,7 @@
         "correct": "Correct",
         "needsDecision": "Decision",
         "observing": "Observing",
+        "review": "Review",
         "readyToEnforce": "Ready to enforce"
       },
       "progress": {
@@ -688,11 +701,17 @@
         "unsettled": "until the groups the source policy leaves out are identified",
         "sourceMapping": "Baseline references an unmapped group",
         "pairUnmatched": "until both policies of the pair can be matched",
+        "targetAmbiguous": "until one policy stands out as this goal's own",
         "noOperation": "until a scan rebuilds this step",
         "manualCorrection": "until the policy is corrected by hand",
         "unverifiedExclusion": "until the group {group} can be read",
         "methodsPolicyUnread": "until the authentication methods policy can be read",
-        "emergency": "until emergency access is provably out of scope"
+        "emergency": "until emergency access is provably out of scope",
+        "passkeyProfiles": "until the passkey profile settings are reviewed",
+        "passkeyBlockConflict": "until the block list entry for Microsoft Authenticator is reviewed",
+        "passkeyPartialRead": "until every passkey setting the change needs can be read",
+        "workloadIdentityUnknown": "until the sync identity is confirmed as supported",
+        "workloadIdentityUnsupported": "until a supported identity performs this synchronization"
       },
       "gapSuffix": {
         "admin-session": "sessions expire {current}, the baseline wants {wanted}",
@@ -984,7 +1003,7 @@
     },
     "home": {
       "metaTitle": "IAMAI — Microsoft Entra Conditional Access planner",
-      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change is predicted to affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
+      "metaDescription": "Read a Microsoft Entra tenant, see who a Conditional Access change could affect before you make it, and get a dated rollout plan. Read-only, in your browser, source public.",
       "brand": "IAMAI",
       "navHow": "How it works",
       "navSource": {
@@ -992,8 +1011,8 @@
         "href": "https://github.com/ZephyrPretendstoKnowTech/iamai"
       },
       "eyebrow": "Microsoft identity security",
-      "h1": "Strengthen identity security without guessing what will break.",
-      "siteLine": "IAMAI reads your Microsoft Entra tenant, compares it with a reviewed security baseline, and writes a dated plan for closing the gaps. Each change starts in report-only before it is enforced.",
+      "h1": "Find the gaps. Catch the hidden risks. Plan a safer rollout.",
+      "siteLine": "IAMAI looks beyond whether a policy exists. It checks the details that can make a rollout succeed or fail: which sign-in methods people have, whether the available records show they’ve used them, and whether exclusions or external accounts need attention.",
       "open": "Open IAMAI",
       "demo": "Try it with sample data",
       "heroMeta": [
@@ -1003,7 +1022,7 @@
       ],
       "workLabel": "What it does",
       "workHeading": "From a tenant scan to a dated plan you can carry out.",
-      "workLead": "See what the tenant already protects, what it does not, who each change touches, and what to do before enforcement.",
+      "workLead": "Get a practical plan for what to address first, what to check, and how to move toward stronger protection. You stay in control of every change.",
       "work": [
         {
           "verb": "Reads",
@@ -1015,13 +1034,13 @@
         },
         {
           "verb": "Plans",
-          "text": "The difference as dated steps: report-only before enforced, who each change touches, what would break, and the emails to send."
+          "text": "The difference as dated steps: report-only first where a policy supports it, who could be affected by each change, and the emails to send."
         }
       ],
       "baselineLabel": "Default baseline",
       "baselineName": "Defense in Depth",
       "baseline": "A baseline is the identity-security standard IAMAI measures your tenant against — here, a published set of Conditional Access policies, built by Jon Hope, a Microsoft MVP.",
-      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access that survives every policy.",
+      "baselineGoal": "Its aim is layered protection for a small organisation: MFA for everyone, phishing-resistant admins, constrained sessions and devices, and emergency access kept out of every policy as a backup you check and test.",
       "baselineNote": "IAMAI pins a reviewed version, shows you the author's changes before you take them, and can load a baseline of your own instead.",
       "catchesLabel": "What it catches",
       "catchesHeading": "Problems worth finding before enforcement.",
@@ -1055,8 +1074,8 @@
           "body": "IAMAI holds no permission that can create, change or delete anything in your tenant, and lists every permission it asks for before you sign in."
         },
         {
-          "title": "Your tenant's data never leaves the browser",
-          "body": "The scan reads Microsoft Graph from this browser and keeps the result here: no IAMAI server, no upload, nothing about your tenant sent anywhere; an export is a file you save yourself. The web host that serves this page counts page loads, as web hosts do, and never sees your tenant."
+          "title": "Your plan is built in your browser",
+          "body": "IAMAI has no server of its own: the scan and the plan are processed in this browser, and your tenant's data is not uploaded to IAMAI. Signing in and reading the tenant go straight to Microsoft, and an export or copied text leaves only when you share it. The web host that serves this page counts page loads, as web hosts do; it is not given your tenant's data."
         },
         {
           "title": "Source is public",
@@ -1203,6 +1222,7 @@
         "jsonWaitsUnreadable": "The source policy leaves out a group IAMAI cannot identify, so a copy made in {tenant} would reach people the author's own tenant left alone.",
         "inPlaceKeep": "This is in place already: nothing to create. Keep the policy as it is.",
         "pairUnmatched": "This goal is two policies, and {tenant} already has one of them under a name IAMAI cannot match to either. Give them the names this step proposes, or retire the extra one, then scan again.",
+        "targetAmbiguous": "{tenant} has more than one policy this goal could correct, and nothing about them says which is its own. IAMAI does not guess: correcting the wrong one would change who another policy applies to. Decide which policy stands for this goal (for example, widen it to everyone, or retire the extra one), then scan again.",
         "noOperation": "This step has no policy for IAMAI to write in this plan. Scan {tenant} again to rebuild it.",
         "manualCorrection": "IAMAI does not write this change: the policy is not what the plan asked for in {fields}. Correct it in the Entra admin center, then scan {tenant} again.",
         "emergencyUnsafe": "This policy would apply to {tenant}'s emergency access accounts. IAMAI writes nothing until the exclusions group carves them out: fix the exclusions-group step, then scan again.",
@@ -1309,6 +1329,7 @@
           "doneMissingDecision": "Every group of the author's this policy names has an answer: what stands for it in {tenant}, or none needed.",
           "doneMissingUnreadable": "IAMAI can say what the group the source policy leaves out means for {tenant}.",
           "donePair": "Each half of the pair carries the name this step proposes and a scan matches both.",
+          "doneTarget": "One policy in {tenant} stands out as this goal's own, and a scan finds it.",
           "doneEscapeHatch": "{steps} passes its checks, so the way back in to {tenant} is verified.",
           "doneEmergency": "Every emergency access account is provably out of scope of this policy.",
           "doneOperation": "A scan rebuilds this step with a policy IAMAI can write.",
@@ -1402,7 +1423,11 @@
               "unsaved": "Confirm",
               "exclusionsReach": "Policies",
               "exclusionsReachValue": "{n} of {total} policies exclude the group",
-              "exclusionsReachNote": "Each policy step adds the group where it is missing, and a policy the plan creates includes it when it is created."
+              "exclusionsReachNote": "The count shows policies this scan verified. Selecting the group does not change a policy; each policy step adds it where it is missing.",
+              "peopleNote": "This is the population IAMAI resolved for this policy. It is not a prediction that every account will be prompted.",
+              "observationNote": "Review the available records and the remaining evidence requirements. Time elapsed alone does not complete this check.",
+              "observationDateNote": "This is the earliest review date, not a scheduled automatic enforcement.",
+              "coverageNote": "IAMAI found an existing control that meets the assessed goal. Keep it unless a separate reviewed change is needed."
             },
             "bar": {
               "$comment": "The readiness bar's headline by the Ready lane's substatus (A1b): the other lanes read their own label, the blocker label or the tenant fact (stepContract.ts readinessOf).",
@@ -1410,6 +1435,7 @@
               "correct": "Needs correction",
               "needsDecision": "Needs a decision",
               "observing": "Continue observation",
+              "review": "Review the report-only results",
               "readyToEnforce": "Ready to enforce",
               "none": "Nothing left to do"
             },
@@ -1434,11 +1460,57 @@
             "tabsLabel": "Implementation channel",
             "ai": "AI Info",
             "aiWarning": "Contains tenant context. Review before sharing with an external AI service.",
+            "aiFacts": {
+              "$comment": "The briefing every AI Info carries (stepBody.ts, aiGrounding.ts): the shared opening, the package's own words for the state, then IAMAI's facts for the step in six sections, so an assistant needs no screen. Observations, saved choices, proposals and unknowns are kept apart; never confirmation that a change was made.",
+              "heading": "IAMAI FACTS FOR THIS STEP",
+              "boundary": "What follows is what IAMAI observed in this tenant's latest scan and what its plan proposes. It does not confirm that any change has been made.",
+              "observed": "Observed",
+              "members": "Policies IAMAI tracks for this step",
+              "existing": "Tenant policies already delivering this goal",
+              "current": "Current tenant policy",
+              "currentState": "Current state",
+              "changedFields": "Fields that differ from the target",
+              "removedExclusions": "Exclusions the correction removes",
+              "target": "Names and IDs in the intended target",
+              "targetName": "Policy name",
+              "includeUsers": "Included people",
+              "includeRoles": "Included roles",
+              "excludeGroups": "Excluded groups",
+              "excludeUsers": "Excluded accounts",
+              "locations": "Locations",
+              "grant": "Grant",
+              "strength": "Authentication strength",
+              "accounts": "Accounts IAMAI observed",
+              "more": "{n} more accounts are not included in this excerpt.",
+              "none": "None.",
+              "opening": [
+                "Help me understand and carry out this IAMAI step. Explain its purpose, who it affects, how the tenant's observed state compares with the intended result, and what remains to do. Use the facts below; distinguish observations, saved decisions, proposed changes and unknowns.",
+                "Explain the next available action first, then the settings and checks needed to complete it. Point out any conflict between the instructions and the supplied policy data. If Microsoft behavior needs clarification, use current Microsoft documentation and cite the relevant page. Do not invent tenant values, approvals, completed checks or changes. Ask only for information that affects the next action.",
+                "You may explain alternatives and their tradeoffs. Clearly identify any alternative that changes the selected baseline or saved decision, and do not present it as the current plan. Do not execute a tenant change from this briefing."
+              ],
+              "sections": {
+                "purpose": "Step and purpose",
+                "scope": "Tenant and scope",
+                "observed": "What IAMAI observed",
+                "intended": "Intended result",
+                "remains": "What remains",
+                "implementation": "Implementation and verification"
+              },
+              "tenant": "Tenant",
+              "scanned": "Latest scan",
+              "proposed": "IAMAI proposes these settings. The step cannot hand them over yet; What remains says why.",
+              "previewValues": "Values shown as ‹…› are not resolved yet. Do not run this output.",
+              "unresolvedFields": "Not available in this scan: {fields}",
+              "request": "Request",
+              "focus": "Focus for this step",
+              "unavailable": "Not available in this scan."
+            },
+            "excludeUsersNone": "none: the resolved target excludes no individual accounts",
             "copy": "Copy implementation",
             "expand": "Expand implementation",
             "dialogEyebrow": "Implementation",
             "close": "Minimize",
-            "channelUnavailable": "Content could not be loaded — report this at {address}",
+            "channelUnavailable": "This channel is not available for the current action. Review the other guidance and the requirements shown on this step.",
             "empty": {
               "inPlace": [
                 "No implementation needed",
@@ -1496,7 +1568,7 @@
             "preview": {
               "$comment": "The planning preview (owner, 2026-09-11): a step whose implementation is authored but not yet executable shows the work with no Copy (stepPackage.ts planningPreview). No Planned work banner is drawn over it (U4); these lines are what B5 puts on the disabled Copy.",
               "text": "This is the work once the prerequisites are resolved. It is not ready to run, so it cannot be copied yet.",
-              "textValues": "Nothing blocks this step, but IAMAI cannot fill in every value yet, so this cannot be copied.",
+              "textValues": "IAMAI cannot fill in every value this change needs yet, so it cannot be copied.",
               "values": "Values still to resolve: {values}.",
               "checks": "Checks to confirm first are under Readiness.",
               "value": "‹{value}›"
@@ -1514,6 +1586,7 @@
               "policy.target.conditions": "policy conditions",
               "policy.target.grantControls": "grant controls",
               "policy.target.sessionControls": "session controls",
+              "policy.target.json": "complete target policy",
               "authStrength.target.id": "authentication strength",
               "tenant.displayName": "tenant name",
               "emergency.target.userId": "emergency account",
@@ -1567,12 +1640,19 @@
               "peoplePolicies.resolvedPatches": "changes to the people policies",
               "pim.roleManagementPolicyIds": "PIM role settings",
               "policies.guests.mixed.current.id": "mixed guests policy ID",
+              "policies.guests.mixed.target.conditions": "mixed guests policy conditions",
               "policies.guests.mixed.target.displayName": "mixed guests policy name",
+              "policies.guests.mixed.target.grantControls": "mixed guests policy grant",
+              "policies.guests.mixed.target.sessionControls": "mixed guests policy session controls",
               "policies.guests.mixed.target.users": "mixed guests",
               "policies.guests.semanticMismatches": "guest policy differences",
               "policies.guests.strong.current.id": "guests policy ID",
+              "policies.guests.strong.target.conditions": "guests policy conditions",
               "policies.guests.strong.target.displayName": "guests policy name",
+              "policies.guests.strong.target.grantControls": "guests policy grant",
+              "policies.guests.strong.target.sessionControls": "guests policy session controls",
               "policies.guests.strong.target.users": "guests",
+              "policies.guests.targets.json": "both guest policy targets",
               "policies.session.browser.current.id": "browser session policy ID",
               "policies.session.browser.target.displayName": "browser session policy name",
               "policies.session.semanticMismatches": "session policy differences",
@@ -1590,9 +1670,10 @@
               "policy.current.semanticMismatches": "policy differences",
               "policy.target.conditionsWithExclusion": "policy conditions with the exclusions group",
               "policy.target.excludeUsers": "excluded people",
+              "policy.target.grantWords": "grant controls",
               "policy.target.includeRoles": "admin roles",
               "policy.target.includeUsers": "people this policy covers",
-              "policy.target.mode": "registration access control",
+              "policy.target.locationWords": "location conditions",
               "policy.target.trustedLocationId": "trusted location",
               "policyPatches.resolved": "policy changes",
               "readiness.activeCount": "active people",
@@ -1611,13 +1692,44 @@
               "travel.endDate": "travel end date",
               "travel.startDate": "travel start date",
               "travel.traveler": "traveller",
-              "workload.cloudSync.servicePrincipalId": "cloud sync service principal"
+              "workload.cloudSync.servicePrincipalId": "cloud sync service principal",
+              "policy.target.grantJson": "selected grant JSON"
             },
             "email": "Email",
             "sourceChecked": "Source checked {date}",
             "learn": "Microsoft Learn",
             "troubleshooting": "Troubleshooting",
-            "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values"
+            "powershellInvocation": "Defines the script and runs it in {modes} mode with IAMAI's values",
+            "passkey": {
+              "$comment": "The passkey settings step in words (roadmap/passkeySettings.ts, owner approval 2026-09-14): what the scan read, the change IAMAI resolved from it, and why no change is offered where it cannot be built without overwriting something. Bound into the passkey package as passkey.current.summary, passkey.target.summary and passkey.review.detail.",
+              "on": "on",
+              "off": "off",
+              "unknown": "not read",
+              "none": "none",
+              "current": "Passkey (FIDO2) is {state}. Key restrictions: {restriction}. Attestation: {attestation}. Self-service registration: {selfService}. Included: {includes}. Excluded: {excludes}.",
+              "restriction": {
+                "unrestricted": "not enforced",
+                "allow": "allow list of {n} models",
+                "block": "block list of {n} models"
+              },
+              "target": {
+                "unrestricted": "Keep key restrictions off, so every model that can register today still can, including Microsoft Authenticator.",
+                "allow": "Keep the allow list and its existing allowed models ({retained}); add Microsoft Authenticator ({added}).",
+                "allowPresent": "Keep the allow list and its existing allowed models ({retained}); Microsoft Authenticator is already allowed.",
+                "block": "Keep the block list as it is ({blocked}); it does not block Microsoft Authenticator.",
+                "common": "Enable the method and self-service registration, require attestation for new registrations, and keep the target groups and exclusions shown in the resolved configuration."
+              },
+              "review": {
+                "profiles": "This tenant uses passkey profiles. IAMAI does not read profile settings, so it cannot tell which groups can use Microsoft Authenticator passkeys. Review each profile and its group assignments in the Entra admin center and keep them unchanged; IAMAI does not write the older global settings over a profile-based policy.",
+                "blockListConflict": "The key restriction block list blocks Microsoft Authenticator ({aaguids}). IAMAI does not remove a block list entry. Find out why it was blocked before allowing Authenticator passkeys.",
+                "partialRead": "The scan did not return every passkey setting this change is built from ({fields}). IAMAI cannot build an update that preserves the current configuration, so none is offered."
+              }
+            },
+            "workloadIdentity": {
+              "$comment": "The workload (Cloud Sync) step in words (roadmap/workloadIdentity.ts, owner-approved methodology 2026-09-14): why a network restriction is not counted as protection for the sync process. Bound into the workload package as workload.identity.detail.",
+              "unknown": "IAMAI has not established that this identity supports workload Conditional Access. Confirm support before relying on the proposed restriction.",
+              "unsupported": "This identity type is outside Microsoft's supported scope for workload Conditional Access. This policy cannot be counted as verified protection for the sync process."
+            }
           },
           "railTransition": {
             "$comment": "The rail's sub-line under a day the plan schedules (roadmap/stepSchedule.ts transition): what that day is for. Preparation, verification and review read the milestone's own words instead.",
@@ -1806,16 +1918,15 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
       },
-      "why": "An emergency account should almost never sign in, so any sign-in is a drill or an incident, and both are worth knowing about.",
+      "why": "An alert helps your team notice emergency-account use and distinguish a planned drill from unexpected access.",
       "whatToDo": [
-        "Entra admin center → Entra ID → Monitoring & health → Diagnostic settings → send SignInLogs to a Log Analytics workspace (or the SIEM you already use).",
-        "Create an alert rule on that workspace: SigninLogs where UserPrincipalName is one of {list:emergencyAccountUpns}.",
-        "Send it to a mailbox or channel somebody reads every day; test it with one sign-in and confirm the alert arrives.",
-        "Log Analytics ingestion is billed; a small tenant's sign-in logs cost a few dollars a month.",
-        "Defender XDR or your SIEM can take the same rule."
+        "Use your approved monitoring system to alert on sign-ins by the selected emergency accounts: for example, send SignInLogs to a Log Analytics workspace (Entra admin center → Entra ID → Monitoring & health → Diagnostic settings) or the SIEM you already use.",
+        "Create an alert rule for sign-ins where UserPrincipalName is one of {list:emergencyAccountUpns}.",
+        "Send it to a monitored destination and name who responds; test it with one controlled sign-in and confirm the alert arrives.",
+        "Review ingestion, retention and cost for the monitoring service you use."
       ],
       "doneWhen": [
-        "A test sign-in by an emergency account produced an alert somebody saw."
+        "A controlled sign-in by an emergency account produced an alert at the monitored destination, and the response owner confirmed receipt."
       ]
     },
     "hardening": {
@@ -1823,10 +1934,10 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
-      "why": "Minimum emergency access is in place, and this hardening was deferred so the rollout could continue. Until it is fixed, one failure could still cost the way back in.",
+      "why": "These improvements were deferred after the minimum emergency checks passed. Completing them makes the recovery process more resilient.",
       "whatToDo": [
         "{list:hardening}",
-        "Scan again once these are fixed: the row closes when they pass."
+        "Verify each result and scan again: the row closes when they pass. An earlier deferral does not count as done."
       ],
       "doneWhen": [
         "Every deferred emergency access recommendation passes on a scan."
@@ -1837,13 +1948,14 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
-      "why": "One convention means the next person can read the policy list without opening each policy.",
+      "why": "Consistent names make policy reviews easier for the next person responsible for the tenant.",
       "whatToDo": [
         "Rename {list:renames}",
-        "Renaming changes no evaluation; do it in one sitting."
+        "Renaming changes no Conditional Access evaluation, but scripts or reports that find policies by name may need updating; keep the same policy IDs and settings."
       ],
       "doneWhen": [
-        "Every policy name follows {convention}."
+        "Every policy name follows {convention}.",
+        "Verify after the change: tooling that finds these policies still identifies them."
       ]
     },
     "consolidation": {
@@ -1851,12 +1963,13 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
-      "why": "Two policies that grant the same control to the same people are two places for a later change to go wrong.",
+      "why": "Overlapping policies can make later changes harder to understand. Consolidate only when the remaining policy preserves the access requirements that matter.",
       "whatToDo": [
-        "Compare {list:overlaps} side by side; keep the one that matches the baseline and set the other to Off, then delete it after a week with no failures."
+        "Compare the complete settings of {list:overlaps}: scope, exclusions, conditions, controls, risk levels and guest types.",
+        "Retire a policy only after the remaining one is shown to preserve the required coverage, tested and approved; keep a rollback record. Never remove High-risk coverage because a Medium-only policy exists."
       ],
       "doneWhen": [
-        "One policy per control remains."
+        "Each approved retirement preserves the required coverage and has been validated through your change process."
       ]
     },
     "notAssessed": {
@@ -1864,13 +1977,14 @@
       "learn": {
         "url": "https://github.com/Jhope188/ConditionalAccessPolicies"
       },
-      "why": "These baseline policies carry conditions IAMAI cannot compare (device filters, authentication contexts, workload identities, agent policies), so their status is yours to judge.",
+      "why": "Some baseline policies use settings IAMAI cannot fully assess. A manual review keeps those options available without presenting an unverified policy as complete.",
       "whatToDo": [
-        "Open each and decide whether it applies: {list:policies}",
-        "Where it does, create it from its JSON and put it in report-only."
+        "Review each policy IAMAI could not assess, and the settings it could not compare: {list:policies}",
+        "Resolve its tenant-specific references and confirm whether it applies. Use Report-only where the policy type supports it, then the appropriate validation.",
+        "Record whether it applies, does not apply (with a reason), or still needs investigation."
       ],
       "doneWhen": [
-        "Each policy is created, or noted here as not applying."
+        "Each policy has a recorded outcome: implemented and validated, not applicable with a reason, or still under investigation."
       ]
     },
     "drill": {
@@ -1878,13 +1992,13 @@
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#monitor-sign-in-and-audit-logs"
       },
-      "why": "A passphrase nobody has used in a year is found to be wrong at the worst moment.",
+      "why": "A regular drill checks that emergency access still works before it is needed. It can reveal expired credentials, missing roles or an alert nobody receives.",
       "whatToDo": [
-        "Sign in with each emergency account from a private browser window, on a device the policies do not trust, and confirm the alert fires.",
-        "Record the date in the plan file. Repeat every 90 days."
+        "For each emergency account, in your approved secure recovery environment: retrieve its credentials through the authorized process, sign in, perform a non-destructive administrative check, confirm the expected logs and alert, and sign out.",
+        "Record the full result and date in the plan file. Repeat at least every 90 days."
       ],
       "doneWhen": [
-        "Each emergency account signed in within the last 90 days."
+        "Each selected account passed a controlled drill within the last 90 days, with the result and date recorded; failed checks stay open."
       ]
     }
   },
@@ -1894,7 +2008,7 @@
       "kind": "blocker",
       "title": "Create or Correct Emergency Access Accounts",
       "changeLine": null,
-      "why": "Emergency access accounts are how you keep access to your tenant if a Conditional Access change locks everyone out.",
+      "why": "Emergency access accounts give your team another way into the tenant when normal administrator sign-in fails. Checking their roles, authentication and exclusions helps uncover recovery routes that exist on paper but would fail when needed.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
@@ -1948,7 +2062,8 @@
       "dates": null,
       "doneWhen": [
         "Every minimum safety check passes on the next scan.",
-        "Each hardening recommendation passes, or is deferred to Cleanup."
+        "Each hardening recommendation passes, or is deferred to Cleanup.",
+        "Verify after the change: record a successful recovery drill separately; a passing configuration check is not a drill."
       ],
       "ifWrong": null,
       "lockedOut": {
@@ -2025,14 +2140,15 @@
           "Breakglass · breakglass@contoso.onmicrosoft.com · named like an emergency account, signs in with the onmicrosoft.com address, Global Administrator, no licence"
         ]
       },
-      "partner": "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes."
+      "partner": "Done together with Create or Correct Exclusions Group: these accounts are the members of that group, and the group is what every policy excludes.",
+      "aiFocus": "Explain configuration evidence separately from credential custody, monitoring and the last successful drill. Keep minimum safety and deferred hardening distinct."
     },
     {
       "id": "s-prereq-exclusion-group",
       "kind": "blocker",
       "title": "Create or Correct Exclusions Group",
       "changeLine": null,
-      "why": "One group, excluded from every policy in the plan, is how you keep access if a policy goes wrong. Every Conditional Access policy in the baseline excludes this group, so its members can always sign in.",
+      "why": "One reviewed group keeps emergency access exclusions consistent. Checking its members can also reveal ordinary accounts that are bypassing controls intended to protect them.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access#conditional-access-considerations"
       },
@@ -2078,8 +2194,9 @@
       },
       "dates": null,
       "doneWhen": [
-        "The exclusions group is confirmed, has the emergency access accounts as its only members, and IAMAI has recorded its ID for every policy in the plan.",
-        "All {total} checks pass on the next scan."
+        "The exclusions group is confirmed and contains only the selected emergency access accounts.",
+        "All {total} checks pass on the next scan.",
+        "Verify after the change: each policy IAMAI lists excludes the group; each policy step confirms its own reference on a later scan."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2136,14 +2253,15 @@
       "partner": "Done together with Create or Correct Emergency Access Accounts: the accounts chosen there are this group's only members.",
       "partnerStep": {
         "id": "s-prereq-break-glass"
-      }
+      },
+      "aiFocus": "List actual members, selected emergency accounts, extra or missing members, and policies missing the exclusion. Do not equate selecting the group with updating policies."
     },
     {
       "id": "s-check-dormant-accounts",
       "kind": "check",
       "title": "Disable or Confirm Dormant Accounts",
       "changeLine": null,
-      "why": "Nobody has signed in to these accounts for 90 days, or ever; whoever signs in first registers the MFA method, and that may not be the owner.",
+      "why": "Unused accounts can leave access behind after a person or service stops needing it. Review these candidates with their owners; an old or missing sign-in record is a reason to investigate, not proof that an account is unused.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
@@ -2154,7 +2272,7 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "For each account, one of three outcomes:",
+        "lead": "Review each account with its owner and record the outcome.",
         "steps": [
           "Disable it: Entra admin center → Entra ID → Users → the account → Edit properties → Account enabled: No. Keep the mailbox if anything still needs it.",
           "Or confirm it is in use and have the owner sign in once; it leaves this list on the next scan.",
@@ -2163,7 +2281,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "Each account is disabled, sign-in blocked, or has signed in."
+        "Each listed account is disabled, blocked from sign-in, or shows a sign-in on the next scan.",
+        "Verify after the change: an account you keep has a confirmed owner and purpose; IAMAI lists it again while it stays inactive."
       ],
       "ifWrong": "Re-enable the account: Users → the account → Edit properties → Account enabled: Yes. Nothing else changes.",
       "comms": null,
@@ -2196,14 +2315,15 @@
           "Szeth-son-son-Vallano · no sign-in on record"
         ],
         "from": "Aug 1"
-      }
+      },
+      "aiFocus": "Include each candidate's name, ID, recorded activity and evidence gaps. Separate a keep decision from a successful sign-in and from confirmed inactivity."
     },
     {
       "id": "s-prereq-allowed-countries",
       "kind": "object",
       "title": "Create or Correct Allowed Countries Location",
       "changeLine": null,
-      "why": "The countries policy blocks sign-ins from everywhere except this list, so the list has to be right before the policy exists.",
+      "why": "The country rule depends on this list. Reviewing it before enforcement helps catch remote workers, travel and network routes that would otherwise be blocked.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
@@ -2214,7 +2334,7 @@
       },
       "decision": {
         "label": "Allowed countries",
-        "help": "Every country with sign-ins since {from}. Remove one nobody should work from.",
+        "help": "Sign-ins since {from} help you review the list; they do not approve a country. Keep only the countries the business approved, then save.",
         "pickerRow": "{country} · {people} people · {signIns} sign-ins",
         "save": "Save",
         "question": {
@@ -2250,13 +2370,15 @@
         ],
         "correct": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
+          "Before saving, check the enabled policies that use this location: a change applies to them at once.",
           "Add {list:addCountries}",
           "Remove {list:removeCountries}"
         ]
       },
       "dates": null,
       "doneWhen": [
-        "A countries named location with exactly {countries} exists in the tenant."
+        "A countries named location with exactly {countries} exists in the tenant.",
+        "Verify after the change: it determines location by IP address and leaves unknown countries or regions out."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2295,14 +2417,15 @@
         ],
         "travelCountries": "[type the countries]",
         "from": "Aug 1"
-      }
+      },
+      "aiFocus": "Distinguish approved countries from observed countries, identify additions and removals, and explain that IP location can differ from physical location."
     },
     {
       "id": "s-prereq-trusted-location",
       "kind": "object",
       "title": "Define the Trusted Network",
       "changeLine": null,
-      "why": "Some baseline policies relax inside the network your team usually signs in from, and that network has to be named before they can.",
+      "why": "Some policies apply differently on a trusted network. Confirming the public addresses prevents an unrelated office, VPN or shared provider address from receiving that trust.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
@@ -2314,19 +2437,19 @@
       },
       "decision": {
         "label": "Trusted network",
-        "help": "Add your office and VPN IP addresses.",
+        "help": "Use only public IP ranges the network owner approved. An observed address is not automatically trusted.",
         "pickerRow": "{name} · {ranges} · {matches} sign-ins matched",
         "save": "Save"
       },
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Find the office's public address: from a machine in the office, open https://whatismyip.com and note the IPv4 and IPv6 addresses, or take it from the sign-in log's IP column filtered to the office.",
+          "Ask the network owner for the approved public IPv4 and IPv6 ranges, including any VPN exits the organization approves as trusted.",
           "Entra admin center → Entra ID → Conditional Access → Named locations → + IP ranges location.",
           "Name it {proposedName}, which follows the convention {tenant} already uses.",
-          "Add each address as a range: {list:ranges} Never 0.0.0.0/0; nothing wider than /16; a single office is usually /32; use the small block only if your ISP assigned one.",
-          "IPv6: /128 for one address, or the /64 your ISP delegated; never wider.",
-          "Select \"Mark as trusted location\". Save."
+          "Add each approved range, as narrow as the network owner's allocation; never 0.0.0.0/0.",
+          "Addresses seen in sign-in records, to compare with the approved ranges (being seen does not approve them): {list:ranges}",
+          "Select \"Mark as trusted location\". Save, then check that an expected sign-in matches; investigate a mismatch instead of widening the range."
         ],
         "correct": [
           "Entra admin center → Entra ID → Conditional Access → Named locations → open {existingName}.",
@@ -2335,7 +2458,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "A trusted named location exists in Entra whose IP ranges cover the sign-in sources seen since {from}."
+        "A trusted IP named location exists in the tenant.",
+        "Verify after the change: its ranges are exactly the public ranges the network owner approved, and expected sign-ins match without widening them."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2376,14 +2500,15 @@
           "Select Mark as trusted location"
         ],
         "from": "Aug 1"
-      }
+      },
+      "aiFocus": "Explain which policies use the location, the approved ranges, observed matches and any unstable egress. Do not infer trust from traffic."
     },
     {
       "id": "s-prereq-service-accounts-group",
       "kind": "object",
       "title": "Create or Correct Service Accounts Group",
       "changeLine": null,
-      "why": "Service accounts cannot answer an MFA prompt, so the policies that would break them exclude this one group instead of a list nobody maintains.",
+      "why": "Unattended jobs may use accounts that cannot complete a person's sign-in prompt. A reviewed group makes those exceptions visible and easier to maintain.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
@@ -2394,7 +2519,7 @@
       },
       "decision": {
         "label": "Service accounts",
-        "help": "Only accounts no person signs in with. An interactive sign-in in the records makes it a person, whatever it is called.",
+        "help": "Confirm each account's workload and owner before adding it. This group is for user-based service accounts; service principals and managed identities do not belong in it.",
         "pickerRow": "{name} · {signals}",
         "save": "Save"
       },
@@ -2409,7 +2534,8 @@
       },
       "dates": null,
       "doneWhen": [
-        "The group exists with exactly the confirmed accounts."
+        "The group exists with exactly the confirmed accounts.",
+        "Verify after the change: each member's workload owner confirmed it runs unattended and no person signs in with it."
       ],
       "ifWrong": "Remove the account from the group; the policies apply again on its next sign-in.",
       "comms": null,
@@ -2446,14 +2572,15 @@
           "svc-mailer-2"
         ],
         "from": "Aug 1"
-      }
+      },
+      "aiFocus": "Separate confirmed members from candidates. Include workload purpose, owner information where known, and any modernization opportunity without treating it as completed."
     },
     {
       "id": "s-shared-devices",
       "kind": "policy",
       "title": "Give Shared Devices Their Own Policy",
       "changeLine": null,
-      "why": "Teams Rooms, panels and shared phones cannot answer an MFA prompt or a registration request, so a rule written for people signs them out.",
+      "why": "Room systems and other shared devices can stop working when a policy expects a person to answer a prompt. Review their accounts and normal networks before applying controls designed for staff.",
       "learn": {
         "url": "https://learn.microsoft.com/microsoftteams/rooms/conditional-access-and-compliance-for-devices"
       },
@@ -2474,7 +2601,7 @@
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "A policy scoped to the shared-device accounts allows them only from the trusted network, and nothing prompts a person."
+        "Verify after the change: the shared devices work from the approved network, and the person-policy exclusions IAMAI lists are in place."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -2491,7 +2618,7 @@
         "helpDesk": [
           "A room device that stops signing in: check it is on the office network and its account is in this policy and out of the others."
         ],
-        "manager": "Meeting-room and shared devices keep working without ever being asked for a code they cannot enter. Without their own rule, the first prompt signs them out.",
+        "manager": "Meeting-room and shared devices get a rule that fits them instead of prompts meant for people. Without it, a person-specific prompt can stop a room device from signing in.",
         "waits": null
       },
       "example": {
@@ -2521,21 +2648,22 @@
           "Conditions → Locations → Include: Any location; Exclude: {trustedLocation}",
           "Grant → Block access",
           "{reportOnlyLine}",
-          "Then exclude the same accounts from every policy that prompts a person: {list:peoplePolicies}"
+          "Separately, apply the resolved exclusions for these accounts to the policies that ask a person to act: {list:peoplePolicies}"
         ]
-      }
+      },
+      "aiFocus": "Distinguish the dedicated block policy from the separate people-policy changes. Do not claim the PowerShell create action performs both."
     },
     {
       "id": "s-prereq-security-defaults",
       "kind": "object",
       "title": "Turn Off Security Defaults",
       "changeLine": null,
-      "why": "Security defaults and Conditional Access cannot both be on, and {tenant} holds the licence for Conditional Access.",
+      "why": "Replacing Security Defaults gives you more control over access rules. The changeover needs care so the tenant does not lose protection between the two configurations.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "who": {
-        "lead": "Everyone in {tenant}: security defaults prompt every person for MFA today, and Require MFA for Everyone takes that over."
+        "lead": "Everyone in {tenant}: security defaults apply today, and Require MFA for Everyone replaces that MFA requirement."
       },
       "decision": null,
       "whatToDo": {
@@ -2543,12 +2671,13 @@
         "steps": [
           "Confirm Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins have been in report-only with no failures; all three enforce today.",
           "Entra admin center → Entra ID → Overview → Properties → Manage security defaults → Disabled → Save.",
-          "Enforce Require MFA for Everyone within the hour, then Block Legacy Authentication and Require Phishing-Resistant MFA for Admins the same day."
+          "Right after saving, enable Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins in the same change window, then test sign-in."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced."
+        "Security defaults are off; Require MFA for Everyone, Block Legacy Authentication and Require Phishing-Resistant MFA for Admins are enforced.",
+        "Verify after the change: test sign-in for representative users and admins right after the changeover."
       ],
       "ifWrong": "Turn security defaults back on from the same page; it takes effect within minutes.",
       "comms": null,
@@ -2572,14 +2701,15 @@
         "tenant": "Contoso Pty Ltd",
         "from": "Aug 1"
       },
-      "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on."
+      "placement": "Placed on the day Require MFA for Everyone enforces, with Block Legacy Authentication and Require Phishing-Resistant MFA for Admins enforced the same day; its row carries that date. Shown only when security defaults are on.",
+      "aiFocus": "Describe the ordered cutover and replacement policy identities. Report-only preparation is not replacement protection until enforcement is verified."
     },
     {
       "id": "s-prereq-per-user-mfa",
       "kind": "object",
       "title": "Finish Moving Off Per-User MFA",
       "changeLine": null,
-      "why": "The old per-user MFA setting prompts on its own terms and can block the recovery sign-in that Conditional Access would allow.",
+      "why": "Moving MFA enforcement into the access policies makes it easier to manage consistently. Keep the existing protection until the replacement is actually enabled for the affected accounts.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
       },
@@ -2593,13 +2723,14 @@
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration in progress.",
           "Confirm each method people use (Authenticator, phone, passkeys) is enabled under Policies.",
-          "Entra admin center → Entra ID → Users → Per-user MFA → select the accounts above → Disable.",
+          "Once Require MFA for Everyone is On and covers these accounts: Entra admin center → Entra ID → Users → Per-user MFA → select the accounts above → Disable.",
           "Manage migration → Migration complete."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "The tenant reports Migration complete and no account has per-user MFA set."
+        "The tenant reports Migration complete and no account has per-user MFA set.",
+        "Verify after the change: the replacement Conditional Access policy is enabled and covers every account you changed."
       ],
       "ifWrong": "Set Migration in progress again; per-user settings can be re-enabled per account.",
       "comms": null,
@@ -2625,36 +2756,38 @@
         ],
         "from": "Aug 1"
       },
-      "placement": "Shown only when at least one account has per-user MFA set."
+      "placement": "Shown only when at least one account has per-user MFA set.",
+      "aiFocus": "Explain the difference between method availability, methods-policy migration and the policy that requires MFA. Never call migration itself a replacement MFA control."
     },
     {
       "id": "s-prereq-passkey-settings",
       "kind": "object",
       "title": "Set Up Passkeys to Match the Baseline",
       "changeLine": null,
-      "why": "This step configures which passkey providers your tenant accepts. If these settings are wrong, people register passkeys that won't work with the baseline's MFA policies, and they'll have to re-register.",
+      "why": "Passkey settings decide which authenticators people can register and use. Checking existing keys first helps prevent a settings change from disabling a method someone still needs.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
       "who": {
-        "lead": "Passkey (FIDO2) in {tenant} today: {current}. Security keys already registered here, which the allow-list must keep: {list:registeredKeys}",
-        "emergencyNote": "The emergency access accounts' keys are in that list; leaving one out locks the escape hatch."
+        "lead": "Passkey (FIDO2) in {tenant} today: {current}. Security keys registered here, for review (a registered key is not automatically an approved model): {list:registeredKeys}",
+        "emergencyNote": "The emergency access accounts' keys are in that list; check that their models stay allowed."
       },
       "decision": null,
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: All users.",
-          "Allow self-service set up: Yes. Enforce attestation: Yes, so only the key models on the list can register.",
-          "Restrict specific keys: Allow. Select Microsoft Authenticator (Microsoft adds both app identifiers), or add them by hand with + Add AAGUID: Authenticator for Android {aaguidAndroid}; Authenticator for iOS {aaguidIos}.",
-          "Add the identifier of every hardware key already registered in {tenant}, listed above, and of any key model you will buy for the emergency accounts. A key model missing from this list cannot register or sign in.",
+          "Entra admin center → Entra ID → Authentication methods → Policies → Passkey (FIDO2) → Enable: On; Target: All users, keeping the existing groups and exclusions.",
+          "Allow self-service set up: Yes. Enforce attestation: Yes; it applies to new registrations only.",
+          "Keep the tenant's key restriction setting. With an allow list, keep every model already on it and add Microsoft Authenticator: Android {aaguidAndroid}; iOS {aaguidIos}. Without key restrictions, leave them off. With a block list, check that it does not block those identifiers.",
+          "A registered key is not automatically an approved model: add a hardware key model only when your organization approves it. Removing a model stops its keys from signing in.",
           "Save. Then Microsoft Authenticator → Enable: On, All users, for push and codes; passkeys in the app are governed by the Passkey (FIDO2) policy above.",
-          "Temporary Access Pass → Enable: On, All users; one-time use; 1 hour. This is how a person with no method registers their first passkey."
+          "Temporary Access Pass → Enable: On for the people who may need a pass to register their first passkey; keep the tenant's lifetime and one-time-use settings unless your security team approved different values."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Passkey (FIDO2), Microsoft Authenticator, and Temporary Access Pass are all enabled for all users. The passkey allow-list includes the Authenticator iOS and Android AAGUIDs, and attestation is enforced."
+        "Passkey (FIDO2) matches the resolved change on the next scan: enabled for the existing target groups, with existing model restrictions and exclusions retained and Microsoft Authenticator allowed.",
+        "Verify after the change: an emergency access account still signs in with its key; configuration checks do not replace that test."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2677,7 +2810,7 @@
           }
         ],
         "helpDesk": [
-          "A key that will not register: its model is not on the allow-list; add its AAGUID, which the vendor publishes."
+          "A key that will not register: check whether its model is approved; add its AAGUID, which the vendor publishes, only after approval."
         ],
         "manager": null,
         "waits": "Register Your Own Passkey, the registration campaign and every phishing-resistant policy wait on this."
@@ -2694,14 +2827,15 @@
         "aaguidAndroid": "de1e552d-db1d-4423-a619-566b625cdc84",
         "aaguidIos": "90a3ccdf-635c-4729-a248-9b709135078f",
         "from": "Aug 1"
-      }
+      },
+      "aiFocus": "State which existing allowed models the resolved change retains, which Microsoft Authenticator models it adds, and whether a profile-based policy, a block list or a partial read holds the change. Existing allowed models are retained configuration, not proof that every registered key was approved."
     },
     {
       "id": "s-prereq-auth-strength",
       "kind": "object",
       "title": "Create the Baseline's Authentication Strength",
       "changeLine": null,
-      "why": "Several policies in the baseline require a specific set of authentication methods (called an \"authentication strength\"). This step creates that strength so those policies can reference it.",
+      "why": "An authentication strength defines the methods a policy accepts. Creating the right one keeps related policies consistent and makes any temporary sign-in options explicit.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
       },
@@ -2712,7 +2846,7 @@
       },
       "decision": {
         "label": "Authentication strength",
-        "help": "Create or select the authentication strength.",
+        "help": "Check the five allowed combinations and every policy already using this strength before changing it.",
         "pickerSource": "strengths",
         "pickerRow": "{name} · {combinations}",
         "save": "Save"
@@ -2721,14 +2855,15 @@
         "lead": null,
         "steps": [
           "Entra admin center → Entra ID → Conditional Access → Authentication strengths → New authentication strength.",
-          "Name: {strengthName}. Description: the baseline's phishing-resistant strength with a Temporary Access Pass for first sign-ins.",
+          "Name: {strengthName}. Description: the baseline's strength: phishing-resistant methods plus Temporary Access Pass (one-time and multi-use) for first sign-ins.",
           "Select exactly: Windows Hello for Business · Passkeys (FIDO2) · Certificate-based authentication (multifactor) · Temporary Access Pass (one-time) · Temporary Access Pass (multi-use). Nothing else.",
           "Next → Create. The policies that reference it are created in later steps."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "An authentication strength named \"{strengthName}\" exists with exactly the five methods listed above, or an existing strength with the same methods is selected and confirmed."
+        "An authentication strength named \"{strengthName}\" exists with exactly the five combinations listed above, or an existing strength with the same combinations is selected and confirmed.",
+        "Verify after the change: every policy already using the strength still accepts the methods its users rely on."
       ],
       "ifWrong": "Delete the strength; no policy references it yet.",
       "comms": null,
@@ -2751,14 +2886,14 @@
         "strengths": [],
         "strengthName": "Modern MFA + TAP",
         "from": "Aug 1"
-      }
+      },
+      "aiFocus": "Explain each allowed combination and both TAP variants. Distinguish this custom strength from Microsoft's built-in Phishing-resistant MFA strength."
     },
     {
       "id": "s-ladder-operator-passkey",
       "kind": "check",
       "title": "Register Your Own Passkey",
       "changeLine": null,
-      "why": "Your account makes every change, so the admin policies reach it first; set up your passkey the way the baseline will require, so it never has to be redone.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-enable-passkey-fido2"
       },
@@ -2769,9 +2904,9 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone); either is phishing-resistant.",
+          "Go to https://aka.ms/mfasetup → Add sign-in method → Passkey. Register a passkey in Microsoft Authenticator (everyday use) or a hardware security key (survives a lost phone). Keep your existing sign-in methods until the new one works.",
           "Sign out and sign in again with the passkey, so the record shows a phishing-resistant sign-in.",
-          "If the passkey is refused, the method settings in Set Up Passkeys to Match the Baseline are not saved yet."
+          "If the passkey is refused, check the error, the Passkey (FIDO2) settings in Set Up Passkeys to Match the Baseline, and whether the device supports the method."
         ]
       },
       "dates": null,
@@ -2800,14 +2935,16 @@
         "evidence": "MFA completed 21 hours ago",
         "from": "Aug 1"
       },
-      "partner": "Do this before the registration campaign, so you have done what you are about to ask others to do."
+      "partner": "Do this before the registration campaign, so you have done what you are about to ask others to do.",
+      "aiFocus": "Separate registration from observed use. State the evidence's date and limits; a method-class sign-in record may not identify the exact credential.",
+      "why": "Test your own strong sign-in method before the rollout depends on it. A registered passkey is only useful if you can actually use it on the device needed for admin work."
     },
     {
       "id": "s-prereq-device-plan",
       "kind": "check",
       "title": "Decide How Devices Are Managed",
       "changeLine": null,
-      "why": "A device policy can only ask for what the business has decided: a phone that is enrolled, an app that keeps the data, or no company data on phones; and computers that are enrolled, domain-joined, or not managed.",
+      "why": "Device rules need to match how the business works. Decide how phones and computers should access company data before requiring a device state people cannot meet.",
       "learn": {
         "url": "https://learn.microsoft.com/mem/intune/fundamentals/deployment-guide-enrollment"
       },
@@ -2819,7 +2956,7 @@
       "decision": {
         "label": "Phones",
         "text": "How should phones be managed?",
-        "help": "Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one.",
+        "help": "Until you decide, phones are out of the compliant-device policy, and the device steps wait on this one. Current inventory informs the choice; it does not make it for you.",
         "options": [
           "Enroll phones in Intune",
           "Protect company apps only",
@@ -2860,7 +2997,7 @@
       },
       "dates": null,
       "doneWhen": [
-        "Phones and computers are answered; Require a Managed Device Outside the Office shows the platforms it covers beside the baseline's version."
+        "Phones and computers are answered and saved; Require a Managed Device Outside the Office shows the platforms it covers beside the baseline's version. Saving the choice configures no device."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2888,14 +3025,15 @@
         "unjoinedUsers": [
           "Shallan Davar"
         ]
-      }
+      },
+      "aiFocus": "Explain the tradeoffs of the existing choices and their downstream scope. Do not invent a default or imply that saving a choice configures devices."
     },
     {
       "id": "s-question-travel",
       "kind": "check",
       "title": "Add a Travel Notice and Exclusion",
       "changeLine": null,
-      "why": "Somebody who travels signs in from outside the allowed countries, and the countries policy blocks that sign-in unless the trip was arranged first.",
+      "why": "Travel can make a legitimate sign-in look outside the business's allowed locations. Arrange the destination and dates before departure so access can be checked in time.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
@@ -2907,13 +3045,14 @@
         "lead": null,
         "steps": [
           "Send the countries policy's email: it tells people to say before a trip.",
-          "For each trip, add the country to the allowed list for its dates on Create or Correct Allowed Countries Location; never a user exclusion.",
-          "Log each trip with its dates, so the country comes off the list when it ends."
+          "For each trip, add the country to the allowed list for its dates on Create or Correct Allowed Countries Location; never a user exclusion. The change applies to everyone the countries policy covers.",
+          "Log each trip with its dates and an owner who removes the country when it ends: the named location does not expire on its own. Check other active trips before removing a country."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "The countries policy's email has gone out and the trip log exists."
+        "Each trip is recorded with its traveller, countries and dates.",
+        "Verify after the change: the country change is in place for the approved dates, and each temporary country is removed when no approved trip or permanent requirement still needs it."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2936,14 +3075,15 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "travelAnswer": "Regularly: add: New Zealand"
-      }
+      },
+      "aiFocus": "Explain the tenant-wide effect, manual expiry and overlapping-trip check. Do not describe a country addition as a traveler-only exception."
     },
     {
       "id": "s-question-partner",
       "kind": "check",
       "title": "Exclude the Partner or MSP Accounts",
       "changeLine": null,
-      "why": "An IT partner administers this tenant through delegated access; a policy aimed at external users cuts them off unless the Service provider type is excluded.",
+      "why": "Partner access can use a different sign-in path from ordinary guest collaboration. Identify that path before changing external-user rules so approved support access is not accidentally interrupted.",
       "learn": {
         "url": "https://learn.microsoft.com/partner-center/customers/gdap-introduction"
       },
@@ -2955,12 +3095,13 @@
         "lead": null,
         "steps": [
           "Require MFA for Guests and Block Sign-ins From Countries Not Allowed now carry the Service provider exclusion in their What to do, beside the baseline's version; create them as shown.",
-          "Their own tenant's MFA is what protects the partner's people here: Entra admin center → Entra ID → External Identities → Cross-tenant access settings → the partner → Inbound access → Trust settings → Trust multifactor authentication: On."
+          "Delegated administration (GDAP) and ordinary guest (B2B) access are separate paths. Review inbound MFA trust for ordinary B2B collaboration on its own merits; do not turn it on as a fix for delegated administration."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Both policies exclude the Service provider type on the next scan."
+        "Both policies exclude the Service provider type on the next scan, where you chose to exclude service providers.",
+        "Verify after the change: the partner's approved access path still works."
       ],
       "ifWrong": null,
       "comms": null,
@@ -2981,14 +3122,15 @@
       "example": {
         "tenant": "Contoso Pty Ltd",
         "partnerAnswer": "Exclude service providers (they use their own tenant's MFA)"
-      }
+      },
+      "aiFocus": "Distinguish delegated administration, external-user types and B2B trust. Include affected policies and the saved decision without inferring trust from a partner name."
     },
     {
       "id": "s-question-mail-devices",
       "kind": "check",
       "title": "Set Up an SMTP Relay for Mail-Sending Devices",
       "changeLine": null,
-      "why": "A printer or application that sends mail by SMTP AUTH stops when legacy authentication is blocked; the service-accounts group carries it until a relay replaces the password.",
+      "why": "Printers and applications may depend on a mail-sending method that will stop working under stronger sign-in controls. Check each device's capabilities and test its replacement route first.",
       "learn": {
         "url": "https://learn.microsoft.com/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365"
       },
@@ -3000,13 +3142,15 @@
       "whatToDo": {
         "lead": null,
         "steps": [
-          "Create or Correct Service Accounts Group carries these accounts; create it as shown, and Block Legacy Authentication leaves them alone.",
-          "Move each device to SMTP AUTH with OAuth, or to a connector in Exchange Online (Exchange admin center → Mail flow → Connectors → From your organization's email server), then take its account out of the group."
+          "Record each device's supported authentication and TLS options, the recipients it sends to, and a test window.",
+          "Until each device moves, Create or Correct Service Accounts Group keeps these accounts out of Block Legacy Authentication. That exclusion does not keep SMTP AUTH working if the mail service no longer accepts basic authentication.",
+          "Move each device to SMTP AUTH with OAuth, or to a connector in Exchange Online (Exchange admin center → Mail flow → Connectors → From your organization's email server), send test messages, then take its account out of the group."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Every mail-sending device sends through OAuth or a connector, and the service-accounts group holds none of them."
+        "Every mail-sending device sends through OAuth or a connector, and the service-accounts group holds none of them.",
+        "Verify after the change: test messages from each device are delivered before its old exception is removed."
       ],
       "ifWrong": null,
       "comms": null,
@@ -3016,7 +3160,7 @@
       "more": {
         "risks": [
           {
-            "text": "A device that stays in the service-accounts group keeps a password that never expires and skips every policy.",
+            "text": "A device that stays in the service-accounts group keeps a password that never expires and stays outside the policies that exclude the group.",
             "applies": "always"
           }
         ],
@@ -3032,28 +3176,29 @@
         "mailDevices": [
           "MFP Reception"
         ]
-      }
+      },
+      "aiFocus": "Compare the supported routes using the supplied device facts. Separate connector configuration, device configuration and actual mail-delivery proof."
     },
     {
       "id": "s-verify-mfa",
       "kind": "campaign",
       "title": "Create and Enforce the MFA Registration Campaign",
       "changeLine": null,
-      "why": "Enforcement should change nothing for anyone. That's only true once every person has registered a phishing-resistant method and used it to sign in at least once.",
+      "why": "Registration alone can hide a rollout problem: someone may have a method but never have used it successfully. This step helps people set up a suitable method and prove it works before access depends on it.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/authentication/howto-registration-mfa-sspr-combined"
       },
       "who": {
         "lead": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90% until {enrollBy}.",
         "leadUndated": "{active} active people · {adminCount} admins · {guests} guests · readiness {readiness}, the plan waits for 90%.",
-        "timeline": "Enroll by {enrollBy}. Require MFA for Everyone enforces on {mfaEnforce} whether or not everyone has; whoever has not is listed below on that day for you to review, not to hold the plan.",
+        "timeline": "Enroll by {enrollBy}. Require MFA for Everyone is planned for {mfaEnforce}; enforcing it is still a change someone makes. Whoever has not enrolled is listed below for you to review.",
         "groups": {
           "$comment": "The campaign's groups are MFA Readiness's states (scoring/phishingResistant.ts, through derive/contentLists.ts), worst first; Ready needs nothing.",
           "noMethod": "{n} people with no sign-in method; issue a Temporary Access Pass, then set up a passkey in Microsoft Authenticator:",
           "needsSetup": "{n} people with no phishing-resistant method; set up a passkey in Microsoft Authenticator:",
           "needsProof": "{n} people with a phishing-resistant method not yet proven on every platform they use; ask each to sign in with it from each one:",
           "readinessUnknown": "{n} people whose methods or sign-in records could not be read; scan again before judging them:",
-          "holdouts": "{n} people past the enroll-by date with nothing done; review each; they are locked out when the policy enforces:"
+          "holdouts": "{n} people past the enroll-by date with nothing done; review each before the policy is enforced:"
         },
         "overlap": "Each person appears once, in one group; an admin with no sign-in method is in that list with the admin instructions.",
         "adminsNote": "Admins: {list:adminNames}: Require Phishing-Resistant MFA for Admins waits on each registering a passkey or security key.",
@@ -3076,34 +3221,35 @@
           "Book ten minutes with each. Open https://aka.ms/mfasetup with them signed in.",
           "{methodGuidePointer}",
           "No method: issue a Temporary Access Pass first, so they have a way in to register with.",
-          "Text or call only: register the passkey, then remove the phone number as a sign-in method.",
+          "Text or call only: register the new method and test it first. Retire an older method only through the approved method-policy change, after checking recovery needs.",
           "Admins: a passkey or a hardware security key; either is phishing-resistant.",
           "Have each sign in once more; the record shows it on the next scan."
         ],
         "generic": [
           "Send the email below to everyone else; send the admin note to the admins.",
-          "Turn on Entra's own nudge: Authentication methods → Registration campaign → Enabled, Target: All users, snooze limit 3; it asks people to set up Authenticator at sign-in.",
+          "Registration campaign: set the method and snooze settings to the values your organization approved for this tenant, save, reopen the settings and rescan. It can prompt eligible people at sign-in; it does not prompt everyone every time.",
           "Scan to update the plan after each batch; the lists above shrink as people are seen."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "Readiness reaches 90% of active people Ready for phishing-resistant MFA, or {enrollBy} has passed and every holdout is reviewed.",
-        "Every admin is Ready for phishing-resistant MFA, and the registration campaign has been reviewed for all other users."
+        "Readiness reaches 90% of active people Ready for phishing-resistant MFA, or {enrollBy} has passed and every holdout has a review outcome; the date alone is not proof of readiness.",
+        "Every admin is Ready for phishing-resistant MFA.",
+        "Verify after the change: the registration campaign's settings match what your organization approved."
       ],
       "ifWrong": null,
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {mfaEnforceLong}, signing in to {tenant} will ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up over the next {enrolWindowDays} days. It takes a few minutes. {registerPasskeyLine} If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "body": "Signing in to {tenant} is planned to ask for an approved sign-in method from {mfaEnforceLong}. Over the next {enrolWindowDays} days, please complete the sign-in method setup requested by IT. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
         "signature": "{signature}",
         "extra": "{deviceSentence}",
-        "adminBody": "Admins: from {adminEnforce} your admin sign-ins need a passkey or a hardware security key. Register the passkey in Authenticator now, and bring your security key so we can register it together.",
-        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app so admin work and risky sign-ins keep working. It takes a few minutes. {registerPasskeyLine} Then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
-        "bodyUndated": "Signing in to {tenant} is going to ask you to confirm with the Microsoft Authenticator app. The best way to do that is a passkey in the app, and that is what we are asking everyone to set up now. It takes a few minutes. {registerPasskeyLine} If you already use Authenticator, add the passkey the same way and sign in once so we can see it working. We will tell you the date before anything changes. If you get stuck, reply here and we will do it with you.",
-        "bodyMfaInPlaceUndated": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Add a passkey in the app now so admin work and risky sign-ins keep working. It takes a few minutes. {registerPasskeyLine} Then sign in once so we can see it working. If you get stuck, reply here and we will do it with you.",
+        "adminBody": "Admins: admin sign-ins are planned to need a passkey or a hardware security key from {adminEnforce}. Register one now and test it; bring your security key if you want help registering it.",
+        "bodyMfaInPlace": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Over the next {enrolWindowDays} days, add a passkey in the app as IT requested. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
+        "bodyUndated": "Please complete the sign-in method setup requested by IT. {registerPasskeyLine} Then sign in once using that method. We will tell you the date before anything changes. Contact IT if you cannot register or no longer have access to your existing method.",
+        "bodyMfaInPlaceUndated": "You already confirm sign-ins to {tenant} with the Microsoft Authenticator app. Add a passkey in the app as IT requested. {registerPasskeyLine} Then sign in once using that method. Contact IT if you cannot register or no longer have access to your existing method.",
         "extraMfaInPlace": [
-          "From {passkeyEnforceLong}, {passkeyPolicy} requires a passkey.",
+          "{passkeyPolicy} is planned to require a passkey from {passkeyEnforceLong}.",
           "{deviceSentence}"
         ]
       },
@@ -3121,7 +3267,7 @@
             "applies": "guestsInScope"
           },
           {
-            "text": "A person who refuses to enroll is locked out on the enforcement day; that is the intended outcome, and they need a manager, not an exclusion.",
+            "text": "A person who has not enrolled cannot complete sign-in once the policy is enforced; resolve it with them and their manager rather than with an exclusion.",
             "applies": "always"
           }
         ],
@@ -3176,21 +3322,22 @@
         "enrolWindowDays": 14,
         "passkeyEnforceLong": "Tuesday, September 15",
         "passkeyPolicy": "Require Phishing-Resistant MFA for Admins"
-      }
+      },
+      "aiFocus": "Separate campaign configuration, method registration, observed use and holdout decisions. Do not promise every tenant receives the same campaign prompt or call Authenticator push a passkey."
     },
     {
       "id": "mfa-all-users",
       "kind": "policy",
       "title": "Require MFA for Everyone",
       "changeLine": null,
-      "why": "A stolen or guessed password on its own is how most accounts are taken over.",
+      "why": "MFA makes a stolen password less useful. Reviewing who has a usable method—and who has actually used one—helps catch access problems before enforcement.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-mfa-strength"
       },
       "who": {
         "lead": "{active} active people · {admins} admins · {guests} guests",
         "evidence": [
-          "The baseline's floor for everyone is the Multifactor authentication strength: a passkey, Authenticator approval, a security key, and a text message or call, which is why the campaign removes phone numbers. The campaign registers passkeys because the admin and risk policies require one, and a passkey cannot be phished.",
+          "This policy uses Require multifactor authentication. Stronger method requirements belong to the separate policies that select an authentication strength.",
           "{n} people have no method and will be stopped; register before {enforce}: {list:noMethod}",
           "{n} people have a registered method and no MFA sign-in in the records: enforcement is its first test: {list:unproven}",
           "Your account is in scope: {operatorSignIns} sign-ins since {from}.",
@@ -3202,13 +3349,14 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: representative users can satisfy MFA, including people who needed setup help."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, signing in to {tenant} will ask you to confirm with Microsoft Authenticator. If you set it up during the last two weeks, nothing else changes. If not, go to https://aka.ms/mfasetup today; it takes two minutes. Trouble? Reply here before {enforceLong} and we will help.",
+        "body": "We are preparing an MFA requirement for work sign-ins at {tenant}, planned for {enforceLong}. Please check that you can use your approved sign-in method and contact IT if you need help before the change.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3237,7 +3385,7 @@
           "Cannot answer the prompt: issue a Temporary Access Pass and register together at https://aka.ms/mfasetup.",
           "Check the account is not in the exclusions group; it should not be."
         ],
-        "manager": "Every sign-in needs a second factor, so a leaked password alone opens nothing. People confirm with the app they set up during the campaign; without this, one leaked password reads mail, files and chats as that person.",
+        "manager": "Work sign-ins need a second factor, which makes a stolen password much less useful on its own. People confirm with a method they set up during the campaign.",
         "waits": null
       },
       "example": {
@@ -3267,14 +3415,15 @@
           "Grant → Require authentication strength: Multifactor authentication",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "State the built-in MFA grant and Intune Enrollment exception. Existing MFA claims may satisfy the policy without a new prompt on every sign-in."
     },
     {
       "id": "admins-phishing-resistant",
       "kind": "policy",
       "title": "Require Phishing-Resistant MFA for Admins",
       "changeLine": null,
-      "why": "Phone codes and push approvals can be phished — an attacker builds a convincing sign-in page and the admin hands over the code. A passkey can't be used on the wrong site, so phishing doesn't work.",
+      "why": "Administrator access deserves stronger sign-in protection. Checking accepted methods and recent use helps identify admins who would struggle to meet the policy when it is enabled.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/how-to-policy-phish-resistant-admin-mfa"
       },
@@ -3296,13 +3445,13 @@
       "doneEnd": "The policy is enforced in {tenant} with the baseline's authentication strength and the exclusions group, and every admin holds a qualifying phishing-resistant method.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Every admin completed a phishing-resistant sign-in during the report-only days."
+        "Verify after the change: each affected admin has signed in with an accepted method, and the role scope and authentication strength match the plan."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, sign-ins by your admin account at {tenant} need a passkey or a security key; app approvals and codes will not be accepted for admin work. Register one now: https://aka.ms/mfasetup → Add sign-in method → Passkey, or bring your key and we will register it together. Everyday work on a separate account is unaffected.",
+        "body": "We are preparing stronger authentication for admin access, planned for {enforceLong}: sign-ins by your admin account at {tenant} will need a passkey or a security key. Please test the approved method for your admin account and tell IT about any device or recovery issue before the change.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3328,7 +3477,7 @@
           "Only a registered passkey, security key or Windows Hello gets through; do not add exclusions.",
           "Windows Hello for Business needs the device joined and the PIN set up first."
         ],
-        "manager": "Admins sign in with a key or a passkey instead of a code that can be tricked out of them. Without this, one convincing email to one admin exposes every account and every setting.",
+        "manager": "Admin sign-ins use methods that are much harder to phish than codes or approvals. The accepted set also includes a Temporary Access Pass for first sign-ins.",
         "waits": null
       },
       "example": {
@@ -3376,14 +3525,15 @@
           "Grant → Require authentication strength: {strengthName}",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain exact role coverage, accepted method combinations and the TAP exception. Do not label the entire allowed set exclusively phishing-resistant or guarantee a new prompt each time."
     },
     {
       "id": "admin-portals-protected",
       "kind": "policy",
       "title": "Block the Admin Portals for Non-Admins",
       "changeLine": null,
-      "why": "A standard account has no business in an admin portal; blocking it there removes a whole class of accidental and stolen-password changes.",
+      "why": "Restricting administrative portals can reduce unnecessary access. The rule must still allow the administrators and approved workflows that need those portals.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-cloud-apps#microsoft-admin-portals"
       },
@@ -3416,7 +3566,7 @@
             "applies": "always"
           },
           {
-            "text": "Anyone with an Azure RBAC role but no directory role, most developers, is blocked from the Azure portal and CLI.",
+            "text": "Anyone with an Azure RBAC role but no directory role is blocked from the Azure portal and CLI.",
             "applies": "always"
           }
         ],
@@ -3457,14 +3607,15 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain the precise source conflict and its impact. Do not invent a safe role list or claim that portal access alone grants administrator rights."
     },
     {
       "id": "guests-mfa",
       "kind": "policy",
       "title": "Require MFA for Guests",
       "changeLine": null,
-      "why": "A partner's password hygiene is not yours to control; the prompt at your door is.",
+      "why": "External accounts can authenticate differently depending on their home organization and account type. Reviewing those differences helps require MFA without cutting off legitimate collaboration.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa"
       },
@@ -3499,13 +3650,13 @@
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and partner accounts addressed.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Every guest who signed in during the report-only days completed MFA at least once."
+        "Verify after the change: representative guests on each external-user path can complete MFA, and approved partner trust behaves as expected."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "guests",
         "salutation": "Hello,",
-        "body": "From {enforceLong}, signing in to {tenant}'s shared files and Teams will ask you to confirm with a code or the Microsoft Authenticator app. The first time, Microsoft walks you through setting it up; it takes about two minutes. If it does not work for you, reply here.",
+        "body": "We are adding an extra verification step when you sign in to {tenant}'s shared files and Teams, planned for {enforceLong}. The first time, you may be asked to set up or use a verification method. If it does not work for you, contact the person who invited you or {tenant}'s IT support.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -3579,36 +3730,38 @@
           "Grant → Require authentication strength: {strengthName}",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Include both current IDs, states, targets and guest-type sets. Distinguish B2B trust from service-provider handling. Explain that a Graph batch can partly succeed."
     },
     {
       "id": "register-info-protected",
       "kind": "policy",
       "title": "Protect Sign-in Method Registration",
       "changeLine": null,
-      "why": "An attacker with a password adds their own method and keeps the account; the baseline allows registration only from the trusted network.",
+      "why": "Protecting sign-in method registration helps prevent someone with a stolen password from adding a method they control. The approved registration route also needs to work for remote users and account recovery.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-security-info-registration"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people registered a method from outside the trusted network since {from}: after enforcement they register in the office or with you: {list:remoteRegistrants}",
+          "{n} people registered a method from outside the trusted network since {from}; check how the resolved registration rule treats them: {list:remoteRegistrants}",
           "Trusted network: {trustedLocation}, {matches} sign-ins matched in 30 days.",
-          "Guests can only register here from the trusted network; if guests must pass MFA here, trust their home tenant's MFA instead (Require MFA for Guests).",
+          "Guests are covered by the resolved registration rule; trusting a partner tenant's MFA is set in Require MFA for Guests.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: the intended registration and recovery paths work for remote users and new starters."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, setting up or changing your sign-in methods at {tenant} works only from the office network. New phone? Set it up in the office, or reply here and we will do it with you.",
+        "body": "We are preparing a change to how sign-in methods are registered at {tenant}, planned for {enforceLong}. Contact IT before registering from an unfamiliar location or if you no longer have a working sign-in method.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3617,7 +3770,7 @@
       "more": {
         "risks": [
           {
-            "text": "Someone away from the office cannot register a new phone until they are back, or an admin registers with them.",
+            "text": "With the trusted-network rule, someone away from the office registers a new phone through the approved recovery route.",
             "applies": "always"
           },
           {
@@ -3637,7 +3790,7 @@
           "New phone away from the office: register it with them over a screen-share, if your VPN exit is in the trusted network, or when they are next in.",
           "Do not add a user exclusion; add the office's new address to the trusted location if that is what changed."
         ],
-        "manager": "An attacker with a stolen password can no longer add their own sign-in method and lock the real person out. Anyone already set up sees no change.",
+        "manager": "Adding a sign-in method needs the resolved extra check, so a stolen password alone is less useful for adding a method. People already set up see no change until they register a new one.",
         "waits": null
       },
       "example": {
@@ -3672,14 +3825,15 @@
             "Grant → Require multifactor authentication, instead of Block access; everything else as above. A person with no method registers with a Temporary Access Pass."
           ]
         }
-      }
+      },
+      "aiFocus": "Explain the actual resolved location and grant, including the no-trusted-network fallback. Report-only evidence alone may not establish registration behavior."
     },
     {
       "id": "block-legacy-auth",
       "kind": "policy",
       "title": "Block Legacy Authentication",
       "changeLine": null,
-      "why": "Legacy protocols skip MFA; this also moves everyone off the built-in phone mail apps (ActiveSync), even with modern sign-in.",
+      "why": "Older authentication paths can prevent MFA from protecting a sign-in. Reviewing the clients and jobs still using them helps avoid breaking useful services when those paths are blocked.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy"
       },
@@ -3693,7 +3847,7 @@
       },
       "decision": {
         "label": "Mail-sending devices",
-        "help": "No printer, scanner or application sent mail by SMTP since {from}. Is there one? A device that sends by SMTP AUTH stops when this is enforced.",
+        "help": "The records show no printer, scanner or application sending mail by SMTP since {from}; that does not prove there is none. Is there one? A device that sends by SMTP AUTH stops when this is enforced.",
         "options": [
           "None",
           "Yes: add: {devices}; the service-accounts group carries them"
@@ -3705,13 +3859,13 @@
       "doneEnd": "The policy is enforced and matches the baseline: it blocks legacy authentication for all users, excludes the exclusions group, and every mail-sending device is accounted for.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "No successful legacy sign-in in the records during the report-only days."
+        "Verify after the change: required applications and devices use a supported sign-in path; no events in the records does not prove there are none."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "affected",
         "salutation": "Hi {firstName},",
-        "body": "Your mail app is using an older sign-in method that stops working on {enforceLong}. On your phone, remove the account and add it again using the Outlook app; on a computer, use Outlook or the web. Reply here and we will do it with you.",
+        "body": "Your mail app or device may be using an older sign-in method that is planned to stop working on {enforceLong}. Please tell IT about older mail clients, printers or applications that still use an account password to connect. We will check a supported replacement before blocking the old sign-in path.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3724,7 +3878,7 @@
             "applies": "always"
           },
           {
-            "text": "The built-in Mail app on iPhone or Android stops syncing until Outlook is installed.",
+            "text": "A mail app that still uses Exchange ActiveSync or basic authentication stops syncing until it moves to a supported client.",
             "applies": "legacyUsersInScope"
           }
         ],
@@ -3732,7 +3886,7 @@
           "Ask which app and which account; most need the Outlook app or a re-added account.",
           "A device that must send mail: SMTP AUTH with OAuth, or the service-accounts group, with a ticket."
         ],
-        "manager": "A sign-in path that bypasses every protection is turned off; attackers scan for it daily. Without this, MFA can be sidestepped entirely.",
+        "manager": "Older sign-in paths that cannot complete MFA are turned off. Without this, a password alone can still work through them.",
         "waits": null
       },
       "example": {
@@ -3760,14 +3914,15 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain the actual client-app target and observed authentication flow. Do not infer that every native mail app or OAuth SMTP connection is blocked solely from its name."
     },
     {
       "id": "block-device-code",
       "kind": "policy",
       "title": "Block Device Code Sign-in",
       "changeLine": null,
-      "why": "Device code sign-in is how a phishing message gets a person to sign the attacker in; almost nothing legitimate needs it.",
+      "why": "Device-code phishing can persuade a person to approve a sign-in for someone else. Blocking this flow reduces that route of attack, but legitimate devices and tools need a checked alternative.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
@@ -3777,7 +3932,7 @@
           "{deviceCodeCount} device-code sign-ins since {from} by {list:deviceCodeUsers}; usually a script or a TV app; move each before {enforce}.",
           "{existingCoverage}"
         ],
-        "none": "No device-code sign-ins since {from}."
+        "none": "No device-code sign-ins in the records since {from}; that does not prove nothing uses it."
       },
       "decision": {
         "label": "Device code sign-in",
@@ -3793,7 +3948,8 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied and any device code sign-in workflows accounted for.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: tools, shared devices and enrollment workflows that used device code have a tested alternative."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -3811,10 +3967,10 @@
           "Scripts on device code sign-in need a workload identity or a managed identity.",
           "An admin using az login on a box with no browser: sign in from a browser on your own device; device code is off."
         ],
-        "manager": "A sign-in flow used almost only by phishing kits is turned off. Without this, one pasted code signs an attacker in.",
+        "manager": "A sign-in flow often abused in phishing is turned off. Tools that legitimately use it need a tested alternative first.",
         "waits": null,
         "managerNone": {
-          "text": "Nobody here used it since {from}.",
+          "text": "No use appears in the records since {from}.",
           "applies": "nobodyAffected"
         }
       },
@@ -3841,14 +3997,15 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain both malicious and legitimate uses. Include actual observed workflows and do not treat missing events as proof that device code is unused."
     },
     {
       "id": "block-auth-transfer",
       "kind": "policy",
       "title": "Block Authentication Transfer",
       "changeLine": null,
-      "why": "Authentication transfer moves a session to a second device without a new sign-in, which is exactly what an attacker who gets someone to scan a code wants.",
+      "why": "Authentication transfer carries sign-in between devices. Blocking it removes a transfer path the business may not need while keeping direct sign-in available where supported.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-authentication-flows"
       },
@@ -3858,13 +4015,14 @@
           "{transferCount} authentication transfers since {from} by {list:transferUsers}.",
           "{existingCoverage}"
         ],
-        "none": "No authentication transfers since {from}."
+        "none": "No authentication transfers in the records since {from}."
       },
       "decision": null,
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: affected apps and devices can sign in directly where supported."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -3881,10 +4039,10 @@
         "helpDesk": [
           "Sign in on the phone directly; the QR shortcut is off on purpose."
         ],
-        "manager": "A session can no longer be copied to another device without a sign-in. Without this, a captured QR code is a captured account.",
+        "manager": "Signing in by transferring a session from another device is turned off; people sign in directly on the destination device where supported.",
         "waits": null,
         "managerNone": {
-          "text": "Nobody here used it since {from}.",
+          "text": "No use appears in the records since {from}.",
           "applies": "nobodyAffected"
         }
       },
@@ -3910,14 +4068,15 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Describe this specific flow rather than all QR-code sign-in or all token theft. Exclusion from this policy does not guarantee access through other policies."
     },
     {
       "id": "geo-restriction",
       "kind": "policy",
       "title": "Block Sign-ins From Countries Not Allowed",
       "changeLine": null,
-      "why": "Most automated attacks come from places the business never operates in, and a password that only works from {countries} is worth much less.",
+      "why": "Country restrictions can reduce unwanted access from places the business does not use. Review legitimate travel and network routes so a location rule does not interrupt expected work.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
@@ -3925,7 +4084,7 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} people signed in from outside {countries} since {from}; a travel exception or a country to add before {enforce}: {list:outsideUsers}",
-          "{n} service-provider sign-ins from {partners} partner tenants outside {countries}: the service-accounts group or the Service provider exclusion carries them.",
+          "{n} service-provider sign-ins from {partners} partner tenants outside {countries}: decide how the partner decision and exclusions should treat them.",
           "{existingCoverage}"
         ],
         "none": "Nobody signed in from outside {countries} since {from}."
@@ -3935,13 +4094,13 @@
       "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from countries not in the allowed list, with the exclusions group applied and partner and travel exceptions addressed.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Every blocked sign-in in the report-only days was reviewed and none was legitimate work."
+        "Verify after the change: blocked sign-ins in the records were reviewed, and legitimate travel and network routes are addressed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, sign-ins to {tenant} from outside {countries} will be blocked. Travelling for work? Tell us before you go and we will cover the trip; nothing changes if you are at home or in the office.",
+        "body": "Sign-ins to {tenant} from outside {countries} are planned to be blocked from {enforceLong}. Please notify IT before working from a country not already approved. Include your dates and any VPN you expect to use so we can check access before departure.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -3966,10 +4125,10 @@
           "Travel: log the trip in the plan file's notes, or your ticket system, and add the country to the allowed location for the trip's dates; never a user exclusion.",
           "VPN exit abroad: add the exit's country to the allowed list for the people who use it, or move the exit."
         ],
-        "manager": "Sign-ins from places the business does not operate in are blocked. Without this, a stolen password works from anywhere in the world.",
+        "manager": "Sign-ins from countries outside the approved list are blocked, based on the network address the sign-in comes from.",
         "waits": null,
         "managerNone": {
-          "text": "Nobody here signed in from outside {countries} since {from}.",
+          "text": "No sign-ins from outside {countries} appear in the records since {from}.",
           "applies": "nobodyAffected"
         }
       },
@@ -4004,14 +4163,15 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Show approved countries, observed exceptions, partner decisions and active trips separately. Country-by-IP is not a guarantee of where the person is physically located."
     },
     {
       "id": "admin-session",
       "kind": "policy",
       "title": "Shorten Admin Sessions",
       "changeLine": null,
-      "why": "A stolen admin session stays useful as long as it lasts. A short session limits the damage: an attacker who steals the token has minutes, not hours.",
+      "why": "Shorter admin browser sessions reduce how long a signed-in browser can remain useful without another authentication check. Test the experience so normal admin work remains practical.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
@@ -4031,13 +4191,13 @@
       "doneEnd": "The policy is enforced in {tenant} with the baseline's session controls (sign-in frequency and persistent browser session), and the exclusions group is applied.",
       "doneWhen": [
         "{changeDoneWhen}",
-        "Re-authentication prompts arrived at the set frequency and nobody lost unsaved work to them."
+        "Verify after the change: representative admin browser sessions reauthenticate at the set frequency without losing work."
       ],
       "ifWrong": "{changeIfWrong}",
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, admin sessions at {tenant} expire after {wantedLong} and never persist. If your admin account is also your everyday account, that applies to everything you do with it. Expect to sign in again more often on admin portals.",
+        "body": "We plan to shorten admin browser sessions at {tenant} from {enforceLong}: a sign-in frequency of {wantedLong}, and no persistent browser sign-in. If your admin account is also your everyday account, that applies to everything you do with it. Contact IT if repeated prompts interrupt normal admin work.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -4058,7 +4218,7 @@
           "Prompts every few hours in admin portals are deliberate.",
           "Prompts every few minutes: the browser is not signed in to a registered device; sign in to the device account."
         ],
-        "manager": "Admin sessions expire after {wanted} and never persist, so a stolen admin session cannot be used for long. Without this, one unlocked screen stays usable for a week.",
+        "manager": "Admin browser sessions reauthenticate every {wanted} and do not persist, which limits how long a signed-in browser stays useful. Sign-in frequency is not a hard lifetime for every token.",
         "waits": null
       },
       "example": {
@@ -4110,7 +4270,8 @@
           "Session → Sign-in frequency → Periodic reauthentication → {wantedValue}; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "State four hours and browser-only scope. Explain that application sessions and token behavior do not all end at an exact four-hour boundary."
     },
     {
       "id": "unmanaged-browser",
@@ -4121,7 +4282,7 @@
       ],
       "title": "Limit Unmanaged Devices in the Browser",
       "changeLine": null,
-      "why": "A copy of a file on a personal laptop cannot be protected or wiped; keeping it in the browser keeps it in your hands.",
+      "why": "Limiting browser access on unmanaged devices can reduce downloads and other ways of leaving company files on devices you do not control. The result depends on the service and the policy that applies.",
       "learn": {
         "url": "https://learn.microsoft.com/sharepoint/control-access-from-unmanaged-devices"
       },
@@ -4137,21 +4298,21 @@
       },
       "decision": null,
       "whatToDo": {
-        "lead": "The Conditional Access policies only tell SharePoint and Exchange to apply a restriction; the restriction itself is set once in SharePoint. Do that first.",
+        "lead": "The Conditional Access policies ask SharePoint and Exchange to apply their own restrictions. Set SharePoint's unmanaged-device setting first; Exchange Online's restriction is configured separately.",
         "before": [
-          "SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save. Exchange Online follows this setting for Outlook on the web."
+          "SharePoint admin center → Policies → Access control → Unmanaged devices → Allow limited, web-only access → Save. Saving can create policies of its own: let it propagate and rescan before using policy IDs. It does not configure Exchange Online."
         ]
       },
       "dates": "{datesNew}",
       "doneWhen": [
         "{policyDoneWhen}",
-        "From an unmanaged device, a test sign-in to SharePoint opens in the browser with Download greyed out."
+        "Verify after the change: from an unmanaged device, controlled browser tests show the intended restrictions for each service."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, on a personal or unmanaged computer you can still read and edit {tenant} files in the browser, but not download, print or sync them. On your work device nothing changes. If you need a file offline, use your work device or reply here.",
+        "body": "We are preparing limited browser access on unmanaged devices, planned for {enforceLong}. Some download, print or sync actions may be unavailable. Use an approved managed device when you need the full work experience.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -4176,7 +4337,7 @@
           "Download greyed out on a personal device is deliberate; use a managed device or enroll the device in Intune.",
           "Download greyed out on a work device: check the device shows as compliant in Intune; a stale check-in is the usual cause."
         ],
-        "manager": "Company files opened from a personal device stay in the browser and cannot be downloaded or printed; work devices are unaffected. Without this, a copy can sit on any laptop with no way to remove it.",
+        "manager": "Opening company files on a personal device limits downloading, printing and syncing where the service supports it; managed devices are unaffected.",
         "waits": null
       },
       "example": {
@@ -4210,23 +4371,24 @@
           "Session → Use Conditional Access App Control → Block downloads. This control needs Microsoft Defender for Cloud Apps; if {tenant} does not hold it, create Policy A only and note Policy B under Not licensed.",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Keep the two member targets, SharePoint settings and Defender dependency separate. Do not imply the browser prevents every way of copying data or that SharePoint configures Exchange."
     },
     {
       "id": "require-managed-device",
       "kind": "policy",
       "title": "Require a Managed Device Outside the Office",
       "changeLine": null,
-      "why": "Company data on a device you manage can be protected, updated and wiped; on any other device, outside the office, it cannot.",
+      "why": "Device checks help limit access from computers and phones that do not meet the business's chosen requirements. Reviewing real sign-ins can reveal managed devices whose apps are not sending the expected device information.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-compliance"
       },
       "who": {
         "lead": "{active} active people · device readiness {readiness}, the plan waits for 80%",
         "evidence": [
-          "{n} people signed in from devices that are neither compliant nor joined; enroll or exclude before {enforce}: {list:unmanagedUsers}",
+          "{n} people signed in from devices that are neither compliant nor joined; enroll the device or review its access before {enforce}: {list:unmanagedUsers}",
           "{name} signed in from a browser without device claims on a compliant device, so those sign-ins are blocked until the browser is signed in to the device account.",
-          "{n} sign-ins to servers or Azure VMs by {list:serverUsers}: servers cannot be compliant; scope them out or they lose RDP.",
+          "{n} sign-ins to servers or Azure VMs by {list:serverUsers}: check how each server meets the device requirement before enforcement, or plan a reviewed scope change.",
           "{n} sign-ins to Microsoft Graph Command Line Tools from non-compliant devices: Autopilot registration from those machines stops.",
           "The baseline has no platform condition: phones are in scope until the device decision says otherwise.",
           "{existingCoverage}"
@@ -4243,13 +4405,13 @@
       "doneEnd": "The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "At least 95% of sign-ins in the report-only days came from a compliant or hybrid-joined device."
+        "Verify after the change: required compliant or hybrid-joined device paths work outside trusted locations, including browser, server and enrollment workflows."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, {tenant} mail, files and Teams open only on a company-managed device. Sign in to your work computer with your work account this week so we can confirm it is set up. Personal devices {personalDevicesClause}.",
+        "body": "Planned for {enforceLong}: outside the approved trusted network, work access will need a device that meets the selected device requirements. Personal devices {personalDevicesClause}. Contact IT if your work device is blocked so we can check its status and sign-in details.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -4279,7 +4441,7 @@
           "Personal device: the browser with limits, or enroll the device.",
           "Contractors: a managed device or an approved app is required; confirm they sit in the intended scope."
         ],
-        "manager": "Company data opens only on company-managed devices, where it can be protected and wiped. {n} people on unmanaged devices enroll or use the browser; without this, a copy can sit on any laptop or phone.",
+        "manager": "Outside the trusted network, work access needs a device that meets the selected requirements. {n} people on devices that do not yet meet them need to enroll or use another approved path.",
         "waits": null
       },
       "example": {
@@ -4315,14 +4477,15 @@
           "Grant → Require device to be marked as compliant, Require Microsoft Entra hybrid joined device; Require one of the selected controls",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Distinguish compliance, hybrid join and absent claims. Preserve OR semantics and exact platform decisions. Do not recommend broad exclusions to make a device percentage pass."
     },
     {
       "id": "block-unsupported-platforms",
       "kind": "policy",
       "title": "Block Unsupported Device Platforms",
       "changeLine": null,
-      "why": "Linux, and any platform Entra cannot identify, is blocked; that is where the device rules leak.",
+      "why": "Limiting access to the selected platforms reduces the device types the business needs to support. Review unidentified and excluded platforms first so required workflows are not missed.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-conditional-access-conditions"
       },
@@ -4332,13 +4495,14 @@
           "{noPlatformCount} sign-ins since {from} carried no platform ({apps}) by {list:noPlatformUsers}; they would be stopped.",
           "{existingCoverage}"
         ],
-        "none": "Every sign-in since {from} came from a supported platform."
+        "none": "Every sign-in in the records since {from} came from a supported platform."
       },
       "decision": null,
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}, blocking sign-ins from unsupported device platforms, with the exclusions group applied and the baseline mapping resolved.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: required workflows on excluded or unidentified platforms have an approved, tested access path."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4359,10 +4523,10 @@
         "helpDesk": [
           "A Linux user: add Linux to the excluded platforms deliberately, with a ticket, or provide a managed device."
         ],
-        "manager": "Devices Entra cannot identify are blocked; everyone on Windows, Mac, iPhone or Android notices nothing. Without this, an unidentified device slips past every device rule.",
+        "manager": "Sign-ins from platforms outside the approved set, including unidentified ones, are blocked. A platform label is not device compliance.",
         "waits": null,
         "managerNone": {
-          "text": "Nobody here signed in from an unidentified device since {from}.",
+          "text": "No sign-ins from unidentified platforms appear in the records since {from}.",
           "applies": "nobodyAffected"
         }
       },
@@ -4389,7 +4553,8 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain the target platform set as an organizational baseline choice. Include unidentified events and the limits of platform detection."
     },
     {
       "id": "mobile-app-protection",
@@ -4397,7 +4562,7 @@
       "licence": "Intune Plan 1",
       "title": "Require App Protection on Phones",
       "changeLine": null,
-      "why": "A protected app keeps company data inside the app and can wipe it without touching the phone; any other app can copy it anywhere. App protection needs Intune Plan 1 (in Business Premium, E3, E5).",
+      "why": "App protection can keep work data under company controls inside supported apps, including on personal phones. Verify the app policy and the access rule together so users can open the apps they need.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-approved-app-or-app-protection"
       },
@@ -4405,20 +4570,21 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} people signed in from a phone since {from}: {list:phoneUsers}",
-          "{n} of those used an app without protection ({apps}) and will be redirected to Outlook or Edge.",
+          "{n} of those used an app without protection ({apps}); they need a supported protected app.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: the Intune app protection policies apply to the intended users, and supported apps pass controlled tests."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, {tenant} mail, files, Teams and any other app that uses your work account on your phone open in the Microsoft apps (Outlook, Teams, OneDrive, Edge). If you use the built-in mail app, switch to Outlook this week; your personal mail can stay where it is. Reply here if you need a hand.",
+        "body": "We are preparing to require approved protected apps for work data on phones and tablets, planned for {enforceLong}. This covers mail, files, Teams and any other app that uses your work account. IT will confirm which apps to use and help if a supported app is blocked.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -4439,7 +4605,7 @@
           "Install Outlook or Edge and sign in; the built-in mail app is off on purpose.",
           "The app asks for a PIN: that is the protection policy; set it once."
         ],
-        "manager": "Company data on phones stays inside protected Microsoft apps and can be wiped without touching the phone. Without this, mail and files can be copied into any app.",
+        "manager": "Work data on phones opens in apps covered by Intune app protection, which can restrict copying and remove work data without wiping the phone.",
         "waits": null
       },
       "example": {
@@ -4468,14 +4634,15 @@
           "Grant → Require app protection policy. Do not use Require approved client app: Microsoft has retired it.",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain that CA requires protection but does not create the Intune app policy. Do not promise automatic redirection or infer licensing from an E3/E5 label alone."
     },
     {
       "id": "azure-management-mfa",
       "kind": "policy",
       "title": "Require MFA for Azure Management",
       "changeLine": null,
-      "why": "Azure management is where a leaked password becomes a deleted resource group or a new admin.",
+      "why": "Azure management access can change resources and permissions. Reviewing human and automated access helps apply MFA without overlooking scripts that still sign in as a person.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-old-require-mfa-azure-mgmt"
       },
@@ -4483,8 +4650,8 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} people used Azure management since {from}: {list:azureUsers}",
-          "{n} sign-ins by scripts or service accounts: the service-accounts group carries them, or move them to a managed identity.",
-          "Microsoft enforces MFA for Azure sign-ins itself; this policy adds the exclusions-group discipline and covers the tools that rollout has not reached.",
+          "{n} sign-ins by scripts or service accounts: review each; move user-based automation to a workload identity where possible.",
+          "Microsoft runs its own MFA requirement for Azure management sign-ins; this custom policy does not change or exempt anyone from that requirement.",
           "Require MFA for Everyone already prompts here; this policy keeps Azure covered if that one is ever scoped down.",
           "{existingCoverage}"
         ]
@@ -4492,13 +4659,14 @@
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: people can satisfy MFA for Azure management, and automation that signs in as a user has a verified supported path."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "affected",
         "salutation": "Hello,",
-        "body": "From {enforceLong}, anything that manages Azure at {tenant} (the portal, the CLI, PowerShell) asks for MFA. If you already confirm with Authenticator or a passkey, nothing changes; a script that signs in as you needs a service principal or a managed identity before then.",
+        "body": "We are preparing MFA controls for anything that manages Azure at {tenant} (the portal, the CLI, PowerShell), planned for {enforceLong}. Please tell IT about scripts or tools that sign in using a person's account so we can review them before the change.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -4514,7 +4682,7 @@
         "helpDesk": [
           "A script that stops: it needs a service principal or managed identity, not a user account."
         ],
-        "manager": "Anything that manages Azure asks for MFA. Without this, one leaked password reaches every subscription.",
+        "manager": "Azure management sign-ins need MFA through this policy as well as Microsoft's own requirement.",
         "waits": null
       },
       "example": {
@@ -4541,14 +4709,15 @@
           "Grant → Require multifactor authentication",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Separate human management, user-based automation and workload identities. Do not claim this custom policy controls Microsoft's independent MFA enforcement."
     },
     {
       "id": "device-registration-mfa",
       "kind": "policy",
       "title": "Require MFA to Register a Device",
       "changeLine": null,
-      "why": "A device an attacker registers with a stolen password becomes a trusted device; MFA at registration stops that.",
+      "why": "Requiring MFA when a device is registered or joined helps protect that setup step from password-only misuse. Check enrollment workflows so the requirement does not prevent legitimate setup.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-all-users-device-registration"
       },
@@ -4563,13 +4732,14 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No (this policy replaces it)."
+          "When you enable this policy, set Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No in the same change; this policy replaces it."
         ]
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant}, requiring MFA to register a device, with the exclusions group applied and pilot validation complete.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: the legacy device-registration MFA setting is No, and the registration or join workflows you rely on succeed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4586,7 +4756,7 @@
         "helpDesk": [
           "Setting up a new computer asks for MFA once at the join step; that is expected."
         ],
-        "manager": "Adding a device to the company asks for MFA once, so a stolen password cannot enroll a device the attacker controls. People adding a real device confirm once.",
+        "manager": "Registering or joining a device asks for MFA, which makes a stolen password alone less useful for adding a device. Registration alone does not make a device compliant.",
         "waits": null
       },
       "example": {
@@ -4611,21 +4781,22 @@
           "Do not add device-state conditions to this policy; a first join has no device to check.",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Separate registration, join, compliance and authorization. Explain the legacy toggle transition and why report-only configuration does not prove the actual registration experience."
     },
     {
       "id": "token-protection",
       "kind": "policy",
       "title": "Require Token Protection on Windows",
       "changeLine": null,
-      "why": "Token protection binds a session token to the device it was issued on. If someone steals the token and tries to use it on a different machine, it's rejected.",
+      "why": "Token protection makes supported sign-in tokens harder to reuse on another device. Compatibility checks help identify apps or device setups that need attention before the requirement is enabled.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-token-protection"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they are signed out from {enforce} until the device is registered: {list:unboundUsers}",
+          "{n} people use Outlook, Teams or OneDrive on Windows devices that are neither joined nor registered; they may be blocked from {enforce} until the device is registered: {list:unboundUsers}",
           "Everyone on Windows signs in from a joined or registered device.",
           "{existingCoverage}"
         ]
@@ -4634,13 +4805,14 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced and matches the baseline's target: token protection required for all users on Windows, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: the required supported Windows clients work, and unresolved compatibility issues are recorded."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "affected",
         "salutation": "Hi {firstName},",
-        "body": "From {enforceLong}, Outlook, Teams and OneDrive on your Windows computer need the computer to be registered with {tenant}. Settings → Accounts → Access work or school → Connect, sign in with your work account, and you are done. Reply here if it asks anything you are not sure about. If Outlook keeps asking you to sign in, this is why.",
+        "body": "We are preparing extra sign-in protection for supported apps on Windows, planned for {enforceLong}. If Outlook keeps asking you to sign in after the change, or an app is blocked, contact IT with the app, device and time of the attempt.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -4661,7 +4833,7 @@
           "Outlook keeps asking to sign in: register the device (Access work or school → Connect).",
           "A script against SharePoint stops: run it from a registered device or exclude the account through the service-accounts group."
         ],
-        "manager": "A copied sign-in token cannot be replayed from another machine. {n} people register their Windows PC once; without this, one intercepted token is a full session with no password and no MFA.",
+        "manager": "Supported Windows apps bind their sign-in tokens to the device, so a copied token is harder to reuse elsewhere. {n} people need to register their Windows PC first.",
         "waits": null
       },
       "example": {
@@ -4691,7 +4863,8 @@
           "Session → Require token protection for sign-in sessions",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Name the exact resources, filter and client boundary. Do not describe this as protecting all browser sessions or all stolen tokens; explain the API exception without changing it."
     },
     {
       "id": "workload-identity-block",
@@ -4699,18 +4872,23 @@
       "licence": "Microsoft Entra Workload ID Premium",
       "title": "Restrict the Entra Connect Sync Account to Its Address",
       "changeLine": null,
-      "why": "The sync service principal's secret works from anywhere unless it is tied to the server that uses it. Classic Entra Connect syncs with a user account; it is covered by the exclusions in the MFA policies, not by this policy.",
+      "why": "Review which identity performs synchronization before relying on a network restriction. A policy aimed at the wrong identity can appear configured without protecting the sync process.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/workload-identity"
       },
       "who": {
         "lead": "Cloud Sync in {tenant}: {syncStatus}. Cloud Sync's provisioning service principal signed in from {list:syncAddresses} since {from}.",
-        "none": "No Cloud Sync in {tenant}; this step does not apply."
+        "none": "A sync account or provisioning configuration does not establish support for workload Conditional Access. Confirm the calling identity, application ownership and supported sign-in flow."
       },
       "decision": null,
+      "whatToDo": {
+        "lead": "Confirm whether this sync identity supports the proposed restriction."
+      },
       "dates": "{datesNew}",
+      "doneEnd": "For a supported identity, a later scan confirms the intended policy and its enabled state. Creating the policy alone does not establish protection.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: the expected sync workflow succeeds and the policy evaluates the intended token requests. Creating the policy alone does not establish protection."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4727,7 +4905,7 @@
         "helpDesk": [
           "Sync stopped: check the server's current public address against the named location."
         ],
-        "manager": "The account that syncs on-premises identities works only from the sync server. Without this, its leaked secret works from anywhere.",
+        "manager": "A network restriction protects synchronization only when it applies to the identity that requests the tokens. IAMAI has not confirmed that identity, so the proposed policy is not counted as protection yet.",
         "waits": null
       },
       "example": {
@@ -4755,38 +4933,39 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain the distinction between the provisioning configuration, the agent and the token-requesting identity. Identify which facts are known and which support or sign-in evidence is missing. Do not claim the proposed policy protects Cloud Sync until applicability is established."
     },
     {
       "id": "session-lifetime",
       "kind": "policy",
       "title": "Limit How Long Sessions Last",
       "changeLine": null,
-      "why": "A browser left signed in on a shared or personal machine is a signed-in attacker later; on a device you do not manage, every app is.",
+      "why": "Non-persistent browser sign-in reduces the chance of leaving work access open on a shared or unattended computer. A regular authentication check also limits how long the browser can rely on an older sign-in.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-session-lifetime"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "{n} people signed in from browsers on unmanaged devices since {from}; they re-authenticate every 9 hours from {enforce}: {list:browserUsers}",
-          "Shared devices are excluded by Give Shared Devices Their Own Policy.",
+          "{n} people signed in from browsers on unmanaged devices since {from}; from {enforce} their browser sessions stop persisting and re-authenticate every 12 hours: {list:browserUsers}",
+          "Shared-device accounts are excluded only where this policy's resolved target lists them.",
           "When several session policies apply, the shortest wins.",
           "{existingCoverage}"
         ]
       },
       "decision": null,
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} with its pair, both carrying the baseline's session control values (sign-in frequency and persistent browser session), with the exclusions group applied.",
+      "doneEnd": "The policy is enforced in {tenant}: the browser policy, carrying the baseline's session control values (12-hour sign-in frequency and never-persistent browser sessions), with the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Re-authentication prompts arrived at the set frequency and nobody lost unsaved work to them."
+        "Verify after the change: representative browser sessions reauthenticate at the set frequency and stop persisting, without losing work."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "everyone",
         "salutation": "Hi everyone,",
-        "body": "From {enforceLong}, when you close your browser you are signed out of {tenant}, and you will be asked to sign in again about once a working day; on a personal or unmanaged device it is every 9 hours, and it applies to every app, not only the browser. On your work computer the desktop apps stay signed in.",
+        "body": "We plan to change browser sign-in at {tenant} from {enforceLong}: a 12-hour sign-in frequency and no persistent browser sign-in. You may need to sign in again more often. Apps outside the browser are not affected by this change. Contact IT if repeated prompts interrupt work.",
         "signature": "{signature}"
       },
       "doesntApply": false,
@@ -4811,7 +4990,7 @@
           "Signed out when the browser closed: deliberate. Sign in again.",
           "Prompted every few minutes: the browser is not signed in to a registered device; sign in to the device account."
         ],
-        "manager": "Sessions end when the browser closes and re-authenticate daily; on unmanaged devices every app does. People sign in a little more often; without this, one unlocked screen stays usable for days.",
+        "manager": "Browser sign-in stops persisting and reauthenticates about every 12 hours; apps outside the browser are not affected by this policy. People sign in a little more often in the browser.",
         "waits": null
       },
       "example": {
@@ -4839,22 +5018,17 @@
         "byod-persistence"
       ],
       "whatToDoReference": {
-        "lead": "Two policies, as the baseline has them: everyone's browser, and everything on an unmanaged device.",
+        "lead": "One policy, as the pinned baseline has it: everyone's browser sessions.",
         "steps": [
           "Policy A: {policyNameA}: {portalRoot}",
           "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
           "Target resources → Resources → All resources",
           "Conditions → Client apps → Browser",
           "Session → Sign-in frequency → Periodic reauthentication → 12 hours; Persistent browser session → Never persistent",
-          "{reportOnlyLine}",
-          "Policy B: {policyNameB}: {portalRoot}",
-          "Users → Include: All users. {exclusionsLine} Also exclude the shared-device accounts {list:sharedDevices}",
-          "Target resources → Resources → All resources",
-          "Conditions → Filter for devices → Exclude devices matching: device.isCompliant -eq True",
-          "Session → Sign-in frequency → Periodic reauthentication → 9 hours; Persistent browser session → Never persistent",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Describe one browser policy. Include the actual exclusions, even when the account list is empty. Do not promise that closing any browser ends every application session."
     },
     {
       "id": "pim-activation-reauth",
@@ -4862,7 +5036,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Require MFA at Every Role Activation",
       "changeLine": null,
-      "why": "Role activation is the moment an account becomes powerful; a fresh prompt there is cheap and stops a hijacked session activating anything. PIM for Groups and Azure resource roles can use the same authentication context.",
+      "why": "Role activation is a useful point to verify the person requesting privileged access. Checking the context, policy and role settings together helps catch a requirement that was configured but is never invoked.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/id-governance/privileged-identity-management/pim-how-to-change-default-settings"
       },
@@ -4880,13 +5054,13 @@
       "doneEnd": "The policy is enforced in {tenant}, not in report-only, with its authentication context assigned, and the Privileged Identity Management role settings require that context on activation.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "A test activation prompted for MFA."
+        "Verify after the change: a controlled activation of a selected role invokes the authentication context and succeeds with the expected method."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": {
         "audience": "admins",
         "salutation": "Admins,",
-        "body": "From {enforceLong}, activating an admin role at {tenant} asks for your passkey or security key each time, even if you just signed in. It takes a few seconds.",
+        "body": "We plan to require the approved authentication method when you activate an eligible admin role at {tenant}, from {enforceLong}. You may need to authenticate again; a recent successful check may be reused for another activation.",
         "signature": "{signature}"
       },
       "doesntApply": true,
@@ -4902,7 +5076,7 @@
         "helpDesk": [
           "Activation loops on MFA: the person's method is not accepted by the strength; register a stronger one."
         ],
-        "manager": "Every role activation asks for MFA, so a hijacked session cannot quietly become an admin. Without this, a stolen admin session activates any role it is eligible for.",
+        "manager": "Activating a selected role requires the approved authentication method through an authentication context. A recent successful check can be reused within Microsoft's window.",
         "waits": null
       },
       "example": {
@@ -4936,14 +5110,15 @@
           "{reportOnlyLine}",
           "Privileged Identity Management → Entra roles → Settings → each role → On activation, require: Microsoft Entra Conditional Access authentication context → {contextName}."
         ]
-      }
+      },
+      "aiFocus": "Explain the setup order, 10-minute reauthentication window and activation-only boundary. Do not claim that a context controls all use of a role after activation."
     },
     {
       "id": "intune-enrollment-reauth",
       "kind": "policy",
       "title": "Require a Fresh Sign-in for Intune Enrollment",
       "changeLine": null,
-      "why": "Enrollment makes a device trusted; it should never ride on a session someone else could be holding, so it asks for a fresh sign-in every time.",
+      "why": "A fresh authentication check during user-driven enrollment reduces reliance on an older sign-in session. Test the enrollment methods your organization uses so setup can still finish.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-session-lifetime"
       },
@@ -4958,7 +5133,8 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced, requiring a fresh sign-in for every Intune enrollment, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: the enrollment paths you use work, and user-driven enrollment asks for a fresh authentication."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -4975,7 +5151,7 @@
         "helpDesk": [
           "Enrollment asks to sign in again even though the person just did: expected."
         ],
-        "manager": "Enrolling a device asks for a fresh MFA sign-in each time, so a borrowed session cannot enroll a device. People see two prompts when they set up a device: one to join, one to enroll.",
+        "manager": "User-driven enrollment asks for a fresh authentication, so an older session is not reused for it. This session setting does not add MFA or make the device compliant.",
         "waits": null
       },
       "example": {
@@ -4997,7 +5173,8 @@
           "Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain the enrollment-only resource and session-only control. MFA must come from applicable controls; the all-user policy's Intune Enrollment exception must not be overlooked."
     },
     {
       "id": "sign-in-risk",
@@ -5005,14 +5182,14 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge High-Risk Sign-ins",
       "changeLine": null,
-      "why": "Microsoft sees leaked-credential lists and impossible travel before you do; this lets that signal act.",
+      "why": "A risk-based rule can ask for stronger verification when Microsoft flags a sign-in as suspicious. Review the selected requirement so people have a working way to meet it.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "The baseline requires {strengthName} on a high-risk sign-in: a passkey, security key, Windows Hello, certificate, or a one-time pass. Authenticator approval does not pass, which is why the campaign registers passkeys for everyone.",
+          "The baseline requires {strengthName} on a high-risk sign-in; it accepts the methods that strength lists, including a Temporary Access Pass where it allows one. Your saved first-enforcement choice decides the grant used now.",
           "{n} risky sign-ins since {from} by {list:riskyUsers}.",
           "No sign-in was rated risky since {from}.",
           "{n} people with only Authenticator approval would be stopped by a risky sign-in: {list:pushOnlyUsers}",
@@ -5035,10 +5212,10 @@
         "save": "Save"
       },
       "dates": "{datesNew}",
-      "doneEnd": "The policy is enforced in {tenant} at the high-risk threshold, with the baseline's authentication strength as the grant control and the exclusions group applied.",
+      "doneEnd": "The policy is enforced in {tenant} at the high-risk threshold, with the selected grant and the exclusions group applied.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Every risky sign-in in the report-only days was reviewed."
+        "Verify after the change: available risky sign-ins were reviewed, and affected people can satisfy the selected requirement."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5052,14 +5229,14 @@
             "applies": "always"
           },
           {
-            "text": "A person with only Authenticator approval is not prompted but stopped, until they get a Temporary Access Pass; the campaign's lists say who.",
+            "text": "With the baseline strength, a person with only Authenticator approval cannot satisfy it until they register an accepted method; the campaign's lists say who.",
             "applies": "always"
           }
         ],
         "helpDesk": [
           "A risky sign-in that keeps prompting: confirm it was the person, then dismiss the risk in Identity Protection."
         ],
-        "manager": "Sign-ins Microsoft rates as risky must pass MFA before anything opens. Without this, Microsoft's warning about a leaked password changes nothing.",
+        "manager": "Sign-ins Microsoft rates high risk need the selected stronger verification before they continue.",
         "waits": null
       },
       "example": {
@@ -5092,7 +5269,8 @@
           "Grant → Require authentication strength: {strengthName}. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "State the saved grant choice. Distinguish a temporary plain-MFA rollout from the final baseline strength, and list TAP when the selected strength accepts it."
     },
     {
       "id": "user-risk",
@@ -5100,7 +5278,7 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Remediate High-Risk Users",
       "changeLine": null,
-      "why": "A high-risk user is one whose password has probably leaked; a forced change closes it without waiting for a ticket.",
+      "why": "Account risk can indicate that an identity needs attention even outside a single suspicious sign-in. This control requires remediation while keeping recovery practical for the users it covers.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
@@ -5108,8 +5286,8 @@
         "lead": "{active} active people",
         "evidence": [
           "{n} people are rated at risk today: {list:atRiskUsers}",
-          "Self-service password reset must be enabled or the change loops; {sspr}.",
-          "Guests rated high risk are blocked, not remediated: they cannot change a password here.",
+          "High user risk can require remediation. The required action can differ for password-based and passwordless users; synchronized users who change a password need password writeback.",
+          "Check how the policy treats guests rated high risk: they cannot remediate in this tenant.",
           "{existingCoverage}"
         ]
       },
@@ -5117,15 +5295,15 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
-          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required."
+          "Synchronized users who remediate with a password change need password writeback in Entra Connect.",
+          "Check that people in scope have an accepted authentication method; remediation asks for it."
         ]
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} and matches the baseline's target, and the password-change remediation is confirmed to work for hybrid users if any exist.",
       "doneWhen": [
         "{policyDoneWhen}",
-        "Every user rated at risk in the report-only days was reviewed."
+        "Verify after the change: people rated at risk were reviewed, and the remediation and recovery paths they need work."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5135,14 +5313,14 @@
       "more": {
         "risks": [
           {
-            "text": "Without self-service password reset the person is asked to change a password they cannot change, and is stuck.",
+            "text": "A person without an accepted authentication method cannot complete remediation and needs help.",
             "applies": "ssprOff"
           }
         ],
         "helpDesk": [
           "Someone stuck in a password-change loop: reset it for them, then confirm the risk is dismissed."
         ],
-        "manager": "A person whose password Microsoft believes has leaked is made to change it at the next sign-in. Without this, the warning sits in a report until someone reads it.",
+        "manager": "When Microsoft rates an account high risk, the person is asked to complete remediation at the next sign-in instead of waiting for someone to read a report.",
         "waits": null
       },
       "example": {
@@ -5170,7 +5348,8 @@
           "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Explain adaptive remediation rather than a universal password reset. Separate SSPR recovery, MFA readiness, hybrid writeback and external-user support."
     },
     {
       "id": "sign-in-risk-medium",
@@ -5178,14 +5357,14 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Challenge Medium-Risk Sign-ins",
       "changeLine": null,
-      "why": "Medium risk is where most real attacks land: a new country, a new device, a password that appears on a list.",
+      "why": "This rule adds MFA when Microsoft rates a sign-in medium risk. It provides a separate response from the High-risk rule without changing ordinary sign-ins that are outside its scope.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-sign-in"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "The second rung after Challenge High-Risk Sign-ins: medium risk gets plain MFA, high risk the phishing-resistant strength.",
+          "A separate response from Challenge High-Risk Sign-ins: Medium-risk sign-ins get built-in MFA, and the High-risk policy keeps its own requirement.",
           "{n} medium-risk sign-ins since {from} by {list:riskyUsers}.",
           "{existingCoverage}"
         ]
@@ -5194,7 +5373,8 @@
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold and matches the baseline's target configuration, with the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: people in scope have usable MFA methods, and available Medium-risk sign-ins were reviewed."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5211,7 +5391,7 @@
         "helpDesk": [
           "Repeated prompts after travel: confirm the sign-in and dismiss the risk in Identity Protection."
         ],
-        "manager": "Sign-ins that look unusual must pass MFA; everyone else notices nothing. Without this, a leaked password from a new location opens everything.",
+        "manager": "Sign-ins Microsoft rates medium risk need MFA before they continue; sign-ins outside that rating are not affected by this policy.",
         "waits": null
       },
       "example": {
@@ -5234,7 +5414,8 @@
           "Grant → Require authentication strength: Multifactor authentication. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Keep sign-in risk separate from user risk, and Medium separate from High. Do not add a session control from generic guidance to this retained target."
     },
     {
       "id": "user-risk-medium",
@@ -5242,16 +5423,16 @@
       "licence": "Microsoft Entra ID P2",
       "title": "Reset Passwords for Medium-Risk Users",
       "changeLine": null,
-      "why": "Waiting for a risk to become high is waiting for the attacker to succeed.",
+      "why": "This rule responds to Medium user risk with MFA and a secure password change. It complements the separate High-risk control; it does not replace that protection.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-risk-based-user"
       },
       "who": {
         "lead": "{active} active people",
         "evidence": [
-          "Supersedes Remediate High-Risk Users once enforced; set that one to Off in Consolidate Overlapping Policies.",
+          "This policy covers Medium user risk only. Keep the separate High-risk control unless a reviewed replacement preserves that coverage.",
           "{n} people are rated at risk today: {list:atRiskUsers}",
-          "Self-service password reset must be enabled or the change loops; {sspr}.",
+          "People in scope need a registered MFA method to complete the secure password change; synchronized users also need password writeback.",
           "{existingCoverage}"
         ]
       },
@@ -5259,14 +5440,15 @@
       "whatToDo": {
         "lead": null,
         "before": [
-          "Hybrid tenants: enable password writeback in Entra Connect, or the change fails.",
-          "Entra admin center → Entra ID → Password reset → Properties → Self service password reset enabled: All. Confirm at least two methods are required."
+          "Synchronized users who change their password here need password writeback in Entra Connect.",
+          "Check that people in scope have a registered MFA method; the secure password change asks for it first."
         ]
       },
       "dates": "{datesNew}",
       "doneEnd": "The policy is enforced in {tenant} at the medium-risk threshold, with password change as the remediation and the exclusions group applied.",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: people in scope can complete MFA and the secure password change, and the High user-risk policy remains in place."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5283,7 +5465,7 @@
         "helpDesk": [
           "Same as the high-risk policy: reset for them if they are stuck, then dismiss the risk."
         ],
-        "manager": "A password Microsoft suspects is compromised is changed at the next sign-in instead of after the damage. Without this, medium-risk warnings are only a report.",
+        "manager": "When Microsoft rates an account medium risk, the person completes MFA and a secure password change at the next sign-in. The separate High-risk policy stays in place.",
         "waits": null
       },
       "example": {
@@ -5307,14 +5489,15 @@
           "Grant → Require multifactor authentication and Require password change; Require all the selected controls. Session → Sign-in frequency → Every time",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "State explicitly that Medium-only coverage does not supersede High. Explain the built-in MFA plus passwordChange grant and do not substitute adaptive remediation."
     },
     {
       "id": "s-check-separate-admin-accounts",
       "kind": "check",
       "title": "Use Separate Accounts for Admin Work",
       "changeLine": null,
-      "why": "An admin account that also reads mail and joins Teams meetings is phished like any other mailbox; the admin policies then guard an account that is open all day.",
+      "why": "Using a separate admin account reduces the exposure of privileged access to everyday mail, meetings and browsing. Verify the replacement account before removing access from the old one.",
       "learn": {
         "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
       },
@@ -5327,14 +5510,16 @@
         "lead": "For each person:",
         "steps": [
           "Create a second, cloud-only account for the role, named so the purpose is obvious (adm- and their name); no licence, no mailbox.",
-          "Move the directory role to it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment; then remove the role from the everyday account.",
           "Register a passkey or security key on the admin account before its first use; the admin policies require one.",
+          "Assign the role to the admin account under the same governance model, keeping PIM eligibility where the everyday account used it: Entra admin center → Entra ID → Roles and administrators → the role → Add assignment.",
+          "Sign in with the admin account and complete the admin task it needs; only then remove the role from the everyday account.",
           "Keep mail, Teams and files on the everyday account; open admin portals with the admin account only."
         ]
       },
       "dates": null,
       "doneWhen": [
-        "No account with a directory role has mail or Teams sign-ins in the records."
+        "No account with a directory role shows mail or Teams sign-ins in the records IAMAI reads.",
+        "Verify after the change: each new admin account holds the intended role under the same governance model and has a tested sign-in path before the everyday account loses the role."
       ],
       "ifWrong": "Put the role back on the everyday account; nothing else changes.",
       "comms": null,
@@ -5361,14 +5546,15 @@
           "Alex Morgan · Outlook, Microsoft Teams",
           "Kaladin Stormblessed · Microsoft Teams"
         ]
-      }
+      },
+      "aiFocus": "Distinguish direct roles from PIM and keep the staged handover. Historical mail or Teams events do not mean a completed migration failed."
     },
     {
       "id": "service-accounts-trusted-network",
       "kind": "policy",
       "title": "Restrict Service Accounts to the Trusted Network",
       "changeLine": null,
-      "why": "A service account cannot answer a prompt, so the policies that would break it leave it out; this one pins it to the office network instead, where a stolen password is useless from anywhere else.",
+      "why": "Restricting user-based service accounts to approved networks can reduce where their passwords are useful. Review all job locations so an infrequent or vendor-hosted process is not missed.",
       "learn": {
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
@@ -5383,7 +5569,8 @@
       "decision": null,
       "dates": "{datesNew}",
       "doneWhen": [
-        "{policyDoneWhen}"
+        "{policyDoneWhen}",
+        "Verify after the change: each required job works from its expected network, including scheduled and infrequent ones."
       ],
       "ifWrong": "{policyIfWrong}",
       "comms": null,
@@ -5404,7 +5591,7 @@
         "helpDesk": [
           "A script that stopped overnight: it signed in from outside the trusted network; add that network to the location, or move the job onto it."
         ],
-        "manager": "Accounts no person signs in with work only from the office network, so a stolen service password is useless anywhere else. Without this, the accounts every other policy leaves out are the easiest way in.",
+        "manager": "Service accounts in the group can sign in only from the approved trusted network, which limits where their passwords are useful. This does not cover service principals or managed identities.",
         "waits": null
       },
       "example": {
@@ -5434,7 +5621,8 @@
           "Grant → Block access",
           "{reportOnlyLine}"
         ]
-      }
+      },
+      "aiFocus": "Include the user-account group and actual workflow evidence. Do not infer service-principal protection or approve a network from sign-in history alone."
     },
     {
       "id": "s-ladder-security-defaults",
@@ -5443,16 +5631,18 @@
         "url": "https://learn.microsoft.com/entra/fundamentals/security-defaults"
       },
       "whatToDo": {
-        "lead": "Security defaults are the whole control surface on this licence. Turn them on.",
+        "lead": "Security defaults provide Microsoft's default identity protections on this licence. Check the requirements first, then turn them on if this is the chosen approach.",
         "steps": [
           "Entra admin center → Entra ID → Overview → Properties → Manage security defaults.",
           "Enabled → Save.",
-          "Tell everyone they will be asked to register Microsoft Authenticator at their next sign-in, and give anyone who cannot a way to reach the help desk."
+          "Tell people they may be asked to set up an authentication method, and give anyone who cannot a way to reach IT support."
         ]
       },
       "doneWhen": [
-        "Security defaults report Enabled, and everyone who holds a role has registered a method."
+        "Security defaults report Enabled, and everyone who holds a role has registered a method.",
+        "Verify after the change: representative administrator and user sign-ins work."
       ],
+      "aiFocus": "Explain the selected protection model and observed setup gaps. Do not confuse enabling Security Defaults with customizing Conditional Access.",
       "skip": false,
       "scanControl": true
     },
@@ -5463,16 +5653,18 @@
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/security-emergency-access"
       },
       "whatToDo": {
-        "lead": "Create two emergency accounts and prove they work, before anything else on this list can lock somebody out.",
+        "lead": "Create two emergency accounts and test them before anything else on this list can lock somebody out.",
         "steps": [
-          "Entra admin center → Identity → Users → New user, twice, on the tenant’s onmicrosoft.com domain and with no licence.",
-          "Give each one Global Administrator, and a long random password stored where two people can reach it without signing in to this tenant.",
-          "Sign in with each account once, and write down the date."
+          "Entra admin center → Identity → Users → New user, twice: cloud-only, on the tenant's onmicrosoft.com domain, with no licence.",
+          "Give each one permanent, active Global Administrator access and an independent strong sign-in method; store the credentials where authorized staff can reach them without signing in to this tenant.",
+          "Sign in with each account, complete an administrative check, and record the date. Security defaults offer no per-user exclusions, so check how your protection model treats these accounts."
         ]
       },
       "doneWhen": [
-        "Two emergency accounts exist, each has signed in at least once, and their passwords are reachable without a working sign-in to this tenant."
+        "Two emergency accounts exist and each has signed in at least once.",
+        "Verify after the change: each account's authentication and administrative access were tested, and authorized staff can reach its credentials without a working sign-in to this tenant."
       ],
+      "aiFocus": "Do not present a password and a past sign-in as complete emergency readiness. Distinguish Security Defaults from a CA design with exclusions.",
       "skip": false,
       "scanControl": true
     },
@@ -5483,16 +5675,18 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/howto-conditional-access-policy-block-legacy"
       },
       "whatToDo": {
-        "lead": "Find what still authenticates the old way, so blocking it later breaks nothing you did not expect.",
+        "lead": "Find what still authenticates the old way, so blocking it later does not break a needed service.",
         "steps": [
           "Entra admin center → Identity → Monitoring & health → Sign-in logs, and add the Client app column.",
-          "Filter the last 30 days to the legacy clients: Exchange ActiveSync, IMAP, POP, SMTP, Other clients.",
-          "For every account that appears, find the application behind it and move it to modern authentication, or retire it."
+          "Filter the records you have (up to 30 days) to legacy clients: Exchange ActiveSync, IMAP, POP, SMTP, Other clients.",
+          "For every account that appears, find the application behind it and its owner, and ask owners about jobs that run only occasionally.",
+          "Record a supported replacement or retirement for each, and test it before blocking access."
         ]
       },
       "doneWhen": [
-        "Thirty days of sign-in logs show no successful legacy-client sign-in, or every one left has a named owner and a date it moves."
+        "The available sign-in records show no successful legacy-client sign-in, or every one left has a named owner and a recorded replacement or outstanding action."
       ],
+      "aiFocus": "Report the actual evidence window and unresolved dependencies. Do not claim thirty days of coverage when the records do not contain it.",
       "skip": false,
       "scanControl": true
     },
@@ -5503,16 +5697,19 @@
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
       },
       "whatToDo": {
-        "lead": "An app password is a credential that skips MFA. Retire what needs one, then stop new ones being made.",
+        "lead": "App passwords let older applications sign in without an interactive MFA check. Replace each dependency before retiring the credential.",
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Policies, and find the accounts that still hold app passwords.",
-          "Move each application behind them to modern authentication.",
-          "Turn app passwords off once nothing depends on them."
+          "Ask users and application owners which applications use app passwords; the Authentication methods policy is not an inventory of them.",
+          "Move each application to supported authentication and test it.",
+          "Remove the affected app passwords through Microsoft's supported user or administrative process.",
+          "Separately review the setting that allows new app passwords in the per-user MFA service settings."
         ]
       },
       "doneWhen": [
-        "No account holds an app password, and the tenant no longer allows a new one to be created."
+        "The reviewed applications no longer depend on app passwords, and the affected app passwords are removed.",
+        "Verify after the change: creating new app passwords is disabled where that applies."
       ],
+      "aiFocus": "Distinguish per-user credentials from tenant method-policy settings. Do not invent a complete app-password inventory from unavailable data.",
       "skip": false,
       "scanControl": true
     },
@@ -5523,17 +5720,20 @@
         "url": "https://learn.microsoft.com/entra/identity/authentication/how-to-authentication-methods-manage"
       },
       "whatToDo": {
-        "lead": "Per-user MFA prompts on its own terms and overrides whatever else decides. Move it to the methods policy.",
+        "lead": "Keep MFA enforced while you move it from the per-user setting to the replacement you choose.",
         "steps": [
           "Entra admin center → Entra ID → Authentication methods → Policies → Manage migration → Migration in progress.",
           "Under Policies, enable every method people actually use, so nobody loses the one they have.",
-          "Entra admin center → Entra ID → Users → Per-user MFA, and set every account to Disabled.",
+          "Confirm the replacement MFA protection is enabled and covers each account before changing that account's per-user MFA state.",
+          "Entra admin center → Entra ID → Users → Per-user MFA: set an account to Disabled only once its replacement protection is in place; keep the existing setting where no replacement exists.",
           "Manage migration → Migration complete."
         ]
       },
       "doneWhen": [
-        "The tenant reports Migration complete, and no account is left Enabled or Enforced for per-user MFA."
+        "The tenant reports Migration complete, and no account is left Enabled or Enforced for per-user MFA.",
+        "Verify after the change: every account whose per-user MFA was disabled is covered by enabled replacement protection."
       ],
+      "aiFocus": "Explain why a completed methods migration is not permission to disable every user's MFA state.",
       "skip": false,
       "scanControl": true
     },
@@ -5544,16 +5744,18 @@
         "url": "https://learn.microsoft.com/security/privileged-access-workstations/privileged-access-accounts"
       },
       "whatToDo": {
-        "lead": "Give each admin a second account that holds the role and nothing else, so a phishing email opens a mailbox and not the tenant.",
+        "lead": "Give each admin a separate account for privileged work, and test it before moving access.",
         "steps": [
           "Entra admin center → Identity → Users → New user, one per person who holds a directory role, with no mailbox licence.",
-          "Assign the role to the new account and remove it from the daily-driver account.",
-          "Register a method on each new account, and confirm the person can sign in with it before the old assignment goes."
+          "Register a strong method on the new account and assign the role under the same governance model, keeping eligibility where the role was eligible.",
+          "Test sign-in and the admin task with the new account; only then remove the role from the everyday account."
         ]
       },
       "doneWhen": [
-        "Every directory role is held by an account with no mailbox, and no daily-driver account holds one."
+        "Every directory role is held by an account with no mailbox, and no everyday account holds one.",
+        "Verify after the change: each new admin account has a tested sign-in and the admin access it needs."
       ],
+      "aiFocus": "Preserve eligibility versus permanent assignment. Do not treat historical productivity events as proof the migration is incomplete.",
       "skip": false,
       "scanControl": true
     },
@@ -5564,16 +5766,19 @@
         "url": "https://learn.microsoft.com/entra/identity/role-based-access-control/best-practices"
       },
       "whatToDo": {
-        "lead": "Global Administrator can undo anything, including the controls on this list. Bring the count down to what the work needs.",
+        "lead": "Global Administrator has broad authority. Keep it only where the work needs it.",
         "steps": [
-          "Entra admin center → Identity → Roles & admins → Global Administrator, and list who holds it and why.",
-          "For each holder who does not need the whole tenant, assign the least role that does their job instead.",
-          "Leave the emergency accounts alone; they are counted here, and they are the way back in."
+          "Entra admin center → Identity → Roles & admins → Global Administrator: list active and eligible holders and why each needs the role.",
+          "Where a narrower role is enough, assign and test it before removing Global Administrator.",
+          "Keep the selected emergency accounts; they are counted here and they are the way back in.",
+          "Record the reason for each retained assignment."
         ]
       },
       "doneWhen": [
-        "Between two and four accounts hold Global Administrator, the emergency accounts among them, and everyone else holds a narrower role."
+        "Between two and four accounts hold Global Administrator, the emergency accounts among them, and everyone else holds a narrower role.",
+        "Verify after the change: each retained assignment has a current reason; a count alone does not prove least privilege."
       ],
+      "aiFocus": "Treat counts as review signals, not proof. Separate emergency accounts, eligible access and day-to-day administration.",
       "skip": false,
       "scanControl": true
     },
@@ -5584,16 +5789,18 @@
         "url": "https://learn.microsoft.com/entra/external-id/b2b-tutorial-require-mfa"
       },
       "whatToDo": {
-        "lead": "Remove the guests nobody sponsors, so what is left is what any later guest control has to protect.",
+        "lead": "Review guest access with the people who sponsor it, so access that is no longer needed ends through the proper process.",
         "steps": [
           "Entra admin center → Identity → Users, filter User type to Guest, and add the Creation time and Last sign-in columns.",
-          "For each guest, find who invited them and whether the work is still running; delete the ones nobody owns.",
-          "Delete the invitations that were never accepted."
+          "For each guest, confirm the sponsor and whether the work still needs the access.",
+          "Check pending invitations with whoever sent them; a pending invitation is not automatically obsolete.",
+          "Remove access that is no longer needed through your organization's offboarding and retention process."
         ]
       },
       "doneWhen": [
-        "Every remaining guest has a sponsor and a reason to be there, and no invitation is left pending."
+        "Every reviewed guest or invitation has a confirmed purpose, or an approved removal that has been completed."
       ],
+      "aiFocus": "Distinguish pending, inactive and unsupported evidence. Do not infer approval to delete from a missing sponsor field.",
       "skip": false,
       "scanControl": true
     },
@@ -5604,16 +5811,18 @@
         "url": "https://learn.microsoft.com/entra/identity/monitoring-health/howto-manage-inactive-user-accounts"
       },
       "whatToDo": {
-        "lead": "An account nobody signs into is an account nobody watches. Disable the silent ones.",
+        "lead": "Review accounts with no recent sign-in and confirm whether they are still needed.",
         "steps": [
           "Entra admin center → Identity → Users, add the Last sign-in column, and sort by it.",
-          "For each account silent for 90 days, confirm with its manager that it is not a shared or seasonal login.",
-          "Set Block sign-in on the ones nobody claims, and delete them after 30 days if nothing surfaces."
+          "For each account with no sign-in for 90 days or none on record, check its owner, purpose and any seasonal or service use; missing activity is a reason to check, not proof it is unused.",
+          "Block sign-in only on accounts confirmed as no longer needed; handle deletion and data retention through your separate offboarding process."
         ]
       },
       "doneWhen": [
-        "No enabled account has been silent for 90 days, or each one that has is recorded as deliberate."
+        "No enabled account has gone 90 days without a sign-in, or each one that has is recorded as deliberately kept.",
+        "Verify after the change: each blocked account was confirmed as no longer needed."
       ],
+      "aiFocus": "Do not conclude missing dates mean unused accounts or invent a deletion deadline.",
       "skip": false,
       "scanControl": true
     },
@@ -5624,16 +5833,18 @@
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-methods"
       },
       "whatToDo": {
-        "lead": "Text and call codes are the tier an attacker can intercept without touching the phone. Move people off them before turning them off.",
+        "lead": "Move people from text and voice codes to a stronger approved method, and test it before retiring the old one.",
         "steps": [
-          "Entra admin center → Entra ID → Authentication methods → Policies, and enable Microsoft Authenticator and passkeys for everyone.",
-          "Ask the people still on text message or voice call to register Authenticator, and give them a date.",
-          "Set Text message and Voice call to disabled once nobody is relying on them."
+          "Entra admin center → Entra ID → Authentication methods → Policies: enable the approved replacement method (Microsoft Authenticator or passkeys) for the intended users.",
+          "Help people on text message or voice call register the replacement and complete a successful sign-in with it.",
+          "Review recovery needs and application dependencies, then disable Text message and Voice call through the approved method-policy change."
         ]
       },
       "doneWhen": [
-        "Text message and voice call are off in the authentication methods policy, and everyone who used them has registered Authenticator or a passkey."
+        "Text message and voice call are off in the authentication methods policy, and everyone who used them has registered Authenticator or a passkey.",
+        "Verify after the change: each of them signed in with the replacement, and the agreed recovery path is preserved."
       ],
+      "aiFocus": "Distinguish stronger MFA from phishing-resistant MFA. Do not claim all Authenticator modes are phishing-resistant.",
       "skip": false,
       "scanControl": true
     },
@@ -5644,11 +5855,13 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/concept-assignment-network"
       },
       "whatToDo": {
-        "lead": "Put the trusted location right: its addresses decide who is never challenged, so every policy that names it inherits whatever is wrong with it."
+        "lead": "Correct the trusted location's reported problems: every policy that uses it depends on its ranges. Check the enabled policies that use it before saving, then verify the intended traffic and rescan."
       },
       "doneWhen": [
-        "Every must-fix check on the trusted location passes on the next scan."
+        "Every must-fix check on the trusted location passes on the next scan.",
+        "Verify after the change: its ranges match the approved decision."
       ],
+      "aiFocus": "Explain the failed check, affected location and dependent policies. Trust does not mean every sign-in requirement is bypassed.",
       "skip": false,
       "scanControl": true
     },
@@ -5659,11 +5872,13 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/policy-block-by-location"
       },
       "whatToDo": {
-        "lead": "Put the allowed-countries list right: a country missing from it is a person refused at the door, and one wrongly in it is a door left open."
+        "lead": "Correct the allowed-countries findings: the list decides where the countries policy allows sign-ins. Review the dependent enabled policies before saving, and rescan afterward."
       },
       "doneWhen": [
-        "Every must-fix check on the allowed-countries list passes on the next scan."
+        "Every must-fix check on the allowed-countries list passes on the next scan.",
+        "Verify after the change: the named location matches the approved country decision."
       ],
+      "aiFocus": "Separate approved scope, observed geography and unresolved travel needs.",
       "skip": false,
       "scanControl": true
     },
@@ -5674,11 +5889,13 @@
         "url": "https://learn.microsoft.com/entra/identity/conditional-access/plan-conditional-access"
       },
       "whatToDo": {
-        "lead": "Put the pilot group right: it decides who meets a new control first, so who is in it is who absorbs the mistake."
+        "lead": "Correct the pilot group's findings: it decides who tests a new control first, so its members should represent the work the change affects."
       },
       "doneWhen": [
-        "Every must-fix check on the pilot group passes on the next scan."
+        "Every must-fix check on the pilot group passes on the next scan.",
+        "Verify after the change: the pilot membership is the approved one."
       ],
+      "aiFocus": "Explain why each membership or scope issue matters without implying a pilot guarantees a safe wider rollout.",
       "skip": false,
       "scanControl": true
     },
@@ -5689,11 +5906,13 @@
         "url": "https://learn.microsoft.com/entra/architecture/secure-service-accounts"
       },
       "whatToDo": {
-        "lead": "Settle the service accounts: an account with no person behind it cannot answer a prompt, so a policy that reaches one stops a job rather than an attacker."
+        "lead": "Resolve the service-account findings with each workload owner: a wrong classification can interrupt a job or leave an ordinary account outside important controls."
       },
       "doneWhen": [
-        "Every must-fix check on the service accounts passes on the next scan."
+        "Every must-fix check on the service accounts passes on the next scan.",
+        "Verify after the change: the confirmed service-account decisions are reflected in the plan."
       ],
+      "aiFocus": "Distinguish user-based service accounts from workload identities and explain the actual affected policies.",
       "skip": false,
       "scanControl": true
     },
@@ -5704,11 +5923,13 @@
         "url": "https://learn.microsoft.com/entra/identity/authentication/concept-authentication-strengths"
       },
       "whatToDo": {
-        "lead": "Put the authentication strength right: it is the exact list of methods a policy will accept, so anything wrong in it is either a method nobody has or one nobody should be allowed."
+        "lead": "Correct the authentication strength's reported differences: it is the list of methods its policies accept. Review every policy that references it, keep the same object where supported, then verify and rescan."
       },
       "doneWhen": [
-        "Every must-fix check on the authentication strength passes on the next scan."
+        "Every must-fix check on the authentication strength passes on the next scan.",
+        "Verify after the change: the strength has the intended combinations."
       ],
+      "aiFocus": "Include the current and intended combinations, affected policies and TAP where present.",
       "skip": false,
       "scanControl": true
     }

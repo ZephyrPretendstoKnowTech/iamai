@@ -444,7 +444,8 @@ export function AuthoredText({ text }: { text: string }) {
           <li key={i}>
             {lines.map((l, j) => (
               <Fragment key={j}>
-                {j > 0 && <br />}
+                {/* The space keeps the item's lines apart in its text, not only on screen: without it "…you save.<br>This change…" reads as one sentence. */}
+                {j > 0 && <>{' '}<br /></>}
                 {inlineText(l)}
               </Fragment>
             ))}

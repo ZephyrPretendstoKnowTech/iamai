@@ -165,7 +165,7 @@ test('week two: the report-only policy with clean, complete records is ready now
   assert.ok(lines.some((l) => l.startsWith('Time: in report-only since ') && l.includes(absoluteDate(token.tracking!.reportOnlyAt!))), lines.join('\n'))
   assert.ok(lines.some((l) => l.startsWith('Evidence: ') && l.endsWith('today ready now: 0 failures in 7 days.')), lines.join('\n'))
   assert.ok(!lines.some((l) => /in report-only for \d+ days with no failures/.test(l)), 'the generic gate line is replaced by the gates with numbers')
-  assert.ok(lines.some((l) => l.startsWith('After enforcement')), 'the lines after the gates stay')
+  assert.ok(lines.includes('A later scan confirms the intended policy settings and enabled state.'), 'the lines after the gates stay')
   const untracked = doneWhenTemplates(transfer, ['{policyDoneWhen}']).map((x) => fillText(x as string, stepVars(transfer, ctx)))
   const seen = `${transfer.tracking!.seenInScope} of ${transfer.tracking!.activeInScope} active people seen in ${transfer.tracking!.daysInReportOnly} days.`
   assert.ok(untracked.some((l) => l.startsWith('Time: ')) && untracked.some((l) => l.endsWith(`today 0 failing or interrupted, ${seen}`)), untracked.join('\n'))

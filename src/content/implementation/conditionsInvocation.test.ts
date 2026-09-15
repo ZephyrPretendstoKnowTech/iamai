@@ -46,7 +46,10 @@ test('the validator refuses unknown operators, undeclared bindings and prerequis
 })
 
 const PILOT = parseBlocks(readFileSync('docs/implementation-content/s-goal-device-registration-mfa/CONTENT.md', 'utf8'))
-const SCRIPT = PILOT['powershell.run'].text
+// The script as the projection hands it to the invocation: a line naming an optional value
+// IAMAI does not hold is gone (project.ts bindText). Cycle 6 (review 5 queue 1) added one, the
+// exclusions a correction removes, which these samples carry no value for.
+const SCRIPT = PILOT['powershell.run'].text.split('\n').filter((l) => !/\[omit this line when unavailable\]/.test(l)).join('\n')
 const SPEC: InvocationSpec = {
   modeParameter: 'Mode',
   correctionsParameter: 'Corrections',

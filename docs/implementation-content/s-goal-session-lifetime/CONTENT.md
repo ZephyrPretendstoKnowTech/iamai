@@ -3,42 +3,36 @@
 Do not parse headings for execution. Select blocks only by `META.json` block IDs.
 
 @@IAMAI-BEGIN {"id":"entra.create-set","channel":"entra","states":["missing"],"format":"markdown","kind":"template"}
-Create two separate Conditional Access policies. For each: Entra admin center → Entra ID → Conditional Access → Policies → New policy.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. The baseline has one session policy for this step: the browser policy below.
 
-**Policy A — browser**
+Entra admin center → Entra ID → Conditional Access → Policies → New policy.
 1. Name: `{{policies.session.browser.target.displayName}}`.
-2. Users: Include **All users**. Exclude IAMAI's canonical groups and the resolved shared-device accounts.
+2. Users: Include **All users**. Exclude the resolved exclusion groups, and only the individual accounts the resolved target names.
+   Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 3. Target resources: **All resources**.
 4. Conditions → Client apps: **Browser**.
 5. Grant: no grant requirement.
 6. Session: Sign-in frequency → Periodic reauthentication → **12 hours**; Persistent browser session → **Never persistent**.
 7. Enable policy: **Report-only**.
 
-**Policy B — unmanaged device**
-1. Name: `{{policies.session.unmanaged.target.displayName}}`.
-2. Users: same canonical groups/shared-device exclusions.
-3. Target resources: **All resources**.
-4. Conditions → Filter for devices: Configure Yes → Exclude filtered devices → `device.isCompliant -eq True`.
-5. Grant: no grant requirement.
-6. Session: Sign-in frequency → Periodic reauthentication → **9 hours**; Persistent browser session → **Never persistent**.
-7. Enable policy: **Report-only**.
-
-Save each once. Rescan IAMAI so each tenant object gets a stable ID.
+Save once. Rescan IAMAI so it records the new policy ID.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.open","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Open only the component policy IAMAI identified. Confirm the stable policy identity shown by IAMAI before saving. Keep or return a materially incorrect policy to **Report-only** while correcting it.
+Open the policy IAMAI identified. Confirm its policy ID matches the one IAMAI shows before saving.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.missing","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Create only the missing browser component using the Policy A procedure from this package. Do not recreate the unmanaged component.
+Create this policy in Report-only. It will not enforce its access rule until you enable it. Use the create steps for this step: Users All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources All resources; Client apps Browser; no grant; Sign-in frequency 12 hours (Periodic reauthentication); Persistent browser session Never persistent.
+Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.conditions","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the browser component, set Users to All users with IAMAI's canonical group/shared-device exclusions, Target resources to All resources, and Client apps to Browser. Remove noncanonical risk, location, platform, device-filter, authentication-flow, application-exclusion, or other conditions.
+For the browser policy, set Users to All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; Target resources to All resources; and Client apps to Browser. Remove any risk, location, platform, device-filter, authentication-flow, application-exclusion, or other condition.
+Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.session","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the browser component, set Sign-in frequency to 12 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove other noncanonical v1.0 session controls. Do not add a grant requirement.
+For the browser policy, set Sign-in frequency to 12 hours (Periodic reauthentication) and Persistent browser session to Never persistent. Remove any other session control. Do not add a grant requirement.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.grant-none","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-For the browser component, remove any Grant requirement. This step is session-control-only; do not add MFA, authentication strength, device grant, or Block.
+For the browser policy, remove any Grant requirement. This step is session-control-only; do not add MFA, authentication strength, device grant, or Block.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.browser.lifecycle","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
 Set the browser component to Report-only while material corrections are being validated.
@@ -59,13 +53,22 @@ For the unmanaged-device component, remove any Grant requirement. This step is s
 Set the unmanaged-device component to Report-only while material corrections are being validated.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.correct.save-verify","channel":"entra","states":["partial"],"format":"markdown","kind":"template"}
-Save only the selected correction(s), read the affected policy back, and rescan IAMAI. Do not enable either component until the two-policy set is canonical and readiness passes.
+Save only the selected correction(s), read the policy back by its policy ID, and rescan IAMAI.
+
+Keep each policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.observe","channel":"entra","states":["reportOnly"],"format":"markdown","kind":"template"}
-Leave both component policies in Report-only. Use Conditional Access What If and sign-in logs plus controlled browser tests. Verify the browser policy applies to browser sign-ins and the unmanaged-device policy is limited by its compliance filter. Confirm shared-device accounts remain excluded. Observation evidence must come from actual tenant records/tests; do not infer success from configuration alone.
+Keep the policy in Report-only while you review the evidence listed for this step. Use Conditional Access What If, sign-in logs and controlled browser tests to confirm the policy applies to browser sign-ins with a 12-hour sign-in frequency and Never persistent. Confirm the policy's exclusions still match the resolved target. Shared-device accounts are excluded only where that target lists them. Base the review on tenant records and tests, not on configuration alone.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"entra.enforce","channel":"entra","states":["readyToEnforce"],"format":"markdown","kind":"template"}
-Open both IAMAI-resolved component policies by stable identity. Confirm each still matches the canonical target and that readiness has no blocker. Change Policy A and Policy B from Report-only to **On** in the same controlled change window. Test managed, unmanaged, and shared-device paths, then rescan IAMAI.
+Verify the same policy and its prerequisites, set it to On, then complete the checks below and rescan.
+
+Open the browser policy by its policy ID. Confirm it still matches the intended settings and that readiness has no blocker. Change it from Report-only to **On** in a controlled change window.
+
+Verify after the change: test representative sign-ins in managed and unmanaged browsers, including any account the resolved target excludes. Included accounts are asked to reauthenticate at the 12-hour frequency and are not offered a persistent browser session; excluded accounts are not affected. Then rescan IAMAI.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"json.browser.create","channel":"json","states":["missing","partial"],"format":"json-template","kind":"deployableAfterBinding","method":"POST","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies"}
 {
@@ -143,13 +146,15 @@ Open both IAMAI-resolved component policies by stable identity. Confirm each sti
 @@IAMAI-BEGIN {"id":"json.unmanaged.enforce","channel":"json","states":["readyToEnforce"],"format":"json","kind":"deployableAfterBinding","method":"PATCH","endpoint":"https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies/{policies.session.unmanaged.current.id}"}
 {"state":"enabled"}
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify"]}},"withheldModes":{"Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it"}}}
+@@IAMAI-BEGIN {"id":"powershell.run","channel":"powershell","states":["missing","partial","reportOnly","readyToEnforce"],"format":"powershell","kind":"deployableAfterBinding","invocation":{"modeParameter":"Mode","parameters":{"BrowserPolicyDisplayName":{"binding":"policies.session.browser.target.displayName","modes":["Create","CreateBrowser"]},"UnmanagedPolicyDisplayName":{"binding":"policies.session.unmanaged.target.displayName","modes":["Create","CreateUnmanaged"]},"BrowserPolicyId":{"binding":"policies.session.browser.current.id","modes":["CorrectBrowserConditions","CorrectBrowserSession","CorrectBrowserGrant","ReportOnlyBrowser","Verify","VerifyBrowser"]},"UnmanagedPolicyId":{"binding":"policies.session.unmanaged.current.id","modes":["CorrectUnmanagedConditions","CorrectUnmanagedSession","CorrectUnmanagedGrant","ReportOnlyUnmanaged","Verify"]},"ExcludeGroupIds":{"binding":"policy.target.excludeGroups","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify","VerifyBrowser"]},"ExcludeUserIds":{"binding":"policy.target.excludeUsers","modes":["Create","CreateBrowser","CreateUnmanaged","CorrectBrowserConditions","CorrectUnmanagedConditions","Verify","VerifyBrowser"]}},"withheldModes":{"Create":"Create also writes the unmanaged-device companion, and the pinned baseline has no unmanaged-device session policy to name it; CreateBrowser writes the browser policy alone","Enforce":"the script enforces only with -ReadinessApproved, an attestation this package declares no prerequisite for, so IAMAI cannot pass it; Enforce also turns on the unmanaged-device companion, which the pinned baseline has no policy for"}}}
+# This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
+# This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as the correction is saved. [omit this line when unavailable]
 # IAMAI compact implementation script — Limit How Long Sessions Last
 # Module: Microsoft.Graph.Authentication
 [CmdletBinding()]
 param(
   [Parameter(Mandatory)]
-  [ValidateSet('Create','CreateBrowser','CreateUnmanaged','CorrectBrowserConditions','CorrectBrowserSession','CorrectBrowserGrant','ReportOnlyBrowser','CorrectUnmanagedConditions','CorrectUnmanagedSession','CorrectUnmanagedGrant','ReportOnlyUnmanaged','Verify','Enforce')]
+  [ValidateSet('Create','CreateBrowser','CreateUnmanaged','CorrectBrowserConditions','CorrectBrowserSession','CorrectBrowserGrant','ReportOnlyBrowser','CorrectUnmanagedConditions','CorrectUnmanagedSession','CorrectUnmanagedGrant','ReportOnlyUnmanaged','Verify','VerifyBrowser','Enforce')]
   [string] $Mode,
   [string] $BrowserPolicyDisplayName,
   [string] $UnmanagedPolicyDisplayName,
@@ -268,6 +273,13 @@ switch ($Mode) {
     if ($a.state -notin @('enabledForReportingButNotEnforced','enabled') -or $b.state -notin @('enabledForReportingButNotEnforced','enabled')) { throw 'Unexpected lifecycle state.' }
     Write-Host 'Canonical two-policy shapes verified. Readiness remains a separate decision.'
   }
+  'VerifyBrowser' {
+    Connect-CA $false
+    $a=Get-Policy $BrowserPolicyId
+    Assert-Canonical $a 'Browser'
+    if ($a.state -notin @('enabledForReportingButNotEnforced','enabled')) { throw 'Unexpected lifecycle state.' }
+    Write-Host 'Canonical browser policy shape verified. Readiness remains a separate decision.'
+  }
   'Enforce' {
     if (-not $ReadinessApproved) { throw 'Enforce requires ReadinessApproved.' }
     Connect-CA $true
@@ -286,91 +298,92 @@ switch ($Mode) {
 @@IAMAI-BEGIN {"id":"ai.create","channel":"aiInfo","states":["missing"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Create the intentional two-policy session set in Report-only.
-
-AUTHORITY
-The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.
+STATE
+This state creates the browser session policy in Report-only. The baseline has one session policy for this step; there is no second policy to create, correct or enable.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
 - Affected people: {{people.affected.count}} [omit if unavailable]
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-Policy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.
+INTENDED POLICY
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
-RULES
-Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+CAUTIONS
+Shared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session. Do not add a companion policy, conditions or exclusions that the baseline does not contain.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.correct","channel":"aiInfo","states":["partial"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Correct only IAMAI-classified mismatches on the affected component policies.
-
-AUTHORITY
-The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.
+STATE
+This state corrects the existing browser session policy. Correct only the differences IAMAI found, on the same policy ID. The baseline has one session policy for this step.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
 - Affected people: {{people.affected.count}} [omit if unavailable]
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-Policy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.
+INTENDED POLICY
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
-RULES
-Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+CAUTIONS
+Shared-device accounts are excluded only where this policy's resolved target lists them. Do not add a companion policy, conditions or exclusions that the baseline does not contain.
+
+Keep the policy's current state. If it is On, the changed rule can affect access after you save.
+
+This change removes {{policies.session.browser.current.removedExclusions}} from the exclusions of {{policies.session.browser.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
+This change removes {{policies.session.unmanaged.current.removedExclusions}} from the exclusions of {{policies.session.unmanaged.current.displayName}}. If that policy is On, it applies to them as soon as you save. [omit this line when unavailable]
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.observe","channel":"aiInfo","states":["reportOnly"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Review the canonical two-policy set in Report-only without inventing successful observation.
-
-AUTHORITY
-The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.
+STATE
+The browser session policy is in Report-only. The baseline has one session policy for this step.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
 - Affected people: {{people.affected.count}} [omit if unavailable]
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-Policy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.
+INTENDED POLICY
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
-RULES
-Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+CAUTIONS
+Shared-device accounts are excluded only where this policy's resolved target lists them. Configuration alone does not show the sign-in experience.
+
+NEXT STEP
+Explain which What If results, sign-in records and browser tests are still needed before enforcement.
 @@IAMAI-END
 @@IAMAI-BEGIN {"id":"ai.enforce","channel":"aiInfo","states":["readyToEnforce"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-ROLE
-Help implement the IAMAI step **Limit How Long Sessions Last**. Enable both canonical components only after readiness is satisfied.
-
-AUTHORITY
-The retained IAMAI baseline and package own the destination. Current Microsoft documentation owns current product/API behavior. Do not redesign the two-policy set or infer tenant facts.
+STATE
+This state enables the reviewed browser session policy. The only change is its state from Report-only to On. The baseline has one session policy for this step.
 
 TENANT CONTEXT
 - Tenant: {{tenant.displayName}} [omit if unavailable]
 - Affected people: {{people.affected.count}} [omit if unavailable]
 - Existing blockers: {{dependencies.blockers}} [omit if unavailable]
 
-TARGET
-Policy A: All users; canonical group/shared-device exclusions; All resources; Browser; 12-hour periodic sign-in frequency; Never persistent; no grant. Policy B: same population/resources; All client apps; exclude compliant devices with `device.isCompliant -eq True`; 9-hour frequency; Never persistent; no grant.
+INTENDED POLICY
+All users, excluding the resolved exclusion groups and only the individual accounts the resolved target names; All resources; Client apps Browser; Sign-in frequency 12 hours (periodic reauthentication); Persistent browser session Never persistent; no grant.
+Individual accounts the resolved target excludes: {{policy.target.excludeUsersSummary}}. [omit this line when unavailable]
 
-RULES
-Use stable tenant policy IDs for updates. Unknown evidence remains Unknown. Do not collapse the two policies. Do not add new conditions or exclusions. Return conclusions, checks, assumptions, evidence, and the smallest safe next action.
+CAUTIONS
+Shared-device accounts are excluded only where this policy's resolved target lists them. This policy controls browser sign-in sessions; closing a browser does not necessarily end every application session.
+
+NEXT STEP
+Explain the change and the browser tests to run afterwards, in managed and unmanaged browsers, including any account the resolved target excludes.
 @@IAMAI-END
-@@IAMAI-BEGIN {"id":"email.users.pre-enforcement","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"all-users-and-unmanaged-device-users","trigger":"before-enforcement","purpose":"pre-change-notice","recommendation":"recommended"}
-Subject: Sign-in sessions will refresh more often
+@@IAMAI-BEGIN {"id":"email.users.pre-enforcement","channel":"email","states":["readyToEnforce"],"format":"markdown","kind":"template","audience":"all-users","trigger":"before-enforcement","purpose":"pre-change-notice","recommendation":"recommended"}
+Subject: Planned change: Limit How Long Sessions Last
 
 Hi everyone,
 
-We're updating sign-in session settings for {{tenant.displayName}}. Browser sessions will no longer stay permanently signed in, and you may be asked to sign in again about once during a working day. On devices that aren't managed/compliant, reauthentication can occur more frequently.
-
-If you use a shared room, panel, or shared-device account, IT has separately checked those accounts before this change. If you see repeated prompts that prevent normal work, contact the help desk and include the app and device you were using.
+We plan to change browser sign-in to a 12-hour frequency and disable persistent browser sign-in. You may need to sign in again more often. Contact IT if repeated prompts interrupt work.
 
 Thanks,
 IT
@@ -382,44 +395,44 @@ IT
   "tiles": [
     {
       "id": "policy-pair",
-      "label": "Two-policy set",
-      "gate": "Both component policies resolve to canonical tenant objects or approved create operations.",
+      "label": "Browser policy",
+      "gate": "The browser policy resolves to the intended tenant policy or an approved create operation.",
       "results": [
         "Ready",
         "Review required",
         "Unknown",
         "Blocked"
       ],
-      "why": "IAMAI compares each component independently; one matching policy does not substitute for the other."
+      "why": "The baseline has one session policy for this step, and IAMAI compares the tenant's browser policy with it."
     },
     {
       "id": "shared-devices",
-      "label": "Shared devices",
-      "gate": "The complete shared-device account exclusion set is resolved.",
+      "label": "Excluded accounts",
+      "gate": "The individual accounts the target excludes are resolved: the exact set, or none where the target excludes nobody.",
       "results": [
         "Ready",
         "Review required",
         "Unknown",
         "Blocked"
       ],
-      "why": "Session-frequency controls can repeatedly sign out unattended/shared devices if they are accidentally included."
+      "why": "Check the 12-hour frequency and the exact resolved exclusions. Shared-device accounts are excluded only if the target actually names them."
     },
     {
       "id": "unmanaged-boundary",
-      "label": "Unmanaged-device boundary",
-      "gate": "The compliance filter and available device evidence support the intended unmanaged-device scope.",
+      "label": "Browser scope",
+      "gate": "The policy targets browser sign-ins only, as the baseline does.",
       "results": [
         "Ready",
         "Review required",
         "Unknown",
         "Blocked"
       ],
-      "why": "The 9-hour companion must not be treated as an all-device policy."
+      "why": "A browser session control is not an all-device policy; apps outside the browser are not limited by this step."
     },
     {
       "id": "enforcement",
       "label": "Safe to enforce",
-      "gate": "Both policies are canonical, Report-only, and controlled validation shows no unresolved blocker.",
+      "gate": "The browser policy matches the intended settings, is in Report-only, and controlled validation shows no unresolved blocker.",
       "results": [
         "Ready",
         "Review required",
@@ -457,12 +470,12 @@ IT
         "entra",
         "powershell"
       ],
-      "symptom": "Users are prompted more often than the configured 12/9-hour values suggest.",
+      "symptom": "Users are prompted more often than the configured 12-hour value suggests.",
       "check": [
         "Review all applicable Conditional Access session policies; another more restrictive sign-in-frequency policy can affect the session."
       ],
       "fix": [
-        "Correct the unintended overlapping policy rather than weakening this pair without evidence."
+        "Correct the unintended overlapping policy rather than weakening this policy without evidence."
       ],
       "doNot": [
         "Do not assume the displayed policy is the only session control applying."
@@ -486,15 +499,15 @@ IT
       ],
       "symptom": "A room/shared device starts cycling through sign-in prompts or signs out.",
       "check": [
-        "Confirm its account is in IAMAI\u2019s resolved shared-device exclusions on both policies."
+        "Confirm its account is in IAMAI\u2019s resolved exclusions on the browser policy, and whether the resolved target names it at all."
       ],
       "fix": [
-        "Correct the same policies to the approved exclusion set, then retest."
+        "Correct the browser policy to the resolved exclusion set, then retest."
       ],
       "doNot": [
         "Do not broadly exclude ordinary users or disable all session controls."
       ],
-      "then": "Return both policies to Report-only if service remains disrupted.",
+      "then": "Return the browser policy to Report-only if service remains disrupted.",
       "sourceIds": [
         "ms-session-lifetime-config"
       ]
@@ -541,15 +554,15 @@ IT
         "json",
         "powershell"
       ],
-      "symptom": "The 9-hour companion appears to affect compliant devices or misses unmanaged devices.",
+      "symptom": "The session control appears to affect apps outside the browser, or misses browser sign-ins.",
       "check": [
-        "Verify deviceFilter mode exclude and exact rule `device.isCompliant -eq True`."
+        "Verify Client apps is Browser only, with no device filter the pinned baseline does not have."
       ],
       "fix": [
-        "Correct the unmanaged component conditions by stable ID."
+        "Correct the browser policy conditions by stable ID."
       ],
       "doNot": [
-        "Do not replace the filter with a guessed device list."
+        "Do not add a device filter or an app list the pinned baseline does not contain."
       ],
       "then": "Use What If/tenant evidence and rescan.",
       "sourceIds": [

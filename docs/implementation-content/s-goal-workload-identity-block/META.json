@@ -33,7 +33,7 @@
     "memberStableId": null,
     "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
-    "workloadScope": "one IAMAI-resolved Entra Cloud Sync provisioning service principal",
+    "workloadScope": "one Entra Cloud Sync calling identity, confirmed as a supported workload identity (a single-tenant service principal the tenant owns); IAMAI does not establish this from a sync role, a licence or a provisioning object",
     "resourceScope": "All",
     "locationScope": {
       "include": [
@@ -68,6 +68,7 @@
     "location.current.id"
   ],
   "optionalBindings": [
+    "policy.current.removedExclusions",
     "tenant.displayName",
     "workload.cloudSync.displayName",
     "policy.current.displayName",
@@ -76,7 +77,8 @@
     "evidence.cloudSyncActivity",
     "evidence.syncAddresses",
     "dependencies.blockers",
-    "location.current.semanticMismatches"
+    "location.current.semanticMismatches",
+    "workload.identity.detail"
   ],
   "projection": {
     "notApplicable": {
@@ -143,8 +145,7 @@
       ],
       "sharedBefore": {
         "entra": [
-          "entra.correct.open",
-          "entra.correct.ensure-report-only"
+          "entra.correct.open"
         ]
       },
       "mismatches": {
@@ -157,7 +158,6 @@
             "entra.correct.policy.service-principal"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -165,7 +165,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -180,7 +179,6 @@
             "entra.correct.policy.all-resources"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -188,7 +186,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -203,7 +200,6 @@
             "entra.correct.policy.location-boundary"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -211,7 +207,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -226,7 +221,6 @@
             "entra.correct.policy.client-apps"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -234,7 +228,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -256,7 +249,6 @@
             "entra.correct.policy.remove-noncanonical"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-conditions"
           ],
           "powershell": [
@@ -264,7 +256,6 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyConditions"
               ]
             }
@@ -279,7 +270,6 @@
             "entra.correct.policy.grant-block"
           ],
           "json": [
-            "json.correct.report-only",
             "json.correct.policy-grant"
           ],
           "powershell": [
@@ -287,33 +277,7 @@
               "block": "powershell.run",
               "mode": "Correct",
               "corrections": [
-                "ReportOnly",
                 "PolicyGrant"
-              ]
-            }
-          ]
-        },
-        "lifecycle.report-only": {
-          "select": {
-            "equals": [
-              "policy.current.state",
-              "enabled"
-            ]
-          },
-          "alongside": true,
-          "appliesWhen": "a semantically incorrect workload policy is not in Report-only while being corrected",
-          "entra": [
-            "entra.correct.policy.report-only"
-          ],
-          "json": [
-            "json.correct.report-only"
-          ],
-          "powershell": [
-            {
-              "block": "powershell.run",
-              "mode": "Correct",
-              "corrections": [
-                "ReportOnly"
               ]
             }
           ]

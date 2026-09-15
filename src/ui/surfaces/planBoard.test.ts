@@ -153,7 +153,8 @@ test('On Hold groups by the primary blocker label and nothing else; the other tw
     for (const g of groupsFor('onHold', applyFocus(items, 'onHold', NO_FOCUS))) {
       assert.match(g.key, /^hold-\d+$/)
       for (const i of g.items) assert.equal(i.hold, g.label, `${name}/${i.id}: grouped under "${g.label}" while its blocker reads "${i.hold}"`)
-      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.lanes.onHold, `${name}: "${g.label}" is not a blocker label`)
+      // A healthy deeper prerequisite holds too (owner's status contract), under the wait's own heading.
+      assert.ok(Object.values(BOARD.blockers).includes(g.label as never) || g.label === BOARD.lanes.onHold || g.label === WHEN.afterPrerequisites, `${name}: "${g.label}" is not a blocker label`)
     }
     for (const tab of ['ready', 'upNext'] as const) {
       const keys = groupsFor(tab, applyFocus(items, tab, NO_FOCUS)).map((g) => g.key)
@@ -262,7 +263,10 @@ test('the board decides no lane: it reads planLanes.ts and re-derives nothing', 
 test('the row label is Lane · substatus or reason, from one function', () => {
   const titleOf = (id: string): string | null => (id === 's-prereq-break-glass' ? 'Emergency Access Accounts' : null)
   const ready = { lane: 'Ready' as const, substatus: 'Observing' as const, reason: null, blockers: [], gates: [], order: 0, fromEngine: true }
-  assert.equal(laneLabelOf(ready, titleOf), 'Ready · Observing')
+  assert.equal(laneLabelOf(ready, titleOf), 'Ready · Review')
+  // The wait while report-only collects evidence is On Hold, in the lane's own word for watching.
+  const collecting = { lane: 'On Hold' as const, substatus: null, reason: { kind: 'evidence' as const, id: 'evidence:observation', milestone: null, condition: null, abnormal: false, ordinal: 1 }, blockers: [], gates: [], order: 0, fromEngine: true }
+  assert.equal(laneLabelOf(collecting, titleOf), 'On Hold · Observing')
   const blocker = { kind: 'step' as const, id: 's-prereq-break-glass', milestone: null, condition: null, abnormal: false, ordinal: 5 }
   const upNext = { lane: 'Up Next' as const, substatus: null, reason: blocker, blockers: [blocker], gates: [], order: 0, fromEngine: true }
   assert.equal(laneLabelOf(upNext, titleOf), 'Up Next · After Emergency Access Accounts')
@@ -272,6 +276,10 @@ test('the row label is Lane · substatus or reason, from one function', () => {
   const heldOnStep = { ...held, reason: { ...blocker, abnormal: true } }
   assert.equal(laneLabelOf(heldOnStep, titleOf), `On Hold · ${BOARD.blockers.step}: Emergency Access Accounts`)
   assert.equal(holdGroupOf(heldOnStep), BOARD.blockers.step, 'rows held by the same kind of thing group together')
+  // A deeper healthy prerequisite holds without anything abnormal, and reads as the wait it is.
+  const heldBehind = { ...held, reason: blocker }
+  assert.equal(laneLabelOf(heldBehind, titleOf), 'On Hold · After Emergency Access Accounts')
+  assert.equal(holdGroupOf(heldBehind), WHEN.afterPrerequisites)
   assert.equal(laneLabelOf({ ...ready, lane: 'Completed', substatus: null }, titleOf), BOARD.lanes.completed)
   assert.equal(laneLabelOf({ ...ready, lane: 'Deferred', substatus: null }, titleOf), BOARD.lanes.deferred)
   for (const name of FIXTURES) {

@@ -424,10 +424,21 @@ export const CHECKS_PAGE = {
 }
 
 /** The Phase 0 step a blocking subject generates. */
+/** Why a validation subject's own step matters, before its count (editorial register). */
+export const BLOCKER_WHY: Record<string, string> = {
+  "trustedLocation": "An incorrect trusted location can weaken or interrupt every policy that uses it.",
+  "allowedCountries": "The country list needs to match approved business access before its dependent policy can be trusted.",
+  "pilotGroup": "A useful pilot includes the people and workflows needed to test the change before a wider rollout.",
+  "serviceAccount": "Service-account exceptions need a clear purpose and owner. Incorrect membership can either interrupt a job or leave an ordinary account outside important controls.",
+  "authStrength": "The strength's accepted methods must match the requirement of the policies that use it.",
+}
+
 export const BLOCKER_STEP = {
   title: (subject: string): string => subject,
-  why: (subject: string, n: number): string =>
-    `${subject} has ${count(n, 'must-fix check')} outstanding. Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.`,
+  why: (subject: string, n: number, lead?: string): string =>
+    lead
+      ? `${lead} ${subject} has ${count(n, 'must-fix check')} outstanding.`
+      : `${subject} has ${count(n, 'must-fix check')} outstanding. Every step that can deny access is held until they are cleared, because these are what a mistake is recovered through.`,
   impact: (n: number, held: number): string =>
     held === 0
       ? `${count(n, 'must-fix check')} to clear. Nothing in the plan is held by them yet.`

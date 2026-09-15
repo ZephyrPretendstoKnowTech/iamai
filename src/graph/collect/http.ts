@@ -39,6 +39,20 @@ export class GraphRequestError extends Error {
   }
 }
 
+/**
+ * A success whose body is not what Graph answers: not JSON, not a JSON object
+ * or count, or a collection page without its `value` array. The read failed; it
+ * is never an empty success (a real empty collection is `value: []`).
+ */
+export class GraphResponseShapeError extends Error {
+  readonly status: number | null
+  constructor(message: string, status: number | null = null) {
+    super(message)
+    this.name = 'GraphResponseShapeError'
+    this.status = status
+  }
+}
+
 type GraphBody = {
   value?: unknown[]
   '@odata.nextLink'?: string
@@ -132,28 +146,39 @@ export async function graphRequest(tokens: TokenSource, url: string, opts: Graph
     }
     if (!res) throw new Error(`request failed after retries (timeout): ${url}`)
 
-    let body: GraphBody = {}
-    let bytes = 0
+    let raw: string | null = null
     try {
-      const raw = await res.text()
-      bytes = raw.length
-      const parsed: unknown = raw.length > 0 ? JSON.parse(raw) : {}
-      body = typeof parsed === 'number' ? { count: parsed } : ((parsed ?? {}) as GraphBody)
-    } catch {
-      body = {}
+      raw = await res.text()
+    } catch (e) {
+      if (opts.signal?.aborted) throw e
     }
-    opts.onResponse?.({ status: res.status, bytes })
+    let body: GraphBody = {}
+    // Whether the body is one Graph sends: empty, a JSON object, or a bare number (a $count endpoint).
+    let shaped = raw !== null
+    if (raw !== null && raw.length > 0) {
+      try {
+        const parsed: unknown = JSON.parse(raw)
+        if (typeof parsed === 'number') body = { count: parsed }
+        else if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) body = parsed as GraphBody
+        else shaped = false
+      } catch {
+        shaped = false
+      }
+    }
+    opts.onResponse?.({ status: res.status, bytes: raw?.length ?? 0 })
     if (res.status === 403) {
       throw new SectionDisabledError(body.error?.message ?? 'access denied (403)', 403)
     }
     if (!res.ok) {
       throw new GraphRequestError(res.status, body.error?.code ?? null, body.error?.message ?? 'request failed')
     }
+    if (!shaped) throw new GraphResponseShapeError(`${res.status} response body is not Graph JSON`, res.status)
     return body
   }
 }
 
-// Follow @odata.nextLink to the end, invoking onPage per page.
+// Follow @odata.nextLink to the end, invoking onPage per page. A page without a
+// `value` array fails the read, even after earlier pages arrived.
 export async function graphPaged(
   tokens: TokenSource,
   startUrl: string,
@@ -163,10 +188,13 @@ export async function graphPaged(
   let next: string | null = startUrl
   while (next) {
     const body: GraphBody = await graphRequest(tokens, next, opts)
-    const rows = Array.isArray(body.value) ? body.value : []
+    const nextLink: unknown = body['@odata.nextLink']
+    if (!Array.isArray(body.value)) throw new GraphResponseShapeError('collection page without a value array')
+    if (nextLink != null && typeof nextLink !== 'string') throw new GraphResponseShapeError('collection page with a malformed nextLink')
+    const rows = body.value
     all.push(...rows)
     if (opts.onPage) await opts.onPage(rows)
-    next = body['@odata.nextLink'] ?? null
+    next = nextLink ?? null
   }
   return all
 }

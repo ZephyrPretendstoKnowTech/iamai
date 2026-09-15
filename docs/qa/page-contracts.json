@@ -114,7 +114,8 @@
           "Source and version"
         ],
         "links": [
-          "How IAMAI works →"
+          "How IAMAI works →",
+          "feedback@getiamai.com"
         ]
       },
       "budget": {
@@ -131,8 +132,7 @@
         "Reports Reader",
         "How to use",
         "Step 1",
-        "scanned",
-        "feedback@getiamai.com"
+        "scanned"
       ]
     },
     {
@@ -223,7 +223,8 @@
         ],
         "links": [
           "How IAMAI works →",
-          "Microsoft: Global Reader"
+          "Microsoft: Global Reader",
+          "feedback@getiamai.com"
         ]
       },
       "budget": {
@@ -240,8 +241,7 @@
         "answer",
         "question",
         "What IAMAI found",
-        "scanned",
-        "feedback@getiamai.com"
+        "scanned"
       ]
     },
     {

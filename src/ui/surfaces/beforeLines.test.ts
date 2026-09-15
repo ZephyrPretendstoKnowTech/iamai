@@ -23,11 +23,13 @@ import { absentStepIds } from '../../roadmap/baselineScope.ts'
 const SERVICE_ACCOUNTS_GROUP = '00000000-0000-4000-8000-0000000a0001'
 
 const BEFORE: { id: string; line: RegExp; on: FixtureName[] }[] = [
-  { id: 'device-registration-mfa', line: /^Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No/, on: ['getiamai'] },
+  // Editorial batch C: the toggle is changed in the same change that enables the policy, so the line leads with when.
+  { id: 'device-registration-mfa', line: /^When you enable this policy, set Entra admin center → Entra ID → Devices → Device settings → Require Multifactor Authentication to register or join devices: No in the same change/, on: ['getiamai'] },
   // The managed-device policy needs Intune, which GetIAMAI does not hold: it renders on the demo (Intune) instead.
   { id: 'require-managed-device', line: /^Before this policy: Intune → Devices → Compliance → Compliance policy settings/, on: ['getiamai', 'demo-week2'] },
-  { id: 'user-risk', line: /^Hybrid tenants: enable password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
-  { id: 'user-risk-medium', line: /^Hybrid tenants: enable password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
+  // Editorial batch C: writeback is needed for synchronized users whose remediation is a password change, not every hybrid tenant.
+  { id: 'user-risk', line: /^Synchronized users who remediate with a password change need password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
+  { id: 'user-risk-medium', line: /^Synchronized users who change their password here need password writeback in Entra Connect/, on: ['getiamai', 'mid'] },
   { id: 'unmanaged-browser', line: /^SharePoint admin center → Policies → Access control → Unmanaged devices/, on: ['getiamai'] },
 ]
 

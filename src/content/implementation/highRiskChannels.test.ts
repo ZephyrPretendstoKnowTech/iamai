@@ -1,8 +1,8 @@
 // B7 (S-RH-1, S-UR-2): the High-Risk sign-in and user-risk packages project the
 // channels their Medium-Risk counterparts do, at the High threshold. The sign-in
 // package keeps its own baseline member's authentication-strength grant and
-// Every-time session: a decision never weakens a grant, so there is no plain-MFA
-// variant waiting on a saved choice the runtime never supplies.
+// Every-time session. The existing saved first-enforcement choice is bound from
+// the resolved operation, including the temporary built-in MFA rung.
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import registry from './registry.generated.json' with { type: 'json' }
@@ -17,6 +17,9 @@ const BINDINGS: Record<string, unknown> = {
   'policy.target.displayName': 'Sample - High-risk policy',
   'policy.target.excludeGroups': [ID(1)],
   'authStrength.target.id': ID(2),
+  'policy.target.grantControls': { operator: 'OR', builtInControls: [], customAuthenticationFactors: [], termsOfUse: [], authenticationStrength: { id: ID(2) } },
+  'policy.target.grantJson': JSON.stringify({ operator: 'OR', builtInControls: [], customAuthenticationFactors: [], termsOfUse: [], authenticationStrength: { id: ID(2) } }),
+  'policy.target.grantWords': 'Require authentication strength: Sample strength',
   'authStrength.target.displayName': 'Sample strength',
   'policy.current.id': ID(3),
   'policy.current.semanticMismatches': ['risk level'],
@@ -49,9 +52,9 @@ for (const { high, medium, risk } of PAIRS) {
       const theirs = projectImplementation(PACKAGES[medium], state, bindings).channels.map((c) => c.channel)
       assert.ok(theirs.length > 0, `${medium} ${state}: the premise, the counterpart projects channels`)
       for (const c of theirs) {
-        // The one exception: the High package's script declares its invocation and withholds
-        // Enforce, an attestation IAMAI cannot pass; the Medium user-risk script is an
-        // undeclared template that asks the operator for the same switches at run time.
+        // The one exception: a script that declares its invocation withholds Enforce, an
+        // attestation IAMAI cannot pass. The Medium user-risk script does too since cycle 5,
+        // so this only skips a PowerShell channel neither side draws.
         if (state === 'readyToEnforce' && c === 'powershell' && withheldEnforce(PACKAGES[high])) continue
         assert.ok(channels.has(c), `${high} ${state}: ${c} is missing (${[...channels].join(', ') || 'none'}; hold ${JSON.stringify(own.hold)})`)
       }
@@ -75,4 +78,35 @@ test('the High-Risk sign-in create keeps the baseline member: the resolved authe
   assert.equal(body.sessionControls.signInFrequency.frequencyInterval, 'everyTime')
   assert.equal(JSON.stringify(pkg).includes('firstEnforcementMode'), false, 'no binding the runtime never supplies')
   assert.equal(Object.keys(pkg.blocks).some((id) => /plain-mfa|baseline-strength|decision/.test(id)), false)
+})
+
+test('the saved MFA first-enforcement choice is the same grant in create, correction, Entra, AI and the invoked script', () => {
+  const grant = { operator: 'OR', builtInControls: ['mfa'], customAuthenticationFactors: [], termsOfUse: [] }
+  const b = { ...BINDINGS, 'authStrength.target.id': undefined, 'authStrength.target.displayName': undefined,
+    'policy.target.grantControls': grant, 'policy.target.grantJson': JSON.stringify(grant), 'policy.target.grantWords': 'Require multifactor authentication' }
+  for (const state of ['missing', 'partial'] as const) {
+    const p = projectImplementation(PACKAGES['s-goal-sign-in-risk'], state, { ...b, [CHANGED_FIELDS_BINDING]: ['grantControls'] })
+    const json = p.channels.find(c => c.channel === 'json')!
+    assert.ok(json, JSON.stringify(p.hold))
+    assert.deepEqual(JSON.parse(json.text).grantControls, grant)
+    if (state === 'partial') assert.deepEqual(Object.keys(JSON.parse(json.text)), ['grantControls'], 'correction preserves state')
+    assert.match(p.channels.find(c => c.channel === 'entra')!.text, /Require multifactor authentication/)
+    const ps = p.channels.find(c => c.channel === 'powershell')!.text
+    assert.ok(ps.includes(`-GrantControlsJson '${JSON.stringify(grant)}'`))
+    assert.doesNotMatch(ps, /-AuthenticationStrengthId /)
+    assert.doesNotMatch(p.channels.find(c => c.channel === 'aiInfo')!.text, /outputs? appl(?:y|ies) the strength/)
+  }
+})
+
+test('saved MFA choice stays explicit through observation, correction and enforcement guidance', () => {
+  const b = { ...BINDINGS, 'policy.target.grantWords': 'Require multifactor authentication',
+    'policy.target.grantControls': { operator: 'OR', builtInControls: ['mfa'] } }
+  for (const state of ['partial', 'reportOnly', 'readyToEnforce'] as const) {
+    const p = projectImplementation(PACKAGES['s-goal-sign-in-risk'], state, { ...b, [CHANGED_FIELDS_BINDING]: ['grantControls'] })
+    const entra = p.channels.find(c => c.channel === 'entra')!.text
+    const ai = p.channels.find(c => c.channel === 'aiInfo')!.text
+    assert.match(entra, /Require multifactor authentication/)
+    assert.doesNotMatch(entra + ai, /requires the resolved authentication strength|correction output applies the strength/)
+    if (state !== 'reportOnly') assert.match(ai, /Require multifactor authentication/)
+  }
 })

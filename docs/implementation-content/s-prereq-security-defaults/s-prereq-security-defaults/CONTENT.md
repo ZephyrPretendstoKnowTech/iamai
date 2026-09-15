@@ -1,13 +1,14 @@
 @@IAMAI-BEGIN {"id":"entra.disable","channel":"entra","states":["readyToDisable"],"format":"markdown","kind":"template"}
-1. Confirm IAMAI shows the replacement protections ready for this cutover: {{dependencies.replacementProtectionSummary}}.
+1. Confirm the replacement policies are ready to enable in the same change window: {{dependencies.replacementProtectionSummary}}.
 2. Go to **Entra ID > Overview > Properties > Manage security defaults**.
 3. Set **Security defaults** to **Disabled** and Save.
-4. Immediately complete the paired Conditional Access enforcement actions prescribed by the plan; do not leave the tenant between protection models.
-5. Rescan IAMAI.
+4. Immediately enable the planned replacement Conditional Access policies. Do not leave the tenant between the two protection models.
+5. Verify after the change: each replacement policy is On with its planned settings, and test sign-ins still work.
+6. Rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"entra.verify","channel":"entra","states":["verificationRequired"],"format":"markdown","kind":"template"}
-Re-open **Manage security defaults** and confirm it is Disabled. Then verify the replacement Conditional Access policies are active and rescan.
+Re-open **Manage security defaults** and confirm it is Disabled. Verify after the change: each replacement Conditional Access policy is On with its planned settings, and test sign-ins still work. Then rescan IAMAI.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"json.disable","channel":"json","states":["readyToDisable"],"format":"json","kind":"template"}
@@ -27,29 +28,35 @@ Get-MgPolicyIdentitySecurityDefaultEnforcementPolicy
 @@IAMAI-BEGIN {"id":"ai.blocked","channel":"aiInfo","states":["blocked"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Explain why this cutover is held: {{dependencies.blockers}}. Do not suggest disabling Security Defaults while replacement protection is incomplete.
+This changeover is on hold: {{dependencies.blockers}}. Keep Security Defaults enabled until the replacement policies can be enabled immediately after it is turned off, in the same change window.
+
+NEXT STEP: Explain what must be completed before the changeover can start.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.disable","channel":"aiInfo","states":["readyToDisable"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Review the same-day cutover for {{tenant.displayName}}. Replacement protection summary: {{dependencies.replacementProtectionSummary}}. Identify any gap where MFA or legacy-auth blocking would be absent.
+The changeover from Security Defaults to the planned Conditional Access policies is available for {{tenant.displayName}}, in one change window. Replacement protection: {{dependencies.replacementProtectionSummary}}. Turning off Security Defaults removes its protections straight away, so the replacement policies must be enabled immediately afterwards.
+
+NEXT STEP: Explain the order of the change, and point out any account or sign-in path that would be left without MFA or legacy-authentication blocking.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"ai.verify","channel":"aiInfo","states":["verificationRequired"],"format":"markdown","kind":"template"}
 **Contains tenant context. Review before sharing with an external AI service.**
 
-Verify that Security Defaults is off and replacement Conditional Access protection remains active. Cutover checks: {{evidence.cutoverChecks}}.
+This step is waiting for verification of the changeover. Cutover checks: {{evidence.cutoverChecks}}.
+
+NEXT STEP: Explain how to confirm that Security Defaults reads back as Disabled, that each replacement policy is On with its planned settings, and that test sign-ins still work.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"email.cutover","channel":"email","states":["readyToDisable"],"format":"markdown","kind":"template","audience":"help-desk"}
-Subject: Microsoft Entra protection cutover
+Subject: Action needed: Turn Off Security Defaults
 
-Security Defaults is being replaced with the validated Conditional Access policy set in one controlled change window. If sign-in issues appear, record the affected account, application, time, and policy result; do not disable tenant-wide protection without the rollback owner.
+We plan to replace Security Defaults with the reviewed access policies in one change window. Please be available to help verify sign-in and investigate any unexpected interruption. If a sign-in problem appears, record the affected account, application, time and policy result, and contact the change owner before turning off any tenant-wide protection.
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"readiness.model","channel":"readiness","states":["blocked","readyToDisable","verificationRequired"],"format":"json-template","kind":"referenceOnly"}
-{"tiles":[{"id":"current","label":"Security Defaults","result":"{{securityDefaults.current.isEnabled}}","line":"This singleton setting is the object changed by this step."},{"id":"replacement","label":"Replacement protection","result":"{{dependencies.replacementProtectionSummary}}","line":"Disable only when replacement protections are ready for the same cutover."}],"whyIamaiSaysThis":"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections."}
+{"tiles":[{"id":"current","label":"Security Defaults","result":"{{securityDefaults.current.isEnabled}}","line":"This tenant-wide setting is the one this step changes."},{"id":"replacement","label":"Replacement protection","result":"{{dependencies.replacementProtectionSummary}}","line":"Prepare and review the replacement policies before the changeover. Confirm them enabled immediately after Security Defaults is disabled."}],"whyIamaiSaysThis":"Microsoft recommends no gap between disabling Security Defaults and enabling the replacement Conditional Access protections."}
 @@IAMAI-END
 
 @@IAMAI-BEGIN {"id":"troubleshooting.model","channel":"troubleshooting","states":["readyToDisable","verificationRequired","inPlace"],"format":"json","kind":"referenceOnly"}

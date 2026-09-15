@@ -41,9 +41,12 @@ test('P0-9: the campaign offers Entra (the registration campaign setup) and AI I
   assert.deepEqual(channelTabsOf(b.artifacts).map((t) => String(t.label)), ['Entra', 'PowerShell', 'JSON', 'AI Info', 'Email'])
   assert.deepEqual(channelTabsOf(b.artifacts.filter((a) => !a.unavailable)).map((t) => String(t.label)), ['Entra', 'AI Info'])
   const entra = b.artifacts.find((a) => a.id === 'portal')!.text()
-  for (const line of ['Authentication methods → Registration campaign', 'State: Enabled', 'Target: All users', 'Passkey (Microsoft Authenticator)', 'Number of days allowed to snooze', 'Save.']) assert.ok(entra.includes(line), `Entra is missing: ${line}`)
+  // Editorial batch C: the method is the one the campaign's JSON targets (microsoftAuthenticator), and the snooze is the organization's value.
+  for (const line of ['Authentication methods → Registration campaign', 'State: Enabled', 'Target: All users', 'Microsoft Authenticator', 'Number of days allowed to snooze', 'Save, reopen the settings and rescan.']) assert.ok(entra.includes(line), `Entra is missing: ${line}`)
+  assert.ok(!entra.includes('Passkey (Microsoft Authenticator)'), 'Entra names a method the campaign does not target')
   const ai = b.artifacts.find((a) => a.id === 'ai')!.text()
-  for (const line of ['Book 10 minutes with each', 'aka.ms/mfasetup', '[MFA Readiness →](#/readiness)', 'Temporary Access Pass first', 'remove the phone number', 'passkey or a hardware security key', 'sign in one more time']) assert.ok(ai.includes(line), `AI Info is missing: ${line}`)
+  for (const line of ['Book 10 minutes with each', 'aka.ms/mfasetup', '[MFA Readiness →](#/readiness)', 'Temporary Access Pass first', 'Retire an older method only through the approved method-policy change', 'passkey or a hardware security key', 'sign in once more']) assert.ok(ai.includes(line), `AI Info is missing: ${line}`)
+  assert.ok(!ai.includes('remove the phone number'), 'AI Info removes a method before recovery is checked')
   // S-MC-3: an in-app link in authored text renders as a link, and only an in-app one.
   assert.match(SECTIONS, /const APP_LINK = \/\^\\\[\(\[\^\\\]\]\+\)\\\]\\\(\(#\\\/\[\^\)\\s\]\*\)\\\)\$\//)
   assert.match(SECTIONS, /<a key=\{i\} className="inline-link" href=\{link\[2\]\}>/)

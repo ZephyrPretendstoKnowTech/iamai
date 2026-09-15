@@ -1,10 +1,10 @@
 {
-  "lane": "Ready",
-  "substatus": "Correct",
+  "lane": "Up Next",
+  "substatus": null,
   "reason": "when device readiness reaches 80% (now 29%)",
   "fact": "Report-only",
-  "badge": "Ready · Correct",
-  "bar": "Needs correction",
+  "badge": "Up Next · After Decide How Devices Are Managed",
+  "bar": "After Decide How Devices Are Managed",
   "rail": "—",
   "headings": [
     "Why",
@@ -18,11 +18,11 @@
       "state": "29% of devices compliant"
     },
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Decide How Devices Are Managed"
     },
     {
-      "label": "Prerequisite · In progress",
+      "label": "Prerequisite · To do",
       "state": "Create or Correct Emergency Access Accounts"
     }
   ],
