@@ -41,6 +41,7 @@ import { shared } from '../../content/content.ts'
 import { fillText } from '../../content/render.ts'
 import { oneLine } from '../../content/implementation/project.ts'
 import type { StepVarContext } from './stepVars.ts'
+import type { SelectedPolicyBody } from './stepPackage.ts'
 import builtinStrengths from '../../../data/builtin-strengths.json' with { type: 'json' }
 
 type PinnedPolicy = { id: string | null; displayName: string; conditions: unknown; grantControls: unknown; sessionControls: unknown; placeholders: Record<string, string> }
@@ -275,8 +276,28 @@ export function strengthForGoal(goalId: string): string | null {
  * The one place the lines are made, so the screen, the print and the exports all
  * get the same answer.
  */
-export function stepPortalLines(step: Step, names: PortalNames): string[] | null {
+export function stepPortalLines(step: Step, names: PortalNames, selected: readonly SelectedPolicyBody[] | null = null): string[] | null {
   if (!implementationOffered(step)) return null
+  return resolvedPortalLines(step, names, selected)
+}
+
+/**
+ * The same lines for the policies the step resolved, whether or not it offers them
+ * today: what the plan proposes, for a briefing about a held step. Never handed over
+ * as instructions — `stepPortalLines` is the one door to those.
+ */
+export function plannedPortalLines(step: Step, names: PortalNames, selected: readonly SelectedPolicyBody[] | null = null): string[] | null {
+  return resolvedPortalLines(step, names, selected)
+}
+
+/**
+ * The lines, each policy read from the body its package selects where the package
+ * hands one over (stepPackage.ts selectedPolicyBodiesOf), else from the resolved
+ * operation. The operation still decides the mode, the exclusions it removes and the
+ * plan tag; the selected body decides the settings, so these lines never instruct a
+ * setting the step's JSON does not send.
+ */
+function resolvedPortalLines(step: Step, names: PortalNames, selected: readonly SelectedPolicyBody[] | null): string[] | null {
   const resolution = step.action.resolution
   const mapped = resolution?.policies ?? []
   if (mapped.length === 0) return null
@@ -304,10 +325,27 @@ export function stepPortalLines(step: Step, names: PortalNames): string[] | null
     const at = ctx.changeUntouched ? lines.lastIndexOf(ctx.changeUntouched) : -1
     return at >= 0 ? [...lines.slice(0, at), line, ...lines.slice(at)] : [...lines, line]
   }
+  // The body the step's package selects for this policy: the only one where the
+  // step resolves one policy and the package sends one, else the one naming the same
+  // tenant policy or the same proposed name. A create keeps the operation's plan tag.
+  const selectedFor = (one: (typeof mapped)[number]): Record<string, unknown> | null => {
+    if (!selected || selected.length === 0) return null
+    const policyId = one.mode === 'update' && typeof one.policyId === 'string' ? one.policyId.toLowerCase() : null
+    const chosen =
+      mapped.length === 1 && selected.length === 1
+        ? selected[0]
+        : selected.find((s) => (policyId !== null && s.policyId?.toLowerCase() === policyId) || (typeof s.body.displayName === 'string' && oneLine(s.body.displayName) === openNameOf(one)))
+    if (!chosen) return null
+    const tag = (one.body as { description?: unknown }).description
+    return one.mode !== 'update' && chosen.body.description === undefined && typeof tag === 'string' ? { ...chosen.body, description: tag } : chosen.body
+  }
   // A policy an answer changed carries the baseline's own version with it
   // (roadmap/generate.ts), so every line the answer moved is shown beside what
   // the baseline said. The answer is not applied here; it is already in the body.
-  const annotated = (one: (typeof mapped)[number]): string[] => (one.baseline ? besideBaseline(linesOf(one, one.body), linesOf(one, one.baseline)) : linesOf(one, one.body))
+  const annotated = (one: (typeof mapped)[number]): string[] => {
+    const body = selectedFor(one) ?? one.body
+    return one.baseline ? besideBaseline(linesOf(one, body), linesOf(one, one.baseline)) : linesOf(one, body)
+  }
   const nameOfBlock = (one: (typeof mapped)[number]): string => openNameOf(one)
   if (mapped.length >= 2) {
     // Two policies, two blocks, in the baseline's order, each named by its own body.

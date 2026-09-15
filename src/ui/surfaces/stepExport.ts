@@ -19,7 +19,7 @@ import { stepPortalLines, portalNamesFor } from './stepPortal.ts'
 import { instructionsHeld } from './stepInstructions.ts'
 import { badgeLabel, factOf, implementationIsCurrent, stepContract } from './stepContract.ts'
 import type { LaneView, StepContract } from './stepContract.ts'
-import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines } from './stepPackage.ts'
+import { implementationPackageFor, packageBindings, packageRuntime, packageStateOf, planningPreview, previewNoteLines, selectedPolicyBodiesOf } from './stepPackage.ts'
 import { projectSafely } from '../../content/implementation/project.ts'
 import { SUBSTATUS_WORD, laneViewFor, laneWordOf } from './planBoard.ts'
 import { createsNewPolicy, enforcesByStateOnly, updatesExistingPolicy, heldByTitle, implementationOffered, waitingLine } from './stepJson.ts'
@@ -192,7 +192,10 @@ export function stepExportView(step: Step, ctx: StepVarContext, lane: LaneView |
   }
   const ex = stepVars(step, ctx)
   const names = portalNamesFor(ctx, ex, contentTitle(step))
-  const portal = cs.kind === 'policy' ? stepPortalLines(step, names) : null
+  // The settings the lines state are the ones the step's package selects for its JSON
+  // (stepPackage.ts selectedPolicyBodiesOf), read only where the lines are handed over.
+  const selected = cs.kind === 'policy' && implementationOffered(step) && implementationIsCurrent(step) ? selectedPolicyBodiesOf(step, ctx, contract) : null
+  const portal = cs.kind === 'policy' ? stepPortalLines(step, names, selected) : null
   // The screen's rule, in the export: where no implementation is offered the
   // export carries the explanation, never the instructions
   // (roadmap/operations.ts). The reasons a policy cannot be implemented — an

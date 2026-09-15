@@ -110,7 +110,13 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   const include: string[] = []
   if (f.who.all) include.push('All users')
   if (f.who.roles.size > 0) include.push(`Directory roles → ${names(f.who.roles, ctx)}`)
-  if (f.who.guests !== null) {
+  // All users reaches every guest type (facts.ts reads it as an all-types guest
+  // include). Where the policy then excludes guests, that reach is not a guest
+  // include to name, and the exclusion is not "the same as the include": All users
+  // minus every guest type read "Include: All users, Guest or external users → all
+  // types" with the exclusion dropped, the opposite of the policy (Medium user risk).
+  const implicitGuests = f.who.all && f.whoNot.guests && f.who.guests !== null && f.who.guests.length === 0
+  if (f.who.guests !== null && !implicitGuests) {
     const kinds = f.who.guests.length > 0 ? f.who.guests.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ') : 'all types'
     include.push(`Guest or external users → ${kinds}`)
   }
@@ -153,7 +159,7 @@ function usersLine(f: PolicyFacts, ctx: PortalContext): string {
   if (f.whoNot.guests) {
     const types = f.whoNot.guestTypes ?? []
     const all = types.length === 0 || Object.keys(GUEST_TYPE_LABEL).every((t) => types.some((x) => lc(x) === t))
-    const includedTypes = f.who.guests === null ? null : f.who.guests.length === 0 ? 'all' : new Set(f.who.guests.map(lc))
+    const includedTypes = f.who.guests === null || implicitGuests ? null : f.who.guests.length === 0 ? 'all' : new Set(f.who.guests.map(lc))
     const sameAsInclude = includedTypes === 'all' ? all : includedTypes !== null && !all && types.length === includedTypes.size && types.every((t) => includedTypes.has(lc(t)))
     if (!sameAsInclude) parts.push(all ? 'Also exclude Guest or external users (all types).' : `Also exclude Guest or external users → ${types.map((t) => GUEST_TYPE_LABEL[lc(t)] ?? t).join(', ')}.`)
   }

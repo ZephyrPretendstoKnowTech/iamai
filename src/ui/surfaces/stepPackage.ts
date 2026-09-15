@@ -31,7 +31,7 @@ import type { Drift } from '../../content/implementation/drift.ts'
 import { CHANGED_FIELDS_BINDING } from '../../content/implementation/protocol.ts'
 import type { Bindings, ChannelArtifact, Hold, OwnerConfirmation, PackageReadiness, PackageState, PrerequisiteStatus, Projection, RuntimeContext } from '../../content/implementation/project.ts'
 import { list } from '../../copy/statements.ts'
-import { NO_ACTION_STATES, planSafely, prerequisiteStatus, sourceUpdatedOn } from '../../content/implementation/project.ts'
+import { NO_ACTION_STATES, planSafely, prerequisiteStatus, projectSafely, sourceUpdatedOn } from '../../content/implementation/project.ts'
 import { fillText } from '../../content/render.ts'
 import { shared } from '../../content/content.ts'
 import { contentStepFor, contentStepForPackage } from '../../content/stepTitle.ts'
@@ -343,6 +343,64 @@ export function planningPreview(pkg: CompiledPackage, step: Step, c: StepContrac
   if (planned === null) return null
   const preview = planSafely(pkg, planned, bindings, runtime, (binding) => fillText(CONTRACT.implementation.preview.value, { value: bindingLabel(binding) }))
   return preview.preview && preview.channels.length > 0 ? preview : null
+}
+
+/**
+ * One Conditional Access request the step's package hands over, or previews: the
+ * body its JSON channel carries, with the method and the policy it changes. It is
+ * the operation the step's Entra, JSON and PowerShell tabs describe.
+ */
+export type SelectedPolicyBody = { method: string; policyId: string | null; body: Record<string, unknown>; preview: boolean }
+
+const CA_POLICY_REQUEST = /\/identity\/conditionalAccess\/policies(?:\/([0-9a-fA-F-]{36}))?\/?$/
+
+/** A preview's bare stand-ins (`‹policy name›`) as JSON strings, so the planned body still reads; null where it does not parse. */
+function parseChannelJson(text: string, preview: boolean): unknown {
+  try {
+    return JSON.parse(preview ? text.replace(/(^|[\s:[,])(‹[^›"\n]*›)/g, (_m, lead: string, value: string) => `${lead}${JSON.stringify(value)}`) : text)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The Conditional Access request bodies the step's package selects for its current
+ * state (executable, or the planning preview where that is what the step shows), or
+ * null where the package projects no policy request.
+ *
+ * A package can author a request whose settings are not the resolved operation's
+ * (the Medium user-risk package excludes guests and sets no session control, where a
+ * stand-in baseline included both). The artifacts that describe the step — the
+ * export's portal lines, AI Info's intended result — read the selected body, so they
+ * never state a setting the JSON the operator copies does not send. Pure.
+ */
+export function selectedPolicyBodiesOf(step: Step, ctx: StepVarContext, c: StepContract): SelectedPolicyBody[] | null {
+  const pkg = implementationPackageFor(step)
+  const state = pkg ? packageStateOf(step, c, ctx.snapshot) : null
+  if (!pkg || state === null) return null
+  const bindings = packageBindings(step, ctx, c)
+  const { runtime } = packageRuntime(pkg, state, bindings, {})
+  const executed = projectSafely(pkg, state, bindings, runtime)
+  const projection = executed.hold === null && executed.channels.length > 0 ? executed : planningPreview(pkg, step, c, ctx.snapshot, bindings, runtime, executed)
+  const json = projection?.channels.find((a) => a.channel === 'json')
+  return projection && json ? policyBodiesOfChannel(json, projection.preview === true) : null
+}
+
+/** The Conditional Access request bodies one projected JSON channel carries (see selectedPolicyBodiesOf), or null. */
+export function policyBodiesOfChannel(json: Pick<ChannelArtifact, 'text' | 'requests'>, preview: boolean): SelectedPolicyBody[] | null {
+  if (json.requests.length !== 1) return null
+  const parsed = parseChannelJson(json.text, preview) as { requests?: unknown } | null
+  if (parsed === null || typeof parsed !== 'object') return null
+  const requests: { method: string; url: string; body: unknown }[] = Array.isArray(parsed.requests)
+    ? (parsed.requests as { method?: unknown; url?: unknown; body?: unknown }[]).map((r) => ({ method: String(r.method ?? ''), url: String(r.url ?? ''), body: r.body }))
+    : [{ method: json.requests[0].method, url: json.requests[0].endpoint, body: parsed }]
+  const out: SelectedPolicyBody[] = []
+  for (const r of requests) {
+    const m = CA_POLICY_REQUEST.exec(r.url)
+    if (!m || r.body === null || typeof r.body !== 'object') continue
+    out.push({ method: r.method.toUpperCase(), policyId: m[1] ?? null, body: r.body as Record<string, unknown>, preview })
+  }
+  return out.length > 0 ? out : null
 }
 
 /**
