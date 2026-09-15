@@ -38,6 +38,21 @@ import { DEMO_TENANT_ID, DEMO_PARAM, DEMO_SNAPSHOT_STATE_ID } from './demoMode.t
 import { demoSnapshotKey, demoTenant, nextDemoRecord } from './demo.ts'
 import type { DemoPlanRecord, DemoSnapshotState, DemoTenant } from './demo.ts'
 import type { Step } from '../roadmap/types.ts'
+import { cleanupRecord, isRecordedDrill } from '../roadmap/cleanupDone.ts'
+
+test('the follow-up demo keeps a recorded drill on its sign-in day at every UTC hour', (t) => {
+  let now = 0
+  t.mock.method(Date, 'now', () => now)
+  for (let hour = 0; hour < 24; hour++) {
+    now = Date.parse(`2026-09-15T${String(hour).padStart(2, '0')}:30:00.000Z`)
+    const demo = demoTenant(true)
+    const record = cleanupRecord(demo.checkpoints ?? [])
+    for (const id of demo.mapping.breakGlassUserIds) {
+      const signIn = demo.snapshot.users.find(u => u.id === id)!.lastSuccessfulSignIn!
+      assert.equal(isRecordedDrill(signIn, record.drills, id, record.records), true, `hour ${hour}, account ${id}`)
+    }
+  }
+})
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 

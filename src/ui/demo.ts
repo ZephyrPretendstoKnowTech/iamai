@@ -15,6 +15,7 @@ import type { MappingState } from '../mapping/types.ts'
 import type { GroupMembers } from '../coverage/population.ts'
 import type { StepDecision } from '../roadmap/decisions.ts'
 import { planIdFor } from '../roadmap/generate.ts'
+import { isCleanupCheckpoint } from '../roadmap/cleanupDone.ts'
 // The demo's switches and its tenant id live in demoMode.ts, which is light;
 // this module carries the fixture and the engine, and loads only on demand.
 // The tenant id is not a GUID, and not the fixture's own generated one,
@@ -75,8 +76,14 @@ export function demoTenant(week2 = false): DemoTenant {
   // lets coverage resolve each policy's exclusions (prompt 50.1 item 5).
   // Week two's decisions (the technician's answers from week one) are dated with the snapshot.
   const decisions = f.decisions ? shiftDates(f.decisions, offset) : null
-  // Week two's checkpoints (the drill the technician recorded, E3) shift with the sign-ins they match.
-  const checkpoints = f.checkpoints ? shiftDates(f.checkpoints, offset) : null
+  // Completion dates represent calendar days, stored at noon, not event times.
+  // Shifting that noon by fractional days can move the recorded drill to the
+  // next day while its sign-in remains on the intended day (after 21:00 UTC).
+  const calendarOffset = Date.parse(snapshot.asOf.slice(0, 10)) - Date.parse(f.snapshot.asOf.slice(0, 10))
+  const checkpoints = f.checkpoints?.map(c => {
+    const shifted = shiftDates(c, offset)
+    return isCleanupCheckpoint(c) && isCleanupCheckpoint(shifted) ? { ...shifted, date: shiftDates(c.date, calendarOffset) } : shifted
+  }) ?? null
   return { snapshot, mapping, baseline: f.baseline, operatorId: f.operatorId, groups: f.groups, decisions, checkpoints }
 }
 
