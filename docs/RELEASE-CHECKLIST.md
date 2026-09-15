@@ -1,8 +1,12 @@
 # Release checklist
 
 What a person does before the app is shown to anyone outside the project. The automated
-checks (`npm test`, `npm run build`, `npm run smoke`, the network-destination test and the
-export redaction test) run in CI on every push; this list is the rest.
+checks run once per PR update and again for the exact merged main commit. Unit/type
+checks and build/browser checks are independently retryable. Deployment walks main and
+publishes the same commit- and content-verified build artifact; it does not repeat the
+suite or rebuild the site. Manual releases start by running the ci workflow on main.
+Use `npm run verify -- src/path/example.test.ts` during a batch; use
+`npm run verify -- --release` only when a local full release preflight is needed.
 
 ## App registration (Entra)
 

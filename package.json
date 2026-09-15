@@ -8,6 +8,7 @@
     "node": ">=22.18"
   },
   "scripts": {
+    "verify": "node scripts/verify.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
