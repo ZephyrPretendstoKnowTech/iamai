@@ -100,8 +100,15 @@ const daysBetween = (from: string, to: string): number => Math.max(0, Math.floor
  * moves; the status word follows from it (lifecycle.ts), so a stage and a word
  * cannot disagree. Returns nothing: a refused move leaves the step alone.
  */
+import { WORKLOAD_IDENTITY_BLOCKER } from './workloadIdentity.ts'
+
 function advance(step: Step, to: Partial<StepState>, note: string, at: string): void {
   if (step.state.setAside) return
+  // A workload step whose sync identity is not established as supported is never
+  // completed by a policy that looks like its target (roadmap/workloadIdentity.ts):
+  // the policy is observed and kept as it is, and the step stays on its hold. What
+  // the scan saw of the policy's lifecycle still records.
+  if (to.satisfied === true && step.blockers.some((b) => b.label === WORKLOAD_IDENTITY_BLOCKER)) return
   const from = step.status
   if (!advanceState(step, to)) return
   // A step generated already at this status (coverage saw it enforced) still

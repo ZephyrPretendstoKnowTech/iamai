@@ -33,7 +33,7 @@
     "memberStableId": null,
     "memberIdentityFallback": "IAC - WORKLOAD - BLOCK - EntraConnectIDSync - ExcludeEntraConnectIP",
     "ownerDecision": "Retain the current pin; re-pin proposal deferred.",
-    "workloadScope": "one IAMAI-resolved Entra Cloud Sync provisioning service principal",
+    "workloadScope": "one Entra Cloud Sync calling identity, confirmed as a supported workload identity (a single-tenant service principal the tenant owns); IAMAI does not establish this from a sync role, a licence or a provisioning object",
     "resourceScope": "All",
     "locationScope": {
       "include": [
@@ -77,7 +77,8 @@
     "evidence.cloudSyncActivity",
     "evidence.syncAddresses",
     "dependencies.blockers",
-    "location.current.semanticMismatches"
+    "location.current.semanticMismatches",
+    "workload.identity.detail"
   ],
   "projection": {
     "notApplicable": {
