@@ -158,7 +158,7 @@ test('s-goal-require-managed-device: the threshold says what it measures, Entra 
   // The numbered readiness explanation stays shared (BLOCKED.md). Editorial batch C: the register Why; the held end state is unchanged.
   const words = stepWords('require-managed-device')
   assert.equal(words.why, "Device checks help limit access from computers and phones that do not meet the business's chosen requirements. Reviewing real sign-ins can reveal managed devices whose apps are not sending the expected device information.")
-  assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a managed (compliant or domain-joined) device outside the trusted network, with the exclusions group applied.')
+  assert.equal(words.doneEnd, 'The policy is enforced in {tenant}, requiring a compliant device on the selected platforms outside the trusted network, with the approved exclusions applied.')
 })
 
 test('s-goal-intune-enrollment-reauth: Entra is one numbered procedure that explains the target and the missing grant, AI Info reads for a tech, and Done when names the outcome', () => {

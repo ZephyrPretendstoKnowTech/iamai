@@ -147,6 +147,7 @@ function sectionsOf(body: Record<string, unknown>): Set<PortalSection> {
   const conditions = (body.conditions ?? {}) as Record<string, unknown>
   if (conditions.users !== undefined) only.add('users')
   if (conditions.applications !== undefined) only.add('applications')
+  if (Object.keys(conditions).some(key => key !== 'users' && key !== 'applications')) only.add('conditions')
   if (body.grantControls !== undefined) only.add('grant')
   if (body.sessionControls !== undefined) only.add('session')
   if (body.state !== undefined) only.add('state')
