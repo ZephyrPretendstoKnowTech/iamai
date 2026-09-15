@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { absolute, absoluteDate, dateRange, monthDay, relativeDays, setDisplayTimeZone, when, whenAt } from './dates.ts'
+import { absolute, absoluteLocal, absoluteDate, dateRange, monthDay, relativeDays, setDisplayTimeZone, when, whenAt } from './dates.ts'
 
 const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 const sample = '2026-09-10T12:00:00.000Z'
@@ -18,7 +18,7 @@ test('plan dates read relative and absolute together', () => {
   assert.equal(relativeDays(sample, Date.parse(sample)), 'today')
 })
 
-test('the Setup time zone drives every rendered date', () => {
+test('the plan time zone drives scheduled dates', () => {
   setDisplayTimeZone('Pacific/Auckland')
   const nz = absolute('2026-09-10T11:30:00.000Z')
   setDisplayTimeZone('America/Los_Angeles')
@@ -75,4 +75,15 @@ test('a date shape is built once per display zone, and never outlives the zone t
     ;(Intl as { DateTimeFormat: unknown }).DateTimeFormat = real
     setDisplayTimeZone(null)
   }
+})
+
+test('scan context keeps the browser time when a loaded plan changes its scheduling zone', () => {
+  const before = absoluteLocal(sample)
+  try {
+    setDisplayTimeZone('Australia/Sydney')
+    assert.equal(absoluteLocal(sample), before)
+    setDisplayTimeZone('America/Los_Angeles')
+    assert.equal(absoluteLocal(sample), before)
+    assert.equal(before, new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(sample)))
+  } finally { setDisplayTimeZone(null) }
 })

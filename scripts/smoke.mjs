@@ -481,10 +481,10 @@ try {
   // The header's progress tiles replaced the generated status sentence (owner, 2026-09-11).
   const progressOf = () => evaluate(`[...document.querySelectorAll('main.page .plan-progress-tile')].map((t) => ((t.querySelector('dt') || {}).textContent || '').trim() + '=' + ((t.querySelector('dd') || {}).textContent || '').trim()).join(', ')`)
   const planProgress = await progressOf()
-  // The four tiles (A1b decision 11): Steps · Completed · Projected finish · Started.
-  check('Plan: the header shows progress tiles for steps, completed, projected finish and started', /^Steps=\d+, Completed=\d+, Projected finish=.+, Started=.+$/.test(planProgress), planProgress)
-  // The second header line left with docs/design/mockups/plan-top-v2.html; the tenant and the scan age live on Connect alone.
-  check('Plan: no second header line; the tenant and the scan age live on Connect alone', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
+  // Approved structural update: actionable counts, completed fraction, and an honest finish estimate.
+  check('Plan: the header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(planProgress), planProgress)
+  // The shell provides scan context; the old generated summary remains absent.
+  check('Plan: no obsolete generated summary above the board', !/Today shows where each person stands/.test(pt) && !/scanned|Built from what IAMAI found on|from the scan/.test(pt))
   // Task 011: the Plan is the rollout board and nothing above it. The readiness
   // ladder is a tenant-wide diagnostic and stays where the evidence it summarises
   // lives - Today, and Connect's Plan tile.
@@ -541,12 +541,11 @@ try {
   // prerequisite and check carries is dropped, and a held row says so instead of
   // borrowing its wave's date.
   check('Plan: the board drops the generic now from supporting rows', (await evaluate(`[...document.querySelectorAll('main.page .plan-row .when')].map((e) => (e.textContent || '').trim()).filter((t) => t === 'now').length`)) === 0)
-  // The When column is a day or the placeholder (A1b): what holds a row lives in
-  // its lane label and its reason line, never in the date column. The chip is
-  // the tenant fact Report-only or Enforced, or nothing (decision 2).
+  // When shows a calendar date, an estimate, or the condition preventing a date.
+  // The chip continues to describe the observed policy state.
   const rowStates = await acrossLanes(`[...document.querySelectorAll('main.page .plan-row')].map((r) => ({ title: ((r.querySelector('.step-title') || {}).textContent || '').trim(), when: ((r.querySelector('.when') || {}).textContent || '').trim(), chip: ((r.querySelector('.status') || {}).textContent || '').trim() }))`)
-  const whenWrong = rowStates.filter(({ when }) => !(when === '—' || /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
-  check('Plan: every row’s When is a day or the placeholder', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
+  const whenWrong = rowStates.filter(({ when }) => !(['Already in place', 'Not scheduled', 'After prerequisites', 'After review'].includes(when) || /^(?:Est\. )?[A-Z][a-z]{2} \d{1,2}, \d{4}$/.test(when)))
+  check('Plan: every row’s When provides a date, estimate or scheduling condition', whenWrong.length === 0, JSON.stringify(whenWrong.slice(0, 3)))
   const chipWrong = rowStates.filter(({ chip }) => !(chip === '' || chip === 'Report-only' || chip === 'Enforced'))
   check('Plan: a row’s chip is the tenant fact Report-only or Enforced, or nothing', chipWrong.length === 0, JSON.stringify(chipWrong.slice(0, 3)))
   // Every row's When and Impact say something (owner, 2026-09-11): never a blank cell.
@@ -893,7 +892,7 @@ try {
   // Three branches, and the held one has to name what holds it: a plan whose
   // policies wait on a safety object nobody has chosen is the ordinary first
   // visit, and 'cannot finish until' with nothing after it is a hole.
-  check('Demo: the plan header shows progress tiles for steps, completed, projected finish and started', /^Steps=\d+, Completed=\d+, Projected finish=.+, Started=.+$/.test(demoDay1Header), demoDay1Header)
+  check('Demo: the plan header shows tiles for ready work, input, observation, completed and estimated finish', /^Ready now=\d+, Needs your input=\d+, Observing=\d+, Completed=\d+ \/ \d+, Estimated finish=.+$/.test(demoDay1Header), demoDay1Header)
   check('Demo: the demo chunk loads in demo mode', await evaluate(`performance.getEntriesByType('resource').some((e) => /\\/src\\/ui\\/demo\\.ts/.test(e.name))`))
   check('Demo: the header carries the sample-data banner, not the org name', !/Contoso Pty Ltd/.test(await evaluate(`document.querySelector('header.app').innerText`)) && /Sample data/.test(await text()))
   // RUN-CONTEXT-B decision 10: a row draws no reason line under its title; the
@@ -1084,9 +1083,9 @@ try {
     await waitFor(`document.querySelectorAll('main.page .plan-row').length > 0`)
     return evaluate(`(document.querySelector('main.page') || document.body).innerText`)
   }
-  // The Projected finish tile reads a date, "at pace" and, when it differs, "committed <date>" (A2), so the tile is read up to the Started label.
-  const headerOf = (body) => (body.match(/Steps\s*\d+\s*Completed\s*\d+\s*Projected finish[\s\S]*?Started\s*\S+/) ?? [''])[0].replace(/\s+/g, ' ').trim()
-  const inPlaceOf = (body) => Number((body.match(/Completed\s*(\d+)\s*Projected finish/) ?? [])[1] ?? '0')
+  // Read the completed numerator from the five-card header; a changing denominator is not progress.
+  const headerOf = (body) => (body.match(/Ready now\s*\d+\s*Needs your input\s*\d+\s*Observing\s*\d+\s*Completed\s*\d+\s*\/\s*\d+\s*Estimated finish[^\n]*/) ?? [''])[0].replace(/\s+/g, ' ').trim()
+  const inPlaceOf = (body) => Number((body.match(/Completed\s*(\d+)\s*\/\s*\d+/) ?? [])[1] ?? '0')
   const day1Body = await planBody()
   const day1Header = headerOf(day1Body)
   // Each plan row as the visitor reads it, flattened in Node (a regex in an
