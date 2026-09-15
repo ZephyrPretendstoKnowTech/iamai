@@ -30,7 +30,7 @@ import { defaultDecisions } from '../ui/surfaces/pickerRows.ts'
 import { stepVars } from '../ui/surfaces/stepVars.ts'
 import type { StepVarContext } from '../ui/surfaces/stepVars.ts'
 import { portalNamesFor, stepPortalLines } from '../ui/surfaces/stepPortal.ts'
-import { stepLines } from '../ui/surfaces/stepExport.ts'
+import { commsFor, stepLines } from '../ui/surfaces/stepExport.ts'
 import { stepById } from '../content/content.ts'
 
 function applied(f: Fixture, decisions: Record<string, StepDecision> | null): MappingState {
@@ -134,6 +134,9 @@ test('answered (apps, hybrid): the platform deviation, the enrolment step follow
   assert.equal(deviceLines.length, (cv.phoneUsers as string[]).length + (cv.unjoinedUsers as string[]).length, 'one line per person on a phone or an unjoined computer')
   assert.equal(cv.deviceIntro, 'Devices, from Decide How Devices Are Managed, one line per person: on a phone, use supported work apps and follow the company app-protection instructions; on a computer, make sure your work computer meets the company compliance policy; hybrid join alone does not meet it:')
   assert.equal(cv.deviceSentence, 'On your phone, use supported work apps and follow the company app-protection instructions; on your computer, make sure your work computer meets the company compliance policy; hybrid join alone does not meet it.')
+  const email = commsFor(stepById[campaign.id], cv, campaign)
+  assert.ok(email, 'the campaign has a usable email after the device decision')
+  assert.ok(email.extra.includes(cv.deviceSentence as string), 'the email carries the saved device guidance, not only the variable')
 })
 
 test('the other answers: enrol keeps phones in, block phones keeps them in, nothing managed sends the device steps to the footer with the answer', () => {
